@@ -1,0 +1,10 @@
+{
+  "name": "field-residual-constraints",
+  "fixture": "assets/fixtures/residual.threshold.json",
+  "wants_to_change": ["constraints"],
+  "expected_regime": "escalate_up",
+  "forbidden_regimes": ["scale_across", "scale_out", "phase"],
+  "spawn_blocked": true,
+  "rev_after_apply": 2,
+  "apply_adds_constraint_substring": "invoicing"
+}

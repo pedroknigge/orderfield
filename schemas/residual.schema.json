@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/residual.schema.json",
+  "title": "Orderfield residual",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "result_ref", "residual", "metrics"],
+  "properties": {
+    "status": { "type": "string", "enum": ["done", "blocked", "threshold"] },
+    "result_ref": { "type": "string" },
+    "residual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wants_to_change", "evidence", "proposed_patch"],
+      "properties": {
+        "wants_to_change": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["mission", "phase", "constraints", "done_when", "workspace"]
+          }
+        },
+        "evidence": { "type": "string" },
+        "proposed_patch": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uncertainty", "divergence", "tool_failures", "novelty"],
+      "properties": {
+        "uncertainty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tool_failures": { "type": "integer", "minimum": 0 },
+        "novelty": { "type": "boolean" }
+      }
+    },
+    "child_id": { "type": "string" },
+    "role": { "type": "string" }
+  }
+}

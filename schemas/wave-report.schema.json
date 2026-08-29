@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/wave-report.schema.json",
+  "title": "Orderfield wave report",
+  "type": "object",
+  "required": ["wave", "order_rev", "regime", "reason", "residuals", "caps_remaining"],
+  "properties": {
+    "wave": { "type": "integer" },
+    "order_rev": { "type": "integer" },
+    "regime": {
+      "type": "string",
+      "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase"]
+    },
+    "reason": { "type": "string" },
+    "residuals": { "type": "array" },
+    "caps_remaining": { "type": "object" },
+    "applied_patch": { "type": ["object", "null"] }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "status": "done",
+  "result_ref": ".orderfield/work/scratch/explorer_demo/notes.md",
+  "residual": {
+    "wants_to_change": [],
+    "evidence": "",
+    "proposed_patch": null
+  },
+  "metrics": {
+    "uncertainty": 0.2,
+    "divergence": 0.05,
+    "tool_failures": 0,
+    "novelty": false
+  },
+  "role": "explorer"
+}

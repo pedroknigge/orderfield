@@ -1,0 +1,18 @@
+{
+  "status": "threshold",
+  "result_ref": ".orderfield/work/scratch/explorer_demo/notes.md",
+  "residual": {
+    "wants_to_change": ["constraints"],
+    "evidence": "A regulatory invoicing requirement is not listed in ORDER.",
+    "proposed_patch": {
+      "constraints+": ["must cover invoicing constraints for the target country"]
+    }
+  },
+  "metrics": {
+    "uncertainty": 0.7,
+    "divergence": 0.55,
+    "tool_failures": 0,
+    "novelty": true
+  },
+  "role": "explorer"
+}

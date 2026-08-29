@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/packet.schema.json",
+  "title": "Orderfield slaving packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "order_rev", "order", "slice", "role", "residual_path", "scratch_dir", "budget"],
+  "properties": {
+    "v": { "type": "integer", "const": 1 },
+    "wave": { "type": "integer", "minimum": 1 },
+    "child_id": { "type": "string" },
+    "order_rev": { "type": "integer", "minimum": 1 },
+    "order": { "type": "object" },
+    "slice": { "type": "string", "minLength": 1 },
+    "role": {
+      "type": "string",
+      "enum": ["explorer", "implementer", "adversary", "synthesizer", "verifier"]
+    },
+    "residual_path": { "type": "string", "minLength": 1 },
+    "scratch_dir": { "type": "string", "minLength": 1 },
+    "allow_nested": { "type": "boolean", "default": false },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokens", "seconds"],
+      "properties": {
+        "tokens": { "type": "integer", "minimum": 1 },
+        "seconds": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

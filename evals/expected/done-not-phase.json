@@ -1,0 +1,8 @@
+{
+  "name": "done-open-done-when",
+  "fixture": "assets/fixtures/residual.done.json",
+  "wants_to_change": [],
+  "done_when_closed": false,
+  "expected_regime": "hold",
+  "forbidden_regimes": ["phase"]
+}
