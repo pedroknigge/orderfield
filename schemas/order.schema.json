@@ -63,6 +63,22 @@
         "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase"]
       }
     },
+    "harness": {
+      "type": "string",
+      "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "generic"]
+    },
+    "backlog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "done"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "done": { "type": "boolean" }
+        }
+      }
+    },
     "done_when_closed": { "type": "boolean" },
     "done_when_closed_phases": {
       "type": "array",

@@ -1405,8 +1405,22 @@ class RefLoadHandoff(unittest.TestCase):
         prompt = (
             self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "h1.md"
         ).read_text(encoding="utf-8")
-        self.assertIn(str(of.slave_md_path()), prompt)
+        # portable: the field copy, repo-relative — never the leader's absolute path
+        self.assertIn(of.FIELD_SLAVE_MD, prompt)
+        self.assertNotIn(str(of.slave_md_path()), prompt)
         self.assertNotIn("## How your turn ends", prompt)
+        field_copy = self.tmp / ".orderfield" / "SLAVE.md"
+        self.assertTrue(field_copy.is_file(), "init/pack must materialize the field copy")
+        self.assertEqual(
+            field_copy.read_text(encoding="utf-8"),
+            of.slave_md_path().read_text(encoding="utf-8"),
+        )
+
+    def test_prompt_carries_the_role_contract(self) -> None:
+        prompt = of.render_prompt(self.packet)
+        self.assertIn("Role contract — explorer", prompt)
+        self.assertIn("read-only", prompt)
+        self.assertIn("no design proposals", prompt)
 
 
 class RequiresTool(unittest.TestCase):
@@ -1758,3 +1772,357 @@ class SessionCutResume(unittest.TestCase):
         self.assertEqual(sess["last_cmd"], "next-wave")
         self.assertEqual(sess["wave"], 2)
         self.assertEqual(sess["in_flight"], [])
+
+
+class UnpackRefundsBudget(unittest.TestCase):
+    """of unpack releases a packed child and refunds children_spawned."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-unpack-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, cid: str) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", cid
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _spawned(self) -> int:
+        return load_json(self.tmp / ".orderfield" / "state.json")["children_spawned"]
+
+    def test_unpack_refunds_and_removes_artifacts(self) -> None:
+        self._pack("c1")
+        self._pack("c2")
+        self.assertEqual(self._spawned(), 2)
+        r = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("children_spawned=1", r.stdout)
+        self.assertEqual(self._spawned(), 1)
+        wdir = self.tmp / ".orderfield" / "waves" / "001"
+        self.assertFalse((wdir / "packets" / "c1.json").exists())
+        self.assertFalse((wdir / "prompts" / "c1.md").exists())
+        self.assertTrue((wdir / "packets" / "c2.json").exists())
+
+    def test_oversized_slice_note_still_packs_and_unpack_recovers(self) -> None:
+        long_slice = "x" * of.SLICE_WARN_CHARS
+        r = run_of(
+            self.tmp, "pack", "--slice", long_slice, "--role", "explorer",
+            "--child-id", "long",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("note", r.stderr)
+        self.assertIn("of unpack", r.stderr)
+        self.assertEqual(self._spawned(), 1)
+        r = run_of(self.tmp, "unpack", "--child-id", "long")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self._spawned(), 0)
+
+    def test_unpack_refuses_a_child_that_reported(self) -> None:
+        self._pack("c1")
+        res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        r = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("residual", r.stderr)
+        self.assertEqual(self._spawned(), 1)
+
+    def test_unpack_refuses_nonempty_scratch_without_force(self) -> None:
+        self._pack("c1")
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "c1"
+        (scratch / "notes.md").write_text("wip", encoding="utf-8")
+        r = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("scratch", r.stderr)
+        forced = run_of(self.tmp, "unpack", "--child-id", "c1", "--force")
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertTrue((scratch / "notes.md").exists(), "scratch is evidence, kept")
+        self.assertEqual(self._spawned(), 0)
+
+    def test_unpack_never_goes_negative(self) -> None:
+        self._pack("c1")
+        state_path = self.tmp / ".orderfield" / "state.json"
+        state = load_json(state_path)
+        state["children_spawned"] = 0
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        r = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self._spawned(), 0)
+
+
+class CollectSurvivesMissingResiduals(unittest.TestCase):
+    """One dead child reports MISSING; the rest of the wave still collects."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-partial-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for cid in ("alive", "dead"):
+            r = run_of(
+                self.tmp, "pack", "--slice", "s", "--role", "explorer",
+                "--child-id", cid,
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+        res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "alive.json"
+        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def test_collect_reports_both_and_exits_2(self) -> None:
+        r = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("OK alive.json", r.stdout)
+        self.assertIn("MISSING dead", r.stdout)
+        self.assertIn("missing residual", r.stdout)
+        self.assertIn("ok=1", r.stdout)
+        self.assertIn("missing=1", r.stdout)
+
+    def test_integrate_without_partial_still_dies(self) -> None:
+        r = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_integrate_partial_reduces_what_landed(self) -> None:
+        r = run_of(self.tmp, "integrate", "--wave", "1", "--partial")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        report = json.loads(r.stdout)
+        self.assertEqual(len(report["residuals"]), 1)
+        self.assertEqual(report["skipped_in_flight"], ["dead"])
+        resumed = run_of(self.tmp, "resume")
+        self.assertIn("in_flight     1", resumed.stdout)
+
+    def test_integrate_partial_with_nothing_landed_dies(self) -> None:
+        alive = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "alive.json"
+        alive.unlink()
+        r = run_of(self.tmp, "integrate", "--wave", "1", "--partial")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("nothing to integrate", r.stderr)
+
+
+class ReopenDoneWhen(unittest.TestCase):
+    """Closure must be reversible, and a new mission never inherits it."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-reopen-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "ship v1", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _order(self) -> dict:
+        return load_json(self.tmp / ".orderfield" / "ORDER.json")
+
+    def test_patch_reopen_clears_bool_and_phase_list(self) -> None:
+        r = run_of(self.tmp, "patch", "--reopen")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = self._order()
+        self.assertFalse(order["done_when_closed"])
+        self.assertNotIn("build", order.get("done_when_closed_phases", []))
+
+    def test_mission_patch_reopens_everything(self) -> None:
+        r = run_of(self.tmp, "patch", "--mission", "ship v2, a new field")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = self._order()
+        self.assertFalse(order["done_when_closed"])
+        self.assertEqual(order.get("done_when_closed_phases", []), [])
+
+    def test_done_when_mission_patch_reopens(self) -> None:
+        r = run_of(self.tmp, "patch", "--done-when-mission", "new mission criteria")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(self._order()["done_when_closed"])
+
+    def test_reopened_field_does_not_propose_phase(self) -> None:
+        run_of(self.tmp, "patch", "--mission", "ship v2, a new field")
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "c1",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertNotEqual(report["regime"], "phase")
+
+
+class ResumeAfterIntegrate(unittest.TestCase):
+    """resume must not suggest collect on a wave that was already reduced."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-resume-int-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_next_is_next_wave_once_report_exists(self) -> None:
+        res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        before = run_of(self.tmp, "resume")
+        self.assertIn("next          collect", before.stdout)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        after = run_of(self.tmp, "resume")
+        self.assertIn("next          next-wave", after.stdout)
+
+    def test_all_stale_packets_point_at_next_wave_not_hold(self) -> None:
+        r = run_of(self.tmp, "patch", "--mission", "a different field")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        resumed = run_of(self.tmp, "resume")
+        self.assertIn("next          next-wave", resumed.stdout)
+        self.assertNotIn("next          hold", resumed.stdout)
+
+
+class ConstraintsRm(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-crm-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for c in ("stay on the old fixture", "no new skill names"):
+            r = run_of(self.tmp, "patch", "--constraints-add", c)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _constraints(self) -> list:
+        return load_json(self.tmp / ".orderfield" / "ORDER.json")["constraints"]
+
+    def test_rm_by_exact_text(self) -> None:
+        r = run_of(self.tmp, "patch", "--constraints-rm", "no new skill names")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("no new skill names", self._constraints())
+
+    def test_rm_by_index_is_one_based(self) -> None:
+        first = self._constraints()[0]
+        r = run_of(self.tmp, "patch", "--constraints-rm", "1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn(first, self._constraints())
+
+    def test_rm_by_unique_substring(self) -> None:
+        r = run_of(self.tmp, "patch", "--constraints-rm", "old fixture")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("stay on the old fixture", self._constraints())
+
+    def test_ambiguous_substring_dies(self) -> None:
+        before = self._constraints()
+        r = run_of(self.tmp, "patch", "--constraints-rm", "e")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self._constraints(), before)
+
+    def test_no_match_dies(self) -> None:
+        r = run_of(self.tmp, "patch", "--constraints-rm", "does not exist")
+        self.assertNotEqual(r.returncode, 0)
+
+
+class HarnessAndBacklogFields(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-fields-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _order(self) -> dict:
+        return load_json(self.tmp / ".orderfield" / "ORDER.json")
+
+    def test_harness_is_a_field_not_a_prose_constraint(self) -> None:
+        r = run_of(self.tmp, "patch", "--harness", "claude")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self._order()["harness"], "claude")
+        status = run_of(self.tmp, "status")
+        self.assertIn("harness     claude", status.stdout)
+        cleared = run_of(self.tmp, "patch", "--harness", "-")
+        self.assertEqual(cleared.returncode, 0, cleared.stderr)
+        self.assertNotIn("harness", self._order())
+
+    def test_harness_rejects_unknown_adapter(self) -> None:
+        r = run_of(self.tmp, "patch", "--harness", "skynet")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_pick_adapter_prefers_order_harness_over_detection(self) -> None:
+        self.assertEqual(of.pick_adapter(None, "grok"), "grok")
+        self.assertEqual(of.pick_adapter("codex", "grok"), "codex")
+
+    def test_backlog_add_done_and_packet_projection(self) -> None:
+        for step in ("step one", "step two", "step three"):
+            r = run_of(self.tmp, "patch", "--backlog-add", step)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--backlog-done", "2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(of.open_backlog(self._order()), ["step one", "step three"])
+        status = run_of(self.tmp, "status")
+        self.assertIn("[x] 2. step two", status.stdout)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "implementer",
+            "--child-id", "c1",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packet = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        )
+        self.assertEqual(packet["order"]["backlog"], ["step one", "step three"])
+
+    def test_backlog_done_out_of_range_dies(self) -> None:
+        r = run_of(self.tmp, "patch", "--backlog-done", "7")
+        self.assertNotEqual(r.returncode, 0)
+
+
+class InitForceArchivesWaves(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-archive-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "old field", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.old_id = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_force_archives_and_wave_counter_stays_true(self) -> None:
+        r = run_of(self.tmp, "init", "--force", "--mission", "new field")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("archived old waves", r.stdout)
+        archive = self.tmp / ".orderfield" / f"waves-archived-{self.old_id}"
+        self.assertTrue(archive.is_dir())
+        self.assertTrue((archive / "001" / "packets" / "c1.json").is_file())
+        waves = self.tmp / ".orderfield" / "waves"
+        self.assertEqual(list(waves.iterdir()), [])
+        # status wave 1 is now true, and next-wave advances 1 -> 2, not 1 -> N
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertIn("wave=2", nxt.stdout)
+
+    def test_force_twice_does_not_collide(self) -> None:
+        r = run_of(self.tmp, "init", "--force", "--mission", "second")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c2"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "init", "--force", "--mission", "third")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        archives = sorted(
+            p.name for p in (self.tmp / ".orderfield").glob("waves-archived-*")
+        )
+        self.assertEqual(len(archives), 2)
+
+
+class PatchOutputShape(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-patchout-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_rev_is_the_last_line(self) -> None:
+        r = run_of(self.tmp, "patch", "--constraints-add", "c1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = r.stdout.strip().splitlines()
+        self.assertRegex(lines[-1], r"^rev=\d+$")
+
+    def test_quiet_prints_only_rev(self) -> None:
+        r = run_of(self.tmp, "patch", "--constraints-add", "c2", "--quiet")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout.strip(), r"^rev=\d+$")

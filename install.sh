@@ -25,6 +25,41 @@ fi
 
 trap '[[ -n "$cleanup_src" ]] && rm -rf "$cleanup_src"' EXIT
 
+alias_skill_md() {
+  # /of is a first-class alias skill: same triggers, points at the sibling dir.
+  local ver
+  ver="$(cat "$SRC/VERSION" 2>/dev/null | tr -d '[:space:]')"
+  ver="${ver:-unknown}"
+  cat <<EOF
+---
+name: of
+description: v${ver} — Alias for orderfield. Use when the user says /of, of, orderfield, order field, Haken slaving, threshold delegation, or agent waves. Load before spawning subagents under a shared ORDER.
+license: MIT
+metadata:
+  version: "${ver}"
+  alias-of: orderfield
+---
+
+# /of — alias for orderfield
+
+This skill is an alias. The full skill — doctrine, kernel (\`scripts/of.py\`),
+SLAVE contract, schemas — lives in the sibling skill directory
+\`orderfield/\` in this same skills root.
+
+Read \`../orderfield/SKILL.md\` (relative to this file) and follow it exactly
+as if it had been invoked directly.
+EOF
+}
+
+write_alias_for() {
+  local skill_dest="$1" alias_dest
+  alias_dest="$(dirname "$skill_dest")/of"
+  rm -rf "$alias_dest"
+  mkdir -p "$alias_dest"
+  alias_skill_md > "$alias_dest/SKILL.md"
+  echo "installed $alias_dest (alias /of)"
+}
+
 copy_one() {
   local dest="$1"
   mkdir -p "$(dirname "$dest")"
@@ -42,16 +77,26 @@ copy_one() {
     find "$dest" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
   fi
   echo "installed $dest"
+  if [[ "$(basename "$dest")" == "$NAME" ]]; then
+    write_alias_for "$dest"
+  fi
 }
 
 remove_one() {
-  local dest="$1"
+  local dest="$1" alias_dest hit=1
   if [[ -d "$dest" ]]; then
     rm -rf "$dest"
     echo "removed $dest"
-    return 0
+    hit=0
   fi
-  return 1
+  if [[ "$(basename "$dest")" == "$NAME" ]]; then
+    alias_dest="$(dirname "$dest")/of"
+    if [[ -d "$alias_dest" ]]; then
+      rm -rf "$alias_dest"
+      echo "removed $alias_dest"
+    fi
+  fi
+  return $hit
 }
 
 # PATH symlink for `of`: always targets the installed skill copy (generic dest),
@@ -106,7 +151,7 @@ codex_pointer_block() {
 Install location (full skill + kernel): `~/.agents/skills/orderfield/`
 
 Use when orchestrating agents with Haken slaving, an ORDER field, or agent waves.
-Slash / invoke: `/orderfield`
+Slash / invoke: `/orderfield` (alias: `/of`)
 
 Unknown harnesses: `of spawn --adapter generic` (or `OF_AGENT='your-cli …'`).
 If the skill folder is missing: `npx skills add pedroknigge/orderfield -g -y`

@@ -16,6 +16,30 @@ from typing import Any
 
 PHASES = ["explore", "cut", "build", "verify", "deliver"]
 ROLES = ["explorer", "implementer", "adversary", "synthesizer", "verifier"]
+# The role IS a contract, not a label. Injected into every rendered prompt so
+# the leader never has to restate it as a prose constraint.
+ROLE_CONTRACTS = {
+    "explorer": (
+        "explorer is read-only: report file:line facts with evidence; "
+        "no edits, no design proposals, no recommendations."
+    ),
+    "implementer": (
+        "implementer edits only inside the slice and the writable workspace; "
+        "run the gates the field names before reporting done."
+    ),
+    "adversary": (
+        "adversary tries to break the wave's claims with direct evidence; "
+        "it reports the break, it does not fix it."
+    ),
+    "synthesizer": (
+        "synthesizer reduces existing residuals and scratch into one coherent "
+        "picture; no new exploration, no edits outside its own scratch."
+    ),
+    "verifier": (
+        "verifier checks done_when with direct evidence (run the checks, read "
+        "the outputs); read-only apart from running those checks."
+    ),
+}
 REGIMES = [
     "escalate_up",
     "scale_out",
@@ -31,6 +55,7 @@ CHECKPOINT_MAX_CHARS = 2000
 CHECKPOINT_MAX_LINES = 24
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
 SESSION_FORBIDDEN = ".orderfield/session.json"
+FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
 FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
 ADAPTER_ORDER = [
     "claude",
@@ -222,7 +247,28 @@ def validate_order(order: dict[str, Any]) -> list[str]:
     for r in order.get("enabled_regimes", []):
         if r not in REGIMES:
             errs.append(f"unknown regime: {r}")
+    if "harness" in order and order.get("harness") not in ADAPTER_ORDER:
+        errs.append(f"ORDER.harness must be one of {ADAPTER_ORDER}")
+    if "backlog" in order:
+        got = order.get("backlog")
+        if not isinstance(got, list) or any(
+            not isinstance(b, dict)
+            or not isinstance(b.get("text"), str)
+            or not b.get("text")
+            or not isinstance(b.get("done"), bool)
+            for b in got
+        ):
+            errs.append("ORDER.backlog must be a list of {text, done} items")
     return errs
+
+
+def open_backlog(order: dict[str, Any]) -> list[str]:
+    """Ordered, still-open backlog items. This is the user's binding order."""
+    return [
+        str(b.get("text"))
+        for b in (order.get("backlog") or [])
+        if isinstance(b, dict) and not b.get("done")
+    ]
 
 
 def validate_residual(res: dict[str, Any]) -> list[str]:
@@ -300,12 +346,15 @@ def detect_adapters() -> dict[str, str | None]:
     return found
 
 
-def pick_adapter(explicit: str | None) -> str:
+def pick_adapter(explicit: str | None, preferred: str | None = None) -> str:
+    """--adapter > OF_ADAPTER > ORDER.harness > first detected."""
     if explicit:
         return explicit
     env = os.environ.get("OF_ADAPTER")
     if env:
         return env
+    if preferred in ADAPTER_ORDER:
+        return preferred
     detected = detect_adapters()
     for name in ADAPTER_ORDER:
         if detected.get(name):
@@ -401,6 +450,30 @@ def mark_done_when_closed(order: dict[str, Any], phase: str | None = None) -> bo
     if not order.get("done_when_closed"):
         order["done_when_closed"] = True
         changed = True
+    return changed
+
+
+def reopen_done_when(
+    order: dict[str, Any],
+    phase: str | None = None,
+    all_phases: bool = False,
+) -> bool:
+    """Inverse of mark_done_when_closed. Clears the legacy boolean and drops
+    the phase (or every phase) from done_when_closed_phases."""
+    changed = False
+    if order.get("done_when_closed"):
+        order["done_when_closed"] = False
+        changed = True
+    phases = closed_phases(order)
+    if all_phases:
+        if phases:
+            order["done_when_closed_phases"] = []
+            changed = True
+    else:
+        ph = phase or order.get("phase")
+        if ph in phases:
+            order["done_when_closed_phases"] = [p for p in phases if p != ph]
+            changed = True
     return changed
 
 
@@ -561,12 +634,23 @@ def next_legal_action(
     state: dict[str, Any],
     flying: list[dict[str, Any]],
     packets: list[dict[str, Any]],
+    *,
+    integrated: bool = False,
+    stale: bool = False,
 ) -> str:
     if state.get("spawn_blocked"):
         return "patch then next-wave"
+    # A wave whose packets all belong to another field is dead even if some
+    # never reported: holding for a foreign residual waits forever.
+    if packets and stale:
+        return "next-wave"
     if flying:
         return "hold"
     if packets:
+        # Already reduced (report.json on disk): collect would re-walk a
+        # closed wave.
+        if integrated:
+            return "next-wave"
         return "collect"
     return "pack"
 
@@ -625,6 +709,35 @@ def slave_md_path() -> Path:
     return skill_root() / "SLAVE.md"
 
 
+def field_slave_md_path(root: Path) -> Path:
+    return of_dir(root) / "SLAVE.md"
+
+
+def ensure_field_slave_md(root: Path) -> Path | None:
+    """Keep a copy of SLAVE.md inside the field.
+
+    The copy travels with the repo, so children reference the repo-relative
+    `.orderfield/SLAVE.md` instead of an absolute path on the leader's
+    machine (which a container, sandbox, or remote runtime cannot read).
+    Refreshed whenever the skill's copy differs. No-op without an ORDER.
+    """
+    if not order_path(root).exists():
+        return None
+    src = slave_md_path()
+    dst = field_slave_md_path(root)
+    if not src.exists():
+        return dst if dst.is_file() else None
+    body = src.read_text(encoding="utf-8")
+    try:
+        current = dst.read_text(encoding="utf-8")
+    except OSError:
+        current = None
+    if current != body:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(body, encoding="utf-8")
+    return dst
+
+
 def slave_md() -> str:
     p = slave_md_path()
     if p.exists():
@@ -632,22 +745,37 @@ def slave_md() -> str:
     return "# Orderfield slave\nWrite a residual JSON.\n"
 
 
-def slave_contract(inline: bool = False) -> str:
+def slave_contract(inline: bool = False, root: Path | None = None) -> str:
     """Reference-load by default: point at SLAVE.md instead of pasting it.
 
-    Falls back to the inline body when the file is not on disk, and when the
-    caller asks for inline (adapters that do not read local files reliably).
+    Prefers the field copy (`.orderfield/SLAVE.md`, repo-relative — portable
+    across hosts) over the skill's absolute path. Falls back to the inline
+    body when no file is on disk, and when the caller asks for inline
+    (adapters that do not read local files reliably).
     """
-    p = slave_md_path()
-    if inline or not p.exists():
+    if inline:
+        return slave_md()
+    field_copy = field_slave_md_path(root) if root is not None else None
+    if field_copy is not None and field_copy.is_file():
+        ref = FIELD_SLAVE_MD
+        where = (
+            " The path is relative to the repo root — "
+            "the directory that holds `.orderfield/`."
+        )
+    elif slave_md_path().exists():
+        ref = str(slave_md_path())
+        where = ""
+    else:
         return slave_md()
     return (
         "# Orderfield slave — read the contract first\n\n"
         "Before anything else, read this file in full:\n\n"
-        f"    {p}\n\n"
+        f"    {ref}\n\n"
         "It is the doctrine for this turn: slaved mode, what you may and may not "
         "do, the residual schema, proposed_patch keys, and the metrics. "
-        "If you cannot read it, say so in the residual instead of guessing.\n"
+        "If you cannot read it, say so in the residual instead of guessing."
+        + where
+        + "\n"
     )
 
 
@@ -656,7 +784,11 @@ def render_prompt(
     inline: bool = False,
     root: Path | None = None,
 ) -> str:
-    body = slave_contract(inline=inline)
+    body = slave_contract(inline=inline, root=root)
+    role = str(packet.get("role") or "")
+    contract = ROLE_CONTRACTS.get(role)
+    if contract:
+        body += f"\n## Role contract — {role}\n\n{contract}\n"
     text = (
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
@@ -685,11 +817,30 @@ def cmd_init(args: argparse.Namespace) -> None:
     if args.done_when:
         order["done_when"] = args.done_when
     target.mkdir(parents=True, exist_ok=True)
+    # --force starts a new field; waves of the old one must not shadow it.
+    # state restarts at wave 1, so leftover wave dirs would desync the
+    # counter and force silent skips later. Archive them instead.
+    waves = target / "waves"
+    if args.force and waves.is_dir() and any(waves.iterdir()):
+        old_id = None
+        try:
+            old_id = json.loads(order_path(root).read_text(encoding="utf-8")).get("id")
+        except (OSError, json.JSONDecodeError):
+            pass
+        stamp = old_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        dest = target / f"waves-archived-{stamp}"
+        n = 0
+        while dest.exists():
+            n += 1
+            dest = target / f"waves-archived-{stamp}-{n}"
+        waves.rename(dest)
+        print(f"archived old waves -> {dest.relative_to(root)}")
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
-    (target / "waves").mkdir(parents=True, exist_ok=True)
+    waves.mkdir(parents=True, exist_ok=True)
     save_order(order, root)
     save_state(default_state(), root)
     write_phase_md(root, order)
+    ensure_field_slave_md(root)
     sess = session_path(root)
     if sess.is_file():
         sess.unlink()
@@ -718,6 +869,14 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"done_when_phase {phase_done_when(order)}")
     print(f"done_when_all {order['done_when']}")
     print(f"constraints {order['constraints']}")
+    if order.get("harness"):
+        print(f"harness     {order['harness']}")
+    backlog = order.get("backlog") or []
+    if backlog:
+        print("backlog")
+        for i, b in enumerate(backlog, 1):
+            mark = "x" if b.get("done") else " "
+            print(f"  [{mark}] {i}. {b.get('text')}")
     print(f"wave        {state['wave']}")
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
@@ -783,8 +942,9 @@ def cmd_pack(args: argparse.Namespace) -> None:
     slice_text = args.slice or ""
     if len(slice_text) >= SLICE_WARN_CHARS:
         print(
-            f"of: slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
-            "shared procedure belongs in ORDER.constraints via of patch, not in --slice",
+            f"of: note — slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
+            "shared procedure belongs in ORDER.constraints via of patch, not in --slice. "
+            "The packet was still written; of unpack --child-id <id> releases it.",
             file=sys.stderr,
         )
     requires_tool = [t.strip().lower() for t in (getattr(args, "requires_tool", None) or [])]
@@ -811,21 +971,25 @@ def cmd_pack(args: argparse.Namespace) -> None:
     (wdir / "packets").mkdir(parents=True, exist_ok=True)
     (wdir / "residuals").mkdir(parents=True, exist_ok=True)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
+    order_view: dict[str, Any] = {
+        "id": order["id"],
+        "rev": order["rev"],
+        "mission": order["mission"],
+        "phase": order["phase"],
+        "done_when": done_when_for(order),
+        "constraints": order["constraints"],
+        "workspace": order["workspace"],
+        "thresholds": order["thresholds"],
+    }
+    backlog_open = open_backlog(order)
+    if backlog_open:
+        order_view["backlog"] = backlog_open
     packet = {
         "v": 1,
         "wave": wave,
         "child_id": child_id,
         "order_rev": order["rev"],
-        "order": {
-            "id": order["id"],
-            "rev": order["rev"],
-            "mission": order["mission"],
-            "phase": order["phase"],
-            "done_when": done_when_for(order),
-            "constraints": order["constraints"],
-            "workspace": order["workspace"],
-            "thresholds": order["thresholds"],
-        },
+        "order": order_view,
         "slice": args.slice,
         "role": args.role,
         "residual_path": residual_path,
@@ -851,6 +1015,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
             )
     out = Path(args.out) if args.out else wdir / "packets" / f"{child_id}.json"
     dump_json(out, packet)
+    ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
     (wdir / "prompts" / f"{child_id}.md").write_text(prompt, encoding="utf-8")
     snapshot_session(root, "pack")
@@ -858,9 +1023,56 @@ def cmd_pack(args: argparse.Namespace) -> None:
     print(f"child_id={child_id} wave={wave} residual={residual_path}")
 
 
+def cmd_unpack(args: argparse.Namespace) -> None:
+    """Release a packed child that never reported: delete its packet and
+    refund the children_spawned budget. Deleting the packet file by hand
+    does NOT refund the counter — this is the legal way back."""
+    root = find_root()
+    order = load_order(root)
+    state = load_state(root)
+    wave = args.wave or state["wave"]
+    child_id = args.child_id
+    pkt_path = wave_dir(int(wave), root) / "packets" / f"{child_id}.json"
+    if not pkt_path.is_file():
+        die(f"no packet for {child_id} in wave {wave}")
+    packet = load_json(pkt_path)
+    res_rel = packet.get("residual_path")
+    if res_rel and (root / str(res_rel)).is_file():
+        die(
+            f"{child_id} already wrote a residual; collect/integrate it "
+            "instead of unpacking"
+        )
+    if scratch_nonempty(root, packet) and not args.force:
+        die(
+            f"{child_id} has nonempty scratch (work may be in flight); "
+            "pass --force to release anyway (scratch is kept)"
+        )
+    pkt_path.unlink()
+    prompt_path = wave_dir(int(wave), root) / "prompts" / f"{child_id}.md"
+    if prompt_path.is_file():
+        prompt_path.unlink()
+    spawn_meta = wave_dir(int(wave), root) / "spawns" / f"{child_id}.json"
+    if spawn_meta.is_file():
+        spawn_meta.unlink()
+    scratch_rel = packet.get("scratch_dir")
+    if scratch_rel:
+        scratch = root / str(scratch_rel)
+        try:
+            scratch.rmdir()  # only removes an empty dir; nonempty is evidence
+        except OSError:
+            pass
+    state["children_spawned"] = max(0, int(state.get("children_spawned") or 0) - 1)
+    save_state(state, root)
+    snapshot_session(root, "unpack")
+    max_c = int(order.get("caps", {}).get("max_children", 4))
+    print(f"unpacked {child_id} wave={wave}")
+    print(f"children_spawned={state['children_spawned']} / {max_c}")
+
+
 def cmd_render(args: argparse.Namespace) -> None:
     root = find_root()
     packet = load_json(Path(args.packet))
+    ensure_field_slave_md(root)
     sys.stdout.write(
         render_prompt(
             packet,
@@ -882,6 +1094,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     )
     wdir = wave_dir(wave, root)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
+    ensure_field_slave_md(root)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
     prompt_path.write_text(
         render_prompt(
@@ -987,7 +1200,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     blocked, why = spawn_is_blocked(state, force=bool(args.force_spawn))
     if blocked:
         die(why)
-    adapter = pick_adapter(args.adapter)
+    adapter = pick_adapter(args.adapter, order.get("harness"))
     child_id = packet.get("child_id") or f"child_{uuid.uuid4().hex[:6]}"
     wave = packet.get("wave") or state["wave"]
     already = child_is_packed(root, int(wave), child_id)
@@ -1005,6 +1218,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             f"(packet requires_tool={required}); pick --adapter with those tools "
             "or repack without them"
         )
+    ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
     )
@@ -1108,8 +1322,19 @@ def cmd_collect(args: argparse.Namespace) -> None:
     enforce_wave_child_caps(order, state, len(packets))
     ok = 0
     bad = 0
+    lost = 0
     for pkt in packets:
-        path = require_packet_residual(root, pkt)
+        child = str(pkt.get("child_id") or "?")
+        rel = pkt.get("residual_path")
+        if not rel or not (root / str(rel)).is_file():
+            # One dead child must not freeze the wave: report and keep walking.
+            lost += 1
+            print(
+                f"MISSING {child}: missing residual at {rel or '(no residual_path)'} "
+                f"(still in flight; of unpack --child-id {child} releases it)"
+            )
+            continue
+        path = root / str(rel)
         data = load_json(path)
         errs = validate_residual(data)
         if errs:
@@ -1122,8 +1347,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"{data.get('residual', {}).get('wants_to_change')}"
             )
     snapshot_session(root, "collect")
-    print(f"wave={wave} ok={ok} invalid={bad} total={len(packets)}")
-    if bad:
+    print(f"wave={wave} ok={ok} invalid={bad} missing={lost} total={len(packets)}")
+    if bad or lost:
         raise SystemExit(2)
 
 
@@ -1257,16 +1482,27 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     wave = args.wave or state["wave"]
     packets = packed_children(root, int(wave))
     residuals: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    partial = bool(getattr(args, "partial", False))
     if packets:
         die_on_stale_packets(packets, order, int(wave))
         enforce_wave_child_caps(order, state, len(packets))
         for pkt in packets:
+            if partial and packet_residual_missing(root, pkt):
+                # --partial: reduce what landed; the child stays in flight.
+                skipped.append(str(pkt.get("child_id") or "?"))
+                continue
             path = require_packet_residual(root, pkt)
             data = load_json(path)
             errs = validate_residual(data)
             if errs:
                 die(f"invalid residual {path.name}: {'; '.join(errs)}")
             residuals.append(data)
+        if partial and not residuals:
+            die(
+                f"--partial found no residuals in wave {wave}; "
+                "nothing to integrate yet"
+            )
     regime, reason = decide_regime(order, state, residuals)
     applied = None
     if args.apply:
@@ -1319,6 +1555,8 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         },
         "applied_patch": applied,
     }
+    if skipped:
+        report["skipped_in_flight"] = skipped
     dump_json(wave_dir(int(wave), root) / "report.json", report)
     if args.next_wave:
         advance_wave(state, root=root, order=order)
@@ -1348,6 +1586,39 @@ def cmd_phase(args: argparse.Namespace) -> None:
     print(f"phase={order['phase']} rev={order['rev']}")
 
 
+def remove_constraint(order: dict[str, Any], spec: str) -> str:
+    """Remove one constraint by exact text, unique substring, or 1-based index."""
+    constraints: list[str] = order.get("constraints") or []
+    target = str(spec).strip()
+    if not target:
+        die("--constraints-rm: empty selector")
+    if target.isdigit():
+        i = int(target) - 1
+        if not 0 <= i < len(constraints):
+            die(
+                f"--constraints-rm: index {target} out of range "
+                f"(1..{len(constraints)})"
+            )
+        return constraints.pop(i)
+    if target in constraints:
+        constraints.remove(target)
+        return target
+    matches = [c for c in constraints if target.lower() in c.lower()]
+    if len(matches) == 1:
+        constraints.remove(matches[0])
+        return matches[0]
+    if len(matches) > 1:
+        die(
+            f"--constraints-rm: {target!r} matches {len(matches)} constraints; "
+            "use exact text or a 1-based index (see of status)"
+        )
+    die(
+        f"--constraints-rm: no constraint matches {target!r} "
+        "(exact text, unique substring, or 1-based index)"
+    )
+    return ""  # unreachable
+
+
 def cmd_patch(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
@@ -1355,11 +1626,48 @@ def cmd_patch(args: argparse.Namespace) -> None:
     if args.mission:
         order["mission"] = args.mission
         changed = True
+        # A new mission cannot inherit the old one's closure: reopen everything.
+        reopen_done_when(order, all_phases=True)
     if args.constraints_add:
         for c in args.constraints_add:
             if c not in order["constraints"]:
                 order["constraints"].append(c)
                 changed = True
+    if getattr(args, "constraints_rm", None):
+        for spec in args.constraints_rm:
+            removed = remove_constraint(order, spec)
+            print(f"removed constraint: {truncate_slice(removed)}")
+            changed = True
+    if getattr(args, "harness", None):
+        value = str(args.harness).strip().lower()
+        if value in ("-", "none", ""):
+            if "harness" in order:
+                del order["harness"]
+                changed = True
+        elif value in ADAPTER_ORDER:
+            if order.get("harness") != value:
+                order["harness"] = value
+                changed = True
+        else:
+            die(f"--harness must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    if getattr(args, "backlog_add", None):
+        backlog = order.get("backlog") or []
+        for text in args.backlog_add:
+            item = str(text).strip()
+            if item and not any(b.get("text") == item for b in backlog):
+                backlog.append({"text": item, "done": False})
+                changed = True
+        order["backlog"] = backlog
+    if getattr(args, "backlog_done", None):
+        backlog = order.get("backlog") or []
+        for n in args.backlog_done:
+            i = int(n) - 1
+            if not 0 <= i < len(backlog):
+                die(f"--backlog-done: index {n} out of range (1..{len(backlog)})")
+            if not backlog[i].get("done"):
+                backlog[i]["done"] = True
+                changed = True
+        order["backlog"] = backlog
     if args.done_when:
         # scoped to the current phase; the mission list survives untouched
         ph = order["phase"]
@@ -1372,6 +1680,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
             )
         if replace_done_when(order, tagged, lambda c: done_when_tag(c) != ph):
             changed = True
+            # replaced criteria cannot arrive pre-closed
+            reopen_done_when(order)
     if args.done_when_mission:
         for c in args.done_when_mission:
             if done_when_tag(c):
@@ -1385,9 +1695,13 @@ def cmd_patch(args: argparse.Namespace) -> None:
             lambda c: done_when_tag(c) is not None,
         ):
             changed = True
+            reopen_done_when(order, all_phases=True)
     if args.notes:
         order["notes"] = ((order.get("notes") or "") + "\n" + args.notes).strip()
         changed = True
+    if getattr(args, "reopen", False):
+        if reopen_done_when(order):
+            changed = True
     if getattr(args, "done_when_closed", False):
         if mark_done_when_closed(order):
             changed = True
@@ -1397,15 +1711,23 @@ def cmd_patch(args: argparse.Namespace) -> None:
     save_order(order, root)
     write_phase_md(root, order)
     snapshot_session(root, "patch")
+    if not getattr(args, "quiet", False):
+        summary: dict[str, Any] = {
+            "mission": order["mission"],
+            "phase": order["phase"],
+            "constraints": order["constraints"],
+            "done_when": done_when_for(order),
+            "done_when_mission": mission_done_when(order),
+            "done_when_phase": phase_done_when(order),
+            "done_when_closed": done_when_closed(order),
+        }
+        if order.get("harness"):
+            summary["harness"] = order["harness"]
+        if order.get("backlog"):
+            summary["backlog"] = order["backlog"]
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
+    # last line, so `... | tail -1` always answers "did it land, at what rev"
     print(f"rev={order['rev']}")
-    print(json.dumps({
-        "mission": order["mission"],
-        "phase": order["phase"],
-        "constraints": order["constraints"],
-        "done_when": done_when_for(order),
-        "done_when_mission": mission_done_when(order),
-        "done_when_phase": phase_done_when(order),
-    }, indent=2, ensure_ascii=False))
 
 
 def advance_wave(
@@ -1444,7 +1766,11 @@ def cmd_resume(args: argparse.Namespace) -> None:
     wave = int(state.get("wave") or 1)
     packets = packed_children(root, wave)
     flying = in_flight_children(root, wave)
-    nxt = next_legal_action(state, flying, packets)
+    integrated = (wave_dir(wave, root) / "report.json").is_file()
+    stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
+    nxt = next_legal_action(
+        state, flying, packets, integrated=integrated, stale=stale
+    )
     session = load_session(root)
     print(f"id            {order['id']}")
     print(f"rev           {order['rev']}")
@@ -1547,6 +1873,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_pack)
 
+    s = sub.add_parser(
+        "unpack",
+        help="release a packed child that never reported; refunds the child budget",
+    )
+    s.add_argument("--child-id", required=True)
+    s.add_argument("--wave", type=int)
+    s.add_argument(
+        "--force",
+        action="store_true",
+        help="release even with nonempty scratch (scratch is kept)",
+    )
+    s.set_defaults(func=cmd_unpack)
+
     s = sub.add_parser("render", help="print the slave prompt")
     s.add_argument("--packet", required=True)
     s.add_argument(
@@ -1584,6 +1923,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="apply safe patches (constraints+/done_when+/done_when_closed)",
     )
     s.add_argument("--next-wave", action="store_true")
+    s.add_argument(
+        "--partial",
+        action="store_true",
+        help="reduce the residuals that landed; missing children stay in flight",
+    )
     s.set_defaults(func=cmd_integrate)
 
     s = sub.add_parser("phase", help="change phase (single writer)")
@@ -1592,22 +1936,55 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_phase)
 
     s = sub.add_parser("patch", help="explicit ORDER patch")
-    s.add_argument("--mission")
+    s.add_argument("--mission", help="replace the mission (reopens done_when)")
     s.add_argument("--constraints-add", action="append")
+    s.add_argument(
+        "--constraints-rm",
+        dest="constraints_rm",
+        action="append",
+        help="remove a constraint by exact text, unique substring, or 1-based index",
+    )
+    s.add_argument(
+        "--harness",
+        help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears",
+    )
+    s.add_argument(
+        "--backlog-add",
+        dest="backlog_add",
+        action="append",
+        help="append an ordered backlog step (the user's binding order)",
+    )
+    s.add_argument(
+        "--backlog-done",
+        dest="backlog_done",
+        action="append",
+        type=int,
+        help="mark backlog step N (1-based) done",
+    )
     s.add_argument(
         "--done-when",
         dest="done_when",
         action="append",
-        help="replace the current phase's criteria (auto-prefixed)",
+        help="replace the current phase's criteria (auto-prefixed; reopens the phase)",
     )
     s.add_argument(
         "--done-when-mission",
         dest="done_when_mission",
         action="append",
-        help="replace the stable untagged mission criteria",
+        help="replace the stable untagged mission criteria (reopens done_when)",
     )
     s.add_argument("--notes")
     s.add_argument("--done-when-closed", dest="done_when_closed", action="store_true")
+    s.add_argument(
+        "--reopen",
+        action="store_true",
+        help="reopen the current phase's done_when (inverse of --done-when-closed)",
+    )
+    s.add_argument(
+        "--quiet",
+        action="store_true",
+        help="print only rev=N",
+    )
     s.set_defaults(func=cmd_patch)
 
     s = sub.add_parser(

@@ -258,3 +258,39 @@ class ValidateSkill(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VersionedDescription(unittest.TestCase):
+    def test_description_preview_starts_with_version(self) -> None:
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn(f"description: v{ver} —", skill)
+
+
+class OfAliasSkill(unittest.TestCase):
+    def _install(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-alias-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run(tmp, "bash", str(INSTALL), str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        return tmp
+
+    def test_alias_installed_next_to_skill(self) -> None:
+        tmp = self._install()
+        alias = tmp / ".agents" / "skills" / "of" / "SKILL.md"
+        self.assertTrue(alias.is_file(), alias)
+        body = alias.read_text(encoding="utf-8")
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertIn("name: of", body)
+        self.assertIn(f"description: v{ver} —", body)
+        self.assertIn("alias-of: orderfield", body)
+        self.assertIn("../orderfield/SKILL.md", body)
+
+    def test_uninstall_removes_alias_too(self) -> None:
+        tmp = self._install()
+        alias_dir = tmp / ".agents" / "skills" / "of"
+        self.assertTrue(alias_dir.is_dir())
+        proc = run(tmp, "bash", str(INSTALL), "--uninstall", "--root", str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertFalse(alias_dir.exists())
+        self.assertFalse((tmp / ".agents" / "skills" / "orderfield").exists())

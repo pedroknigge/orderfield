@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.9</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.3.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.9-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -98,7 +98,7 @@ Where it lands:
 | Grok | `~/.grok/skills/orderfield` |
 | Antigravity (`agy`) | `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` |
 
-Then `/orderfield` in the host, or say “use orderfield.”
+Then `/orderfield` in the host (or the installed alias `/of`), or say “use orderfield.”
 
 ---
 
@@ -125,7 +125,7 @@ A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escala
 
 **When to open orderfield:** it pays for false-scope / marketing risk (adversary can catch a lie) and for multi-writer path cuts. It is theater for a VERSION bump plus one obvious feature — use a skill instead (`skill beats child`). **Cut is optional** when exclusive owners are already obvious; put them in constraints. (Feedback: documentation-manager adversary run + prior grok-build critique.)
 
-Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` emit an absolute reference to `SLAVE.md` rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 ---
 
@@ -178,14 +178,15 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (supports `--requires-tool`) |
+| `pack` | build a slaving packet (supports `--requires-tool`; oversized `--slice` is an advisory note, still charged) |
+| `unpack` | release a packed child that never reported; refunds the child budget |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
-| `collect` | validate residuals for a wave |
-| `integrate` | reduce residuals and choose a regime |
+| `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2, never freezes on one dead child |
+| `integrate` | reduce residuals and choose a regime (`--partial` reduces what landed; stragglers stay in flight) |
 | `phase` | change phase (single writer) |
-| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list) |
+| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
 | `next-wave` | clear spawn lock, advance the wave |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`.
@@ -195,6 +196,8 @@ Portability test: turn the current harness off. Install the same skill in anothe
 ---
 
 ## Tests
+
+CI runs the suite + `validate-skill.sh` on ubuntu/macos × Python 3.9/3.13, plus a gitleaks scan (`.github/workflows/test.yml`). Locally:
 
 ```bash
 python3 -m unittest discover -s tests -v
