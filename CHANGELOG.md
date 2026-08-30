@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.7
+
+- Feature: Phase-scoped `done_when`. Prefix criteria with a phase name (e.g., `"build: ..."`) to scope them. Regime `phase` behaves per-phase without clearing criteria.
+- Feature: `of render` / `of handoff` use reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters get an absolute path directive; fallback or generic adapters may inline.
+- Feature: `--requires-tool` on `of pack`. Allows spawn to gracefully refuse explore phase requests if the adapter lacks the required tools.
+- Feature: `install.sh` now sets up an `of` PATH symlink (`~/.local/bin/of`) pointing to the installed skill copy, including removal on uninstall.
+- Fix: Grok headless argv now correctly uses `-p` and `--always-approve`.
+- Fix: Codex headless argv updated to use current `--dangerously-bypass-approvals-and-sandbox` instead of the unexpected `--full-auto`.
+- Docs: claims audit vs code (`docs/audit/claims-matrix.md`); hub `AGENTS.md` index; leader asks once same-harness vs multi-harness and only spawns adapters from `of detect` (PATH presence, not auth).
+
 ## 0.2.6
 
 - Doctrine: slaving-by-contract (field is designed; circular causality valved). Haken critical slowing down named as an intentional inversion. `scale_out` / `scale_across` are copies of a fast mode, not a louder or competing order parameter. SLAVE.md: "slaved mode" is contract, not moral slavery; `uncertainty` defined.

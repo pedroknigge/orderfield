@@ -53,10 +53,16 @@ class InstallScript(unittest.TestCase):
         dest = tmp / ".agents" / "skills" / "orderfield"
         self.assertTrue((dest / "SKILL.md").is_file(), dest)
         self.assertTrue((dest / "scripts" / "of.py").is_file(), dest)
+        self.assertTrue((dest / "SLAVE.md").is_file(), dest)
         self.assertFalse((tmp / ".claude").exists())
         self.assertFalse((tmp / ".codex").exists())
         self.assertFalse((tmp / ".agy").exists())
         self.assertFalse((tmp / ".gemini").exists())
+        # project/--root: hermetic of symlink under base, not real HOME
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink(), proc.stdout)
+        self.assertEqual(link.resolve(), (dest / "scripts" / "of.py").resolve())
+        self.assertIn("of:", proc.stdout)
 
     def test_existing_harness_dir_also_gets_generic(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-h-"))
@@ -75,6 +81,12 @@ class InstallScript(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertFalse((tmp / ".claude" / "skills").exists())
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(
+            link.resolve(),
+            (tmp / ".agents" / "skills" / "orderfield" / "scripts" / "of.py").resolve(),
+        )
 
     def test_gemini_dirs_get_agy_skill_not_dot_agy(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-agy-"))
@@ -130,6 +142,37 @@ class InstallScript(unittest.TestCase):
         )
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertFalse((tmp / ".agy").exists())
+        dest_of = tmp / ".agents" / "skills" / "orderfield" / "scripts" / "of.py"
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink(), proc.stdout)
+        self.assertEqual(link.resolve(), dest_of.resolve())
+        # Must not point at the install source checkout (adversary E / cut-plan).
+        self.assertNotEqual(link.resolve(), (ROOT / "scripts" / "of.py").resolve())
+        self.assertIn("Ensure ~/.local/bin is on your PATH", proc.stdout)
+
+    def test_global_uninstall_removes_of_symlink(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-un-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = {"HOME": str(tmp)}
+        proc = run(tmp, "bash", str(INSTALL), "--global", env=env)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink())
+        proc = run(tmp, "bash", str(INSTALL), "--global", "--uninstall", env=env)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertFalse(link.exists(), proc.stdout)
+        self.assertIn("removed", proc.stdout)
+
+    def test_root_uninstall_removes_hermetic_of_symlink(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-un-root-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run(tmp, "bash", str(INSTALL), "--root", str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink())
+        proc = run(tmp, "bash", str(INSTALL), "--root", str(tmp), "--uninstall")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertFalse(link.exists(), proc.stdout)
 
     def test_install_sh_agy_dests_are_gemini_not_dot_agy(self) -> None:
         src = INSTALL.read_text(encoding="utf-8")
@@ -140,6 +183,13 @@ class InstallScript(unittest.TestCase):
         harnesses = src.split("KNOWN_HARNESSES=", 1)[1].split(")", 1)[0]
         self.assertNotIn("agy", harnesses)
         self.assertNotIn("antigravity", harnesses)
+        # PATH symlink targets installed dest, not $SRC (adversary E).
+        self.assertIn("of_installed_kernel", src)
+        self.assertIn('"$base/.agents/skills/$NAME/scripts/of.py"', src)
+        self.assertNotRegex(
+            src,
+            r'ln -sf\s+"\$SRC/scripts/of\.py"',
+        )
 
 
 class PhaseMdEnglish(unittest.TestCase):

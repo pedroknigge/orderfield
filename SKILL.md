@@ -4,7 +4,7 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.6"
+  version: "0.2.7"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -28,7 +28,7 @@ If the task fits one agent plus a skill, do not spawn. Skill beats child.
 
 ## Mandatory leader process
 
-Run `scripts/of.py` from this skill if `of` is not on PATH. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
+Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
 
 ### 1. Field or nothing
 
@@ -52,10 +52,11 @@ Official phases: `explore | cut | build | verify | deliver`.
 python3 <skill>/scripts/of.py pack \
   --slice "map pricing models, do not decide the phase" \
   --role explorer \
+  --requires-tool browser \
   --out .orderfield/waves/001/packets/p1.json
 ```
 
-The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`.
+The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
@@ -77,9 +78,18 @@ Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`,
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
 
+#### Same harness vs multi-harness (ask once)
+
+Before the first spawn of a mission (or when the user has not stated a preference), the **leader asks once**:
+
+1. **Same harness** — children use the current session’s adapter (or one named adapter) for the whole wave.
+2. **Multi-harness** — mix adapters across children for diverse thinking.
+
+Then run `of detect` and **only use adapters whose CLI is present on PATH** (the lines detect marks as installed). That is inventory of binaries, **not** proof of login/auth — if a binary exists but auth fails, treat it as a tool failure / pick another adapter from the detect list. Record the choice in `ORDER.constraints` (e.g. `multi-harness: claude+agy+cursor`) so later waves stay consistent. Do not invent adapters detect does not list.
+
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
-For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render.
+For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 
@@ -118,6 +128,8 @@ python3 <skill>/scripts/of.py phase build
 
 Only when `done_when` is closed (`of patch --done-when-closed`) and the last wave's residuals are ~0. A `status=done` residual does **not** advance the phase by itself. `integrate` may emit regime `phase` only after that flag is set; you still run `of phase` to move.
 
+You can prefix `done_when` criteria with a phase name (e.g., `"build: ..."`). Only criteria matching the current phase (or no phase) are considered active. This allows the regime `phase` to work per-phase without clearing the global criteria.
+
 ## Forbidden
 
 - Do not do the slave's work.
@@ -151,7 +163,7 @@ Use the minimum. Explorer + adversary already prove the principle.
 | Wave packets | `.orderfield/waves/NNN/packets/` |
 | Residuals | `.orderfield/waves/NNN/residuals/` |
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
-| Slave doctrine | `SLAVE.md` in this skill (injected into the prompt) |
+| Slave doctrine | `SLAVE.md` in this skill (reference-load by default; `--inline` opt-in) |
 | Invariants | `references/principles.md` |
 | Adapters / headless | `references/adapters.md` |
 | Schemas | `schemas/` |

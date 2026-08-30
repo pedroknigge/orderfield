@@ -9,10 +9,14 @@ kill(child_id)
 share(path)            -> the child can see .orderfield/
 ```
 
+`of pack` accepts `--requires-tool` to gracefully gate explore phase requests if the chosen adapter lacks specific capabilities.
+
 `of spawn` writes the rendered prompt to
 `.orderfield/waves/NNN/prompts/<child_id>.md`
 and the log to
 `.orderfield/waves/NNN/logs/<child_id>.log`.
+
+Note: `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it.
 
 The child **must** write the residual to
 `.orderfield/waves/NNN/residuals/<child_id>.json`.
@@ -41,7 +45,7 @@ claude -p --output-format json --dangerously-skip-permissions \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
+Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Because of reference-load, the child is instructed to read `SLAVE.md` on its own. Do not truncate the handoff envelope. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
 Skills: copy this folder to `.claude/skills/orderfield/`.
 
@@ -52,13 +56,13 @@ Binary: `codex`.
 Headless:
 
 ```bash
-codex exec --full-auto \
+codex exec --dangerously-bypass-approvals-and-sandbox \
   --output-schema schemas/residual.schema.json \
   -o .orderfield/waves/NNN/residuals/CHILD.json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`--full-auto` is required so the child can write the residual. Do not keep the default read-only sandbox.
+`--dangerously-bypass-approvals-and-sandbox` is required so the child can write the residual. Do not keep the default read-only sandbox.
 
 Skills: `.codex/skills/orderfield/` or `.agents/skills/orderfield/`.
 
@@ -73,7 +77,7 @@ agent -p --force --output-format text \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-Cursor has no reliable `--append-system-prompt`. The rendered prompt already contains SLAVE.md + packet.
+Cursor has no reliable `--append-system-prompt`. Default render/handoff is **reference-load**: the prompt points at the absolute `SLAVE.md` path (use `--inline` only when the child cannot read that path).
 
 Skills: `.cursor/skills/orderfield/`.
 
@@ -113,7 +117,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn --adapter grok` passes the rendered prompt as the last argument. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p` and `--always-approve`. `of spawn --adapter grok` uses these flags. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -165,7 +169,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 |---|---|
 | Already inside Claude / Cursor / Grok / agy interactive | you = leader; pack first (cap surface); then native Agent + `of handoff` (or full `of render`) or headless spawn |
 | CI / cron driver | `of spawn` headless for leader and slaves |
-| Mix harnesses in one wave | different `--adapter` per packet; same ORDER |
+| Mix harnesses in one wave | ask once (same vs multi); `of detect` → only PATH-present adapters; different `--adapter` per packet; same ORDER; record preference in constraints |
 
 ## File isolation
 
@@ -176,3 +180,8 @@ Default: every child in the same repo sees `.orderfield/` (shared field, scratch
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.
 
 When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.
+
+## Phasing and PATH
+
+- **done_when phasing:** You can prefix `done_when` criteria with a phase name (e.g. `"build: ..."`). This allows the regime `phase` to behave per-phase without clearing criteria across the board.
+- **PATH symlink:** The `install.sh` script automatically sets up an `of` symlink at `~/.local/bin/of` pointing to the installed skill copy (and cleans it up on uninstall). You can use `of` from anywhere if `~/.local/bin` is in your PATH.

@@ -64,6 +64,14 @@
       }
     },
     "done_when_closed": { "type": "boolean" },
+    "done_when_closed_phases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["explore", "cut", "build", "verify", "deliver"]
+      },
+      "uniqueItems": true
+    },
     "notes": { "type": "string" }
   }
 }

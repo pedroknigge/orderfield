@@ -50,6 +50,28 @@ ADAPTER_BINS = {
     "generic": [],
 }
 
+# Coarse capability map. Used only by --requires-tool at pack/spawn.
+# generic is permissive: OF_AGENT can be anything.
+ADAPTER_TOOLS = {
+    "claude": {"read", "write", "bash", "web", "subagents", "mcp"},
+    "codex": {"read", "write", "bash", "web", "mcp"},
+    "cursor": {"read", "write", "bash", "mcp"},
+    "opencode": {"read", "write", "bash", "mcp"},
+    "orca": {"read", "write", "bash"},
+    "grok": {"read", "write", "bash", "web", "image", "video"},
+    "agy": {"read", "write", "bash", "web", "mcp"},
+    "generic": {"read", "write", "bash", "web", "image", "video", "subagents", "mcp"},
+}
+KNOWN_TOOLS = sorted(set().union(*ADAPTER_TOOLS.values()))
+
+# Adapters that do not reliably read a local path before acting: inline the contract.
+INLINE_CONTRACT_ADAPTERS = {"orca", "generic"}
+
+
+def missing_tools(adapter: str, required: list[str]) -> list[str]:
+    have = ADAPTER_TOOLS.get(adapter, set(KNOWN_TOOLS))
+    return [t for t in required if t not in have]
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -175,6 +197,10 @@ def validate_order(order: dict[str, Any]) -> list[str]:
         errs.append("ORDER.v must be 1")
     if "done_when_closed" in order and not isinstance(order.get("done_when_closed"), bool):
         errs.append("ORDER.done_when_closed must be a boolean")
+    if "done_when_closed_phases" in order:
+        got = order.get("done_when_closed_phases")
+        if not isinstance(got, list) or any(p not in PHASES for p in got):
+            errs.append("ORDER.done_when_closed_phases must be a list of phase names")
     if order.get("phase") not in PHASES:
         errs.append(f"invalid phase: {order.get('phase')}")
     if not order.get("mission"):
@@ -275,8 +301,51 @@ def pick_adapter(explicit: str | None) -> str:
     return "generic"
 
 
-def done_when_closed(order: dict[str, Any]) -> bool:
-    return bool(order.get("done_when_closed"))
+def done_when_tag(criterion: str) -> str | None:
+    """Return the phase a criterion is scoped to, or None when it is global."""
+    head, sep, _rest = str(criterion).partition(":")
+    if not sep:
+        return None
+    tag = head.strip().lower()
+    return tag if tag in PHASES else None
+
+
+def done_when_for(order: dict[str, Any], phase: str | None = None) -> list[str]:
+    """Criteria that apply to a phase: its own prefixed ones plus untagged ones."""
+    ph = phase or order.get("phase")
+    out: list[str] = []
+    for c in order.get("done_when") or []:
+        tag = done_when_tag(c)
+        if tag is None or tag == ph:
+            out.append(c)
+    return out
+
+
+def closed_phases(order: dict[str, Any]) -> list[str]:
+    got = order.get("done_when_closed_phases")
+    return [p for p in got if p in PHASES] if isinstance(got, list) else []
+
+
+def done_when_closed(order: dict[str, Any], phase: str | None = None) -> bool:
+    """Closed for a phase. Legacy boolean only speaks for the current phase."""
+    ph = phase or order.get("phase")
+    if ph in closed_phases(order):
+        return True
+    return bool(order.get("done_when_closed")) and ph == order.get("phase")
+
+
+def mark_done_when_closed(order: dict[str, Any], phase: str | None = None) -> bool:
+    ph = phase or order.get("phase")
+    changed = False
+    phases = closed_phases(order)
+    if ph not in phases:
+        phases.append(ph)
+        order["done_when_closed_phases"] = phases
+        changed = True
+    if not order.get("done_when_closed"):
+        order["done_when_closed"] = True
+        changed = True
+    return changed
 
 
 def spawn_is_blocked(state: dict[str, Any], force: bool = False) -> tuple[bool, str]:
@@ -397,7 +466,7 @@ def write_phase_md(root: Path, order: dict[str, Any]) -> None:
         f"# Phase: {order['phase']}\n\n"
         f"Mission: {order['mission']}\n\n"
         "Done when:\n"
-        + "\n".join(f"- {x}" for x in order.get("done_when") or [])
+        + "\n".join(f"- {x}" for x in done_when_for(order))
         + "\n"
     )
     of_dir(root).joinpath("PHASE.md").write_text(body, encoding="utf-8")
@@ -413,15 +482,38 @@ def argv_preview(argv: list[str]) -> str:
     return " ".join(parts)
 
 
+def slave_md_path() -> Path:
+    return skill_root() / "SLAVE.md"
+
+
 def slave_md() -> str:
-    p = skill_root() / "SLAVE.md"
+    p = slave_md_path()
     if p.exists():
         return p.read_text(encoding="utf-8")
     return "# Orderfield slave\nWrite a residual JSON.\n"
 
 
-def render_prompt(packet: dict[str, Any]) -> str:
-    body = slave_md()
+def slave_contract(inline: bool = False) -> str:
+    """Reference-load by default: point at SLAVE.md instead of pasting it.
+
+    Falls back to the inline body when the file is not on disk, and when the
+    caller asks for inline (adapters that do not read local files reliably).
+    """
+    p = slave_md_path()
+    if inline or not p.exists():
+        return slave_md()
+    return (
+        "# Orderfield slave — read the contract first\n\n"
+        "Before anything else, read this file in full:\n\n"
+        f"    {p}\n\n"
+        "It is the doctrine for this turn: slaved mode, what you may and may not "
+        "do, the residual schema, proposed_patch keys, and the metrics. "
+        "If you cannot read it, say so in the residual instead of guessing.\n"
+    )
+
+
+def render_prompt(packet: dict[str, Any], inline: bool = False) -> str:
+    body = slave_contract(inline=inline)
     return (
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
@@ -472,7 +564,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"rev         {order['rev']}")
     print(f"phase       {order['phase']}")
     print(f"mission     {order['mission']}")
-    print(f"done_when   {order['done_when']}")
+    print(f"done_when   {done_when_for(order)}")
+    print(f"done_when_all {order['done_when']}")
     print(f"constraints {order['constraints']}")
     print(f"wave        {state['wave']}")
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
@@ -481,6 +574,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"since_across {state.get('waves_since_across')}")
     print(f"mission_streak {state.get('mission_change_streak')}")
     print(f"done_when_closed {done_when_closed(order)}")
+    print(f"closed_phases {closed_phases(order)}")
     print(f"regimes     {order['enabled_regimes']}")
 
 
@@ -540,6 +634,12 @@ def cmd_pack(args: argparse.Namespace) -> None:
             "shared procedure belongs in ORDER.constraints via of patch, not in --slice",
             file=sys.stderr,
         )
+    requires_tool = [t.strip().lower() for t in (getattr(args, "requires_tool", None) or [])]
+    unknown = [t for t in requires_tool if t not in KNOWN_TOOLS]
+    if unknown:
+        die(
+            f"unknown --requires-tool: {sorted(set(unknown))}; known tools: {KNOWN_TOOLS}"
+        )
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
@@ -568,7 +668,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
             "rev": order["rev"],
             "mission": order["mission"],
             "phase": order["phase"],
-            "done_when": order["done_when"],
+            "done_when": done_when_for(order),
             "constraints": order["constraints"],
             "workspace": order["workspace"],
             "thresholds": order["thresholds"],
@@ -578,11 +678,24 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "residual_path": residual_path,
         "scratch_dir": scratch,
         "allow_nested": bool(args.allow_nested),
+        "requires_tool": requires_tool,
         "budget": {
             "tokens": args.tokens,
             "seconds": args.seconds,
         },
     }
+    if requires_tool:
+        blind = [
+            a
+            for a in ADAPTER_ORDER
+            if a != "generic" and missing_tools(a, requires_tool)
+        ]
+        if blind:
+            print(
+                f"of: requires_tool={requires_tool}; these adapters will refuse: "
+                + ", ".join(blind),
+                file=sys.stderr,
+            )
     out = Path(args.out) if args.out else wdir / "packets" / f"{child_id}.json"
     dump_json(out, packet)
     prompt = render_prompt(packet)
@@ -593,7 +706,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
 
 def cmd_render(args: argparse.Namespace) -> None:
     packet = load_json(Path(args.packet))
-    sys.stdout.write(render_prompt(packet))
+    sys.stdout.write(render_prompt(packet, inline=bool(getattr(args, "inline", False))))
 
 
 def cmd_handoff(args: argparse.Namespace) -> None:
@@ -609,7 +722,10 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     wdir = wave_dir(wave, root)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
-    prompt_path.write_text(render_prompt(packet), encoding="utf-8")
+    prompt_path.write_text(
+        render_prompt(packet, inline=bool(getattr(args, "inline", False))),
+        encoding="utf-8",
+    )
     print(f"child_id={child_id}")
     print(f"prompt={prompt_path}")
     print(f"residual={residual_rel}")
@@ -642,7 +758,13 @@ def build_spawn_argv(
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
         schema = skill_root() / "schemas" / "residual.schema.json"
-        argv = [bin_, "exec", "--full-auto", "-o", str(residual_abs)]
+        argv = [
+            bin_,
+            "exec",
+            "--dangerously-bypass-approvals-and-sandbox",
+            "-o",
+            str(residual_abs),
+        ]
         if schema.exists():
             argv += ["--output-schema", str(schema)]
         argv.append(prompt)
@@ -655,7 +777,8 @@ def build_spawn_argv(
         return [bin_, "run", "--format", "json", "--auto", prompt]
     if adapter == "grok":
         bin_ = which_bin(["grok", "grok-cli"]) or "grok"
-        return [bin_, prompt]
+        # headless: bare `grok <prompt>` opens the TUI and dies on no tty.
+        return [bin_, "--always-approve", "-p", prompt]
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
         bin_ = which_bin(["agy"]) or "agy"
@@ -709,7 +832,15 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     residual_rel = packet.get("residual_path") or f".orderfield/waves/{int(wave):03d}/residuals/{child_id}.json"
     residual_abs = root / residual_rel
     residual_abs.parent.mkdir(parents=True, exist_ok=True)
-    prompt = render_prompt(packet)
+    required = [str(t).strip().lower() for t in (packet.get("requires_tool") or [])]
+    lacking = missing_tools(adapter, required)
+    if lacking and not args.force_spawn:
+        die(
+            f"adapter {adapter} lacks required tools {sorted(set(lacking))} "
+            f"(packet requires_tool={required}); pick --adapter with those tools "
+            "or repack without them"
+        )
+    prompt = render_prompt(packet, inline=adapter in INLINE_CONTRACT_ADAPTERS)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
     prompt_path.write_text(prompt, encoding="utf-8")
@@ -941,8 +1072,8 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
                 order["notes"] = (prev + "\n" + incoming).strip() if prev else incoming
                 changed = True
         if patch.get("done_when_closed") is True:
-            order["done_when_closed"] = True
-            changed = True
+            if mark_done_when_closed(order):
+                changed = True
     if changed:
         order["rev"] = int(order.get("rev", 1)) + 1
     return order
@@ -975,7 +1106,8 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             applied = {
                 "rev": order["rev"],
                 "constraints": order["constraints"],
-                "done_when_closed": bool(order.get("done_when_closed")),
+                "done_when_closed": done_when_closed(order),
+                "done_when_closed_phases": closed_phases(order),
             }
         # Must not call decide_regime again after apply.
         if done_when_closed(order) and "done_when still open" in reason:
@@ -1031,8 +1163,11 @@ def cmd_phase(args: argparse.Namespace) -> None:
     if args.phase == order["phase"] and not args.force:
         print(f"already in {args.phase}")
         return
+    if order.get("done_when_closed"):
+        # legacy boolean spoke only for the phase we are leaving
+        mark_done_when_closed(order, order["phase"])
     order["phase"] = args.phase
-    order["done_when_closed"] = False
+    order["done_when_closed"] = args.phase in closed_phases(order)
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     write_phase_md(root, order)
@@ -1058,8 +1193,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         order["notes"] = ((order.get("notes") or "") + "\n" + args.notes).strip()
         changed = True
     if getattr(args, "done_when_closed", False):
-        order["done_when_closed"] = True
-        changed = True
+        if mark_done_when_closed(order):
+            changed = True
     if not changed:
         die("nothing to patch")
     order["rev"] = int(order["rev"]) + 1
@@ -1070,7 +1205,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
         "mission": order["mission"],
         "phase": order["phase"],
         "constraints": order["constraints"],
-        "done_when": order["done_when"],
+        "done_when": done_when_for(order),
     }, indent=2, ensure_ascii=False))
 
 
@@ -1131,6 +1266,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--wave", type=int)
     s.add_argument("--child-id")
     s.add_argument("--allow-nested", action="store_true")
+    s.add_argument(
+        "--requires-tool",
+        dest="requires_tool",
+        action="append",
+        help=f"tool the slice needs; spawn refuses adapters without it {KNOWN_TOOLS}",
+    )
     s.add_argument("--tokens", type=int, default=80000)
     s.add_argument("--seconds", type=int, default=600)
     s.add_argument(
@@ -1142,6 +1283,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("render", help="print the slave prompt")
     s.add_argument("--packet", required=True)
+    s.add_argument(
+        "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
+    )
     s.set_defaults(func=cmd_render)
 
     s = sub.add_parser(
@@ -1149,6 +1293,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the slave prompt file and print a short envelope",
     )
     s.add_argument("--packet", required=True)
+    s.add_argument(
+        "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
+    )
     s.set_defaults(func=cmd_handoff)
 
     s = sub.add_parser("spawn", help="launch a child via a headless adapter")

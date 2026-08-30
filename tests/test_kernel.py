@@ -1135,3 +1135,277 @@ class NotesDedup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PhaseScopedDoneWhen(unittest.TestCase):
+    """Option B: phase-prefixed done_when strings; closed tracked per phase."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-dw-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.order = of.default_order("m", "explore")
+        self.order["done_when"] = [
+            "explore: map the options",
+            "build: land the kernel",
+            "evidence written to scratch",
+        ]
+
+    def test_tag_recognizes_phases_only(self) -> None:
+        self.assertEqual(of.done_when_tag("build: land it"), "build")
+        self.assertEqual(of.done_when_tag("Explore : map it"), "explore")
+        self.assertIsNone(of.done_when_tag("note: not a phase"))
+        self.assertIsNone(of.done_when_tag("no colon here"))
+
+    def test_done_when_for_keeps_untagged_and_own_phase(self) -> None:
+        self.assertEqual(
+            of.done_when_for(self.order, "explore"),
+            ["explore: map the options", "evidence written to scratch"],
+        )
+        self.assertEqual(
+            of.done_when_for(self.order, "build"),
+            ["build: land the kernel", "evidence written to scratch"],
+        )
+        self.order["phase"] = "verify"
+        self.assertEqual(of.done_when_for(self.order), ["evidence written to scratch"])
+
+    def test_closed_is_per_phase_not_global(self) -> None:
+        of.mark_done_when_closed(self.order)
+        self.assertTrue(of.done_when_closed(self.order, "explore"))
+        self.assertFalse(of.done_when_closed(self.order, "build"))
+        self.assertEqual(of.closed_phases(self.order), ["explore"])
+
+    def test_legacy_bool_only_speaks_for_current_phase(self) -> None:
+        legacy = of.default_order("m", "explore")
+        legacy["done_when_closed"] = True
+        self.assertTrue(of.done_when_closed(legacy))
+        self.assertTrue(of.done_when_closed(legacy, "explore"))
+        self.assertFalse(of.done_when_closed(legacy, "build"))
+
+    def test_phase_change_migrates_legacy_and_does_not_wipe_history(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        opath = self.tmp / ".orderfield" / "ORDER.json"
+        self.assertEqual(load_json(opath)["done_when_closed_phases"], ["explore"])
+        r = run_of(self.tmp, "phase", "cut")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = load_json(opath)
+        self.assertEqual(order["phase"], "cut")
+        self.assertEqual(order["done_when_closed_phases"], ["explore"])
+        self.assertFalse(order["done_when_closed"])
+        self.assertFalse(of.done_when_closed(order))
+        self.assertTrue(of.done_when_closed(order, "explore"))
+
+    def test_closed_explore_does_not_choose_phase_again_after_switch(self) -> None:
+        order = of.default_order("m", "explore")
+        of.mark_done_when_closed(order, "explore")
+        order["phase"] = "build"
+        order["done_when_closed"] = False
+        state = of.default_state()
+        residual = load_json(DONE)
+        regime, reason = of.decide_regime(order, state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertIn("done_when still open", reason)
+
+    def test_packet_and_phase_md_carry_only_this_phase(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "build",
+            "--done-when",
+            "explore: map it",
+            "--done-when",
+            "build: land it",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = (self.tmp / ".orderfield" / "PHASE.md").read_text(encoding="utf-8")
+        self.assertIn("build: land it", text)
+        self.assertNotIn("explore: map it", text)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "implementer",
+            "--child-id", "b1",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        pkt = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "b1.json"
+        )
+        self.assertEqual(pkt["order"]["done_when"], ["build: land it"])
+
+
+class RefLoadHandoff(unittest.TestCase):
+    """SLAVE.md is referenced by absolute path, not pasted into every prompt."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-ref-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.packet = {
+            "v": 1,
+            "wave": 1,
+            "child_id": "c1",
+            "order_rev": 1,
+            "order": of.default_order("m", "explore"),
+            "slice": "do the thing",
+            "role": "explorer",
+            "residual_path": ".orderfield/waves/001/residuals/c1.json",
+            "scratch_dir": ".orderfield/work/scratch/c1",
+            "allow_nested": False,
+            "budget": {"tokens": 1000, "seconds": 60},
+        }
+
+    def test_default_prompt_references_absolute_slave_path(self) -> None:
+        p = of.slave_md_path()
+        self.assertTrue(p.exists(), "SLAVE.md must ship beside the skill")
+        prompt = of.render_prompt(self.packet)
+        self.assertIn(str(p), prompt)
+        self.assertTrue(Path(str(p)).is_absolute())
+        self.assertNotIn("## How your turn ends", prompt)
+        self.assertLess(len(prompt), len(of.slave_md()))
+        self.assertIn("do the thing", prompt)
+
+    def test_inline_pastes_the_body(self) -> None:
+        prompt = of.render_prompt(self.packet, inline=True)
+        self.assertIn("## How your turn ends", prompt)
+        self.assertNotIn("read the contract first", prompt)
+
+    def test_orca_and_generic_inline_the_contract(self) -> None:
+        self.assertIn("orca", of.INLINE_CONTRACT_ADAPTERS)
+        self.assertIn("generic", of.INLINE_CONTRACT_ADAPTERS)
+        for name in ("claude", "codex", "grok", "agy", "cursor", "opencode"):
+            self.assertNotIn(name, of.INLINE_CONTRACT_ADAPTERS)
+
+    def test_inline_fallback_when_slave_md_is_missing(self) -> None:
+        real = of.slave_md_path
+        of.slave_md_path = lambda: self.tmp / "nope" / "SLAVE.md"
+        self.addCleanup(setattr, of, "slave_md_path", real)
+        prompt = of.render_prompt(self.packet)
+        self.assertNotIn("read the contract first", prompt)
+        self.assertIn("Write a residual JSON.", prompt)
+
+    def test_handoff_prompt_file_is_reference_load(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "h1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        prompt = (
+            self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "h1.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn(str(of.slave_md_path()), prompt)
+        self.assertNotIn("## How your turn ends", prompt)
+
+
+class RequiresTool(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-tool-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_missing_tools_reports_the_gap(self) -> None:
+        self.assertEqual(of.missing_tools("orca", ["web"]), ["web"])
+        self.assertEqual(of.missing_tools("claude", ["web", "read"]), [])
+        self.assertEqual(of.missing_tools("generic", ["video"]), [])
+
+    def test_pack_records_requires_tool_in_the_packet(self) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "t1", "--requires-tool", "web",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        pkt = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "t1.json"
+        )
+        self.assertEqual(pkt["requires_tool"], ["web"])
+        self.assertIn("orca", r.stderr)
+
+    def test_pack_rejects_an_unknown_tool_name(self) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "t2", "--requires-tool", "telepathy",
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("unknown --requires-tool", r.stderr)
+
+    def test_spawn_refuses_an_adapter_that_lacks_the_tool(self) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "t3", "--requires-tool", "web",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        pkt = ".orderfield/waves/001/packets/t3.json"
+        r = run_of(self.tmp, "spawn", "--packet", pkt, "--adapter", "orca", "--dry-run")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("lacks required tools", r.stderr)
+        self.assertIn("web", r.stderr)
+
+    def test_spawn_allows_an_adapter_that_has_the_tool(self) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "t4", "--requires-tool", "web",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            ".orderfield/waves/001/packets/t4.json",
+            "--adapter",
+            "claude",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_packet_without_requires_tool_is_never_refused(self) -> None:
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "t5"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            ".orderfield/waves/001/packets/t5.json",
+            "--adapter",
+            "orca",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class HeadlessArgv(unittest.TestCase):
+    """Live-verified flags: bare grok opens a TUI; codex has no --full-auto."""
+
+    def setUp(self) -> None:
+        self.packet = {"child_id": "c1", "budget": {"seconds": 60}}
+        self.residual = Path("/tmp/of-residual.json")
+
+    def argv(self, adapter: str) -> list:
+        return of.build_spawn_argv(
+            adapter, "PROMPT", self.packet, self.residual, dry_run=True
+        )
+
+    def test_grok_is_headless_and_auto_approved(self) -> None:
+        argv = self.argv("grok")
+        self.assertIn("-p", argv)
+        self.assertIn("--always-approve", argv)
+        self.assertEqual(argv[-1], "PROMPT")
+        self.assertEqual(argv[argv.index("-p") + 1], "PROMPT")
+
+    def test_codex_drops_full_auto_for_the_bypass_flag(self) -> None:
+        argv = self.argv("codex")
+        self.assertNotIn("--full-auto", argv)
+        self.assertIn("--dangerously-bypass-approvals-and-sandbox", argv)
+        self.assertEqual(argv[1], "exec")
+        self.assertEqual(argv[-1], "PROMPT")
+
+    def test_codex_keeps_the_residual_output_contract(self) -> None:
+        argv = self.argv("codex")
+        self.assertIn("-o", argv)
+        self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
+        if (of.skill_root() / "schemas" / "residual.schema.json").exists():
+            self.assertIn("--output-schema", argv)

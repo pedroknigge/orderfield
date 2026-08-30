@@ -54,6 +54,51 @@ remove_one() {
   return 1
 }
 
+# PATH symlink for `of`: always targets the installed skill copy (generic dest),
+# never ephemeral $SRC. Global → ~/.local/bin/of; project/--root → $base/.local/bin/of
+# so hermetic --root tests do not touch the real HOME.
+of_bin_dir() {
+  if [[ "$MODE" == "global" ]]; then
+    printf '%s\n' "$HOME/.local/bin"
+  else
+    printf '%s\n' "$base/.local/bin"
+  fi
+}
+
+of_installed_kernel() {
+  printf '%s\n' "$base/.agents/skills/$NAME/scripts/of.py"
+}
+
+install_of_path() {
+  local bindir link target
+  target="$(of_installed_kernel)"
+  if [[ ! -f "$target" ]]; then
+    echo "warn: missing installed kernel at $target; skip of PATH symlink" >&2
+    return 0
+  fi
+  chmod +x "$target" || true
+  bindir="$(of_bin_dir)"
+  link="$bindir/of"
+  mkdir -p "$bindir"
+  ln -sf "$target" "$link"
+  echo "of: $link -> $target"
+  if [[ "$MODE" == "global" ]]; then
+    echo "Ensure ~/.local/bin is on your PATH"
+  else
+    echo "project of symlink at $link (use --global for ~/.local/bin/of)"
+  fi
+}
+
+uninstall_of_path() {
+  local bindir link
+  bindir="$(of_bin_dir)"
+  link="$bindir/of"
+  if [[ -L "$link" ]]; then
+    rm -f "$link"
+    echo "removed $link"
+  fi
+}
+
 codex_pointer_block() {
   cat <<'EOF'
 # orderfield skill
@@ -122,6 +167,12 @@ Usage: install.sh [--global|--project|--generic] [--uninstall] [--root PATH]
   --generic    only the portable path: .agents/skills/orderfield
   --root PATH  project-style install under PATH
   --uninstall  remove copies this script manages
+
+  After install, creates an `of` symlink to the installed skill copy of
+  scripts/of.py (not the checkout used as the install source):
+    global  → ~/.local/bin/of
+    --root / project → <base>/.local/bin/of (hermetic; does not touch $HOME)
+  Uninstall removes that symlink when it is a symlink.
 EOF
       exit 0
       ;;
@@ -210,6 +261,7 @@ if [[ "$UNINSTALL" -eq 1 ]]; then
     fi
   done
   uninstall_agy_dests
+  uninstall_of_path
   if [[ -f "$base/.codex/AGENTS.md" ]]; then
     strip_block "$base/.codex/AGENTS.md"
     echo "stripped Codex pointer"
@@ -243,6 +295,7 @@ if [[ "$MODE" == "global" && -d "$base/.codex" ]]; then
 fi
 
 chmod +x "$SRC/scripts/of.py" || true
+install_of_path
 echo "copied to $copied skill dir(s)"
 echo "generic: $base/.agents/skills/$NAME"
-echo "kernel: python3 $SRC/scripts/of.py status"
+echo "kernel: of status  # or: python3 $(of_installed_kernel) status"

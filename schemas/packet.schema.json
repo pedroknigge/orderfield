@@ -19,6 +19,11 @@
     "residual_path": { "type": "string", "minLength": 1 },
     "scratch_dir": { "type": "string", "minLength": 1 },
     "allow_nested": { "type": "boolean", "default": false },
+    "requires_tool": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
     "budget": {
       "type": "object",
       "additionalProperties": false,

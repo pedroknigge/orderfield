@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.6</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.7</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.6-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.7-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -80,12 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install
 ./install.sh --uninstall
 ```
 
-Optional PATH:
-
-```bash
-ln -s "$(pwd)/scripts/of.py" ~/.local/bin/of
-chmod +x scripts/of.py
-```
+`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`), and removes that symlink on `--uninstall`. Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
 
 Python 3.9+. No pip packages.
 
@@ -120,9 +115,9 @@ of integrate --wave 1
 of status
 ```
 
-A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit.
+A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit. You can scope `done_when` criteria by prefixing them with a phase name (e.g., `"build: ..."`); the `phase` regime behaves per-phase without clearing criteria.
 
-Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` now emit an absolute reference to `SLAVE.md` rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 ---
 
@@ -173,7 +168,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `status` | show field, wave, caps |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet |
+| `pack` | build a slaving packet (supports `--requires-tool`) |
 | `render` | print the slave prompt |
 | `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
