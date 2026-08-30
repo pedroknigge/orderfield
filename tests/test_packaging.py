@@ -32,10 +32,10 @@ def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedP
 class VersionSync(unittest.TestCase):
     def test_version_files_agree(self) -> None:
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn(f'version: "{ver}"', skill)
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         self.assertIn(f"## {ver}", changelog)
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn(f'version: "{ver}"', skill)
 
 
 class InstallScript(unittest.TestCase):
@@ -89,6 +89,37 @@ class PhaseMdEnglish(unittest.TestCase):
         self.assertIn("Mission:", text)
         self.assertNotIn("Fase:", text)
         self.assertNotIn("Mision:", text)
+
+    def test_patch_rewrites_english_phase_md(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-phase-patch-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run(
+            tmp,
+            sys.executable,
+            str(OF_PY),
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        proc = run(
+            tmp,
+            sys.executable,
+            str(OF_PY),
+            "patch",
+            "--mission",
+            "patched mission",
+            "--done-when",
+            "patched criterion",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        text = (tmp / ".orderfield" / "PHASE.md").read_text(encoding="utf-8")
+        self.assertIn("# Phase:", text)
+        self.assertIn("patched mission", text)
+        self.assertIn("patched criterion", text)
+        self.assertNotIn("Fase:", text)
 
 
 class ValidateSkill(unittest.TestCase):

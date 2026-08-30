@@ -4,7 +4,7 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok. Kernel uses stdlib only.
 metadata:
-  version: "0.2.1"
+  version: "0.2.2"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -55,6 +55,8 @@ python3 <skill>/scripts/of.py pack \
 
 The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child.
 
+Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Task/`of render` instead of `of spawn`.
+
 ### 4. Spawn only through the kernel
 
 ```bash
@@ -67,9 +69,9 @@ python3 <skill>/scripts/of.py spawn \
 Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `generic`.
 `detect` picks the first available adapter if you omit `--adapter`.
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
-`--dry-run` prints the command without running the child. After `escalate_up`, spawn is rejected until `of next-wave` (or `--force-spawn`).
+`--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
 
-Never launch a child by hand without a packet. The child must write a residual schema, not an essay.
+Never launch a child by hand without a packet. Interactive Task is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 
@@ -83,7 +85,7 @@ python3 <skill>/scripts/of.py status
 
 Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`.
 
-Golden rule: **if there is a residual on mission, phase, constraints, or done_when, `integrate` chooses `escalate_up`. Spawn is forbidden in that wave until you patch the field and run `next-wave`.**
+Golden rule: **if there is a residual on mission, phase, constraints, or done_when, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
 
 ### 6. Patch the field, then re-enslave
 
@@ -94,6 +96,7 @@ python3 <skill>/scripts/of.py patch --constraints-add "tax invoicing requirement
 ```
 
 Slaves never write `ORDER.json`. They only propose `proposed_patch`.
+`integrate --apply` may write `constraints+`, `done_when+`, `notes`, and `done_when_closed`. **Mission is never auto-applied** (`of patch --mission`). `done_when_closed` from a done residual does not choose `phase`.
 
 ### 7. Changing phase is a slow act
 
@@ -110,8 +113,9 @@ Only when `done_when` is closed (`of patch --done-when-closed`) and the last wav
 - Do not launch explorer and implementer in the same wave.
 - Do not chain `scale_across`. After a specialist, the default is escalate_up.
 - Do not rewrite the mission because a child asked. That is a residual. It goes to `integrate`.
-- Do not spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
+- Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
+- Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not spawn if a skill on the same agent is enough.
 
 ## Enslaved roles (identities, not job titles)
@@ -145,8 +149,8 @@ Use the minimum. Explorer + adversary already prove the principle.
 You do not need headless spawn for every child. The current session can be the leader. Then:
 
 1. You (current session) = leader. Do not implement the slice.
-2. `of pack` builds the packet.
-3. Delegate with the harness native primitive (`Task` in Claude Code, subagent in eve, `worker-start` in Orca, and so on) using `of render --packet ...` as the *only* message to the child.
+2. `of pack` builds the packet. Pack is the cap surface: `max_children` and `spawn_blocked` bind here even if you never call `of spawn`.
+3. Delegate with the harness native primitive (`Task` in Claude Code, subagent in eve, `worker-start` in Orca, and so on) using `of render --packet ...` as the *only* message to the child. After pack, those caps still bind; Task/render does not bypass them.
 4. The child writes `.orderfield/waves/NNN/residuals/<id>.json`.
 5. You run `of collect` + `of integrate`.
 

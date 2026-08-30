@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -119,9 +119,9 @@ of integrate --wave 1
 of status
 ```
 
-A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. A `done` residual does **not** advance the phase.
+A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied.
 
-Inside an interactive session you can skip headless spawn: `of render --packet …` is the **only** message to the child. Collect + integrate still go through the kernel.
+Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of render --packet …` is the **only** message to the child. After pack, caps bind even if you use Task. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 ---
 

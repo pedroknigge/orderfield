@@ -1,0 +1,6 @@
+{
+  "name": "collect-by-packet-residual-path",
+  "require_packet_residual_path": true,
+  "ignore_stray_residuals": true,
+  "missing_packet_residual_fails": true
+}

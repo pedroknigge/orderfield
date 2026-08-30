@@ -1,0 +1,10 @@
+{
+  "name": "done-apply-done-when-closed",
+  "fixture": "assets/fixtures/residual.done.json",
+  "proposed_patch": { "done_when_closed": true },
+  "wants_to_change": [],
+  "expected_regime": "hold",
+  "forbidden_regimes": ["phase"],
+  "done_when_closed_after_apply": true,
+  "rev_after_apply": 2
+}

@@ -23,7 +23,19 @@
         "evidence": { "type": "string" },
         "proposed_patch": {
           "type": ["object", "null"],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "properties": {
+            "constraints+": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "done_when+": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "notes": { "type": "string" },
+            "done_when_closed": { "type": "boolean" }
+          }
         }
       }
     },

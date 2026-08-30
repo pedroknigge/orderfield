@@ -20,11 +20,11 @@ Translation:
 
 ## Numbered invariants
 
-1. **One writer.** Only `of integrate`, `of patch`, and `of phase` write `ORDER.json`.
+1. **One writer.** Only `of integrate`, `of patch`, and `of phase` write `ORDER.json`. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`. Mission is never auto-applied (`of patch --mission`).
 2. **One phase at a time.** `explore` and `implement`/`build` do not coexist in the same wave.
-3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until `next-wave`.
+3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until `next-wave`. Pack is the bind surface; interactive Task/render does not bypass it.
 4. **Closed menu.** Regimes: `escalate_up`, `scale_out`, `scale_across`, `scale_up`, `human`, `hold`, `phase`. Anything else is a contract error.
-5. **Inherited caps.** The tree cannot spend more children / depth / tokens than ORDER declares.
+5. **Inherited caps.** The tree cannot spend more children / depth / tokens than ORDER declares. Caps bind at `of pack` (and collect), not only at `of spawn`.
 6. **Cooldown after across.** After `scale_across`, the next default is `escalate_up`.
 7. **Skill beats child.** Same identity plus a procedure = skill, not spawn.
 8. **No transcripts upward.** The parent consumes residuals, not diaries.
@@ -47,3 +47,4 @@ Translation:
 - Not an Orca DAG with physics varnish.
 - Not "the leader tells the child every step".
 - Not a peer swarm. Anthropic showed that peers without a field sabotage each other.
+- Not a file locker. `workspace.writable_by_slaves` is documentation. Colliding product writes are a cut error.

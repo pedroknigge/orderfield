@@ -278,6 +278,64 @@ def spawn_is_blocked(state: dict[str, Any], force: bool = False) -> tuple[bool, 
     return False, ""
 
 
+def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
+    pdir = wave_dir(int(wave), root) / "packets"
+    if not pdir.is_dir():
+        return []
+    return [load_json(f) for f in sorted(pdir.glob("*.json"))]
+
+
+def child_is_packed(root: Path, wave: int, child_id: str | None) -> bool:
+    if not child_id:
+        return False
+    pdir = wave_dir(int(wave), root) / "packets"
+    if (pdir / f"{child_id}.json").is_file():
+        return True
+    for pkt in packed_children(root, wave):
+        if pkt.get("child_id") == child_id:
+            return True
+    return False
+
+
+def register_packed_child(
+    order: dict[str, Any],
+    state: dict[str, Any],
+    *,
+    force: bool = False,
+) -> None:
+    blocked, why = spawn_is_blocked(state, force=force)
+    if blocked:
+        die(why)
+    max_c = int(order.get("caps", {}).get("max_children", 4))
+    if int(state.get("children_spawned") or 0) >= max_c:
+        die(f"max_children cap {max_c} reached")
+    state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
+
+
+def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
+    child = packet.get("child_id") or "?"
+    rel = packet.get("residual_path")
+    if not rel:
+        die(f"packet {child} missing residual_path")
+    path = root / str(rel)
+    if not path.is_file():
+        die(f"missing residual at {rel} (packet residual_path)")
+    return path
+
+
+def enforce_wave_child_caps(
+    order: dict[str, Any],
+    state: dict[str, Any],
+    packet_count: int,
+) -> None:
+    max_c = int(order.get("caps", {}).get("max_children", 4))
+    if packet_count > max_c:
+        die(f"max_children cap {max_c} reached ({packet_count} packed)")
+    blocked, why = spawn_is_blocked(state)
+    if blocked and packet_count > int(state.get("children_spawned") or 0):
+        die(why)
+
+
 def waves_since_across(state: dict[str, Any]) -> int:
     last = state.get("last_across_wave")
     if last is None:
@@ -439,6 +497,12 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
     child_id = args.child_id or f"{args.role}_{uuid.uuid4().hex[:6]}"
+    already = child_is_packed(root, int(wave), child_id)
+    if not already:
+        register_packed_child(
+            order, state, force=bool(getattr(args, "force_spawn", False))
+        )
+        save_state(state, root)
     wdir = wave_dir(wave, root)
     residual_path = f".orderfield/waves/{wave:03d}/residuals/{child_id}.json"
     scratch = f".orderfield/work/scratch/{child_id}"
@@ -551,11 +615,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     blocked, why = spawn_is_blocked(state, force=bool(args.force_spawn))
     if blocked:
         die(why)
-    if state["children_spawned"] >= order["caps"]["max_children"]:
-        die(f"max_children cap {order['caps']['max_children']} reached")
     adapter = pick_adapter(args.adapter)
     child_id = packet.get("child_id") or f"child_{uuid.uuid4().hex[:6]}"
     wave = packet.get("wave") or state["wave"]
+    already = child_is_packed(root, int(wave), child_id)
+    if not already and state["children_spawned"] >= order["caps"]["max_children"]:
+        die(f"max_children cap {order['caps']['max_children']} reached")
     wdir = wave_dir(int(wave), root)
     residual_rel = packet.get("residual_path") or f".orderfield/waves/{int(wave):03d}/residuals/{child_id}.json"
     residual_abs = root / residual_rel
@@ -622,8 +687,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             print(f"residual extracted from stdout -> {residual_rel}")
         else:
             print(f"no residual yet. log={log_path}")
-    state["children_spawned"] += 1
-    save_state(state, root)
+    if not already:
+        state["children_spawned"] += 1
+        save_state(state, root)
     print(f"exit={proc.returncode} log={log_path}")
 
 
@@ -647,24 +713,29 @@ def extract_json_object(text: str) -> Any | None:
 
 def cmd_collect(args: argparse.Namespace) -> None:
     root = find_root()
+    order = load_order(root)
     state = load_state(root)
     wave = args.wave or state["wave"]
-    rdir = wave_dir(int(wave), root) / "residuals"
-    if not rdir.exists():
-        die(f"no residuals in wave {wave}")
-    files = sorted(rdir.glob("*.json"))
+    packets = packed_children(root, int(wave))
+    if not packets:
+        die(f"no packets in wave {wave}")
+    enforce_wave_child_caps(order, state, len(packets))
     ok = 0
     bad = 0
-    for f in files:
-        data = load_json(f)
+    for pkt in packets:
+        path = require_packet_residual(root, pkt)
+        data = load_json(path)
         errs = validate_residual(data)
         if errs:
             bad += 1
-            print(f"INVALID {f.name}: {'; '.join(errs)}")
+            print(f"INVALID {path.name}: {'; '.join(errs)}")
         else:
             ok += 1
-            print(f"OK {f.name} status={data.get('status')} wants={data.get('residual', {}).get('wants_to_change')}")
-    print(f"wave={wave} ok={ok} invalid={bad} total={len(files)}")
+            print(
+                f"OK {path.name} status={data.get('status')} wants="
+                f"{data.get('residual', {}).get('wants_to_change')}"
+            )
+    print(f"wave={wave} ok={ok} invalid={bad} total={len(packets)}")
     if bad:
         raise SystemExit(2)
 
@@ -783,23 +854,29 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     order = load_order(root)
     state = load_state(root)
     wave = args.wave or state["wave"]
-    rdir = wave_dir(int(wave), root) / "residuals"
+    packets = packed_children(root, int(wave))
     residuals: list[dict[str, Any]] = []
-    if rdir.exists():
-        for f in sorted(rdir.glob("*.json")):
-            data = load_json(f)
+    if packets:
+        enforce_wave_child_caps(order, state, len(packets))
+        for pkt in packets:
+            path = require_packet_residual(root, pkt)
+            data = load_json(path)
             errs = validate_residual(data)
             if errs:
-                die(f"invalid residual {f.name}: {'; '.join(errs)}")
+                die(f"invalid residual {path.name}: {'; '.join(errs)}")
             residuals.append(data)
     regime, reason = decide_regime(order, state, residuals)
     applied = None
-    if args.apply and regime == "escalate_up":
+    if args.apply:
         before = order["rev"]
         order = apply_patches(order, residuals)
         if order["rev"] != before:
             save_order(order, root)
-            applied = {"rev": order["rev"], "constraints": order["constraints"]}
+            applied = {
+                "rev": order["rev"],
+                "constraints": order["constraints"],
+                "done_when_closed": bool(order.get("done_when_closed")),
+            }
         # mission patches never auto-apply
         if any("mission" in (r.get("residual") or {}).get("wants_to_change", []) for r in residuals):
             print("note: mission proposed_patch is not auto-applied. Use of patch --mission")
@@ -881,6 +958,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
         die("nothing to patch")
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
+    write_phase_md(root, order)
     print(f"rev={order['rev']}")
     print(json.dumps({
         "mission": order["mission"],
@@ -941,6 +1019,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--allow-nested", action="store_true")
     s.add_argument("--tokens", type=int, default=80000)
     s.add_argument("--seconds", type=int, default=600)
+    s.add_argument(
+        "--force-spawn",
+        action="store_true",
+        help="bypass spawn_blocked after escalate_up",
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser("render", help="print the slave prompt")
@@ -961,7 +1044,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("integrate", help="reduce residuals and choose a regime")
     s.add_argument("--wave", type=int)
-    s.add_argument("--apply", action="store_true", help="apply safe patches (constraints+/done_when+)")
+    s.add_argument(
+        "--apply",
+        action="store_true",
+        help="apply safe patches (constraints+/done_when+/done_when_closed)",
+    )
     s.add_argument("--next-wave", action="store_true")
     s.set_defaults(func=cmd_integrate)
 

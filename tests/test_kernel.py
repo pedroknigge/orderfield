@@ -21,6 +21,8 @@ THRESHOLD = ROOT / "assets" / "fixtures" / "residual.threshold.json"
 DONE = ROOT / "assets" / "fixtures" / "residual.done.json"
 EVAL_FIELD = ROOT / "evals" / "expected" / "field-residual.json"
 EVAL_DONE = ROOT / "evals" / "expected" / "done-not-phase.json"
+EVAL_CLOSED = ROOT / "evals" / "expected" / "done-when-closed-apply.json"
+EVAL_COLLECT = ROOT / "evals" / "expected" / "collect-by-packet.json"
 
 
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -248,6 +250,293 @@ class EnglishSurface(unittest.TestCase):
         src = (SCRIPTS / "of.py").read_text(encoding="utf-8")
         for needle in ("debe ser", "invalida", "Esclavo", "Fase:", "Mision:", "Devolve"):
             self.assertNotIn(needle, src)
+
+
+class PackCapsAndBlock(unittest.TestCase):
+    """Pack is the cap / spawn_blocked surface for interactive leaders."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pack-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "architecture for a pricing tool", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_pack_increments_children_spawned(self) -> None:
+        self._init()
+        first = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["children_spawned"], 1)
+        second = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map more",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c2",
+        )
+        self.assertEqual(second.returncode, 0, second.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["children_spawned"], 2)
+        again = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "repack",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(again.returncode, 0, again.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["children_spawned"], 2)
+
+    def test_pack_blocked_after_escalate_up(self) -> None:
+        self._init()
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map",
+            "--role",
+            "explorer",
+            "--child-id",
+            "explorer_demo",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
+        dest.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report["regime"], "escalate_up")
+        blocked = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "another child",
+            "--role",
+            "explorer",
+            "--child-id",
+            "after_block",
+        )
+        self.assertNotEqual(blocked.returncode, 0, blocked.stdout + blocked.stderr)
+        blob = (blocked.stdout + blocked.stderr).lower()
+        self.assertTrue(
+            "spawn" in blob and ("forbidden" in blob or "escalate" in blob),
+            blob,
+        )
+        forced = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "forced child",
+            "--role",
+            "explorer",
+            "--child-id",
+            "forced_child",
+            "--force-spawn",
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        after = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "next wave child",
+            "--role",
+            "explorer",
+            "--child-id",
+            "wave2",
+        )
+        self.assertEqual(after.returncode, 0, after.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertFalse(state.get("spawn_blocked"))
+        self.assertEqual(state["children_spawned"], 1)
+
+    def test_pack_counts_toward_max_children(self) -> None:
+        self._init()
+        order_path = self.tmp / ".orderfield" / "ORDER.json"
+        order = load_json(order_path)
+        order["caps"]["max_children"] = 1
+        order_path.write_text(json.dumps(order, indent=2) + "\n", encoding="utf-8")
+        first = run_of(
+            self.tmp, "pack", "--slice", "one", "--role", "explorer", "--child-id", "only"
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        second = run_of(
+            self.tmp, "pack", "--slice", "two", "--role", "explorer", "--child-id", "extra"
+        )
+        self.assertNotEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertIn("max_children", (second.stdout + second.stderr).lower())
+        forced = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "two",
+            "--role",
+            "explorer",
+            "--child-id",
+            "forced_extra",
+            "--force-spawn",
+        )
+        self.assertNotEqual(forced.returncode, 0)
+        self.assertIn("max_children", (forced.stdout + forced.stderr).lower())
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/only.json",
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["children_spawned"], 1)
+
+
+class CollectByPacketResidualPath(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-collect-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        expected = load_json(EVAL_COLLECT)
+        self.assertTrue(expected["require_packet_residual_path"])
+
+    def _init_pack(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map pricing models, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "explorer_demo",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_collect_fails_if_packet_residual_path_missing(self) -> None:
+        self._init_pack()
+        stray = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "stray.json"
+        stray.parent.mkdir(parents=True, exist_ok=True)
+        stray.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertNotEqual(collected.returncode, 0, collected.stdout)
+        blob = (collected.stdout + collected.stderr).lower()
+        self.assertTrue(
+            "residual_path" in blob or "missing residual" in blob,
+            blob,
+        )
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(integrated.returncode, 0, integrated.stdout)
+
+    def test_collect_and_integrate_ignore_stray_residuals(self) -> None:
+        self._init_pack()
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
+        dest.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        stray = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "stray.json"
+        stray.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertIn("total=1", collected.stdout)
+        self.assertNotIn("stray.json", collected.stdout)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(len(report["residuals"]), 1)
+        self.assertNotEqual(report["regime"], "escalate_up")
+        self.assertEqual(report["regime"], "hold")
+
+
+class CloseProtocolApply(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-close-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_integrate_apply_done_when_closed_does_not_choose_phase(self) -> None:
+        expected = load_json(EVAL_CLOSED)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "close protocol",
+            "--role",
+            "explorer",
+            "--child-id",
+            "explorer_demo",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        residual = load_json(DONE)
+        residual["residual"]["proposed_patch"] = expected["proposed_patch"]
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report["regime"], expected["expected_regime"])
+        self.assertNotEqual(report["regime"], "phase")
+        self.assertNotIn(report["regime"], expected["forbidden_regimes"])
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(order["done_when_closed"])
+        self.assertEqual(order["rev"], expected["rev_after_apply"])
+        self.assertEqual(order["phase"], "explore")
+
+    def test_patch_rewrites_phase_md(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        patched = run_of(
+            self.tmp,
+            "patch",
+            "--mission",
+            "patched mission text",
+            "--done-when",
+            "new close criterion",
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        text = (self.tmp / ".orderfield" / "PHASE.md").read_text(encoding="utf-8")
+        self.assertIn("patched mission text", text)
+        self.assertIn("new close criterion", text)
+        self.assertIn("# Phase:", text)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ claude -p --output-format json --dangerously-skip-permissions \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-Inside an interactive Claude Code session, prefer the native `Task` / subagent primitive: the message to the child is *only* the output of `of render`. Do not copy history.
+Inside an interactive Claude Code session, prefer the native `Task` / subagent primitive: pack first, then the message to the child is *only* the output of `of render`. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
 Skills: copy this folder to `.claude/skills/orderfield/`.
 
@@ -98,7 +98,7 @@ Binary: `orca`.
 
 Orca is **substrate**. Do not ask it to decide phase or regime.
 
-`of spawn --adapter orca` is best-effort (`task-create` with the rendered prompt as `--spec`). Prefer the interactive loop: `of render` as the worker prompt, then `of collect` on the residual. Do not let an Orca gate change phase or ORDER.
+`of spawn --adapter orca` is best-effort (`task-create` with the rendered prompt as `--spec`). Prefer the interactive loop: pack first, `of render` as the worker prompt, then `of collect` on the residual. After pack, caps bind even if you never call `of spawn`. Do not let an Orca gate change phase or ORDER.
 
 Mapping:
 
@@ -113,7 +113,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn --adapter grok` passes the rendered prompt as the last argument. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of render` and delegate with the native subagent primitive — the leader must not do the slice.
+Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn --adapter grok` passes the rendered prompt as the last argument. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of render` and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Task/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -138,7 +138,7 @@ python3 scripts/of.py spawn --adapter generic --packet PACKET.json
 
 Writes the slave prompt to `.orderfield/waves/NNN/prompts/<child_id>.md` and prints the residual path. Paste that prompt into any agent. Collect still goes through the kernel.
 
-Interactive leaders in an unsupported TUI do the same with `of render --packet …` as the only message to the child.
+Interactive leaders in an unsupported TUI pack first, then `of render --packet …` as the only message to the child. Caps bind at pack.
 
 The portable skill path is always `.agents/skills/orderfield/` — that is the generic Agent Skills location.
 
@@ -146,7 +146,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 | Situation | What to do |
 |---|---|
-| Already inside Claude / Cursor / Grok interactive | you = leader; native or headless spawn for slaves |
+| Already inside Claude / Cursor / Grok interactive | you = leader; pack first (cap surface); then native Task/render or headless spawn |
 | CI / cron driver | `of spawn` headless for leader and slaves |
 | Mix harnesses in one wave | different `--adapter` per packet; same ORDER |
 
@@ -154,4 +154,6 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 Default: every child in the same repo sees `.orderfield/` (shared field, scratch split by child_id).
 
-Scale-out that would collide on product files: use an Orca worktree, or have the leader assign non-overlapping slices. The kernel does not create worktrees by itself.
+`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not enforce it, lock files, or create worktrees. Two slaves writing the same product path is a **cut error**: exclusive files belong in cut scratch plus ORDER constraints, not in `of.py`. Do not add `of claim`.
+
+Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.

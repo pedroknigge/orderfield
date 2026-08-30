@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2
+
+- `of pack` and `of collect` bind `spawn_blocked` and `max_children`. Pack increments `children_spawned`. After `escalate_up`, pack is rejected until `next-wave` (or `--force-spawn`).
+- `integrate --apply` applies `proposed_patch.done_when_closed` from a `done` residual without changing `decide_regime`. `status=done` still does not auto-phase.
+- `of patch` rewrites `PHASE.md`.
+- Collect/integrate join packets via each packet `residual_path`; a missing path fails; stray residuals are not children.
+- `SLAVE.md` documents safe `proposed_patch` keys; mission is never auto-applied.
+- Workspace paths are documentation, not a kernel lock. Interactive Task still counts after `pack`.
+
 ## 0.2.1
 
 - Generic mode for unknown agents: `of spawn --adapter generic` handoff (writes the prompt) or `OF_AGENT` headless.
