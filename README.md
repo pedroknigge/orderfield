@@ -20,9 +20,13 @@
 
 # The field, not the org chart
 
-You do not need another swarm.
+You don't need another swarm of specialists.
 
-You need a **slow order field** that slaves fast agents. The leader writes `ORDER.json`. Children move freely inside a packet. Crossing a threshold is a **regime change**, not “spawn 12 specialists.”
+Orderfield is a new way to run agents and subagents: one slow ORDER, fast children inside a packet. When they hit a threshold they don't spawn a committee — they write a residual, the field patches itself, and the next wave is born from the new ORDER.
+
+That's live self-adjustment. The plan changes from evidence, not from the leader's chat history. Claude, Codex, Cursor, Grok, or anything else — same kernel.
+
+Invoke the skill as `/orderfield` or the shorter alias `/of`. The `of` CLI on your PATH is the same short name.
 
 ```
   leader ──pack──► slave     slave     slave
@@ -33,20 +37,6 @@ You need a **slow order field** that slaves fast agents. The leader writes `ORDE
                     ▼
               integrate → ORDER'
 ```
-
-Haken, operationalized:
-
-| Physics | Here |
-|---|---|
-| Order parameter | `.orderfield/ORDER.json` — one writer, versioned |
-| Slaving function | the packet. Not the parent's history |
-| Instability | residual `status=threshold` |
-| Circular causality | `integrate` patches the field; the next wave is born from it |
-| Reduction of degrees of freedom | the leader never swallows transcripts |
-
-The harness is transport. Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (`agy`), **or anything else** — same kernel. If we did not name your agent, **generic mode** still works.
-
-Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). That is an unrelated 10 KB dump. This is `pedroknigge/orderfield`.
 
 ---
 
@@ -98,7 +88,7 @@ Where it lands:
 | Grok | `~/.grok/skills/orderfield` |
 | Antigravity (`agy`) | `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` |
 
-Then `/orderfield` in the host (or the installed alias `/of`), or say “use orderfield.”
+Then `/orderfield` in the host, or the shorter alias `/of` (same skill). Or say “use orderfield.”
 
 ---
 
@@ -117,7 +107,12 @@ of status
 
 Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
 
-A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit.
+<details>
+<summary><strong>When to open, session cut, and field rules</strong></summary>
+
+<br>
+
+A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit. Closure is reversible via `of patch --reopen`.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
@@ -126,6 +121,24 @@ A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escala
 **When to open orderfield:** it pays for false-scope / marketing risk (adversary can catch a lie) and for multi-writer path cuts. It is theater for a VERSION bump plus one obvious feature — use a skill instead (`skill beats child`). **Cut is optional** when exclusive owners are already obvious; put them in constraints. (Feedback: documentation-manager adversary run + prior grok-build critique.)
 
 Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+
+</details>
+
+---
+
+## Why it doesn't fall apart
+
+Haken, operationalized. The harness is transport. Named agents or generic mode: same kernel.
+
+| Physics | Here |
+|---|---|
+| Order parameter | `.orderfield/ORDER.json` — one writer, versioned |
+| Slaving function | the packet. Not the parent's history |
+| Instability | residual `status=threshold` |
+| Circular causality | `integrate` patches the field; the next wave is born from it |
+| Reduction of degrees of freedom | the leader never swallows transcripts |
+
+Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
 
 ---
 
