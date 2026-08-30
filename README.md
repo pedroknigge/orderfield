@@ -38,6 +38,14 @@ Invoke the skill as `/orderfield` or the shorter alias `/of`. The `of` CLI on yo
               integrate → ORDER'
 ```
 
+## Not another skill
+
+It's not another skill. It's the field the agents run in.
+
+They don't inherit your chat: you give them a packet. One slow ORDER, fast children. When they hit a threshold they write a residual, the field patches itself, and the next wave is born from what they found.
+
+**Skill beats child.** Skip it for a VERSION bump — that's a skill. Use it when two writers can lie about scope.
+
 ---
 
 ## Install
