@@ -21,20 +21,25 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [README.md](README.md) | Product surface / install |
 | [SKILL.md](SKILL.md) | Leader procedure (skill body) |
 | [SLAVE.md](SLAVE.md) | Child contract |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
+| [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
+| [PUBLISH.md](PUBLISH.md) | Publish gate |
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
+| [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
 | [docs/features/kernel/](docs/features/kernel/) | Kernel feature pack |
 | [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
-| [PUBLISH.md](PUBLISH.md) | Publish gate |
 
 ## Surface coverage
 
 | Surface | Status |
 |---------|--------|
 | Kernel CLI (`of` / `scripts/of.py`) | documented |
+| Adapter module (`scripts/of_adapters.py`) | documented |
 | Native adapters + generic | documented |
 | Install + `~/.local/bin/of` | documented |
 | Mission vs phase `done_when` / `--done-when-mission` | documented |
@@ -46,5 +51,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | First-class fields (`ORDER.harness`, `ORDER.backlog`, role contracts in prompts) | documented |
 | Portable doctrine (`.orderfield/SLAVE.md`, repo-relative reference) | documented |
 | `/of` alias skill + versioned description | documented |
+| Optional `--json` / `OF_JSON` events | documented |
+| Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

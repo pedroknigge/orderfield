@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1
+
+Hardening release from the vibe-proof audit Prioritized Remediation. Theme: stranger can change and release the package without chat archaeology.
+
+- Process: `main` branch protection requires PR + CI status checks (`test` matrix jobs + `gitleaks`). Documented in `CONTRIBUTING.md`.
+- Docs: `docs/performance.md` (pack→collect wall-clock at N=4/16 + soft warns); `docs/troubleshooting.md` (stale / MISSING / spawn_blocked / unpack / reopen / corrupt session); `CONTRIBUTING.md` (how to change/release, coverage waiver, debt/ownership, package success metrics); `DEPENDENCIES.md` (stdlib-only inventory); `.env.example` (no secrets required; optional `OF_*`).
+- Docs: `docs/architecture.md` + feature READMEs bumped to 0.3.1; reversible field, harness/backlog, adapter module, `--json` events listed.
+- Fix: corrupt `.orderfield/session.json` prints an English stderr warning instead of failing silently.
+- Fix: `.gitignore` covers `.env` / `.env.*` (keeps `.env.example`), plus coverage artifacts.
+- Feature: `of --json` (or `OF_JSON=1`) emits machine-readable stderr events for pack / spawn / collect / integrate.
+- Refactor: harness tables + `build_spawn_argv` live in `scripts/of_adapters.py` (stdlib-only; `of` re-exports). First seam of the former god-file split.
+- Tests: invalid ORDER JSON dies; spawn timeout dies; corrupt session warns; `--json` pack event; English surface covers both modules.
+- Packaging: VERSION 0.3.1; skill description preview `v0.3.1 — …`.
+
 ## 0.3.0
 
 Field-test release: every item traces to the arkgate 4.8.4 leader session (`4b62fb8e`), where each correction forced the one thing the kernel forbids — hand-editing `ORDER.json`. Theme: the ORDER is no longer append-only and the state is no longer irreversible.

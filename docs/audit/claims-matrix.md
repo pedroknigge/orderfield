@@ -7,8 +7,8 @@
 **Scope:** project  
 **Intent:** audit → integrate (patch)  
 **Out:** root  
-**Auditor:** documentation-manager (+ bld_docs 0.2.9)  
-**Code rev:** VERSION `0.2.9` / `scripts/of.py`
+**Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
+**Code rev:** VERSION `0.3.1` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -39,8 +39,8 @@
 
 | Kind | Evidence | Notes |
 |------|----------|-------|
-| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, validate, pack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
-| Adapters | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS` | claude…agy + generic |
+| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
+| Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv` |
 | Schemas | `schemas/*.json` | order / packet / residual / wave-report / session |
 | Install | `install.sh` | harness dests + `~/.local/bin/of` → installed skill |
 | Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | kernel + packaging |
