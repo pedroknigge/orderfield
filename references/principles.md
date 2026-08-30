@@ -18,6 +18,8 @@ Translation:
 | Circular causality | `integrate` patches ORDER; the next wave is born from the new field |
 | Reduction of degrees of freedom | the leader does not swallow transcripts |
 
+This is slaving-by-contract, not adiabatic following. The field is designed (`of init`). It does not emerge from uncoordinated parts. Circular causality is valved: slaves propose; only the leader writes mission.
+
 ## Numbered invariants
 
 1. **One writer.** Only `of integrate`, `of patch`, and `of phase` write `ORDER.json`. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`. Mission is never auto-applied (`of patch --mission`).
@@ -29,13 +31,13 @@ Translation:
 7. **Skill beats child.** Same identity plus a procedure = skill, not spawn.
 8. **No transcripts upward.** The parent consumes residuals, not diaries.
 9. **The harness does not judge.** Orca / Claude / Codex transport. The kernel chooses the regime.
-10. **ORDER moves slowly.** If it changes every wave, the field is poorly posed or you are sitting on the critical point on purpose (only valid early in `explore`).
+10. **ORDER moves slowly.** If it changes every wave, the field is poorly posed or you are sitting on the critical point on purpose (only valid early in `explore`). Haken's critical slowing down is inverted here on purpose: a usable field is posed, then slaves relax into it. A thrashing ORDER is a smell, not the phenomenon.
 
 ## Regimes
 
 - `escalate_up` — the field is insufficient. Patch ORDER. Re-enslave.
-- `scale_out` — the pattern is correct, volume is missing. Copies of the same role.
-- `scale_across` — a *different* mode is needed (a different role). Max 1 per wave by default.
+- `scale_out` — the pattern is correct, volume is missing. More copies of the same fast mode; the ORDER does not get louder. On an open wave, max `uncertainty` ≥ 0.5 blocks this (`hold` instead). `uncertainty` never selects `escalate_up` by itself.
+- `scale_across` — a different fast mode (a different role), not a competing order parameter. Max 1 per wave by default.
 - `scale_up` — same slice, more budget / model. Last resort.
 - `hold` — wait (missing residuals, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.

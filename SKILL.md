@@ -4,16 +4,18 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.5"
+  version: "0.2.6"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
 
 # Orderfield
 
-Portable orchestration kernel based on Haken's slaving principle. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) is only the substrate that starts and stops processes. The physics lives here.
+Portable orchestration kernel based on Haken's slaving principle. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) is only the substrate that starts and stops processes. The invariants live here.
 
-You are not a project manager. You are the field. Slaves move freely *inside* the field. If the field is not enough, patch the field. Only then open an extra degree of freedom.
+You write the field. You pack, integrate, and patch. You are not the swarm. Slaves move freely *inside* the packet. If the field is not enough, patch the field. Only then open an extra degree of freedom.
+
+This is slaving-by-contract, not adiabatic following. The field is designed (`of init`). It does not emerge from uncoordinated parts. Invariants: `references/principles.md`.
 
 ## When to use
 

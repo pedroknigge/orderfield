@@ -126,6 +126,63 @@ class DecideRegimeShipped(unittest.TestCase):
         self.assertIn("3 waves asking to change the mission", reason)
         self.assertNotIn("child cap exhausted", reason)
 
+    def test_open_wave_low_uncertainty_is_scale_out(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = "blocked"
+        residual["metrics"]["uncertainty"] = 0.2
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "scale_out")
+        self.assertIn("volume", reason)
+
+    def test_open_wave_high_uncertainty_is_hold_not_scale_out(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = "blocked"
+        residual["metrics"]["uncertainty"] = 0.7
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertNotEqual(regime, "scale_out")
+        self.assertNotEqual(regime, "escalate_up")
+        self.assertIn("uncertainty", reason)
+        self.assertIn("not scale_out", reason)
+
+    def test_uncertainty_at_floor_is_hold_not_scale_out(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = "blocked"
+        residual["metrics"]["uncertainty"] = of.UNCERTAINTY_SCALE_OUT_FLOOR
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertNotEqual(regime, "scale_out")
+        self.assertIn("uncertainty", reason)
+
+    def test_uncertainty_alone_never_escalate_up(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = "blocked"
+        residual["metrics"]["uncertainty"] = 1.0
+        residual["metrics"]["divergence"] = 0.0
+        residual["metrics"]["novelty"] = False
+        residual["metrics"]["tool_failures"] = 0
+        regime, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertNotEqual(regime, "escalate_up")
+        self.assertEqual(regime, "hold")
+
+    def test_all_done_high_uncertainty_does_not_block_hold_or_phase(self) -> None:
+        residual = load_json(DONE)
+        residual["metrics"]["uncertainty"] = 0.9
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertIn("done_when", reason)
+        self.order["done_when_closed"] = True
+        regime2, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime2, "phase")
+
+    def test_field_residual_beats_high_uncertainty(self) -> None:
+        residual = load_json(THRESHOLD)
+        residual["metrics"]["uncertainty"] = 0.9
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("constraints", reason)
+        self.assertNotIn("not scale_out", reason)
+
 
 class CliFieldResidual(unittest.TestCase):
     """Real CLI: init → pack → collect → integrate → apply → spawn rejected."""

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.6
+
+- Doctrine: slaving-by-contract (field is designed; circular causality valved). Haken critical slowing down named as an intentional inversion. `scale_out` / `scale_across` are copies of a fast mode, not a louder or competing order parameter. SLAVE.md: "slaved mode" is contract, not moral slavery; `uncertainty` defined.
+- `decide_regime` reads `metrics.uncertainty`. It never selects `escalate_up` by itself. On an open wave, uncertainty ≥ 0.5 blocks `scale_out` (`hold`). Wave report residuals include `uncertainty`.
+
 ## 0.2.5
 
 - Pack, collect, and integrate refuse leftover packets whose embedded `order.id` / `order.phase` / `order.mission` disagree with the live field (same-id rewritten mission is stale; `rev` is not the signal). `of next-wave` skips occupied stale wave dirs.

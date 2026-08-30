@@ -26,6 +26,7 @@ REGIMES = [
     "phase",
 ]
 SLICE_WARN_CHARS = 800
+UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
 FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
 ADAPTER_ORDER = [
     "claude",
@@ -842,6 +843,7 @@ def decide_regime(
     all_done = True
     any_threshold = False
     max_div = 0.0
+    max_unc = 0.0
     for res in residuals:
         status = res.get("status")
         if status != "done":
@@ -859,6 +861,7 @@ def decide_regime(
         if metrics.get("tool_failures", 0) >= th.get("tool_failures", 2):
             hard_fail = True
         max_div = max(max_div, float(metrics.get("divergence") or 0))
+        max_unc = max(max_unc, float(metrics.get("uncertainty") or 0))
 
     if state.get("mission_change_streak", 0) + (1 if mission_hits else 0) >= 3:
         return "human", "3 waves asking to change the mission"
@@ -902,6 +905,10 @@ def decide_regime(
         return "hold", "wave closed; done_when still open"
 
     if not all_done and "scale_out" in enabled:
+        if max_unc >= UNCERTAINTY_SCALE_OUT_FLOOR:
+            return "hold", (
+                f"uncertainty {max_unc} >= {UNCERTAINTY_SCALE_OUT_FLOOR}; not scale_out"
+            )
         return "scale_out", "pattern holds, volume still open"
 
     if "hold" in enabled:
@@ -998,6 +1005,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             {
                 "status": r.get("status"),
                 "wants": (r.get("residual") or {}).get("wants_to_change"),
+                "uncertainty": (r.get("metrics") or {}).get("uncertainty"),
             }
             for r in residuals
         ],

@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.5</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.6</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.5-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.6-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
