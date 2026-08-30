@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.4
+
+- `decide_regime` no longer returns `human` for a full child cap when the wave is `all_done`; that path is `hold` (done_when open) or `phase` (done_when_closed). Cap-exhausted `human` remains when the wave is not closed.
+- `of handoff --packet` writes `prompts/<child_id>.md` and prints a short envelope: that file is the entire message to the child. Interactive Claude Code primitive is `Agent`.
+- `of pack` warns on stderr when `--slice` is ≥ 800 characters (shared procedure belongs in constraints via `of patch`).
+- `integrate --apply` dedups `proposed_patch.notes` by exact string (after strip).
+- Doctrine: same-repo slaves use their own worktree and install there; do not symlink the leader's toolchain. A missing object (e.g. already-merged PR) is `status=threshold`, not `done`.
+- After `human`, leader close-protocol is stop then `of next-wave` before the next pack; the kernel does not set `spawn_blocked` on `human`. `done_when_closed` still needs an explicit `of phase`.
+
 ## 0.2.3
 
 - Native adapter `agy` (Antigravity binary `agy`). `of detect` lists it when `agy` is on PATH. `of spawn --adapter agy` is valid.

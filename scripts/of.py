@@ -25,6 +25,7 @@ REGIMES = [
     "hold",
     "phase",
 ]
+SLICE_WARN_CHARS = 800
 FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
 ADAPTER_ORDER = [
     "claude",
@@ -503,6 +504,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
     state = load_state(root)
     if args.role not in ROLES:
         die(f"invalid role: {args.role}")
+    slice_text = args.slice or ""
+    if len(slice_text) >= SLICE_WARN_CHARS:
+        print(
+            f"of: slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
+            "shared procedure belongs in ORDER.constraints via of patch, not in --slice",
+            file=sys.stderr,
+        )
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
@@ -556,6 +564,29 @@ def cmd_pack(args: argparse.Namespace) -> None:
 def cmd_render(args: argparse.Namespace) -> None:
     packet = load_json(Path(args.packet))
     sys.stdout.write(render_prompt(packet))
+
+
+def cmd_handoff(args: argparse.Namespace) -> None:
+    root = find_root()
+    packet = load_json(Path(args.packet))
+    child_id = packet.get("child_id")
+    if not child_id:
+        die("packet missing child_id")
+    wave = int(packet.get("wave") or load_state(root)["wave"])
+    residual_rel = packet.get("residual_path") or (
+        f".orderfield/waves/{wave:03d}/residuals/{child_id}.json"
+    )
+    wdir = wave_dir(wave, root)
+    (wdir / "prompts").mkdir(parents=True, exist_ok=True)
+    prompt_path = wdir / "prompts" / f"{child_id}.md"
+    prompt_path.write_text(render_prompt(packet), encoding="utf-8")
+    print(f"child_id={child_id}")
+    print(f"prompt={prompt_path}")
+    print(f"residual={residual_rel}")
+    print(
+        "That file is the entire message to the child. "
+        "Do not truncate. Do not tell the child to re-run render."
+    )
 
 
 def build_spawn_argv(
@@ -815,7 +846,11 @@ def decide_regime(
         if "escalate_up" in enabled:
             return "escalate_up", f"divergence {max_div} >= threshold"
 
-    if state.get("children_spawned", 0) >= caps.get("max_children", 4):
+    # cap must not outrank a closed wave
+    if (
+        not all_done
+        and state.get("children_spawned", 0) >= caps.get("max_children", 4)
+    ):
         return "human", "child cap exhausted"
 
     if in_across_cooldown(order, state):
@@ -861,9 +896,13 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
                     order["done_when"].append(c)
                     changed = True
         if "notes" in patch and isinstance(patch["notes"], str):
-            prev = order.get("notes") or ""
-            order["notes"] = (prev + "\n" + patch["notes"]).strip()
-            changed = True
+            incoming = patch["notes"].strip()
+            prev = (order.get("notes") or "").strip()
+            if incoming and incoming != prev and (
+                not prev or ("\n" + incoming + "\n") not in ("\n" + prev + "\n")
+            ):
+                order["notes"] = (prev + "\n" + incoming).strip() if prev else incoming
+                changed = True
         if patch.get("done_when_closed") is True:
             order["done_when_closed"] = True
             changed = True
@@ -1052,6 +1091,13 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("render", help="print the slave prompt")
     s.add_argument("--packet", required=True)
     s.set_defaults(func=cmd_render)
+
+    s = sub.add_parser(
+        "handoff",
+        help="write the slave prompt file and print a short envelope",
+    )
+    s.add_argument("--packet", required=True)
+    s.set_defaults(func=cmd_handoff)
 
     s = sub.add_parser("spawn", help="launch a child via a headless adapter")
     s.add_argument("--packet", required=True)

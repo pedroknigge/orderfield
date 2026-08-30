@@ -13,6 +13,17 @@ Do not ask for the parent's history. If it is not in the packet, it does not exi
 
 Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Follow the slice and ORDER constraints. Two slaves writing the same product path is a **cut error**, not a kernel catch.
 
+## Isolation when the leader shares the repo
+
+If the leader is also working in the same git repo:
+
+- Use your own `git worktree` (or equivalent). Do not work in the leader's dirty tree.
+- Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field.
+- Install inside the worktree (`pnpm install --frozen-lockfile` or this repo's equivalent).
+- Remove the worktree when the slice closes.
+
+If **all** children need this, it belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`.
+
 ## You may
 
 - Reason, read the repo, use tools, explore, fail, and correct.
@@ -57,6 +68,8 @@ Write **exactly one** valid residual to the path in the packet (`residual_path`)
 - `threshold` — slaving became false: you cannot close the slice without changing mission, phase, constraints, done_when, or workspace.
 
 If `status=threshold`, `wants_to_change` cannot be empty and `evidence` is required. Do not suggest a regime. Vote with metrics only. The kernel decides. `status=done` does not select `phase`.
+
+`done` means the slice closed under the current ORDER, not “I discovered ORDER is wrong and continued.” If the slice targets a PR/branch whose work is already in the field (e.g. merged via another PR), that is **not** `status=done`. Use `status=threshold` and `wants_to_change` including `mission` and/or `done_when`.
 
 ## proposed_patch
 

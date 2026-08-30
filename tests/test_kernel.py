@@ -75,6 +75,56 @@ class DecideRegimeShipped(unittest.TestCase):
         regime, _reason = of.decide_regime(self.order, self.state, [residual])
         self.assertEqual(regime, "phase")
 
+    def test_all_done_full_cap_open_done_when_is_hold_not_human(self) -> None:
+        residual = load_json(DONE)
+        self.state["children_spawned"] = 4
+        self.order["caps"]["max_children"] = 4
+        self.assertFalse(of.done_when_closed(self.order))
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertNotEqual(regime, "human")
+        self.assertIn("done_when", reason)
+
+    def test_all_done_full_cap_closed_done_when_is_phase_not_human(self) -> None:
+        residual = load_json(DONE)
+        self.state["children_spawned"] = 4
+        self.order["caps"]["max_children"] = 4
+        self.order["done_when_closed"] = True
+        regime, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "phase")
+        self.assertNotEqual(regime, "human")
+
+    def test_not_all_done_full_cap_is_human(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = "blocked"
+        self.state["children_spawned"] = 4
+        self.order["caps"]["max_children"] = 4
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "human")
+        self.assertIn("child cap exhausted", reason)
+
+    def test_full_cap_field_residual_is_still_escalate_up(self) -> None:
+        residual = load_json(THRESHOLD)
+        self.state["children_spawned"] = 4
+        self.order["caps"]["max_children"] = 4
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("field residual", reason)
+        self.assertIn("constraints", reason)
+        self.assertNotEqual(reason, "child cap exhausted")
+
+    def test_full_cap_mission_streak_is_still_mission_human(self) -> None:
+        residual = load_json(THRESHOLD)
+        residual["residual"]["wants_to_change"] = ["mission"]
+        residual["residual"]["evidence"] = "mission cannot close this slice"
+        self.state["children_spawned"] = 4
+        self.state["mission_change_streak"] = 2
+        self.order["caps"]["max_children"] = 4
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "human")
+        self.assertIn("3 waves asking to change the mission", reason)
+        self.assertNotIn("child cap exhausted", reason)
+
 
 class CliFieldResidual(unittest.TestCase):
     """Real CLI: init → pack → collect → integrate → apply → spawn rejected."""
@@ -409,6 +459,40 @@ class PackCapsAndBlock(unittest.TestCase):
         state = load_json(self.tmp / ".orderfield" / "state.json")
         self.assertEqual(state["children_spawned"], 1)
 
+    def test_pack_warns_on_oversized_slice(self) -> None:
+        self._init()
+        long_slice = "x" * of.SLICE_WARN_CHARS
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            long_slice,
+            "--role",
+            "explorer",
+            "--child-id",
+            "long",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        blob = packed.stderr.lower()
+        self.assertIn("slice", blob)
+        self.assertIn("constraints", blob)
+        self.assertIn("of patch", blob)
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "long.json").is_file()
+        )
+        short = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "x" * (of.SLICE_WARN_CHARS - 1),
+            "--role",
+            "explorer",
+            "--child-id",
+            "short",
+        )
+        self.assertEqual(short.returncode, 0, short.stderr)
+        self.assertNotIn("slice is", short.stderr.lower())
+
 
 class CollectByPacketResidualPath(unittest.TestCase):
     def setUp(self) -> None:
@@ -673,6 +757,119 @@ class AgyAdapter(unittest.TestCase):
             before.index("--dangerously-skip-permissions"),
             before.index("-p") if " -p" in before else len(before),
         )
+
+
+class HandoffPacket(unittest.TestCase):
+    """of handoff writes the prompt envelope without spawn."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-handoff-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map",
+            "--role",
+            "explorer",
+            "--child-id",
+            "h1",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_handoff_writes_and_prints_paths_without_spawn(self) -> None:
+        state_before = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state_before["children_spawned"], 1)
+        handed = run_of(
+            self.tmp,
+            "handoff",
+            "--packet",
+            ".orderfield/waves/001/packets/h1.json",
+        )
+        self.assertEqual(handed.returncode, 0, handed.stderr)
+        prompt = self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "h1.md"
+        self.assertTrue(prompt.is_file())
+        self.assertIn("Orderfield slave", prompt.read_text(encoding="utf-8"))
+        self.assertIn("child_id=h1", handed.stdout)
+        self.assertIn("prompt=", handed.stdout)
+        self.assertIn("h1.md", handed.stdout)
+        self.assertIn(".orderfield/waves/001/residuals/h1.json", handed.stdout)
+        self.assertIn("entire message", handed.stdout.lower())
+        self.assertIn("do not truncate", handed.stdout.lower())
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "spawns").exists()
+        )
+        state_after = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state_after["children_spawned"], state_before["children_spawned"])
+        self.assertEqual(state_after["children_spawned"], 1)
+        self.assertFalse(state_after.get("spawn_blocked"))
+
+    def test_handoff_succeeds_when_spawn_blocked(self) -> None:
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "h1.json"
+        dest.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report["regime"], "escalate_up")
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertTrue(state.get("spawn_blocked"))
+        spawned = state["children_spawned"]
+        handed = run_of(
+            self.tmp,
+            "handoff",
+            "--packet",
+            ".orderfield/waves/001/packets/h1.json",
+        )
+        self.assertEqual(handed.returncode, 0, handed.stderr)
+        self.assertIn("child_id=h1", handed.stdout)
+        state_after = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertTrue(state_after.get("spawn_blocked"))
+        self.assertEqual(state_after["children_spawned"], spawned)
+        blocked_pack = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "another child",
+            "--role",
+            "explorer",
+            "--child-id",
+            "after_block",
+        )
+        self.assertNotEqual(blocked_pack.returncode, 0, blocked_pack.stdout + blocked_pack.stderr)
+
+
+class NotesDedup(unittest.TestCase):
+    def test_apply_patches_dedups_notes_by_exact_string(self) -> None:
+        order = of.default_order("m", "explore")
+        note = "do not symlink leader node_modules into the worktree"
+
+        def residual_with_notes(text: str) -> dict:
+            r = load_json(DONE)
+            r["residual"]["proposed_patch"] = {"notes": text}
+            return r
+
+        of.apply_patches(
+            order,
+            [
+                residual_with_notes(note),
+                residual_with_notes("  " + note + "  "),
+                residual_with_notes(note),
+            ],
+        )
+        self.assertEqual(order["notes"].count(note), 1)
+        of.apply_patches(order, [residual_with_notes(note)])
+        self.assertEqual(order["notes"].count(note), 1)
+        of.apply_patches(order, [residual_with_notes("a different isolation gotcha")])
+        self.assertEqual(order["notes"].count(note), 1)
+        self.assertIn("a different isolation gotcha", order["notes"])
+        substring = "do not symlink leader node_modules"
+        self.assertIn(substring, note)
+        of.apply_patches(order, [residual_with_notes(substring)])
+        self.assertIn(note, order["notes"])
+        self.assertIn(substring, order["notes"])
+        self.assertGreaterEqual(order["notes"].count(substring), 2)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ Translation:
 
 1. **One writer.** Only `of integrate`, `of patch`, and `of phase` write `ORDER.json`. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`. Mission is never auto-applied (`of patch --mission`).
 2. **One phase at a time.** `explore` and `implement`/`build` do not coexist in the same wave.
-3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until `next-wave`. Pack is the bind surface; interactive Task/render does not bypass it.
+3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until `next-wave`. Pack is the bind surface; interactive Agent/render does not bypass it.
 4. **Closed menu.** Regimes: `escalate_up`, `scale_out`, `scale_across`, `scale_up`, `human`, `hold`, `phase`. Anything else is a contract error.
 5. **Inherited caps.** The tree cannot spend more children / depth / tokens than ORDER declares. Caps bind at `of pack` (and collect), not only at `of spawn`.
 6. **Cooldown after across.** After `scale_across`, the next default is `escalate_up`.
@@ -39,7 +39,7 @@ Translation:
 - `scale_up` — same slice, more budget / model. Last resort.
 - `hold` — wait (missing residuals, or the wave closed and `done_when` is still open).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.
-- `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted.
+- `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted while the wave is not all_done. A full cap of done residuals is `hold` (done_when open) or `phase` (done_when closed).
 
 ## What this is not
 

@@ -4,7 +4,7 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.3"
+  version: "0.2.4"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -53,9 +53,11 @@ python3 <skill>/scripts/of.py pack \
   --out .orderfield/waves/001/packets/p1.json
 ```
 
-The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child.
+The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`.
 
-Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Task/`of render` instead of `of spawn`.
+Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
+
+Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. If every child needs it, put it in constraints, not in `--slice`.
 
 ### 4. Spawn only through the kernel
 
@@ -71,7 +73,9 @@ Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`,
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
 
-Never launch a child by hand without a packet. Interactive Task is transport, not a bypass of pack. The child must write a residual schema, not an essay.
+Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
+
+For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 
@@ -84,6 +88,8 @@ python3 <skill>/scripts/of.py status
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
 Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`.
+
+`human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
 Golden rule: **if there is a residual on mission, phase, constraints, or done_when, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
 
@@ -150,7 +156,7 @@ You do not need headless spawn for every child. The current session can be the l
 
 1. You (current session) = leader. Do not implement the slice.
 2. `of pack` builds the packet. Pack is the cap surface: `max_children` and `spawn_blocked` bind here even if you never call `of spawn`.
-3. Delegate with the harness native primitive (`Task` in Claude Code, subagent in eve, `worker-start` in Orca, and so on) using `of render --packet ...` as the *only* message to the child. After pack, those caps still bind; Task/render does not bypass them.
+3. Delegate with the harness native primitive (`Agent` in Claude Code, subagent in eve, `worker-start` in Orca, and so on). The message to the child is the handoff file from `of handoff --packet ...` (or the full stdout of `of render --packet ...`), never a truncated pointer and never “run of render yourself.” After pack, those caps still bind; Agent/render does not bypass them.
 4. The child writes `.orderfield/waves/NNN/residuals/<id>.json`.
 5. You run `of collect` + `of integrate`.
 

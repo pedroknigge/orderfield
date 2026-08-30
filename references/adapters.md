@@ -41,7 +41,7 @@ claude -p --output-format json --dangerously-skip-permissions \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-Inside an interactive Claude Code session, prefer the native `Task` / subagent primitive: pack first, then the message to the child is *only* the output of `of render`. Do not copy history. After pack, caps bind even if you never call `of spawn`.
+Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
 Skills: copy this folder to `.claude/skills/orderfield/`.
 
@@ -113,7 +113,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn --adapter grok` passes the rendered prompt as the last argument. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of render` and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Task/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn --adapter grok` passes the rendered prompt as the last argument. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -130,7 +130,7 @@ agy --dangerously-skip-permissions --mode accept-edits --output-format json \
   -p "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`of spawn --adapter agy` uses that flag order (`--output-format json`). Interactive Task/subagent remains valid transport after pack; pack remains the cap surface.
+`of spawn --adapter agy` uses that flag order (`--output-format json`). Interactive Agent/subagent remains valid transport after pack; pack remains the cap surface. The message is the handoff file (or full `of render` stdout), never a pointer.
 
 Skills: `~/.gemini/config/skills/orderfield/` and `~/.gemini/antigravity-cli/skills/orderfield/`. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`.
 
@@ -155,7 +155,7 @@ python3 scripts/of.py spawn --adapter generic --packet PACKET.json
 
 Writes the slave prompt to `.orderfield/waves/NNN/prompts/<child_id>.md` and prints the residual path. Paste that prompt into any agent. Collect still goes through the kernel.
 
-Interactive leaders in an unsupported TUI pack first, then `of render --packet …` as the only message to the child. Caps bind at pack.
+Interactive leaders in an unsupported TUI pack first, then `of handoff --packet …` (or the full `of render` stdout) as the only message to the child. Caps bind at pack.
 
 The portable skill path is always `.agents/skills/orderfield/` — that is the generic Agent Skills location.
 
@@ -163,7 +163,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 | Situation | What to do |
 |---|---|
-| Already inside Claude / Cursor / Grok / agy interactive | you = leader; pack first (cap surface); then native Task/render or headless spawn |
+| Already inside Claude / Cursor / Grok / agy interactive | you = leader; pack first (cap surface); then native Agent + `of handoff` (or full `of render`) or headless spawn |
 | CI / cron driver | `of spawn` headless for leader and slaves |
 | Mix harnesses in one wave | different `--adapter` per packet; same ORDER |
 
@@ -174,3 +174,5 @@ Default: every child in the same repo sees `.orderfield/` (shared field, scratch
 `ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not enforce it, lock files, or create worktrees. Two slaves writing the same product path is a **cut error**: exclusive files belong in cut scratch plus ORDER constraints, not in `of.py`. Do not add `of claim`.
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.
+
+When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.

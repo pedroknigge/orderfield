@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.3</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.4</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.4-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -122,7 +122,7 @@ of status
 
 A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied.
 
-Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of render --packet …` is the **only** message to the child. After pack, caps bind even if you use Task. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 ---
 
@@ -156,9 +156,9 @@ Orca (and every other harness) starts and stops processes. It must not choose th
   scale_out     same role, more copies.
   scale_across  a different role. max 1 / wave. then cooldown.
   scale_up      more budget. last resort.
-  hold          wait.
+  hold          wait (including a closed wave at cap with done_when still open).
   phase         only when done_when is closed. still `of phase`.
-  human         3 waves asking to change the mission, or caps exhausted.
+  human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done.
 ```
 
 The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s tests -v`
@@ -175,6 +175,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `validate` | validate order / packet / residual JSON |
 | `pack` | build a slaving packet |
 | `render` | print the slave prompt |
+| `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
 | `collect` | validate residuals for a wave |
 | `integrate` | reduce residuals and choose a regime |
