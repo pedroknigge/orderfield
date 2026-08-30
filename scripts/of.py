@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -294,10 +295,30 @@ def validate_residual(res: dict[str, Any]) -> list[str]:
             errs.append("threshold requires non-empty wants_to_change")
         if not rem.get("evidence"):
             errs.append("threshold requires evidence")
-    metrics = res.get("metrics") or {}
+    metrics = res.get("metrics")
+    if not isinstance(metrics, dict):
+        errs.append("metrics must be an object")
+        return errs
     for k in ("uncertainty", "divergence", "tool_failures", "novelty"):
         if k not in metrics:
             errs.append(f"metrics.{k} required")
+    for k in ("uncertainty", "divergence"):
+        if k not in metrics:
+            continue
+        value = metrics[k]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or not 0 <= value <= 1
+        ):
+            errs.append(f"metrics.{k} must be a number from 0 to 1")
+    if "tool_failures" in metrics:
+        value = metrics["tool_failures"]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            errs.append("metrics.tool_failures must be a non-negative integer")
+    if "novelty" in metrics and not isinstance(metrics["novelty"], bool):
+        errs.append("metrics.novelty must be a boolean")
     return errs
 
 
@@ -666,15 +687,14 @@ def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str]
 
 
 def repo_newest_mtime(root: Path) -> tuple[float, str] | None:
-    """Newest product write in the repo. `.orderfield/` is excluded so the
-    kernel's own snapshots cannot fake a live child; scratch is measured
-    separately per child."""
+    """Newest shared-repo product mtime. `.orderfield/` is excluded; scratch
+    activity is measured separately per child."""
     return newest_mtime(root, PULSE_PRUNE_DIRS | {".orderfield"})
 
 
 def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES) -> str:
-    """ALIVE / QUIET / STALE from evidence age. STALE is a signal, never an
-    action: the kernel does not kill or unpack on it."""
+    """ALIVE / QUIET / STALE from activity-evidence age. STALE is a signal,
+    never an action: the kernel does not kill or unpack on it."""
     if age_seconds < PULSE_QUIET_SECONDS:
         return "ALIVE"
     if age_seconds < stale_minutes * 60:
@@ -1008,6 +1028,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
+    if flying:
+        print("activity    of pulse (scratch + shared-repo mtime heuristic)")
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"since_across {state.get('waves_since_across')}")
@@ -1880,7 +1902,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         if packed_ts is not None:
             print(f"  packed      {pkt.get('packed_at')} ({fmt_age(time.time() - packed_ts)} ago)")
     if flying:
-        print("liveness      of pulse")
+        print("activity      of pulse (scratch + shared-repo mtime heuristic)")
     print(f"next          {nxt}")
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
@@ -1895,11 +1917,11 @@ def pulse_once(
     wave: int,
     stale_minutes: float,
 ) -> int:
-    """One read-only liveness screen. Exit 2 when any child is STALE.
+    """One read-only activity screen. Exit 2 when any child is STALE.
 
-    Liveness is derived, not self-reported: newest mtime in the child's
-    scratch and in the repo (kernel state excluded). A hung process cannot
-    fake an mtime that keeps advancing.
+    The heuristic combines per-child scratch activity with a shared-repo
+    product mtime (kernel state excluded). It is not process health or
+    per-child attribution.
     """
     pdir = wave_dir(wave, root) / "packets"
     flying: list[tuple[Path, dict[str, Any]]] = []
@@ -1912,6 +1934,7 @@ def pulse_once(
         f"ORDER {order['id']}  phase={order['phase']}  wave={wave}  "
         f"regime={state.get('last_regime') or '-'}"
     )
+    print("activity    mtime heuristic; scratch is per child, product repo is shared")
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
         return 0
@@ -1941,8 +1964,11 @@ def pulse_once(
         else:
             print("    scratch: empty")
         if repo:
-            print(f"    repo:    last write {fmt_age(now - repo[0])} ago ({repo[1]})")
-            signals.append((repo[0], repo[1]))
+            print(
+                f"    shared repo: last product write "
+                f"{fmt_age(now - repo[0])} ago ({repo[1]})"
+            )
+            signals.append((repo[0], f"shared repo/{repo[1]}"))
         freshest_ts, freshest_src = max(signals, key=lambda s: s[0])
         age = now - freshest_ts
         verdict = pulse_verdict(age, stale_minutes)
@@ -1977,7 +2003,7 @@ def cmd_pulse(args: argparse.Namespace) -> None:
         code = pulse_once(root, order, state, wave, stale_minutes)
         if not getattr(args, "watch", False):
             raise SystemExit(code)
-        print(f"--- watching (every {interval}s, Ctrl+C to stop) ---")
+        print(f"--- watching activity (every {interval}s, Ctrl+C to stop) ---")
         sys.stdout.flush()
         try:
             time.sleep(interval)
@@ -2032,7 +2058,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "pulse",
-        help="read-only liveness of in-flight children (mtime evidence; exit 2 on STALE)",
+        help="read-only activity heuristic (scratch + shared-repo mtimes; exit 2 on STALE)",
+        description=(
+            "Read-only activity heuristic from per-child scratch and shared-repo "
+            "mtimes; exits 2 on STALE."
+        ),
     )
     s.add_argument("--wave", type=int)
     s.add_argument("--watch", action="store_true", help="refresh until Ctrl+C")
@@ -2042,7 +2072,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="stale_min",
         type=float,
         default=PULSE_STALE_MINUTES,
-        help=f"minutes of silence before STALE (default {PULSE_STALE_MINUTES:g})",
+        help=f"minutes without newer activity evidence before STALE (default {PULSE_STALE_MINUTES:g})",
     )
     s.set_defaults(func=cmd_pulse)
 

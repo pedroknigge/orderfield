@@ -57,7 +57,7 @@ Headless:
 
 ```bash
 codex exec --dangerously-bypass-approvals-and-sandbox \
-  --output-schema schemas/residual.schema.json \
+  --output-schema schemas/residual.codex.schema.json \
   -o .orderfield/waves/NNN/residuals/CHILD.json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```

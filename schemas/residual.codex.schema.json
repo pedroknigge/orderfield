@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/residual.codex.schema.json",
+  "title": "Orderfield residual (Codex strict output)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "result_ref", "residual", "metrics", "child_id", "role"],
+  "properties": {
+    "status": { "type": "string", "enum": ["done", "blocked", "threshold"] },
+    "result_ref": { "type": "string" },
+    "residual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wants_to_change", "evidence", "proposed_patch"],
+      "properties": {
+        "wants_to_change": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["mission", "phase", "constraints", "done_when", "workspace"]
+          }
+        },
+        "evidence": { "type": "string" },
+        "proposed_patch": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["constraints+", "done_when+", "notes", "done_when_closed"],
+          "properties": {
+            "constraints+": {
+              "type": ["array", "null"],
+              "items": { "type": "string" }
+            },
+            "done_when+": {
+              "type": ["array", "null"],
+              "items": { "type": "string" }
+            },
+            "notes": { "type": ["string", "null"] },
+            "done_when_closed": { "type": ["boolean", "null"] }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uncertainty", "divergence", "tool_failures", "novelty"],
+      "properties": {
+        "uncertainty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tool_failures": { "type": "integer", "minimum": 0 },
+        "novelty": { "type": "boolean" }
+      }
+    },
+    "child_id": { "type": ["string", "null"] },
+    "role": { "type": ["string", "null"] }
+  }
+}
