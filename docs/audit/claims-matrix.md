@@ -7,14 +7,14 @@
 **Scope:** project  
 **Intent:** audit → integrate (patch)  
 **Out:** root  
-**Auditor:** documentation-manager  
-**Code rev:** VERSION `0.2.7` / `scripts/of.py`
+**Auditor:** documentation-manager (+ bld_docs 0.2.8)  
+**Code rev:** VERSION `0.2.8` / `scripts/of.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 13 |
+| OK | 15 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -23,15 +23,15 @@
 | Severity | Count |
 |----------|------:|
 | critical | 0 |
-| normal | 17 |
+| normal | 19 |
 
-**Truth score (advisory):** `(13*100 + 3*50) / 17 ≈ 85.3`  
+**Truth score (advisory):** `(15*100 + 3*50) / 19 ≈ 86.8`  
 **CI gate:** no critical Contradicted after integrate patch.
 
 **Top risks (post-patch):**  
-1. Same/multi-harness preference is leader protocol only (no `of ask` CLI) — Partial by design.  
+1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
 2. `detect` ≠ login/auth — documented Partial.  
-3. Pasted external feedback (#2) was not received in-session — Unverifiable until re-pasted.
+3. When-pays / optional-cut doctrine is protocol (docs), not a kernel regime — OK as doctrine.
 
 **Recommended next Intent:** none (ship) | optional later: `of ask` / preference flag.
 
@@ -43,7 +43,7 @@
 | Adapters | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS` | claude…agy + generic |
 | Schemas | `schemas/*.json` | order / packet / residual / wave-report |
 | Install | `install.sh` | harness dests + `~/.local/bin/of` → installed skill |
-| Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | 79 tests at verify |
+| Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | kernel + packaging |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
 
 ## Claims matrix
@@ -67,7 +67,9 @@
 | C-015 | `detect` proves auth / “logueado” | user phrasing | only PATH binary presence | `scripts/of.py` | `cmd_detect` | normal | Partial | doc honesty: PATH ≠ login |
 | C-016 | Worktree isolation always enforced by kernel | SKILL isolation notes | workspace is documentation only | `scripts/of.py` / adapters | | normal | Partial | keep adapters honesty |
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | normal | Unverifiable | keep |
+| C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of.py` | `cmd_patch` | critical | OK | keep |
+| C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | normal | OK | keep doctrine |
 
 ## Post-patch expectation
 
-After this integrate pass: C-011…C-013 → OK; C-014 → Partial (leader protocol in SKILL/AGENTS, not a new regime/CLI).
+C-018–C-019 added for 0.2.8; C-014 remains Partial (leader protocol, not `of ask`).

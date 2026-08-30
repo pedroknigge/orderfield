@@ -8,7 +8,9 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 4. Every child close-out is a valid residual JSON, not loose prose.
 5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
 6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when`) forbids spawn in that wave until the field is patched and `next-wave` runs.
-7. Before the first spawn, ask once: **same harness** vs **multi-harness**. Run `of detect` and only spawn adapters that are present on PATH. Detect ≠ logged-in; auth failures are tool failures. Record the preference in constraints.
+7. **Same harness only** by default: spawn with the current session adapter for the whole ORDER. Do not mix harnesses unless the user explicitly asks. Then `of detect` (PATH ≠ auth) and record the preference in constraints.
+8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
+9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for false-scope/marketing risk and adversary catches; theater for bump+obvious feature (doc-manager + grok-build feedbacks).
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
@@ -35,7 +37,9 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Kernel CLI (`of` / `scripts/of.py`) | documented |
 | Native adapters + generic | documented |
 | Install + `~/.local/bin/of` | documented |
-| Phase-scoped `done_when` / ref-load / `--requires-tool` | documented |
-| Same vs multi-harness leader ask | documented (protocol; no `of ask` CLI) |
+| Mission vs phase `done_when` / `--done-when-mission` | documented |
+| Phase-prefix Option B / ref-load / `--requires-tool` | documented |
+| Optional cut + when-pays vs theater | documented |
+| Same-harness default (multi only if user asks) | documented |
 
 Skill: look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

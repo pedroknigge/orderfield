@@ -169,7 +169,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 |---|---|
 | Already inside Claude / Cursor / Grok / agy interactive | you = leader; pack first (cap surface); then native Agent + `of handoff` (or full `of render`) or headless spawn |
 | CI / cron driver | `of spawn` headless for leader and slaves |
-| Mix harnesses in one wave | ask once (same vs multi); `of detect` → only PATH-present adapters; different `--adapter` per packet; same ORDER; record preference in constraints |
+| Mix harnesses in one wave | **not default.** Same harness for all children. Multi only if the user explicitly asks; then `of detect` → PATH-present adapters only; record in constraints |
 
 ## File isolation
 
@@ -183,5 +183,7 @@ When the leader is also working in the same git repo, slaves use their own `git 
 
 ## Phasing and PATH
 
-- **done_when phasing:** You can prefix `done_when` criteria with a phase name (e.g. `"build: ..."`). This allows the regime `phase` to behave per-phase without clearing criteria across the board.
+- **Mission vs phase `done_when`:** Untagged criteria are the stable mission checklist (`of patch --done-when-mission`). Phase-prefixed criteria (`"build: ..."`) belong to that phase; `of patch --done-when` replaces only the **current** phase's rows (auto-prefix). Active set = mission + current phase (`done_when_for`). `of status` shows `done_when_mission` / `done_when_phase`. Option B prefixes + legacy `done_when_closed` bool remain.
+- **Optional cut:** When exclusive owners are already obvious, skip a cut wave and put owners in constraints. Cut pays when owners are disputed or an adversary would catch a missing write matrix.
 - **PATH symlink:** The `install.sh` script automatically sets up an `of` symlink at `~/.local/bin/of` pointing to the installed skill copy (and cleans it up on uninstall). You can use `of` from anywhere if `~/.local/bin` is in your PATH.
+- **Same-harness default:** One adapter for the ORDER. Multi-harness only on explicit user ask; then `of detect` is PATH inventory (not auth).

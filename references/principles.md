@@ -32,6 +32,8 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 8. **No transcripts upward.** The parent consumes residuals, not diaries.
 9. **The harness does not judge.** Orca / Claude / Codex transport. The kernel chooses the regime.
 10. **ORDER moves slowly.** If it changes every wave, the field is poorly posed or you are sitting on the critical point on purpose (only valid early in `explore`). Haken's critical slowing down is inverted here on purpose: a usable field is posed, then slaves relax into it. A thrashing ORDER is a smell, not the phenomenon.
+11. **Mission checklist ≠ phase checklist.** Untagged `done_when` rows are the mission list (`of patch --done-when-mission`). Phase-tagged rows belong to one official phase (`of patch --done-when` scopes to the current phase). Changing phase must not force rewriting the mission list.
+12. **Cut is optional; ceremony is not free.** Skip cut when exclusive owners are obvious. Orderfield pays when false-scope / marketing risk or colliding writers need a field; theater for bump+obvious feature (documentation-manager + grok-build feedbacks). Skill beats child.
 
 ## Regimes
 

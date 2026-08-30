@@ -26,7 +26,8 @@ leader → of pack → packet → of spawn|handoff → child → residual → of
 | Symbol / area | Role |
 |---------------|------|
 | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` | Detect + spawn + `--requires-tool` |
-| `done_when_for` / `done_when_closed` | Phase-scoped criteria (Option B prefixes) |
+| `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
+| `cmd_patch --done-when` / `--done-when-mission` | Phase-scoped replace vs stable mission list |
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load SLAVE (inline for orca/generic) |
 | `build_spawn_argv` | Per-adapter headless argv |
 | `install.sh` | Skill copies + `of` PATH → installed skill |

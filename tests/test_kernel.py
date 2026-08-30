@@ -1236,6 +1236,116 @@ class PhaseScopedDoneWhen(unittest.TestCase):
         self.assertEqual(pkt["order"]["done_when"], ["build: land it"])
 
 
+class MissionVsPhaseDoneWhen(unittest.TestCase):
+    """of patch --done-when is phase-scoped; --done-when-mission is the stable list."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-mvp-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.opath = self.tmp / ".orderfield" / "ORDER.json"
+
+    def _init(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "build",
+            "--done-when",
+            "tests green",
+            "--done-when",
+            "explore: map it",
+            "--done-when",
+            "build: land the kernel",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_split_helpers(self) -> None:
+        order = of.default_order("m", "build")
+        order["done_when"] = ["tests green", "build: land it", "explore: map it"]
+        self.assertEqual(of.mission_done_when(order), ["tests green"])
+        self.assertEqual(of.phase_done_when(order), ["build: land it"])
+        self.assertEqual(of.phase_done_when(order, "explore"), ["explore: map it"])
+
+    def test_patch_done_when_replaces_only_current_phase(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "patch", "--done-when", "kernel scopes patch")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = load_json(self.opath)
+        self.assertEqual(
+            order["done_when"],
+            ["tests green", "explore: map it", "build: kernel scopes patch"],
+        )
+
+    def test_patch_done_when_keeps_explicit_tag_of_current_phase(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "patch", "--done-when", "build: already tagged")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("build: already tagged", load_json(self.opath)["done_when"])
+        self.assertNotIn(
+            "build: build: already tagged", load_json(self.opath)["done_when"]
+        )
+
+    def test_patch_done_when_rejects_foreign_phase_tag(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "patch", "--done-when", "verify: not my phase")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("current phase", r.stderr)
+        self.assertNotIn("verify: not my phase", load_json(self.opath)["done_when"])
+
+    def test_patch_done_when_mission_replaces_only_untagged(self) -> None:
+        self._init()
+        r = run_of(
+            self.tmp,
+            "patch",
+            "--done-when-mission",
+            "install global",
+            "--done-when-mission",
+            "CHANGELOG written",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = load_json(self.opath)
+        self.assertEqual(
+            order["done_when"],
+            [
+                "install global",
+                "CHANGELOG written",
+                "explore: map it",
+                "build: land the kernel",
+            ],
+        )
+
+    def test_patch_done_when_mission_rejects_phase_tag(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "patch", "--done-when-mission", "build: tagged")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--done-when", r.stderr)
+
+    def test_mission_list_survives_phase_change_and_phase_patch(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "patch", "--done-when", "build only criterion")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "phase", "verify")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--done-when", "verify the field")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = load_json(self.opath)
+        self.assertEqual(of.mission_done_when(order), ["tests green"])
+        self.assertEqual(of.phase_done_when(order, "build"), ["build: build only criterion"])
+        self.assertEqual(of.phase_done_when(order, "verify"), ["verify: verify the field"])
+        self.assertEqual(
+            of.done_when_for(order), ["tests green", "verify: verify the field"]
+        )
+
+    def test_status_reports_mission_and_phase_separately(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "status")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("done_when_mission ['tests green']", r.stdout)
+        self.assertIn("done_when_phase ['build: land the kernel']", r.stdout)
+
+
 class RefLoadHandoff(unittest.TestCase):
     """SLAVE.md is referenced by absolute path, not pasted into every prompt."""
 

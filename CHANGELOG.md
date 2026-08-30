@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.8
+
+- Feature: Mission vs phase `done_when`. `of patch --done-when` replaces only the **current phase** criteria (auto-prefixes the phase tag) and leaves the untagged mission list alone. `of patch --done-when-mission` replaces only the stable untagged mission checklist. `of status` prints `done_when_mission` / `done_when_phase`. Option B prefixes + legacy `done_when_closed` bool remain.
+- Doctrine: **cut is optional** when exclusive owners are already obvious (record them in constraints). Orderfield **pays** when false-scope / marketing risk or an adversary can catch a lie; it is **theater** for “VERSION bump + one obvious feature.” Cite: documentation-manager adversary run feedback + prior grok-build critique.
+- Docs: **same-harness default** (multi only on explicit user ask); `of detect` = PATH presence, not auth. VERSION 0.2.8.
+
 ## 0.2.7
 
 - Feature: Phase-scoped `done_when`. Prefix criteria with a phase name (e.g., `"build: ..."`) to scope them. Regime `phase` behaves per-phase without clearing criteria.
@@ -8,7 +14,7 @@
 - Feature: `install.sh` now sets up an `of` PATH symlink (`~/.local/bin/of`) pointing to the installed skill copy, including removal on uninstall.
 - Fix: Grok headless argv now correctly uses `-p` and `--always-approve`.
 - Fix: Codex headless argv updated to use current `--dangerously-bypass-approvals-and-sandbox` instead of the unexpected `--full-auto`.
-- Docs: claims audit vs code (`docs/audit/claims-matrix.md`); hub `AGENTS.md` index; leader asks once same-harness vs multi-harness and only spawns adapters from `of detect` (PATH presence, not auth).
+- Docs: claims audit vs code (`docs/audit/claims-matrix.md`); hub `AGENTS.md` index; same-harness default (multi only if user asks); `of detect` = PATH presence, not auth.
 
 ## 0.2.6
 

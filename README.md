@@ -115,9 +115,13 @@ of integrate --wave 1
 of status
 ```
 
-A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit. You can scope `done_when` criteria by prefixing them with a phase name (e.g., `"build: ..."`); the `phase` regime behaves per-phase without clearing criteria.
+A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit.
 
-Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` now emit an absolute reference to `SLAVE.md` rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+**Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
+
+**When to open orderfield:** it pays for false-scope / marketing risk (adversary can catch a lie) and for multi-writer path cuts. It is theater for a VERSION bump plus one obvious feature — use a skill instead (`skill beats child`). **Cut is optional** when exclusive owners are already obvious; put them in constraints. (Feedback: documentation-manager adversary run + prior grok-build critique.)
+
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` emit an absolute reference to `SLAVE.md` rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 ---
 
@@ -175,7 +179,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `collect` | validate residuals for a wave |
 | `integrate` | reduce residuals and choose a regime |
 | `phase` | change phase (single writer) |
-| `patch` | explicit ORDER patch |
+| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list) |
 | `next-wave` | clear spawn lock, advance the wave |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`.

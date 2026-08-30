@@ -321,6 +321,50 @@ def done_when_for(order: dict[str, Any], phase: str | None = None) -> list[str]:
     return out
 
 
+def mission_done_when(order: dict[str, Any]) -> list[str]:
+    """The stable mission checklist: criteria with no phase tag."""
+    return [c for c in order.get("done_when") or [] if done_when_tag(c) is None]
+
+
+def phase_done_when(order: dict[str, Any], phase: str | None = None) -> list[str]:
+    """Criteria scoped to one phase by tag. Excludes the mission list."""
+    ph = phase or order.get("phase")
+    return [c for c in order.get("done_when") or [] if done_when_tag(c) == ph]
+
+
+def tag_for_phase(criterion: str, phase: str) -> str:
+    """Auto-prefix a criterion with a phase tag unless it already carries one."""
+    text = str(criterion).strip()
+    return text if done_when_tag(text) else f"{phase}: {text}"
+
+
+def replace_done_when(
+    order: dict[str, Any],
+    new_items: list[str],
+    keep: Any,
+) -> bool:
+    """Replace the criteria that fail `keep`, in place, preserving the rest.
+
+    New items land where the first replaced criterion was, so mission and
+    phase blocks keep their relative order across edits.
+    """
+    old = list(order.get("done_when") or [])
+    kept: list[str] = []
+    slot: int | None = None
+    for c in old:
+        if keep(c):
+            kept.append(c)
+        elif slot is None:
+            slot = len(kept)
+    if slot is None:
+        slot = len(kept)
+    merged = kept[:slot] + list(new_items) + kept[slot:]
+    if merged == old:
+        return False
+    order["done_when"] = merged
+    return True
+
+
 def closed_phases(order: dict[str, Any]) -> list[str]:
     got = order.get("done_when_closed_phases")
     return [p for p in got if p in PHASES] if isinstance(got, list) else []
@@ -565,6 +609,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"phase       {order['phase']}")
     print(f"mission     {order['mission']}")
     print(f"done_when   {done_when_for(order)}")
+    print(f"done_when_mission {mission_done_when(order)}")
+    print(f"done_when_phase {phase_done_when(order)}")
     print(f"done_when_all {order['done_when']}")
     print(f"constraints {order['constraints']}")
     print(f"wave        {state['wave']}")
@@ -1187,8 +1233,30 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 order["constraints"].append(c)
                 changed = True
     if args.done_when:
-        order["done_when"] = args.done_when
-        changed = True
+        # scoped to the current phase; the mission list survives untouched
+        ph = order["phase"]
+        tagged = [tag_for_phase(c, ph) for c in args.done_when]
+        foreign = [c for c in tagged if done_when_tag(c) != ph]
+        if foreign:
+            die(
+                "--done-when writes the current phase ("
+                f"{ph}); got a criterion tagged for another phase: {foreign[0]}"
+            )
+        if replace_done_when(order, tagged, lambda c: done_when_tag(c) != ph):
+            changed = True
+    if args.done_when_mission:
+        for c in args.done_when_mission:
+            if done_when_tag(c):
+                die(
+                    "--done-when-mission writes the untagged mission list; "
+                    f"use --done-when for phase criteria: {c}"
+                )
+        if replace_done_when(
+            order,
+            [str(c).strip() for c in args.done_when_mission],
+            lambda c: done_when_tag(c) is not None,
+        ):
+            changed = True
     if args.notes:
         order["notes"] = ((order.get("notes") or "") + "\n" + args.notes).strip()
         changed = True
@@ -1206,6 +1274,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         "phase": order["phase"],
         "constraints": order["constraints"],
         "done_when": done_when_for(order),
+        "done_when_mission": mission_done_when(order),
+        "done_when_phase": phase_done_when(order),
     }, indent=2, ensure_ascii=False))
 
 
@@ -1328,7 +1398,18 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("patch", help="explicit ORDER patch")
     s.add_argument("--mission")
     s.add_argument("--constraints-add", action="append")
-    s.add_argument("--done-when", dest="done_when", action="append")
+    s.add_argument(
+        "--done-when",
+        dest="done_when",
+        action="append",
+        help="replace the current phase's criteria (auto-prefixed)",
+    )
+    s.add_argument(
+        "--done-when-mission",
+        dest="done_when_mission",
+        action="append",
+        help="replace the stable untagged mission criteria",
+    )
     s.add_argument("--notes")
     s.add_argument("--done-when-closed", dest="done_when_closed", action="store_true")
     s.set_defaults(func=cmd_patch)

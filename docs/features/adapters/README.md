@@ -10,9 +10,9 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 ## Inventory
 
-`of detect` lists CLIs **on PATH**. That is binary presence, not auth. Leader protocol: ask same-harness vs multi-harness once; only spawn from the detect list ([SKILL.md](../../SKILL.md)).
+`of detect` lists CLIs **on PATH**. That is binary presence, not auth. **Default: same harness** for the whole ORDER. Multi-harness only if the user explicitly asks; then spawn only from the detect list ([SKILL.md](../../SKILL.md)). Cut is optional when owners are obvious; orderfield pays for false-scope risk, not for bump+obvious feature.
 
-## Live argv notes (0.2.7)
+## Live argv notes (0.2.8)
 
 - **grok:** `--always-approve -p`
 - **codex:** `exec --dangerously-bypass-approvals-and-sandbox` (no `--full-auto`)
