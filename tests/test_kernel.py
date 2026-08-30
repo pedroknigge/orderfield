@@ -4646,10 +4646,16 @@ class SpecFidelity(unittest.TestCase):
             str(self.brief),
         )
         self.assertEqual(r.returncode, 0, r.stderr)
+        silent = run_of(self.tmp, "patch", "--source", "rewritten")
+        self.assertNotEqual(silent.returncode, 0)
+        self.assertIn("immutable", silent.stderr)
         open_loop = run_of(self.tmp, "contrast")
         self.assertEqual(open_loop.returncode, 2, open_loop.stdout)
-        self.assertIn("status      OPEN", open_loop.stdout)
-        self.assertIn("SPEC + ORDER → slice", open_loop.stdout)
+        self.assertIn("CLOSE BLOCKED", open_loop.stdout)
+        self.assertIn("MISS", open_loop.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("refused", refused.stderr)
         listed = run_of(self.tmp, "spec")
         ids = [
             line.split()[0]
@@ -4659,9 +4665,14 @@ class SpecFidelity(unittest.TestCase):
         for rid in ids:
             v = run_of(self.tmp, "spec", "--verified", rid)
             self.assertEqual(v.returncode, 0, v.stderr)
-        closed = run_of(self.tmp, "contrast")
-        self.assertEqual(closed.returncode, 0, closed.stdout)
-        self.assertIn("status      RESOLVED", closed.stdout)
+        resolved = run_of(self.tmp, "contrast")
+        self.assertEqual(resolved.returncode, 0, resolved.stdout)
+        self.assertIn("RESOLVED", resolved.stdout)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(order.get("spec_closed"))
 
     def test_status_prints_requirement_counts(self) -> None:
         r = run_of(

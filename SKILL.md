@@ -175,7 +175,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 means the loop is **OPEN** — pack another child or mark only those requirements a real SPEC review verified (`of spec --verified ID`). Exit 0 means **RESOLVED**. Do not close `done_when` or `of phase deliver` while `of contrast` is open. A verifier that only reads ORDER will certify the wrong product.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 prints **CLOSE BLOCKED**. Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. A verifier that only reads ORDER will certify the wrong product. SPEC.md is immutable after init; change the brief with `of spec --revise-file`, never a silent rewrite.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)

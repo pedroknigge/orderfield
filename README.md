@@ -245,7 +245,8 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
 | `spec` | list/add/extract/verify binding requirements from SPEC.md |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
-| `contrast` | review gate: SPEC + ORDER → slice → product; exit 2 while the loop is open |
+| `contrast` | review gate: PASS/FAIL/MISS/UNVERIFIED vs SPEC; CLOSE BLOCKED while open |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
 

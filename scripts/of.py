@@ -181,6 +181,7 @@ MUTATING_COMMANDS = {
     "migrate",
     "worktree",
     "spec",
+    "close",
 }
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
@@ -348,9 +349,14 @@ def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
             readable.append(FIELD_REQUIREMENTS_JSON)
 
 
-def write_spec(root: Path, text: str) -> str:
+def write_spec(root: Path, text: str, *, revise: bool = False) -> str:
     body = text if text.endswith("\n") else text + "\n"
     path = spec_path(root)
+    if path.is_file() and not revise:
+        die(
+            "SPEC.md is immutable after init; "
+            "of spec --revise-file PATH to change the brief"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     return sha256_text(body)
@@ -485,6 +491,34 @@ def requirement_coverage_errors(root: Path) -> list[str]:
     if failed:
         errors.append("FAILED " + ", ".join(failed))
     return errors
+
+
+def requirement_verdict(item: dict[str, Any]) -> str:
+    status = str(item.get("status") or "unowned")
+    owners = item.get("owned_by") or []
+    if status == "verified":
+        return "PASS"
+    if status == "failed":
+        return "FAIL"
+    if not owners or status == "unowned":
+        return "MISS"
+    return "UNVERIFIED"
+
+
+def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
+    data = load_requirements(root)
+    rows: list[tuple[str, str, str]] = []
+    for item in data.get("requirements") or []:
+        if not isinstance(item, dict) or not item.get("binding", True):
+            continue
+        rid = str(item.get("id") or "?")
+        text = str(item.get("text") or "")
+        rows.append((requirement_verdict(item), rid, text))
+    return rows
+
+
+def contrast_open(root: Path) -> bool:
+    return bool(requirement_coverage_errors(root))
 
 
 def order_text_blob(order: dict[str, Any]) -> str:
@@ -3030,7 +3064,7 @@ def cmd_init(args: argparse.Namespace) -> None:
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
     waves.mkdir(parents=True, exist_ok=True)
     if source_text is not None:
-        spec_hash = write_spec(root, source_text)
+        spec_hash = write_spec(root, source_text, revise=bool(args.force))
         extracted = extract_requirements_from_spec(source_text)
         save_requirements(
             {"v": 1, "spec_hash": spec_hash, "requirements": extracted},
@@ -3942,6 +3976,8 @@ def phase_transition_errors(
         )
     if target == "deliver":
         errors.extend(requirement_coverage_errors(root))
+        if spec_path(root).is_file() and not order.get("spec_closed"):
+            errors.append("SPEC not closed; of close (contrast must be RESOLVED)")
     return errors
 
 
@@ -4261,27 +4297,11 @@ def cmd_patch(args: argparse.Namespace) -> None:
         reopen_done_when(order, all_phases=True)
     source_file = getattr(args, "source_file", None)
     source_inline = getattr(args, "source", None)
-    if source_file and source_inline:
-        die("pass only one of --source / --source-file")
     if source_file or source_inline:
-        if source_file:
-            path = Path(source_file)
-            if not path.is_file():
-                die(f"--source-file not found: {source_file}")
-            source_text = path.read_text(encoding="utf-8")
-        else:
-            source_text = str(source_inline)
-        spec_hash = write_spec(root, source_text)
-        reqs = load_requirements(root)
-        if not (reqs.get("requirements") or []):
-            extracted = extract_requirements_from_spec(source_text)
-            reqs = {"v": 1, "spec_hash": spec_hash, "requirements": extracted}
-            save_requirements(reqs, root)
-        else:
-            reqs["spec_hash"] = spec_hash
-            save_requirements(reqs, root)
-        sync_order_spec_fields(order, root)
-        changed = True
+        die(
+            "SPEC.md is immutable after init; "
+            "of spec --revise-file PATH to change the brief"
+        )
     if args.constraints_add:
         for c in args.constraints_add:
             if c not in order["constraints"]:
@@ -4565,6 +4585,28 @@ def cmd_spec(args: argparse.Namespace) -> None:
     order = load_order(root)
     data = load_requirements(root)
     changed = False
+    revise_file = getattr(args, "revise_file", None)
+    revise_text = getattr(args, "revise", None)
+    if revise_file and revise_text:
+        die("pass only one of --revise / --revise-file")
+    if revise_file or revise_text:
+        if not spec_path(root).is_file():
+            die("no SPEC.md; of init --source-file first")
+        old_hash = order.get("spec_hash") or sha256_text(
+            spec_path(root).read_text(encoding="utf-8")
+        )
+        if revise_file:
+            path = Path(revise_file)
+            if not path.is_file():
+                die(f"--revise-file not found: {revise_file}")
+            source_text = path.read_text(encoding="utf-8")
+        else:
+            source_text = str(revise_text)
+        new_hash = write_spec(root, source_text, revise=True)
+        data["spec_hash"] = new_hash
+        order["spec_closed"] = False
+        changed = True
+        print(f"spec revised {old_hash[:12]}… -> {new_hash[:12]}…")
     if getattr(args, "extract", False):
         spec = spec_path(root)
         if not spec.is_file():
@@ -4649,6 +4691,8 @@ def cmd_spec(args: argparse.Namespace) -> None:
             getattr(args, "extract", False)
             or getattr(args, "from_file", None)
             or getattr(args, "add", None)
+            or getattr(args, "revise_file", None)
+            or getattr(args, "revise", None)
         )
         if identity:
             sync_order_spec_fields(order, root)
@@ -4685,39 +4729,66 @@ def cmd_spec_diff(args: argparse.Namespace) -> None:
     raise SystemExit(2)
 
 
-def cmd_contrast(args: argparse.Namespace) -> None:
-    """Review gate: original brief vs field vs coverage. Loop is open until 0."""
-    root = find_root()
-    order = load_order(root)
+def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
+    """Print Intent vs Delivered. Return True if the SPEC loop is still open."""
     spec = spec_path(root)
     counts = requirement_counts(load_requirements(root))
-    coverage = requirement_coverage_errors(root)
-    print("loop        SPEC + ORDER → slice → product → contrast → close")
+    rows = contrast_rows(root)
+    print("Intent vs Delivered")
+    print()
     if spec.is_file():
         digest = sha256_text(spec.read_text(encoding="utf-8"))
         print(f"spec        {FIELD_SPEC_MD}  hash={digest[:12]}…")
     else:
-        print("spec        missing — of init/patch --source-file (verbatim brief)")
+        print("spec        missing — of init --source-file (verbatim brief)")
     print(f"intent      {truncate_slice(order.get('mission') or '', 80)}")
+    print()
+    if rows:
+        for verdict, rid, text in rows:
+            print(f"{verdict:11} {rid:12} {text[:80]}")
+        print()
     print(
-        f"coverage    {counts['total']} total  owned {counts['owned']}  "
-        f"verified {counts['verified']}  failed {counts['failed']}  "
-        f"unowned {counts['unowned']}  unverified {counts['unverified']}"
+        f"coverage: {counts['owned']}/{counts['total']} assigned  "
+        f"verified: {counts['verified']}/{counts['total']}"
     )
+    open_loop = contrast_open(root)
     if not spec.is_file() and counts["total"] == 0:
-        print("status      SKIP (no SPEC; legacy field)")
-        return
-    if coverage:
-        print("status      OPEN")
-        for err in coverage:
-            print(f"  {err}")
-        print(
-            "contrast    Intent vs Delivered vs missing — read SPEC.md, "
-            "not only ORDER. Pack again or of spec --verified after a real review."
-        )
+        print("CLOSE SKIP (no SPEC; legacy field)")
+        return False
+    if open_loop:
+        print("CLOSE BLOCKED")
+        print("next: pack gaps")
+        return True
+    print("RESOLVED")
+    print("done belongs to the slice; closed belongs to the SPEC (of close)")
+    return False
+
+
+def cmd_contrast(args: argparse.Namespace) -> None:
+    """Review gate: original brief vs coverage. Does not edit product or ORDER."""
+    root = find_root()
+    order = load_order(root)
+    if print_contrast_report(root, order):
         raise SystemExit(2)
-    print("status      RESOLVED")
-    print("contrast    binding coverage closed; of phase deliver unblocked on requirements")
+
+
+def cmd_close(args: argparse.Namespace) -> None:
+    """Stamp SPEC closed. Refused while contrast is OPEN. Slice done ≠ SPEC closed."""
+    root = find_root()
+    order = load_order(root)
+    if print_contrast_report(root, order):
+        die("of close refused: binding FAIL/MISS/UNVERIFIED remain")
+    if not spec_path(root).is_file():
+        print("close       skipped (no SPEC)")
+        return
+    if order.get("spec_closed"):
+        print("close       already spec_closed")
+        return
+    order["spec_closed"] = True
+    order["rev"] = int(order["rev"]) + 1
+    save_order(order, root)
+    snapshot_session(root, "close")
+    print(f"CLOSED      spec_hash={str(order.get('spec_hash') or '')[:12]}…  rev={order['rev']}")
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> None:
@@ -5085,6 +5156,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="mark requirement failed (repeatable)",
     )
+    s.add_argument(
+        "--revise",
+        help="explicit SPEC revision (verbatim replacement; not a silent rewrite)",
+    )
+    s.add_argument(
+        "--revise-file",
+        dest="revise_file",
+        help="explicit SPEC revision from a file",
+    )
     s.set_defaults(func=cmd_spec)
 
     s = sub.add_parser(
@@ -5095,9 +5175,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "contrast",
-        help="review gate: SPEC + ORDER vs coverage; exit 2 while the loop is open",
+        help="review gate: SPEC vs delivered coverage; exit 2 while CLOSE BLOCKED",
     )
     s.set_defaults(func=cmd_contrast)
+
+    s = sub.add_parser(
+        "close",
+        help="stamp SPEC closed; refused while contrast is OPEN (slice done ≠ closed)",
+    )
+    s.set_defaults(func=cmd_close)
 
     return p
 
