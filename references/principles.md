@@ -1,6 +1,6 @@
 # Orderfield invariants (Haken-inspired)
 
-These rules are the contract. For operations routed through `of`, the CLI enforces pack caps, stale-packet identity, residual shape and metric types, spawn blocking, the closed regime menu, and safe ORDER write paths. Role obedience, workspace ownership, same-harness choice, truthful metrics, and one-writer discipline remain protocol; an adapter or child with filesystem access can violate them.
+These rules are the contract. For operations routed through `of`, the CLI enforces public JSON schemas, atomic artifact writes, a cross-process field lock, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu. Role obedience, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol; an adapter or child with filesystem access can violate them.
 
 ## Physics, one page
 
@@ -10,7 +10,7 @@ Translation:
 
 | Haken | Orderfield |
 |---|---|
-| Control parameter | enforced child/spawn caps plus declared deadline, token, and risk budgets |
+| Control parameter | enforced child/spawn caps and process deadline; declared token/risk/depth fields are advisory or reserved in 0.4.2 |
 | Order parameter | `.orderfield/ORDER.json` |
 | Slaved mode | child with a packet and fresh context |
 | Slaving function \(s \approx f(u)\) | packet. Not the parent's history |
@@ -22,12 +22,12 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 
 ## Numbered invariants
 
-1. **One writer by contract.** The leader routes ORDER changes through `of integrate`, `of patch`, and `of phase`. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`. Mission is never auto-applied (`of patch --mission`). This is not a filesystem lock against direct writes.
+1. **Serialized kernel mutations.** The leader routes ORDER changes through `of integrate`, `of patch`, and `of phase`. All mutating CLI commands hold `.orderfield/field.lock`, and JSON artifacts use durable atomic replacement. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`; mission is never auto-applied (`of patch --mission`). Direct filesystem writes can still bypass the kernel.
 2. **One phase at a time.** `explore` and `implement`/`build` do not coexist in the same wave.
-3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until `next-wave`. Pack is the bind surface; interactive Agent/render does not bypass it.
+3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when|workspace` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until a later ORDER revision and guarded `next-wave`. Pack is the bind surface; interactive Agent/render does not bypass it.
 4. **Closed menu.** Regimes: `escalate_up`, `scale_out`, `scale_across`, `scale_up`, `human`, `hold`, `phase`. Anything else is a contract error.
-5. **Caps bind where implemented.** `max_children` and spawn blocking bind at `of pack` (and collect), not only at `of spawn`; nested permission and deadline are also checked by the relevant command/adapter. Token and risk budgets are carried in packets, not fully accounted or attested by the kernel.
-6. **Cooldown after across.** After `scale_across`, the next default is `escalate_up`.
+5. **Caps bind where implemented.** `max_children` and spawn blocking bind at `of pack` (and collect), not only at `of spawn`. Packet `budget.seconds` is the spawned-process timeout. `max_depth` only gates whether `--allow-nested` may be packed; inherited depth is not tracked. `budget.tokens` and `local_budget_pct` are advisory data, not runtime accounting. `scale_up` remains reserved and is not selected by accounting in 0.4.2.
+6. **Across is reserved in 0.4.2.** Legacy `scale_across` reports and cooldown state remain readable for recovery, but no runtime selector emits a new across wave.
 7. **Skill beats child.** Same identity plus a procedure = skill, not spawn.
 8. **Residuals upward.** The parent consumes residuals, not diaries, when the leader follows the handoff contract. Native harnesses are not technically prevented from sharing more context.
 9. **The harness does not judge.** Orca / Claude / Codex transport. For waves routed through it, the kernel chooses the regime.
@@ -35,13 +35,16 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 11. **Mission checklist ≠ phase checklist.** Untagged `done_when` rows are the mission list (`of patch --done-when-mission`). Phase-tagged rows belong to one official phase (`of patch --done-when` scopes to the current phase). Changing phase must not force rewriting the mission list.
 12. **Cut is optional; ceremony is not free.** Skip cut when exclusive owners are obvious. Orderfield pays when false-scope / marketing risk or colliding writers need a field; theater for bump+obvious feature (documentation-manager + grok-build feedbacks). Skill beats child.
 13. **Disk is the session.** Packets without residuals are in-flight. A dead transcript is not a lost wave. `of resume` reconstructs a one-screen brief from packets/residuals/state (plus optional checkpoint summary). It does not auto-spawn, dump logs, or add a regime. Slaves continue from nonempty scratch. `.orderfield/session.json` is facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`), forbidden to slaves like `state.json`.
+14. **Packets bind execution.** New packets carry a generated id, a canonical content hash, exact ORDER id/revision, wave, child, and role. They execute only from their canonical live wave path. Residuals echo the same identity; a `done` residual names an existing path under the project. Kernel artifact paths reject traversal, absolute paths, and symlinks in any component. Identity-free pre-0.4.2 packets remain a recovery-only compatibility path.
+15. **Integration is content-addressed.** The input digest covers canonical packet hashes, residual JSON, wave, and reduction-affecting options. Identical replay returns the same report and repairs report-derived state after interruption. Changed inputs require `--recompute` and retain an integration-history record.
+16. **Transitions prove closure.** `next-wave` requires no in-flight children, a complete current-digest report, and a post-escalation ORDER revision when blocked. `phase` additionally requires the current phase closed, the next official phase, and report regime `phase`. `phase --force --reason` records an audited override; it is the only transition break-glass surface.
 
 ## Regimes
 
 - `escalate_up` — the field is insufficient. Patch ORDER. Re-enslave.
 - `scale_out` — the pattern is correct, volume is missing. More copies of the same fast mode; the ORDER does not get louder. On an open wave, max `uncertainty` ≥ 0.5 blocks this (`hold` instead). `uncertainty` never selects `escalate_up` by itself.
-- `scale_across` — a different fast mode (a different role), not a competing order parameter. Max 1 per wave by default.
-- `scale_up` — same slice, more budget / model. Last resort.
+- `scale_across` — reserved compatibility value in 0.4.2; retained for legacy report/state recovery and deferred selector design.
+- `scale_up` — reserved menu value in 0.4.2; no token/depth/budget accounting selects it.
 - `hold` — wait (missing residuals, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.
 - `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted while the wave is not all_done. A full cap of done residuals is `hold` (done_when open) or `phase` (done_when closed).
@@ -53,5 +56,5 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 - Not an agent harness or automatic planner.
 - Not "the leader tells the child every step".
 - Not a peer swarm.
-- Not a file locker. `workspace.writable_by_slaves` is documentation. Colliding product writes are a cut error.
+- Not a product-file locker. `.orderfield/field.lock` serializes kernel mutations only; `workspace.writable_by_slaves` remains documentation, and colliding product writes are a cut error.
 - Not metric attestation, process-health monitoring, or proof that children obeyed the packet.

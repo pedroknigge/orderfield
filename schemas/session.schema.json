@@ -12,6 +12,20 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "in_flight_detail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["child_id", "role", "packed_at", "slice"],
+        "properties": {
+          "child_id": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "packed_at": { "type": ["string", "null"], "minLength": 1 },
+          "slice": { "type": "string" }
+        }
+      }
+    },
     "updated_at": { "type": "string", "minLength": 1 },
     "summary": { "type": "string" }
   }

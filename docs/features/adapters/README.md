@@ -1,8 +1,8 @@
 # Feature: adapters
 
-> Hub: [AGENTS.md](../../AGENTS.md) · Detail: [references/adapters.md](../../references/adapters.md)
+> Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.4.1` · **Code:** [`scripts/of_adapters.py`](../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.4.2` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -10,7 +10,7 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 ## Inventory
 
-`of detect` lists CLIs **on PATH**. That is binary presence, not auth. **Default: same harness** for the whole ORDER. Multi-harness only if the user explicitly asks; then spawn only from the detect list ([SKILL.md](../../SKILL.md)). Cut is optional when owners are obvious; orderfield pays for false-scope risk, not for bump+obvious feature.
+`of detect` lists CLIs **on PATH**. That is binary presence, not auth. **Default: same harness** for the whole ORDER. Multi-harness only if the user explicitly asks; then spawn only from the detect list ([SKILL.md](../../../SKILL.md)). Cut is optional when owners are obvious; orderfield pays for false-scope risk, not for bump+obvious feature.
 
 ## Live argv notes
 

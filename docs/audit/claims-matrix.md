@@ -8,13 +8,13 @@
 **Intent:** audit → integrate (patch)  
 **Out:** root  
 **Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
-**Code rev:** VERSION `0.4.1` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.4.2` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 25 |
+| OK | 34 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -22,16 +22,17 @@
 
 | Severity | Count |
 |----------|------:|
-| critical | 0 |
-| normal | 29 |
+| critical | 26 |
+| normal | 12 |
 
-**Truth score (advisory):** `(25*100 + 3*50) / 29 = 91.4`
+**Truth score (advisory):** `(34*100 + 3*50) / 38 = 93.4`
 **CI gate:** no critical Contradicted after integrate patch.
 
 **Top risks (post-patch):**  
 1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
 2. `detect` ≠ login/auth — documented Partial.  
-3. Role/workspace compliance, metric truth, and pulse attribution are contract boundaries — documented, not runtime guarantees.
+3. Role/product-workspace compliance and metric truth remain contract boundaries; the field lock covers cooperating kernel mutations only.
+4. Token/local-budget/inherited-depth accounting and `scale_up` selection are explicitly deferred to 0.5.0.
 
 **Recommended next Intent:** none (ship) | optional later: `of ask` / preference flag.
 
@@ -41,8 +42,8 @@
 |------|----------|-------|
 | Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv` |
-| Schemas | `schemas/*.json` | order / packet / residual / wave-report / session |
-| Install | `install.sh` | harness dests + `~/.local/bin/of` → installed skill |
+| Schemas | `schemas/*.json` | order / state / packet / residual / wave-report / session |
+| Install | `install.sh` | harness dests + installed-kernel `of`; literal project source is staged outside its destination |
 | Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | kernel + packaging |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
 
@@ -77,9 +78,18 @@
 | C-025 | Leader step 0 = `of resume` when ORDER exists; slave nonempty scratch + missing residual = continue | SKILL.md §0 / SLAVE.md / AGENTS | leader/slave protocol (no new regime) | `SKILL.md` | §0 | normal | OK | keep doctrine |
 | C-026 | Residual metric types/ranges are rejected before regime selection | schema / CHANGELOG / architecture | `validate_residual` + integration regression | `scripts/of.py` / `tests/test_kernel.py` | `validate_residual` / `ResidualValidation` | critical | OK | keep |
 | C-027 | Codex routes output to a separate strict-compatible residual schema | adapters / CHANGELOG | `build_spawn_argv` selects the strict derivative; the canonical schema remains portable | `scripts/of_adapters.py` / `schemas/residual.codex.schema.json` / `tests/test_kernel.py` | `build_spawn_argv` / `HeadlessArgv.test_codex_output_schema_closes_every_object_branch` | critical | OK | keep |
-| C-028 | Pulse is an mtime activity heuristic, not process health or child attribution | README / SKILL / architecture | per-child scratch + shared `repo_newest_mtime` | `scripts/of.py` | `cmd_pulse` | normal | OK | keep boundary |
+| C-028 | Pulse is an mtime activity heuristic, not process health or child attribution; it does not mutate ORDER/state/session/wave artifacts, while update throttling may write its user cache | README / SKILL / architecture / CHANGELOG | per-child scratch + shared `repo_newest_mtime`; field-artifact regression and update-cache tests | `scripts/of.py` / `tests/test_kernel.py` | `cmd_pulse` / `maybe_notify_update` / `PulseActivity` / `UpdateNotice` | normal | OK | keep boundary |
 | C-029 | Preferred package discovery exposes `orderfield` and `of` | README / PUBLISH | repository-owned alias skill + packaging test | `of/SKILL.md` / `tests/test_packaging.py` | `RepositoryAliasSkill` | critical | OK | keep |
+| C-030 | Generated JSON matches public schemas and runtime validation uses the same contract | architecture / kernel feature / CHANGELOG | schema-driven validators plus generated-artifact regressions | `scripts/of.py` / `schemas/` / `tests/test_kernel.py` | `validate_public_schema` / `PublicJsonContracts` | critical | OK | keep |
+| C-031 | Mutating CLI commands serialize through a field lock and JSON replacement is atomic/durable | README / SKILL / principles / architecture | `field_lock`, `MUTATING_COMMANDS`, `dump_json`, concurrency tests | `scripts/of.py` / `tests/test_kernel.py` | `field_lock` / `dump_json` | critical | OK | keep product-file boundary explicit |
+| C-032 | New packet execution is bound to canonical live identity, revision, content, and nonsymlink artifact paths | README / SKILL / architecture / troubleshooting | packet digest/registration/path guards and adversarial tests | `scripts/of.py` / `tests/test_kernel.py` | `require_registered_packet` / `require_packet_artifact_paths` | critical | OK | preserve legacy recovery note |
+| C-033 | Residual identity must match its packet; workspace escalates; done result_ref exists under project | SKILL / kernel feature / troubleshooting | packet-bound residual validator + regime field set | `scripts/of.py` / `tests/test_kernel.py` | `validate_residual_for_packet` / `decide_regime` | critical | OK | keep |
+| C-034 | Phase/wave transitions require closure, no in-flight child, complete current digest, and post-escalation revision; phase force is audited | README / SKILL / principles / architecture | transition guards + state override history + regressions | `scripts/of.py` / `schemas/state.schema.json` / `tests/test_kernel.py` | `phase_transition_errors` / `wave_transition_errors` | critical | OK | keep |
+| C-035 | Identical integration replay is a no-op/state repair; changed inputs require auditable recompute | README / SKILL / architecture / troubleshooting | content digest, integration records/history, reconcile path | `scripts/of.py` / `schemas/wave-report.schema.json` / `tests/test_kernel.py` | `integration_input_digest` / `reconcile_integration_state` | critical | OK | keep |
+| C-036 | Pulse child verdict ignores shared-repo product writes | README / architecture / kernel feature | verdict signals contain packet + scratch only; repo mtime is display context | `scripts/of.py` / `tests/test_kernel.py` | `pulse_once` | normal | OK | keep boundary wording exact |
+| C-037 | Token/local-budget/inherited-depth accounting and scale_up selection are not active in 0.4.2 | README / SKILL / principles / architecture / roadmap | tokens/local budget are not read for decisions; depth only gates allow_nested; no scale_up return | `scripts/of.py` | `decide_regime` / `cmd_pack` | normal | OK | decide remove vs implement in 0.5.0 |
+| C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | canonical base + external staging + direct packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript.test_literal_project_install_uses_stable_source_and_absolute_link` | critical | OK | keep |
 
 ## Post-patch expectation
 
-C-020–C-028 are refreshed against the 0.4.1 tree. C-029 covers the package-owned alias. C-014 remains Partial (leader protocol, not `of ask`).
+C-030–C-038 cover the 0.4.2 integrity patch. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces remain honest/deferred rather than claimed as active.

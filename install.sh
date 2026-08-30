@@ -68,6 +68,16 @@ if [[ -z "$base" ]]; then
   fi
 fi
 
+if [[ -d "$base" ]]; then
+  base="$(cd "$base" && pwd -P)"
+elif [[ "$UNINSTALL" -eq 1 ]]; then
+  echo "removed from 0 location(s)"
+  exit 0
+else
+  mkdir -p "$base"
+  base="$(cd "$base" && pwd -P)"
+fi
+
 SRC="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
 cleanup_src=""
 
@@ -80,6 +90,49 @@ if [[ "$UNINSTALL" -eq 0 ]] && ! have_local; then
   SRC="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
   cleanup_src="$SRC"
   git clone --depth 1 "$REPO_URL" "$SRC" >/dev/null
+fi
+
+# A literal `./install.sh --project` installs below its own checkout. Copy from
+# an external snapshot so the destination cannot recurse into the source while
+# it is being populated. The snapshot also drops leftovers from older local
+# project installs.
+if [[ "$UNINSTALL" -eq 0 && -z "$cleanup_src" ]]; then
+  case "$base/" in
+    "$SRC/"*)
+      staged_src="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
+      cleanup_src="$staged_src"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a \
+          --exclude .git \
+          --exclude .orderfield \
+          --exclude .agents \
+          --exclude .claude \
+          --exclude .codex \
+          --exclude .cursor \
+          --exclude .opencode \
+          --exclude .grok \
+          --exclude .gemini \
+          --exclude .local \
+          --exclude '__pycache__' \
+          "$SRC/" "$staged_src/"
+      else
+        cp -R "$SRC"/. "$staged_src/"
+        rm -rf \
+          "$staged_src/.git" \
+          "$staged_src/.orderfield" \
+          "$staged_src/.agents" \
+          "$staged_src/.claude" \
+          "$staged_src/.codex" \
+          "$staged_src/.cursor" \
+          "$staged_src/.opencode" \
+          "$staged_src/.grok" \
+          "$staged_src/.gemini" \
+          "$staged_src/.local"
+        find "$staged_src" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+      fi
+      SRC="$staged_src"
+      ;;
+  esac
 fi
 
 trap '[[ -n "$cleanup_src" ]] && rm -rf "$cleanup_src"' EXIT

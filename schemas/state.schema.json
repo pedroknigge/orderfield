@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/state.schema.json",
+  "title": "Orderfield kernel state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "wave",
+    "children_spawned",
+    "across_this_wave",
+    "waves_since_across",
+    "last_across_wave",
+    "last_regime",
+    "spawn_blocked",
+    "blocked_at_order_rev",
+    "mission_change_streak",
+    "mission_streak_waves",
+    "integration_history",
+    "phase_overrides",
+    "updated_at"
+  ],
+  "properties": {
+    "wave": { "type": "integer", "minimum": 1 },
+    "children_spawned": { "type": "integer", "minimum": 0 },
+    "across_this_wave": { "type": "integer", "minimum": 0 },
+    "waves_since_across": { "type": "integer", "minimum": 0 },
+    "last_across_wave": { "type": ["integer", "null"], "minimum": 1 },
+    "last_regime": {
+      "type": ["string", "null"],
+      "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase", null]
+    },
+    "spawn_blocked": { "type": "boolean" },
+    "blocked_at_order_rev": { "type": ["integer", "null"], "minimum": 1 },
+    "mission_change_streak": { "type": "integer", "minimum": 0 },
+    "mission_streak_waves": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "integration_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wave", "input_hash", "integrated_at", "partial", "recompute", "record_path"],
+        "properties": {
+          "wave": { "type": "integer", "minimum": 1 },
+          "input_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "integrated_at": { "type": "string", "minLength": 1 },
+          "partial": { "type": "boolean" },
+          "recompute": { "type": "boolean" },
+          "record_path": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "phase_overrides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "at",
+          "wave",
+          "from_phase",
+          "to_phase",
+          "reason",
+          "order_rev_before",
+          "order_rev_after"
+        ],
+        "properties": {
+          "at": { "type": "string", "minLength": 1 },
+          "wave": { "type": "integer", "minimum": 1 },
+          "from_phase": {
+            "type": "string",
+            "enum": ["explore", "cut", "build", "verify", "deliver"]
+          },
+          "to_phase": {
+            "type": "string",
+            "enum": ["explore", "cut", "build", "verify", "deliver"]
+          },
+          "reason": { "type": "string", "minLength": 1 },
+          "order_rev_before": { "type": "integer", "minimum": 1 },
+          "order_rev_after": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "updated_at": { "type": "string", "minLength": 1 }
+  }
+}

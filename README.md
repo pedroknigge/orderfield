@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.4.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.4.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.4.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.4.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -75,6 +75,8 @@ curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install
 ./install.sh --project
 ```
 
+Literal project install is safe from the checkout root: the installer canonicalizes the base, snapshots the source outside the destination, avoids recursive `.agents` copies, and creates an absolute project-local `.local/bin/of` target.
+
 `install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
 
 Python 3.9+. No pip packages.
@@ -133,7 +135,7 @@ of status
 
 Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
 
-While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. It combines each child's scratch mtime (including its contract-required heartbeat) with the newest shared-repo product mtime, then prints `ALIVE` / `QUIET` / `STALE`. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision.
+While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. Each child verdict uses only its packet time and scratch mtime (including the contract-required heartbeat); the newest shared-repo product mtime is displayed separately as wave context. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision. Pulse does not mutate ORDER, state, session, or wave artifacts; update-notice throttling may write its user cache.
 
 `of status` / `of resume` / `of pulse` also tell you (once a day, one stderr line) when a newer release exists, with the upgrade one-liner. Silent offline; `OF_NO_UPDATE_CHECK=1` turns it off.
 
@@ -142,7 +144,9 @@ While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity h
 
 <br>
 
-A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit. Closure is reversible via `of patch --reopen`.
+A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
+
+Every CLI field mutation holds `.orderfield/field.lock`, and JSON artifacts are replaced atomically. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
@@ -168,7 +172,9 @@ The model is inspired by Haken's slaving principle: a slow field constrains fres
 | Circular causality | leader runs `integrate --apply` or `of patch`; the next wave receives the result |
 | Reduction of degrees of freedom | leaders consume residuals when they follow the protocol |
 
-The kernel enforces pack caps, stale-packet identity, residual shape and metric types, spawn blocking, the closed regime menu, and safe ORDER write paths when commands go through `of`. Roles, workspace ownership, same-harness choice, truthful metrics, and the one-writer discipline remain contractual. The kernel does not lock files, create worktrees, attest metrics, or police a disobedient child.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, create worktrees, attest metrics, or police a disobedient child.
+
+Accounting stays deliberately narrow in 0.4.2: packet seconds are the spawn timeout; token budgets and `local_budget_pct` are advisory, `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` is reserved. The [0.5.0 roadmap](docs/roadmap.md) owns the decision to implement trustworthy accounting or remove those surfaces.
 
 Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
 
@@ -202,8 +208,8 @@ Orca (and every other harness) starts and stops processes. It must not choose th
 ```
   escalate_up   patch the field. re-enslave.
   scale_out     same role, more copies.
-  scale_across  a different role. max 1 / wave. then cooldown.
-  scale_up      more budget. last resort.
+  scale_across  reserved in 0.4.2; retained for report compatibility only.
+  scale_up      reserved in 0.4.2; no runtime accounting selects it.
   hold          wait (closed wave with done_when open, or done_when_closed applied this wave — of phase is still explicit).
   phase         only when done_when is closed. still `of phase`.
   human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done.
@@ -229,10 +235,10 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
 | `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2, never freezes on one dead child |
-| `integrate` | reduce residuals and choose a regime (`--partial` reduces what landed; stragglers stay in flight) |
-| `phase` | change phase (single writer) |
+| `integrate` | reduce residuals and choose a regime (`--partial`; identical replay repairs/no-ops; changed inputs need `--recompute`) |
+| `phase` | guarded sequential phase change; audited break-glass is `--force --reason` |
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
-| `next-wave` | clear spawn lock, advance the wave |
+| `next-wave` | advance only after complete current-digest integration and required post-escalation revision |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
 

@@ -42,8 +42,18 @@ class VersionSync(unittest.TestCase):
         self.assertIn(f"<strong>v{ver}</strong>", readme)
         self.assertIn(f"skill-{ver}-", readme)
         self.assertIn("--full-depth -s '*' -a '*'", readme)
-        for rel in ("docs/architecture.md", "docs/audit/claims-matrix.md"):
+        for rel in (
+            "docs/architecture.md",
+            "docs/audit/claims-matrix.md",
+            "docs/features/kernel/README.md",
+            "docs/features/adapters/README.md",
+        ):
             self.assertIn(f"`{ver}`", (ROOT / rel).read_text(encoding="utf-8"), rel)
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("docs/roadmap.md", agents)
+        roadmap = (ROOT / "docs" / "roadmap.md").read_text(encoding="utf-8")
+        for required in ("0.5.0", "Qwen Code", "trust profiles", "of doctor", "scale_up"):
+            self.assertIn(required, roadmap)
 
     def test_docs_name_agy(self) -> None:
         for rel in ("SKILL.md", "references/adapters.md", "README.md", "AGENTS.md"):
@@ -67,6 +77,39 @@ class VersionSync(unittest.TestCase):
 
 
 class InstallScript(unittest.TestCase):
+    def test_literal_project_install_uses_stable_source_and_absolute_link(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-project-source-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        source = tmp / "orderfield"
+        shutil.copytree(
+            ROOT,
+            source,
+            ignore=shutil.ignore_patterns(
+                ".git",
+                ".orderfield",
+                ".agents",
+                ".claude",
+                ".codex",
+                ".cursor",
+                ".opencode",
+                ".grok",
+                ".gemini",
+                ".local",
+                "__pycache__",
+                "vibe-proof-audit-report.*",
+            ),
+        )
+
+        proc = run(source, "bash", "./install.sh", "--project")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        dest = source / ".agents" / "skills" / "orderfield"
+        self.assertTrue((dest / "SKILL.md").is_file())
+        self.assertFalse((dest / ".agents").exists(), proc.stdout)
+        link = source / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink(), proc.stdout)
+        self.assertTrue(link.exists(), proc.stdout)
+        self.assertEqual(link.resolve(), (dest / "scripts" / "of.py").resolve())
+
     def test_empty_root_gets_agents_fallback(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-"))
         self.addCleanup(shutil.rmtree, tmp, True)

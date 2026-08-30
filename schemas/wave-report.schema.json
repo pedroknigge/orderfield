@@ -3,17 +3,92 @@
   "$id": "orderfield/wave-report.schema.json",
   "title": "Orderfield wave report",
   "type": "object",
+  "additionalProperties": false,
   "required": ["wave", "order_rev", "regime", "reason", "residuals", "caps_remaining"],
   "properties": {
-    "wave": { "type": "integer" },
-    "order_rev": { "type": "integer" },
+    "wave": { "type": "integer", "minimum": 1 },
+    "order_rev": { "type": "integer", "minimum": 1 },
     "regime": {
       "type": "string",
       "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase"]
     },
     "reason": { "type": "string" },
-    "residuals": { "type": "array" },
-    "caps_remaining": { "type": "object" },
-    "applied_patch": { "type": ["object", "null"] }
+    "residuals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "wants", "uncertainty"],
+        "properties": {
+          "status": { "type": "string", "enum": ["done", "blocked", "threshold"] },
+          "wants": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["mission", "phase", "constraints", "done_when", "workspace"]
+            }
+          },
+          "uncertainty": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "caps_remaining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["children", "across_this_wave"],
+      "properties": {
+        "children": { "type": "integer", "minimum": 0 },
+        "across_this_wave": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "applied_patch": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["rev", "constraints", "done_when_closed", "done_when_closed_phases"],
+      "properties": {
+        "rev": { "type": "integer", "minimum": 1 },
+        "constraints": { "type": "array", "items": { "type": "string" } },
+        "done_when_closed": { "type": "boolean" },
+        "done_when_closed_phases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["explore", "cut", "build", "verify", "deliver"]
+          }
+        }
+      }
+    },
+    "skipped_in_flight": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_hash",
+        "integrated_at",
+        "partial",
+        "apply",
+        "recompute",
+        "decision_order_rev",
+        "previous_input_hash",
+        "record_path"
+      ],
+      "properties": {
+        "input_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "integrated_at": { "type": "string", "minLength": 1 },
+        "partial": { "type": "boolean" },
+        "apply": { "type": "boolean" },
+        "recompute": { "type": "boolean" },
+        "decision_order_rev": { "type": "integer", "minimum": 1 },
+        "previous_input_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "record_path": { "type": "string", "minLength": 1 }
+      }
+    }
   }
 }

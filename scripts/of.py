@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -92,7 +97,32 @@ PULSE_PRUNE_DIRS = {
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
 SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
-FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
+CHILD_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+PACKET_ID_RE = re.compile(r"^pkt_[0-9a-f]{32}$")
+PACKET_IDENTITY_FIELDS = (
+    "packet_id",
+    "packet_hash",
+    "order_id",
+    "order_rev",
+    "wave",
+    "child_id",
+    "role",
+)
+FIELD_LOCK_WAIT_SECONDS = 10.0
+MUTATING_COMMANDS = {
+    "init",
+    "pack",
+    "unpack",
+    "handoff",
+    "spawn",
+    "collect",
+    "integrate",
+    "phase",
+    "patch",
+    "next-wave",
+    "checkpoint",
+}
+_HELD_FIELD_LOCK: Path | None = None
 
 
 def utc_now() -> str:
@@ -129,6 +159,20 @@ def session_path(root: Path | None = None) -> Path:
     return of_dir(root) / "session.json"
 
 
+def field_lock_path(root: Path | None = None) -> Path:
+    return of_dir(root) / "field.lock"
+
+
+def require_nonsymlink_kernel_root(root: Path) -> None:
+    """Reject a symlinked project or field root before any artifact write."""
+    project = Path(root)
+    if project.is_symlink():
+        die(f"unsafe project root {project}: kernel artifact root is a symlink")
+    field = project / ".orderfield"
+    if field.is_symlink():
+        die(f"unsafe field root {field}: kernel artifact root is a symlink")
+
+
 def die(msg: str, code: int = 1) -> None:
     print(f"of: {msg}", file=sys.stderr)
     raise SystemExit(code)
@@ -160,8 +204,288 @@ def load_json(path: Path) -> Any:
 
 
 def dump_json(path: Path, data: Any) -> None:
+    """Durably replace a JSON artifact without exposing a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    payload = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(str(tmp), str(path))
+        try:
+            dir_fd = os.open(str(path.parent), os.O_RDONLY)
+        except OSError:
+            dir_fd = None
+        if dir_fd is not None:
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _lock_owner_text(path: Path) -> str:
+    try:
+        owner = json.loads(path.read_text(encoding="utf-8") or "{}")
+    except (OSError, json.JSONDecodeError):
+        return "owner metadata unavailable"
+    return ", ".join(
+        f"{key}={owner[key]}" for key in ("pid", "command", "acquired_at") if key in owner
+    ) or "owner metadata unavailable"
+
+
+@contextmanager
+def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> Any:
+    """Serialize a field mutation; flock releases automatically after owner death."""
+    global _HELD_FIELD_LOCK
+    require_nonsymlink_kernel_root(root)
+    path = field_lock_path(root).resolve()
+    if _HELD_FIELD_LOCK == path:
+        yield
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if wait_seconds is None:
+        raw_timeout = os.environ.get("OF_FIELD_LOCK_WAIT_SECONDS")
+        try:
+            timeout = (
+                FIELD_LOCK_WAIT_SECONDS
+                if raw_timeout is None
+                else max(0.0, float(raw_timeout))
+            )
+        except ValueError:
+            die("OF_FIELD_LOCK_WAIT_SECONDS must be a nonnegative number")
+    else:
+        timeout = max(0.0, wait_seconds)
+    started = time.monotonic()
+    handle = path.open("a+", encoding="utf-8")
+    try:
+        while True:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() - started >= timeout:
+                    die(
+                        f"field lock wait exceeded {timeout:g}s ({_lock_owner_text(path)}); "
+                        "a dead owner is recovered automatically by the OS"
+                    )
+                time.sleep(0.05)
+        owner = {
+            "pid": os.getpid(),
+            "command": command,
+            "acquired_at": utc_now(),
+        }
+        handle.seek(0)
+        handle.truncate()
+        json.dump(owner, handle, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+        _HELD_FIELD_LOCK = path
+        try:
+            yield
+        finally:
+            _HELD_FIELD_LOCK = None
+            handle.seek(0)
+            handle.truncate()
+            handle.flush()
+            os.fsync(handle.fileno())
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        handle.close()
+
+
+def require_child_id(value: Any, label: str = "child_id") -> str:
+    child_id = str(value or "")
+    if not CHILD_ID_RE.fullmatch(child_id):
+        die(
+            f"invalid {label} {child_id!r}; use 1-64 ASCII letters, digits, "
+            "underscore, or hyphen, starting with a letter or digit"
+        )
+    return child_id
+
+
+def safe_relative_path(
+    root: Path,
+    value: Any,
+    label: str,
+    *,
+    must_exist: bool = False,
+    reject_symlinks: bool = False,
+) -> Path:
+    """Resolve a portable project-relative path without traversal or symlink escape."""
+    text = str(value or "")
+    rel = Path(text)
+    if (
+        not text
+        or "\\" in text
+        or any(ord(char) < 32 for char in text)
+        or rel.is_absolute()
+        or any(part in ("", ".", "..") for part in rel.parts)
+        or rel.as_posix() != text
+    ):
+        die(f"unsafe {label} {text!r}: expected a canonical project-relative path")
+    project = root.resolve()
+    if reject_symlinks:
+        require_nonsymlink_kernel_root(root)
+        candidate = project
+        for part in rel.parts:
+            candidate = candidate / part
+            if candidate.is_symlink():
+                die(
+                    f"unsafe {label} {text!r}: kernel artifact path contains "
+                    f"symlink component {candidate.relative_to(project)}"
+                )
+    try:
+        resolved = (project / rel).resolve(strict=must_exist)
+    except FileNotFoundError:
+        die(f"missing {label} at {text}")
+    try:
+        resolved.relative_to(project)
+    except ValueError:
+        die(f"unsafe {label} {text!r}: path escapes the project")
+    return resolved
+
+
+def canonical_packet_rel(wave: int, child_id: str) -> str:
+    return f".orderfield/waves/{int(wave):03d}/packets/{child_id}.json"
+
+
+def canonical_residual_rel(wave: int, child_id: str) -> str:
+    return f".orderfield/waves/{int(wave):03d}/residuals/{child_id}.json"
+
+
+def canonical_scratch_rel(child_id: str) -> str:
+    return f".orderfield/work/scratch/{child_id}"
+
+
+def packet_digest(packet: dict[str, Any]) -> str:
+    payload = dict(packet)
+    payload.pop("packet_hash", None)
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def packet_has_identity(packet: dict[str, Any]) -> bool:
+    return "packet_id" in packet
+
+
+def require_executable_packet_identity(packet: dict[str, Any]) -> None:
+    """Keep pre-0.4.2 packets on collect/integrate recovery surfaces only."""
+    if not packet_has_identity(packet):
+        die(
+            f"legacy identity-free packet {packet.get('child_id') or '?'} is "
+            "recovery-only; it cannot be rendered, handed off, or spawned"
+        )
+
+
+def _schema_types(value: Any) -> set[str]:
+    kinds: set[str] = set()
+    if value is None:
+        kinds.add("null")
+    if isinstance(value, bool):
+        kinds.add("boolean")
+    elif isinstance(value, int):
+        kinds.update(("integer", "number"))
+    elif isinstance(value, float):
+        kinds.add("number")
+    elif isinstance(value, str):
+        kinds.add("string")
+    elif isinstance(value, list):
+        kinds.add("array")
+    elif isinstance(value, dict):
+        kinds.add("object")
+    return kinds
+
+
+def validate_schema(
+    value: Any,
+    schema: dict[str, Any],
+    path: str = "$",
+) -> list[str]:
+    """Validate the Draft 2020-12 subset used by the public schemas."""
+    errs: list[str] = []
+    declared = schema.get("type")
+    allowed = {declared} if isinstance(declared, str) else set(declared or [])
+    actual = _schema_types(value)
+    if allowed and not actual.intersection(allowed):
+        errs.append(f"{path} must be one of {sorted(allowed)}")
+        return errs
+    if "const" in schema and value != schema["const"]:
+        errs.append(f"{path} must equal {schema['const']!r}")
+    if "enum" in schema and value not in schema["enum"]:
+        errs.append(f"{path} must be one of {schema['enum']}")
+    if isinstance(value, str):
+        minimum = schema.get("minLength")
+        if isinstance(minimum, int) and len(value) < minimum:
+            errs.append(f"{path} must contain at least {minimum} characters")
+        pattern = schema.get("pattern")
+        if isinstance(pattern, str) and re.search(pattern, value) is None:
+            errs.append(f"{path} must match pattern {pattern!r}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(value, float) and not math.isfinite(value):
+            errs.append(f"{path} must be finite")
+        else:
+            if "minimum" in schema and value < schema["minimum"]:
+                errs.append(f"{path} must be >= {schema['minimum']}")
+            if "maximum" in schema and value > schema["maximum"]:
+                errs.append(f"{path} must be <= {schema['maximum']}")
+    if isinstance(value, list):
+        minimum = schema.get("minItems")
+        if isinstance(minimum, int) and len(value) < minimum:
+            errs.append(f"{path} must contain at least {minimum} items")
+        if schema.get("uniqueItems") is True:
+            for index, item in enumerate(value):
+                if any(item == previous for previous in value[:index]):
+                    errs.append(f"{path} must contain unique items")
+                    break
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                errs.extend(validate_schema(item, item_schema, f"{path}[{index}]"))
+    if isinstance(value, dict):
+        properties = schema.get("properties") or {}
+        for key in schema.get("required") or []:
+            if key not in value:
+                errs.append(f"{path}.{key} is required")
+        if schema.get("additionalProperties") is False:
+            extras = sorted(set(value) - set(properties))
+            if extras:
+                errs.append(f"{path} has unexpected properties: {extras}")
+        for key, child in value.items():
+            child_schema = properties.get(key)
+            if isinstance(child_schema, dict):
+                errs.extend(validate_schema(child, child_schema, f"{path}.{key}"))
+    return errs
+
+
+def validate_public_schema(
+    data: Any,
+    filename: str,
+    label: str,
+) -> list[str]:
+    schema = load_json(skill_root() / "schemas" / filename)
+    if not isinstance(schema, dict):
+        return [f"{label} schema must be an object"]
+    return validate_schema(data, schema, label)
+
+
+def require_public_schema(data: Any, filename: str, label: str) -> None:
+    errs = validate_public_schema(data, filename, label)
+    if errs:
+        die(f"invalid {label}:\n  " + "\n  ".join(errs))
 
 
 def default_order(mission: str, phase: str) -> dict[str, Any]:
@@ -197,7 +521,6 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
         "enabled_regimes": [
             "escalate_up",
             "scale_out",
-            "scale_across",
             "scale_up",
             "human",
             "hold",
@@ -217,58 +540,57 @@ def default_state() -> dict[str, Any]:
         "last_across_wave": None,
         "last_regime": None,
         "spawn_blocked": False,
+        "blocked_at_order_rev": None,
         "mission_change_streak": 0,
+        "mission_streak_waves": [],
+        "integration_history": [],
+        "phase_overrides": [],
         "updated_at": utc_now(),
     }
 
 
 def validate_order(order: dict[str, Any]) -> list[str]:
-    errs: list[str] = []
-    for key in (
-        "v",
-        "id",
-        "rev",
-        "mission",
-        "phase",
-        "done_when",
-        "constraints",
-        "workspace",
-        "thresholds",
-        "caps",
-        "enabled_regimes",
+    return validate_public_schema(order, "order.schema.json", "ORDER")
+
+
+def validate_packet(packet: Any) -> list[str]:
+    errs = validate_public_schema(packet, "packet.schema.json", "packet")
+    if not isinstance(packet, dict):
+        return errs
+    child_id = str(packet.get("child_id") or "")
+    if "child_id" in packet and not CHILD_ID_RE.fullmatch(child_id):
+        errs.append("packet.child_id has an unsafe format")
+    embedded = packet.get("order") if isinstance(packet.get("order"), dict) else {}
+    if packet.get("order_rev") != embedded.get("rev"):
+        errs.append("packet.order_rev must equal packet.order.rev")
+    new_markers = ("packet_id", "packet_hash", "order_id")
+    identity_present = [key for key in PACKET_IDENTITY_FIELDS if key in packet]
+    if any(key in packet for key in new_markers) and len(identity_present) != len(
+        PACKET_IDENTITY_FIELDS
     ):
-        if key not in order:
-            errs.append(f"ORDER missing {key}")
-    if order.get("v") != 1:
-        errs.append("ORDER.v must be 1")
-    if "done_when_closed" in order and not isinstance(order.get("done_when_closed"), bool):
-        errs.append("ORDER.done_when_closed must be a boolean")
-    if "done_when_closed_phases" in order:
-        got = order.get("done_when_closed_phases")
-        if not isinstance(got, list) or any(p not in PHASES for p in got):
-            errs.append("ORDER.done_when_closed_phases must be a list of phase names")
-    if order.get("phase") not in PHASES:
-        errs.append(f"invalid phase: {order.get('phase')}")
-    if not order.get("mission"):
-        errs.append("empty mission")
-    if not order.get("done_when"):
-        errs.append("empty done_when")
-    for r in order.get("enabled_regimes", []):
-        if r not in REGIMES:
-            errs.append(f"unknown regime: {r}")
-    if "harness" in order and order.get("harness") not in ADAPTER_ORDER:
-        errs.append(f"ORDER.harness must be one of {ADAPTER_ORDER}")
-    if "backlog" in order:
-        got = order.get("backlog")
-        if not isinstance(got, list) or any(
-            not isinstance(b, dict)
-            or not isinstance(b.get("text"), str)
-            or not b.get("text")
-            or not isinstance(b.get("done"), bool)
-            for b in got
-        ):
-            errs.append("ORDER.backlog must be a list of {text, done} items")
+        missing = sorted(set(PACKET_IDENTITY_FIELDS) - set(identity_present))
+        errs.append(f"packet identity is incomplete; missing {missing}")
+        return errs
+    if not any(key in packet for key in new_markers):
+        return errs  # deliberate recovery support for pre-0.4.2 packets
+    if not PACKET_ID_RE.fullmatch(str(packet.get("packet_id") or "")):
+        errs.append("packet.packet_id must be pkt_ followed by 32 lowercase hex digits")
+    if packet.get("order_id") != embedded.get("id"):
+        errs.append("packet.order_id must equal packet.order.id")
+    expected_hash = packet_digest(packet)
+    if packet.get("packet_hash") != expected_hash:
+        errs.append("packet.packet_hash does not match the canonical packet content")
     return errs
+
+
+def validate_state(state: dict[str, Any]) -> list[str]:
+    return validate_public_schema(state, "state.schema.json", "state")
+
+
+def validate_wave_report(report: dict[str, Any]) -> list[str]:
+    return validate_public_schema(
+        report, "wave-report.schema.json", "wave report"
+    )
 
 
 def open_backlog(order: dict[str, Any]) -> list[str]:
@@ -280,18 +602,14 @@ def open_backlog(order: dict[str, Any]) -> list[str]:
     ]
 
 
-def validate_residual(res: dict[str, Any]) -> list[str]:
-    errs: list[str] = []
-    if res.get("status") not in ("done", "blocked", "threshold"):
-        errs.append(f"invalid status: {res.get('status')}")
-    rem = res.get("residual") or {}
-    if "wants_to_change" not in rem:
-        errs.append("residual.wants_to_change required")
-    for k in rem.get("wants_to_change", []):
-        if k not in FIELD_KEYS:
-            errs.append(f"invalid wants_to_change: {k}")
+def validate_residual(res: Any) -> list[str]:
+    errs = validate_public_schema(res, "residual.schema.json", "residual file")
+    if not isinstance(res, dict):
+        return errs
+    rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+    wants = rem.get("wants_to_change")
     if res.get("status") == "threshold":
-        if not rem.get("wants_to_change"):
+        if not isinstance(wants, list) or not wants:
             errs.append("threshold requires non-empty wants_to_change")
         if not rem.get("evidence"):
             errs.append("threshold requires evidence")
@@ -322,6 +640,38 @@ def validate_residual(res: dict[str, Any]) -> list[str]:
     return errs
 
 
+def validate_residual_for_packet(
+    res: Any,
+    packet: dict[str, Any],
+    root: Path,
+) -> list[str]:
+    errs = validate_residual(res)
+    if not isinstance(res, dict):
+        return errs
+    if packet_has_identity(packet):
+        for key in PACKET_IDENTITY_FIELDS:
+            if res.get(key) != packet.get(key):
+                errs.append(
+                    f"residual.{key} must match canonical packet {packet.get(key)!r}"
+                )
+    if res.get("status") == "done":
+        result_ref = res.get("result_ref")
+        try:
+            path = safe_relative_path(
+                root,
+                result_ref,
+                "done result_ref",
+                must_exist=True,
+            )
+            if not path.exists():
+                errs.append(f"done result_ref does not exist: {result_ref}")
+        except SystemExit:
+            errs.append(
+                f"done result_ref must be an existing path under the project: {result_ref!r}"
+            )
+    return errs
+
+
 def load_order(root: Path | None = None) -> dict[str, Any]:
     p = order_path(root)
     if not p.exists():
@@ -333,23 +683,136 @@ def load_order(root: Path | None = None) -> dict[str, Any]:
     return order
 
 
+def load_packet(path: Path) -> dict[str, Any]:
+    packet = load_json(path)
+    if not isinstance(packet, dict):
+        die(f"invalid packet {path}: expected an object")
+    errs = validate_packet(packet)
+    if errs:
+        die(f"invalid packet {path}:\n  " + "\n  ".join(errs))
+    return packet
+
+
+def require_packet_artifact_paths(
+    root: Path,
+    packet: dict[str, Any],
+    source: Path | None = None,
+) -> None:
+    wave = packet.get("wave")
+    if isinstance(wave, bool) or not isinstance(wave, int) or wave < 1:
+        die("packet wave must be a positive integer")
+    child_id = require_child_id(packet.get("child_id"), "packet child_id")
+    expected_packet = canonical_packet_rel(wave, child_id)
+    expected_residual = canonical_residual_rel(wave, child_id)
+    expected_scratch = canonical_scratch_rel(child_id)
+    if packet.get("residual_path") != expected_residual:
+        die(
+            f"noncanonical residual_path for {child_id}: expected {expected_residual}"
+        )
+    if packet.get("scratch_dir") != expected_scratch:
+        die(f"noncanonical scratch_dir for {child_id}: expected {expected_scratch}")
+    safe_relative_path(
+        root,
+        expected_residual,
+        "packet residual_path",
+        reject_symlinks=True,
+    )
+    safe_relative_path(
+        root,
+        expected_scratch,
+        "packet scratch_dir",
+        reject_symlinks=True,
+    )
+    if source is not None:
+        expected = safe_relative_path(
+            root,
+            expected_packet,
+            "canonical packet",
+            reject_symlinks=True,
+        )
+        try:
+            actual = source.resolve(strict=True)
+        except FileNotFoundError:
+            die(f"missing packet {source}")
+        if actual != expected:
+            die(
+                f"unregistered packet location {source}; expected {expected_packet}"
+            )
+
+
+def require_registered_packet(
+    root: Path,
+    packet_arg: Any,
+    *,
+    order: dict[str, Any] | None = None,
+    state: dict[str, Any] | None = None,
+    expected_wave: int | None = None,
+) -> dict[str, Any]:
+    packet_path = safe_relative_path(
+        root,
+        packet_arg,
+        "--packet",
+        must_exist=True,
+    )
+    packet = load_packet(packet_path)
+    require_packet_artifact_paths(root, packet, packet_path)
+    require_executable_packet_identity(packet)
+    if expected_wave is not None and packet.get("wave") != int(expected_wave):
+        die(
+            f"packet wave {packet.get('wave')} does not match requested wave {expected_wave}"
+        )
+    if state is not None and packet.get("wave") != int(state.get("wave") or 1):
+        die(
+            f"stale packet wave {packet.get('wave')}; live wave is {state.get('wave')}"
+        )
+    if order is not None:
+        if packet_has_identity(packet):
+            if packet.get("order_id") != order.get("id"):
+                die("stale packet order_id does not match live ORDER")
+            if packet.get("order_rev") != order.get("rev"):
+                die(
+                    f"stale packet order_rev {packet.get('order_rev')}; "
+                    f"live ORDER.rev is {order.get('rev')}"
+                )
+        elif packet_is_stale(packet, order):
+            die(f"stale legacy packet {packet.get('child_id')}; run of next-wave")
+    return packet
+
+
 def load_state(root: Path | None = None) -> dict[str, Any]:
     p = state_path(root)
     if not p.exists():
         return default_state()
     data = load_json(p)
+    if not isinstance(data, dict):
+        die(f"invalid state {p}: expected an object")
     base = default_state()
     base.update(data)
+    errs = validate_state(base)
+    if errs:
+        die("invalid state:\n  " + "\n  ".join(errs))
     return base
 
 
 def save_order(order: dict[str, Any], root: Path | None = None) -> None:
+    require_public_schema(order, "order.schema.json", "ORDER")
     dump_json(order_path(root), order)
 
 
 def save_state(state: dict[str, Any], root: Path | None = None) -> None:
     state["updated_at"] = utc_now()
+    require_public_schema(state, "state.schema.json", "state")
     dump_json(state_path(root), state)
+
+
+def load_wave_report(path: Path) -> dict[str, Any]:
+    report = load_json(path)
+    if not isinstance(report, dict):
+        die(f"invalid wave report {path}: expected an object")
+    errs = validate_wave_report(report)
+    if errs:
+        die(f"invalid wave report {path}:\n  " + "\n  ".join(errs))
+    return report
 
 
 def wave_dir(wave: int, root: Path | None = None) -> Path:
@@ -489,11 +952,37 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
     pdir = wave_dir(int(wave), root) / "packets"
     if not pdir.is_dir():
         return []
-    return [load_json(f) for f in sorted(pdir.glob("*.json"))]
+    packets: list[dict[str, Any]] = []
+    for path in sorted(pdir.glob("*.json")):
+        packet = load_packet(path)
+        require_packet_artifact_paths(root, packet, path)
+        if packet.get("wave") != int(wave):
+            die(
+                f"packet {packet.get('child_id')} claims wave {packet.get('wave')} "
+                f"inside wave {wave}"
+            )
+        packets.append(packet)
+    return packets
+
+
+def reconcile_children_spawned(root: Path, state: dict[str, Any], wave: int | None = None) -> int:
+    """Derive the charged child count from canonical packets on disk."""
+    live_wave = int(state.get("wave") or 1)
+    requested_wave = int(wave if wave is not None else live_wave)
+    waves = {live_wave, requested_wave}
+    count = sum(len(packed_children(root, item)) for item in waves)
+    state["children_spawned"] = count
+    return count
 
 
 def packet_is_stale(packet: dict[str, Any], order: dict[str, Any]) -> bool:
-    # rev may differ on the same field; id/phase/mission are identity.
+    if packet_has_identity(packet):
+        return (
+            packet.get("order_id") != order.get("id")
+            or packet.get("order_rev") != order.get("rev")
+        )
+    # Recovery compatibility: legacy packets had no immutable identity and
+    # historically treated id/phase/mission (not rev) as field identity.
     embedded = packet.get("order") or {}
     return any(embedded.get(k) != order.get(k) for k in ("id", "phase", "mission"))
 
@@ -523,6 +1012,7 @@ def landable_wave(root: Path, order: dict[str, Any], start: int) -> int:
 def child_is_packed(root: Path, wave: int, child_id: str | None) -> bool:
     if not child_id:
         return False
+    require_child_id(child_id)
     pdir = wave_dir(int(wave), root) / "packets"
     if (pdir / f"{child_id}.json").is_file():
         return True
@@ -552,7 +1042,8 @@ def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     rel = packet.get("residual_path")
     if not rel:
         die(f"packet {child} missing residual_path")
-    path = root / str(rel)
+    require_packet_artifact_paths(root, packet)
+    path = safe_relative_path(root, rel, "packet residual_path")
     if not path.is_file():
         die(f"missing residual at {rel} (packet residual_path)")
     return path
@@ -562,7 +1053,8 @@ def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
     rel = packet.get("residual_path")
     if not rel:
         return True
-    return not (root / str(rel)).is_file()
+    require_packet_artifact_paths(root, packet)
+    return not safe_relative_path(root, rel, "packet residual_path").is_file()
 
 
 def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
@@ -574,7 +1066,8 @@ def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
     rel = packet.get("scratch_dir")
     if not rel:
         return False
-    path = root / str(rel)
+    require_packet_artifact_paths(root, packet)
+    path = safe_relative_path(root, rel, "packet scratch_dir")
     if not path.is_dir():
         return False
     try:
@@ -739,6 +1232,13 @@ def load_session(root: Path | None = None) -> dict[str, Any]:
             file=sys.stderr,
         )
         return {}
+    errs = validate_public_schema(data, "session.schema.json", "session")
+    if errs:
+        print(
+            "of: warning — invalid session.json ignored (" + "; ".join(errs) + ")",
+            file=sys.stderr,
+        )
+        return {}
     return data
 
 
@@ -772,6 +1272,7 @@ def snapshot_session(
     kept = summary if summary is not None else prev.get("summary")
     if isinstance(kept, str) and kept.strip():
         data["summary"] = kept.strip()
+    require_public_schema(data, "session.schema.json", "session")
     dump_json(session_path(root), data)
     return data
 
@@ -944,6 +1445,12 @@ def render_prompt(
         + packet["residual_path"]
         + "`. Do not mutate `.orderfield/ORDER.json`.\n"
     )
+    if packet_has_identity(packet):
+        text += (
+            "The residual must echo these packet identity fields exactly: "
+            + ", ".join(PACKET_IDENTITY_FIELDS)
+            + ".\n"
+        )
     if root is not None and scratch_nonempty(root, packet):
         text += "\nContinue from nonempty scratch. Do not restart the slice.\n"
     return text
@@ -1029,7 +1536,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
     if flying:
-        print("activity    of pulse (scratch + shared-repo mtime heuristic)")
+        print("activity    of pulse (child scratch verdict + shared repo context)")
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"since_across {state.get('waves_since_across')}")
@@ -1066,12 +1573,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
     elif kind == "residual":
         errs = validate_residual(data)
     elif kind == "packet":
-        errs = []
-        for k in ("slice", "role", "order_rev", "residual_path"):
-            if k not in data:
-                errs.append(f"packet missing {k}")
-        if data.get("role") not in ROLES:
-            errs.append(f"invalid role: {data.get('role')}")
+        errs = validate_packet(data)
     else:
         die(f"unknown kind: {kind}")
     if errs:
@@ -1105,21 +1607,20 @@ def cmd_pack(args: argparse.Namespace) -> None:
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
+    reconcile_children_spawned(root, state, int(wave))
     die_on_stale_packets(packed_children(root, int(wave)), order, int(wave))
-    child_id = args.child_id or f"{args.role}_{uuid.uuid4().hex[:6]}"
+    child_id = require_child_id(
+        args.child_id or f"{args.role}_{uuid.uuid4().hex[:6]}"
+    )
     already = child_is_packed(root, int(wave), child_id)
-    if not already:
-        register_packed_child(
-            order, state, force=bool(getattr(args, "force_spawn", False))
+    if already:
+        die(
+            f"child_id {child_id} is already registered in wave {wave}; "
+            "use of unpack before replacing an in-flight packet"
         )
-        save_state(state, root)
     wdir = wave_dir(wave, root)
-    residual_path = f".orderfield/waves/{wave:03d}/residuals/{child_id}.json"
-    scratch = f".orderfield/work/scratch/{child_id}"
-    (root / scratch).mkdir(parents=True, exist_ok=True)
-    (wdir / "packets").mkdir(parents=True, exist_ok=True)
-    (wdir / "residuals").mkdir(parents=True, exist_ok=True)
-    (wdir / "prompts").mkdir(parents=True, exist_ok=True)
+    residual_path = canonical_residual_rel(int(wave), child_id)
+    scratch = canonical_scratch_rel(child_id)
     order_view: dict[str, Any] = {
         "id": order["id"],
         "rev": order["rev"],
@@ -1135,9 +1636,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
         order_view["backlog"] = backlog_open
     packet = {
         "v": 1,
+        "packet_id": f"pkt_{uuid.uuid4().hex}",
         "wave": wave,
         "child_id": child_id,
         "packed_at": utc_now(),
+        "order_id": order["id"],
         "order_rev": order["rev"],
         "order": order_view,
         "slice": args.slice,
@@ -1151,6 +1654,24 @@ def cmd_pack(args: argparse.Namespace) -> None:
             "seconds": args.seconds,
         },
     }
+    packet["packet_hash"] = packet_digest(packet)
+    require_public_schema(packet, "packet.schema.json", "packet")
+    errors = validate_packet(packet)
+    if errors:
+        die("invalid packet:\n  " + "\n  ".join(errors))
+    canonical_out = canonical_packet_rel(int(wave), child_id)
+    out_rel = str(args.out) if args.out else canonical_out
+    out = safe_relative_path(root, out_rel, "--out", reject_symlinks=True)
+    if out_rel != canonical_out:
+        die(f"noncanonical --out {out_rel!r}; expected {canonical_out}")
+    register_packed_child(
+        order, state, force=bool(getattr(args, "force_spawn", False))
+    )
+    save_state(state, root)
+    (root / scratch).mkdir(parents=True, exist_ok=True)
+    (wdir / "packets").mkdir(parents=True, exist_ok=True)
+    (wdir / "residuals").mkdir(parents=True, exist_ok=True)
+    (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     if requires_tool:
         blind = [
             a
@@ -1163,7 +1684,6 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 + ", ".join(blind),
                 file=sys.stderr,
             )
-    out = Path(args.out) if args.out else wdir / "packets" / f"{child_id}.json"
     dump_json(out, packet)
     ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
@@ -1188,13 +1708,14 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     order = load_order(root)
     state = load_state(root)
     wave = args.wave or state["wave"]
-    child_id = args.child_id
+    child_id = require_child_id(args.child_id)
     pkt_path = wave_dir(int(wave), root) / "packets" / f"{child_id}.json"
     if not pkt_path.is_file():
         die(f"no packet for {child_id} in wave {wave}")
-    packet = load_json(pkt_path)
+    packet = load_packet(pkt_path)
+    require_packet_artifact_paths(root, packet, pkt_path)
     res_rel = packet.get("residual_path")
-    if res_rel and (root / str(res_rel)).is_file():
+    if res_rel and safe_relative_path(root, res_rel, "packet residual_path").is_file():
         die(
             f"{child_id} already wrote a residual; collect/integrate it "
             "instead of unpacking"
@@ -1213,12 +1734,12 @@ def cmd_unpack(args: argparse.Namespace) -> None:
         spawn_meta.unlink()
     scratch_rel = packet.get("scratch_dir")
     if scratch_rel:
-        scratch = root / str(scratch_rel)
+        scratch = safe_relative_path(root, scratch_rel, "packet scratch_dir")
         try:
             scratch.rmdir()  # only removes an empty dir; nonempty is evidence
         except OSError:
             pass
-    state["children_spawned"] = max(0, int(state.get("children_spawned") or 0) - 1)
+    reconcile_children_spawned(root, state, int(wave))
     save_state(state, root)
     snapshot_session(root, "unpack")
     max_c = int(order.get("caps", {}).get("max_children", 4))
@@ -1228,8 +1749,11 @@ def cmd_unpack(args: argparse.Namespace) -> None:
 
 def cmd_render(args: argparse.Namespace) -> None:
     root = find_root()
-    packet = load_json(Path(args.packet))
-    ensure_field_slave_md(root)
+    order = load_order(root)
+    state = load_state(root)
+    packet = require_registered_packet(
+        root, args.packet, order=order, state=state
+    )
     sys.stdout.write(
         render_prompt(
             packet,
@@ -1241,7 +1765,11 @@ def cmd_render(args: argparse.Namespace) -> None:
 
 def cmd_handoff(args: argparse.Namespace) -> None:
     root = find_root()
-    packet = load_json(Path(args.packet))
+    order = load_order(root)
+    state = load_state(root)
+    packet = require_registered_packet(
+        root, args.packet, order=order, state=state
+    )
     child_id = packet.get("child_id")
     if not child_id:
         die("packet missing child_id")
@@ -1276,27 +1804,29 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
     state = load_state(root)
-    packet = load_json(Path(args.packet))
+    packet = require_registered_packet(
+        root, args.packet, order=order, state=state
+    )
     blocked, why = spawn_is_blocked(state, force=bool(args.force_spawn))
     if blocked:
         die(why)
     adapter = pick_adapter(args.adapter, order.get("harness"))
-    child_id = packet.get("child_id") or f"child_{uuid.uuid4().hex[:6]}"
+    child_id = require_child_id(packet.get("child_id"), "packet child_id")
     wave = packet.get("wave") or state["wave"]
     already = child_is_packed(root, int(wave), child_id)
     if not already and state["children_spawned"] >= order["caps"]["max_children"]:
         die(f"max_children cap {order['caps']['max_children']} reached")
     wdir = wave_dir(int(wave), root)
-    residual_rel = packet.get("residual_path") or f".orderfield/waves/{int(wave):03d}/residuals/{child_id}.json"
-    residual_abs = root / residual_rel
+    residual_rel = str(packet["residual_path"])
+    residual_abs = safe_relative_path(root, residual_rel, "packet residual_path")
     residual_abs.parent.mkdir(parents=True, exist_ok=True)
     required = [str(t).strip().lower() for t in (packet.get("requires_tool") or [])]
     lacking = missing_tools(adapter, required)
-    if lacking and not args.force_spawn:
+    if lacking and not args.force_tool:
         die(
             f"adapter {adapter} lacks required tools {sorted(set(lacking))} "
             f"(packet requires_tool={required}); pick --adapter with those tools "
-            "or repack without them"
+            "or use --force-tool to acknowledge the capability override"
         )
     ensure_field_slave_md(root)
     prompt = render_prompt(
@@ -1368,8 +1898,15 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if not residual_abs.exists():
         extracted = extract_json_object(proc.stdout)
         if extracted and isinstance(extracted, dict) and "status" in extracted:
-            dump_json(residual_abs, extracted)
-            print(f"residual extracted from stdout -> {residual_rel}")
+            errs = validate_residual_for_packet(extracted, packet, root)
+            if errs:
+                print(
+                    "invalid residual extracted from stdout; not written: "
+                    + "; ".join(errs)
+                )
+            else:
+                dump_json(residual_abs, extracted)
+                print(f"residual extracted from stdout -> {residual_rel}")
         else:
             print(f"no residual yet. log={log_path}")
     if not already:
@@ -1430,7 +1967,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             continue
         path = root / str(rel)
         data = load_json(path)
-        errs = validate_residual(data)
+        errs = validate_residual_for_packet(data, pkt, root)
         if errs:
             bad += 1
             print(f"INVALID {path.name}: {'; '.join(errs)}")
@@ -1467,7 +2004,6 @@ def decide_regime(
 
     field_hits: list[str] = []
     mission_hits = 0
-    novelty = False
     hard_fail = False
     all_done = True
     any_threshold = False
@@ -1485,8 +2021,6 @@ def decide_regime(
         if "mission" in wants:
             mission_hits += 1
         metrics = res.get("metrics") or {}
-        if metrics.get("novelty") and th.get("novelty"):
-            novelty = True
         if metrics.get("tool_failures", 0) >= th.get("tool_failures", 2):
             hard_fail = True
         max_div = max(max_div, float(metrics.get("divergence") or 0))
@@ -1496,7 +2030,7 @@ def decide_regime(
         return "human", "3 waves asking to change the mission"
 
     field_set = set(field_hits)
-    if field_set & {"mission", "phase", "constraints", "done_when"}:
+    if field_set & {"mission", "phase", "constraints", "done_when", "workspace"}:
         if "escalate_up" in enabled:
             return "escalate_up", f"field residual: {sorted(field_set)}"
         return "human", "field residual and escalate_up is disabled"
@@ -1522,11 +2056,6 @@ def decide_regime(
             if done_when_closed(order) and "phase" in enabled:
                 return "phase", "cooldown; done_when closed"
             return "hold", "cooldown after scale_across; wave closed"
-
-    if novelty and any_threshold and "scale_across" in enabled:
-        if state.get("across_this_wave", 0) < caps.get("max_across_per_wave", 1):
-            return "scale_across", "novelty + threshold: new mode"
-        return "escalate_up", "novelty but across-cap for this wave"
 
     if all_done and not field_hits:
         if done_when_closed(order) and "phase" in enabled:
@@ -1577,6 +2106,272 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
     return order
 
 
+def current_wave_report(root: Path, state: dict[str, Any]) -> dict[str, Any] | None:
+    wave = int(state.get("wave") or 1)
+    path = wave_dir(wave, root) / "report.json"
+    if not path.is_file():
+        return None
+    report = load_wave_report(path)
+    if int(report.get("wave") or 0) != wave:
+        die(
+            f"wave report mismatch: state is wave {wave}, "
+            f"report declares wave {report.get('wave')}"
+        )
+    return report
+
+
+def integration_input_digest(
+    root: Path,
+    wave: int,
+    packets: list[dict[str, Any]],
+    *,
+    partial: bool,
+    apply: bool,
+) -> str:
+    """Hash the canonical packet/residual set and reduction-affecting options."""
+    children: list[dict[str, Any]] = []
+    for packet in sorted(packets, key=lambda item: str(item.get("child_id") or "")):
+        residual_path = safe_relative_path(
+            root, packet.get("residual_path"), "packet residual_path"
+        )
+        residual: Any = None
+        if residual_path.is_file():
+            residual = load_json(residual_path)
+        children.append(
+            {
+                "child_id": packet.get("child_id"),
+                "packet_hash": packet.get("packet_hash") or packet_digest(packet),
+                "residual": residual,
+            }
+        )
+    canonical = json.dumps(
+        {
+            "wave": int(wave),
+            "partial": bool(partial),
+            "apply": bool(apply),
+            "children": children,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def existing_integration_report(root: Path, wave: int) -> dict[str, Any] | None:
+    path = wave_dir(int(wave), root) / "report.json"
+    return load_wave_report(path) if path.is_file() else None
+
+
+def wave_report_covers_packets(
+    root: Path,
+    state: dict[str, Any],
+    report: dict[str, Any],
+) -> bool:
+    wave = int(state.get("wave") or 1)
+    packets = packed_children(root, wave)
+    if any(not packet_has_identity(packet) for packet in packets):
+        # Identity-free packets remain collectable/integratable for recovery,
+        # but their synthesized content digest is not a canonical packet digest.
+        return False
+    packet_count = len(packets)
+    reduced_count = len(report.get("residuals") or []) + len(
+        report.get("skipped_in_flight") or []
+    )
+    if reduced_count != packet_count:
+        return False
+    integration = report.get("integration")
+    if not isinstance(integration, dict) or not integration.get("input_hash"):
+        # Legacy reports remain readable for recovery, but count-only coverage
+        # cannot authorize a state transition.
+        return False
+    current_hash = integration_input_digest(
+        root,
+        wave,
+        packets,
+        partial=bool(integration.get("partial")),
+        apply=bool(integration.get("apply")),
+    )
+    return current_hash == integration.get("input_hash")
+
+
+def partial_apply_recovery_allowed(
+    packets: list[dict[str, Any]],
+    order: dict[str, Any],
+    previous_report: dict[str, Any] | None,
+) -> bool:
+    """Allow completion of packets made stale only by their partial apply."""
+    if not isinstance(previous_report, dict):
+        return False
+    integration = previous_report.get("integration")
+    applied = previous_report.get("applied_patch")
+    if (
+        not isinstance(integration, dict)
+        or not integration.get("partial")
+        or not integration.get("apply")
+        or not isinstance(applied, dict)
+        or applied.get("rev") != order.get("rev")
+        or previous_report.get("order_rev") != order.get("rev")
+    ):
+        return False
+    prior_rev = int(order.get("rev") or 0) - 1
+    return bool(packets) and all(
+        packet_has_identity(packet)
+        and packet.get("order_id") == order.get("id")
+        and packet.get("order_rev") == prior_rev
+        for packet in packets
+    )
+
+
+def reconcile_integration_state(
+    state: dict[str, Any], report: dict[str, Any]
+) -> bool:
+    """Repair state if a crash landed report.json before state.json."""
+    integration = report.get("integration")
+    if not isinstance(integration, dict):
+        return False
+    changed = False
+    regime = report.get("regime")
+    wave = int(report.get("wave") or 0)
+    history = state.setdefault("integration_history", [])
+    wave_was_integrated = any(
+        isinstance(item, dict) and item.get("wave") == wave for item in history
+    )
+    if state.get("last_regime") != regime:
+        state["last_regime"] = regime
+        changed = True
+    if regime == "escalate_up":
+        blocked_rev = integration.get("decision_order_rev", report.get("order_rev"))
+        if not state.get("spawn_blocked"):
+            state["spawn_blocked"] = True
+            changed = True
+        if state.get("blocked_at_order_rev") != blocked_rev:
+            state["blocked_at_order_rev"] = blocked_rev
+            changed = True
+    if not wave_was_integrated:
+        mission_hit = any(
+            "mission" in (item.get("wants") or [])
+            for item in (report.get("residuals") or [])
+            if isinstance(item, dict)
+        )
+        if mission_hit:
+            streak_waves = state.setdefault("mission_streak_waves", [])
+            if wave not in streak_waves:
+                state["mission_change_streak"] = (
+                    int(state.get("mission_change_streak") or 0) + 1
+                )
+                streak_waves.append(wave)
+                changed = True
+        elif state.get("mission_change_streak") != 0:
+            state["mission_change_streak"] = 0
+            changed = True
+        # Recovery support for reports created by an earlier selector that
+        # could emit scale_across. 0.4.2 keeps the enum but does not select it.
+        if regime == "scale_across":
+            if state.get("across_this_wave") != 1:
+                state["across_this_wave"] = 1
+                changed = True
+            if state.get("last_across_wave") != wave:
+                state["last_across_wave"] = wave
+                changed = True
+        repaired_since = waves_since_across(state)
+        if state.get("waves_since_across") != repaired_since:
+            state["waves_since_across"] = repaired_since
+            changed = True
+    input_hash = integration.get("input_hash")
+    if input_hash and not any(
+        isinstance(item, dict)
+        and item.get("wave") == report.get("wave")
+        and item.get("input_hash") == input_hash
+        for item in history
+    ):
+        history.append(
+            {
+                "wave": report.get("wave"),
+                "input_hash": input_hash,
+                "integrated_at": integration.get("integrated_at"),
+                "partial": bool(integration.get("partial")),
+                "recompute": bool(integration.get("recompute")),
+                "record_path": integration.get("record_path"),
+            }
+        )
+        changed = True
+    return changed
+
+
+def phase_transition_errors(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+    target: str,
+) -> list[str]:
+    errors: list[str] = []
+    current = str(order.get("phase"))
+    current_index = PHASES.index(current)
+    expected = PHASES[current_index + 1] if current_index + 1 < len(PHASES) else None
+    if target != expected:
+        if expected is None:
+            errors.append(f"{current} is the final phase")
+        else:
+            errors.append(f"legal next phase from {current} is {expected}, not {target}")
+    if not done_when_closed(order, current):
+        errors.append(f"current phase {current} is not closed")
+    flying = in_flight_children(root, int(state.get("wave") or 1))
+    if flying:
+        children = ", ".join(str(p.get("child_id") or "?") for p in flying)
+        errors.append(f"children still in flight: {children}")
+    report = current_wave_report(root, state)
+    if report is None:
+        errors.append(f"current wave {state.get('wave')} is not integrated")
+    elif not wave_report_covers_packets(root, state, report):
+        errors.append("current wave changed after its report was integrated")
+    elif report.get("regime") != "phase":
+        errors.append(
+            f"current wave report regime is {report.get('regime')}, not phase"
+        )
+    return errors
+
+
+def wave_transition_errors(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+    wave = int(state.get("wave") or 1)
+    flying = in_flight_children(root, wave)
+    if flying:
+        children = ", ".join(str(p.get("child_id") or "?") for p in flying)
+        errors.append(f"children still in flight: {children}")
+    report = current_wave_report(root, state)
+    if report is None:
+        errors.append(f"current wave {wave} is not integrated")
+    elif not wave_report_covers_packets(root, state, report):
+        errors.append("current wave changed after its report was integrated")
+    if state.get("spawn_blocked"):
+        blocked_rev = state.get("blocked_at_order_rev")
+        if blocked_rev is None and report and report.get("regime") == "escalate_up":
+            blocked_rev = report.get("order_rev")
+        if blocked_rev is None:
+            errors.append("escalation has no recorded blocked_at_order_rev")
+        elif int(order.get("rev") or 0) <= int(blocked_rev):
+            errors.append(
+                f"ORDER.rev must exceed blocked_at_order_rev {blocked_rev} "
+                "after escalate_up"
+            )
+    return errors
+
+
+def require_wave_transition(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+) -> None:
+    errors = wave_transition_errors(root, order, state)
+    if errors:
+        die("next-wave refused: " + "; ".join(errors))
+
+
 def cmd_integrate(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
@@ -1586,8 +2381,44 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     residuals: list[dict[str, Any]] = []
     skipped: list[str] = []
     partial = bool(getattr(args, "partial", False))
+    reconcile_children_spawned(root, state, int(wave))
+    if partial and args.next_wave:
+        die("--partial cannot be combined with --next-wave")
+    if args.next_wave and int(wave) != int(state.get("wave") or 1):
+        die("--next-wave requires integrating the current wave")
+    input_hash = integration_input_digest(
+        root,
+        int(wave),
+        packets,
+        partial=partial,
+        apply=bool(args.apply),
+    )
+    previous_report = existing_integration_report(root, int(wave))
+    previous_integration = (
+        previous_report.get("integration")
+        if isinstance(previous_report, dict)
+        and isinstance(previous_report.get("integration"), dict)
+        else None
+    )
+    previous_hash = (
+        str(previous_integration.get("input_hash"))
+        if previous_integration and previous_integration.get("input_hash")
+        else None
+    )
+    if previous_hash == input_hash:
+        if reconcile_integration_state(state, previous_report):
+            save_state(state, root)
+            snapshot_session(root, "integrate")
+        print(json.dumps(previous_report, indent=2, ensure_ascii=False))
+        return
+    if previous_report is not None and not bool(getattr(args, "recompute", False)):
+        die(
+            "integration inputs changed after report creation; rerun with "
+            "--recompute to create an auditable replacement"
+        )
     if packets:
-        die_on_stale_packets(packets, order, int(wave))
+        if not partial_apply_recovery_allowed(packets, order, previous_report):
+            die_on_stale_packets(packets, order, int(wave))
         enforce_wave_child_caps(order, state, len(packets))
         for pkt in packets:
             if partial and packet_residual_missing(root, pkt):
@@ -1596,7 +2427,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
                 continue
             path = require_packet_residual(root, pkt)
             data = load_json(path)
-            errs = validate_residual(data)
+            errs = validate_residual_for_packet(data, pkt, root)
             if errs:
                 die(f"invalid residual {path.name}: {'; '.join(errs)}")
             residuals.append(data)
@@ -1606,6 +2437,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
                 "nothing to integrate yet"
             )
     regime, reason = decide_regime(order, state, residuals)
+    order_rev_at_decision = int(order["rev"])
     applied = None
     if args.apply:
         before = order["rev"]
@@ -1626,15 +2458,24 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         # mission patches never auto-apply
         if any("mission" in (r.get("residual") or {}).get("wants_to_change", []) for r in residuals):
             print("note: mission proposed_patch is not auto-applied. Use of patch --mission")
-    if any("mission" in (r.get("residual") or {}).get("wants_to_change", []) for r in residuals):
-        state["mission_change_streak"] = state.get("mission_change_streak", 0) + 1
-    else:
-        state["mission_change_streak"] = 0
+    integrated_waves = {
+        int(item.get("wave"))
+        for item in state.get("integration_history", [])
+        if isinstance(item, dict) and isinstance(item.get("wave"), int)
+    }
+    mission_hit = any(
+        "mission" in (r.get("residual") or {}).get("wants_to_change", [])
+        for r in residuals
+    )
+    if int(wave) not in integrated_waves:
+        if mission_hit:
+            state["mission_change_streak"] = state.get("mission_change_streak", 0) + 1
+            state.setdefault("mission_streak_waves", []).append(int(wave))
+        else:
+            state["mission_change_streak"] = 0
     if regime == "escalate_up":
         state["spawn_blocked"] = True
-    if regime == "scale_across":
-        state["across_this_wave"] = 1
-        state["last_across_wave"] = int(wave)
+        state["blocked_at_order_rev"] = order_rev_at_decision
     state["waves_since_across"] = waves_since_across(state)
     state["last_regime"] = regime
     report = {
@@ -1656,13 +2497,41 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             - state.get("across_this_wave", 0),
         },
         "applied_patch": applied,
+        "integration": {
+            "input_hash": input_hash,
+            "integrated_at": utc_now(),
+            "partial": partial,
+            "apply": bool(args.apply),
+            "recompute": previous_report is not None,
+            "decision_order_rev": order_rev_at_decision,
+            "previous_input_hash": previous_hash,
+            "record_path": (
+                f".orderfield/waves/{int(wave):03d}/integrations/{input_hash}.json"
+            ),
+        },
     }
     if skipped:
         report["skipped_in_flight"] = skipped
+    require_public_schema(report, "wave-report.schema.json", "wave report")
+    history_entry = {
+        "wave": int(wave),
+        "input_hash": input_hash,
+        "integrated_at": report["integration"]["integrated_at"],
+        "partial": partial,
+        "recompute": previous_report is not None,
+        "record_path": report["integration"]["record_path"],
+    }
+    state.setdefault("integration_history", []).append(history_entry)
+    dump_json(root / report["integration"]["record_path"], report)
     dump_json(wave_dir(int(wave), root) / "report.json", report)
-    if args.next_wave:
-        advance_wave(state, root=root, order=order)
     save_state(state, root)
+    if args.next_wave:
+        errors = wave_transition_errors(root, order, state)
+        if errors:
+            snapshot_session(root, "integrate")
+            die("next-wave refused: " + "; ".join(errors))
+        advance_wave(state, root=root, order=order)
+        save_state(state, root)
     snapshot_session(root, "integrate")
     emit_event(
         "integrate",
@@ -1676,12 +2545,22 @@ def cmd_integrate(args: argparse.Namespace) -> None:
 def cmd_phase(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    state = load_state(root)
     if args.phase not in PHASES:
         die(f"invalid phase: {args.phase}")
+    reason = str(getattr(args, "reason", None) or "").strip()
+    if args.force and not reason:
+        die("phase --force requires a nonempty --reason")
     if args.phase == order["phase"] and not args.force:
         snapshot_session(root, "phase")
         print(f"already in {args.phase}")
         return
+    if not args.force:
+        errors = phase_transition_errors(root, order, state, args.phase)
+        if errors:
+            die("phase transition refused: " + "; ".join(errors))
+    from_phase = str(order["phase"])
+    before_rev = int(order["rev"])
     if order.get("done_when_closed"):
         # legacy boolean spoke only for the phase we are leaving
         mark_done_when_closed(order, order["phase"])
@@ -1690,6 +2569,20 @@ def cmd_phase(args: argparse.Namespace) -> None:
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     write_phase_md(root, order)
+    if args.force:
+        override = {
+            "at": utc_now(),
+            "wave": int(state.get("wave") or 1),
+            "from_phase": from_phase,
+            "to_phase": str(args.phase),
+            "reason": reason,
+            "order_rev_before": before_rev,
+            "order_rev_after": int(order["rev"]),
+        }
+        state.setdefault("phase_overrides", []).append(override)
+        save_state(state, root)
+        emit_event("phase_override", **override)
+        print("override=" + json.dumps(override, ensure_ascii=False, sort_keys=True))
     snapshot_session(root, "phase")
     print(f"phase={order['phase']} rev={order['rev']}")
 
@@ -1840,16 +2733,17 @@ def cmd_patch(args: argparse.Namespace) -> None:
 
 def advance_wave(
     state: dict[str, Any],
-    root: Path | None = None,
-    order: dict[str, Any] | None = None,
+    root: Path,
+    order: dict[str, Any],
 ) -> dict[str, Any]:
+    require_wave_transition(root, order, state)
     nxt = int(state.get("wave", 1)) + 1
-    if root is not None and order is not None:
-        nxt = landable_wave(root, order, nxt)
+    nxt = landable_wave(root, order, nxt)
     state["wave"] = nxt
     state["across_this_wave"] = 0
-    state["children_spawned"] = 0
+    state["children_spawned"] = len(packed_children(root, nxt))
     state["spawn_blocked"] = False
+    state["blocked_at_order_rev"] = None
     state["waves_since_across"] = waves_since_across(state)
     return state
 
@@ -1902,7 +2796,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         if packed_ts is not None:
             print(f"  packed      {pkt.get('packed_at')} ({fmt_age(time.time() - packed_ts)} ago)")
     if flying:
-        print("activity      of pulse (scratch + shared-repo mtime heuristic)")
+        print("activity      of pulse (child scratch verdict + shared repo context)")
     print(f"next          {nxt}")
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
@@ -1919,22 +2813,24 @@ def pulse_once(
 ) -> int:
     """One read-only activity screen. Exit 2 when any child is STALE.
 
-    The heuristic combines per-child scratch activity with a shared-repo
-    product mtime (kernel state excluded). It is not process health or
-    per-child attribution.
+    Child verdicts use only packet and scratch activity. The newest shared-repo
+    product mtime is shown separately as wave context, never child evidence.
     """
     pdir = wave_dir(wave, root) / "packets"
     flying: list[tuple[Path, dict[str, Any]]] = []
     if pdir.is_dir():
         for f in sorted(pdir.glob("*.json")):
-            pkt = load_json(f)
+            pkt = load_packet(f)
             if packet_residual_missing(root, pkt):
                 flying.append((f, pkt))
     print(
         f"ORDER {order['id']}  phase={order['phase']}  wave={wave}  "
         f"regime={state.get('last_regime') or '-'}"
     )
-    print("activity    mtime heuristic; scratch is per child, product repo is shared")
+    print(
+        "activity    mtime heuristic; child scratch decides verdict, "
+        "product repo is shared wave context"
+    )
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
         return 0
@@ -1968,7 +2864,6 @@ def pulse_once(
                 f"    shared repo: last product write "
                 f"{fmt_age(now - repo[0])} ago ({repo[1]})"
             )
-            signals.append((repo[0], f"shared repo/{repo[1]}"))
         freshest_ts, freshest_src = max(signals, key=lambda s: s[0])
         age = now - freshest_ts
         verdict = pulse_verdict(age, stale_minutes)
@@ -2058,10 +2953,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "pulse",
-        help="read-only activity heuristic (scratch + shared-repo mtimes; exit 2 on STALE)",
+        help="read-only child activity heuristic (shared-repo mtimes are wave context)",
         description=(
-            "Read-only activity heuristic from per-child scratch and shared-repo "
-            "mtimes; exits 2 on STALE."
+            "Read-only activity heuristic. shared-repo mtimes are wave context; "
+            "child verdicts use packet/scratch mtimes; exits 2 on STALE."
         ),
     )
     s.add_argument("--wave", type=int)
@@ -2147,7 +3042,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--packet", required=True)
     s.add_argument("--adapter", choices=ADAPTER_ORDER)
     s.add_argument("--dry-run", action="store_true")
-    s.add_argument("--force-spawn", action="store_true")
+    s.add_argument(
+        "--force-spawn",
+        action="store_true",
+        help="bypass spawn_blocked after escalate_up",
+    )
+    s.add_argument(
+        "--force-tool",
+        action="store_true",
+        help="acknowledge and bypass a requires_tool capability mismatch",
+    )
     s.add_argument("--timeout", type=int, default=900)
     s.set_defaults(func=cmd_spawn)
 
@@ -2168,11 +3072,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="reduce the residuals that landed; missing children stay in flight",
     )
+    s.add_argument(
+        "--recompute",
+        action="store_true",
+        help="replace a report after changed inputs while retaining integration history",
+    )
     s.set_defaults(func=cmd_integrate)
 
     s = sub.add_parser("phase", help="change phase (single writer)")
     s.add_argument("phase", choices=PHASES)
-    s.add_argument("--force", action="store_true")
+    s.add_argument(
+        "--force",
+        action="store_true",
+        help="audited break-glass override of phase transition guards",
+    )
+    s.add_argument("--reason", help="required audit reason with --force")
     s.set_defaults(func=cmd_phase)
 
     s = sub.add_parser("patch", help="explicit ORDER patch")
@@ -2229,7 +3143,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "next-wave",
-        help="advance the wave number; skip dirs with stale packets",
+        help="advance an integrated wave with no children in flight",
     )
     s.set_defaults(func=cmd_next_wave)
 
@@ -2240,7 +3154,13 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     set_json_events(bool(getattr(args, "json", False)))
-    args.func(args)
+    if args.cmd in MUTATING_COMMANDS:
+        root = find_root()
+        require_nonsymlink_kernel_root(root)
+        with field_lock(root, args.cmd):
+            args.func(args)
+    else:
+        args.func(args)
 
 
 if __name__ == "__main__":
