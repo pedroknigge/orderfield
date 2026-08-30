@@ -66,6 +66,28 @@ SLICE_WARN_CHARS = 800
 SLICE_BRIEF_CHARS = 80
 CHECKPOINT_MAX_CHARS = 2000
 CHECKPOINT_MAX_LINES = 24
+UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
+UPDATE_CHECK_INTERVAL_S = 24 * 3600
+UPDATE_CMD = "curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash"
+PULSE_QUIET_SECONDS = 300
+PULSE_STALE_MINUTES = 30.0
+# Dirs whose mtimes are noise, not evidence of a child working.
+PULSE_PRUNE_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".next",
+    "dist",
+    "build",
+    "out",
+    "coverage",
+    ".turbo",
+    ".cache",
+    ".pytest_cache",
+    "target",
+}
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
 SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
@@ -550,6 +572,138 @@ def truncate_slice(text: str, limit: int = SLICE_BRIEF_CHARS) -> str:
     return one[: limit - 3] + "..."
 
 
+def semver_tuple(text: Any) -> tuple[int, int, int] | None:
+    parts = str(text or "").strip().split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        return (int(parts[0]), int(parts[1]), int(parts[2]))
+    except ValueError:
+        return None
+
+
+def installed_version() -> str | None:
+    try:
+        return (skill_root() / "VERSION").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def update_cache_path() -> Path:
+    override = os.environ.get("OF_UPDATE_CACHE")
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "orderfield" / "update-check.json"
+
+
+def fetch_latest_version(timeout: float = 2.0) -> str | None:
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(UPDATE_CHECK_URL, timeout=timeout) as resp:
+            return resp.read(64).decode("utf-8", "replace").strip()
+    except Exception:
+        return None
+
+
+def maybe_notify_update(fetch: Any = fetch_latest_version) -> None:
+    """One stderr line, at most once a day, when a newer release exists.
+
+    Read-path commands only (status/resume/pulse) — never the pack/spawn hot
+    path. Silent on every failure: an offline leader must not notice this
+    exists. OF_NO_UPDATE_CHECK=1 disables it."""
+    if os.environ.get("OF_NO_UPDATE_CHECK") == "1":
+        return
+    local = semver_tuple(installed_version())
+    if local is None:
+        return
+    cache_file = update_cache_path()
+    now = time.time()
+    cache: dict[str, Any] = {}
+    try:
+        cache = json.loads(cache_file.read_text(encoding="utf-8"))
+        if not isinstance(cache, dict):
+            cache = {}
+    except (OSError, json.JSONDecodeError):
+        cache = {}
+    latest_text = cache.get("latest")
+    if now - float(cache.get("checked_at") or 0) >= UPDATE_CHECK_INTERVAL_S:
+        latest_text = fetch()
+        try:
+            # checked_at advances even on a failed fetch: no hammering offline
+            dump_json(
+                cache_file,
+                {"checked_at": now, "latest": latest_text},
+            )
+        except OSError:
+            pass
+    latest = semver_tuple(latest_text)
+    if latest is not None and latest > local:
+        print(
+            f"of: update available {installed_version()} -> {str(latest_text).strip()} — "
+            f"upgrade: {UPDATE_CMD}  (silence: OF_NO_UPDATE_CHECK=1)",
+            file=sys.stderr,
+        )
+
+
+def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str] | None:
+    """Newest file mtime under path, recursive. Returns (mtime, relpath) or None."""
+    if not path.is_dir():
+        return None
+    skip = prune or set()
+    best: tuple[float, str] | None = None
+    for dirpath, dirnames, filenames in os.walk(path):
+        dirnames[:] = [d for d in dirnames if d not in skip]
+        for name in filenames:
+            f = Path(dirpath) / name
+            try:
+                m = f.stat().st_mtime
+            except OSError:
+                continue
+            if best is None or m > best[0]:
+                best = (m, str(f.relative_to(path)))
+    return best
+
+
+def repo_newest_mtime(root: Path) -> tuple[float, str] | None:
+    """Newest product write in the repo. `.orderfield/` is excluded so the
+    kernel's own snapshots cannot fake a live child; scratch is measured
+    separately per child."""
+    return newest_mtime(root, PULSE_PRUNE_DIRS | {".orderfield"})
+
+
+def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES) -> str:
+    """ALIVE / QUIET / STALE from evidence age. STALE is a signal, never an
+    action: the kernel does not kill or unpack on it."""
+    if age_seconds < PULSE_QUIET_SECONDS:
+        return "ALIVE"
+    if age_seconds < stale_minutes * 60:
+        return "QUIET"
+    return "STALE"
+
+
+def fmt_age(seconds: float) -> str:
+    s = max(0, int(seconds))
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m{s % 60:02d}s"
+    if s < 86400:
+        return f"{s // 3600}h{(s % 3600) // 60:02d}m"
+    return f"{s // 86400}d{(s % 86400) // 3600:02d}h"
+
+
+def parse_utc(ts: Any) -> float | None:
+    try:
+        return (
+            datetime.strptime(str(ts), "%Y-%m-%dT%H:%M:%SZ")
+            .replace(tzinfo=timezone.utc)
+            .timestamp()
+        )
+    except (TypeError, ValueError):
+        return None
+
+
 def load_session(root: Path | None = None) -> dict[str, Any]:
     p = session_path(root)
     if not p.is_file():
@@ -584,6 +738,17 @@ def snapshot_session(
         "in_flight": [str(p.get("child_id") or "?") for p in flying],
         "updated_at": utc_now(),
     }
+    detail = [
+        {
+            "child_id": str(p.get("child_id") or "?"),
+            "role": str(p.get("role") or "?"),
+            "packed_at": p.get("packed_at"),
+            "slice": truncate_slice(p.get("slice") or ""),
+        }
+        for p in flying
+    ]
+    if detail:
+        data["in_flight_detail"] = detail
     kept = summary if summary is not None else prev.get("summary")
     if isinstance(kept, str) and kept.strip():
         data["summary"] = kept.strip()
@@ -810,6 +975,7 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> None:
+    maybe_notify_update()
     root = find_root()
     if not order_path(root).exists():
         print("no ORDER. of init --mission '...'")
@@ -949,6 +1115,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "v": 1,
         "wave": wave,
         "child_id": child_id,
+        "packed_at": utc_now(),
         "order_rev": order["rev"],
         "order": order_view,
         "slice": args.slice,
@@ -1676,6 +1843,7 @@ def cmd_next_wave(args: argparse.Namespace) -> None:
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
+    maybe_notify_update()
     root = find_root()
     if not order_path(root).exists():
         print("no ORDER. of init --mission '...'")
@@ -1708,11 +1876,113 @@ def cmd_resume(args: argparse.Namespace) -> None:
         print(f"  role        {role}")
         print(f"  slice       {truncate_slice(pkt.get('slice') or '')}")
         print(f"  scratch     {scratch}")
+        packed_ts = parse_utc(pkt.get("packed_at"))
+        if packed_ts is not None:
+            print(f"  packed      {pkt.get('packed_at')} ({fmt_age(time.time() - packed_ts)} ago)")
+    if flying:
+        print("liveness      of pulse")
     print(f"next          {nxt}")
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
         print("summary")
         print(summary.strip())
+
+
+def pulse_once(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+    wave: int,
+    stale_minutes: float,
+) -> int:
+    """One read-only liveness screen. Exit 2 when any child is STALE.
+
+    Liveness is derived, not self-reported: newest mtime in the child's
+    scratch and in the repo (kernel state excluded). A hung process cannot
+    fake an mtime that keeps advancing.
+    """
+    pdir = wave_dir(wave, root) / "packets"
+    flying: list[tuple[Path, dict[str, Any]]] = []
+    if pdir.is_dir():
+        for f in sorted(pdir.glob("*.json")):
+            pkt = load_json(f)
+            if packet_residual_missing(root, pkt):
+                flying.append((f, pkt))
+    print(
+        f"ORDER {order['id']}  phase={order['phase']}  wave={wave}  "
+        f"regime={state.get('last_regime') or '-'}"
+    )
+    if not flying:
+        print("in_flight   0 — idle (nothing to watch)")
+        return 0
+    now = time.time()
+    repo = repo_newest_mtime(root)
+    exit_code = 0
+    for pkt_file, pkt in flying:
+        child = str(pkt.get("child_id") or "?")
+        role = str(pkt.get("role") or "?")
+        packed_ts = parse_utc(pkt.get("packed_at"))
+        if packed_ts is None:
+            # pre-0.4.0 packet: the file's own mtime is the pack moment
+            try:
+                packed_ts = pkt_file.stat().st_mtime
+            except OSError:
+                packed_ts = now
+        print(f"  {child}  role={role}  packed {fmt_age(now - packed_ts)} ago")
+        print(f"    slice:   {truncate_slice(pkt.get('slice') or '')}")
+        # freshest evidence wins; packed_at floors it so a child that just
+        # started (no writes yet) reads ALIVE, not dead.
+        signals: list[tuple[float, str]] = [(packed_ts, "packed (no writes yet)")]
+        scratch_rel = pkt.get("scratch_dir")
+        scratch = newest_mtime(root / str(scratch_rel)) if scratch_rel else None
+        if scratch:
+            print(f"    scratch: last write {fmt_age(now - scratch[0])} ago ({scratch[1]})")
+            signals.append((scratch[0], f"scratch/{scratch[1]}"))
+        else:
+            print("    scratch: empty")
+        if repo:
+            print(f"    repo:    last write {fmt_age(now - repo[0])} ago ({repo[1]})")
+            signals.append((repo[0], repo[1]))
+        freshest_ts, freshest_src = max(signals, key=lambda s: s[0])
+        age = now - freshest_ts
+        verdict = pulse_verdict(age, stale_minutes)
+        line = f"    -> {verdict} (freshest evidence {fmt_age(age)} ago: {freshest_src})"
+        if verdict == "STALE":
+            exit_code = 2
+            line += f"\n       signal only, not an action. of unpack --child-id {child} releases it (scratch kept)."
+        print(line)
+        emit_event(
+            "pulse",
+            child_id=child,
+            verdict=verdict,
+            age_s=int(age),
+            wave=wave,
+        )
+    return exit_code
+
+
+def cmd_pulse(args: argparse.Namespace) -> None:
+    maybe_notify_update()
+    root = find_root()
+    if not order_path(root).exists():
+        print("no ORDER. of init --mission '...'")
+        return
+    stale_minutes = float(getattr(args, "stale_min", None) or PULSE_STALE_MINUTES)
+    interval = max(5, int(getattr(args, "interval", 30) or 30))
+    while True:
+        # re-read every tick: pulse is a lens, the disk is the truth
+        order = load_order(root)
+        state = load_state(root)
+        wave = int(args.wave or state.get("wave") or 1)
+        code = pulse_once(root, order, state, wave, stale_minutes)
+        if not getattr(args, "watch", False):
+            raise SystemExit(code)
+        print(f"--- watching (every {interval}s, Ctrl+C to stop) ---")
+        sys.stdout.flush()
+        try:
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            return
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> None:
@@ -1759,6 +2029,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="one-screen continuation brief reconstructed from disk",
     )
     s.set_defaults(func=cmd_resume)
+
+    s = sub.add_parser(
+        "pulse",
+        help="read-only liveness of in-flight children (mtime evidence; exit 2 on STALE)",
+    )
+    s.add_argument("--wave", type=int)
+    s.add_argument("--watch", action="store_true", help="refresh until Ctrl+C")
+    s.add_argument("--interval", type=int, default=30, help="seconds between refreshes")
+    s.add_argument(
+        "--stale-min",
+        dest="stale_min",
+        type=float,
+        default=PULSE_STALE_MINUTES,
+        help=f"minutes of silence before STALE (default {PULSE_STALE_MINUTES:g})",
+    )
+    s.set_defaults(func=cmd_pulse)
 
     s = sub.add_parser(
         "checkpoint",

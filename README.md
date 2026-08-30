@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.3.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.4.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.4.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -131,6 +131,10 @@ of status
 ```
 
 Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
+
+While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only liveness screen — per in-flight child, when it was packed and the newest write in its scratch and in the repo, with an `ALIVE` / `QUIET` / `STALE` verdict derived from mtimes, never self-reported. Exit 2 on STALE so scripts can alert. STALE is a signal, not an action: releasing a dead child stays `of unpack`, a human/leader call. Slaves keep the lens honest by appending one heartbeat line to `scratch/<child_id>/PULSE` (see `SLAVE.md`).
+
+`of status` / `of resume` / `of pulse` also tell you (once a day, one stderr line) when a newer release exists, with the upgrade one-liner. Silent offline; `OF_NO_UPDATE_CHECK=1` turns it off.
 
 <details>
 <summary><strong>When to open, session cut, and field rules</strong></summary>

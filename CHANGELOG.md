@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+Liveness release. Field request (2026-08-30): two long-running ORDERs *looked* hung while their implementers were mid-wave — the leader is silent by design between spawn and collect, so the user had nothing to look at. The answer is not a chattier leader (that invariant stays); it is a read-only lens over state that already lives on disk.
+
+- Feature: `of pulse` — one-screen liveness of in-flight children, derived from mtime evidence, never self-reported: per child, when it was packed, the newest write in its scratch, and the newest product write in the repo (`.orderfield/` excluded so kernel snapshots cannot fake a live child). Verdicts: `ALIVE` (< 5 min), `QUIET` (< 30 min — normal during long installs/test runs), `STALE` (threshold via `--stale-min`). Exit 2 when anything is STALE, so scripts can alert. `--watch --interval N` refreshes until Ctrl+C. STALE is a **signal, not an action**: the kernel never kills or unpacks on it; the output names `of unpack` and leaves the decision to the leader/human. Pulse writes nothing — session.json and state.json untouched (tested).
+- Feature: packets record `packed_at` (UTC), so pulse and resume can say "in flight for 14m" instead of guessing from file mtimes. `of resume` prints `packed <ts> (<age> ago)` per in-flight child and points at `of pulse`.
+- Feature: `session.json` gains `in_flight_detail` — `{child_id, role, packed_at, slice}` (slice truncated to 80 chars) per in-flight child, so `cat .orderfield/session.json` answers "waiting on whom, since when, for what" without archaeology. The `in_flight` id list stays as-is.
+- Doctrine: SLAVE.md **Heartbeat** — the slave appends one line (`<UTC ts> <≤10 words>`) to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command. Metadata for pulse, not a diary; the leader never judges its content. Keeps a long read-only stretch (a child reading for 10 minutes writes nothing) from reading as dead.
+- Feature: update notice. `of status` / `of resume` / `of pulse` print one stderr line when a newer release exists — `of: update available X -> Y — upgrade: curl … | bash` — checked against the repo's `VERSION` at most **once per day** (cache at `~/.cache/orderfield/update-check.json`, `OF_UPDATE_CACHE` overrides). Silent on every network failure (offline leaders never notice it exists), never runs on the pack/spawn hot path, `OF_NO_UPDATE_CHECK=1` disables. The test suite is hermetic: `run_of` sets the opt-out; the notice itself is unit-tested with an injected fetch.
+- Packaging: VERSION 0.4.0; skill description preview `v0.4.0 — …`.
+
 ## 0.3.2
 
 Packaging: first-class uninstall path documented and usable without a local checkout.

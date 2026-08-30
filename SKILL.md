@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.3.2 — Use when the user says orderfield, /of, of, order field, Haken slaving, threshold delegation, or agent waves, or wants Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (agy), or any other agent coordinated without micromanagement. Load before spawning subagents under a shared ORDER. Unknown harnesses use generic mode.
+description: v0.4.0 — Use when the user says orderfield, /of, of, order field, Haken slaving, threshold delegation, or agent waves, or wants Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (agy), or any other agent coordinated without micromanagement. Load before spawning subagents under a shared ORDER. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.3.2"
+  version: "0.4.0"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -121,6 +121,19 @@ Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harn
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
 For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch is nonempty, render/handoff add a **continuation note**: continue from scratch; do not restart the slice.
+
+### 4b. Liveness while a wave flies: `of pulse`
+
+```bash
+python3 <skill>/scripts/of.py pulse            # one screen, exit 2 if any child is STALE
+python3 <skill>/scripts/of.py pulse --watch    # refresh every 30s until Ctrl+C
+```
+
+Read-only lens over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest product write in the repo (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Liveness is **derived from mtimes**, never self-reported — a hung process cannot fake an mtime that keeps advancing. `STALE` is a signal, not an action: the kernel never kills or unpacks on it; releasing a dead child stays a human/leader call (`of unpack`). Pulse writes nothing — do not use it as a checkpoint.
+
+Slaves keep the lens honest with the heartbeat in `SLAVE.md`: one line appended to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command, so a long read-only stretch does not look dead. It is metadata for pulse, not a diary — the leader never judges its content.
+
+`status` / `resume` / `pulse` also print a one-line stderr notice (at most once a day) when a newer skill release exists, with the upgrade command. If you see it, tell the user; do not upgrade mid-ORDER on your own. `OF_NO_UPDATE_CHECK=1` disables it; it is silent offline.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 

@@ -27,11 +27,14 @@ EVAL_STALE = ROOT / "evals" / "expected" / "stale-packets.json"
 
 
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    # hermetic: the suite must never hit the network for the update notice
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
@@ -2243,3 +2246,156 @@ class JsonEvents(unittest.TestCase):
         self.assertEqual(payload.get("event"), "pack")
         self.assertEqual(payload.get("child_id"), "j1")
         self.assertTrue(payload.get("ok"))
+
+
+class PulseLiveness(unittest.TestCase):
+    """of pulse derives liveness from mtimes; it never writes state."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pulse-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "pulse mission", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str = "c1") -> None:
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the pricing tables",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_verdict_thresholds(self) -> None:
+        self.assertEqual(of.pulse_verdict(0), "ALIVE")
+        self.assertEqual(of.pulse_verdict(of.PULSE_QUIET_SECONDS - 1), "ALIVE")
+        self.assertEqual(of.pulse_verdict(of.PULSE_QUIET_SECONDS), "QUIET")
+        self.assertEqual(of.pulse_verdict(29 * 60), "QUIET")
+        self.assertEqual(of.pulse_verdict(31 * 60), "STALE")
+        self.assertEqual(of.pulse_verdict(6 * 60, stale_minutes=5), "STALE")
+
+    def test_pack_records_packed_at_and_session_detail(self) -> None:
+        self._pack()
+        pkt = load_json(self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json")
+        self.assertIsNotNone(of.parse_utc(pkt.get("packed_at")))
+        session = load_json(self.tmp / ".orderfield" / "session.json")
+        detail = session.get("in_flight_detail")
+        self.assertTrue(detail)
+        self.assertEqual(detail[0]["child_id"], "c1")
+        self.assertEqual(detail[0]["role"], "explorer")
+        self.assertIn("pricing tables", detail[0]["slice"])
+
+    def test_pulse_reports_fresh_child_alive(self) -> None:
+        self._pack()
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "c1"
+        (scratch / "PULSE").write_text("now working\n", encoding="utf-8")
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("c1", r.stdout)
+        self.assertIn("ALIVE", r.stdout)
+        self.assertIn("scratch: last write", r.stdout)
+
+    def test_pulse_is_read_only(self) -> None:
+        self._pack()
+        session_path = self.tmp / ".orderfield" / "session.json"
+        state_path = self.tmp / ".orderfield" / "state.json"
+        before = (session_path.read_text(), state_path.read_text())
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(before, (session_path.read_text(), state_path.read_text()))
+
+    def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
+        self._pack()
+        pkt_path = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        pkt = load_json(pkt_path)
+        pkt["packed_at"] = "2020-01-01T00:00:00Z"
+        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
+        old = 1577836800  # 2020-01-01, matches packed_at
+        os.utime(pkt_path, (old, old))
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("STALE", r.stdout)
+        self.assertIn("of unpack --child-id c1", r.stdout)
+        self.assertIn("signal only, not an action", r.stdout)
+
+    def test_pulse_idle_when_nothing_in_flight(self) -> None:
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("idle", r.stdout)
+
+    def test_repo_scan_ignores_orderfield_writes(self) -> None:
+        found = of.repo_newest_mtime(self.tmp)
+        self.assertIsNone(found)  # only .orderfield exists, and it is excluded
+        (self.tmp / "src").mkdir()
+        (self.tmp / "src" / "a.ts").write_text("x", encoding="utf-8")
+        found = of.repo_newest_mtime(self.tmp)
+        self.assertIsNotNone(found)
+        self.assertEqual(found[1], os.path.join("src", "a.ts"))
+
+
+class UpdateNotice(unittest.TestCase):
+    """maybe_notify_update: one throttled stderr line, silent on failure."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-update-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "update-check.json"
+        os.environ["OF_UPDATE_CACHE"] = str(self.cache)
+        os.environ.pop("OF_NO_UPDATE_CHECK", None)
+        self.addCleanup(os.environ.pop, "OF_UPDATE_CACHE", None)
+        self.addCleanup(os.environ.pop, "OF_NO_UPDATE_CHECK", None)
+
+    def _capture(self, fetch) -> str:
+        import contextlib
+        import io
+
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            of.maybe_notify_update(fetch=fetch)
+        return err.getvalue()
+
+    def test_newer_version_prints_upgrade_command(self) -> None:
+        out = self._capture(lambda: "9.9.9")
+        self.assertIn("update available", out)
+        self.assertIn("9.9.9", out)
+        self.assertIn(of.UPDATE_CMD, out)
+        self.assertIn("OF_NO_UPDATE_CHECK", out)
+
+    def test_same_or_garbage_version_is_silent(self) -> None:
+        self.assertEqual(self._capture(lambda: of.installed_version()), "")
+        self.cache.unlink()
+        self.assertEqual(self._capture(lambda: "0.0.1"), "")
+        self.cache.unlink()
+        self.assertEqual(self._capture(lambda: "<html>rate limited</html>"), "")
+
+    def test_fetch_failure_is_silent_and_backs_off(self) -> None:
+        self.assertEqual(self._capture(lambda: None), "")
+        self.assertTrue(self.cache.is_file())  # checked_at written: no hammering
+
+    def test_throttled_within_a_day(self) -> None:
+        self._capture(lambda: "9.9.9")
+
+        def must_not_fetch() -> str:
+            raise AssertionError("fetch called despite fresh cache")
+
+        out = self._capture(must_not_fetch)  # cached latest still applies
+        self.assertIn("update available", out)
+
+    def test_opt_out_env(self) -> None:
+        os.environ["OF_NO_UPDATE_CHECK"] = "1"
+
+        def must_not_fetch() -> str:
+            raise AssertionError("fetch called despite opt-out")
+
+        self.assertEqual(self._capture(must_not_fetch), "")
+        self.assertFalse(self.cache.exists())
+
+    def test_semver_tuple(self) -> None:
+        self.assertEqual(of.semver_tuple("0.4.0"), (0, 4, 0))
+        self.assertIsNone(of.semver_tuple("0.4"))
+        self.assertIsNone(of.semver_tuple("a.b.c"))
+        self.assertTrue(of.semver_tuple("0.10.0") > of.semver_tuple("0.9.9"))
