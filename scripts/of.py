@@ -296,6 +296,34 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
     return [load_json(f) for f in sorted(pdir.glob("*.json"))]
 
 
+def packet_is_stale(packet: dict[str, Any], order: dict[str, Any]) -> bool:
+    # rev may differ on the same field; id/phase/mission are identity.
+    embedded = packet.get("order") or {}
+    return any(embedded.get(k) != order.get(k) for k in ("id", "phase", "mission"))
+
+
+def stale_packet_ids(packets: list[dict[str, Any]], order: dict[str, Any]) -> list[str]:
+    return [str(p.get("child_id") or "?") for p in packets if packet_is_stale(p, order)]
+
+
+def die_on_stale_packets(
+    packets: list[dict[str, Any]], order: dict[str, Any], wave: int
+) -> None:
+    ids = stale_packet_ids(packets, order)
+    if ids:
+        die(f"stale packets in wave {wave}: {', '.join(ids)}; run of next-wave")
+
+
+def landable_wave(root: Path, order: dict[str, Any], start: int) -> int:
+    """Skip dirs that still hold packets from a different field."""
+    wave = int(start)
+    while True:
+        packets = packed_children(root, wave)
+        if not stale_packet_ids(packets, order):
+            return wave
+        wave += 1
+
+
 def child_is_packed(root: Path, wave: int, child_id: str | None) -> bool:
     if not child_id:
         return False
@@ -514,6 +542,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
+    die_on_stale_packets(packed_children(root, int(wave)), order, int(wave))
     child_id = args.child_id or f"{args.role}_{uuid.uuid4().hex[:6]}"
     already = child_is_packed(root, int(wave), child_id)
     if not already:
@@ -773,6 +802,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
     packets = packed_children(root, int(wave))
     if not packets:
         die(f"no packets in wave {wave}")
+    die_on_stale_packets(packets, order, int(wave))
     enforce_wave_child_caps(order, state, len(packets))
     ok = 0
     bad = 0
@@ -919,6 +949,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     packets = packed_children(root, int(wave))
     residuals: list[dict[str, Any]] = []
     if packets:
+        die_on_stale_packets(packets, order, int(wave))
         enforce_wave_child_caps(order, state, len(packets))
         for pkt in packets:
             path = require_packet_residual(root, pkt)
@@ -939,6 +970,11 @@ def cmd_integrate(args: argparse.Namespace) -> None:
                 "constraints": order["constraints"],
                 "done_when_closed": bool(order.get("done_when_closed")),
             }
+        # Must not call decide_regime again after apply.
+        if done_when_closed(order) and "done_when still open" in reason:
+            reason = (
+                "wave closed; done_when_closed applied; of phase is still explicit"
+            )
         # mission patches never auto-apply
         if any("mission" in (r.get("residual") or {}).get("wants_to_change", []) for r in residuals):
             print("note: mission proposed_patch is not auto-applied. Use of patch --mission")
@@ -974,7 +1010,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     }
     dump_json(wave_dir(int(wave), root) / "report.json", report)
     if args.next_wave:
-        advance_wave(state)
+        advance_wave(state, root=root, order=order)
     save_state(state, root)
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
@@ -1030,8 +1066,15 @@ def cmd_patch(args: argparse.Namespace) -> None:
     }, indent=2, ensure_ascii=False))
 
 
-def advance_wave(state: dict[str, Any]) -> dict[str, Any]:
-    state["wave"] = int(state.get("wave", 1)) + 1
+def advance_wave(
+    state: dict[str, Any],
+    root: Path | None = None,
+    order: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    nxt = int(state.get("wave", 1)) + 1
+    if root is not None and order is not None:
+        nxt = landable_wave(root, order, nxt)
+    state["wave"] = nxt
     state["across_this_wave"] = 0
     state["children_spawned"] = 0
     state["spawn_blocked"] = False
@@ -1041,8 +1084,9 @@ def advance_wave(state: dict[str, Any]) -> dict[str, Any]:
 
 def cmd_next_wave(args: argparse.Namespace) -> None:
     root = find_root()
+    order = load_order(root)
     state = load_state(root)
-    advance_wave(state)
+    advance_wave(state, root=root, order=order)
     save_state(state, root)
     print(f"wave={state['wave']}")
 
@@ -1134,7 +1178,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--done-when-closed", dest="done_when_closed", action="store_true")
     s.set_defaults(func=cmd_patch)
 
-    s = sub.add_parser("next-wave", help="advance the wave number")
+    s = sub.add_parser(
+        "next-wave",
+        help="advance the wave number; skip dirs with stale packets",
+    )
     s.set_defaults(func=cmd_next_wave)
 
     return p

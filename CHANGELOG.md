@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.5
+
+- Pack, collect, and integrate refuse leftover packets whose embedded `order.id` / `order.phase` / `order.mission` disagree with the live field (same-id rewritten mission is stale; `rev` is not the signal). `of next-wave` skips occupied stale wave dirs.
+- After `integrate --apply` sets `done_when_closed`, the wave report reason no longer claims `done_when` is still open. Regime stays `hold`; `of phase` remains explicit.
+
 ## 0.2.4
 
 - `decide_regime` no longer returns `human` for a full child cap when the wave is `all_done`; that path is `hold` (done_when open) or `phase` (done_when_closed). Cap-exhausted `human` remains when the wave is not closed.

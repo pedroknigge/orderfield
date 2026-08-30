@@ -1,0 +1,16 @@
+{
+  "name": "stale-packets-predial",
+  "stale_keys": ["id", "phase", "mission"],
+  "not_stale_keys": ["rev"],
+  "leftover_child_id": "p1-cut",
+  "leftover_phase": "cut",
+  "leftover_mission": "Upgrade Predial Web to arkgate@4.8.1",
+  "live_phase": "build",
+  "live_mission": "Remediate every vibe-proof implementer",
+  "pack_fails": true,
+  "collect_fails": true,
+  "integrate_fails": true,
+  "next_wave_skips_occupied_stale": true,
+  "next_wave_lands_on": 3,
+  "hint": "run of next-wave"
+}

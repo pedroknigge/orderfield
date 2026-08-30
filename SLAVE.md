@@ -90,6 +90,8 @@ Leave it `null` if the slice closed under the current ORDER.
 
 A done residual may still propose `"done_when_closed": true`. That does not select regime `phase`. Other keys are ignored.
 
+To close the current criterion, use `proposed_patch.done_when_closed: true` with empty `wants_to_change`. Putting `"done_when"` in `wants_to_change` is a field residual (`escalate_up`), even on `status=done`.
+
 **Mission is never auto-applied.** Do not put `mission` in `proposed_patch` expecting a write. If the mission is wrong: `status=threshold`, `wants_to_change` includes `"mission"`, evidence required. The leader runs `of patch --mission`.
 
 ## Divergence

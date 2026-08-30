@@ -23,6 +23,7 @@ EVAL_FIELD = ROOT / "evals" / "expected" / "field-residual.json"
 EVAL_DONE = ROOT / "evals" / "expected" / "done-not-phase.json"
 EVAL_CLOSED = ROOT / "evals" / "expected" / "done-when-closed-apply.json"
 EVAL_COLLECT = ROOT / "evals" / "expected" / "collect-by-packet.json"
+EVAL_STALE = ROOT / "evals" / "expected" / "stale-packets.json"
 
 
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -593,6 +594,10 @@ class CloseProtocolApply(unittest.TestCase):
         self.assertEqual(report["regime"], expected["expected_regime"])
         self.assertNotEqual(report["regime"], "phase")
         self.assertNotIn(report["regime"], expected["forbidden_regimes"])
+        for needle in expected.get("forbidden_reason_substrings") or []:
+            self.assertNotIn(needle, report["reason"])
+        for needle in expected.get("reason_must_include") or []:
+            self.assertIn(needle, report["reason"])
         order = load_json(self.tmp / ".orderfield" / "ORDER.json")
         self.assertTrue(order["done_when_closed"])
         self.assertEqual(order["rev"], expected["rev_after_apply"])
@@ -838,6 +843,205 @@ class HandoffPacket(unittest.TestCase):
             "after_block",
         )
         self.assertNotEqual(blocked_pack.returncode, 0, blocked_pack.stdout + blocked_pack.stderr)
+
+
+class PacketStale(unittest.TestCase):
+    """Stale = embedded order.id/phase/mission disagree; rev is not the signal."""
+
+    def setUp(self) -> None:
+        self.order = of.default_order("live mission", "build")
+
+    def _pkt(self, **order_fields: object) -> dict:
+        embedded = {
+            "id": self.order["id"],
+            "rev": self.order["rev"],
+            "mission": self.order["mission"],
+            "phase": self.order["phase"],
+        }
+        embedded.update(order_fields)
+        return {"child_id": "p1-cut", "order": embedded}
+
+    def test_rewritten_mission_same_id_is_stale(self) -> None:
+        pkt = self._pkt(mission="Upgrade Predial Web to arkgate@4.8.1")
+        self.assertTrue(of.packet_is_stale(pkt, self.order))
+
+    def test_different_phase_same_id_is_stale(self) -> None:
+        pkt = self._pkt(phase="cut")
+        self.assertTrue(of.packet_is_stale(pkt, self.order))
+
+    def test_different_id_is_stale(self) -> None:
+        pkt = self._pkt(id="ord_other")
+        self.assertTrue(of.packet_is_stale(pkt, self.order))
+
+    def test_newer_rev_same_field_is_live(self) -> None:
+        pkt = self._pkt(rev=self.order["rev"] + 5)
+        self.assertFalse(of.packet_is_stale(pkt, self.order))
+
+
+class StalePackets(unittest.TestCase):
+    """Leftover packets after an in-place mission rewrite (PREDIAL shape)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-stale-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.expected = load_json(EVAL_STALE)
+
+    def _init_leftover_and_rewrite(self) -> None:
+        e = self.expected
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            e["leftover_mission"],
+            "--phase",
+            e["leftover_phase"],
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "cut leftover",
+            "--role",
+            "implementer",
+            "--child-id",
+            e["leftover_child_id"],
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "next dir leftover",
+            "--role",
+            "implementer",
+            "--child-id",
+            "leftover_w2",
+            "--wave",
+            "2",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--mission", e["live_mission"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "phase", e["live_phase"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_pack_collect_integrate_fail_next_wave_skips(self) -> None:
+        e = self.expected
+        self.assertTrue(e["pack_fails"])
+        self.assertTrue(e["collect_fails"])
+        self.assertTrue(e["integrate_fails"])
+        self.assertTrue(e["next_wave_skips_occupied_stale"])
+        self._init_leftover_and_rewrite()
+
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "new work",
+            "--role",
+            "implementer",
+            "--child-id",
+            "a",
+        )
+        self.assertNotEqual(packed.returncode, 0, packed.stdout)
+        blob = (packed.stdout + packed.stderr).lower()
+        self.assertIn(e["leftover_child_id"].lower(), blob)
+        self.assertIn("next-wave", blob)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "a.json").is_file()
+        )
+        state_after_refuse = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state_after_refuse["children_spawned"], 2)
+
+        collected = run_of(self.tmp, "collect")
+        self.assertNotEqual(collected.returncode, 0, collected.stdout)
+        cblob = (collected.stdout + collected.stderr).lower()
+        self.assertIn(e["leftover_child_id"].lower(), cblob)
+        self.assertIn("next-wave", cblob)
+
+        integrated = run_of(self.tmp, "integrate")
+        self.assertNotEqual(integrated.returncode, 0, integrated.stdout)
+        iblob = (integrated.stdout + integrated.stderr).lower()
+        self.assertIn(e["leftover_child_id"].lower(), iblob)
+        self.assertIn("next-wave", iblob)
+
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn(f"wave={e['next_wave_lands_on']}", nxt.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], e["next_wave_lands_on"])
+
+        leftover = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "packets"
+            / f"{e['leftover_child_id']}.json"
+        )
+        self.assertTrue(leftover.is_file())
+        after = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "new work",
+            "--role",
+            "implementer",
+            "--child-id",
+            "a",
+        )
+        self.assertEqual(after.returncode, 0, after.stderr)
+        new_pkt = load_json(
+            self.tmp / ".orderfield" / "waves" / "003" / "packets" / "a.json"
+        )
+        self.assertEqual(new_pkt["order"]["mission"], e["live_mission"])
+        self.assertEqual(new_pkt["order"]["phase"], e["live_phase"])
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "a.json").is_file()
+        )
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "002" / "packets" / "a.json").is_file()
+        )
+
+    def test_same_wave_newer_rev_is_not_stale(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "one", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--notes", "rev bump only")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "two", "--role", "explorer", "--child-id", "c2"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c2.json").is_file()
+        )
+
+    def test_next_wave_lands_on_live_occupied_dir(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "wave2 live",
+            "--role",
+            "explorer",
+            "--child-id",
+            "live2",
+            "--wave",
+            "2",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
 
 
 class NotesDedup(unittest.TestCase):

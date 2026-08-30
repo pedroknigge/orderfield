@@ -4,7 +4,7 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.4"
+  version: "0.2.5"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -57,6 +57,8 @@ The packet must fit on one screen. If it does not, ORDER is poorly factored. Do 
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
+Pack refuses if the target wave already has leftover packets whose embedded `order.id`, `phase`, or `mission` disagree with the live ORDER (a rewritten mission with the same id is stale; `rev` is not the signal). Run `of next-wave`; it skips occupied stale dirs.
+
 Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. If every child needs it, put it in constraints, not in `--slice`.
 
 ### 4. Spawn only through the kernel
@@ -85,6 +87,8 @@ python3 <skill>/scripts/of.py integrate --wave 1
 python3 <skill>/scripts/of.py status
 ```
 
+Collect and integrate also refuse a wave that contains stale leftover packets (they do not silently drop them). Run `of next-wave`.
+
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
 Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`.
@@ -102,7 +106,7 @@ python3 <skill>/scripts/of.py patch --constraints-add "tax invoicing requirement
 ```
 
 Slaves never write `ORDER.json`. They only propose `proposed_patch`.
-`integrate --apply` may write `constraints+`, `done_when+`, `notes`, and `done_when_closed`. **Mission is never auto-applied** (`of patch --mission`). `done_when_closed` from a done residual does not choose `phase`.
+`integrate --apply` may write `constraints+`, `done_when+`, `notes`, and `done_when_closed`. **Mission is never auto-applied** (`of patch --mission`). `done_when_closed` from a done residual does not choose `phase`. After `--apply` sets that flag, the report `reason` must not claim `done_when` is still open; `of phase` remains explicit.
 
 ### 7. Changing phase is a slow act
 

@@ -37,7 +37,7 @@ Translation:
 - `scale_out` — the pattern is correct, volume is missing. Copies of the same role.
 - `scale_across` — a *different* mode is needed (a different role). Max 1 per wave by default.
 - `scale_up` — same slice, more budget / model. Last resort.
-- `hold` — wait (missing residuals, or the wave closed and `done_when` is still open).
+- `hold` — wait (missing residuals, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.
 - `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted while the wave is not all_done. A full cap of done residuals is `hold` (done_when open) or `phase` (done_when closed).
 
