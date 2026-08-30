@@ -12,6 +12,7 @@ ok()   { echo "OK $*"; }
 
 [[ -f "$SKILL_FILE" ]] || fail "SKILL.md missing"
 [[ -f "$ROOT/scripts/of.py" ]] || fail "scripts/of.py missing"
+[[ -f "$ROOT/scripts/of_adapters.py" ]] || fail "scripts/of_adapters.py missing"
 [[ -f "$ROOT/SLAVE.md" ]] || fail "SLAVE.md missing"
 [[ -f "$ROOT/VERSION" ]] || fail "VERSION missing"
 

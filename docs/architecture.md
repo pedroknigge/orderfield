@@ -1,8 +1,8 @@
 # Architecture — Orderfield kernel
 
-> Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py)
+> Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.2.9` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.3.1` — see [`VERSION`](../VERSION)
 
 ## Shape
 
@@ -26,14 +26,26 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 | Symbol / area | Role |
 |---------------|------|
-| `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` | Detect + spawn + `--requires-tool` |
+| `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
-| `cmd_patch --done-when` / `--done-when-mission` | Phase-scoped replace vs stable mission list |
+| `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |
+| `cmd_unpack` | Release packed child that never reported; refunds `children_spawned` |
+| `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed |
+| `ORDER.harness` / `ORDER.backlog` | First-class fields (not prose constraints) |
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; optional `--summary` |
-| `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` on pack/spawn/collect/integrate/patch/phase/next-wave |
+| `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary) |
 | in-flight | Packed child with missing residual; `of status` surfaces count |
-| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load SLAVE (inline for orca/generic); continuation note when scratch nonempty |
-| `build_spawn_argv` | Per-adapter headless argv |
+| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
+| `of --json` / `OF_JSON=1` | Optional machine-readable stderr events for pack/spawn/collect/integrate |
 | `install.sh` | Skill copies + `of` PATH → installed skill |
 
-Detail: [references/principles.md](../references/principles.md), [references/adapters.md](../references/adapters.md). Audit: [docs/audit/claims-matrix.md](audit/claims-matrix.md).
+## Reversible field (0.3.0+)
+
+| Move | Command |
+|------|---------|
+| Undo a pack that never reported | `of unpack --child-id <id>` |
+| Collect despite stragglers | `of collect` prints `MISSING…`, exit 2; `of integrate --partial` |
+| Reopen closure | `of patch --reopen` (or new `--mission` / `--done-when-mission`) |
+| Drop a constraint | `of patch --constraints-rm <exact\|unique substring\|1-based index>` |
+
+Detail: [references/principles.md](../references/principles.md), [references/adapters.md](../references/adapters.md). Ops: [troubleshooting.md](troubleshooting.md), [performance.md](performance.md). Audit: [docs/audit/claims-matrix.md](audit/claims-matrix.md).

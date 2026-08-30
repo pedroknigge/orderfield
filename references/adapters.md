@@ -1,6 +1,6 @@
 # Adapters and headless modes
 
-The kernel speaks four verbs. Each adapter translates them.
+Adapter tables and `build_spawn_argv` live in [`scripts/of_adapters.py`](../scripts/of_adapters.py) (imported by the CLI). The kernel speaks four verbs. Each adapter translates them.
 
 ```
 spawn(adapter, packet) -> child_id

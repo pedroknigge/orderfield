@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.3.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.3.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -189,7 +189,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
 | `next-wave` | clear spawn lock, advance the wave |
 
-Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`.
+Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

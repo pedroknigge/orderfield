@@ -9,7 +9,7 @@ python3 -m unittest discover -s tests -v
 ./scripts/validate-skill.sh
 ```
 
-Both must exit 0. Version must match across `VERSION`, `SKILL.md` metadata.version, and the latest `CHANGELOG.md` heading.
+Both must exit 0. Version must match across `VERSION`, `SKILL.md` metadata.version, and the latest `CHANGELOG.md` heading. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to change and what “done” means.
 
 ## Mortal install (after push)
 

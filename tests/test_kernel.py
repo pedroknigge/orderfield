@@ -355,9 +355,11 @@ class GenericHandoff(unittest.TestCase):
 
 class EnglishSurface(unittest.TestCase):
     def test_cli_errors_are_english(self) -> None:
-        src = (SCRIPTS / "of.py").read_text(encoding="utf-8")
-        for needle in ("debe ser", "invalida", "Esclavo", "Fase:", "Mision:", "Devolve"):
-            self.assertNotIn(needle, src)
+        needles = ("debe ser", "invalida", "Esclavo", "Fase:", "Mision:", "Devolve")
+        for path in (SCRIPTS / "of.py", SCRIPTS / "of_adapters.py"):
+            src = path.read_text(encoding="utf-8")
+            for needle in needles:
+                self.assertNotIn(needle, src, msg=f"{path.name} has {needle!r}")
 
 
 class PackCapsAndBlock(unittest.TestCase):
@@ -2126,3 +2128,118 @@ class PatchOutputShape(unittest.TestCase):
         r = run_of(self.tmp, "patch", "--constraints-add", "c2", "--quiet")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertRegex(r.stdout.strip(), r"^rev=\d+$")
+
+
+class InvalidOrderAndSession(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-badjson-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_invalid_order_json_dies(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = self.tmp / ".orderfield" / "ORDER.json"
+        order.write_text("{not-json", encoding="utf-8")
+        status = run_of(self.tmp, "status")
+        self.assertNotEqual(status.returncode, 0)
+        self.assertIn("invalid JSON", status.stderr)
+
+    def test_corrupt_session_warns_and_continues(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        sess = self.tmp / ".orderfield" / "session.json"
+        sess.write_text("{bad", encoding="utf-8")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("corrupt session.json", resumed.stderr)
+        self.assertIn("status", resumed.stdout)
+
+
+class SpawnTimeout(unittest.TestCase):
+    def test_spawn_timeout_dies(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-timeout-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        slow = tmp / "slow.sh"
+        slow.write_text("#!/bin/sh\nsleep 30\n", encoding="utf-8")
+        slow.chmod(0o755)
+        env = os.environ.copy()
+        env["OF_AGENT"] = str(slow)
+        init = subprocess.run(
+            [sys.executable, str(OF_PY), "init", "--mission", "m", "--phase", "explore"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "pack",
+                "--slice",
+                "s",
+                "--role",
+                "explorer",
+                "--child-id",
+                "t1",
+                "--seconds",
+                "1",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        spawned = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                ".orderfield/waves/001/packets/t1.json",
+                "--timeout",
+                "1",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertNotEqual(spawned.returncode, 0)
+        self.assertIn("timeout child_id=t1", spawned.stderr)
+
+
+class JsonEvents(unittest.TestCase):
+    def test_pack_emits_json_event(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-json-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "--json",
+                "pack",
+                "--slice",
+                "s",
+                "--role",
+                "explorer",
+                "--child-id",
+                "j1",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        lines = [ln for ln in packed.stderr.splitlines() if ln.startswith("{")]
+        self.assertTrue(lines, packed.stderr)
+        payload = json.loads(lines[-1])
+        self.assertEqual(payload.get("event"), "pack")
+        self.assertEqual(payload.get("child_id"), "j1")
+        self.assertTrue(payload.get("ok"))
