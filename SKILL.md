@@ -1,17 +1,17 @@
 ---
 name: orderfield
-description: Use when the user says orderfield, order field, Haken slaving, threshold delegation, or agent waves, or wants Claude, Codex, Orca, Grok, Cursor, OpenCode, or any other agent coordinated without micromanagement. Load before spawning subagents under a shared ORDER. Unknown harnesses use generic mode.
+description: Use when the user says orderfield, order field, Haken slaving, threshold delegation, or agent waves, or wants Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (agy), or any other agent coordinated without micromanagement. Load before spawning subagents under a shared ORDER. Unknown harnesses use generic mode.
 license: MIT
-compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok. Kernel uses stdlib only.
+compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.2"
+  version: "0.2.3"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
 
 # Orderfield
 
-Portable orchestration kernel based on Haken's slaving principle. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode) is only the substrate that starts and stops processes. The physics lives here.
+Portable orchestration kernel based on Haken's slaving principle. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) is only the substrate that starts and stops processes. The physics lives here.
 
 You are not a project manager. You are the field. Slaves move freely *inside* the field. If the field is not enough, patch the field. Only then open an extra degree of freedom.
 
@@ -66,7 +66,7 @@ python3 <skill>/scripts/of.py spawn \
   --packet .orderfield/waves/001/packets/p1.json
 ```
 
-Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `generic`.
+Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`, `generic`.
 `detect` picks the first available adapter if you omit `--adapter`.
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).

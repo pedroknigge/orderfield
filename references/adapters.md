@@ -24,7 +24,7 @@ python3 scripts/of.py detect
 ```
 
 Default order if you omit `--adapter`:
-`claude, codex, cursor, opencode, orca, grok, generic`.
+`claude, codex, cursor, opencode, orca, grok, agy, generic`.
 
 Override: `OF_ADAPTER=codex` or `--adapter`.
 
@@ -117,6 +117,23 @@ Candidate binaries: `grok`, `grok-cli`. Headless flags vary by build; `of spawn 
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
+## Antigravity (`agy`)
+
+Binary: `agy`. Adapter name is `agy`, not `antigravity`.
+
+`agy -p` consumes the next argv token as the prompt. Flags **must** precede `-p`. Claude-style `agy -p --output-format …` is wrong: `-p` takes `--output-format` as the prompt.
+
+Headless:
+
+```bash
+agy --dangerously-skip-permissions --mode accept-edits --output-format json \
+  -p "$(python3 scripts/of.py render --packet PACKET.json)"
+```
+
+`of spawn --adapter agy` uses that flag order (`--output-format json`). Interactive Task/subagent remains valid transport after pack; pack remains the cap surface.
+
+Skills: `~/.gemini/config/skills/orderfield/` and `~/.gemini/antigravity-cli/skills/orderfield/`. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`.
+
 ## Generic (any other agent)
 
 Unknown harnesses — Windsurf, Cline, Aider, a custom CLI, a web chat — all use the same adapter.
@@ -146,7 +163,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 | Situation | What to do |
 |---|---|
-| Already inside Claude / Cursor / Grok interactive | you = leader; pack first (cap surface); then native Task/render or headless spawn |
+| Already inside Claude / Cursor / Grok / agy interactive | you = leader; pack first (cap surface); then native Task/render or headless spawn |
 | CI / cron driver | `of spawn` headless for leader and slaves |
 | Mix harnesses in one wave | different `--adapter` per packet; same ORDER |
 

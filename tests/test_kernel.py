@@ -539,5 +539,141 @@ class CloseProtocolApply(unittest.TestCase):
         self.assertIn("# Phase:", text)
 
 
+class AgyAdapter(unittest.TestCase):
+    """Native agy adapter: argparse, detect, and flags-before -p."""
+
+    def test_adapter_name_is_agy_not_antigravity(self) -> None:
+        self.assertIn("agy", of.ADAPTER_ORDER)
+        self.assertNotIn("antigravity", of.ADAPTER_ORDER)
+        self.assertEqual(of.ADAPTER_BINS["agy"], ["agy"])
+        self.assertLess(of.ADAPTER_ORDER.index("agy"), of.ADAPTER_ORDER.index("generic"))
+
+    def test_argparse_accepts_agy_rejects_antigravity(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-arg-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "map", "--role", "explorer", "--child-id", "agy1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        packet = ".orderfield/waves/001/packets/agy1.json"
+        bad = run_of(tmp, "spawn", "--adapter", "antigravity", "--packet", packet, "--dry-run")
+        self.assertNotEqual(bad.returncode, 0, bad.stdout + bad.stderr)
+        blob = (bad.stdout + bad.stderr).lower()
+        self.assertTrue("invalid" in blob or "choose" in blob or "argument" in blob, blob)
+        good = run_of(tmp, "spawn", "--adapter", "agy", "--packet", packet, "--dry-run")
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertIn("adapter=agy", good.stdout)
+
+    def test_detect_lists_agy_when_on_path(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-detect-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "agy"
+        fake.write_text("#!/bin/sh\necho pong\n", encoding="utf-8")
+        fake.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = str(bindir)
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        lines = [
+            ln for ln in proc.stdout.splitlines() if ln[1:].lstrip().startswith("agy")
+        ]
+        self.assertEqual(len(lines), 1, proc.stdout)
+        self.assertIn(str(fake), lines[0])
+        self.assertNotIn("antigravity", proc.stdout.split("default:", 1)[0])
+
+    def test_detect_lists_agy_dash_when_missing(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-detect-miss-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = os.environ.copy()
+        env["PATH"] = "/usr/bin:/bin"
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        found = [ln for ln in proc.stdout.splitlines() if ln[1:].strip().startswith("agy")]
+        self.assertTrue(found, proc.stdout)
+        self.assertIn("-", found[0])
+        self.assertNotIn("antigravity", proc.stdout.split("default:")[0])
+
+    def test_build_spawn_argv_flags_precede_dash_p(self) -> None:
+        prompt = "ping"
+        argv = of.build_spawn_argv(
+            "agy", prompt, {"child_id": "agy1"}, Path("/tmp/r.json"), dry_run=True
+        )
+        self.assertGreaterEqual(len(argv), 8)
+        self.assertEqual(Path(argv[0]).name, "agy")
+        self.assertIn("-p", argv)
+        p_idx = argv.index("-p")
+        self.assertGreater(p_idx, 1, argv)
+        self.assertEqual(argv[p_idx:], ["-p", prompt])
+        flags = argv[1:p_idx]
+        self.assertEqual(flags[0], "--dangerously-skip-permissions")
+        self.assertNotEqual(argv[1], "-p")
+        self.assertIn("--dangerously-skip-permissions", flags)
+        self.assertIn("--mode", flags)
+        self.assertIn("accept-edits", flags)
+        self.assertIn("--output-format", flags)
+        self.assertIn("json", flags)
+        joined = " ".join(argv)
+        self.assertNotIn("-p --output-format", joined)
+        self.assertNotIn("-p --dangerously-skip-permissions", joined)
+        self.assertNotIn("-p --mode", joined)
+
+    def test_dry_run_cli_flag_order(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-dry-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "map", "--role", "explorer", "--child-id", "agy1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        spawned = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "agy",
+            "--packet",
+            ".orderfield/waves/001/packets/agy1.json",
+            "--dry-run",
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertIn("adapter=agy", spawned.stdout)
+        self.assertIn("dry-run argv:", spawned.stdout)
+        preview = spawned.stdout.split("dry-run argv:", 1)[1].strip().splitlines()[0]
+        self.assertIn("-p", preview)
+        before, after = preview.split(" -p ", 1)
+        self.assertIn("--dangerously-skip-permissions", before)
+        self.assertIn("--mode accept-edits", before)
+        self.assertIn("--output-format json", before)
+        self.assertTrue(after.startswith("<prompt>") or after, after)
+        self.assertNotIn("--output-format", after)
+        self.assertNotIn("--dangerously-skip-permissions", after)
+        self.assertNotIn("-p --", preview)
+        self.assertLess(before.find("--output-format json"), len(before))
+        self.assertLess(
+            before.index("--dangerously-skip-permissions"),
+            before.index("-p") if " -p" in before else len(before),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

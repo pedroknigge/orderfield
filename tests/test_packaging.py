@@ -37,6 +37,12 @@ class VersionSync(unittest.TestCase):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(f'version: "{ver}"', skill)
 
+    def test_docs_name_agy(self) -> None:
+        for rel in ("SKILL.md", "references/adapters.md", "README.md", "AGENTS.md"):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertIn("agy", text, rel)
+            self.assertNotIn("--adapter antigravity", text)
+
 
 class InstallScript(unittest.TestCase):
     def test_empty_root_gets_agents_fallback(self) -> None:
@@ -49,6 +55,8 @@ class InstallScript(unittest.TestCase):
         self.assertTrue((dest / "scripts" / "of.py").is_file(), dest)
         self.assertFalse((tmp / ".claude").exists())
         self.assertFalse((tmp / ".codex").exists())
+        self.assertFalse((tmp / ".agy").exists())
+        self.assertFalse((tmp / ".gemini").exists())
 
     def test_existing_harness_dir_also_gets_generic(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-h-"))
@@ -67,6 +75,71 @@ class InstallScript(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertFalse((tmp / ".claude" / "skills").exists())
+
+    def test_gemini_dirs_get_agy_skill_not_dot_agy(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-agy-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".gemini" / "config").mkdir(parents=True)
+        (tmp / ".gemini" / "antigravity-cli").mkdir(parents=True)
+        proc = run(tmp, "bash", str(INSTALL), str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(
+            (tmp / ".gemini" / "config" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
+        self.assertTrue(
+            (
+                tmp / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md"
+            ).is_file()
+        )
+        self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertFalse((tmp / ".agy").exists())
+
+    def test_generic_only_skips_gemini_agy_dests(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-agy-g-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".gemini" / "config").mkdir(parents=True)
+        (tmp / ".gemini" / "antigravity-cli").mkdir(parents=True)
+        proc = run(tmp, "bash", str(INSTALL), "--generic", "--root", str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertFalse((tmp / ".gemini" / "config" / "skills").exists())
+        self.assertFalse((tmp / ".gemini" / "antigravity-cli" / "skills").exists())
+        self.assertFalse((tmp / ".agy").exists())
+
+    def test_global_agy_on_path_creates_gemini_dests_not_dot_agy(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-agy-path-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "agy"
+        fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        fake.chmod(0o755)
+        env = {
+            "HOME": str(tmp),
+            "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+        proc = run(tmp, "bash", str(INSTALL), "--global", env=env)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(
+            (tmp / ".gemini" / "config" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
+        self.assertTrue(
+            (
+                tmp / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md"
+            ).is_file()
+        )
+        self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertFalse((tmp / ".agy").exists())
+
+    def test_install_sh_agy_dests_are_gemini_not_dot_agy(self) -> None:
+        src = INSTALL.read_text(encoding="utf-8")
+        self.assertIn(".gemini/config/skills", src)
+        self.assertIn(".gemini/antigravity-cli/skills", src)
+        self.assertNotIn("/.agy/", src)
+        self.assertNotRegex(src, r"\$base/\.agy")
+        harnesses = src.split("KNOWN_HARNESSES=", 1)[1].split(")", 1)[0]
+        self.assertNotIn("agy", harnesses)
+        self.assertNotIn("antigravity", harnesses)
 
 
 class PhaseMdEnglish(unittest.TestCase):

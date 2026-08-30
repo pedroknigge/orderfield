@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Native adapter `agy` (Antigravity binary `agy`). `of detect` lists it when `agy` is on PATH. `of spawn --adapter agy` is valid.
+- Headless argv puts flags before `-p` (`--dangerously-skip-permissions --mode accept-edits --output-format json -p PROMPT`). Claude-style `-p` then flags is wrong: `-p` consumes the next token as the prompt.
+- `install.sh` copies to `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` when `agy` is present or those dirs exist. Does not invent `~/.agy/skills`. Workspace generic remains `.agents/skills`.
+
 ## 0.2.2
 
 - `of pack` and `of collect` bind `spawn_blocked` and `max_children`. Pack increments `children_spawned`. After `escalate_up`, pack is rejected until `next-wave` (or `--force-spawn`).

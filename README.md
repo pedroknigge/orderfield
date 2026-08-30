@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.3</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -44,7 +44,7 @@ Haken, operationalized:
 | Circular causality | `integrate` patches the field; the next wave is born from it |
 | Reduction of degrees of freedom | the leader never swallows transcripts |
 
-The harness is transport. Claude, Codex, Orca, Grok, Cursor, OpenCode, **or anything else** — same kernel. If we did not name your agent, **generic mode** still works.
+The harness is transport. Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (`agy`), **or anything else** — same kernel. If we did not name your agent, **generic mode** still works.
 
 Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). That is an unrelated 10 KB dump. This is `pedroknigge/orderfield`.
 
@@ -101,6 +101,7 @@ Where it lands:
 | Cursor | `~/.cursor/skills/orderfield` |
 | OpenCode | `~/.opencode/skills/orderfield` |
 | Grok | `~/.grok/skills/orderfield` |
+| Antigravity (`agy`) | `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` |
 
 Then `/orderfield` in the host, or say “use orderfield.”
 
@@ -127,7 +128,7 @@ Inside an interactive session you can skip headless spawn: **pack first** (that 
 
 ## Generic mode
 
-Named adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`.
+Named adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`.
 
 Everything else is generic.
 

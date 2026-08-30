@@ -6,6 +6,7 @@ set -euo pipefail
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 KNOWN_HARNESSES=(claude codex cursor opencode grok)
+# agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
 END_MARKER="<!-- END orderfield skill -->"
 
@@ -172,6 +173,35 @@ harness_present() {
   esac
 }
 
+agy_dests() {
+  printf '%s\n' \
+    "$base/.gemini/config/skills/$NAME" \
+    "$base/.gemini/antigravity-cli/skills/$NAME"
+}
+
+install_agy_dests() {
+  local dest parent agy_bin=0
+  if [[ "$MODE" == "global" ]] && command -v agy >/dev/null 2>&1; then
+    agy_bin=1
+  fi
+  while IFS= read -r dest; do
+    parent="$(dirname "$(dirname "$dest")")"
+    if [[ "$agy_bin" -eq 1 || -d "$parent" ]]; then
+      copy_one "$dest"
+      copied=$((copied + 1))
+    fi
+  done < <(agy_dests)
+}
+
+uninstall_agy_dests() {
+  local dest
+  while IFS= read -r dest; do
+    if remove_one "$dest"; then
+      removed=$((removed + 1))
+    fi
+  done < <(agy_dests)
+}
+
 if [[ "$UNINSTALL" -eq 1 ]]; then
   uninstall_generic
   for h in "${KNOWN_HARNESSES[@]}"; do
@@ -179,6 +209,7 @@ if [[ "$UNINSTALL" -eq 1 ]]; then
       removed=$((removed + 1))
     fi
   done
+  uninstall_agy_dests
   if [[ -f "$base/.codex/AGENTS.md" ]]; then
     strip_block "$base/.codex/AGENTS.md"
     echo "stripped Codex pointer"
@@ -204,6 +235,7 @@ if [[ "$GENERIC_ONLY" -eq 0 ]]; then
       fi
     fi
   done
+  install_agy_dests
 fi
 
 if [[ "$MODE" == "global" && -d "$base/.codex" ]]; then

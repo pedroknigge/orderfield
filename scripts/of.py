@@ -26,7 +26,16 @@ REGIMES = [
     "phase",
 ]
 FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
-ADAPTER_ORDER = ["claude", "codex", "cursor", "opencode", "orca", "grok", "generic"]
+ADAPTER_ORDER = [
+    "claude",
+    "codex",
+    "cursor",
+    "opencode",
+    "orca",
+    "grok",
+    "agy",
+    "generic",
+]
 
 ADAPTER_BINS = {
     "claude": ["claude"],
@@ -35,6 +44,7 @@ ADAPTER_BINS = {
     "opencode": ["opencode"],
     "orca": ["orca"],
     "grok": ["grok", "grok-cli"],
+    "agy": ["agy"],
     "generic": [],
 }
 
@@ -585,6 +595,19 @@ def build_spawn_argv(
     if adapter == "grok":
         bin_ = which_bin(["grok", "grok-cli"]) or "grok"
         return [bin_, prompt]
+    if adapter == "agy":
+        # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
+        bin_ = which_bin(["agy"]) or "agy"
+        return [
+            bin_,
+            "--dangerously-skip-permissions",
+            "--mode",
+            "accept-edits",
+            "--output-format",
+            "json",
+            "-p",
+            prompt,
+        ]
     if adapter == "orca":
         bin_ = which_bin(["orca"]) or "orca"
         # substrate only: create a one-shot worker on current worktree
