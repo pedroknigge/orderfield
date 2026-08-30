@@ -4,7 +4,7 @@ description: Use when the user says orderfield, order field, Haken slaving, thre
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.2.8"
+  version: "0.2.9"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -30,15 +30,31 @@ If the task fits one agent plus a skill, do not spawn. Skill beats child.
 
 Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
 
+### 0. Resume from disk (when ORDER exists)
+
+```bash
+python3 <skill>/scripts/of.py resume
+```
+
+If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime.
+
+In-flight = packed child with missing residual. Follow the printed next legal action (`collect` | `patch then next-wave` | `pack` | `hold`). `next=hold` with in-flight children means **continue those packets** (`of handoff` or `of spawn` on the existing packet, continuation note if scratch is nonempty) — not pack a second child, and not wait forever.
+
+Optional leader narrative for the next session (one screen; refuse huge dumps):
+
+```bash
+python3 <skill>/scripts/of.py checkpoint --summary "wave N: waiting on collect after spawn"
+```
+
 ### 1. Field or nothing
 
 ```bash
 python3 <skill>/scripts/of.py status
-# if there is no ORDER:
+# if resume was empty/safe (no ORDER):
 python3 <skill>/scripts/of.py init --mission "..." --phase explore
 ```
 
-Do not start doing the slice yourself. If there is no ORDER, initialize it. Read `references/principles.md` when invariants need reinforcing.
+Do not start doing the slice yourself. If there is no ORDER, initialize it. If ORDER exists, you already resumed — do not re-init. Read `references/principles.md` when invariants need reinforcing.
 
 ### 2. Cut slices that match the phase (optional when owners are obvious)
 
@@ -98,7 +114,7 @@ Record `same-harness: <adapter>` in `ORDER.constraints`. If the user later asks 
 
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
-For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it.
+For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch is nonempty, render/handoff add a **continuation note**: continue from scratch; do not restart the slice.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 
@@ -164,6 +180,8 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not spawn if a skill on the same agent is enough.
+- Do not `of init` when ORDER already exists. `of resume` first.
+- Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
 
 ## Enslaved roles (identities, not job titles)
 
@@ -183,6 +201,7 @@ Use the minimum. Explorer + adversary already prove the principle.
 |---|---|
 | Canonical field | `.orderfield/ORDER.json` |
 | Wave / cap state | `.orderfield/state.json` |
+| Session snapshot | `.orderfield/session.json` (facts: wave, last_cmd, in_flight, updated_at; optional `summary` from `of checkpoint --summary`). Forbidden to slaves like `state.json`. |
 | Wave packets | `.orderfield/waves/NNN/packets/` |
 | Residuals | `.orderfield/waves/NNN/residuals/` |
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
@@ -195,7 +214,7 @@ Use the minimum. Explorer + adversary already prove the principle.
 
 You do not need headless spawn for every child. The current session can be the leader. Then:
 
-1. You (current session) = leader. Do not implement the slice.
+1. You (current session) = leader. `of resume` first if ORDER exists (continue in-flight; do not re-init). Do not implement the slice.
 2. `of pack` builds the packet. Pack is the cap surface: `max_children` and `spawn_blocked` bind here even if you never call `of spawn`.
 3. Delegate with the harness native primitive (`Agent` in Claude Code, subagent in eve, `worker-start` in Orca, and so on). The message to the child is the handoff file from `of handoff --packet ...` (or the full stdout of `of render --packet ...`), never a truncated pointer and never “run of render yourself.” After pack, those caps still bind; Agent/render does not bypass them.
 4. The child writes `.orderfield/waves/NNN/residuals/<id>.json`.

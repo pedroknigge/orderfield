@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.9
+
+- Feature: Session-cut resume. `of resume` reconstructs **in-flight** from disk (packed child, missing residual) and prints a **one-screen** continuation brief (id, rev, phase, last_regime, spawn_blocked, in-flight child_id/role/truncated slice, scratch nonempty?, next legal action: collect | patch then next-wave | pack | hold). It does **not** auto-spawn, dump logs, or add a regime. No ORDER is empty/safe.
+- Feature: `of checkpoint --summary` stores an optional one-screen leader narrative for the next session; refuse huge dumps.
+- Feature: Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave. Forbidden to slaves like `state.json`.
+- Feature: `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart).
+- Fix: `of init --force` drops leftover `session.json` so a rewritten mission does not keep the previous checkpoint summary. `of resume` prints `wave` and `last_cmd`.
+- Docs: SKILL.md leader step 0 = `of resume` when ORDER exists (do not re-init). In-flight `hold` means re-handoff the existing packet. SLAVE.md: nonempty scratch + missing residual = continue. VERSION 0.2.9.
+
 ## 0.2.8
 
 - Feature: Mission vs phase `done_when`. `of patch --done-when` replaces only the **current phase** criteria (auto-prefixes the phase tag) and leaves the untagged mission list alone. `of patch --done-when-mission` replaces only the stable untagged mission checklist. `of status` prints `done_when_mission` / `done_when_phase`. Option B prefixes + legacy `done_when_closed` bool remain.

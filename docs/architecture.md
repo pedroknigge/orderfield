@@ -2,14 +2,15 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.2.9` — see [`VERSION`](../VERSION)
 
 ## Shape
 
 One slow field (`.orderfield/ORDER.json`) enslaves fast children via packets. The harness CLI is transport only.
 
 ```
-leader → of pack → packet → of spawn|handoff → child → residual → of collect → of integrate → ORDER'
+leader → of resume → of pack → packet → of spawn|handoff → child → residual → of collect → of integrate → ORDER'
+                 ↑ disk (packets / residuals / state / session.json) is the session
 ```
 
 ## Authority
@@ -28,7 +29,10 @@ leader → of pack → packet → of spawn|handoff → child → residual → of
 | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` | Detect + spawn + `--requires-tool` |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` | Phase-scoped replace vs stable mission list |
-| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load SLAVE (inline for orca/generic) |
+| `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; optional `--summary` |
+| `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` on pack/spawn/collect/integrate/patch/phase/next-wave |
+| in-flight | Packed child with missing residual; `of status` surfaces count |
+| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load SLAVE (inline for orca/generic); continuation note when scratch nonempty |
 | `build_spawn_argv` | Per-adapter headless argv |
 | `install.sh` | Skill copies + `of` PATH → installed skill |
 

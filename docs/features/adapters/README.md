@@ -17,3 +17,5 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 - **grok:** `--always-approve -p`
 - **codex:** `exec --dangerously-bypass-approvals-and-sandbox` (no `--full-auto`)
 - **agy:** flags before `-p`
+
+Session-cut (0.2.9) is kernel, not adapter-specific: `of resume` / `of checkpoint --summary`. Render/handoff add a continuation note when scratch is nonempty.

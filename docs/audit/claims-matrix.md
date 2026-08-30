@@ -7,14 +7,14 @@
 **Scope:** project  
 **Intent:** audit → integrate (patch)  
 **Out:** root  
-**Auditor:** documentation-manager (+ bld_docs 0.2.8)  
-**Code rev:** VERSION `0.2.8` / `scripts/of.py`
+**Auditor:** documentation-manager (+ bld_docs 0.2.9)  
+**Code rev:** VERSION `0.2.9` / `scripts/of.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 15 |
+| OK | 21 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -23,9 +23,9 @@
 | Severity | Count |
 |----------|------:|
 | critical | 0 |
-| normal | 19 |
+| normal | 25 |
 
-**Truth score (advisory):** `(15*100 + 3*50) / 19 ≈ 86.8`  
+**Truth score (advisory):** `(21*100 + 3*50) / 25 = 90.0`  
 **CI gate:** no critical Contradicted after integrate patch.
 
 **Top risks (post-patch):**  
@@ -39,9 +39,9 @@
 
 | Kind | Evidence | Notes |
 |------|----------|-------|
-| Kernel CLI | `scripts/of.py` | cmds: init, status, detect, validate, pack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
+| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, validate, pack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
 | Adapters | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS` | claude…agy + generic |
-| Schemas | `schemas/*.json` | order / packet / residual / wave-report |
+| Schemas | `schemas/*.json` | order / packet / residual / wave-report / session |
 | Install | `install.sh` | harness dests + `~/.local/bin/of` → installed skill |
 | Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | kernel + packaging |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
@@ -69,7 +69,13 @@
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | normal | Unverifiable | keep |
 | C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of.py` | `cmd_patch` | critical | OK | keep |
 | C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | normal | OK | keep doctrine |
+| C-020 | `of resume` reconstructs in-flight from disk (packed child, missing residual); one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `in_flight_children`; no spawn | `scripts/of.py` | `cmd_resume` | critical | OK | keep |
+| C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` / `CHECKPOINT_MAX_LINES` | `scripts/of.py` | `cmd_checkpoint` | normal | OK | keep |
+| C-022 | Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave | README / architecture / SKILL | `snapshot_session` on those cmds | `scripts/of.py` | `snapshot_session` | critical | OK | keep |
+| C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status` prints `in_flight`; `render_prompt` continuation | `scripts/of.py` | `cmd_status` / `render_prompt` | critical | OK | keep |
+| C-024 | `session.json` forbidden to slaves like `state.json` | SKILL / SLAVE / AGENTS | `SESSION_FORBIDDEN` in `default_order` | `scripts/of.py` | `default_order` | normal | OK | keep |
+| C-025 | Leader step 0 = `of resume` when ORDER exists; slave nonempty scratch + missing residual = continue | SKILL.md §0 / SLAVE.md / AGENTS | leader/slave protocol (no new regime) | `SKILL.md` | §0 | normal | OK | keep doctrine |
 
 ## Post-patch expectation
 
-C-018–C-019 added for 0.2.8; C-014 remains Partial (leader protocol, not `of ask`).
+C-020–C-024 OK against live `of.py` (`cmd_resume` / `cmd_checkpoint` / `snapshot_session` / `SessionCutResume`). C-025 doctrine OK. C-014 remains Partial (leader protocol, not `of ask`).

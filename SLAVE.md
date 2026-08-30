@@ -13,6 +13,8 @@ You are a slaved mode. You are not the leader. You do not rewrite the field.
 
 Do not ask for the parent's history. If it is not in the packet, it does not exist for you.
 
+**Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet.
+
 Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Follow the slice and ORDER constraints. Two slaves writing the same product path is a **cut error**, not a kernel catch.
 
 ## Isolation when the leader shares the repo
@@ -35,7 +37,7 @@ If **all** children need this, it belongs in `ORDER.constraints` (`of patch --co
 
 ## You must not
 
-- Mutate `.orderfield/ORDER.json` or `.orderfield/state.json`.
+- Mutate `.orderfield/ORDER.json`, `.orderfield/state.json`, or `.orderfield/session.json`.
 - Change mission, phase, or constraints.
 - Spawn grandchildren unless the packet has `allow_nested: true`.
 - Return a thinking diary as the result.

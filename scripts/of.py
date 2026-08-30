@@ -26,7 +26,11 @@ REGIMES = [
     "phase",
 ]
 SLICE_WARN_CHARS = 800
+SLICE_BRIEF_CHARS = 80
+CHECKPOINT_MAX_CHARS = 2000
+CHECKPOINT_MAX_LINES = 24
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
+SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_KEYS = ["mission", "phase", "constraints", "done_when", "workspace"]
 ADAPTER_ORDER = [
     "claude",
@@ -103,6 +107,10 @@ def state_path(root: Path | None = None) -> Path:
     return of_dir(root) / "state.json"
 
 
+def session_path(root: Path | None = None) -> Path:
+    return of_dir(root) / "session.json"
+
+
 def die(msg: str, code: int = 1) -> None:
     print(f"of: {msg}", file=sys.stderr)
     raise SystemExit(code)
@@ -134,7 +142,11 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
         "workspace": {
             "readable": [".orderfield/ORDER.json", "."],
             "writable_by_slaves": [".orderfield/work/scratch/"],
-            "forbidden": [".orderfield/ORDER.json", ".orderfield/state.json"],
+            "forbidden": [
+                ".orderfield/ORDER.json",
+                ".orderfield/state.json",
+                SESSION_FORBIDDEN,
+            ],
         },
         "thresholds": {
             "tool_failures": 2,
@@ -476,6 +488,89 @@ def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     return path
 
 
+def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
+    rel = packet.get("residual_path")
+    if not rel:
+        return True
+    return not (root / str(rel)).is_file()
+
+
+def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
+    """Packed children whose residual is missing. Disk is the source of truth."""
+    return [p for p in packed_children(root, wave) if packet_residual_missing(root, p)]
+
+
+def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
+    rel = packet.get("scratch_dir")
+    if not rel:
+        return False
+    path = root / str(rel)
+    if not path.is_dir():
+        return False
+    try:
+        next(path.iterdir())
+    except StopIteration:
+        return False
+    return True
+
+
+def truncate_slice(text: str, limit: int = SLICE_BRIEF_CHARS) -> str:
+    one = " ".join(str(text or "").split())
+    if len(one) <= limit:
+        return one
+    if limit <= 3:
+        return one[:limit]
+    return one[: limit - 3] + "..."
+
+
+def load_session(root: Path | None = None) -> dict[str, Any]:
+    p = session_path(root)
+    if not p.is_file():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def snapshot_session(
+    root: Path,
+    last_cmd: str,
+    summary: str | None = None,
+) -> dict[str, Any]:
+    """Facts only: wave, last_cmd, in_flight, updated_at. Preserve checkpoint summary."""
+    state = load_state(root)
+    wave = int(state.get("wave") or 1)
+    flying = in_flight_children(root, wave)
+    prev = load_session(root)
+    data: dict[str, Any] = {
+        "wave": wave,
+        "last_cmd": last_cmd,
+        "in_flight": [str(p.get("child_id") or "?") for p in flying],
+        "updated_at": utc_now(),
+    }
+    kept = summary if summary is not None else prev.get("summary")
+    if isinstance(kept, str) and kept.strip():
+        data["summary"] = kept.strip()
+    dump_json(session_path(root), data)
+    return data
+
+
+def next_legal_action(
+    state: dict[str, Any],
+    flying: list[dict[str, Any]],
+    packets: list[dict[str, Any]],
+) -> str:
+    if state.get("spawn_blocked"):
+        return "patch then next-wave"
+    if flying:
+        return "hold"
+    if packets:
+        return "collect"
+    return "pack"
+
+
 def enforce_wave_child_caps(
     order: dict[str, Any],
     state: dict[str, Any],
@@ -556,9 +651,13 @@ def slave_contract(inline: bool = False) -> str:
     )
 
 
-def render_prompt(packet: dict[str, Any], inline: bool = False) -> str:
+def render_prompt(
+    packet: dict[str, Any],
+    inline: bool = False,
+    root: Path | None = None,
+) -> str:
     body = slave_contract(inline=inline)
-    return (
+    text = (
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
         + json.dumps(packet, indent=2, ensure_ascii=False)
@@ -567,6 +666,9 @@ def render_prompt(packet: dict[str, Any], inline: bool = False) -> str:
         + packet["residual_path"]
         + "`. Do not mutate `.orderfield/ORDER.json`.\n"
     )
+    if root is not None and scratch_nonempty(root, packet):
+        text += "\nContinue from nonempty scratch. Do not restart the slice.\n"
+    return text
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -588,6 +690,9 @@ def cmd_init(args: argparse.Namespace) -> None:
     save_order(order, root)
     save_state(default_state(), root)
     write_phase_md(root, order)
+    sess = session_path(root)
+    if sess.is_file():
+        sess.unlink()
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
 
@@ -615,6 +720,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"constraints {order['constraints']}")
     print(f"wave        {state['wave']}")
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
+    flying = in_flight_children(root, int(state["wave"]))
+    print(f"in_flight   {len(flying)}")
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"since_across {state.get('waves_since_across')}")
@@ -744,15 +851,23 @@ def cmd_pack(args: argparse.Namespace) -> None:
             )
     out = Path(args.out) if args.out else wdir / "packets" / f"{child_id}.json"
     dump_json(out, packet)
-    prompt = render_prompt(packet)
+    prompt = render_prompt(packet, root=root)
     (wdir / "prompts" / f"{child_id}.md").write_text(prompt, encoding="utf-8")
+    snapshot_session(root, "pack")
     print(str(out))
     print(f"child_id={child_id} wave={wave} residual={residual_path}")
 
 
 def cmd_render(args: argparse.Namespace) -> None:
+    root = find_root()
     packet = load_json(Path(args.packet))
-    sys.stdout.write(render_prompt(packet, inline=bool(getattr(args, "inline", False))))
+    sys.stdout.write(
+        render_prompt(
+            packet,
+            inline=bool(getattr(args, "inline", False)),
+            root=root,
+        )
+    )
 
 
 def cmd_handoff(args: argparse.Namespace) -> None:
@@ -769,7 +884,11 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
     prompt_path.write_text(
-        render_prompt(packet, inline=bool(getattr(args, "inline", False))),
+        render_prompt(
+            packet,
+            inline=bool(getattr(args, "inline", False)),
+            root=root,
+        ),
         encoding="utf-8",
     )
     print(f"child_id={child_id}")
@@ -886,11 +1005,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             f"(packet requires_tool={required}); pick --adapter with those tools "
             "or repack without them"
         )
-    prompt = render_prompt(packet, inline=adapter in INLINE_CONTRACT_ADAPTERS)
+    prompt = render_prompt(
+        packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
+    )
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
     prompt_path.write_text(prompt, encoding="utf-8")
     if adapter == "generic" and not os.environ.get("OF_AGENT"):
+        snapshot_session(root, "spawn")
         print(f"adapter=generic child_id={child_id} mode=handoff")
         print(f"prompt={prompt_path}")
         print(f"residual={residual_rel}")
@@ -918,6 +1040,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={residual_rel}")
     if args.dry_run:
+        snapshot_session(root, "spawn")
         print("dry-run argv:")
         print(argv_preview(argv))
         return
@@ -951,6 +1074,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if not already:
         state["children_spawned"] += 1
         save_state(state, root)
+    snapshot_session(root, "spawn")
     print(f"exit={proc.returncode} log={log_path}")
 
 
@@ -997,6 +1121,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"OK {path.name} status={data.get('status')} wants="
                 f"{data.get('residual', {}).get('wants_to_change')}"
             )
+    snapshot_session(root, "collect")
     print(f"wave={wave} ok={ok} invalid={bad} total={len(packets)}")
     if bad:
         raise SystemExit(2)
@@ -1198,6 +1323,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     if args.next_wave:
         advance_wave(state, root=root, order=order)
     save_state(state, root)
+    snapshot_session(root, "integrate")
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
@@ -1207,6 +1333,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
     if args.phase not in PHASES:
         die(f"invalid phase: {args.phase}")
     if args.phase == order["phase"] and not args.force:
+        snapshot_session(root, "phase")
         print(f"already in {args.phase}")
         return
     if order.get("done_when_closed"):
@@ -1217,6 +1344,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     write_phase_md(root, order)
+    snapshot_session(root, "phase")
     print(f"phase={order['phase']} rev={order['rev']}")
 
 
@@ -1268,6 +1396,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     write_phase_md(root, order)
+    snapshot_session(root, "patch")
     print(f"rev={order['rev']}")
     print(json.dumps({
         "mission": order["mission"],
@@ -1301,7 +1430,61 @@ def cmd_next_wave(args: argparse.Namespace) -> None:
     state = load_state(root)
     advance_wave(state, root=root, order=order)
     save_state(state, root)
+    snapshot_session(root, "next-wave")
     print(f"wave={state['wave']}")
+
+
+def cmd_resume(args: argparse.Namespace) -> None:
+    root = find_root()
+    if not order_path(root).exists():
+        print("no ORDER. of init --mission '...'")
+        return
+    order = load_order(root)
+    state = load_state(root)
+    wave = int(state.get("wave") or 1)
+    packets = packed_children(root, wave)
+    flying = in_flight_children(root, wave)
+    nxt = next_legal_action(state, flying, packets)
+    session = load_session(root)
+    print(f"id            {order['id']}")
+    print(f"rev           {order['rev']}")
+    print(f"phase         {order['phase']}")
+    print(f"wave          {wave}")
+    print(f"last_regime   {state.get('last_regime')}")
+    print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
+    print(f"last_cmd      {session.get('last_cmd') or '-'}")
+    print(f"status        {'in-flight' if flying else 'idle'}")
+    print(f"in_flight     {len(flying)}")
+    for pkt in flying:
+        cid = pkt.get("child_id") or "?"
+        role = pkt.get("role") or "?"
+        scratch = "yes" if scratch_nonempty(root, pkt) else "no"
+        print(f"  child_id    {cid}")
+        print(f"  role        {role}")
+        print(f"  slice       {truncate_slice(pkt.get('slice') or '')}")
+        print(f"  scratch     {scratch}")
+    print(f"next          {nxt}")
+    summary = session.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        print("summary")
+        print(summary.strip())
+
+
+def cmd_checkpoint(args: argparse.Namespace) -> None:
+    root = find_root()
+    load_order(root)
+    text = str(args.summary or "")
+    if not text.strip():
+        die("--summary is empty")
+    nlines = text.count("\n") + 1
+    if len(text) > CHECKPOINT_MAX_CHARS or nlines > CHECKPOINT_MAX_LINES:
+        die(
+            f"summary is {len(text)} chars / {nlines} lines; "
+            f"refuse huge dumps (max {CHECKPOINT_MAX_CHARS} chars, "
+            f"{CHECKPOINT_MAX_LINES} lines)"
+        )
+    snapshot_session(root, "checkpoint", summary=text.strip())
+    print("checkpoint saved")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1320,6 +1503,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", help="show field and caps")
     s.set_defaults(func=cmd_status)
+
+    s = sub.add_parser(
+        "resume",
+        help="one-screen continuation brief reconstructed from disk",
+    )
+    s.set_defaults(func=cmd_resume)
+
+    s = sub.add_parser(
+        "checkpoint",
+        help="optional one-screen leader continuation summary",
+    )
+    s.add_argument("--summary", required=True)
+    s.set_defaults(func=cmd_checkpoint)
 
     s = sub.add_parser("detect", help="detect installed harnesses")
     s.set_defaults(func=cmd_detect)

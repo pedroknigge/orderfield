@@ -2,9 +2,9 @@
 
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 
-1. Read `.orderfield/ORDER.json` before doing substantial work.
+1. If `.orderfield/ORDER.json` exists, `of resume` first (continue in-flight from disk; do not re-init). Then read ORDER.
 2. If you are the leader, do not implement the slice. Pack and delegate.
-3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER.
+3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
 4. Every child close-out is a valid residual JSON, not loose prose.
 5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
 6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when`) forbids spawn in that wave until the field is patched and `next-wave` runs.
@@ -41,5 +41,6 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Phase-prefix Option B / ref-load / `--requires-tool` | documented |
 | Optional cut + when-pays vs theater | documented |
 | Same-harness default (multi only if user asks) | documented |
+| Session-cut resume (`of resume`, `of checkpoint --summary`, `session.json`) | documented |
 
 Skill: look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

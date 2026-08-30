@@ -1519,3 +1519,242 @@ class HeadlessArgv(unittest.TestCase):
         self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
         if (of.skill_root() / "schemas" / "residual.schema.json").exists():
             self.assertIn("--output-schema", argv)
+
+
+class SessionCutResume(unittest.TestCase):
+    """Session-cut: reconstruct in-flight from disk. No auto-spawn, no log dump."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-resume-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str = "c1", slice_text: str = "map pricing models") -> None:
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            slice_text,
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _drop_residual(self, src: Path, name: str = "c1.json") -> None:
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def test_default_order_forbids_session_json(self) -> None:
+        order = of.default_order("m", "explore")
+        forbidden = order["workspace"]["forbidden"]
+        self.assertIn(".orderfield/state.json", forbidden)
+        self.assertIn(".orderfield/session.json", forbidden)
+
+    def test_missing_residual_is_in_flight(self) -> None:
+        self._init()
+        self._pack("c1", "map pricing models, do not choose the phase")
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("status        in-flight", r.stdout)
+        self.assertIn("in_flight     1", r.stdout)
+        self.assertIn("wave          1", r.stdout)
+        self.assertIn("last_cmd      pack", r.stdout)
+        self.assertIn("c1", r.stdout)
+        self.assertIn("explorer", r.stdout)
+        self.assertIn("map pricing models", r.stdout)
+        self.assertIn("scratch     no", r.stdout)
+        self.assertIn("next          hold", r.stdout)
+        self.assertNotIn("auto-spawn", r.stdout.lower())
+        self.assertNotRegex(r.stdout.lower(), r"\blogs\b")
+        self.assertFalse((self.tmp / ".orderfield" / "waves" / "001" / "spawns").exists())
+        sess = load_json(self.tmp / ".orderfield" / "session.json")
+        self.assertEqual(sess["last_cmd"], "pack")
+        self.assertEqual(sess["wave"], 1)
+        self.assertEqual(sess["in_flight"], ["c1"])
+        self.assertIn("updated_at", sess)
+
+    def test_all_residuals_present_is_idle(self) -> None:
+        self._init()
+        self._pack()
+        self._drop_residual(DONE)
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("status        idle", r.stdout)
+        self.assertIn("in_flight     0", r.stdout)
+        self.assertNotIn("status        in-flight", r.stdout)
+        self.assertIn("next          collect", r.stdout)
+
+    def test_escalate_up_resume_says_patch_then_next_wave(self) -> None:
+        self._init()
+        self._pack()
+        self._drop_residual(THRESHOLD)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report["regime"], "escalate_up")
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("spawn_blocked True", r.stdout)
+        self.assertIn("last_regime   escalate_up", r.stdout)
+        self.assertIn("patch then next-wave", r.stdout)
+        self.assertIn("status        idle", r.stdout)
+
+    def test_checkpoint_summary_appears(self) -> None:
+        self._init()
+        self._pack()
+        note = "wave 1: waiting on collect after spawn"
+        r = run_of(self.tmp, "checkpoint", "--summary", note)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        sess = load_json(self.tmp / ".orderfield" / "session.json")
+        self.assertEqual(sess["summary"], note)
+        self.assertEqual(sess["last_cmd"], "checkpoint")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn(note, resumed.stdout)
+        self.assertIn("summary", resumed.stdout)
+
+    def test_init_force_drops_stale_summary(self) -> None:
+        self._init()
+        self._pack()
+        note = "old mission checkpoint"
+        r = run_of(self.tmp, "checkpoint", "--summary", note)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "session.json").is_file())
+        r2 = run_of(
+            self.tmp,
+            "init",
+            "--force",
+            "--mission",
+            "a different field",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(r2.returncode, 0, r2.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "session.json").is_file())
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertNotIn(note, resumed.stdout)
+
+    def test_checkpoint_refuses_huge_dumps(self) -> None:
+        self._init()
+        huge = "x" * (of.CHECKPOINT_MAX_CHARS + 1)
+        r = run_of(self.tmp, "checkpoint", "--summary", huge)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("refuse huge dumps", r.stderr)
+        lines = "\n".join(["line"] * (of.CHECKPOINT_MAX_LINES + 1))
+        r2 = run_of(self.tmp, "checkpoint", "--summary", lines)
+        self.assertNotEqual(r2.returncode, 0)
+        self.assertIn("refuse huge dumps", r2.stderr)
+
+    def test_no_order_empty_safe(self) -> None:
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("no ORDER", r.stdout)
+        self.assertNotIn("in-flight", r.stdout)
+        self.assertFalse((self.tmp / ".orderfield" / "session.json").exists())
+
+    def test_continuation_note_in_prompt(self) -> None:
+        self._init()
+        self._pack()
+        packed = (
+            self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "c1.md"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("Do not restart the slice", packed)
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "c1"
+        (scratch / "notes.md").write_text("partial work", encoding="utf-8")
+        rendered = run_of(
+            self.tmp,
+            "render",
+            "--packet",
+            ".orderfield/waves/001/packets/c1.json",
+        )
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn("Continue from nonempty scratch", rendered.stdout)
+        self.assertIn("Do not restart the slice", rendered.stdout)
+        handed = run_of(
+            self.tmp,
+            "handoff",
+            "--packet",
+            ".orderfield/waves/001/packets/c1.json",
+        )
+        self.assertEqual(handed.returncode, 0, handed.stderr)
+        prompt = (
+            self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "c1.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Continue from nonempty scratch", prompt)
+        self.assertIn("Do not restart the slice", prompt)
+
+    def test_status_surfaces_in_flight(self) -> None:
+        self._init()
+        self._pack()
+        r = run_of(self.tmp, "status")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("in_flight   1", r.stdout)
+        self._drop_residual(DONE)
+        r2 = run_of(self.tmp, "status")
+        self.assertEqual(r2.returncode, 0, r2.stderr)
+        self.assertIn("in_flight   0", r2.stdout)
+
+    def test_snapshot_on_kernel_mutations(self) -> None:
+        self._init()
+        self._pack("c1")
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
+            "pack",
+        )
+        spawn = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "claude",
+            "--packet",
+            ".orderfield/waves/001/packets/c1.json",
+            "--dry-run",
+        )
+        self.assertEqual(spawn.returncode, 0, spawn.stderr)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
+            "spawn",
+        )
+        self._drop_residual(DONE)
+        collect = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collect.returncode, 0, collect.stderr)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
+            "collect",
+        )
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["in_flight"],
+            [],
+        )
+        patch = run_of(self.tmp, "patch", "--notes", "leader note")
+        self.assertEqual(patch.returncode, 0, patch.stderr)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
+            "patch",
+        )
+        phase = run_of(self.tmp, "phase", "build")
+        self.assertEqual(phase.returncode, 0, phase.stderr)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
+            "phase",
+        )
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        sess = load_json(self.tmp / ".orderfield" / "session.json")
+        self.assertEqual(sess["last_cmd"], "next-wave")
+        self.assertEqual(sess["wave"], 2)
+        self.assertEqual(sess["in_flight"], [])

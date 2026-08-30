@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.2.7</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.2.9</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.7-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.2.9-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -115,9 +115,13 @@ of integrate --wave 1
 of status
 ```
 
+Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
+
 A field residual (`mission` / `phase` / `constraints` / `done_when`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. Pack / collect / integrate refuse leftover packets whose embedded `id` / `phase` / `mission` disagree with the live ORDER; `of next-wave` skips those dirs. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. After `--apply` sets `done_when_closed`, the report reason does not claim the flag is still open; `of phase` remains explicit.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
+
+**Session cut:** Disk is the session. In-flight = packed child with missing residual. `of resume` reconstructs a one-screen brief from packets / residuals / state plus an optional checkpoint summary. Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave — forbidden to slaves like `state.json`. `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart). No new regime.
 
 **When to open orderfield:** it pays for false-scope / marketing risk (adversary can catch a lie) and for multi-writer path cuts. It is theater for a VERSION bump plus one obvious feature — use a skill instead (`skill beats child`). **Cut is optional** when exclusive owners are already obvious; put them in constraints. (Feedback: documentation-manager adversary run + prior grok-build critique.)
 
@@ -169,11 +173,13 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | Command | Purpose |
 |---|---|
 | `init` | create `.orderfield/ORDER.json` |
-| `status` | show field, wave, caps |
+| `resume` | one-screen continuation brief from disk (in-flight = packed child, missing residual). Does not auto-spawn. |
+| `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
+| `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
 | `pack` | build a slaving packet (supports `--requires-tool`) |
-| `render` | print the slave prompt |
+| `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
 | `collect` | validate residuals for a wave |

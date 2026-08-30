@@ -16,7 +16,7 @@ share(path)            -> the child can see .orderfield/
 and the log to
 `.orderfield/waves/NNN/logs/<child_id>.log`.
 
-Note: `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it.
+Note: `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch directory is nonempty, render/handoff add a continuation note: continue from scratch; do not restart the slice.
 
 The child **must** write the residual to
 `.orderfield/waves/NNN/residuals/<child_id>.json`.
@@ -183,6 +183,7 @@ When the leader is also working in the same git repo, slaves use their own `git 
 
 ## Phasing and PATH
 
+- **Session cut:** Leader starts with `of resume` when ORDER exists (do not re-init). In-flight = packed child, missing residual. `of checkpoint --summary` is optional one-screen narrative. Slaves continue from nonempty scratch. `session.json` is facts only, forbidden like `state.json`.
 - **Mission vs phase `done_when`:** Untagged criteria are the stable mission checklist (`of patch --done-when-mission`). Phase-prefixed criteria (`"build: ..."`) belong to that phase; `of patch --done-when` replaces only the **current** phase's rows (auto-prefix). Active set = mission + current phase (`done_when_for`). `of status` shows `done_when_mission` / `done_when_phase`. Option B prefixes + legacy `done_when_closed` bool remain.
 - **Optional cut:** When exclusive owners are already obvious, skip a cut wave and put owners in constraints. Cut pays when owners are disputed or an adversary would catch a missing write matrix.
 - **PATH symlink:** The `install.sh` script automatically sets up an `of` symlink at `~/.local/bin/of` pointing to the installed skill copy (and cleans it up on uninstall). You can use `of` from anywhere if `~/.local/bin` is in your PATH.
