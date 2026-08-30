@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+Operational contract. Qwen-any adapter, trust profiles, doctor, migrations, opt-in worktree, argv/log redaction, 30-day episodic retention, stale-wave recovery, reserved runtime, frozen terminology.
+
+- Adapter: native `qwen` for any Qwen Code CLI (DashScope, OpenAI-compat, or the user's existing provider). Qwen-owned positional headless argv; no hardcoded model, baseUrl, host, API key, or provider. Local/Ollama is a supported path, not a kernel default.
+- Trust: conservative `--approval-mode default` (not yolo) with a visible `OF_TRUST` override. Kernel verifies PATH, argv, and residual file/schema; the harness promises approval, auth, and readiness.
+- Feature: `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock. PATH presence is distinct from authentication or readiness.
+- Feature: `of migrate` versioned rewrites for pre-0.4.2 packets/state and protocol writable aliases (`--list` / `--dry-run`). Does not invent integration hashes or rename `SLAVE.md`.
+- Feature: opt-in `of worktree` helper (`add` / `remove` / `list`); not a process manager and not hooked from spawn.
+- Safety: spawn argv previews and logs redact secrets and escalated approval material.
+- Feature: `of retain` (read-only plan) / `of gc` apply 30-day episodic memory: keep still-useful residuals and applicable learnings; drop inapplicable learnings; dump garbage, logs, and wave history older than 30 days; never copy private transcripts.
+- Fix: a complete stale wave after a leader patch is recoverable with `of next-wave` without hand-editing ORDER; complete stale waves may also collect/integrate.
+- Terminology: protocol keys `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` stay frozen. `of migrate` maps writable aliases onto the protocol key.
+- Runtime ownership: `scale_up`, `scale_across`, token accounting, `local_budget_pct`, and inherited depth are reserved (no telemetry). `decide_regime` remaps reserved regimes to `hold`.
+- Spec fidelity: `of init --source` / `--source-file` stores the verbatim user brief as `.orderfield/SPEC.md` with `spec_hash`. ORDER may compress reasoning, never the contract. Packets stay one-screen and reference-load SPEC; `--owns-requirement` records coverage. `of spec` / `of spec-diff` list UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of contrast` is the review loop (SPEC + ORDER → slice → product); exit 2 while open, 0 when resolved. `of phase deliver` refuses while binding requirements are open. Verifier contract reads SPEC ↔ ORDER ↔ product.
+- Packaging: VERSION 0.5.0; skill/alias description preview `v0.5.0 — …`. README, architecture, claims matrix, kernel/adapters feature docs, and roadmap follow code. This bump does not tag or GitHub-release.
+
 ## 0.4.2
 
 State Machine Integrity patch. This release is prepared but not published by the build mission.
@@ -12,7 +29,7 @@ State Machine Integrity patch. This release is prepared but not published by the
 - Pulse honesty: child `ALIVE` / `QUIET` / `STALE` verdicts use only packet time and child scratch. Shared-repo product writes remain visible as wave context but cannot make a child look alive.
 - Installer: literal `./install.sh --project` now canonicalizes the project root and stages a stable external source snapshot when installing inside its own checkout. This prevents recursive `.agents` copies and produces a valid absolute `of` symlink; a direct packaging regression covers the flow.
 - Contract boundaries: `budget.seconds` remains the spawn timeout. `budget.tokens`, `local_budget_pct`, and inherited depth are not runtime-accounted; `max_depth` only gates nested permission. `scale_across` and `scale_up` are reserved compatibility enums not selected by current decision logic; novelty remains validated data but does not select a regime.
-- Docs/release: version surfaces are `0.4.2`; README, skill/alias, principles, architecture, troubleshooting, kernel feature docs, and claims matrix follow code. [`docs/roadmap.md`](docs/roadmap.md) is the canonical 0.5.0 plan for Qwen Code, trust profiles, doctor, migrations, optional worktree help, audit/log safety, terminology, and the accounting/runtime ownership decision.
+- Docs/release: version surfaces are `0.4.2`; README, skill/alias, principles, architecture, troubleshooting, kernel feature docs, and claims matrix follow code. [`docs/roadmap.md`](docs/roadmap.md) is the canonical 0.5.0 plan. Kernel already contains `of migrate`, opt-in `of worktree`, reserved `RUNTIME_OWNERSHIP`, and `ORDER.harness=qwen`; VERSION stays `0.4.2` until the dedicated bump.
 
 ## 0.4.1
 

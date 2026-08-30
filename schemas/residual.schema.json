@@ -41,7 +41,15 @@
               "items": { "type": "string" }
             },
             "notes": { "type": "string" },
-            "done_when_closed": { "type": "boolean" }
+            "done_when_closed": { "type": "boolean" },
+            "requirements_verified": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requirements_failed": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
           }
         }
       }

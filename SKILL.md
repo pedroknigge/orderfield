@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.4.2 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.0 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
-compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
+compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.4.2"
+  version: "0.5.0"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,7 +19,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for CLI mutations, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, create worktrees, attest metrics, or police a disobedient child.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for CLI mutations, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 
@@ -90,7 +90,15 @@ python3 <skill>/scripts/of.py pack \
   --out .orderfield/waves/001/packets/p1.json
 ```
 
-The packet must fit on one screen. If it does not, ORDER is poorly factored. Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
+The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables). Store the verbatim user brief at init:
+
+```bash
+python3 <skill>/scripts/of.py init --mission "build LedgerLab" --source-file ./PROMPT.md
+```
+
+That writes `.orderfield/SPEC.md` (lossless) plus a `spec_hash`. `of spec --add` / `--from-file` / `--extract` maintains binding requirement IDs. Pack with `--owns-requirement CLI-001`. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product.
+
+Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
@@ -98,7 +106,7 @@ An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packe
 
 New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
-Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. If every child needs it, put it in constraints, not in `--slice`.
+Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. Opt-in helper: `of worktree add --child-id <id>` (not a process manager, not hooked from spawn). If every child needs isolation, put it in constraints, not in `--slice`.
 
 ### 4. Spawn only through the kernel
 
@@ -109,7 +117,7 @@ python3 <skill>/scripts/of.py spawn \
   --packet .orderfield/waves/001/packets/p1.json
 ```
 
-Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`, `generic`.
+Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`, `qwen`, `generic`.
 `detect` picks the first available adapter if you omit `--adapter`.
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
@@ -145,7 +153,7 @@ python3 <skill>/scripts/of.py integrate --wave 1
 python3 <skill>/scripts/of.py status
 ```
 
-Collect and integrate also refuse a wave that contains stale leftover packets (they do not silently drop them). Run `of next-wave`.
+Collect and integrate refuse mixed leftover stale packets (they do not silently drop them). A **fully stale** wave is recoverable without hand-editing ORDER: `of resume` prints `next-wave`, and `of next-wave` skips occupied stale dirs without requiring a report. If every stale packet already has a bound residual, collect/integrate may still reduce that complete wave.
 
 One dead child does not freeze the wave: `collect` prints `MISSING <child_id>` per absent residual, keeps walking, and exits 2 when anything is missing or invalid. To reduce what did land while a straggler keeps flying, use `of integrate --wave N --partial` — skipped children are listed in the report as `skipped_in_flight` and stay in flight. Without `--partial`, integrate still refuses an incomplete wave. A child that will never report is released with `of unpack`.
 
@@ -153,11 +161,31 @@ Integration hashes the canonical packet/residual set plus reduction options. Rep
 
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
-Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. In 0.4.2, `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic.
+Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Token budgets, `local_budget_pct`, and inherited depth stay reserved; the kernel does not invent telemetry.
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
 Golden rule: **if there is a residual on mission, phase, constraints, done_when, or workspace, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
+
+### 5b. Contrast loop — original request, not the compressed ORDER
+
+Slices are cut from **SPEC.md + ORDER together**. After collect:
+
+```bash
+python3 <skill>/scripts/of.py contrast
+```
+
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 means the loop is **OPEN** — pack another child or mark only those requirements a real SPEC review verified (`of spec --verified ID`). Exit 0 means **RESOLVED**. Do not close `done_when` or `of phase deliver` while `of contrast` is open. A verifier that only reads ORDER will certify the wrong product.
+
+```
+SPEC.md (verbatim) + ORDER.json (slow field)
+        → pack --owns-requirement (slice)
+        → child
+        → residual
+        → of contrast
+        → gaps? pack again
+        → resolved? phase deliver
+```
 
 ### 6. Patch the field, then re-enslave
 
@@ -208,12 +236,12 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not do the slave's work.
 - Do not paste child transcripts into your context. Residual only.
 - Do not launch explorer and implementer in the same wave.
-- Legacy `scale_across` reports remain readable for recovery, but 0.4.2 does not select new across waves.
+- Legacy `scale_across` reports remain readable for recovery, but 0.5.0 does not select new across waves.
 - Do not rewrite the mission because a child asked. That is a residual. It goes to `integrate`.
 - Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
-- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. In 0.4.2 they are advisory/reserved contract fields; only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission.
+- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). Only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.

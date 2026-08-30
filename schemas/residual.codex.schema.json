@@ -31,7 +31,14 @@
         "proposed_patch": {
           "type": ["object", "null"],
           "additionalProperties": false,
-          "required": ["constraints+", "done_when+", "notes", "done_when_closed"],
+          "required": [
+            "constraints+",
+            "done_when+",
+            "notes",
+            "done_when_closed",
+            "requirements_verified",
+            "requirements_failed"
+          ],
           "properties": {
             "constraints+": {
               "type": ["array", "null"],
@@ -42,7 +49,15 @@
               "items": { "type": "string" }
             },
             "notes": { "type": ["string", "null"] },
-            "done_when_closed": { "type": ["boolean", "null"] }
+            "done_when_closed": { "type": ["boolean", "null"] },
+            "requirements_verified": {
+              "type": ["array", "null"],
+              "items": { "type": "string" }
+            },
+            "requirements_failed": {
+              "type": ["array", "null"],
+              "items": { "type": "string" }
+            }
           }
         }
       }

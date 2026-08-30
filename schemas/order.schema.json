@@ -29,7 +29,11 @@
       "required": ["readable", "writable_by_slaves", "forbidden"],
       "properties": {
         "readable": { "type": "array", "items": { "type": "string" } },
-        "writable_by_slaves": { "type": "array", "items": { "type": "string" } },
+        "writable_by_slaves": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Frozen protocol key. Aliases migrate onto this name; do not rename without a versioned migration."
+        },
         "forbidden": { "type": "array", "items": { "type": "string" } }
       }
     },
@@ -40,7 +44,12 @@
       "properties": {
         "tool_failures": { "type": "integer", "minimum": 1 },
         "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "local_budget_pct": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "local_budget_pct": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Reserved; not evaluated. Kernel does not account local budget."
+        },
         "novelty": { "type": "boolean" }
       }
     },
@@ -50,7 +59,11 @@
       "required": ["max_children", "max_depth", "max_across_per_wave", "cooldown_waves_after_across"],
       "properties": {
         "max_children": { "type": "integer", "minimum": 1 },
-        "max_depth": { "type": "integer", "minimum": 1 },
+        "max_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Gates --allow-nested only. Inherited depth is not tracked."
+        },
         "max_across_per_wave": { "type": "integer", "minimum": 0 },
         "cooldown_waves_after_across": { "type": "integer", "minimum": 0 }
       }
@@ -58,6 +71,7 @@
     "enabled_regimes": {
       "type": "array",
       "minItems": 1,
+      "description": "scale_up and scale_across are reserved compatibility values; decide_regime never selects them from accounting.",
       "items": {
         "type": "string",
         "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase"]
@@ -65,7 +79,7 @@
     },
     "harness": {
       "type": "string",
-      "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "generic"]
+      "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
     },
     "backlog": {
       "type": "array",
@@ -88,6 +102,10 @@
       },
       "uniqueItems": true
     },
-    "notes": { "type": "string" }
+    "notes": { "type": "string" },
+    "spec_ref": { "type": "string", "minLength": 1 },
+    "spec_hash": { "type": "string", "minLength": 1 },
+    "requirements_ref": { "type": "string", "minLength": 1 },
+    "requirements_hash": { "type": "string", "minLength": 1 }
   }
 }

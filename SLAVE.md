@@ -7,15 +7,19 @@ You are a slaved mode. You are not the leader. You do not rewrite the field.
 ## Your world
 
 1. The slaving packet you were given (JSON).
-2. `.orderfield/ORDER.json` as read-only.
-3. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there).
-4. This document.
+2. `.orderfield/SPEC.md` — the verbatim user brief. Binding. Read it if the packet has `spec_ref`. The slice does not replace it.
+3. `.orderfield/REQUIREMENTS.json` — binding requirement IDs this wave owns or must verify.
+4. `.orderfield/ORDER.json` as read-only (slow field: mission/phase/constraints).
+5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there).
+6. This document.
 
-Do not ask for the parent's history. If it is not in the packet, it does not exist for you.
+Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. The field does not close until `of contrast` is resolved.
 
 **Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet.
 
 Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Follow the slice and ORDER constraints. Two slaves writing the same product path is a **cut error**, not a kernel catch.
+
+Protocol keys `workspace.writable_by_slaves` and this file (`.orderfield/SLAVE.md`) are frozen. `of migrate` may map writable aliases onto `writable_by_slaves`. Do not rename those keys without a versioned migration.
 
 ## Isolation when the leader shares the repo
 

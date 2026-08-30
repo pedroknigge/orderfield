@@ -24,8 +24,13 @@ from of_adapters import (
     ADAPTER_BINS,
     ADAPTER_ORDER,
     ADAPTER_TOOLS,
+    DEFAULT_TRUST_PROFILE,
+    HARNESS_PROMISES,
     INLINE_CONTRACT_ADAPTERS,
+    KERNEL_VERIFIES,
     KNOWN_TOOLS,
+    TRUST_ENV,
+    TRUST_PROFILES,
     build_spawn_argv,
     detect_adapters,
     missing_tools,
@@ -55,8 +60,10 @@ ROLE_CONTRACTS = {
         "picture; no new exploration, no edits outside its own scratch."
     ),
     "verifier": (
-        "verifier checks done_when with direct evidence (run the checks, read "
-        "the outputs); read-only apart from running those checks."
+        "verifier checks SPEC.md (the lossless brief) against ORDER and against "
+        "the product. It must detect SPEC→ORDER omissions as well as "
+        "ORDER→implementation omissions. Missing binding requirements are "
+        "threshold, not done. Read-only apart from running those checks."
     ),
 }
 REGIMES = [
@@ -77,6 +84,51 @@ UPDATE_CHECK_INTERVAL_S = 24 * 3600
 UPDATE_CMD = "curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash"
 PULSE_QUIET_SECONDS = 300
 PULSE_STALE_MINUTES = 30.0
+RETENTION_DAYS = 30
+RETENTION_SECONDS = RETENTION_DAYS * 24 * 3600
+PUBLIC_SCHEMA_FILES = (
+    "order.schema.json",
+    "state.schema.json",
+    "packet.schema.json",
+    "residual.schema.json",
+    "residual.codex.schema.json",
+    "session.schema.json",
+    "wave-report.schema.json",
+    "requirements.schema.json",
+)
+REDACTED = "<redacted>"
+APPROVAL_REDACTED = "<approval>"
+SECRET_FLAG_NAMES = {
+    "--openai-api-key",
+    "--api-key",
+    "--api_key",
+    "--access-token",
+    "--auth-token",
+    "--token",
+    "--secret",
+    "--password",
+    "--authorization",
+}
+APPROVAL_FLAG_NAMES = {
+    "--yolo",
+    "-y",
+    "--dangerously-skip-permissions",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "--always-approve",
+    "--full-auto",
+}
+APPROVAL_VALUE_FLAGS = {"--approval-mode"}
+ESCALATED_APPROVAL_VALUES = {"yolo", "auto", "auto-edit"}
+_SECRET_ASSIGN_RE = re.compile(
+    r"(?i)\b((?:[A-Za-z_][A-Za-z0-9_]*_)?(?:api[_-]?key|token|secret|password|authorization)|"
+    r"DASHSCOPE_API_KEY|OPENAI_API_KEY|QWEN_API_KEY)\s*[:=]\s*(\S+)"
+)
+_BEARER_RE = re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-+/=]+")
+_SK_RE = re.compile(r"\bsk-[A-Za-z0-9]{8,}\b")
+_PEM_RE = re.compile(
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+    re.DOTALL,
+)
 # Dirs whose mtimes are noise, not evidence of a child working.
 PULSE_PRUNE_DIRS = {
     ".git",
@@ -97,6 +149,10 @@ PULSE_PRUNE_DIRS = {
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
 SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
+FIELD_SPEC_MD = ".orderfield/SPEC.md"
+FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
+REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
+REQ_STATUSES = ("unowned", "owned", "verified", "failed")
 CHILD_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PACKET_ID_RE = re.compile(r"^pkt_[0-9a-f]{32}$")
 PACKET_IDENTITY_FIELDS = (
@@ -121,7 +177,72 @@ MUTATING_COMMANDS = {
     "patch",
     "next-wave",
     "checkpoint",
+    "gc",
+    "migrate",
+    "worktree",
+    "spec",
 }
+# Frozen protocol keys. Terminology migration may map aliases onto these;
+# it must not rename them without a versioned migration of its own.
+PROTOCOL_WRITABLE_KEY = "writable_by_slaves"
+PROTOCOL_SLAVE_MD = FIELD_SLAVE_MD
+WRITABLE_ALIAS_KEYS = ("writable_by_children", "writable_by_child")
+CURRENT_ARTIFACT_GENERATION = "0.4.2"
+# 0.5.0 runtime-ownership decision: reserve these surfaces. Do not invent
+# telemetry. budget.seconds and max_children stay actually enforced.
+RESERVED_REGIMES = frozenset({"scale_up", "scale_across"})
+RUNTIME_OWNERSHIP = {
+    "scale_up": "reserved",
+    "scale_across": "reserved",
+    "budget.tokens": "reserved",
+    "thresholds.local_budget_pct": "reserved",
+    "inherited_depth": "reserved",
+}
+RUNTIME_ENFORCED = {
+    "budget.seconds": "spawn timeout",
+    "caps.max_children": "pack bind",
+    "spawn_blocked": "pack bind after escalate_up",
+}
+MIGRATION_CATALOG = (
+    {
+        "id": "pre-0.4.2-packet-identity",
+        "from": "pre-0.4.2",
+        "to": "0.4.2",
+        "kind": "packet",
+        "description": (
+            "Add packet_id, order_id, packed_at, and packet_hash to "
+            "identity-free packets"
+        ),
+    },
+    {
+        "id": "pre-0.4.2-state-defaults",
+        "from": "pre-0.4.2",
+        "to": "0.4.2",
+        "kind": "state",
+        "description": (
+            "Fill integration_history and phase_overrides; drop unknown keys"
+        ),
+    },
+    {
+        "id": "pre-0.4.2-report-readable",
+        "from": "pre-0.4.2",
+        "to": "0.4.2",
+        "kind": "wave-report",
+        "description": (
+            "Keep pre-digest reports readable; do not invent integration hashes"
+        ),
+    },
+    {
+        "id": "protocol-writable-key",
+        "from": "any",
+        "to": CURRENT_ARTIFACT_GENERATION,
+        "kind": "order|packet",
+        "description": (
+            "Map writable aliases onto workspace.writable_by_slaves; "
+            "never rename SLAVE.md"
+        ),
+    },
+)
 _HELD_FIELD_LOCK: Path | None = None
 
 
@@ -161,6 +282,318 @@ def session_path(root: Path | None = None) -> Path:
 
 def field_lock_path(root: Path | None = None) -> Path:
     return of_dir(root) / "field.lock"
+
+
+def spec_path(root: Path | None = None) -> Path:
+    return of_dir(root) / "SPEC.md"
+
+
+def requirements_path(root: Path | None = None) -> Path:
+    return of_dir(root) / "REQUIREMENTS.json"
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def require_req_id(value: str) -> str:
+    text = str(value or "").strip()
+    if not REQ_ID_RE.match(text):
+        die(f"invalid requirement id {value!r}; expected PREFIX-001")
+    return text
+
+
+def empty_requirements(spec_hash: str = "") -> dict[str, Any]:
+    return {"v": 1, "spec_hash": spec_hash, "requirements": []}
+
+
+def load_requirements(root: Path) -> dict[str, Any]:
+    path = requirements_path(root)
+    if not path.is_file():
+        return empty_requirements()
+    data = load_json(path)
+    if not isinstance(data, dict):
+        die("invalid requirements: not an object")
+    data.setdefault("v", 1)
+    data.setdefault("spec_hash", "")
+    data.setdefault("requirements", [])
+    return data
+
+
+def save_requirements(data: dict[str, Any], root: Path) -> None:
+    require_public_schema(data, "requirements.schema.json", "requirements")
+    dump_json(requirements_path(root), data)
+
+
+def canonical_requirements_hash(data: dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
+    spec = spec_path(root)
+    if spec.is_file():
+        order["spec_ref"] = FIELD_SPEC_MD
+        order["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        readable = order.setdefault("workspace", {}).setdefault("readable", [])
+        if FIELD_SPEC_MD not in readable:
+            readable.append(FIELD_SPEC_MD)
+    req = requirements_path(root)
+    if req.is_file():
+        data = load_requirements(root)
+        order["requirements_ref"] = FIELD_REQUIREMENTS_JSON
+        order["requirements_hash"] = canonical_requirements_hash(data)
+        readable = order.setdefault("workspace", {}).setdefault("readable", [])
+        if FIELD_REQUIREMENTS_JSON not in readable:
+            readable.append(FIELD_REQUIREMENTS_JSON)
+
+
+def write_spec(root: Path, text: str) -> str:
+    body = text if text.endswith("\n") else text + "\n"
+    path = spec_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    return sha256_text(body)
+
+
+def extract_requirements_from_spec(text: str) -> list[dict[str, Any]]:
+    """Deterministic lossless-enough extraction. Leader may of spec --add."""
+    counters: dict[str, int] = {}
+
+    def next_id(prefix: str) -> str:
+        counters[prefix] = counters.get(prefix, 0) + 1
+        return f"{prefix}-{counters[prefix]:03d}"
+
+    reqs: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(prefix: str, body: str) -> None:
+        item = " ".join(body.split())
+        if len(item) < 8 or item in seen:
+            return
+        seen.add(item)
+        reqs.append(
+            {
+                "id": next_id(prefix),
+                "text": item,
+                "binding": True,
+                "owned_by": [],
+                "status": "unowned",
+            }
+        )
+
+    for raw in text.splitlines():
+        stripped = raw.strip().lstrip("`").rstrip("`")
+        stripped = stripped.lstrip("$ ").strip()
+        if stripped.startswith("python -m") or stripped.startswith("python3 -m"):
+            add("CLI", stripped)
+
+    in_rules = False
+    rule_keys = (
+        "regla",
+        "rule",
+        "must",
+        "debe",
+        "invariant",
+        "done",
+        "entregable",
+        "deliverable",
+        "restriccion",
+        "constraint",
+        "formato",
+        "format",
+        "concurrencia",
+        "concurrency",
+    )
+    for raw in text.splitlines():
+        heading = raw.strip()
+        if heading.startswith("#"):
+            title = heading.lstrip("#").strip().lower().rstrip(":")
+            in_rules = any(key in title for key in rule_keys)
+            continue
+        if not in_rules:
+            continue
+        if heading.startswith(("-", "*")):
+            add("REQ", heading.lstrip("-* ").strip())
+    return reqs
+
+
+def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
+    items = [
+        r
+        for r in (data.get("requirements") or [])
+        if isinstance(r, dict) and r.get("binding", True)
+    ]
+    owned = failed = verified = unowned = unverified = 0
+    for item in items:
+        status = str(item.get("status") or "unowned")
+        owners = item.get("owned_by") or []
+        if status == "failed":
+            failed += 1
+        elif status == "verified":
+            verified += 1
+        elif status == "owned" or owners:
+            owned += 1
+            if status != "verified":
+                unverified += 1
+        else:
+            unowned += 1
+            unverified += 1
+    return {
+        "total": len(items),
+        "owned": owned + verified + failed,
+        "verified": verified,
+        "failed": failed,
+        "unowned": unowned,
+        "unverified": unverified,
+    }
+
+
+def requirement_coverage_errors(root: Path) -> list[str]:
+    """Block deliver while binding requirements are unowned, unverified, or failed."""
+    spec = spec_path(root)
+    data = load_requirements(root)
+    items = [
+        r
+        for r in (data.get("requirements") or [])
+        if isinstance(r, dict) and r.get("binding", True)
+    ]
+    if not spec.is_file() and not items:
+        return []
+    errors: list[str] = []
+    if spec.is_file() and not items:
+        errors.append(
+            "SPEC.md exists but no binding requirements; "
+            "of spec --extract or of spec --add"
+        )
+        return errors
+    unowned = [
+        str(r.get("id"))
+        for r in items
+        if str(r.get("status") or "unowned") == "unowned" and not (r.get("owned_by") or [])
+    ]
+    failed = [str(r.get("id")) for r in items if str(r.get("status")) == "failed"]
+    unverified = [
+        str(r.get("id"))
+        for r in items
+        if str(r.get("status") or "unowned") not in {"verified", "failed"}
+    ]
+    if unowned:
+        errors.append("UNOWNED " + ", ".join(unowned))
+    if unverified:
+        errors.append("UNVERIFIED " + ", ".join(unverified))
+    if failed:
+        errors.append("FAILED " + ", ".join(failed))
+    return errors
+
+
+def order_text_blob(order: dict[str, Any]) -> str:
+    parts = [str(order.get("mission") or "")]
+    parts.extend(str(x) for x in (order.get("constraints") or []))
+    parts.extend(str(x) for x in (order.get("done_when") or []))
+    return "\n".join(parts).lower()
+
+
+def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
+    data = load_requirements(root)
+    blob = order_text_blob(order)
+    lines: list[str] = []
+    for item in data.get("requirements") or []:
+        if not isinstance(item, dict) or not item.get("binding", True):
+            continue
+        rid = str(item.get("id") or "?")
+        status = str(item.get("status") or "unowned")
+        owners = item.get("owned_by") or []
+        text = str(item.get("text") or "")
+        flags: list[str] = []
+        if status == "failed":
+            flags.append("FAILED")
+        elif status != "verified":
+            flags.append("UNVERIFIED")
+        if not owners and status == "unowned":
+            flags.append("UNOWNED")
+        needle = text.lower()
+        if needle and needle not in blob:
+            flags.append("ORDER_OMISSION")
+        if flags:
+            lines.append(f"{rid:12} {' '.join(flags)}  {text[:80]}")
+    return lines
+
+
+def find_requirement(data: dict[str, Any], req_id: str) -> dict[str, Any] | None:
+    for item in data.get("requirements") or []:
+        if isinstance(item, dict) and item.get("id") == req_id:
+            return item
+    return None
+
+
+def mark_requirements_owned(
+    data: dict[str, Any], child_id: str, req_ids: list[str]
+) -> None:
+    for req_id in req_ids:
+        item = find_requirement(data, req_id)
+        if item is None:
+            die(f"unknown requirement {req_id}; of spec --add first")
+        owners = item.setdefault("owned_by", [])
+        if not isinstance(owners, list):
+            owners = []
+            item["owned_by"] = owners
+        others = [o for o in owners if o != child_id]
+        if others:
+            die(
+                f"requirement {req_id} already owned by {others[0]}; "
+                "one exclusive owner per binding requirement"
+            )
+        if child_id not in owners:
+            owners.append(child_id)
+        if item.get("status") == "unowned":
+            item["status"] = "owned"
+
+
+def release_requirement_owner(data: dict[str, Any], child_id: str) -> bool:
+    changed = False
+    for item in data.get("requirements") or []:
+        if not isinstance(item, dict):
+            continue
+        owners = item.get("owned_by") or []
+        if child_id in owners:
+            item["owned_by"] = [o for o in owners if o != child_id]
+            if not item["owned_by"] and item.get("status") == "owned":
+                item["status"] = "unowned"
+            changed = True
+    return changed
+
+
+def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bool:
+    data = load_requirements(root)
+    items = data.get("requirements") or []
+    if not items:
+        return False
+    changed = False
+    for res in residuals:
+        patch = (res.get("residual") or {}).get("proposed_patch")
+        if not patch or not isinstance(patch, dict):
+            continue
+        for rid in patch.get("requirements_verified") or []:
+            item = find_requirement(data, str(rid))
+            if item is None:
+                continue
+            if item.get("status") != "verified":
+                item["status"] = "verified"
+                changed = True
+        for rid in patch.get("requirements_failed") or []:
+            item = find_requirement(data, str(rid))
+            if item is None:
+                continue
+            if item.get("status") != "failed":
+                item["status"] = "failed"
+                changed = True
+    if changed:
+        spec = spec_path(root)
+        if spec.is_file():
+            data["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        save_requirements(data, root)
+    return changed
 
 
 def require_nonsymlink_kernel_root(root: Path) -> None:
@@ -498,7 +931,12 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
         "done_when": ["current phase criteria closed with evidence"],
         "constraints": ["slaves do not mutate ORDER", "one phase at a time"],
         "workspace": {
-            "readable": [".orderfield/ORDER.json", "."],
+            "readable": [
+                ".orderfield/ORDER.json",
+                FIELD_SPEC_MD,
+                FIELD_REQUIREMENTS_JSON,
+                ".",
+            ],
             "writable_by_slaves": [".orderfield/work/scratch/"],
             "forbidden": [
                 ".orderfield/ORDER.json",
@@ -591,6 +1029,328 @@ def validate_wave_report(report: dict[str, Any]) -> list[str]:
     return validate_public_schema(
         report, "wave-report.schema.json", "wave report"
     )
+
+
+def artifact_generation(kind: str, data: dict[str, Any]) -> str:
+    """Classify an artifact as pre-0.4.2 or current. Detection, not telemetry."""
+    if kind == "packet":
+        return CURRENT_ARTIFACT_GENERATION if packet_has_identity(data) else "pre-0.4.2"
+    if kind == "state":
+        if "integration_history" in data and "phase_overrides" in data:
+            return CURRENT_ARTIFACT_GENERATION
+        return "pre-0.4.2"
+    if kind == "wave-report":
+        if isinstance(data.get("integration"), dict):
+            return CURRENT_ARTIFACT_GENERATION
+        return "pre-0.4.2"
+    if kind == "residual":
+        if all(key in data for key in PACKET_IDENTITY_FIELDS):
+            return CURRENT_ARTIFACT_GENERATION
+        return "pre-0.4.2"
+    return CURRENT_ARTIFACT_GENERATION
+
+
+def normalize_workspace(workspace: Any) -> tuple[Any, list[str]]:
+    """Fold writable aliases onto the frozen protocol key. Never rename SLAVE.md."""
+    notes: list[str] = []
+    if not isinstance(workspace, dict):
+        return workspace, notes
+    ws = dict(workspace)
+    aliases_present = [key for key in WRITABLE_ALIAS_KEYS if key in ws]
+    if PROTOCOL_WRITABLE_KEY in ws:
+        for key in aliases_present:
+            ws.pop(key, None)
+            notes.append(f"dropped alias workspace.{key}; kept {PROTOCOL_WRITABLE_KEY}")
+        return ws, notes
+    if aliases_present:
+        source = aliases_present[0]
+        ws[PROTOCOL_WRITABLE_KEY] = ws.pop(source)
+        notes.append(f"mapped workspace.{source} -> {PROTOCOL_WRITABLE_KEY}")
+        for key in aliases_present[1:]:
+            ws.pop(key, None)
+            notes.append(f"dropped extra alias workspace.{key}")
+    return ws, notes
+
+
+def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Upgrade a packet to the current identity contract. Idempotent."""
+    notes: list[str] = []
+    out = dict(packet)
+    embedded = out.get("order") if isinstance(out.get("order"), dict) else {}
+    order_ws = embedded.get("workspace")
+    new_ws, ws_notes = normalize_workspace(order_ws)
+    if ws_notes and isinstance(embedded, dict):
+        embedded = dict(embedded)
+        embedded["workspace"] = new_ws
+        out["order"] = embedded
+        notes.extend(ws_notes)
+    if not packet_has_identity(out):
+        child_id = str(out.get("child_id") or "")
+        if not child_id or "wave" not in out or "role" not in out:
+            notes.append("skipped identity; packet missing wave/child_id/role")
+            return out, notes
+        order_id = out.get("order_id") or (
+            embedded.get("id") if isinstance(embedded, dict) else None
+        )
+        if not order_id:
+            notes.append("skipped identity; packet missing order_id")
+            return out, notes
+        if "packet_id" not in out:
+            out["packet_id"] = f"pkt_{uuid.uuid4().hex}"
+            notes.append(f"added packet_id for {child_id}")
+        if "order_id" not in out:
+            out["order_id"] = order_id
+            notes.append("added order_id from embedded ORDER")
+        if "packed_at" not in out:
+            out["packed_at"] = utc_now()
+            notes.append("added packed_at")
+        out["packet_hash"] = packet_digest(out)
+        notes.append("computed packet_hash")
+    elif out.get("packet_hash") != packet_digest(out):
+        out["packet_hash"] = packet_digest(out)
+        notes.append("recomputed packet_hash after protocol-key rewrite")
+    return out, notes
+
+
+def migrate_state_artifact(state: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    notes: list[str] = []
+    schema = load_json(skill_root() / "schemas" / "state.schema.json")
+    allowed = set((schema.get("properties") or {}) if isinstance(schema, dict) else [])
+    base = default_state()
+    incoming = dict(state)
+    extras = sorted(set(incoming) - allowed) if allowed else []
+    if extras:
+        for key in extras:
+            incoming.pop(key, None)
+        notes.append(f"dropped unknown state keys {extras}")
+    for key, value in base.items():
+        if key not in incoming:
+            incoming[key] = value
+            notes.append(f"filled state.{key}")
+    return incoming, notes
+
+
+def migrate_residual_artifact(
+    residual: dict[str, Any],
+    packet: dict[str, Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    notes: list[str] = []
+    out = dict(residual)
+    if packet is None or not packet_has_identity(packet):
+        return out, notes
+    for key in PACKET_IDENTITY_FIELDS:
+        if key not in out:
+            out[key] = packet.get(key)
+            notes.append(f"copied residual.{key} from packet")
+    return out, notes
+
+
+def migrate_wave_report_artifact(
+    report: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """Do not invent integration digests. Pre-0.4.2 reports stay readable."""
+    notes: list[str] = []
+    if "integration" not in report:
+        notes.append("left pre-digest report readable; no invented hash")
+    return dict(report), notes
+
+
+def print_migration_catalog() -> None:
+    print("migrations  (versioned; removable only with a documented path)")
+    for item in MIGRATION_CATALOG:
+        print(
+            f"  {item['id']:28} {item['kind']:14} "
+            f"{item['from']} -> {item['to']}"
+        )
+        print(f"    {item['description']}")
+    print("protocol keys (frozen)")
+    print(f"  workspace.{PROTOCOL_WRITABLE_KEY}")
+    print(f"  {PROTOCOL_SLAVE_MD}")
+
+
+def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
+    """Collect versioned rewrite plans. Does not write."""
+    actions: list[dict[str, Any]] = []
+    order_file = order_path(root)
+    raw_order = _read_json_object(order_file)
+    if isinstance(raw_order, dict):
+        workspace = raw_order.get("workspace")
+        new_ws, notes = normalize_workspace(workspace)
+        if notes:
+            updated = dict(raw_order)
+            updated["workspace"] = new_ws
+            actions.append(
+                {
+                    "id": "protocol-writable-key",
+                    "kind": "order",
+                    "path": order_file,
+                    "data": updated,
+                    "notes": notes,
+                }
+            )
+    state_file = state_path(root)
+    raw_state = _read_json_object(state_file)
+    if isinstance(raw_state, dict):
+        updated, notes = migrate_state_artifact(raw_state)
+        if notes:
+            actions.append(
+                {
+                    "id": "pre-0.4.2-state-defaults",
+                    "kind": "state",
+                    "path": state_file,
+                    "data": updated,
+                    "notes": notes,
+                }
+            )
+    waves = of_dir(root) / "waves"
+    if not waves.is_dir():
+        return actions
+    for wave_path in sorted(p for p in waves.iterdir() if p.is_dir()):
+        packets_dir = wave_path / "packets"
+        packet_by_child: dict[str, dict[str, Any]] = {}
+        if packets_dir.is_dir():
+            for path in sorted(packets_dir.glob("*.json")):
+                raw = _read_json_object(path)
+                if not isinstance(raw, dict):
+                    continue
+                updated, notes = migrate_packet_artifact(raw)
+                child_id = str(updated.get("child_id") or path.stem)
+                packet_by_child[child_id] = updated
+                if notes:
+                    mid = (
+                        "protocol-writable-key"
+                        if all("workspace." in n for n in notes)
+                        else "pre-0.4.2-packet-identity"
+                    )
+                    actions.append(
+                        {
+                            "id": mid,
+                            "kind": "packet",
+                            "path": path,
+                            "data": updated,
+                            "notes": notes,
+                        }
+                    )
+        residuals_dir = wave_path / "residuals"
+        if residuals_dir.is_dir():
+            for path in sorted(residuals_dir.glob("*.json")):
+                raw = _read_json_object(path)
+                if not isinstance(raw, dict):
+                    continue
+                packet = packet_by_child.get(str(raw.get("child_id") or path.stem))
+                updated, notes = migrate_residual_artifact(raw, packet)
+                if notes:
+                    actions.append(
+                        {
+                            "id": "pre-0.4.2-packet-identity",
+                            "kind": "residual",
+                            "path": path,
+                            "data": updated,
+                            "notes": notes,
+                        }
+                    )
+        report_path = wave_path / "report.json"
+        raw_report = _read_json_object(report_path)
+        if isinstance(raw_report, dict) and "integration" not in raw_report:
+            updated, notes = migrate_wave_report_artifact(raw_report)
+            actions.append(
+                {
+                    "id": "pre-0.4.2-report-readable",
+                    "kind": "wave-report",
+                    "path": report_path,
+                    "data": updated,
+                    "notes": notes,
+                    "write": False,
+                }
+            )
+    return actions
+
+
+def print_migration_plan(actions: list[dict[str, Any]]) -> None:
+    if not actions:
+        print("migrate      nothing to apply")
+        return
+    for item in actions:
+        rel = item["path"].as_posix()
+        print(f"{item['id']}  {item['kind']}  {rel}")
+        for note in item["notes"]:
+            print(f"  {note}")
+
+
+def apply_field_migrations(actions: list[dict[str, Any]]) -> None:
+    for item in actions:
+        if item.get("write", True) is False:
+            continue
+        kind = item["kind"]
+        data = item["data"]
+        if kind == "order":
+            require_public_schema(data, "order.schema.json", "ORDER")
+        elif kind == "state":
+            require_public_schema(data, "state.schema.json", "state")
+        elif kind == "packet":
+            errs = validate_packet(data)
+            if errs:
+                die(f"invalid migrated packet {item['path']}:\n  " + "\n  ".join(errs))
+        elif kind == "residual":
+            errs = validate_residual(data)
+            if errs:
+                die(
+                    f"invalid migrated residual {item['path']}:\n  "
+                    + "\n  ".join(errs)
+                )
+        dump_json(item["path"], data)
+
+
+def worktrees_path(root: Path | None = None) -> Path:
+    return of_dir(root) / "work" / "worktrees.json"
+
+
+def load_worktrees(root: Path) -> dict[str, Any]:
+    path = worktrees_path(root)
+    data = _read_json_object(path)
+    if not isinstance(data, dict) or not isinstance(data.get("trees"), dict):
+        return {"trees": {}}
+    return data
+
+
+def save_worktrees(root: Path, data: dict[str, Any]) -> None:
+    dump_json(worktrees_path(root), data)
+
+
+def default_worktree_path(root: Path, child_id: str) -> Path:
+    return root.parent / f"{root.name}-of-{child_id}"
+
+
+def require_git() -> str:
+    bin_ = shutil.which("git")
+    if not bin_:
+        die("git is not on PATH; of worktree is an opt-in helper, not a process manager")
+    return bin_
+
+
+def run_git(root: Path, *git_args: str) -> subprocess.CompletedProcess[str]:
+    bin_ = require_git()
+    return subprocess.run(
+        [bin_, "-C", str(root), *git_args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def git_repo_root(root: Path) -> Path | None:
+    proc = run_git(root, "rev-parse", "--show-toplevel")
+    if proc.returncode != 0:
+        return None
+    text = (proc.stdout or "").strip()
+    return Path(text) if text else None
+
+
+def worktree_path_inside_project(root: Path, path: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
 
 
 def open_backlog(order: dict[str, Any]) -> list[str]:
@@ -999,6 +1759,46 @@ def die_on_stale_packets(
         die(f"stale packets in wave {wave}: {', '.join(ids)}; run of next-wave")
 
 
+def packets_all_stale(packets: list[dict[str, Any]], order: dict[str, Any]) -> bool:
+    return bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
+
+
+def _read_json_object(path: Path) -> dict[str, Any] | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def complete_stale_wave_recoverable(
+    root: Path,
+    packets: list[dict[str, Any]],
+    order: dict[str, Any],
+) -> bool:
+    """True when every packet is stale vs live ORDER but residuals still bind.
+
+    Leader patch bumps ORDER.rev and would otherwise deadlock: resume prints
+    next-wave, integrate refuses stale identity, next-wave wants a report.
+    A complete stale wave may still be reduced using packet-bound residuals.
+    """
+    if not packets_all_stale(packets, order):
+        return False
+    for packet in packets:
+        rel = packet.get("residual_path")
+        if not rel:
+            return False
+        path = root / str(rel)
+        if not path.is_file():
+            return False
+        data = _read_json_object(path)
+        if data is None:
+            return False
+        if validate_residual_for_packet(data, packet, root):
+            return False
+    return True
+
+
 def landable_wave(root: Path, order: dict[str, Any], start: int) -> int:
     """Skip dirs that still hold packets from a different field."""
     wave = int(start)
@@ -1342,14 +2142,96 @@ def write_phase_md(root: Path, order: dict[str, Any]) -> None:
     of_dir(root).joinpath("PHASE.md").write_text(body, encoding="utf-8")
 
 
+def _is_secret_flag(name: str) -> bool:
+    raw = str(name or "").split("=", 1)[0].strip().lower()
+    if raw in SECRET_FLAG_NAMES:
+        return True
+    stripped = raw[2:] if raw.startswith("--") else (raw[1:] if raw.startswith("-") else raw)
+    return bool(
+        re.search(r"(api[_-]?key|secret|password|access[_-]?token|auth[_-]?token)$", stripped)
+    )
+
+
+def redact_text(text: str) -> str:
+    """Strip secrets and approval material from argv previews and spawn logs."""
+    if not text:
+        return text
+    out = _PEM_RE.sub(f"-----BEGIN PRIVATE KEY----- {REDACTED} -----END PRIVATE KEY-----", text)
+    out = _BEARER_RE.sub(lambda m: f"{m.group(1)} {REDACTED}", out)
+    out = _SK_RE.sub(REDACTED, out)
+    out = _SECRET_ASSIGN_RE.sub(lambda m: f"{m.group(1)}={REDACTED}", out)
+    for token in sorted(APPROVAL_FLAG_NAMES, key=len, reverse=True):
+        out = re.sub(rf"(?<!\S){re.escape(token)}(?!\S)", APPROVAL_REDACTED, out)
+    def _approval_mode_value(match: Any) -> str:
+        value = match.group(3)
+        if value.strip().lower().strip("\"'") in ESCALATED_APPROVAL_VALUES:
+            return f"{match.group(1)}{match.group(2)}{APPROVAL_REDACTED}"
+        return match.group(0)
+
+    out = re.sub(r"(?i)(--approval-mode)(\s+|=)(\S+)", _approval_mode_value, out)
+    return out
+
+
+def redact_argv(argv: list[str]) -> list[str]:
+    """Redact secret values and approval flags in a spawn argv list."""
+    out: list[str] = []
+    redact_next: str | None = None
+    for raw in argv:
+        arg = str(raw)
+        if redact_next == "secret":
+            out.append(REDACTED)
+            redact_next = None
+            continue
+        if redact_next == "approval-mode":
+            out.append(
+                APPROVAL_REDACTED
+                if arg.strip().lower() in ESCALATED_APPROVAL_VALUES
+                else arg
+            )
+            redact_next = None
+            continue
+        if redact_next == "approval":
+            out.append(APPROVAL_REDACTED)
+            redact_next = None
+            continue
+        if "\n" in arg or len(arg) > 80:
+            out.append("<prompt>")
+            continue
+        key, eq, val = arg.partition("=")
+        if eq:
+            if _is_secret_flag(key):
+                out.append(f"{key}={REDACTED}")
+                continue
+            if key in APPROVAL_VALUE_FLAGS or key.lower() == "--approval-mode":
+                hidden = (
+                    APPROVAL_REDACTED
+                    if val.strip().lower() in ESCALATED_APPROVAL_VALUES
+                    else val
+                )
+                out.append(f"{key}={hidden}")
+                continue
+        lowered = arg.lower()
+        if lowered in APPROVAL_FLAG_NAMES or arg in APPROVAL_FLAG_NAMES:
+            out.append(APPROVAL_REDACTED)
+            continue
+        if _is_secret_flag(arg):
+            out.append(arg)
+            redact_next = "secret"
+            continue
+        if arg in APPROVAL_VALUE_FLAGS or lowered == "--approval-mode":
+            out.append(arg)
+            redact_next = "approval-mode"
+            continue
+        out.append(redact_text(arg))
+    if redact_next == "secret":
+        out.append(REDACTED)
+    elif redact_next == "approval-mode":
+        out.append(APPROVAL_REDACTED)
+    return out
+
+
 def argv_preview(argv: list[str]) -> str:
-    parts: list[str] = []
-    for a in argv:
-        if "\n" in a or len(a) > 80:
-            parts.append("<prompt>")
-        else:
-            parts.append(a)
-    return " ".join(parts)
+    return " ".join(redact_argv(argv))
 
 
 def slave_md_path() -> Path:
@@ -1436,6 +2318,36 @@ def render_prompt(
     contract = ROLE_CONTRACTS.get(role)
     if contract:
         body += f"\n## Role contract — {role}\n\n{contract}\n"
+    spec_ref = packet.get("spec_ref") or (packet.get("order") or {}).get("spec_ref")
+    if spec_ref:
+        owned = packet.get("owns_requirements") or []
+        owns_line = (
+            "This packet owns: " + ", ".join(owned) + ".\n"
+            if owned
+            else "This packet declared no owns_requirements.\n"
+        )
+        body += (
+            "\n## Binding specification\n\n"
+            "ORDER may compress reasoning. It must not compress the contract.\n"
+            "The packet fits on one screen. The specification does not have to.\n"
+            "Read this file in full before acting — it is the verbatim user brief:\n\n"
+            f"    {spec_ref}\n\n"
+            "The slice is a cut of work determined from SPEC + ORDER together. "
+            "It does not replace the specification. "
+            "CLI, schemas, types, exit codes, invariants, and deliverables in SPEC "
+            "outrank a compressed mission or done_when.\n"
+            + owns_line
+            + "Before writing the residual, contrast Intent (SPEC.md) vs Delivered "
+            "(your files) vs missing. Gaps against SPEC are threshold, not done.\n"
+        )
+        if role == "verifier":
+            body += (
+                "This is the close-the-loop review: SPEC ↔ ORDER ↔ product, "
+                "like a pre-landing review against the original request. "
+                "Report SPEC→ORDER omissions and ORDER→product omissions as "
+                "threshold (wants_to_change includes constraints or done_when). "
+                "The loop is not resolved until of contrast exits 0.\n"
+            )
     text = (
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
@@ -1456,6 +2368,621 @@ def render_prompt(
     return text
 
 
+def learnings_dir(root: Path | None = None) -> Path:
+    return of_dir(root) / "learnings"
+
+
+def artifact_age_seconds(path: Path) -> float | None:
+    try:
+        return max(0.0, time.time() - path.stat().st_mtime)
+    except OSError:
+        return None
+
+
+def artifact_older_than_retention(path: Path) -> bool:
+    age = artifact_age_seconds(path)
+    return age is not None and age > RETENTION_SECONDS
+
+
+def field_rel(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def current_wave_child_ids(root: Path, wave: int) -> set[str]:
+    ids: set[str] = set()
+    for packet in packed_children(root, wave):
+        child = packet.get("child_id")
+        if child:
+            ids.add(str(child))
+    return ids
+
+
+def residual_still_useful(
+    residual: dict[str, Any] | None,
+    path: Path,
+    order: dict[str, Any],
+    current_wave: int,
+) -> tuple[bool, str]:
+    """Keep a residual only if it still serves the live field."""
+    if residual is None:
+        if artifact_older_than_retention(path):
+            return False, f"garbage-unreadable age>{RETENTION_DAYS}d"
+        return False, "unreadable-residual"
+    oid = residual.get("order_id")
+    if oid and oid != order.get("id"):
+        return False, "inapplicable-order"
+    wave = residual.get("wave")
+    try:
+        wave_n = int(wave) if wave is not None else None
+    except (TypeError, ValueError):
+        wave_n = None
+    if wave_n == int(current_wave):
+        return True, "current-wave"
+    if artifact_older_than_retention(path):
+        return False, f"history age>{RETENTION_DAYS}d"
+    if oid == order.get("id"):
+        return True, "live-order"
+    return True, "recent"
+
+
+def learning_applicable(item: dict[str, Any], order: dict[str, Any]) -> tuple[bool, str]:
+    oid = item.get("order_id")
+    if oid and oid != order.get("id"):
+        return False, "inapplicable-order"
+    phase = item.get("phase")
+    if isinstance(phase, str) and phase in PHASES:
+        current = str(order.get("phase"))
+        closed = set(closed_phases(order))
+        if phase != current and phase in closed:
+            return False, "inapplicable-phase"
+    return True, "applicable"
+
+
+def _retention_action(
+    action: str, rel: str, reason: str
+) -> dict[str, str]:
+    return {"action": action, "path": rel, "reason": reason}
+
+
+def plan_field_retention(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Classify field artifacts: keep useful, drop inapplicable, dump >30d garbage.
+
+    Never copies transcripts or logs into the field. Deletes only.
+    """
+    actions: list[dict[str, str]] = []
+    field = of_dir(root)
+    current_wave = int(state.get("wave") or 1)
+    live_children = current_wave_child_ids(root, current_wave)
+
+    learn_dir = learnings_dir(root)
+    if learn_dir.is_dir() and not learn_dir.is_symlink():
+        for path in sorted(learn_dir.glob("*.json")):
+            if path.is_symlink():
+                continue
+            rel = field_rel(root, path)
+            item = _read_json_object(path)
+            if item is None:
+                actions.append(_retention_action("dump", rel, "garbage-invalid-learning"))
+                continue
+            ok, why = learning_applicable(item, order)
+            if not ok:
+                actions.append(_retention_action("drop", rel, why))
+                continue
+            if artifact_older_than_retention(path):
+                actions.append(_retention_action("dump", rel, f"history age>{RETENTION_DAYS}d"))
+                continue
+            actions.append(_retention_action("keep", rel, why))
+
+    waves = field / "waves"
+    if waves.is_dir() and not waves.is_symlink():
+        for wdir in sorted(p for p in waves.iterdir() if p.is_dir() and not p.is_symlink()):
+            try:
+                wave_n = int(wdir.name)
+            except ValueError:
+                if artifact_older_than_retention(wdir):
+                    actions.append(
+                        _retention_action(
+                            "dump", field_rel(root, wdir), f"garbage age>{RETENTION_DAYS}d"
+                        )
+                    )
+                continue
+            is_current = wave_n == current_wave
+            for sub in ("logs", "spawns", "prompts"):
+                sdir = wdir / sub
+                if not sdir.is_dir() or sdir.is_symlink():
+                    continue
+                for path in sorted(sdir.rglob("*")):
+                    if not path.is_file() or path.is_symlink():
+                        continue
+                    rel = field_rel(root, path)
+                    if artifact_older_than_retention(path):
+                        actions.append(
+                            _retention_action("dump", rel, f"garbage age>{RETENTION_DAYS}d")
+                        )
+                    elif is_current:
+                        actions.append(_retention_action("keep", rel, "current-wave"))
+                    else:
+                        actions.append(_retention_action("keep", rel, "recent-history"))
+            residuals_dir = wdir / "residuals"
+            if residuals_dir.is_dir() and not residuals_dir.is_symlink():
+                for path in sorted(residuals_dir.glob("*.json")):
+                    if path.is_symlink():
+                        continue
+                    rel = field_rel(root, path)
+                    data = _read_json_object(path)
+                    keep, why = residual_still_useful(data, path, order, current_wave)
+                    if keep:
+                        actions.append(_retention_action("keep", rel, why))
+                    elif why.startswith("inapplicable"):
+                        actions.append(_retention_action("drop", rel, why))
+                    else:
+                        actions.append(_retention_action("dump", rel, why))
+            if not is_current and artifact_older_than_retention(wdir):
+                useful_left = any(
+                    a["action"] == "keep" and a["path"].startswith(field_rel(root, wdir) + "/")
+                    for a in actions
+                )
+                if not useful_left:
+                    for extra in ("packets", "integrations"):
+                        edir = wdir / extra
+                        if not edir.is_dir() or edir.is_symlink():
+                            continue
+                        for path in sorted(edir.rglob("*")):
+                            if path.is_file() and not path.is_symlink():
+                                actions.append(
+                                    _retention_action(
+                                        "dump",
+                                        field_rel(root, path),
+                                        f"history age>{RETENTION_DAYS}d",
+                                    )
+                                )
+                    report = wdir / "report.json"
+                    if report.is_file() and not report.is_symlink():
+                        actions.append(
+                            _retention_action(
+                                "dump", field_rel(root, report), f"history age>{RETENTION_DAYS}d"
+                            )
+                        )
+
+    for arch in sorted(field.glob("waves-archived-*")):
+        if not arch.is_dir() or arch.is_symlink():
+            continue
+        rel = field_rel(root, arch)
+        if artifact_older_than_retention(arch):
+            actions.append(_retention_action("dump", rel, f"history age>{RETENTION_DAYS}d"))
+        else:
+            actions.append(_retention_action("keep", rel, "recent-archive"))
+
+    scratch_root = field / "work" / "scratch"
+    if scratch_root.is_dir() and not scratch_root.is_symlink():
+        for child_dir in sorted(p for p in scratch_root.iterdir() if p.is_dir()):
+            if child_dir.is_symlink():
+                continue
+            rel = field_rel(root, child_dir)
+            name = child_dir.name
+            if name in live_children:
+                actions.append(_retention_action("keep", rel, "current-wave-scratch"))
+            elif artifact_older_than_retention(child_dir):
+                actions.append(
+                    _retention_action("dump", rel, f"garbage age>{RETENTION_DAYS}d")
+                )
+            else:
+                actions.append(_retention_action("keep", rel, "recent-scratch"))
+
+    history = state.get("integration_history") or []
+    if isinstance(history, list):
+        for index, item in enumerate(history):
+            if not isinstance(item, dict):
+                continue
+            ts = parse_utc(item.get("integrated_at"))
+            wave = item.get("wave")
+            if wave == current_wave:
+                continue
+            if ts is not None and (time.time() - ts) > RETENTION_SECONDS:
+                actions.append(
+                    _retention_action(
+                        "dump",
+                        f".orderfield/state.json#integration_history[{index}]",
+                        f"history age>{RETENTION_DAYS}d",
+                    )
+                )
+
+    overrides = state.get("phase_overrides") or []
+    if isinstance(overrides, list):
+        for index, item in enumerate(overrides):
+            if not isinstance(item, dict):
+                continue
+            ts = parse_utc(item.get("at"))
+            if ts is not None and (time.time() - ts) > RETENTION_SECONDS:
+                actions.append(
+                    _retention_action(
+                        "dump",
+                        f".orderfield/state.json#phase_overrides[{index}]",
+                        f"history age>{RETENTION_DAYS}d",
+                    )
+                )
+
+    return actions
+
+
+def _safe_unlink(path: Path) -> None:
+    if path.is_symlink() or not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def apply_field_retention(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+    actions: list[dict[str, str]],
+) -> dict[str, Any]:
+    """Apply drop/dump. Never copies transcripts into learnings or ORDER."""
+    drop_idx_history: set[int] = set()
+    drop_idx_overrides: set[int] = set()
+    for item in actions:
+        action = item["action"]
+        rel = item["path"]
+        if action == "keep":
+            continue
+        if rel.startswith(".orderfield/state.json#integration_history["):
+            try:
+                drop_idx_history.add(int(rel.rsplit("[", 1)[1].rstrip("]")))
+            except ValueError:
+                continue
+            continue
+        if rel.startswith(".orderfield/state.json#phase_overrides["):
+            try:
+                drop_idx_overrides.add(int(rel.rsplit("[", 1)[1].rstrip("]")))
+            except ValueError:
+                continue
+            continue
+        path = root / rel
+        try:
+            resolved = path.resolve()
+            resolved.relative_to((root / ".orderfield").resolve())
+        except (OSError, ValueError):
+            continue
+        if resolved.is_symlink():
+            continue
+        _safe_unlink(resolved)
+    if drop_idx_history:
+        history = [
+            item
+            for index, item in enumerate(state.get("integration_history") or [])
+            if index not in drop_idx_history
+        ]
+        state["integration_history"] = history
+    if drop_idx_overrides:
+        overrides = [
+            item
+            for index, item in enumerate(state.get("phase_overrides") or [])
+            if index not in drop_idx_overrides
+        ]
+        state["phase_overrides"] = overrides
+    if drop_idx_history or drop_idx_overrides:
+        save_state(state, root)
+    return state
+
+
+def print_retention_plan(actions: list[dict[str, str]]) -> None:
+    kept = dropped = dumped = 0
+    for item in actions:
+        action = item["action"]
+        print(f"{action:6} {item['path']}  {item['reason']}")
+        if action == "keep":
+            kept += 1
+        elif action == "drop":
+            dropped += 1
+        elif action == "dump":
+            dumped += 1
+    print(
+        f"retention kept={kept} dropped={dropped} dumped={dumped} "
+        f"ttl={RETENTION_DAYS}d (never copies transcripts)"
+    )
+
+
+def cmd_retain(args: argparse.Namespace) -> None:
+    root = find_root()
+    order = load_order(root)
+    state = load_state(root)
+    actions = plan_field_retention(root, order, state)
+    print_retention_plan(actions)
+
+
+def cmd_gc(args: argparse.Namespace) -> None:
+    root = find_root()
+    order = load_order(root)
+    state = load_state(root)
+    actions = plan_field_retention(root, order, state)
+    if getattr(args, "dry_run", False):
+        print_retention_plan(actions)
+        print("dry-run (no deletes)")
+        return
+    apply_field_retention(root, order, state, actions)
+    snapshot_session(root, "gc")
+    print_retention_plan(actions)
+    emit_event("gc", dumped=sum(1 for a in actions if a["action"] != "keep"), ok=True)
+
+
+def probe_adapter_version(bin_path: str) -> str:
+    for flag in ("--version", "-v"):
+        try:
+            proc = subprocess.run(
+                [bin_path, flag],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        text = (proc.stdout or proc.stderr or "").strip()
+        if not text:
+            continue
+        line = text.splitlines()[0].strip()
+        if not line or "unknown" in line.lower():
+            continue
+        return redact_text(line)[:80]
+    return "-"
+
+
+def probe_lock_capability(root: Path) -> dict[str, str]:
+    path = field_lock_path(root)
+    parent = path.parent
+    rel = field_rel(root, path) if parent.exists() else str(path)
+    info = {"path": rel, "status": "missing-field"}
+    if not parent.is_dir():
+        return info
+    if not os.access(parent, os.W_OK):
+        info["status"] = "not-writable"
+        return info
+    if not path.exists():
+        info["status"] = "acquirable"
+        return info
+    try:
+        handle = path.open("a+", encoding="utf-8")
+    except OSError:
+        info["status"] = "not-writable"
+        return info
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        info["status"] = "acquirable"
+    except BlockingIOError:
+        info["status"] = "held"
+        info["owner"] = _lock_owner_text(path)
+    finally:
+        handle.close()
+    return info
+
+
+def writable_status(path: Path) -> str:
+    if not path.exists():
+        parent = path.parent
+        if parent.is_dir() and os.access(parent, os.W_OK):
+            return "creatable"
+        return "missing"
+    if os.access(path, os.W_OK):
+        return "yes"
+    return "no"
+
+
+def cmd_doctor(args: argparse.Namespace) -> None:
+    """Local prereqs. PATH presence is not auth or readiness."""
+    failed = False
+    py = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    py_ok = sys.version_info >= (3, 9)
+    if not py_ok:
+        failed = True
+    print("prereqs")
+    print(f"  python        {py}  {'ok' if py_ok else 'FAIL'} (>= 3.9)")
+    ver = installed_version() or "-"
+    print(f"  kernel        {ver}  {'ok' if ver != '-' else 'FAIL'}")
+    if ver == "-":
+        failed = True
+
+    root = find_root()
+    field = of_dir(root)
+    has_order = order_path(root).exists()
+    print("field")
+    if has_order:
+        print(f"  path          {field_rel(root, field)}  writable={writable_status(field)}")
+        scratch = field / "work" / "scratch"
+        print(
+            f"  scratch       {field_rel(root, scratch)}  "
+            f"writable={writable_status(scratch)}"
+        )
+        if writable_status(field) == "no" or writable_status(scratch) == "no":
+            failed = True
+        try:
+            require_nonsymlink_kernel_root(root)
+            print("  symlink       ok")
+        except SystemExit as exc:
+            print(f"  symlink       FAIL {exc}")
+            failed = True
+    else:
+        print("  path          -  missing (of init --mission '...')")
+        print("  scratch       -  missing")
+
+    schema_ok = 0
+    schema_fail: list[str] = []
+    schema_dir = skill_root() / "schemas"
+    for name in PUBLIC_SCHEMA_FILES:
+        path = schema_dir / name
+        data = _read_json_object(path) if path.is_file() else None
+        if data is None:
+            schema_fail.append(name)
+        else:
+            schema_ok += 1
+    total = len(PUBLIC_SCHEMA_FILES)
+    print(f"  schemas       {schema_ok}/{total} {'ok' if not schema_fail else 'FAIL'}")
+    for name in schema_fail:
+        print(f"    missing     {name}")
+    if schema_fail:
+        failed = True
+
+    lock = probe_lock_capability(root)
+    lock_line = f"  lock          {lock['path']}  {lock['status']}"
+    if lock.get("owner"):
+        lock_line += f" ({lock['owner']})"
+    print(lock_line)
+    if lock["status"] in {"not-writable"}:
+        failed = True
+
+    detected = detect_adapters()
+    picked = pick_adapter(None, None)
+    print("adapters  (PATH is not auth or readiness)")
+    for name in ADAPTER_ORDER:
+        found = detected.get(name)
+        mark = "*" if name == picked else " "
+        if found:
+            version = probe_adapter_version(found)
+            print(
+                f"  {mark} {name:10} path={found}  version={version}  "
+                "auth=not-verified  ready=not-verified"
+            )
+        else:
+            hint = "set OF_AGENT" if name == "generic" else "not on PATH"
+            print(
+                f"  {mark} {name:10} path=-  version=-  {hint}  "
+                "auth=not-verified  ready=not-verified"
+            )
+    print("trust")
+    print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
+    print(f"  profiles      {', '.join(TRUST_PROFILES)}")
+    print(f"  kernel_verifies  {', '.join(KERNEL_VERIFIES)}")
+    print(f"  harness_promises {', '.join(HARNESS_PROMISES)}")
+    print(
+        "  boundary      kernel verifies PATH/argv/residual; "
+        "harness promises approval/auth/ready"
+    )
+    emit_event("doctor", ok=not failed)
+    if failed:
+        print("doctor        FAIL")
+        raise SystemExit(2)
+    print("doctor        ok")
+
+
+def cmd_migrate(args: argparse.Namespace) -> None:
+    """Versioned artifact rewrite. Does not invent telemetry or rename SLAVE.md."""
+    if getattr(args, "list", False):
+        print_migration_catalog()
+        return
+    root = find_root()
+    if not order_path(root).exists():
+        die("no ORDER. of init --mission '...'")
+    actions = plan_field_migrations(root)
+    print_migration_plan(actions)
+    if getattr(args, "dry_run", False):
+        print("dry-run (no writes)")
+        return
+    apply_field_migrations(actions)
+    if actions:
+        snapshot_session(root, "migrate")
+    emit_event("migrate", applied=len(actions), ok=True)
+    print(f"migrate      applied={sum(1 for a in actions if a.get('write', True))}")
+    print(f"protocol     workspace.{PROTOCOL_WRITABLE_KEY}  {PROTOCOL_SLAVE_MD}")
+
+
+def cmd_worktree(args: argparse.Namespace) -> None:
+    """Opt-in git worktree helper. Does not spawn, kill, or supervise children."""
+    action = getattr(args, "worktree_cmd", None)
+    if action == "add":
+        cmd_worktree_add(args)
+    elif action == "remove":
+        cmd_worktree_remove(args)
+    elif action == "list":
+        cmd_worktree_list(args)
+    else:
+        die("of worktree requires add|remove|list")
+
+
+def cmd_worktree_add(args: argparse.Namespace) -> None:
+    root = find_root()
+    if git_repo_root(root) is None:
+        die("of worktree requires a git repository; it is not a process manager")
+    child_id = require_child_id(args.child_id)
+    dest = (
+        Path(args.path).expanduser()
+        if getattr(args, "path", None)
+        else default_worktree_path(root, child_id)
+    )
+    if not dest.is_absolute():
+        dest = (root / dest).resolve()
+    else:
+        dest = dest.resolve()
+    if worktree_path_inside_project(root, dest):
+        die(
+            "worktree path must be outside the project; git refuses nested "
+            "worktrees. This helper is opt-in, not a process manager"
+        )
+    if dest.exists():
+        die(f"worktree path already exists {dest}")
+    records = load_worktrees(root)
+    if child_id in records["trees"]:
+        die(f"worktree already recorded for {child_id}; of worktree remove first")
+    proc = run_git(root, "worktree", "add", "--detach", str(dest))
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "git worktree add failed").strip()
+        die(err)
+    head = (run_git(root, "rev-parse", "HEAD").stdout or "").strip() or "-"
+    records["trees"][child_id] = {
+        "path": str(dest),
+        "added_at": utc_now(),
+        "head": head,
+    }
+    save_worktrees(root, records)
+    print(f"worktree     {dest}")
+    print(f"child_id     {child_id}")
+    print(f"head         {head}")
+    print("field        remains the leader .orderfield (do not symlink it here)")
+    print(
+        "note         opt-in helper; not a process manager; "
+        "install inside the worktree; do not symlink node_modules"
+    )
+
+
+def cmd_worktree_remove(args: argparse.Namespace) -> None:
+    root = find_root()
+    child_id = require_child_id(args.child_id)
+    records = load_worktrees(root)
+    recorded = records["trees"].get(child_id)
+    dest = Path(recorded["path"]) if isinstance(recorded, dict) and recorded.get("path") else default_worktree_path(root, child_id)
+    if git_repo_root(root) is not None:
+        proc = run_git(root, "worktree", "remove", "--force", str(dest))
+        if proc.returncode != 0 and dest.exists():
+            err = (proc.stderr or proc.stdout or "git worktree remove failed").strip()
+            die(err)
+    records["trees"].pop(child_id, None)
+    save_worktrees(root, records)
+    print(f"removed      {dest}")
+    print("note         opt-in helper; did not kill a process")
+
+
+def cmd_worktree_list(args: argparse.Namespace) -> None:
+    root = find_root()
+    records = load_worktrees(root)
+    trees = records.get("trees") or {}
+    if not trees:
+        print("worktrees    none")
+        print("note         opt-in helper; not a process manager")
+        return
+    for child_id, meta in sorted(trees.items()):
+        path = meta.get("path") if isinstance(meta, dict) else meta
+        print(f"{child_id:16} {path}")
+    print("note         opt-in helper; not a process manager")
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     root = find_root()
     target = of_dir(root)
@@ -1469,6 +2996,18 @@ def cmd_init(args: argparse.Namespace) -> None:
     order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
+    source_text = None
+    source_file = getattr(args, "source_file", None)
+    source_inline = getattr(args, "source", None)
+    if source_file and source_inline:
+        die("pass only one of --source / --source-file")
+    if source_file:
+        path = Path(source_file)
+        if not path.is_file():
+            die(f"--source-file not found: {source_file}")
+        source_text = path.read_text(encoding="utf-8")
+    elif source_inline:
+        source_text = str(source_inline)
     target.mkdir(parents=True, exist_ok=True)
     # --force starts a new field; waves of the old one must not shadow it.
     # state restarts at wave 1, so leftover wave dirs would desync the
@@ -1490,6 +3029,22 @@ def cmd_init(args: argparse.Namespace) -> None:
         print(f"archived old waves -> {dest.relative_to(root)}")
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
     waves.mkdir(parents=True, exist_ok=True)
+    if source_text is not None:
+        spec_hash = write_spec(root, source_text)
+        extracted = extract_requirements_from_spec(source_text)
+        save_requirements(
+            {"v": 1, "spec_hash": spec_hash, "requirements": extracted},
+            root,
+        )
+        sync_order_spec_fields(order, root)
+        print(f"spec         {FIELD_SPEC_MD}  hash={spec_hash[:12]}…")
+        print(f"requirements {len(extracted)} extracted (of spec --add to amend)")
+    else:
+        print(
+            "of: note — no --source/--source-file; ORDER may compress the contract. "
+            "Store the verbatim brief with of patch --source-file.",
+            file=sys.stderr,
+        )
     save_order(order, root)
     save_state(default_state(), root)
     write_phase_md(root, order)
@@ -1544,6 +3099,19 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"done_when_closed {done_when_closed(order)}")
     print(f"closed_phases {closed_phases(order)}")
     print(f"regimes     {order['enabled_regimes']}")
+    reserved = ", ".join(RUNTIME_OWNERSHIP)
+    print(f"runtime     reserved (no telemetry): {reserved}")
+    if order.get("spec_ref"):
+        print(f"spec        {order.get('spec_ref')}  hash={str(order.get('spec_hash') or '')[:12]}…")
+    else:
+        print("spec        missing (of patch --source-file)")
+    counts = requirement_counts(load_requirements(root))
+    print(
+        f"requirements  {counts['total']} total  "
+        f"owned {counts['owned']}  verified {counts['verified']}  "
+        f"failed {counts['failed']}  unowned {counts['unowned']}  "
+        f"unverified {counts['unverified']}"
+    )
 
 
 def cmd_detect(args: argparse.Namespace) -> None:
@@ -1634,6 +3202,26 @@ def cmd_pack(args: argparse.Namespace) -> None:
     backlog_open = open_backlog(order)
     if backlog_open:
         order_view["backlog"] = backlog_open
+    if order.get("spec_ref"):
+        order_view["spec_ref"] = order["spec_ref"]
+        order_view["spec_hash"] = order.get("spec_hash") or ""
+    owns = [
+        require_req_id(x)
+        for x in (getattr(args, "owns_requirement", None) or [])
+    ]
+    if owns:
+        reqs = load_requirements(root)
+        mark_requirements_owned(reqs, child_id, owns)
+        spec = spec_path(root)
+        if spec.is_file():
+            reqs["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        save_requirements(reqs, root)
+    elif (load_requirements(root).get("requirements") or []):
+        print(
+            "of: note — binding requirements exist and this packet owns none; "
+            "pass --owns-requirement ID (repeatable).",
+            file=sys.stderr,
+        )
     packet = {
         "v": 1,
         "packet_id": f"pkt_{uuid.uuid4().hex}",
@@ -1654,6 +3242,12 @@ def cmd_pack(args: argparse.Namespace) -> None:
             "seconds": args.seconds,
         },
     }
+    if order.get("spec_ref"):
+        packet["spec_ref"] = order["spec_ref"]
+        packet["spec_hash"] = order.get("spec_hash") or ""
+        packet["reads_spec"] = True
+    if owns:
+        packet["owns_requirements"] = owns
     packet["packet_hash"] = packet_digest(packet)
     require_public_schema(packet, "packet.schema.json", "packet")
     errors = validate_packet(packet)
@@ -1739,6 +3333,9 @@ def cmd_unpack(args: argparse.Namespace) -> None:
             scratch.rmdir()  # only removes an empty dir; nonempty is evidence
         except OSError:
             pass
+    reqs = load_requirements(root)
+    if release_requirement_owner(reqs, child_id):
+        save_requirements(reqs, root)
     reconcile_children_spawned(root, state, int(wave))
     save_state(state, root)
     snapshot_session(root, "unpack")
@@ -1890,7 +3487,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     except subprocess.TimeoutExpired:
         die(f"timeout child_id={child_id}")
     log_path.write_text(
-        f"# stdout\n{proc.stdout}\n\n# stderr\n{proc.stderr}\n", encoding="utf-8"
+        f"# stdout\n{redact_text(proc.stdout or '')}\n\n"
+        f"# stderr\n{redact_text(proc.stderr or '')}\n",
+        encoding="utf-8",
     )
     if proc.returncode != 0:
         print(f"spawn exit={proc.returncode} log={log_path}", file=sys.stderr)
@@ -1949,7 +3548,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
     packets = packed_children(root, int(wave))
     if not packets:
         die(f"no packets in wave {wave}")
-    die_on_stale_packets(packets, order, int(wave))
+    if not complete_stale_wave_recoverable(root, packets, order):
+        die_on_stale_packets(packets, order, int(wave))
     enforce_wave_child_caps(order, state, len(packets))
     ok = 0
     bad = 0
@@ -1992,6 +3592,17 @@ def cmd_collect(args: argparse.Namespace) -> None:
 
 
 def decide_regime(
+    order: dict[str, Any],
+    state: dict[str, Any],
+    residuals: list[dict[str, Any]],
+) -> tuple[str, str]:
+    regime, reason = _select_regime(order, state, residuals)
+    if regime in RESERVED_REGIMES:
+        return "hold", f"{regime} is reserved; no runtime accounting selects it"
+    return regime, reason
+
+
+def _select_regime(
     order: dict[str, Any],
     state: dict[str, Any],
     residuals: list[dict[str, Any]],
@@ -2329,6 +3940,8 @@ def phase_transition_errors(
         errors.append(
             f"current wave report regime is {report.get('regime')}, not phase"
         )
+    if target == "deliver":
+        errors.extend(requirement_coverage_errors(root))
     return errors
 
 
@@ -2339,15 +3952,24 @@ def wave_transition_errors(
 ) -> list[str]:
     errors: list[str] = []
     wave = int(state.get("wave") or 1)
-    flying = in_flight_children(root, wave)
-    if flying:
-        children = ", ".join(str(p.get("child_id") or "?") for p in flying)
-        errors.append(f"children still in flight: {children}")
+    packets = packed_children(root, wave)
     report = current_wave_report(root, state)
-    if report is None:
-        errors.append(f"current wave {wave} is not integrated")
-    elif not wave_report_covers_packets(root, state, report):
-        errors.append("current wave changed after its report was integrated")
+    fully_stale = packets_all_stale(packets, order)
+    if fully_stale and report is None:
+        # Unintegrated fully stale wave is dead: resume already prints
+        # next-wave. Do not require a report (integrate would refuse stale
+        # identity) or wait for foreign residuals. A report that still exists
+        # keeps the usual coverage / in-flight guards (partial-apply).
+        pass
+    else:
+        flying = in_flight_children(root, wave)
+        if flying:
+            children = ", ".join(str(p.get("child_id") or "?") for p in flying)
+            errors.append(f"children still in flight: {children}")
+        if report is None:
+            errors.append(f"current wave {wave} is not integrated")
+        elif not wave_report_covers_packets(root, state, report):
+            errors.append("current wave changed after its report was integrated")
     if state.get("spawn_blocked"):
         blocked_rev = state.get("blocked_at_order_rev")
         if blocked_rev is None and report and report.get("regime") == "escalate_up":
@@ -2417,7 +4039,10 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             "--recompute to create an auditable replacement"
         )
     if packets:
-        if not partial_apply_recovery_allowed(packets, order, previous_report):
+        if not (
+            partial_apply_recovery_allowed(packets, order, previous_report)
+            or complete_stale_wave_recoverable(root, packets, order)
+        ):
             die_on_stale_packets(packets, order, int(wave))
         enforce_wave_child_caps(order, state, len(packets))
         for pkt in packets:
@@ -2442,7 +4067,12 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     if args.apply:
         before = order["rev"]
         order = apply_patches(order, residuals)
-        if order["rev"] != before:
+        req_changed = apply_requirement_patches(root, residuals)
+        if req_changed:
+            sync_order_spec_fields(order, root)
+        if order["rev"] != before or req_changed:
+            if order["rev"] == before and req_changed:
+                order["rev"] = int(order["rev"]) + 1
             save_order(order, root)
             applied = {
                 "rev": order["rev"],
@@ -2629,6 +4259,29 @@ def cmd_patch(args: argparse.Namespace) -> None:
         changed = True
         # A new mission cannot inherit the old one's closure: reopen everything.
         reopen_done_when(order, all_phases=True)
+    source_file = getattr(args, "source_file", None)
+    source_inline = getattr(args, "source", None)
+    if source_file and source_inline:
+        die("pass only one of --source / --source-file")
+    if source_file or source_inline:
+        if source_file:
+            path = Path(source_file)
+            if not path.is_file():
+                die(f"--source-file not found: {source_file}")
+            source_text = path.read_text(encoding="utf-8")
+        else:
+            source_text = str(source_inline)
+        spec_hash = write_spec(root, source_text)
+        reqs = load_requirements(root)
+        if not (reqs.get("requirements") or []):
+            extracted = extract_requirements_from_spec(source_text)
+            reqs = {"v": 1, "spec_hash": spec_hash, "requirements": extracted}
+            save_requirements(reqs, root)
+        else:
+            reqs["spec_hash"] = spec_hash
+            save_requirements(reqs, root)
+        sync_order_spec_fields(order, root)
+        changed = True
     if args.constraints_add:
         for c in args.constraints_add:
             if c not in order["constraints"]:
@@ -2906,6 +4559,167 @@ def cmd_pulse(args: argparse.Namespace) -> None:
             return
 
 
+def cmd_spec(args: argparse.Namespace) -> None:
+    """Binding-requirements ledger. Kernel does not LLM-extract; --extract is heuristic."""
+    root = find_root()
+    order = load_order(root)
+    data = load_requirements(root)
+    changed = False
+    if getattr(args, "extract", False):
+        spec = spec_path(root)
+        if not spec.is_file():
+            die("no SPEC.md; of patch --source-file first")
+        text = spec.read_text(encoding="utf-8")
+        extracted = extract_requirements_from_spec(text)
+        existing_ids = {r.get("id") for r in data.get("requirements") or []}
+        existing_text = {r.get("text") for r in data.get("requirements") or []}
+        for item in extracted:
+            if item["id"] in existing_ids or item["text"] in existing_text:
+                continue
+            data.setdefault("requirements", []).append(item)
+            changed = True
+        data["spec_hash"] = sha256_text(text)
+    if getattr(args, "from_file", None):
+        path = Path(args.from_file)
+        if not path.is_file():
+            die(f"--from-file not found: {args.from_file}")
+        incoming = load_json(path)
+        items = incoming if isinstance(incoming, list) else incoming.get("requirements")
+        if not isinstance(items, list):
+            die("--from-file must be a list or {requirements: [...]}")
+        for raw in items:
+            if not isinstance(raw, dict):
+                die("requirement entries must be objects")
+            rid = require_req_id(str(raw.get("id") or ""))
+            text = str(raw.get("text") or "").strip()
+            if not text:
+                die(f"requirement {rid} missing text")
+            item = find_requirement(data, rid)
+            if item is None:
+                data.setdefault("requirements", []).append(
+                    {
+                        "id": rid,
+                        "text": text,
+                        "binding": bool(raw.get("binding", True)),
+                        "owned_by": list(raw.get("owned_by") or []),
+                        "status": str(raw.get("status") or "unowned"),
+                    }
+                )
+            else:
+                item["text"] = text
+                if "binding" in raw:
+                    item["binding"] = bool(raw["binding"])
+            changed = True
+    add_id = getattr(args, "add", None)
+    add_text = getattr(args, "text", None)
+    if add_id or add_text:
+        if not add_id or not add_text:
+            die("of spec --add ID requires --text")
+        rid = require_req_id(add_id)
+        if find_requirement(data, rid) is not None:
+            die(f"requirement {rid} already exists")
+        data.setdefault("requirements", []).append(
+            {
+                "id": rid,
+                "text": str(add_text).strip(),
+                "binding": not bool(getattr(args, "non_binding", False)),
+                "owned_by": [],
+                "status": "unowned",
+            }
+        )
+        changed = True
+    for rid in getattr(args, "verified", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "verified"
+        changed = True
+    for rid in getattr(args, "failed", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "failed"
+        changed = True
+    if changed:
+        spec = spec_path(root)
+        if spec.is_file():
+            data["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        save_requirements(data, root)
+        identity = bool(
+            getattr(args, "extract", False)
+            or getattr(args, "from_file", None)
+            or getattr(args, "add", None)
+        )
+        if identity:
+            sync_order_spec_fields(order, root)
+            order["rev"] = int(order["rev"]) + 1
+            save_order(order, root)
+            print(f"rev={order['rev']}")
+        snapshot_session(root, "spec")
+    counts = requirement_counts(data)
+    print(
+        f"requirements  {counts['total']} total  "
+        f"owned {counts['owned']}  verified {counts['verified']}  "
+        f"failed {counts['failed']}  unowned {counts['unowned']}  "
+        f"unverified {counts['unverified']}"
+    )
+    for item in data.get("requirements") or []:
+        owners = ",".join(item.get("owned_by") or []) or "-"
+        bind = "binding" if item.get("binding", True) else "advisory"
+        print(
+            f"  {item.get('id'):12} {item.get('status'):10} {bind:8} "
+            f"owners={owners}  {item.get('text')}"
+        )
+
+
+def cmd_spec_diff(args: argparse.Namespace) -> None:
+    root = find_root()
+    order = load_order(root)
+    lines = spec_diff_lines(root, order)
+    if not lines:
+        print("spec-diff    none (no binding gaps vs ORDER / coverage)")
+        return
+    print("Binding requirements absent from ORDER / active coverage:")
+    for line in lines:
+        print(line)
+    raise SystemExit(2)
+
+
+def cmd_contrast(args: argparse.Namespace) -> None:
+    """Review gate: original brief vs field vs coverage. Loop is open until 0."""
+    root = find_root()
+    order = load_order(root)
+    spec = spec_path(root)
+    counts = requirement_counts(load_requirements(root))
+    coverage = requirement_coverage_errors(root)
+    print("loop        SPEC + ORDER → slice → product → contrast → close")
+    if spec.is_file():
+        digest = sha256_text(spec.read_text(encoding="utf-8"))
+        print(f"spec        {FIELD_SPEC_MD}  hash={digest[:12]}…")
+    else:
+        print("spec        missing — of init/patch --source-file (verbatim brief)")
+    print(f"intent      {truncate_slice(order.get('mission') or '', 80)}")
+    print(
+        f"coverage    {counts['total']} total  owned {counts['owned']}  "
+        f"verified {counts['verified']}  failed {counts['failed']}  "
+        f"unowned {counts['unowned']}  unverified {counts['unverified']}"
+    )
+    if not spec.is_file() and counts["total"] == 0:
+        print("status      SKIP (no SPEC; legacy field)")
+        return
+    if coverage:
+        print("status      OPEN")
+        for err in coverage:
+            print(f"  {err}")
+        print(
+            "contrast    Intent vs Delivered vs missing — read SPEC.md, "
+            "not only ORDER. Pack again or of spec --verified after a real review."
+        )
+        raise SystemExit(2)
+    print("status      RESOLVED")
+    print("contrast    binding coverage closed; of phase deliver unblocked on requirements")
+
+
 def cmd_checkpoint(args: argparse.Namespace) -> None:
     root = find_root()
     load_order(root)
@@ -2939,6 +4753,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mission", required=True)
     s.add_argument("--phase", default="explore", choices=PHASES)
     s.add_argument("--done-when", dest="done_when", action="append")
+    s.add_argument(
+        "--source",
+        help="verbatim user brief (lossless SPEC.md); do not compress the contract",
+    )
+    s.add_argument(
+        "--source-file",
+        dest="source_file",
+        help="path to the verbatim user brief; stored as .orderfield/SPEC.md",
+    )
     s.add_argument("--force", action="store_true")
     s.set_defaults(func=cmd_init)
 
@@ -2981,6 +4804,75 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("detect", help="detect installed harnesses")
     s.set_defaults(func=cmd_detect)
 
+    s = sub.add_parser(
+        "doctor",
+        help="local prereqs, adapter PATH/version, writable field, schemas, lock",
+        description=(
+            "Kernel-verifiable local checks. PATH presence is not authentication "
+            "or model readiness."
+        ),
+    )
+    s.set_defaults(func=cmd_doctor)
+
+    s = sub.add_parser(
+        "retain",
+        help="show episodic keep/drop/dump plan (read-only, no transcript copy)",
+    )
+    s.set_defaults(func=cmd_retain)
+
+    s = sub.add_parser(
+        "gc",
+        help="apply episodic retention: keep useful, drop inapplicable, dump >30d",
+    )
+    s.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the plan without deleting (same as of retain)",
+    )
+    s.set_defaults(func=cmd_gc)
+
+    s = sub.add_parser(
+        "migrate",
+        help="apply versioned artifact migrations (pre-0.4.2 and protocol keys)",
+        description=(
+            "Rewrite field artifacts onto the current generation. "
+            "Does not invent telemetry. Frozen protocol keys: "
+            "workspace.writable_by_slaves and .orderfield/SLAVE.md."
+        ),
+    )
+    s.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the plan without writing",
+    )
+    s.add_argument(
+        "--list",
+        action="store_true",
+        help="print the migration catalog without touching the field",
+    )
+    s.set_defaults(func=cmd_migrate)
+
+    s = sub.add_parser(
+        "worktree",
+        help="opt-in git worktree helper (not a process manager)",
+        description=(
+            "Create or remove a detached git worktree for a child. "
+            "Never starts, stops, or supervises a process. "
+            "Do not symlink node_modules or the leader .orderfield."
+        ),
+    )
+    wt = s.add_subparsers(dest="worktree_cmd", required=True)
+    wadd = wt.add_parser("add", help="create a detached worktree outside the project")
+    wadd.add_argument("--child-id", required=True)
+    wadd.add_argument(
+        "--path",
+        help="destination outside the project (default: sibling <repo>-of-<child_id>)",
+    )
+    wrm = wt.add_parser("remove", help="remove a recorded worktree")
+    wrm.add_argument("--child-id", required=True)
+    wt.add_parser("list", help="list recorded worktrees")
+    s.set_defaults(func=cmd_worktree)
+
     s = sub.add_parser("validate", help="validate a contract JSON file")
     s.add_argument("file")
     s.add_argument("--kind", default="auto", choices=["auto", "order", "packet", "residual"])
@@ -3002,6 +4894,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--tokens", type=int, default=80000)
     s.add_argument("--seconds", type=int, default=600)
     s.add_argument(
+        "--owns-requirement",
+        dest="owns_requirement",
+        action="append",
+        help="binding requirement id this packet owns (repeatable)",
+    )
+    s.add_argument(
         "--force-spawn",
         action="store_true",
         help="bypass spawn_blocked after escalate_up",
@@ -3021,7 +4919,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_unpack)
 
-    s = sub.add_parser("render", help="print the slave prompt")
+    s = sub.add_parser("render", help="print the child prompt (SLAVE.md contract)")
     s.add_argument("--packet", required=True)
     s.add_argument(
         "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
@@ -3030,7 +4928,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "handoff",
-        help="write the slave prompt file and print a short envelope",
+        help="write the child prompt file (SLAVE.md contract) and print a short envelope",
     )
     s.add_argument("--packet", required=True)
     s.add_argument(
@@ -3139,13 +5037,67 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print only rev=N",
     )
+    s.add_argument(
+        "--source",
+        help="replace the verbatim SPEC.md brief",
+    )
+    s.add_argument(
+        "--source-file",
+        dest="source_file",
+        help="replace SPEC.md from a file",
+    )
     s.set_defaults(func=cmd_patch)
 
     s = sub.add_parser(
         "next-wave",
-        help="advance an integrated wave with no children in flight",
+        help="advance an integrated wave, or skip a fully stale wave",
     )
     s.set_defaults(func=cmd_next_wave)
+
+    s = sub.add_parser(
+        "spec",
+        help="list/add/extract/verify binding requirements (lossless contract coverage)",
+    )
+    s.add_argument("--add", help="new requirement id (PREFIX-001)")
+    s.add_argument("--text", help="requirement text (with --add)")
+    s.add_argument(
+        "--non-binding",
+        action="store_true",
+        help="mark --add as advisory, not binding",
+    )
+    s.add_argument(
+        "--from-file",
+        dest="from_file",
+        help="load requirements list or {requirements:[...]} JSON",
+    )
+    s.add_argument(
+        "--extract",
+        action="store_true",
+        help="heuristic extract from SPEC.md (does not replace a hand-written list)",
+    )
+    s.add_argument(
+        "--verified",
+        action="append",
+        help="mark requirement verified (repeatable)",
+    )
+    s.add_argument(
+        "--failed",
+        action="append",
+        help="mark requirement failed (repeatable)",
+    )
+    s.set_defaults(func=cmd_spec)
+
+    s = sub.add_parser(
+        "spec-diff",
+        help="binding requirements missing from ORDER text or coverage",
+    )
+    s.set_defaults(func=cmd_spec_diff)
+
+    s = sub.add_parser(
+        "contrast",
+        help="review gate: SPEC + ORDER vs coverage; exit 2 while the loop is open",
+    )
+    s.set_defaults(func=cmd_contrast)
 
     return p
 

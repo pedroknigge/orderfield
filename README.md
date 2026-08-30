@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.4.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.5.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.4.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -154,7 +154,7 @@ Every CLI field mutation holds `.orderfield/field.lock`, and JSON artifacts are 
 
 **When to open orderfield:** it pays for false-scope / marketing risk (an adversary can catch a lie), colliding product paths, and genuinely multi-slice work that will not fit one context. It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals/learnings, drop inapplicable, dump logs/history older than 30 days; never copy transcripts). Spawn argv previews and logs redact secrets and escalated approval flags. Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
@@ -172,9 +172,9 @@ The model is inspired by Haken's slaving principle: a slow field constrains fres
 | Circular causality | leader runs `integrate --apply` or `of patch`; the next wave receives the result |
 | Reduction of degrees of freedom | leaders consume residuals when they follow the protocol |
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, create worktrees, attest metrics, or police a disobedient child.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
-Accounting stays deliberately narrow in 0.4.2: packet seconds are the spawn timeout; token budgets and `local_budget_pct` are advisory, `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` is reserved. The [0.5.0 roadmap](docs/roadmap.md) owns the decision to implement trustworthy accounting or remove those surfaces.
+Accounting is reserved, not implemented: packet seconds are the spawn timeout; token budgets and `local_budget_pct` are not measured, `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
 
 Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
 
@@ -182,7 +182,7 @@ Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). U
 
 ## Generic mode
 
-Named adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`.
+Named adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`.
 
 Everything else is generic.
 
@@ -208,8 +208,8 @@ Orca (and every other harness) starts and stops processes. It must not choose th
 ```
   escalate_up   patch the field. re-enslave.
   scale_out     same role, more copies.
-  scale_across  reserved in 0.4.2; retained for report compatibility only.
-  scale_up      reserved in 0.4.2; no runtime accounting selects it.
+  scale_across  reserved in 0.5.0; retained for report compatibility only.
+  scale_up      reserved; no runtime accounting selects it.
   hold          wait (closed wave with done_when open, or done_when_closed applied this wave — of phase is still explicit).
   phase         only when done_when is closed. still `of phase`.
   human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done.
@@ -223,13 +223,13 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 
 | Command | Purpose |
 |---|---|
-| `init` | create `.orderfield/ORDER.json` |
+| `init` | create `.orderfield/ORDER.json`; `--source-file` stores the verbatim brief as `SPEC.md` |
 | `resume` | one-screen continuation brief from disk (in-flight = packed child, missing residual). Does not auto-spawn. |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (supports `--requires-tool`; oversized `--slice` is an advisory note, still charged) |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`; oversized `--slice` is an advisory note, still charged). Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds the child budget |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
@@ -239,6 +239,13 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `phase` | guarded sequential phase change; audited break-glass is `--force --reason` |
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
 | `next-wave` | advance only after complete current-digest integration and required post-escalation revision |
+| `doctor` | local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
+| `retain` / `gc` | episodic keep/drop/dump; never copies transcripts |
+| `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
+| `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
+| `spec` | list/add/extract/verify binding requirements from SPEC.md |
+| `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
+| `contrast` | review gate: SPEC + ORDER → slice → product; exit 2 while the loop is open |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
 

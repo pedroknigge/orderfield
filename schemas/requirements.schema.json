@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/requirements.schema.json",
+  "title": "Orderfield binding requirements",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "spec_hash", "requirements"],
+  "properties": {
+    "v": { "type": "integer", "const": 1 },
+    "spec_hash": { "type": "string" },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "binding", "owned_by", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$"
+          },
+          "text": { "type": "string", "minLength": 1 },
+          "binding": { "type": "boolean" },
+          "owned_by": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["unowned", "owned", "verified", "failed"]
+          }
+        }
+      }
+    }
+  }
+}

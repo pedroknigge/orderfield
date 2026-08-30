@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.4.2` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.0` — see [`VERSION`](../VERSION)
 
 ## Shape
 
@@ -10,7 +10,7 @@ One leader-designed field (`.orderfield/ORDER.json`) constrains fresh-context ch
 
 ```
 leader → of resume → of pack → packet → of spawn|handoff → child → residual → of collect → of integrate → ORDER'
-                 ↑ disk (packets / residuals / state / session.json) is the session
+                 ↑ disk (SPEC.md lossless / packets / residuals / state / session.json) is the session
 ```
 
 ## Authority
@@ -24,6 +24,8 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | Packet/residual execution identity | Canonical live packet path + packet hash + exact ORDER revision + echoed residual identity |
 | Phase/wave movement | Current integration digest, closure, revision-after-escalation, and in-flight guards |
 | Product file exclusivity | Cut plan + constraints — **not** a kernel lock |
+| Binding specification | `.orderfield/SPEC.md` verbatim user brief + `spec_hash`; packets reference-load it |
+| Binding requirements | `.orderfield/REQUIREMENTS.json`; pack `--owns-requirement`; deliver blocked while UNOWNED/UNVERIFIED/FAILED |
 | Role/workspace compliance and metric truth | Child/leader contract — values are shape-checked, not attested |
 
 ## Key modules (code)
@@ -49,6 +51,14 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events for pack/spawn/collect/integrate |
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
+| `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
+| `cmd_retain` / `cmd_gc` | Episodic keep/drop/dump; useful residuals/learnings kept; inapplicable dropped; logs/history >30d dumped; never copies transcripts |
+| `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
+| `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
+| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` | Binding-requirement ledger, SPEC↔ORDER omissions, and the review loop gate (`contrast` exit 2 while open) |
+| `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
+| `argv_preview` / `redact_text` | Secrets and escalated approval flags stripped from spawn previews and logs |
+| `packets_all_stale` / `complete_stale_wave_recoverable` | Fully stale wave: `next-wave` without a report; complete stale wave may still integrate |
 | `install.sh` + `of/SKILL.md` | Skill copies, static `/of` alias, and `of` PATH → installed kernel |
 
 ## Durability and concurrency boundary (0.4.2)
@@ -57,15 +67,17 @@ All mutating commands (`init`, pack/unpack, handoff/spawn, integrate, phase/patc
 
 ## Advisory and reserved fields
 
-| Field/surface | 0.4.2 behavior |
+Runtime ownership is **reserved**, not implemented. `of status` prints the reserved set. `decide_regime` remaps any reserved regime to `hold`.
+
+| Field/surface | Behavior |
 |---------------|----------------|
 | `budget.seconds` | Enforced as the spawned subprocess timeout |
-| `budget.tokens` | Carried in packets; not measured or enforced |
-| `thresholds.local_budget_pct` | Advisory/reserved; not evaluated |
+| `budget.tokens` | Reserved; carried in packets; not measured or enforced |
+| `thresholds.local_budget_pct` | Reserved; not evaluated |
 | `caps.max_depth` | Permission check for `--allow-nested`; inherited depth is not tracked |
-| `scale_up` | Reserved regime enum; current decision logic never selects it from accounting |
+| `scale_up` / `scale_across` | Reserved regime enums; decision logic never selects them from accounting |
 
-The 0.5.0 decision is tracked in the canonical [roadmap](roadmap.md); 0.4.2 does not claim telemetry it does not have.
+No new telemetry. Removing a reserved field later requires a versioned migration. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys (`of migrate` maps writable aliases onto the protocol key).
 
 ## Reversible field (0.3.0+)
 

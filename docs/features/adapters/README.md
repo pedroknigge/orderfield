@@ -2,11 +2,11 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.4.2` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.5.0` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
-Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, plus `generic` / `OF_AGENT`.
+Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`, plus `generic` / `OF_AGENT`.
 
 ## Inventory
 
@@ -17,5 +17,6 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 - **grok:** `--always-approve -p`
 - **codex:** `exec --dangerously-bypass-approvals-and-sandbox` (no `--full-auto`)
 - **agy:** flags before `-p`
+- **qwen:** positional prompt (not deprecated `-p`); `--output-format json --approval-mode default`; never `--yolo` unless `OF_TRUST=yolo`; never `-m` / `--openai-base-url` / `--openai-api-key`. Kernel verifies PATH + argv + residual file/schema; harness promises approval, sandbox, auth, readiness.
 
 Session-cut is kernel, not adapter-specific: `of resume` / `of checkpoint --summary`. Render/handoff add a continuation note when scratch is nonempty.

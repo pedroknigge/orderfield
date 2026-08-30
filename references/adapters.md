@@ -28,7 +28,7 @@ python3 scripts/of.py detect
 ```
 
 Default order if you omit `--adapter`:
-`claude, codex, cursor, opencode, orca, grok, agy, generic`.
+`claude, codex, cursor, opencode, orca, grok, agy, qwen, generic`.
 
 Override: `OF_ADAPTER=codex` or `--adapter`.
 
@@ -138,6 +138,40 @@ agy --dangerously-skip-permissions --mode accept-edits --output-format json \
 
 Skills: `~/.gemini/config/skills/orderfield/` and `~/.gemini/antigravity-cli/skills/orderfield/`. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`.
 
+## Qwen Code
+
+Binary: `qwen`. Adapter name is `qwen`.
+
+Any Qwen Code install is valid: DashScope, OpenAI-compat, Gemini, Anthropic, local Ollama/vLLM, or whatever provider the user's `qwen` CLI already uses. Orderfield never passes `-m`/`--model`, `--openai-base-url`, `--openai-api-key`, or `--auth-type`. Those stay in the user's Qwen config.
+
+Headless (Qwen-owned; `-p`/`--prompt` is deprecated in favor of the positional prompt):
+
+```bash
+qwen --output-format json --approval-mode default \
+  "$(python3 scripts/of.py render --packet PACKET.json)"
+```
+
+`of spawn --adapter qwen` uses that argv. The child writes `packet.residual_path`. Qwen has no Codex-style `-o` residual file; `--json-schema` is a harness `structured_output` tool, not residual delivery.
+
+### Trust profiles
+
+Default trust is **conservative / non-escalated**: `--approval-mode default`, never `--yolo`. The flag is always passed so a user setting such as `tools.approvalMode=yolo` cannot silently escalate. Visible override: `OF_TRUST` (`conservative` (default), `plan`, `auto-edit`, `auto`, `yolo`).
+
+Kernel vs harness verification boundary:
+
+| Kernel verifies | Harness merely promises |
+|---|---|
+| binary on PATH | `--approval-mode` was honored |
+| argv actually spawned | sandbox ran |
+| residual file exists | auth succeeded |
+| residual schema-validates | a model is ready |
+
+`of detect` is PATH inventory, not authentication or readiness.
+
+Do not copy grok `--always-approve`, claude/agy `--dangerously-skip-permissions`, or codex `--dangerously-bypass-approvals-and-sandbox` onto Qwen. Other adapters keep their existing headless flags; `OF_TRUST` currently maps onto Qwen only.
+
+Skills: workspace generic is still `.agents/skills/orderfield/`.
+
 ## Generic (any other agent)
 
 Unknown harnesses — Windsurf, Cline, Aider, a custom CLI, a web chat — all use the same adapter.
@@ -179,7 +213,7 @@ Default: every child in the same repo sees `.orderfield/` (shared field, scratch
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.
 
-When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.
+When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Opt-in helper: `of worktree add --child-id <id>` creates a detached worktree outside the project; `of worktree remove` drops it. Spawn does not create worktrees. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.
 
 ## Phasing and PATH
 

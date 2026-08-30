@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.4.2 — Alias for orderfield. Use when the user explicitly invokes /of or orderfield, an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer wave needs its disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.5.0 — Alias for orderfield. Use when the user explicitly invokes /of or orderfield, an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer wave needs its disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.4.2"
+  version: "0.5.0"
   alias-of: orderfield
 ---
 
