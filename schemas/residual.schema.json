@@ -6,6 +6,13 @@
   "additionalProperties": false,
   "required": ["status", "result_ref", "residual", "metrics"],
   "properties": {
+    "packet_id": { "type": "string" },
+    "packet_hash": { "type": "string" },
+    "order_id": { "type": "string" },
+    "order_rev": { "type": "integer", "minimum": 1 },
+    "wave": { "type": "integer", "minimum": 1 },
+    "child_id": { "type": "string" },
+    "role": { "type": "string" },
     "status": { "type": "string", "enum": ["done", "blocked", "threshold"] },
     "result_ref": { "type": "string" },
     "residual": {
@@ -49,8 +56,6 @@
         "tool_failures": { "type": "integer", "minimum": 0 },
         "novelty": { "type": "boolean" }
       }
-    },
-    "child_id": { "type": "string" },
-    "role": { "type": "string" }
+    }
   }
 }

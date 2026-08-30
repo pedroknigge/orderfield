@@ -48,6 +48,12 @@ grep -q "<strong>v${VER_FILE}</strong>" "$ROOT/README.md" || fail "README versio
 grep -q "skill-${VER_FILE}-" "$ROOT/README.md" || fail "README badge != $VER_FILE"
 grep -q "Version:\*\* \`${VER_FILE}\`" "$ROOT/docs/architecture.md" || fail "architecture version != $VER_FILE"
 grep -q "Code rev:\*\* VERSION \`${VER_FILE}\`" "$ROOT/docs/audit/claims-matrix.md" || fail "claims matrix version != $VER_FILE"
+grep -q "current in \`${VER_FILE}\`" "$ROOT/docs/features/kernel/README.md" || fail "kernel feature version != $VER_FILE"
+grep -q "current in \`${VER_FILE}\`" "$ROOT/docs/features/adapters/README.md" || fail "adapters feature version != $VER_FILE"
+[[ -f "$ROOT/docs/roadmap.md" ]] || fail "docs/roadmap.md missing"
+grep -q "docs/roadmap.md" "$ROOT/AGENTS.md" || fail "AGENTS.md missing canonical roadmap link"
+grep -q "Qwen Code" "$ROOT/docs/roadmap.md" || fail "roadmap missing Qwen Code support"
+grep -q 'scale_up' "$ROOT/docs/roadmap.md" || fail "roadmap missing scale_up/accounting decision"
 ok "README + current docs $VER_FILE"
 
 DESC=$(echo "$FM" | awk '
@@ -73,7 +79,8 @@ for f in \
   "$ROOT/evals/expected/field-residual.json" \
   "$ROOT/evals/expected/done-not-phase.json" \
   "$ROOT/tests/test_kernel.py" \
-  "$ROOT/schemas/order.schema.json"
+  "$ROOT/schemas/order.schema.json" \
+  "$ROOT/schemas/state.schema.json"
 do
   [[ -f "$f" ]] || fail "missing $f"
 done

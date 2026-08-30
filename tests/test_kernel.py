@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -10,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -26,6 +28,11 @@ EVAL_COLLECT = ROOT / "evals" / "expected" / "collect-by-packet.json"
 EVAL_STALE = ROOT / "evals" / "expected" / "stale-packets.json"
 RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.schema.json"
 CODEX_RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.codex.schema.json"
+ORDER_SCHEMA = ROOT / "schemas" / "order.schema.json"
+PACKET_SCHEMA = ROOT / "schemas" / "packet.schema.json"
+SESSION_SCHEMA = ROOT / "schemas" / "session.schema.json"
+STATE_SCHEMA = ROOT / "schemas" / "state.schema.json"
+WAVE_REPORT_SCHEMA = ROOT / "schemas" / "wave-report.schema.json"
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 
 
@@ -43,6 +50,58 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
+    return (
+        root
+        / ".orderfield"
+        / "waves"
+        / f"{wave:03d}"
+        / "packets"
+        / f"{child_id}.json"
+    )
+
+
+def bound_residual(
+    root: Path,
+    child_id: str,
+    fixture: Path = DONE,
+    wave: int = 1,
+) -> dict:
+    packet = load_json(packet_path(root, child_id, wave))
+    residual = load_json(fixture)
+    for key in of.PACKET_IDENTITY_FIELDS:
+        residual[key] = packet[key]
+    if residual["status"] == "done":
+        result = (
+            root
+            / ".orderfield"
+            / "work"
+            / "scratch"
+            / child_id
+            / "result.md"
+        )
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text("done\n", encoding="utf-8")
+        residual["result_ref"] = result.relative_to(root).as_posix()
+    return residual
+
+
+def write_bound_residual(
+    root: Path,
+    child_id: str,
+    fixture: Path = DONE,
+    wave: int = 1,
+) -> Path:
+    packet = load_json(packet_path(root, child_id, wave))
+    destination = root / str(packet["residual_path"])
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return destination
 
 
 def assert_draft_2020_12_valid(
@@ -71,8 +130,12 @@ def assert_draft_2020_12_valid(
         )
     if "enum" in schema:
         case.assertIn(instance, schema["enum"], path)
+    if "const" in schema:
+        case.assertEqual(instance, schema["const"], path)
     if instance is None:
         return
+    if isinstance(instance, str) and "minLength" in schema:
+        case.assertGreaterEqual(len(instance), schema["minLength"], path)
     if isinstance(instance, dict) and "object" in allowed:
         properties = schema.get("properties", {})
         for key in schema.get("required", []):
@@ -88,11 +151,18 @@ def assert_draft_2020_12_valid(
                     case, properties[key], value, f"{path}.{key}"
                 )
     if isinstance(instance, list) and "array" in allowed and "items" in schema:
+        if "minItems" in schema:
+            case.assertGreaterEqual(len(instance), schema["minItems"], path)
+        if schema.get("uniqueItems") is True:
+            for index, value in enumerate(instance):
+                case.assertNotIn(value, instance[:index], path)
         for index, value in enumerate(instance):
             assert_draft_2020_12_valid(
                 case, schema["items"], value, f"{path}[{index}]"
             )
     if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        if isinstance(instance, float):
+            case.assertTrue(math.isfinite(instance), path)
         if "minimum" in schema:
             case.assertGreaterEqual(instance, schema["minimum"], path)
         if "maximum" in schema:
@@ -140,12 +210,24 @@ class DecideRegimeShipped(unittest.TestCase):
         self.order = of.default_order("architecture for a pricing tool", "explore")
         self.state = of.default_state()
 
+    def test_scale_across_is_reserved_not_enabled_by_default(self) -> None:
+        self.assertIn("scale_across", of.REGIMES)
+        self.assertNotIn("scale_across", self.order["enabled_regimes"])
+
     def test_constraints_residual_is_escalate_up_not_across_or_out(self) -> None:
         residual = load_json(THRESHOLD)
         regime, reason = of.decide_regime(self.order, self.state, [residual])
         self.assertEqual(regime, "escalate_up")
         self.assertNotIn(regime, ("scale_across", "scale_out", "phase"))
         self.assertIn("constraints", reason)
+
+    def test_workspace_residual_is_escalate_up(self) -> None:
+        residual = load_json(THRESHOLD)
+        residual["residual"]["wants_to_change"] = ["workspace"]
+        residual["residual"]["evidence"] = "the assigned path is outside the slice"
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("workspace", reason)
 
     def test_mission_residual_is_escalate_up_even_with_novelty(self) -> None:
         residual = load_json(THRESHOLD)
@@ -334,13 +416,13 @@ class ResidualSchemaContracts(unittest.TestCase):
     def test_codex_schema_preserves_nullable_optional_values(self) -> None:
         schema = load_json(CODEX_RESIDUAL_SCHEMA)
         done = load_json(DONE)
-        done["child_id"] = None
-        done["role"] = None
+        for key in of.PACKET_IDENTITY_FIELDS:
+            done[key] = None
         assert_draft_2020_12_valid(self, schema, done)
 
         threshold = load_json(THRESHOLD)
-        threshold["child_id"] = None
-        threshold["role"] = None
+        for key in of.PACKET_IDENTITY_FIELDS:
+            threshold[key] = None
         threshold["residual"]["proposed_patch"].update(
             {
                 "done_when+": None,
@@ -355,6 +437,447 @@ class ResidualSchemaContracts(unittest.TestCase):
         expected["$id"] = "orderfield/residual.codex.schema.json"
         expected["title"] = "Orderfield residual (Codex strict output)"
         self.assertEqual(load_json(CODEX_RESIDUAL_SCHEMA), expected)
+
+
+class PublicJsonContracts(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-json-contracts-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        initialized = run_of(
+            self.tmp, "init", "--mission", "contract parity", "--phase", "explore"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+
+    def test_kernel_generated_artifacts_match_public_schemas(self) -> None:
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        assert_draft_2020_12_valid(self, load_json(ORDER_SCHEMA), order)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        assert_draft_2020_12_valid(self, load_json(STATE_SCHEMA), state)
+
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "check generated contracts",
+            "--role",
+            "explorer",
+            "--child-id",
+            "contracts",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        packet_schema = load_json(PACKET_SCHEMA)
+        self.assertIn("packed_at", packet_schema["properties"])
+        packet = load_json(
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "packets"
+            / "contracts.json"
+        )
+        assert_draft_2020_12_valid(self, packet_schema, packet)
+
+        session_schema = load_json(SESSION_SCHEMA)
+        self.assertIn("in_flight_detail", session_schema["properties"])
+        session = load_json(self.tmp / ".orderfield" / "session.json")
+        assert_draft_2020_12_valid(self, session_schema, session)
+
+        residual_path = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "residuals"
+            / "contracts.json"
+        )
+        write_bound_residual(self.tmp, "contracts")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "report.json"
+        )
+        assert_draft_2020_12_valid(self, load_json(WAVE_REPORT_SCHEMA), report)
+
+    def test_runtime_validators_enforce_schema_contracts(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "check runtime validation",
+            "--role",
+            "explorer",
+            "--child-id",
+            "runtime",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        packet = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "runtime.json"
+        )
+        residual = load_json(DONE)
+
+        invalid: list[tuple[str, dict, object]] = []
+        for label, source, validator in (
+            ("order", order, of.validate_order),
+            ("packet", packet, of.validate_packet),
+            ("residual", residual, of.validate_residual),
+            ("state", of.default_state(), of.validate_state),
+        ):
+            extra = json.loads(json.dumps(source))
+            extra["unexpected"] = True
+            invalid.append((f"{label} additional property", extra, validator))
+
+        missing = json.loads(json.dumps(order))
+        missing.pop("mission")
+        invalid.append(("order required", missing, of.validate_order))
+        wrong_type = json.loads(json.dumps(order))
+        wrong_type["rev"] = True
+        invalid.append(("order type", wrong_type, of.validate_order))
+        out_of_range = json.loads(json.dumps(order))
+        out_of_range["thresholds"]["divergence"] = 2
+        invalid.append(("order range", out_of_range, of.validate_order))
+
+        nested_extra = json.loads(json.dumps(packet))
+        nested_extra["order"]["workspace"]["unexpected"] = []
+        invalid.append(("packet nested additional property", nested_extra, of.validate_packet))
+        bad_budget = json.loads(json.dumps(packet))
+        bad_budget["budget"]["seconds"] = 0
+        invalid.append(("packet range", bad_budget, of.validate_packet))
+
+        missing_metric = json.loads(json.dumps(residual))
+        missing_metric["metrics"].pop("uncertainty")
+        invalid.append(("residual required", missing_metric, of.validate_residual))
+        bad_status = json.loads(json.dumps(residual))
+        bad_status["status"] = "maybe"
+        invalid.append(("residual enum", bad_status, of.validate_residual))
+
+        for label, instance, validator in invalid:
+            with self.subTest(label=label):
+                self.assertTrue(validator(instance), instance)
+
+
+class CanonicalPacketIdentityAndPaths(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-packet-identity-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        initialized = run_of(
+            self.tmp, "init", "--mission", "bind packet identity", "--phase", "build"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+
+    def _pack(self, child_id: str = "c1") -> Path:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement identity",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return packet_path(self.tmp, child_id)
+
+    def test_new_packet_has_complete_self_consistent_identity(self) -> None:
+        path = self._pack()
+        packet = load_json(path)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            self.assertIn(key, packet)
+        self.assertEqual(packet["order_id"], packet["order"]["id"])
+        self.assertEqual(packet["order_rev"], packet["order"]["rev"])
+        self.assertEqual(packet["packet_hash"], of.packet_digest(packet))
+        self.assertEqual(of.validate_packet(packet), [])
+
+        reformatted = json.loads(json.dumps(packet, sort_keys=True))
+        self.assertEqual(of.packet_digest(reformatted), packet["packet_hash"])
+        reformatted["slice"] = "different"
+        self.assertNotEqual(of.packet_digest(reformatted), packet["packet_hash"])
+
+    def test_partial_identity_and_tampered_packet_are_rejected(self) -> None:
+        path = self._pack()
+        packet = load_json(path)
+        packet.pop("packet_id")
+        errors = of.validate_packet(packet)
+        self.assertTrue(any("identity is incomplete" in error for error in errors), errors)
+
+        packet = load_json(path)
+        packet["slice"] = "tampered after registration"
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        rendered = run_of(
+            self.tmp, "render", "--packet", ".orderfield/waves/001/packets/c1.json"
+        )
+        self.assertNotEqual(rendered.returncode, 0)
+        self.assertIn("packet_hash", rendered.stderr)
+
+    def test_noncanonical_absolute_and_copied_packets_are_rejected(self) -> None:
+        path = self._pack()
+        absolute = run_of(self.tmp, "render", "--packet", str(path))
+        self.assertNotEqual(absolute.returncode, 0)
+        self.assertIn("unsafe --packet", absolute.stderr)
+
+        copied = self.tmp / ".orderfield" / "packet-copy.json"
+        copied.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        unregistered = run_of(
+            self.tmp, "render", "--packet", ".orderfield/packet-copy.json"
+        )
+        self.assertNotEqual(unregistered.returncode, 0)
+        self.assertIn("unregistered packet location", unregistered.stderr)
+
+    def test_render_handoff_and_spawn_reject_stale_order_revision(self) -> None:
+        self._pack()
+        patched = run_of(self.tmp, "patch", "--notes", "revision changed")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        packet = ".orderfield/waves/001/packets/c1.json"
+        commands = (
+            ("render", "--packet", packet),
+            ("handoff", "--packet", packet),
+            ("spawn", "--packet", packet, "--adapter", "generic", "--dry-run"),
+        )
+        for command in commands:
+            with self.subTest(command=command[0]):
+                result = run_of(self.tmp, *command)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("stale packet", (result.stdout + result.stderr).lower())
+
+    def test_render_handoff_and_spawn_reject_identity_free_canonical_packet(self) -> None:
+        path = self._pack()
+        packet = load_json(path)
+        for key in ("packet_id", "packet_hash", "order_id"):
+            packet.pop(key)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+
+        packet_arg = ".orderfield/waves/001/packets/c1.json"
+        commands = (
+            ("render", "--packet", packet_arg),
+            ("handoff", "--packet", packet_arg),
+            ("spawn", "--packet", packet_arg, "--adapter", "generic", "--dry-run"),
+        )
+        for command in commands:
+            with self.subTest(command=command[0]):
+                result = run_of(self.tmp, *command)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("recovery-only", result.stderr)
+
+    def test_collect_and_integrate_require_exact_residual_identity(self) -> None:
+        self._pack()
+        write_bound_residual(self.tmp, "c1")
+        residual_path = (
+            self.tmp / ".orderfield/waves/001/residuals/c1.json"
+        )
+        residual = load_json(residual_path)
+        residual["packet_hash"] = "0" * 64
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 2)
+        self.assertIn("must match canonical packet", collected.stdout)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(integrated.returncode, 0)
+        self.assertIn("must match canonical packet", integrated.stderr)
+
+    def test_done_result_ref_must_exist_and_stay_under_project(self) -> None:
+        self._pack()
+        residual = bound_residual(self.tmp, "c1")
+        residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
+
+        residual["result_ref"] = ".orderfield/work/scratch/c1/missing.md"
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+        missing = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn("existing path under the project", missing.stdout)
+
+        outside = Path(tempfile.mkdtemp(prefix="of-result-outside-"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "result.md").write_text("outside", encoding="utf-8")
+        link = self.tmp / ".orderfield/work/scratch/c1/escape"
+        link.symlink_to(outside, target_is_directory=True)
+        residual["result_ref"] = ".orderfield/work/scratch/c1/escape/result.md"
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+        escaped = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(escaped.returncode, 2)
+        self.assertIn("existing path under the project", escaped.stdout)
+
+    def test_pack_rejects_unsafe_child_ids_and_out_paths_without_artifacts(self) -> None:
+        bad_ids = ("../escape", "a/b", ".", "white space")
+        for child_id in bad_ids:
+            with self.subTest(child_id=child_id):
+                packed = run_of(
+                    self.tmp,
+                    "pack",
+                    "--slice",
+                    "s",
+                    "--role",
+                    "implementer",
+                    "--child-id",
+                    child_id,
+                )
+                self.assertNotEqual(packed.returncode, 0)
+                self.assertIn("invalid child_id", packed.stderr)
+
+        for out in ("../packet.json", ".orderfield/packet.json", str(self.tmp / "x.json")):
+            with self.subTest(out=out):
+                packed = run_of(
+                    self.tmp,
+                    "pack",
+                    "--slice",
+                    "s",
+                    "--role",
+                    "implementer",
+                    "--child-id",
+                    "safe",
+                    "--out",
+                    out,
+                )
+                self.assertNotEqual(packed.returncode, 0)
+        self.assertFalse(packet_path(self.tmp, "safe").exists())
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield/state.json")["children_spawned"], 0
+        )
+
+    def test_pack_rejects_symlinked_parent_of_canonical_packet(self) -> None:
+        escaped = self.tmp / "escaped"
+        escaped.mkdir()
+        wave = self.tmp / ".orderfield/waves/001"
+        wave.mkdir(parents=True)
+        (wave / "packets").symlink_to(escaped, target_is_directory=True)
+
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "must remain under the field",
+            "--role",
+            "implementer",
+            "--child-id",
+            "c1",
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        self.assertIn("symlink component", packed.stderr)
+        self.assertFalse((escaped / "c1.json").exists())
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield/state.json")["children_spawned"], 0
+        )
+
+    def test_init_rejects_symlinked_field_root_without_escaped_artifacts(self) -> None:
+        base = Path(tempfile.mkdtemp(prefix="of-symlink-field-root-"))
+        self.addCleanup(shutil.rmtree, base, True)
+        project = base / "project"
+        external = base / "external"
+        project.mkdir()
+        external.mkdir()
+        (project / ".orderfield").symlink_to(external, target_is_directory=True)
+
+        initialized = run_of(project, "init", "--mission", "m", "--phase", "explore")
+
+        self.assertNotEqual(initialized.returncode, 0)
+        self.assertIn("symlink", initialized.stderr)
+        self.assertFalse((external / "ORDER.json").exists())
+        self.assertFalse((external / "state.json").exists())
+        self.assertFalse((external / "field.lock").exists())
+
+    def test_kernel_root_guard_rejects_a_symlinked_project_root(self) -> None:
+        real = Path(tempfile.mkdtemp(prefix="of-real-project-root-"))
+        self.addCleanup(shutil.rmtree, real, True)
+        link = real.parent / f"{real.name}-link"
+        link.symlink_to(real, target_is_directory=True)
+        self.addCleanup(link.unlink)
+
+        with self.assertRaises(SystemExit):
+            of.require_nonsymlink_kernel_root(link)
+
+    def test_noncanonical_packet_paths_are_rejected_even_with_valid_hash(self) -> None:
+        path = self._pack()
+        packet = load_json(path)
+        packet["residual_path"] = ".orderfield/waves/001/residuals/other.json"
+        packet["packet_hash"] = of.packet_digest(packet)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertNotEqual(collected.returncode, 0)
+        self.assertIn("noncanonical residual_path", collected.stderr)
+
+    def test_legacy_in_flight_packet_and_identity_free_residual_can_recover(self) -> None:
+        path = self._pack()
+        packet = load_json(path)
+        for key in ("packet_id", "packet_hash", "order_id"):
+            packet.pop(key)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        self.assertEqual(of.validate_packet(packet), [])
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(closed.returncode, 0, closed.stderr)
+
+        result = self.tmp / ".orderfield/work/scratch/c1/legacy-result.md"
+        result.write_text("legacy done", encoding="utf-8")
+        residual = load_json(DONE)
+        residual["result_ref"] = result.relative_to(self.tmp).as_posix()
+        residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "phase")
+        phased = run_of(self.tmp, "phase", "verify")
+        self.assertNotEqual(phased.returncode, 0)
+        self.assertIn("changed after its report", phased.stderr)
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertIn("changed after its report", advanced.stderr)
+
+    def test_spawn_does_not_write_an_invalid_extracted_residual(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "return malformed output",
+            "--role",
+            "explorer",
+            "--child-id",
+            "invalid_output",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        agent = self.tmp / "invalid-agent.py"
+        agent.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json\n"
+            "print(json.dumps({'status': 'done'}))\n",
+            encoding="utf-8",
+        )
+        agent.chmod(0o755)
+        env = {
+            **os.environ,
+            "OF_AGENT": str(agent),
+            "OF_NO_UPDATE_CHECK": "1",
+        }
+
+        spawned = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                ".orderfield/waves/001/packets/invalid_output.json",
+            ],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertIn("invalid residual extracted from stdout", spawned.stdout)
+        self.assertFalse(
+            (
+                self.tmp
+                / ".orderfield"
+                / "waves"
+                / "001"
+                / "residuals"
+                / "invalid_output.json"
+            ).exists()
+        )
 
 
 class CliFieldResidual(unittest.TestCase):
@@ -387,9 +910,7 @@ class CliFieldResidual(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def _drop_residual(self, src: Path, name: str = "explorer_demo.json") -> None:
-        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, Path(name).stem, src)
 
     def test_threshold_integrate_apply_blocks_spawn(self) -> None:
         expected = load_json(EVAL_FIELD)
@@ -406,7 +927,9 @@ class CliFieldResidual(unittest.TestCase):
         self.assertEqual(report["order_rev"], 1)
 
         order_before = load_json(self.tmp / ".orderfield" / "ORDER.json")
-        applied = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        applied = run_of(
+            self.tmp, "integrate", "--wave", "1", "--apply", "--recompute"
+        )
         self.assertEqual(applied.returncode, 0, applied.stderr)
         report2 = json.loads(applied.stdout)
         self.assertEqual(report2["regime"], "escalate_up")
@@ -429,10 +952,7 @@ class CliFieldResidual(unittest.TestCase):
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
         blob = (spawned.stdout + spawned.stderr).lower()
-        self.assertTrue(
-            "spawn" in blob and ("forbidden" in blob or "escalate" in blob),
-            blob,
-        )
+        self.assertIn("stale packet", blob)
 
         forced = run_of(
             self.tmp,
@@ -444,8 +964,8 @@ class CliFieldResidual(unittest.TestCase):
             "--dry-run",
             "--force-spawn",
         )
-        self.assertEqual(forced.returncode, 0, forced.stderr)
-        self.assertIn("dry-run", forced.stdout)
+        self.assertNotEqual(forced.returncode, 0)
+        self.assertIn("stale packet", (forced.stdout + forced.stderr).lower())
 
     def test_done_fixture_does_not_choose_phase(self) -> None:
         expected = load_json(EVAL_DONE)
@@ -584,7 +1104,8 @@ class PackCapsAndBlock(unittest.TestCase):
             "--child-id",
             "c1",
         )
-        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertNotEqual(again.returncode, 0)
+        self.assertIn("already registered", again.stderr)
         state = load_json(self.tmp / ".orderfield" / "state.json")
         self.assertEqual(state["children_spawned"], 2)
 
@@ -602,7 +1123,7 @@ class PackCapsAndBlock(unittest.TestCase):
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
         dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
-        dest.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "explorer_demo", THRESHOLD)
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
         report = json.loads(integrated.stdout)
@@ -635,6 +1156,21 @@ class PackCapsAndBlock(unittest.TestCase):
             "--force-spawn",
         )
         self.assertEqual(forced.returncode, 0, forced.stderr)
+        forced_residual = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "residuals"
+            / "forced_child.json"
+        )
+        write_bound_residual(self.tmp, "forced_child")
+        reintegrated = run_of(
+            self.tmp, "integrate", "--wave", "1", "--recompute"
+        )
+        self.assertEqual(reintegrated.returncode, 0, reintegrated.stderr)
+        patched = run_of(self.tmp, "patch", "--notes", "addressed escalation")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
         nxt = run_of(self.tmp, "next-wave")
         self.assertEqual(nxt.returncode, 0, nxt.stderr)
         after = run_of(
@@ -774,7 +1310,7 @@ class CollectByPacketResidualPath(unittest.TestCase):
     def test_collect_and_integrate_ignore_stray_residuals(self) -> None:
         self._init_pack()
         dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
-        dest.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "explorer_demo")
         stray = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "stray.json"
         stray.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
@@ -816,7 +1352,7 @@ class CloseProtocolApply(unittest.TestCase):
             "explorer_demo",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
-        residual = load_json(DONE)
+        residual = bound_residual(self.tmp, "explorer_demo")
         residual["residual"]["proposed_patch"] = expected["proposed_patch"]
         dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
@@ -1045,7 +1581,7 @@ class HandoffPacket(unittest.TestCase):
 
     def test_handoff_succeeds_when_spawn_blocked(self) -> None:
         dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "h1.json"
-        dest.write_text(THRESHOLD.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "h1", THRESHOLD)
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
         report = json.loads(integrated.stdout)
@@ -1155,15 +1691,55 @@ class StalePackets(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         r = run_of(self.tmp, "patch", "--mission", e["live_mission"])
         self.assertEqual(r.returncode, 0, r.stderr)
-        r = run_of(self.tmp, "phase", e["live_phase"])
+        r = run_of(
+            self.tmp,
+            "phase",
+            e["live_phase"],
+            "--force",
+            "--reason",
+            "construct stale-packet regression fixture",
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
-    def test_pack_collect_integrate_fail_next_wave_skips(self) -> None:
+    def test_spawn_rejects_stale_packet_before_prompt_or_tool_execution(self) -> None:
+        self._init_leftover_and_rewrite()
+        child = self.expected["leftover_child_id"]
+        prompt = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "prompts"
+            / f"{child}.md"
+        )
+        prompt.write_text("sentinel prompt\n", encoding="utf-8")
+        session_before = load_json(self.tmp / ".orderfield" / "session.json")
+
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            f".orderfield/waves/001/packets/{child}.json",
+            "--force-spawn",
+        )
+
+        self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        self.assertIn("stale packet", (spawned.stdout + spawned.stderr).lower())
+        self.assertEqual(prompt.read_text(encoding="utf-8"), "sentinel prompt\n")
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "spawns").exists()
+        )
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield" / "session.json"), session_before
+        )
+
+    def test_pack_collect_integrate_and_next_wave_reject_stale_in_flight(self) -> None:
         e = self.expected
         self.assertTrue(e["pack_fails"])
         self.assertTrue(e["collect_fails"])
         self.assertTrue(e["integrate_fails"])
-        self.assertTrue(e["next_wave_skips_occupied_stale"])
         self._init_leftover_and_rewrite()
 
         packed = run_of(
@@ -1199,10 +1775,10 @@ class StalePackets(unittest.TestCase):
         self.assertIn("next-wave", iblob)
 
         nxt = run_of(self.tmp, "next-wave")
-        self.assertEqual(nxt.returncode, 0, nxt.stderr)
-        self.assertIn(f"wave={e['next_wave_lands_on']}", nxt.stdout)
+        self.assertNotEqual(nxt.returncode, 0, nxt.stdout + nxt.stderr)
+        self.assertIn("in flight", (nxt.stdout + nxt.stderr).lower())
         state = load_json(self.tmp / ".orderfield" / "state.json")
-        self.assertEqual(state["wave"], e["next_wave_lands_on"])
+        self.assertEqual(state["wave"], 1)
 
         leftover = (
             self.tmp
@@ -1213,30 +1789,8 @@ class StalePackets(unittest.TestCase):
             / f"{e['leftover_child_id']}.json"
         )
         self.assertTrue(leftover.is_file())
-        after = run_of(
-            self.tmp,
-            "pack",
-            "--slice",
-            "new work",
-            "--role",
-            "implementer",
-            "--child-id",
-            "a",
-        )
-        self.assertEqual(after.returncode, 0, after.stderr)
-        new_pkt = load_json(
-            self.tmp / ".orderfield" / "waves" / "003" / "packets" / "a.json"
-        )
-        self.assertEqual(new_pkt["order"]["mission"], e["live_mission"])
-        self.assertEqual(new_pkt["order"]["phase"], e["live_phase"])
-        self.assertFalse(
-            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "a.json").is_file()
-        )
-        self.assertFalse(
-            (self.tmp / ".orderfield" / "waves" / "002" / "packets" / "a.json").is_file()
-        )
 
-    def test_same_wave_newer_rev_is_not_stale(self) -> None:
+    def test_same_wave_newer_rev_rejects_existing_packet(self) -> None:
         r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
         r = run_of(
@@ -1248,9 +1802,10 @@ class StalePackets(unittest.TestCase):
         r = run_of(
             self.tmp, "pack", "--slice", "two", "--role", "explorer", "--child-id", "c2"
         )
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertTrue(
-            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c2.json").is_file()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("stale packets", r.stderr)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c2.json").exists()
         )
 
     def test_next_wave_lands_on_live_occupied_dir(self) -> None:
@@ -1269,6 +1824,8 @@ class StalePackets(unittest.TestCase):
             "2",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
         nxt = run_of(self.tmp, "next-wave")
         self.assertEqual(nxt.returncode, 0, nxt.stderr)
         self.assertIn("wave=2", nxt.stdout)
@@ -1363,7 +1920,14 @@ class PhaseScopedDoneWhen(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         opath = self.tmp / ".orderfield" / "ORDER.json"
         self.assertEqual(load_json(opath)["done_when_closed_phases"], ["explore"])
-        r = run_of(self.tmp, "phase", "cut")
+        r = run_of(
+            self.tmp,
+            "phase",
+            "cut",
+            "--force",
+            "--reason",
+            "exercise legacy closure migration",
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
         order = load_json(opath)
         self.assertEqual(order["phase"], "cut")
@@ -1501,7 +2065,14 @@ class MissionVsPhaseDoneWhen(unittest.TestCase):
         self._init()
         r = run_of(self.tmp, "patch", "--done-when", "build only criterion")
         self.assertEqual(r.returncode, 0, r.stderr)
-        r = run_of(self.tmp, "phase", "verify")
+        r = run_of(
+            self.tmp,
+            "phase",
+            "verify",
+            "--force",
+            "--reason",
+            "exercise mission criteria persistence",
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
         r = run_of(self.tmp, "patch", "--done-when", "verify the field")
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -1800,9 +2371,7 @@ class SessionCutResume(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def _drop_residual(self, src: Path, name: str = "c1.json") -> None:
-        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, Path(name).stem, src)
 
     def test_default_order_forbids_session_json(self) -> None:
         order = of.default_order("m", "explore")
@@ -1991,13 +2560,22 @@ class SessionCutResume(unittest.TestCase):
             load_json(self.tmp / ".orderfield" / "session.json")["in_flight"],
             [],
         )
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
         patch = run_of(self.tmp, "patch", "--notes", "leader note")
         self.assertEqual(patch.returncode, 0, patch.stderr)
         self.assertEqual(
             load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
             "patch",
         )
-        phase = run_of(self.tmp, "phase", "build")
+        phase = run_of(
+            self.tmp,
+            "phase",
+            "build",
+            "--force",
+            "--reason",
+            "exercise session mutation snapshots",
+        )
         self.assertEqual(phase.returncode, 0, phase.stderr)
         self.assertEqual(
             load_json(self.tmp / ".orderfield" / "session.json")["last_cmd"],
@@ -2059,7 +2637,7 @@ class UnpackRefundsBudget(unittest.TestCase):
     def test_unpack_refuses_a_child_that_reported(self) -> None:
         self._pack("c1")
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
-        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "c1")
         r = run_of(self.tmp, "unpack", "--child-id", "c1")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("residual", r.stderr)
@@ -2103,7 +2681,7 @@ class CollectSurvivesMissingResiduals(unittest.TestCase):
             )
             self.assertEqual(r.returncode, 0, r.stderr)
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "alive.json"
-        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "alive")
 
     def test_collect_reports_both_and_exits_2(self) -> None:
         r = run_of(self.tmp, "collect", "--wave", "1")
@@ -2176,11 +2754,320 @@ class ReopenDoneWhen(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
-        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "c1")
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
         report = json.loads(integrated.stdout)
         self.assertNotEqual(report["regime"], "phase")
+
+
+class StateMachineGuards(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-state-machine-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        initialized = run_of(
+            self.tmp, "init", "--mission", "m", "--phase", "explore"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+
+    def _pack(self, child_id: str = "c1", fixture: Path | None = DONE) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "state-machine evidence",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        if fixture is not None:
+            residual = (
+                self.tmp
+                / ".orderfield"
+                / "waves"
+                / "001"
+                / "residuals"
+                / f"{child_id}.json"
+            )
+            write_bound_residual(self.tmp, child_id, fixture)
+
+    def _close(self) -> None:
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(closed.returncode, 0, closed.stderr)
+
+    def _ready_for_phase(self) -> None:
+        self._close()
+        self._pack()
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "phase")
+
+    def test_phase_rejects_open_current_phase(self) -> None:
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("not closed", changed.stderr)
+
+    def test_phase_rejects_children_in_flight(self) -> None:
+        self._close()
+        self._pack(fixture=None)
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("in flight", changed.stderr)
+
+    def test_phase_rejects_unintegrated_wave(self) -> None:
+        self._close()
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("not integrated", changed.stderr)
+
+    def test_phase_requires_phase_report_regime(self) -> None:
+        self._pack()
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "hold")
+        self._close()
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("report regime is hold, not phase", changed.stderr)
+
+    def test_phase_requires_the_legal_next_phase(self) -> None:
+        self._ready_for_phase()
+        changed = run_of(self.tmp, "phase", "build")
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("legal next phase from explore is cut", changed.stderr)
+
+    def test_legal_phase_transition_succeeds(self) -> None:
+        self._ready_for_phase()
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["phase"], "cut")
+        self.assertIn("explore", order["done_when_closed_phases"])
+
+    def test_force_phase_requires_reason_and_persists_audit_evidence(self) -> None:
+        refused = run_of(self.tmp, "phase", "build", "--force")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("requires a nonempty --reason", refused.stderr)
+        blank = run_of(
+            self.tmp, "phase", "build", "--force", "--reason", "   "
+        )
+        self.assertNotEqual(blank.returncode, 0)
+
+        forced = run_of(
+            self.tmp,
+            "--json",
+            "phase",
+            "build",
+            "--force",
+            "--reason",
+            "operator recovery",
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertIn('"event": "phase_override"', forced.stderr)
+        self.assertIn("override=", forced.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        override = state["phase_overrides"][-1]
+        self.assertEqual(override["from_phase"], "explore")
+        self.assertEqual(override["to_phase"], "build")
+        self.assertEqual(override["reason"], "operator recovery")
+        self.assertEqual(override["order_rev_after"], override["order_rev_before"] + 1)
+        assert_draft_2020_12_valid(self, load_json(STATE_SCHEMA), state)
+
+    def test_next_wave_rejects_in_flight_and_unintegrated_waves(self) -> None:
+        unintegrated = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(unintegrated.returncode, 0)
+        self.assertIn("not integrated", unintegrated.stderr)
+        self._pack(fixture=None)
+        flying = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(flying.returncode, 0)
+        self.assertIn("in flight", flying.stderr)
+
+    def test_next_wave_rejects_packets_added_after_integration(self) -> None:
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self._pack()
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertIn("changed after its report", advanced.stderr)
+
+    def test_next_wave_rejects_residual_changed_after_integration(self) -> None:
+        self._pack()
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        write_bound_residual(self.tmp, "c1", THRESHOLD)
+
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertIn("changed after its report", advanced.stderr)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield/state.json")["wave"], 1
+        )
+
+    def test_partial_apply_late_threshold_requires_full_reduction(self) -> None:
+        self._pack("landed")
+        self._pack("late", fixture=None)
+        landed_path = (
+            self.tmp / ".orderfield/waves/001/residuals/landed.json"
+        )
+        landed = load_json(landed_path)
+        landed["residual"]["proposed_patch"] = {
+            "constraints+": ["partial patch landed"]
+        }
+        landed_path.write_text(json.dumps(landed), encoding="utf-8")
+
+        partial = run_of(
+            self.tmp, "integrate", "--wave", "1", "--partial", "--apply"
+        )
+        self.assertEqual(partial.returncode, 0, partial.stderr)
+        self.assertEqual(json.loads(partial.stdout)["skipped_in_flight"], ["late"])
+        write_bound_residual(self.tmp, "late", THRESHOLD)
+
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertIn("changed after its report", advanced.stderr)
+        recomputed = run_of(
+            self.tmp, "integrate", "--wave", "1", "--recompute"
+        )
+        self.assertEqual(recomputed.returncode, 0, recomputed.stderr)
+        self.assertEqual(json.loads(recomputed.stdout)["regime"], "escalate_up")
+        self.assertNotIn(
+            "skipped_in_flight",
+            load_json(self.tmp / ".orderfield/waves/001/report.json"),
+        )
+        still_blocked = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(still_blocked.returncode, 0)
+        self.assertIn("must exceed blocked_at_order_rev", still_blocked.stderr)
+
+    def test_integrated_wave_advances_and_combined_path_succeeds(self) -> None:
+        self._pack()
+        integrated = run_of(self.tmp, "integrate", "--wave", "1", "--next-wave")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
+
+    def test_escalation_requires_a_later_order_revision(self) -> None:
+        self._pack(fixture=THRESHOLD)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["blocked_at_order_rev"], 1)
+
+        refused = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("must exceed blocked_at_order_rev 1", refused.stderr)
+        patched = run_of(self.tmp, "patch", "--notes", "field reviewed")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertEqual(advanced.returncode, 0, advanced.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
+        self.assertFalse(state["spawn_blocked"])
+        self.assertIsNone(state["blocked_at_order_rev"])
+
+    def test_escalation_apply_can_satisfy_revision_guard_in_one_command(self) -> None:
+        self._pack(fixture=THRESHOLD)
+        integrated = run_of(
+            self.tmp,
+            "integrate",
+            "--wave",
+            "1",
+            "--apply",
+            "--next-wave",
+        )
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "escalate_up")
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(order["rev"], 2)
+        self.assertEqual(state["wave"], 2)
+        self.assertIsNone(state["blocked_at_order_rev"])
+
+    def test_integrate_rejects_partial_with_next_wave_before_writing_report(self) -> None:
+        self._pack("landed")
+        self._pack("flying", fixture=None)
+        integrated = run_of(
+            self.tmp,
+            "integrate",
+            "--wave",
+            "1",
+            "--partial",
+            "--next-wave",
+        )
+        self.assertNotEqual(integrated.returncode, 0)
+        self.assertIn("cannot be combined", integrated.stderr)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "report.json").exists()
+        )
+
+    def test_escalation_and_tool_overrides_are_independent(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "needs web",
+            "--role",
+            "explorer",
+            "--child-id",
+            "tools",
+            "--requires-tool",
+            "web",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        packet = ".orderfield/waves/001/packets/tools.json"
+        wrong_override = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            packet,
+            "--adapter",
+            "orca",
+            "--dry-run",
+            "--force-spawn",
+        )
+        self.assertNotEqual(wrong_override.returncode, 0)
+        self.assertIn("--force-tool", wrong_override.stderr)
+        tool_override = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            packet,
+            "--adapter",
+            "orca",
+            "--dry-run",
+            "--force-tool",
+        )
+        self.assertEqual(tool_override.returncode, 0, tool_override.stderr)
+
+        residual = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "tools.json"
+        write_bound_residual(self.tmp, "tools", THRESHOLD)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        blocked = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            packet,
+            "--adapter",
+            "orca",
+            "--dry-run",
+            "--force-tool",
+        )
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn("spawn forbidden", blocked.stderr)
+        both = run_of(
+            self.tmp,
+            "spawn",
+            "--packet",
+            packet,
+            "--adapter",
+            "orca",
+            "--dry-run",
+            "--force-spawn",
+            "--force-tool",
+        )
+        self.assertEqual(both.returncode, 0, both.stderr)
 
 
 class ResumeAfterIntegrate(unittest.TestCase):
@@ -2198,7 +3085,7 @@ class ResumeAfterIntegrate(unittest.TestCase):
 
     def test_next_is_next_wave_once_report_exists(self) -> None:
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
-        res.write_text(DONE.read_text(encoding="utf-8"), encoding="utf-8")
+        write_bound_residual(self.tmp, "c1")
         before = run_of(self.tmp, "resume")
         self.assertIn("next          collect", before.stdout)
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
@@ -2328,6 +3215,8 @@ class InitForceArchivesWaves(unittest.TestCase):
         waves = self.tmp / ".orderfield" / "waves"
         self.assertEqual(list(waves.iterdir()), [])
         # status wave 1 is now true, and next-wave advances 1 -> 2, not 1 -> N
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
         nxt = run_of(self.tmp, "next-wave")
         self.assertIn("wave=2", nxt.stdout)
 
@@ -2481,7 +3370,7 @@ class JsonEvents(unittest.TestCase):
 
 
 class PulseActivity(unittest.TestCase):
-    """of pulse reports an mtime activity heuristic; it never writes state."""
+    """Pulse leaves field artifacts unchanged; update caching is tested separately."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-pulse-"))
@@ -2544,24 +3433,52 @@ class PulseActivity(unittest.TestCase):
         (self.tmp / "product.txt").write_text("shared write", encoding="utf-8")
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("product repo is shared", r.stdout)
+        self.assertIn("product repo is shared wave context", r.stdout)
         self.assertIn("shared repo: last product write", r.stdout)
-        self.assertIn("shared repo/product.txt", r.stdout)
+        self.assertIn("product.txt", r.stdout)
+        self.assertNotIn(": shared repo/", r.stdout)
 
-    def test_pulse_is_read_only(self) -> None:
+    def test_shared_repo_activity_cannot_refresh_a_stale_child(self) -> None:
         self._pack()
-        session_path = self.tmp / ".orderfield" / "session.json"
-        state_path = self.tmp / ".orderfield" / "state.json"
-        before = (session_path.read_text(), state_path.read_text())
+        pkt_path = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        pkt = load_json(pkt_path)
+        pkt["packed_at"] = "2020-01-01T00:00:00Z"
+        pkt["packet_hash"] = of.packet_digest(pkt)
+        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
+        old = 1577836800
+        os.utime(pkt_path, (old, old))
+        (self.tmp / "product.txt").write_text("fresh shared write", encoding="utf-8")
+
+        r = run_of(self.tmp, "pulse")
+
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("shared repo: last product write", r.stdout)
+        self.assertIn("product.txt", r.stdout)
+        self.assertIn("STALE", r.stdout)
+        self.assertIn("freshest evidence", r.stdout)
+        self.assertNotIn(": shared repo/", r.stdout)
+
+    def test_pulse_does_not_mutate_order_state_session_or_wave(self) -> None:
+        self._pack()
+        field = self.tmp / ".orderfield"
+        paths = [
+            field / "ORDER.json",
+            field / "state.json",
+            field / "session.json",
+            *sorted((field / "waves" / "001").rglob("*")),
+        ]
+        files = [path for path in paths if path.is_file()]
+        before = {path: path.read_bytes() for path in files}
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(before, (session_path.read_text(), state_path.read_text()))
+        self.assertEqual(before, {path: path.read_bytes() for path in files})
 
     def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
         self._pack()
         pkt_path = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
         pkt = load_json(pkt_path)
         pkt["packed_at"] = "2020-01-01T00:00:00Z"
+        pkt["packet_hash"] = of.packet_digest(pkt)
         pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
         old = 1577836800  # 2020-01-01, matches packed_at
         os.utime(pkt_path, (old, old))
@@ -2584,6 +3501,260 @@ class PulseActivity(unittest.TestCase):
         found = of.repo_newest_mtime(self.tmp)
         self.assertIsNotNone(found)
         self.assertEqual(found[1], os.path.join("src", "a.ts"))
+
+
+class DurableConcurrentState(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-durable-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        initialized = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+
+    def _pack(self, child_id: str) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            f"work {child_id}",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+
+    def test_atomic_json_replace_preserves_old_file_and_cleans_temp_on_failure(self) -> None:
+        path = self.tmp / "artifact.json"
+        of.dump_json(path, {"before": True})
+        before = path.read_bytes()
+        with mock.patch.object(of.os, "replace", side_effect=OSError("boom")):
+            with self.assertRaisesRegex(OSError, "boom"):
+                of.dump_json(path, {"after": True})
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(path.parent.glob(".artifact.json.*.tmp")), [])
+
+    def test_nested_field_lock_is_reentrant_without_a_second_flock(self) -> None:
+        with of.field_lock(self.tmp, "outer", wait_seconds=0.1):
+            with of.field_lock(self.tmp, "inner", wait_seconds=0.0):
+                self.assertTrue((self.tmp / ".orderfield" / "field.lock").exists())
+
+    def test_read_only_status_does_not_wait_for_field_lock(self) -> None:
+        with of.field_lock(self.tmp, "test-holder", wait_seconds=0.1):
+            status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+
+    def test_collect_is_locked_while_render_stays_read_only(self) -> None:
+        self.assertEqual(self._pack("c1").returncode, 0)
+        write_bound_residual(self.tmp, "c1")
+        field_slave = self.tmp / ".orderfield" / "SLAVE.md"
+        field_slave.write_text("stale-but-readable\n", encoding="utf-8")
+        env = {
+            **os.environ,
+            "OF_NO_UPDATE_CHECK": "1",
+            "OF_FIELD_LOCK_WAIT_SECONDS": "0.1",
+        }
+        with of.field_lock(self.tmp, "test-holder", wait_seconds=0.1):
+            collected = subprocess.run(
+                [sys.executable, str(OF_PY), "collect", "--wave", "1"],
+                cwd=str(self.tmp), capture_output=True, text=True, env=env,
+            )
+            rendered = subprocess.run(
+                [
+                    sys.executable,
+                    str(OF_PY),
+                    "render",
+                    "--packet",
+                    ".orderfield/waves/001/packets/c1.json",
+                ],
+                cwd=str(self.tmp), capture_output=True, text=True, env=env,
+            )
+        self.assertNotEqual(collected.returncode, 0)
+        self.assertIn("field lock wait exceeded", collected.stderr)
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertEqual(field_slave.read_text(encoding="utf-8"), "stale-but-readable\n")
+
+    def test_lock_timeout_names_live_owner_and_dead_owner_recovery(self) -> None:
+        with of.field_lock(self.tmp, "test-holder", wait_seconds=0.1):
+            env = {
+                **os.environ,
+                "OF_NO_UPDATE_CHECK": "1",
+                "OF_FIELD_LOCK_WAIT_SECONDS": "0.1",
+            }
+            blocked = subprocess.run(
+                [
+                    sys.executable,
+                    str(OF_PY),
+                    "pack",
+                    "--slice",
+                    "blocked",
+                    "--role",
+                    "explorer",
+                    "--child-id",
+                    "blocked",
+                ],
+                cwd=str(self.tmp),
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn("field lock wait exceeded", blocked.stderr)
+        self.assertIn("command=test-holder", blocked.stderr)
+        self.assertIn("recovered automatically", blocked.stderr)
+        recovered = self._pack("recovered")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+
+    def test_concurrent_pack_cannot_exceed_max_children(self) -> None:
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+        processes = [
+            subprocess.Popen(
+                [
+                    sys.executable,
+                    str(OF_PY),
+                    "pack",
+                    "--slice",
+                    f"parallel {index}",
+                    "--role",
+                    "explorer",
+                    "--child-id",
+                    f"c{index}",
+                ],
+                cwd=str(self.tmp),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            )
+            for index in range(8)
+        ]
+        results = [process.communicate(timeout=15) + (process.returncode,) for process in processes]
+        self.assertEqual(sum(code == 0 for _out, _err, code in results), 4, results)
+        packets = list((self.tmp / ".orderfield" / "waves" / "001" / "packets").glob("*.json"))
+        self.assertEqual(len(packets), 4)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["children_spawned"], 4)
+        self.assertFalse(list((self.tmp / ".orderfield").rglob("*.tmp")))
+
+    def test_integrate_is_idempotent_and_changed_inputs_require_recompute(self) -> None:
+        self.assertEqual(self._pack("c1").returncode, 0)
+        residual_path = write_bound_residual(self.tmp, "c1")
+        first = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        report_path = self.tmp / ".orderfield" / "waves" / "001" / "report.json"
+        state_path = self.tmp / ".orderfield" / "state.json"
+        session_path = self.tmp / ".orderfield" / "session.json"
+        before = (report_path.read_bytes(), state_path.read_bytes(), session_path.read_bytes())
+
+        repeated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(repeated.returncode, 0, repeated.stderr)
+        self.assertEqual(
+            (report_path.read_bytes(), state_path.read_bytes(), session_path.read_bytes()),
+            before,
+        )
+
+        residual = load_json(residual_path)
+        residual["metrics"]["uncertainty"] = 0.1
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+        refused = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("--recompute", refused.stderr)
+        self.assertEqual(report_path.read_bytes(), before[0])
+
+        recomputed = run_of(self.tmp, "integrate", "--wave", "1", "--recompute")
+        self.assertEqual(recomputed.returncode, 0, recomputed.stderr)
+        state = load_json(state_path)
+        self.assertEqual(len(state["integration_history"]), 2)
+        self.assertEqual(len(list((report_path.parent / "integrations").glob("*.json"))), 2)
+        report = load_json(report_path)
+        self.assertTrue(report["integration"]["recompute"])
+        self.assertIsNotNone(report["integration"]["previous_input_hash"])
+
+    def test_identical_replay_repairs_report_derived_state(self) -> None:
+        self.assertEqual(self._pack("c1").returncode, 0)
+        write_bound_residual(self.tmp, "c1", THRESHOLD)
+        state_path = self.tmp / ".orderfield/state.json"
+        state_before = load_json(state_path)
+
+        first = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(json.loads(first.stdout)["regime"], "escalate_up")
+        state_path.write_text(json.dumps(state_before), encoding="utf-8")
+
+        replay = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        repaired = load_json(state_path)
+        self.assertTrue(repaired["spawn_blocked"])
+        self.assertEqual(repaired["blocked_at_order_rev"], 1)
+        self.assertEqual(len(repaired["integration_history"]), 1)
+        self.assertEqual(repaired["last_regime"], "escalate_up")
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertEqual(load_json(state_path)["wave"], 1)
+
+    def test_identical_replay_repairs_mission_streak_state(self) -> None:
+        self.assertEqual(self._pack("c1").returncode, 0)
+        residual_path = write_bound_residual(self.tmp, "c1", THRESHOLD)
+        residual = load_json(residual_path)
+        residual["residual"]["wants_to_change"] = ["mission"]
+        residual["residual"]["evidence"] = "mission evidence"
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+        state_path = self.tmp / ".orderfield/state.json"
+        state_before = load_json(state_path)
+
+        first = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        state_path.write_text(json.dumps(state_before), encoding="utf-8")
+        replay = run_of(self.tmp, "integrate", "--wave", "1")
+
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        repaired = load_json(state_path)
+        self.assertEqual(repaired["mission_change_streak"], 1)
+        self.assertEqual(repaired["mission_streak_waves"], [1])
+        self.assertTrue(repaired["spawn_blocked"])
+
+    def test_legacy_count_only_report_cannot_authorize_advancement(self) -> None:
+        self.assertEqual(self._pack("c1").returncode, 0)
+        residual_path = write_bound_residual(self.tmp, "c1")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report_path = self.tmp / ".orderfield/waves/001/report.json"
+        report = load_json(report_path)
+        report.pop("integration")
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        residual = load_json(residual_path)
+        residual["status"] = "threshold"
+        residual["residual"]["wants_to_change"] = ["constraints"]
+        residual["residual"]["evidence"] = "changed after legacy report"
+        residual["metrics"]["divergence"] = 0.5
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+
+        advanced = run_of(self.tmp, "next-wave")
+
+        self.assertNotEqual(advanced.returncode, 0)
+        self.assertIn("changed after its report", advanced.stderr)
+        self.assertEqual(load_json(self.tmp / ".orderfield/state.json")["wave"], 1)
+        self.assertIsInstance(of.load_wave_report(report_path), dict)
+
+    def test_partial_recovery_is_auditable_and_mission_streak_ticks_once(self) -> None:
+        self.assertEqual(self._pack("mission").returncode, 0)
+        self.assertEqual(self._pack("later").returncode, 0)
+        mission_path = write_bound_residual(self.tmp, "mission", THRESHOLD)
+        mission_residual = load_json(mission_path)
+        mission_residual["residual"]["wants_to_change"] = ["mission"]
+        mission_residual["residual"]["evidence"] = "mission evidence"
+        mission_path.write_text(json.dumps(mission_residual), encoding="utf-8")
+        partial = run_of(self.tmp, "integrate", "--wave", "1", "--partial")
+        self.assertEqual(partial.returncode, 0, partial.stderr)
+        self.assertEqual(load_json(self.tmp / ".orderfield" / "state.json")["mission_change_streak"], 1)
+        write_bound_residual(self.tmp, "later")
+        refused = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(refused.returncode, 0)
+        recovered = run_of(self.tmp, "integrate", "--wave", "1", "--recompute")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["mission_change_streak"], 1)
+        self.assertEqual(state["mission_streak_waves"], [1])
+        self.assertEqual(len(state["integration_history"]), 2)
+        self.assertNotIn("skipped_in_flight", load_json(self.tmp / ".orderfield" / "waves" / "001" / "report.json"))
 
 
 class UpdateNotice(unittest.TestCase):

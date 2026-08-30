@@ -7,7 +7,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
 4. Every child close-out is a valid residual JSON, not loose prose.
 5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
-6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when`) forbids spawn in that wave until the field is patched and `next-wave` runs.
+6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) forbids spawn in that wave until the field is patched and guarded `next-wave` runs.
 7. **Same harness only** by default: spawn with the current session adapter for the whole ORDER. Pin it with `of patch --harness <adapter>` (a field, not a prose constraint). Do not mix harnesses unless the user explicitly asks. Then `of detect` (PATH ≠ auth).
 8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
 9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for false-scope/marketing risk and adversary catches; theater for bump+obvious feature (doc-manager + grok-build feedbacks).
@@ -27,6 +27,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
+| [docs/roadmap.md](docs/roadmap.md) | Canonical deferred 0.5.0 work |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
 | [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
@@ -52,6 +53,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Portable doctrine (`.orderfield/SLAVE.md`, repo-relative reference) | documented |
 | `/of` alias skill + versioned description | documented |
 | Optional `--json` / `OF_JSON` events | documented |
+| 0.4.2 state-machine integrity + 0.5.0 deferred operations | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.4.1 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.4.2 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.4.1"
+  version: "0.4.2"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,7 +19,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces pack caps, stale-packet identity, residual shape and metric types, spawn blocking, a closed regime menu, and safe ORDER write paths when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful child-authored metrics, and the one-writer discipline remain protocol. It does not lock files, create worktrees, attest metrics, or police a disobedient child.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for CLI mutations, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, create worktrees, attest metrics, or police a disobedient child.
 
 ## When to use
 
@@ -96,7 +96,7 @@ Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if yo
 
 An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds the child budget**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence).
 
-Pack refuses if the target wave already has leftover packets whose embedded `order.id`, `phase`, or `mission` disagree with the live ORDER (a rewritten mission with the same id is stale; `rev` is not the signal). Run `of next-wave`; it skips occupied stale dirs.
+New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
 Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. If every child needs it, put it in constraints, not in `--slice`.
 
@@ -131,7 +131,7 @@ python3 <skill>/scripts/of.py pulse            # one screen, exit 2 if any child
 python3 <skill>/scripts/of.py pulse --watch    # refresh every 30s until Ctrl+C
 ```
 
-Read-only activity heuristic over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest shared-repo product write (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Scratch includes the child's contract-required heartbeat, and the repo signal is shared across children, so pulse is neither process health nor per-child product-write attribution. `STALE` is a signal, not an action: the kernel never kills or unpacks; releasing a dead child stays a human/leader call (`of unpack`). Pulse writes nothing — do not use it as a checkpoint.
+Read-only activity heuristic over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest shared-repo product write (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Scratch includes the child's contract-required heartbeat, and the repo signal is shared across children, so pulse is neither process health nor per-child product-write attribution. `STALE` is a signal, not an action: the kernel never kills or unpacks; releasing a dead child stays a human/leader call (`of unpack`). Pulse does not mutate ORDER, state, session, or wave artifacts; its update-notice throttle may write the user cache (`~/.cache/orderfield/update-check.json`, or `OF_UPDATE_CACHE`). Do not use pulse as a checkpoint.
 
 Slaves keep the lens honest with the heartbeat in `SLAVE.md`: one line appended to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command, so a long read-only stretch does not look dead. It is metadata for pulse, not a diary — the leader never judges its content.
 
@@ -149,13 +149,15 @@ Collect and integrate also refuse a wave that contains stale leftover packets (t
 
 One dead child does not freeze the wave: `collect` prints `MISSING <child_id>` per absent residual, keeps walking, and exits 2 when anything is missing or invalid. To reduce what did land while a straggler keeps flying, use `of integrate --wave N --partial` — skipped children are listed in the report as `skipped_in_flight` and stay in flight. Without `--partial`, integrate still refuses an incomplete wave. A child that will never report is released with `of unpack`.
 
+Integration hashes the canonical packet/residual set plus reduction options. Replaying identical inputs is a no-op that also repairs report-derived state after interruption. Changed inputs require explicit `--recompute`, which preserves an auditable integration record. Phase and wave movement require complete, current-digest integration with no in-flight children; phase movement is sequential and closed, and `phase --force --reason …` is the audited break-glass path.
+
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
-Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`.
+Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. In 0.4.2, `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic.
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
-Golden rule: **if there is a residual on mission, phase, constraints, or done_when, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
+Golden rule: **if there is a residual on mission, phase, constraints, done_when, or workspace, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
 
 ### 6. Patch the field, then re-enslave
 
@@ -183,7 +185,7 @@ Role contracts are built in: every rendered prompt carries a `Role contract — 
 python3 <skill>/scripts/of.py phase build
 ```
 
-Only when `done_when` is closed (`of patch --done-when-closed`) and the last wave's residuals are ~0. A `status=done` residual does **not** advance the phase by itself. `integrate` may emit regime `phase` only after that flag is set; you still run `of phase` to move.
+Only when `done_when` is closed (`of patch --done-when-closed`), the current wave has a digest-current complete integration whose regime is `phase`, and no child is in flight. Movement is one official phase at a time. A `status=done` residual does **not** advance the phase by itself. `phase --force --reason "…"` is audited break-glass.
 
 #### Mission vs phase `done_when`
 
@@ -206,11 +208,12 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not do the slave's work.
 - Do not paste child transcripts into your context. Residual only.
 - Do not launch explorer and implementer in the same wave.
-- Do not chain `scale_across`. After a specialist, the default is escalate_up.
+- Legacy `scale_across` reports remain readable for recovery, but 0.4.2 does not select new across waves.
 - Do not rewrite the mission because a child asked. That is a residual. It goes to `integrate`.
 - Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
+- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. In 0.4.2 they are advisory/reserved contract fields; only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
