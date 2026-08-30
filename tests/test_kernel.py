@@ -24,6 +24,9 @@ EVAL_DONE = ROOT / "evals" / "expected" / "done-not-phase.json"
 EVAL_CLOSED = ROOT / "evals" / "expected" / "done-when-closed-apply.json"
 EVAL_COLLECT = ROOT / "evals" / "expected" / "collect-by-packet.json"
 EVAL_STALE = ROOT / "evals" / "expected" / "stale-packets.json"
+RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.schema.json"
+CODEX_RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.codex.schema.json"
+DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 
 
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -40,6 +43,94 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def assert_draft_2020_12_valid(
+    case: unittest.TestCase,
+    schema: dict,
+    instance: object,
+    path: str = "$",
+) -> None:
+    """Validate the Draft 2020-12 keywords used by shipped residual schemas."""
+    case.assertEqual(schema.get("$schema", DRAFT_2020_12), DRAFT_2020_12)
+    schema_type = schema.get("type")
+    allowed = [schema_type] if isinstance(schema_type, str) else schema_type or []
+    matches = {
+        "null": instance is None,
+        "object": isinstance(instance, dict),
+        "array": isinstance(instance, list),
+        "string": isinstance(instance, str),
+        "boolean": isinstance(instance, bool),
+        "integer": isinstance(instance, int) and not isinstance(instance, bool),
+        "number": isinstance(instance, (int, float)) and not isinstance(instance, bool),
+    }
+    if allowed:
+        case.assertTrue(
+            any(matches.get(kind, False) for kind in allowed),
+            f"{path}: expected {allowed}, got {type(instance).__name__}",
+        )
+    if "enum" in schema:
+        case.assertIn(instance, schema["enum"], path)
+    if instance is None:
+        return
+    if isinstance(instance, dict) and "object" in allowed:
+        properties = schema.get("properties", {})
+        for key in schema.get("required", []):
+            case.assertIn(key, instance, f"{path}: missing required property {key}")
+        if schema.get("additionalProperties") is False:
+            case.assertFalse(
+                set(instance) - set(properties),
+                f"{path}: unexpected properties {sorted(set(instance) - set(properties))}",
+            )
+        for key, value in instance.items():
+            if key in properties:
+                assert_draft_2020_12_valid(
+                    case, properties[key], value, f"{path}.{key}"
+                )
+    if isinstance(instance, list) and "array" in allowed and "items" in schema:
+        for index, value in enumerate(instance):
+            assert_draft_2020_12_valid(
+                case, schema["items"], value, f"{path}[{index}]"
+            )
+    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        if "minimum" in schema:
+            case.assertGreaterEqual(instance, schema["minimum"], path)
+        if "maximum" in schema:
+            case.assertLessEqual(instance, schema["maximum"], path)
+
+
+def codex_strict_schema_from(canonical: object) -> object:
+    """Test oracle for Codex's closed/all-required output-schema subset."""
+    if isinstance(canonical, list):
+        return [codex_strict_schema_from(item) for item in canonical]
+    if not isinstance(canonical, dict):
+        return canonical
+    strict = {
+        key: codex_strict_schema_from(value) for key, value in canonical.items()
+    }
+    schema_type = canonical.get("type")
+    is_object = schema_type == "object" or (
+        isinstance(schema_type, list) and "object" in schema_type
+    )
+    if not is_object:
+        return strict
+    properties = canonical.get("properties", {})
+    canonical_required = set(canonical.get("required", []))
+    strict_properties = {}
+    for key, value in properties.items():
+        strict_value = codex_strict_schema_from(value)
+        if key not in canonical_required:
+            value_type = strict_value["type"]
+            strict_value["type"] = (
+                [value_type, "null"]
+                if isinstance(value_type, str)
+                else [*value_type, "null"]
+            )
+        strict_properties[key] = strict_value
+    strict["properties"] = strict_properties
+    strict["required"] = list(properties)
+    strict["additionalProperties"] = False
+    return strict
 
 
 class DecideRegimeShipped(unittest.TestCase):
@@ -185,6 +276,85 @@ class DecideRegimeShipped(unittest.TestCase):
         self.assertEqual(regime, "escalate_up")
         self.assertIn("constraints", reason)
         self.assertNotIn("not scale_out", reason)
+
+
+class ResidualValidation(unittest.TestCase):
+    def test_rejects_malformed_metric_types_and_ranges(self) -> None:
+        invalid_metrics = {
+            "uncertainty": ("unknown", True, -0.1, 1.1, float("nan")),
+            "divergence": ("high", True, -0.1, 1.1, float("inf")),
+            "tool_failures": ("1", True, -1, 1.5),
+            "novelty": (0, "false", None),
+        }
+        for key, values in invalid_metrics.items():
+            for value in values:
+                with self.subTest(metric=key, value=value):
+                    residual = load_json(DONE)
+                    residual["metrics"][key] = value
+                    errors = of.validate_residual(residual)
+                    self.assertTrue(
+                        any(error.startswith(f"metrics.{key} must") for error in errors),
+                        errors,
+                    )
+
+    def test_integrate_rejects_malformed_metrics_before_regime_selection(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-invalid-metrics-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        initialized = run_of(
+            tmp, "init", "--mission", "m", "--phase", "explore"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        packed = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        residual = load_json(DONE)
+        residual["metrics"]["divergence"] = "not-a-number"
+        path = tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        path.write_text(json.dumps(residual), encoding="utf-8")
+
+        integrated = run_of(tmp, "integrate", "--wave", "1")
+
+        self.assertNotEqual(integrated.returncode, 0)
+        output = integrated.stdout + integrated.stderr
+        self.assertIn("metrics.divergence must be a number from 0 to 1", output)
+        self.assertNotIn("Traceback", output)
+
+
+class ResidualSchemaContracts(unittest.TestCase):
+    def test_shipped_fixtures_validate_against_canonical_draft_2020_12(self) -> None:
+        schema = load_json(RESIDUAL_SCHEMA)
+        self.assertEqual(schema["$schema"], DRAFT_2020_12)
+        for fixture in (DONE, THRESHOLD):
+            with self.subTest(fixture=fixture.name):
+                residual = load_json(fixture)
+                assert_draft_2020_12_valid(self, schema, residual)
+                self.assertEqual(of.validate_residual(residual), [])
+
+    def test_codex_schema_preserves_nullable_optional_values(self) -> None:
+        schema = load_json(CODEX_RESIDUAL_SCHEMA)
+        done = load_json(DONE)
+        done["child_id"] = None
+        done["role"] = None
+        assert_draft_2020_12_valid(self, schema, done)
+
+        threshold = load_json(THRESHOLD)
+        threshold["child_id"] = None
+        threshold["role"] = None
+        threshold["residual"]["proposed_patch"].update(
+            {
+                "done_when+": None,
+                "notes": None,
+                "done_when_closed": None,
+            }
+        )
+        assert_draft_2020_12_valid(self, schema, threshold)
+
+    def test_codex_schema_is_strict_derivative_without_semantic_drift(self) -> None:
+        expected = codex_strict_schema_from(load_json(RESIDUAL_SCHEMA))
+        expected["$id"] = "orderfield/residual.codex.schema.json"
+        expected["title"] = "Orderfield residual (Codex strict output)"
+        self.assertEqual(load_json(CODEX_RESIDUAL_SCHEMA), expected)
 
 
 class CliFieldResidual(unittest.TestCase):
@@ -1536,8 +1706,66 @@ class HeadlessArgv(unittest.TestCase):
         argv = self.argv("codex")
         self.assertIn("-o", argv)
         self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
-        if (of.skill_root() / "schemas" / "residual.schema.json").exists():
+        if CODEX_RESIDUAL_SCHEMA.exists():
             self.assertIn("--output-schema", argv)
+            self.assertEqual(
+                Path(argv[argv.index("--output-schema") + 1]),
+                CODEX_RESIDUAL_SCHEMA,
+            )
+
+    def test_only_codex_receives_the_strict_output_schema(self) -> None:
+        for adapter in ("claude", "grok", "agy", "cursor", "opencode", "orca"):
+            with self.subTest(adapter=adapter):
+                self.assertNotIn("--output-schema", self.argv(adapter))
+
+    def test_codex_output_schema_closes_every_object_branch(self) -> None:
+        argv = self.argv("codex")
+        schema_path = Path(argv[argv.index("--output-schema") + 1])
+        schema = load_json(schema_path)
+        proposed_patch = schema["properties"]["residual"]["properties"][
+            "proposed_patch"
+        ]
+        self.assertEqual(proposed_patch["type"], ["object", "null"])
+        self.assertIs(proposed_patch["additionalProperties"], False)
+        nullable_patch_types = {
+            "constraints+": "array",
+            "done_when+": "array",
+            "notes": "string",
+            "done_when_closed": "boolean",
+        }
+        for key, value_type in nullable_patch_types.items():
+            self.assertEqual(
+                set(proposed_patch["properties"][key]["type"]),
+                {value_type, "null"},
+            )
+        for key in ("child_id", "role"):
+            self.assertEqual(
+                set(schema["properties"][key]["type"]), {"string", "null"}
+            )
+
+        def assert_strict_objects(node: object, path: str = "$") -> None:
+            if isinstance(node, dict):
+                node_type = node.get("type")
+                if node_type == "object" or (
+                    isinstance(node_type, list) and "object" in node_type
+                ):
+                    self.assertIs(
+                        node.get("additionalProperties"),
+                        False,
+                        f"open object schema at {path}",
+                    )
+                    self.assertEqual(
+                        set(node.get("required", [])),
+                        set(node.get("properties", {})),
+                        f"required keys differ from properties at {path}",
+                    )
+                for key, value in node.items():
+                    assert_strict_objects(value, f"{path}.{key}")
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    assert_strict_objects(value, f"{path}[{index}]")
+
+        assert_strict_objects(schema)
 
 
 class SessionCutResume(unittest.TestCase):
@@ -1595,6 +1823,8 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("explorer", r.stdout)
         self.assertIn("map pricing models", r.stdout)
         self.assertIn("scratch     no", r.stdout)
+        self.assertIn("activity      of pulse", r.stdout)
+        self.assertNotIn("liveness", r.stdout.lower())
         self.assertIn("next          hold", r.stdout)
         self.assertNotIn("auto-spawn", r.stdout.lower())
         self.assertNotRegex(r.stdout.lower(), r"\blogs\b")
@@ -1722,6 +1952,8 @@ class SessionCutResume(unittest.TestCase):
         r = run_of(self.tmp, "status")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("in_flight   1", r.stdout)
+        self.assertIn("activity    of pulse", r.stdout)
+        self.assertNotIn("liveness", r.stdout.lower())
         self._drop_residual(DONE)
         r2 = run_of(self.tmp, "status")
         self.assertEqual(r2.returncode, 0, r2.stderr)
@@ -2248,8 +2480,8 @@ class JsonEvents(unittest.TestCase):
         self.assertTrue(payload.get("ok"))
 
 
-class PulseLiveness(unittest.TestCase):
-    """of pulse derives liveness from mtimes; it never writes state."""
+class PulseActivity(unittest.TestCase):
+    """of pulse reports an mtime activity heuristic; it never writes state."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-pulse-"))
@@ -2298,6 +2530,23 @@ class PulseLiveness(unittest.TestCase):
         self.assertIn("c1", r.stdout)
         self.assertIn("ALIVE", r.stdout)
         self.assertIn("scratch: last write", r.stdout)
+        self.assertIn("mtime heuristic", r.stdout)
+
+    def test_pulse_help_names_activity_heuristic_not_liveness(self) -> None:
+        r = run_of(self.tmp, "pulse", "--help")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("activity heuristic", r.stdout)
+        self.assertIn("shared-repo mtimes", r.stdout)
+        self.assertNotIn("liveness", r.stdout.lower())
+
+    def test_shared_repo_signal_is_not_presented_as_child_attribution(self) -> None:
+        self._pack()
+        (self.tmp / "product.txt").write_text("shared write", encoding="utf-8")
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("product repo is shared", r.stdout)
+        self.assertIn("shared repo: last product write", r.stdout)
+        self.assertIn("shared repo/product.txt", r.stdout)
 
     def test_pulse_is_read_only(self) -> None:
         self._pack()

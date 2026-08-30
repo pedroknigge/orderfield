@@ -120,7 +120,7 @@ def build_spawn_argv(
         ]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
-        schema = skill_root() / "schemas" / "residual.schema.json"
+        schema = skill_root() / "schemas" / "residual.codex.schema.json"
         argv = [
             bin_,
             "exec",

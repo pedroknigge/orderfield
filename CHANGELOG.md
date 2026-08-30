@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1
+
+Contract-boundary and release-hardening patch.
+
+- Fix: Codex receives a strict-compatible residual output schema; every object branch is closed and nullable patch fields preserve the existing residual contract. Regression coverage checks the complete strict shape.
+- Fix: handwritten residual validation rejects malformed metric types, non-finite/out-of-range uncertainty or divergence, negative/non-integer tool failures, and non-boolean novelty before regime selection.
+- Packaging: the repository now owns an `of/SKILL.md`, so the preferred `npx skills` discovery path exposes `/of` as well as `/orderfield`; the classic installer copies that same alias source.
+- Docs: position Orderfield as a portable, disk-backed contract kernel; distinguish kernel enforcement from role/workspace/metric protocol; describe pulse as an mtime activity heuristic; narrow triggers; and make when-it-pays versus theater explicit.
+- Release: version validation now covers README, the static alias, and current-version docs. Publication notes require scoped-diff review, package discovery/install checks, an annotated tag, a GitHub release, and remote verification.
+- Packaging: VERSION 0.4.1; skill description preview `v0.4.1 — …`.
+
 ## 0.4.0
 
 Liveness release. Field request (2026-08-30): two long-running ORDERs *looked* hung while their implementers were mid-wave — the leader is silent by design between spawn and collect, so the user had nothing to look at. The answer is not a chattier leader (that invariant stays); it is a read-only lens over state that already lives on disk.

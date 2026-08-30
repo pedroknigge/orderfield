@@ -1,32 +1,34 @@
 ---
 name: orderfield
-description: v0.4.0 — Use when the user says orderfield, /of, of, order field, Haken slaving, threshold delegation, or agent waves, or wants Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity (agy), or any other agent coordinated without micromanagement. Load before spawning subagents under a shared ORDER. Unknown harnesses use generic mode.
+description: v0.4.1 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy. Kernel uses stdlib only.
 metadata:
-  version: "0.4.0"
+  version: "0.4.1"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
 
 # Orderfield
 
-Portable orchestration kernel based on Haken's slaving principle. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) is only the substrate that starts and stops processes. The invariants live here.
+Orderfield is an Agent Skill plus a Python stdlib contract kernel for portable, disk-backed agent waves. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk.
 
 `/of` is an installed alias for this skill: invoking it means invoking `/orderfield` — same doctrine, same kernel.
 
-You write the field. You pack, integrate, and patch. You are not the swarm. Slaves move freely *inside* the packet. If the field is not enough, patch the field. Only then open an extra degree of freedom.
+The leader designs the field, packs work, and explicitly integrates or patches it. Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
-This is slaving-by-contract, not adiabatic following. The field is designed (`of init`). It does not emerge from uncoordinated parts. Invariants: `references/principles.md`.
+This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
+
+The kernel enforces pack caps, stale-packet identity, residual shape and metric types, spawn blocking, a closed regime menu, and safe ORDER write paths when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful child-authored metrics, and the one-writer discipline remain protocol. It does not lock files, create worktrees, attest metrics, or police a disobedient child.
 
 ## When to use
 
-- The user asks to orchestrate, delegate, launch subagents, or do it with Haken / orderfield / order field.
+- The user explicitly invokes Orderfield, `/orderfield`, `/of`, Haken slaving, threshold delegation, or an order field.
 - The task does not fit one context without losing quality.
-- Two or more harnesses must coordinate, or the same harness must run in parallel.
+- Multiple slices or writers need explicit ownership, or multiple harnesses must coordinate.
 - `.orderfield/ORDER.json` already exists in the repo.
 
-If the task fits one agent plus a skill, do not spawn. Skill beats child.
+A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child.
 
 ## Mandatory leader process
 
@@ -73,7 +75,7 @@ Official phases: `explore | cut | build | verify | deliver`.
 | Pays | Theater |
 |------|---------|
 | False-scope / marketing risk (adversary can catch a lie before ship) | VERSION bump + one obvious feature |
-| Multi-harness or colliding product paths that need exclusive owners | Single agent + a skill already fits (`skill beats child`) |
+| Colliding product paths or multiple harnesses that need explicit owners | Single agent, ordinary subagent, or one skill already fits |
 | Unknown territory that needs tools and will not fit one context | Explore/cut ceremony when the design is already in the feedback |
 
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
@@ -129,7 +131,7 @@ python3 <skill>/scripts/of.py pulse            # one screen, exit 2 if any child
 python3 <skill>/scripts/of.py pulse --watch    # refresh every 30s until Ctrl+C
 ```
 
-Read-only lens over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest product write in the repo (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Liveness is **derived from mtimes**, never self-reported — a hung process cannot fake an mtime that keeps advancing. `STALE` is a signal, not an action: the kernel never kills or unpacks on it; releasing a dead child stays a human/leader call (`of unpack`). Pulse writes nothing — do not use it as a checkpoint.
+Read-only activity heuristic over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest shared-repo product write (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Scratch includes the child's contract-required heartbeat, and the repo signal is shared across children, so pulse is neither process health nor per-child product-write attribution. `STALE` is a signal, not an action: the kernel never kills or unpacks; releasing a dead child stays a human/leader call (`of unpack`). Pulse writes nothing — do not use it as a checkpoint.
 
 Slaves keep the lens honest with the heartbeat in `SLAVE.md`: one line appended to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command, so a long read-only stretch does not look dead. It is metadata for pulse, not a diary — the leader never judges its content.
 

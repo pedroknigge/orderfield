@@ -2,11 +2,11 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.3.2` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.4.1` — see [`VERSION`](../VERSION)
 
 ## Shape
 
-One slow field (`.orderfield/ORDER.json`) enslaves fast children via packets. The harness CLI is transport only.
+One leader-designed field (`.orderfield/ORDER.json`) constrains fresh-context children through packets. The harness CLI is process transport; Orderfield is the disk contract and regime kernel.
 
 ```
 leader → of resume → of pack → packet → of spawn|handoff → child → residual → of collect → of integrate → ORDER'
@@ -21,6 +21,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | Regime menu | `decide_regime` in kernel — closed set |
 | Caps | Bind at `of pack` (and collect), not only spawn |
 | Product file exclusivity | Cut plan + constraints — **not** a kernel lock |
+| Role/workspace compliance and metric truth | Child/leader contract — values are shape-checked, not attested |
 
 ## Key modules (code)
 
@@ -32,12 +33,14 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_unpack` | Release packed child that never reported; refunds `children_spawned` |
 | `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed |
 | `ORDER.harness` / `ORDER.backlog` | First-class fields (not prose constraints) |
+| `validate_residual` | Reject malformed metric types/ranges before regime selection |
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; optional `--summary` |
 | `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary) |
 | in-flight | Packed child with missing residual; `of status` surfaces count |
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events for pack/spawn/collect/integrate |
-| `install.sh` | Skill copies + `of` PATH → installed skill |
+| `cmd_pulse` | Per-child scratch + shared-repo mtime activity heuristic; not process health or write attribution |
+| `install.sh` + `of/SKILL.md` | Skill copies, static `/of` alias, and `of` PATH → installed kernel |
 
 ## Reversible field (0.3.0+)
 

@@ -8,13 +8,13 @@
 **Intent:** audit → integrate (patch)  
 **Out:** root  
 **Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
-**Code rev:** VERSION `0.3.2` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.4.1` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 21 |
+| OK | 25 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -23,15 +23,15 @@
 | Severity | Count |
 |----------|------:|
 | critical | 0 |
-| normal | 25 |
+| normal | 29 |
 
-**Truth score (advisory):** `(21*100 + 3*50) / 25 = 90.0`  
+**Truth score (advisory):** `(25*100 + 3*50) / 29 = 91.4`
 **CI gate:** no critical Contradicted after integrate patch.
 
 **Top risks (post-patch):**  
 1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
 2. `detect` ≠ login/auth — documented Partial.  
-3. When-pays / optional-cut doctrine is protocol (docs), not a kernel regime — OK as doctrine.
+3. Role/workspace compliance, metric truth, and pulse attribution are contract boundaries — documented, not runtime guarantees.
 
 **Recommended next Intent:** none (ship) | optional later: `of ask` / preference flag.
 
@@ -50,13 +50,13 @@
 
 | ID | Claim | Source doc | Code evidence | Anchor path | Anchor symbol | Severity | Verdict | Action |
 |----|-------|------------|---------------|-------------|---------------|----------|---------|--------|
-| C-001 | Native adapters include `agy` | SKILL / README / adapters | `ADAPTER_ORDER` includes `agy` | `scripts/of.py` | `ADAPTER_ORDER` | critical | OK | keep |
-| C-002 | Flags before `-p` for agy | adapters.md | `build_spawn_argv` agy branch | `scripts/of.py` | `build_spawn_argv` | critical | OK | keep |
+| C-001 | Native adapters include `agy` | SKILL / README / adapters | `ADAPTER_ORDER` includes `agy` | `scripts/of_adapters.py` | `ADAPTER_ORDER` | critical | OK | keep |
+| C-002 | Flags before `-p` for agy | adapters.md | `build_spawn_argv` agy branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
 | C-003 | Phase-prefix `done_when` | SKILL / README / CHANGELOG | `done_when_for`, `done_when_closed_phases` | `scripts/of.py` | `done_when_for` | critical | OK | keep |
-| C-004 | `--requires-tool` on pack; spawn refuses | SKILL / adapters / CHANGELOG | pack argparse + `missing_tools` | `scripts/of.py` | `ADAPTER_TOOLS` | critical | OK | keep |
+| C-004 | `--requires-tool` on pack; spawn refuses | SKILL / adapters / CHANGELOG | pack argparse + `missing_tools` | `scripts/of.py` / `scripts/of_adapters.py` | `missing_tools` / `ADAPTER_TOOLS` | critical | OK | keep |
 | C-005 | Reference-load SLAVE (abs path); orca/generic may inline | SKILL / README / CHANGELOG | `render_prompt`, `INLINE_CONTRACT_ADAPTERS` | `scripts/of.py` | `render_prompt` | critical | OK | keep |
-| C-006 | Grok headless `-p` + `--always-approve` | adapters / CHANGELOG | grok argv branch | `scripts/of.py` | `build_spawn_argv` | critical | OK | keep |
-| C-007 | Codex uses `--dangerously-bypass-approvals-and-sandbox`, not `--full-auto` | adapters / CHANGELOG | codex argv branch | `scripts/of.py` | `build_spawn_argv` | critical | OK | keep |
+| C-006 | Grok headless `-p` + `--always-approve` | adapters / CHANGELOG | grok argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
+| C-007 | Codex uses `--dangerously-bypass-approvals-and-sandbox`, not `--full-auto` | adapters / CHANGELOG | codex argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
 | C-008 | `install.sh` symlinks `of` to **installed** skill copy | CHANGELOG / adapters | `of_bin_dirs` / link to dest `scripts/of.py` | `install.sh` | | critical | OK | keep |
 | C-009 | Detect lists harness CLIs on PATH | README / adapters | `cmd_detect` | `scripts/of.py` | `cmd_detect` | normal | OK | keep |
 | C-010 | Pack is cap surface (`max_children`, `spawn_blocked`) | SKILL | `cmd_pack` / `spawn_is_blocked` | `scripts/of.py` | `cmd_pack` | critical | OK | keep |
@@ -75,7 +75,11 @@
 | C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status` prints `in_flight`; `render_prompt` continuation | `scripts/of.py` | `cmd_status` / `render_prompt` | critical | OK | keep |
 | C-024 | `session.json` forbidden to slaves like `state.json` | SKILL / SLAVE / AGENTS | `SESSION_FORBIDDEN` in `default_order` | `scripts/of.py` | `default_order` | normal | OK | keep |
 | C-025 | Leader step 0 = `of resume` when ORDER exists; slave nonempty scratch + missing residual = continue | SKILL.md §0 / SLAVE.md / AGENTS | leader/slave protocol (no new regime) | `SKILL.md` | §0 | normal | OK | keep doctrine |
+| C-026 | Residual metric types/ranges are rejected before regime selection | schema / CHANGELOG / architecture | `validate_residual` + integration regression | `scripts/of.py` / `tests/test_kernel.py` | `validate_residual` / `ResidualValidation` | critical | OK | keep |
+| C-027 | Codex routes output to a separate strict-compatible residual schema | adapters / CHANGELOG | `build_spawn_argv` selects the strict derivative; the canonical schema remains portable | `scripts/of_adapters.py` / `schemas/residual.codex.schema.json` / `tests/test_kernel.py` | `build_spawn_argv` / `HeadlessArgv.test_codex_output_schema_closes_every_object_branch` | critical | OK | keep |
+| C-028 | Pulse is an mtime activity heuristic, not process health or child attribution | README / SKILL / architecture | per-child scratch + shared `repo_newest_mtime` | `scripts/of.py` | `cmd_pulse` | normal | OK | keep boundary |
+| C-029 | Preferred package discovery exposes `orderfield` and `of` | README / PUBLISH | repository-owned alias skill + packaging test | `of/SKILL.md` / `tests/test_packaging.py` | `RepositoryAliasSkill` | critical | OK | keep |
 
 ## Post-patch expectation
 
-C-020–C-024 OK against live `of.py` (`cmd_resume` / `cmd_checkpoint` / `snapshot_session` / `SessionCutResume`). C-025 doctrine OK. C-014 remains Partial (leader protocol, not `of ask`).
+C-020–C-028 are refreshed against the 0.4.1 tree. C-029 covers the package-owned alias. C-014 remains Partial (leader protocol, not `of ask`).

@@ -36,12 +36,34 @@ class VersionSync(unittest.TestCase):
         self.assertIn(f"## {ver}", changelog)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(f'version: "{ver}"', skill)
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn(f'version: "{ver}"', alias)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(f"<strong>v{ver}</strong>", readme)
+        self.assertIn(f"skill-{ver}-", readme)
+        self.assertIn("--full-depth -s '*' -a '*'", readme)
+        for rel in ("docs/architecture.md", "docs/audit/claims-matrix.md"):
+            self.assertIn(f"`{ver}`", (ROOT / rel).read_text(encoding="utf-8"), rel)
 
     def test_docs_name_agy(self) -> None:
         for rel in ("SKILL.md", "references/adapters.md", "README.md", "AGENTS.md"):
             text = (ROOT / rel).read_text(encoding="utf-8")
             self.assertIn("agy", text, rel)
             self.assertNotIn("--adapter antigravity", text)
+
+    def test_publish_verification_uses_supported_gh_release_fields(self) -> None:
+        publish = (ROOT / "PUBLISH.md").read_text(encoding="utf-8")
+        self.assertNotIn("isLatest", publish)
+        self.assertIn('--json tagName --jq .tagName', publish)
+        self.assertIn('--json publishedAt --jq .publishedAt', publish)
+        self.assertIn("url,tagName,isDraft,isPrerelease,publishedAt", publish)
+
+    def test_slave_heartbeat_is_activity_evidence_not_process_health(self) -> None:
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        self.assertIn("activity evidence for `of pulse`", slave)
+        self.assertIn("shared-repo product mtime", slave)
+        self.assertIn("not process health or per-child write attribution", slave)
+        self.assertNotIn("liveness is derived", slave)
 
 
 class InstallScript(unittest.TestCase):
@@ -190,6 +212,8 @@ class InstallScript(unittest.TestCase):
             src,
             r'ln -sf\s+"\$SRC/scripts/of\.py"',
         )
+        self.assertIn("--full-depth -s '*'", src)
+        self.assertIn("A harness name alone or one ordinary", src)
 
 
 class PhaseMdEnglish(unittest.TestCase):
@@ -267,7 +291,7 @@ class VersionedDescription(unittest.TestCase):
         self.assertIn(f"description: v{ver} —", skill)
 
 
-class OfAliasSkill(unittest.TestCase):
+class RepositoryAliasSkill(unittest.TestCase):
     def _install(self) -> Path:
         tmp = Path(tempfile.mkdtemp(prefix="of-alias-"))
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -285,6 +309,15 @@ class OfAliasSkill(unittest.TestCase):
         self.assertIn(f"description: v{ver} —", body)
         self.assertIn("alias-of: orderfield", body)
         self.assertIn("../orderfield/SKILL.md", body)
+        self.assertEqual(body, (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_source_package_owns_npx_discoverable_alias(self) -> None:
+        alias = ROOT / "of" / "SKILL.md"
+        self.assertTrue(alias.is_file(), alias)
+        body = alias.read_text(encoding="utf-8")
+        self.assertTrue(body.startswith("---\nname: of\n"))
+        self.assertIn("alias-of: orderfield", body)
+        self.assertIn("Do not trigger for a harness name alone", body)
 
     def test_uninstall_removes_alias_too(self) -> None:
         tmp = self._install()

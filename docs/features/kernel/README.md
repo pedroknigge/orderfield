@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../AGENTS.md) · Architecture: [docs/architecture.md](../architecture.md)
 
-**Status:** Shipped in `0.3.2` · **Code:** [`scripts/of.py`](../../scripts/of.py), [`scripts/of_adapters.py`](../../scripts/of_adapters.py), [`schemas/`](../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.4.1` · **Code:** [`scripts/of.py`](../../scripts/of.py), [`scripts/of_adapters.py`](../../scripts/of_adapters.py), [`schemas/`](../../schemas/)
 
 ## What
 

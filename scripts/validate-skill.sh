@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_FILE="$ROOT/SKILL.md"
+ALIAS_FILE="$ROOT/of/SKILL.md"
 NAME="orderfield"
 MAX_DESC=1024
 
@@ -11,6 +12,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 ok()   { echo "OK $*"; }
 
 [[ -f "$SKILL_FILE" ]] || fail "SKILL.md missing"
+[[ -f "$ALIAS_FILE" ]] || fail "of/SKILL.md missing"
 [[ -f "$ROOT/scripts/of.py" ]] || fail "scripts/of.py missing"
 [[ -f "$ROOT/scripts/of_adapters.py" ]] || fail "scripts/of_adapters.py missing"
 [[ -f "$ROOT/SLAVE.md" ]] || fail "SLAVE.md missing"
@@ -32,9 +34,21 @@ VER_SKILL=$(echo "$FM" | awk -F'"' '/version:/{print $2; exit}')
 [[ "$VER_FILE" == "$VER_SKILL" ]] || fail "VERSION $VER_FILE != SKILL.md $VER_SKILL"
 ok "version $VER_FILE"
 
+VER_ALIAS=$(awk -F'"' '/version:/{print $2; exit}' "$ALIAS_FILE")
+[[ "$VER_FILE" == "$VER_ALIAS" ]] || fail "VERSION $VER_FILE != of/SKILL.md $VER_ALIAS"
+grep -q '^name: of$' "$ALIAS_FILE" || fail "of/SKILL.md name is not of"
+grep -q '^  alias-of: orderfield$' "$ALIAS_FILE" || fail "of/SKILL.md missing alias-of"
+ok "alias /of $VER_ALIAS"
+
 HEADING=$(awk '/^## /{print $2; exit}' "$ROOT/CHANGELOG.md")
 [[ "$HEADING" == "$VER_FILE" ]] || fail "CHANGELOG heading $HEADING != $VER_FILE"
 ok "changelog $HEADING"
+
+grep -q "<strong>v${VER_FILE}</strong>" "$ROOT/README.md" || fail "README version text != $VER_FILE"
+grep -q "skill-${VER_FILE}-" "$ROOT/README.md" || fail "README badge != $VER_FILE"
+grep -q "Version:\*\* \`${VER_FILE}\`" "$ROOT/docs/architecture.md" || fail "architecture version != $VER_FILE"
+grep -q "Code rev:\*\* VERSION \`${VER_FILE}\`" "$ROOT/docs/audit/claims-matrix.md" || fail "claims matrix version != $VER_FILE"
+ok "README + current docs $VER_FILE"
 
 DESC=$(echo "$FM" | awk '
   /^description:/{
