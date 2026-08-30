@@ -10,6 +10,64 @@ KNOWN_HARNESSES=(claude codex cursor opencode grok)
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
 END_MARKER="<!-- END orderfield skill -->"
 
+MODE="auto"
+UNINSTALL=0
+GENERIC_ONLY=0
+base=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --global) MODE="global"; shift ;;
+    --project) MODE="project"; shift ;;
+    --generic) GENERIC_ONLY=1; shift ;;
+    --uninstall) UNINSTALL=1; shift ;;
+    --root)
+      MODE="project"
+      base="${2:?--root needs a path}"
+      shift 2
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: install.sh [--global|--project|--generic] [--uninstall] [--root PATH]
+
+  --global     install under $HOME (default when no path is given)
+  --project    install under the current directory
+  --generic    only the portable path: .agents/skills/orderfield
+  --root PATH  project-style install under PATH
+  --uninstall  remove copies this script manages
+
+  After install, creates an `of` symlink to the installed skill copy of
+  scripts/of.py (not the checkout used as the install source):
+    global  → ~/.local/bin/of
+    --root / project → <base>/.local/bin/of (hermetic; does not touch $HOME)
+  Uninstall removes that symlink when it is a symlink.
+
+  One-liner uninstall (no local checkout needed):
+    curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --uninstall
+EOF
+      exit 0
+      ;;
+    *)
+      if [[ "$1" == -* ]]; then
+        echo "unknown flag: $1" >&2
+        exit 2
+      fi
+      MODE="project"
+      base="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$base" ]]; then
+  if [[ "$MODE" == "project" ]]; then
+    base="."
+  else
+    base="$HOME"
+    MODE="global"
+  fi
+fi
+
 SRC="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
 cleanup_src=""
 
@@ -17,7 +75,8 @@ have_local() {
   [[ -n "${SRC}" && -f "${SRC}/SKILL.md" && -f "${SRC}/scripts/of.py" ]]
 }
 
-if ! have_local; then
+# Uninstall only deletes dests; no clone required (curl | bash -s -- --uninstall).
+if [[ "$UNINSTALL" -eq 0 ]] && ! have_local; then
   SRC="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
   cleanup_src="$SRC"
   git clone --depth 1 "$REPO_URL" "$SRC" >/dev/null
@@ -186,61 +245,6 @@ write_codex_pointer() {
   } >> "$agents_md"
   echo "pointer $agents_md"
 }
-
-MODE="auto"
-UNINSTALL=0
-GENERIC_ONLY=0
-base=""
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --global) MODE="global"; shift ;;
-    --project) MODE="project"; shift ;;
-    --generic) GENERIC_ONLY=1; shift ;;
-    --uninstall) UNINSTALL=1; shift ;;
-    --root)
-      MODE="project"
-      base="${2:?--root needs a path}"
-      shift 2
-      ;;
-    -h|--help)
-      cat <<'EOF'
-Usage: install.sh [--global|--project|--generic] [--uninstall] [--root PATH]
-
-  --global     install under $HOME (default when no path is given)
-  --project    install under the current directory
-  --generic    only the portable path: .agents/skills/orderfield
-  --root PATH  project-style install under PATH
-  --uninstall  remove copies this script manages
-
-  After install, creates an `of` symlink to the installed skill copy of
-  scripts/of.py (not the checkout used as the install source):
-    global  → ~/.local/bin/of
-    --root / project → <base>/.local/bin/of (hermetic; does not touch $HOME)
-  Uninstall removes that symlink when it is a symlink.
-EOF
-      exit 0
-      ;;
-    *)
-      if [[ "$1" == -* ]]; then
-        echo "unknown flag: $1" >&2
-        exit 2
-      fi
-      MODE="project"
-      base="$1"
-      shift
-      ;;
-  esac
-done
-
-if [[ -z "$base" ]]; then
-  if [[ "$MODE" == "project" ]]; then
-    base="."
-  else
-    base="$HOME"
-    MODE="global"
-  fi
-fi
 
 copied=0
 removed=0

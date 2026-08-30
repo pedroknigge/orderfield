@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.3.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
+  <strong>v0.3.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken slaving
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.3.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -73,12 +73,9 @@ curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install
 
 # this repo only
 ./install.sh --project
-
-# undo
-./install.sh --uninstall
 ```
 
-`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`), and removes that symlink on `--uninstall`. Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
+`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
 
 Python 3.9+. No pip packages.
 
@@ -97,6 +94,26 @@ Where it lands:
 | Antigravity (`agy`) | `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` |
 
 Then `/orderfield` in the host, or the shorter alias `/of` (same skill). Or say “use orderfield.”
+
+---
+
+## Uninstall
+
+**One command. Every agent on the machine.**
+
+```bash
+npx skills remove orderfield -g -y
+```
+
+Or the classic uninstaller (removes skill copies, the `/of` alias dirs, the Codex pointer block, and `~/.local/bin/of`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --uninstall
+```
+
+From a checkout: `./install.sh --uninstall` (or `--project` / `--root PATH` to match how you installed).
+
+Project-local ORDER state (`.orderfield/` in a working repo) is left alone — uninstall only removes the skill install.
 
 ---
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2
+
+Packaging: first-class uninstall path documented and usable without a local checkout.
+
+- Docs: README **Uninstall** section mirrors Install — `npx skills remove orderfield -g -y` and `curl … | bash -s -- --uninstall`. Notes that project `.orderfield/` state is left alone.
+- Fix: `install.sh` parses flags before any clone and skips the temp clone on `--uninstall`, so the curl one-liner does not fetch the repo just to delete skill copies.
+- Packaging: VERSION 0.3.2; skill description preview `v0.3.2 — …`.
+
 ## 0.3.1
 
 Hardening release from the vibe-proof audit Prioritized Remediation. Theme: stranger can change and release the package without chat archaeology.
