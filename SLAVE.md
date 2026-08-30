@@ -28,6 +28,16 @@ If the leader is also working in the same git repo:
 
 If **all** children need this, it belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`.
 
+## Heartbeat
+
+Append one line to `.orderfield/work/scratch/<child_id>/PULSE` when you start, and again whenever you switch sub-task or launch a long command (installs, test suites, builds):
+
+```
+2026-08-30T17:23:00Z reading src/domain, mapping invariants
+```
+
+Format: UTC timestamp, one space, what you are doing in ten words or fewer. This is metadata for `of pulse` (liveness is derived from file mtimes); it is not a diary and the leader never judges its content. A long read-only stretch with no heartbeat looks dead from outside.
+
 ## You may
 
 - Reason, read the repo, use tools, explore, fail, and correct.
