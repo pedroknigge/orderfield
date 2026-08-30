@@ -27,7 +27,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
-| [docs/roadmap.md](docs/roadmap.md) | Canonical deferred 0.5.0 work |
+| [docs/roadmap.md](docs/roadmap.md) | Canonical 0.5.0 status / deferred work |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
 | [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
@@ -53,7 +53,8 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Portable doctrine (`.orderfield/SLAVE.md`, repo-relative reference) | documented |
 | `/of` alias skill + versioned description | documented |
 | Optional `--json` / `OF_JSON` events | documented |
-| 0.4.2 state-machine integrity + 0.5.0 deferred operations | documented |
+| Lossless SPEC.md + binding requirements (`of spec` / `spec-diff`) | documented |
+| 0.4.2 state-machine integrity + 0.5.0 operational contract | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

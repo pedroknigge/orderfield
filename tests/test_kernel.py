@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -213,6 +214,30 @@ class DecideRegimeShipped(unittest.TestCase):
     def test_scale_across_is_reserved_not_enabled_by_default(self) -> None:
         self.assertIn("scale_across", of.REGIMES)
         self.assertNotIn("scale_across", self.order["enabled_regimes"])
+
+    def test_runtime_ownership_is_reserved_not_implemented(self) -> None:
+        for key, decision in of.RUNTIME_OWNERSHIP.items():
+            self.assertEqual(decision, "reserved", key)
+        self.assertEqual(of.RUNTIME_OWNERSHIP["scale_up"], "reserved")
+        self.assertEqual(of.RUNTIME_OWNERSHIP["budget.tokens"], "reserved")
+        self.assertEqual(of.RUNTIME_OWNERSHIP["thresholds.local_budget_pct"], "reserved")
+        self.assertEqual(of.RUNTIME_OWNERSHIP["inherited_depth"], "reserved")
+        self.assertIn("budget.seconds", of.RUNTIME_ENFORCED)
+
+    def test_decide_regime_never_selects_reserved_or_reads_local_budget(self) -> None:
+        residual = load_json(DONE)
+        self.order["thresholds"]["local_budget_pct"] = 1
+        first, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.order["thresholds"]["local_budget_pct"] = 100
+        second, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(first, second)
+        self.assertNotIn(first, of.RESERVED_REGIMES)
+        with mock.patch.object(
+            of, "_select_regime", return_value=("scale_up", "tokens")
+        ):
+            regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertIn("reserved", reason)
 
     def test_constraints_residual_is_escalate_up_not_across_or_out(self) -> None:
         residual = load_json(THRESHOLD)
@@ -428,6 +453,8 @@ class ResidualSchemaContracts(unittest.TestCase):
                 "done_when+": None,
                 "notes": None,
                 "done_when_closed": None,
+                "requirements_verified": None,
+                "requirements_failed": None,
             }
         )
         assert_draft_2020_12_valid(self, schema, threshold)
@@ -1518,18 +1545,106 @@ class AgyAdapter(unittest.TestCase):
         preview = spawned.stdout.split("dry-run argv:", 1)[1].strip().splitlines()[0]
         self.assertIn("-p", preview)
         before, after = preview.split(" -p ", 1)
-        self.assertIn("--dangerously-skip-permissions", before)
+        self.assertIn("<approval>", before)
+        self.assertNotIn("--dangerously-skip-permissions", preview)
         self.assertIn("--mode accept-edits", before)
         self.assertIn("--output-format json", before)
         self.assertTrue(after.startswith("<prompt>") or after, after)
         self.assertNotIn("--output-format", after)
-        self.assertNotIn("--dangerously-skip-permissions", after)
+        self.assertNotIn("<approval>", after)
         self.assertNotIn("-p --", preview)
         self.assertLess(before.find("--output-format json"), len(before))
         self.assertLess(
-            before.index("--dangerously-skip-permissions"),
+            before.index("<approval>"),
             before.index("-p") if " -p" in before else len(before),
         )
+
+
+class QwenAdapter(unittest.TestCase):
+    """Native qwen adapter: detect, argparse, Qwen-owned argv, conservative trust."""
+
+    def setUp(self) -> None:
+        self._trust = os.environ.pop("OF_TRUST", None)
+
+    def tearDown(self) -> None:
+        if self._trust is None:
+            os.environ.pop("OF_TRUST", None)
+        else:
+            os.environ["OF_TRUST"] = self._trust
+
+    def test_adapter_name_is_qwen_before_generic(self) -> None:
+        self.assertIn("qwen", of.ADAPTER_ORDER)
+        self.assertEqual(of.ADAPTER_BINS["qwen"], ["qwen"])
+        self.assertLess(of.ADAPTER_ORDER.index("qwen"), of.ADAPTER_ORDER.index("generic"))
+        self.assertGreater(of.ADAPTER_ORDER.index("qwen"), of.ADAPTER_ORDER.index("agy"))
+
+    def test_argparse_accepts_qwen(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-qwen-arg-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "map", "--role", "explorer", "--child-id", "qwen1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        packet = ".orderfield/waves/001/packets/qwen1.json"
+        good = run_of(tmp, "spawn", "--adapter", "qwen", "--packet", packet, "--dry-run")
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertIn("adapter=qwen", good.stdout)
+        preview = good.stdout.split("dry-run argv:", 1)[1].strip().splitlines()[0]
+        self.assertIn("--output-format json", preview)
+        self.assertIn("--approval-mode default", preview)
+        self.assertNotIn("--yolo", preview)
+        self.assertNotIn(" -p ", f" {preview} ")
+        self.assertNotIn("--always-approve", preview)
+        self.assertNotIn("--dangerously-skip-permissions", preview)
+        self.assertNotIn("--openai-base-url", preview)
+        self.assertNotIn("--openai-api-key", preview)
+
+    def test_detect_lists_qwen_when_on_path(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-qwen-detect-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "qwen"
+        fake.write_text("#!/bin/sh\necho pong\n", encoding="utf-8")
+        fake.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = str(bindir)
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        lines = [
+            ln for ln in proc.stdout.splitlines() if ln[1:].lstrip().startswith("qwen")
+        ]
+        self.assertEqual(len(lines), 1, proc.stdout)
+        self.assertIn(str(fake), lines[0])
+
+    def test_detect_lists_qwen_dash_when_missing(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-qwen-detect-miss-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = os.environ.copy()
+        env["PATH"] = "/usr/bin:/bin"
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        found = [ln for ln in proc.stdout.splitlines() if ln[1:].strip().startswith("qwen")]
+        self.assertTrue(found, proc.stdout)
+        self.assertIn("-", found[0])
 
 
 class HandoffPacket(unittest.TestCase):
@@ -1775,10 +1890,10 @@ class StalePackets(unittest.TestCase):
         self.assertIn("next-wave", iblob)
 
         nxt = run_of(self.tmp, "next-wave")
-        self.assertNotEqual(nxt.returncode, 0, nxt.stdout + nxt.stderr)
-        self.assertIn("in flight", (nxt.stdout + nxt.stderr).lower())
+        self.assertEqual(nxt.returncode, 0, nxt.stdout + nxt.stderr)
+        self.assertIn(f"wave={e['next_wave_lands_on']}", nxt.stdout)
         state = load_json(self.tmp / ".orderfield" / "state.json")
-        self.assertEqual(state["wave"], 1)
+        self.assertEqual(state["wave"], e["next_wave_lands_on"])
 
         leftover = (
             self.tmp
@@ -2130,7 +2245,7 @@ class RefLoadHandoff(unittest.TestCase):
     def test_orca_and_generic_inline_the_contract(self) -> None:
         self.assertIn("orca", of.INLINE_CONTRACT_ADAPTERS)
         self.assertIn("generic", of.INLINE_CONTRACT_ADAPTERS)
-        for name in ("claude", "codex", "grok", "agy", "cursor", "opencode"):
+        for name in ("claude", "codex", "grok", "agy", "cursor", "opencode", "qwen"):
             self.assertNotIn(name, of.INLINE_CONTRACT_ADAPTERS)
 
     def test_inline_fallback_when_slave_md_is_missing(self) -> None:
@@ -2253,6 +2368,13 @@ class HeadlessArgv(unittest.TestCase):
     def setUp(self) -> None:
         self.packet = {"child_id": "c1", "budget": {"seconds": 60}}
         self.residual = Path("/tmp/of-residual.json")
+        self._trust = os.environ.pop("OF_TRUST", None)
+
+    def tearDown(self) -> None:
+        if self._trust is None:
+            os.environ.pop("OF_TRUST", None)
+        else:
+            os.environ["OF_TRUST"] = self._trust
 
     def argv(self, adapter: str) -> list:
         return of.build_spawn_argv(
@@ -2285,9 +2407,92 @@ class HeadlessArgv(unittest.TestCase):
             )
 
     def test_only_codex_receives_the_strict_output_schema(self) -> None:
-        for adapter in ("claude", "grok", "agy", "cursor", "opencode", "orca"):
+        for adapter in ("claude", "grok", "agy", "qwen", "cursor", "opencode", "orca"):
             with self.subTest(adapter=adapter):
                 self.assertNotIn("--output-schema", self.argv(adapter))
+
+    def test_qwen_uses_positional_prompt_not_dash_p(self) -> None:
+        argv = self.argv("qwen")
+        self.assertEqual(Path(argv[0]).name, "qwen")
+        self.assertEqual(argv[-1], "PROMPT")
+        self.assertNotIn("-p", argv)
+        self.assertNotIn("--prompt", argv)
+        self.assertGreater(len(argv), 2)
+        self.assertNotEqual(argv[1], "PROMPT")
+        self.assertIn("--output-format", argv)
+        self.assertEqual(argv[argv.index("--output-format") + 1], "json")
+
+    def test_qwen_does_not_copy_other_adapter_flags(self) -> None:
+        argv = self.argv("qwen")
+        for flag in (
+            "--always-approve",
+            "--dangerously-skip-permissions",
+            "--dangerously-bypass-approvals-and-sandbox",
+            "--full-auto",
+            "--force",
+            "--auto",
+            "--mode",
+        ):
+            self.assertNotIn(flag, argv)
+
+    def test_qwen_default_trust_is_not_yolo(self) -> None:
+        argv = self.argv("qwen")
+        self.assertNotIn("--yolo", argv)
+        self.assertNotIn("-y", argv)
+        self.assertIn("--approval-mode", argv)
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "default")
+
+    def test_qwen_does_not_hardcode_provider_or_credentials(self) -> None:
+        argv = self.argv("qwen")
+        for flag in (
+            "--model",
+            "-m",
+            "--openai-base-url",
+            "--openai-api-key",
+            "--auth-type",
+        ):
+            self.assertNotIn(flag, argv)
+        joined = " ".join(argv).lower()
+        for token in ("11434", "ollama", "dashscope"):
+            self.assertNotIn(token, joined)
+
+    def test_qwen_trust_override_is_visible(self) -> None:
+        os.environ["OF_TRUST"] = "yolo"
+        argv = self.argv("qwen")
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "yolo")
+        os.environ["OF_TRUST"] = "plan"
+        argv = self.argv("qwen")
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "plan")
+        os.environ["OF_TRUST"] = "auto-edit"
+        argv = self.argv("qwen")
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "auto-edit")
+
+    def test_qwen_unknown_trust_dies(self) -> None:
+        os.environ["OF_TRUST"] = "skynet"
+        with self.assertRaises(SystemExit):
+            self.argv("qwen")
+
+    def test_grok_ignores_of_trust(self) -> None:
+        os.environ["OF_TRUST"] = "conservative"
+        argv = self.argv("grok")
+        self.assertIn("--always-approve", argv)
+        self.assertIn("-p", argv)
+
+    def test_qwen_trust_boundary_is_documented(self) -> None:
+        import of_adapters
+
+        self.assertEqual(of_adapters.DEFAULT_TRUST_PROFILE, "conservative")
+        self.assertIn("conservative", of_adapters.TRUST_PROFILES)
+        self.assertIn("yolo", of_adapters.TRUST_PROFILES)
+        self.assertIn("binary_on_path", of_adapters.KERNEL_VERIFIES)
+        self.assertIn("spawn_argv", of_adapters.KERNEL_VERIFIES)
+        self.assertIn("residual_file", of_adapters.KERNEL_VERIFIES)
+        self.assertIn("residual_schema", of_adapters.KERNEL_VERIFIES)
+        self.assertIn("approval_honored", of_adapters.HARNESS_PROMISES)
+        self.assertIn("auth", of_adapters.HARNESS_PROMISES)
+        self.assertIn("model_ready", of_adapters.HARNESS_PROMISES)
+        self.assertNotIn("auth", of_adapters.KERNEL_VERIFIES)
+        self.assertNotIn("model_ready", of_adapters.KERNEL_VERIFIES)
 
     def test_codex_output_schema_closes_every_object_branch(self) -> None:
         argv = self.argv("codex")
@@ -3099,6 +3304,11 @@ class ResumeAfterIntegrate(unittest.TestCase):
         resumed = run_of(self.tmp, "resume")
         self.assertIn("next          next-wave", resumed.stdout)
         self.assertNotIn("next          hold", resumed.stdout)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
 
 
 class ConstraintsRm(unittest.TestCase):
@@ -3819,3 +4029,664 @@ class UpdateNotice(unittest.TestCase):
         self.assertIsNone(of.semver_tuple("0.4"))
         self.assertIsNone(of.semver_tuple("a.b.c"))
         self.assertTrue(of.semver_tuple("0.10.0") > of.semver_tuple("0.9.9"))
+
+
+class ArgvAndLogRedaction(unittest.TestCase):
+    def test_argv_preview_redacts_secrets_and_escalated_approval(self) -> None:
+        preview = of.argv_preview(
+            [
+                "qwen",
+                "--openai-api-key",
+                "sk-secretvalue1234",
+                "--approval-mode",
+                "yolo",
+                "--yolo",
+                "OPENAI_API_KEY=sk-othersecret",
+                "short",
+            ]
+        )
+        self.assertIn("--openai-api-key <redacted>", preview)
+        self.assertIn("--approval-mode <approval>", preview)
+        self.assertIn("<approval>", preview)
+        self.assertNotIn("sk-secretvalue1234", preview)
+        self.assertNotIn("sk-othersecret", preview)
+        self.assertNotIn("yolo", preview)
+        self.assertIn("short", preview)
+
+    def test_argv_preview_keeps_conservative_approval_mode(self) -> None:
+        preview = of.argv_preview(
+            ["qwen", "--approval-mode", "default", "PROMPT"]
+        )
+        self.assertIn("--approval-mode default", preview)
+        self.assertNotIn("<approval>", preview)
+
+    def test_redact_text_strips_bearer_and_pem(self) -> None:
+        blob = (
+            "Authorization: Bearer abcdefghijklmnop\n"
+            "-----BEGIN PRIVATE KEY-----\\nhidden\\n-----END PRIVATE KEY-----\n"
+            "--dangerously-skip-permissions\n"
+        )
+        out = of.redact_text(blob)
+        self.assertNotIn("abcdefghijklmnop", out)
+        self.assertIn("<redacted>", out)
+        self.assertIn("<approval>", out)
+        self.assertNotIn("--dangerously-skip-permissions", out)
+
+    def test_spawn_log_and_preview_redact_agent_secrets(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-redact-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "r1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        agent = tmp / "noisy-agent.py"
+        agent.write_text(
+            "#!/usr/bin/env python3\n"
+            "print('OPENAI_API_KEY=sk-leakedsecret99')\n"
+            "print('token=supersecret')\n",
+            encoding="utf-8",
+        )
+        agent.chmod(0o755)
+        env = {
+            **os.environ,
+            "OF_AGENT": str(agent),
+            "OF_NO_UPDATE_CHECK": "1",
+        }
+        spawned = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                ".orderfield/waves/001/packets/r1.json",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        log = (tmp / ".orderfield" / "waves" / "001" / "logs" / "r1.log").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("sk-leakedsecret99", log)
+        self.assertNotIn("supersecret", log)
+        self.assertIn("<redacted>", log)
+        meta = load_json(tmp / ".orderfield" / "waves" / "001" / "spawns" / "r1.json")
+        self.assertNotIn("sk-leakedsecret99", json.dumps(meta))
+
+
+class DoctorCommand(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_doctor_reports_path_not_auth_and_kernel_checks(self) -> None:
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout
+        self.assertIn("prereqs", out)
+        self.assertIn("python", out)
+        self.assertIn("field", out)
+        self.assertIn("writable=", out)
+        self.assertIn("schemas", out)
+        self.assertIn("lock", out)
+        self.assertIn("PATH is not auth or readiness", out)
+        self.assertIn("auth=not-verified", out)
+        self.assertIn("ready=not-verified", out)
+        self.assertIn("kernel_verifies", out)
+        self.assertIn("harness_promises", out)
+        self.assertIn("doctor        ok", out)
+        self.assertNotIn("auth=ok", out)
+        self.assertNotIn("ready=ok", out)
+
+    def test_doctor_is_read_only(self) -> None:
+        order = self.tmp / ".orderfield" / "ORDER.json"
+        state = self.tmp / ".orderfield" / "state.json"
+        before = (order.read_bytes(), state.read_bytes())
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual((order.read_bytes(), state.read_bytes()), before)
+
+    def test_doctor_does_not_wait_for_field_lock(self) -> None:
+        with of.field_lock(self.tmp, "test-holder", wait_seconds=0.1):
+            r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("held", r.stdout)
+
+
+class StaleWaveRecovery(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-stale-rec-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_complete_stale_wave_integrates_after_leader_patch(self) -> None:
+        write_bound_residual(self.tmp, "c1")
+        patched = run_of(self.tmp, "patch", "--notes", "rev bump only")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        collected = run_of(self.tmp, "collect")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertIn("regime", report)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+
+    def test_complete_stale_wave_next_wave_without_integrate(self) -> None:
+        write_bound_residual(self.tmp, "c1")
+        patched = run_of(self.tmp, "patch", "--notes", "rev bump only")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
+
+    def test_live_in_flight_still_blocks_next_wave(self) -> None:
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(nxt.returncode, 0)
+        self.assertIn("in flight", nxt.stderr)
+
+
+class EpisodicRetention(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-gc-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        write_bound_residual(self.tmp, "c1")
+
+    def _age(self, path: Path, days: float = 31) -> None:
+        old = time.time() - days * 24 * 3600
+        os.utime(path, (old, old))
+
+    def test_retain_is_read_only_and_keep_current_residual(self) -> None:
+        residual = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        )
+        before = residual.read_bytes()
+        r = run_of(self.tmp, "retain")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("keep", r.stdout)
+        self.assertIn("c1.json", r.stdout)
+        self.assertIn("never copies transcripts", r.stdout)
+        self.assertEqual(residual.read_bytes(), before)
+
+    def test_gc_dumps_old_logs_drops_inapplicable_learning_keeps_useful(self) -> None:
+        logs = self.tmp / ".orderfield" / "waves" / "001" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        old_log = logs / "c1.log"
+        old_log.write_text("OPENAI_API_KEY=sk-should-not-be-copied\ntranscript\n")
+        self._age(old_log)
+        learnings = self.tmp / ".orderfield" / "learnings"
+        learnings.mkdir(parents=True, exist_ok=True)
+        live = learnings / "keep-me.json"
+        live.write_text(
+            json.dumps(
+                {
+                    "text": "still useful",
+                    "order_id": load_json(self.tmp / ".orderfield" / "ORDER.json")["id"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        dead = learnings / "drop-me.json"
+        dead.write_text(
+            json.dumps({"text": "old field", "order_id": "ord_otherfield"}),
+            encoding="utf-8",
+        )
+        foreign_residual = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "foreign.json"
+        )
+        foreign_residual.write_text(
+            json.dumps(
+                {
+                    "status": "done",
+                    "result_ref": ".orderfield/work/scratch/c1/result.md",
+                    "residual": {
+                        "wants_to_change": [],
+                        "evidence": "",
+                        "proposed_patch": None,
+                    },
+                    "metrics": {
+                        "uncertainty": 0.1,
+                        "divergence": 0.0,
+                        "tool_failures": 0,
+                        "novelty": False,
+                    },
+                    "order_id": "ord_otherfield",
+                    "wave": 1,
+                }
+            ),
+            encoding="utf-8",
+        )
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dump", r.stdout)
+        self.assertIn("drop", r.stdout)
+        self.assertFalse(old_log.exists())
+        self.assertFalse(dead.exists())
+        self.assertTrue(live.exists())
+        self.assertFalse(foreign_residual.exists())
+        kept = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        )
+        self.assertTrue(kept.is_file())
+        for path in (self.tmp / ".orderfield").rglob("*"):
+            if path.is_file():
+                body = path.read_text(encoding="utf-8", errors="replace")
+                self.assertNotIn(
+                    "sk-should-not-be-copied",
+                    body,
+                    msg=f"transcript copied into {path}",
+                )
+
+    def test_gc_dry_run_does_not_delete(self) -> None:
+        logs = self.tmp / ".orderfield" / "waves" / "001" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        old_log = logs / "c1.log"
+        old_log.write_text("log\n")
+        self._age(old_log)
+        r = run_of(self.tmp, "gc", "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run", r.stdout)
+        self.assertTrue(old_log.is_file())
+
+    def test_gc_dumps_old_wave_history(self) -> None:
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        old_wave = self.tmp / ".orderfield" / "waves" / "001"
+        for path in old_wave.rglob("*"):
+            if path.is_file():
+                self._age(path)
+        self._age(old_wave)
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dump", r.stdout)
+        self.assertFalse((old_wave / "residuals" / "c1.json").exists())
+
+
+class ArtifactMigrations(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-migrate-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_migrate_list_prints_catalog_and_frozen_protocol_keys(self) -> None:
+        r = run_of(self.tmp, "migrate", "--list")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-0.4.2-packet-identity", r.stdout)
+        self.assertIn("protocol-writable-key", r.stdout)
+        self.assertIn("writable_by_slaves", r.stdout)
+        self.assertIn(".orderfield/SLAVE.md", r.stdout)
+
+    def test_migrate_upgrades_identity_free_packet_and_residual(self) -> None:
+        path = packet_path(self.tmp, "c1")
+        packet = load_json(path)
+        for key in ("packet_id", "packet_hash", "order_id"):
+            packet.pop(key)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        residual = load_json(DONE)
+        result = self.tmp / ".orderfield/work/scratch/c1/result.md"
+        result.write_text("done\n", encoding="utf-8")
+        residual["result_ref"] = result.relative_to(self.tmp).as_posix()
+        residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
+        residual_path.write_text(json.dumps(residual), encoding="utf-8")
+
+        planned = run_of(self.tmp, "migrate", "--dry-run")
+        self.assertEqual(planned.returncode, 0, planned.stderr)
+        self.assertIn("pre-0.4.2-packet-identity", planned.stdout)
+        self.assertTrue("packet_id" not in load_json(path))
+
+        applied = run_of(self.tmp, "migrate")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        upgraded = load_json(path)
+        self.assertIn("packet_id", upgraded)
+        self.assertEqual(upgraded["packet_hash"], of.packet_digest(upgraded))
+        self.assertEqual(of.validate_packet(upgraded), [])
+        bound = load_json(residual_path)
+        self.assertEqual(bound["packet_id"], upgraded["packet_id"])
+        collected = run_of(self.tmp, "collect")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+
+    def test_migrate_maps_writable_alias_and_does_not_rename_slave_md(self) -> None:
+        order_file = self.tmp / ".orderfield" / "ORDER.json"
+        order = load_json(order_file)
+        ws = order["workspace"]
+        ws["writable_by_children"] = ws.pop("writable_by_slaves")
+        order_file.write_text(json.dumps(order), encoding="utf-8")
+        slave = self.tmp / ".orderfield" / "SLAVE.md"
+        self.assertTrue(slave.is_file())
+        r = run_of(self.tmp, "migrate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        migrated = load_json(order_file)
+        self.assertIn("writable_by_slaves", migrated["workspace"])
+        self.assertNotIn("writable_by_children", migrated["workspace"])
+        self.assertEqual(of.validate_order(migrated), [])
+        self.assertTrue(slave.is_file())
+        self.assertFalse((self.tmp / ".orderfield" / "CHILD.md").exists())
+        self.assertEqual(of.PROTOCOL_SLAVE_MD, ".orderfield/SLAVE.md")
+        self.assertEqual(of.PROTOCOL_WRITABLE_KEY, "writable_by_slaves")
+
+    def test_legacy_recovery_still_works_without_migrate(self) -> None:
+        path = packet_path(self.tmp, "c1")
+        packet = load_json(path)
+        for key in ("packet_id", "packet_hash", "order_id"):
+            packet.pop(key)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        self.assertEqual(of.validate_packet(packet), [])
+        self.assertEqual(of.artifact_generation("packet", packet), "pre-0.4.2")
+
+
+class WorktreeHelper(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-worktree-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _git_init(self) -> None:
+        def git(*args: str) -> None:
+            proc = subprocess.run(
+                ["git", *args],
+                cwd=str(self.tmp),
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+
+        git("init")
+        git("config", "user.email", "of@test")
+        git("config", "user.name", "of")
+        (self.tmp / "README").write_text("x\n", encoding="utf-8")
+        git("add", "README")
+        git("commit", "-m", "init")
+
+    @unittest.skipUnless(shutil.which("git"), "git not on PATH")
+    def test_worktree_add_remove_is_opt_in_not_a_process_manager(self) -> None:
+        self._git_init()
+        dest = of.default_worktree_path(self.tmp, "c1")
+
+        def _cleanup_tree() -> None:
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(self.tmp),
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(dest),
+                ],
+                capture_output=True,
+            )
+            shutil.rmtree(dest, True)
+
+        self.addCleanup(_cleanup_tree)
+        inside = run_of(
+            self.tmp,
+            "worktree",
+            "add",
+            "--child-id",
+            "c1",
+            "--path",
+            ".orderfield/work/trees/c1",
+        )
+        self.assertNotEqual(inside.returncode, 0)
+        self.assertIn("outside the project", inside.stderr)
+        self.assertIn("not a process manager", inside.stderr)
+
+        added = run_of(self.tmp, "worktree", "add", "--child-id", "c1")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        self.assertIn("not a process manager", added.stdout)
+        self.assertIn("do not symlink node_modules", added.stdout)
+        line = [
+            ln for ln in added.stdout.splitlines() if ln.startswith("worktree")
+        ][0]
+        dest = Path(line.split(None, 1)[1])
+        self.assertTrue(dest.is_dir())
+        self.assertFalse((dest / "node_modules").exists())
+        listed = run_of(self.tmp, "worktree", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("c1", listed.stdout)
+        removed = run_of(self.tmp, "worktree", "remove", "--child-id", "c1")
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertIn("did not kill a process", removed.stdout)
+        self.assertFalse(dest.exists())
+
+    def test_worktree_without_git_dies_in_english(self) -> None:
+        empty = self.tmp / "empty-bin"
+        empty.mkdir()
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "PATH": str(empty)}
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "worktree", "add", "--child-id", "c1"],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("not a process manager", proc.stderr)
+
+
+class QwenHarnessEnum(unittest.TestCase):
+    def test_order_schema_harness_enum_matches_adapter_order(self) -> None:
+        enum = load_json(ORDER_SCHEMA)["properties"]["harness"]["enum"]
+        self.assertEqual(enum, list(of.ADAPTER_ORDER))
+        self.assertIn("qwen", enum)
+        self.assertLess(enum.index("qwen"), enum.index("generic"))
+
+    def test_patch_harness_qwen_validates(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-harness-qwen-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(tmp, "patch", "--harness", "qwen")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = load_json(tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["harness"], "qwen")
+        self.assertEqual(of.validate_order(order), [])
+
+    def test_status_prints_reserved_runtime(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-runtime-status-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(tmp, "status")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("runtime     reserved (no telemetry):", r.stdout)
+        self.assertIn("scale_up", r.stdout)
+        self.assertIn("local_budget_pct", r.stdout)
+
+
+class SpecFidelity(unittest.TestCase):
+    """ORDER may compress reasoning, never the contract."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-spec-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.brief = self.tmp / "brief.md"
+        self.brief.write_text(
+            "\n".join(
+                [
+                    "# LedgerLab",
+                    "",
+                    "## Rules",
+                    "- amount_minor is a signed integer; no floats",
+                    "- same idempotency key with a different payload must fail",
+                    "",
+                    "```",
+                    "python -m ledgerlab init --store PATH",
+                    "python -m ledgerlab reverse --store PATH --tx-id TX_ID",
+                    "```",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    def test_init_stores_verbatim_spec_and_extracts_cli(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "build",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        spec = (self.tmp / ".orderfield" / "SPEC.md").read_text(encoding="utf-8")
+        self.assertIn("amount_minor is a signed integer", spec)
+        self.assertIn("python -m ledgerlab init --store PATH", spec)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["spec_ref"], ".orderfield/SPEC.md")
+        self.assertEqual(of.validate_order(order), [])
+        listed = run_of(self.tmp, "spec")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("CLI-001", listed.stdout)
+        self.assertIn("amount_minor", listed.stdout)
+
+    def test_packet_reference_loads_spec_and_owns_requirement(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "build",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement reverse",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-requirement",
+            "CLI-002",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        packet = load_json(packet_path(self.tmp, "imp1"))
+        self.assertEqual(packet["spec_ref"], ".orderfield/SPEC.md")
+        self.assertTrue(packet["reads_spec"])
+        self.assertEqual(packet["owns_requirements"], ["CLI-002"])
+        rendered = run_of(
+            self.tmp, "render", "--packet", ".orderfield/waves/001/packets/imp1.json"
+        )
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn(".orderfield/SPEC.md", rendered.stdout)
+        self.assertIn("The packet fits on one screen", rendered.stdout)
+        self.assertIn("CLI-002", rendered.stdout)
+
+    def test_deliver_blocked_until_binding_requirements_verified(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        root = self.tmp
+        order = of.load_order(root)
+        state = of.load_state(root)
+        errors = of.phase_transition_errors(root, order, state, "deliver")
+        joined = " ".join(errors)
+        self.assertIn("UNOWNED", joined)
+        coverage = of.requirement_coverage_errors(root)
+        self.assertTrue(any(e.startswith("UNOWNED") for e in coverage), coverage)
+        diff = run_of(self.tmp, "spec-diff")
+        self.assertEqual(diff.returncode, 2, diff.stdout + diff.stderr)
+        self.assertIn("ORDER_OMISSION", diff.stdout)
+
+    def test_contrast_open_until_coverage_resolved(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        silent = run_of(self.tmp, "patch", "--source", "rewritten")
+        self.assertNotEqual(silent.returncode, 0)
+        self.assertIn("immutable", silent.stderr)
+        open_loop = run_of(self.tmp, "contrast")
+        self.assertEqual(open_loop.returncode, 2, open_loop.stdout)
+        self.assertIn("CLOSE BLOCKED", open_loop.stdout)
+        self.assertIn("MISS", open_loop.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("refused", refused.stderr)
+        listed = run_of(self.tmp, "spec")
+        ids = [
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if line.strip().startswith(("CLI-", "REQ-"))
+        ]
+        for rid in ids:
+            v = run_of(self.tmp, "spec", "--verified", rid)
+            self.assertEqual(v.returncode, 0, v.stderr)
+        resolved = run_of(self.tmp, "contrast")
+        self.assertEqual(resolved.returncode, 0, resolved.stdout)
+        self.assertIn("RESOLVED", resolved.stdout)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(order.get("spec_closed"))
+
+    def test_status_prints_requirement_counts(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("spec        .orderfield/SPEC.md", status.stdout)
+        self.assertIn("requirements", status.stdout)

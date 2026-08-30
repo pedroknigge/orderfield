@@ -8,11 +8,17 @@ Stranger-facing recovery for common field failures. Kernel commands only — do 
 
 **Meaning:** For a 0.4.2 packet, its registered wave or exact ORDER revision no longer matches the live field. Legacy packets use the pre-0.4.2 id/phase/mission check.
 
+A **fully stale wave** (every packet stale vs live ORDER) is recoverable without hand-editing `ORDER.json`. `of resume` prints `next-wave`. `of next-wave` skips occupied stale dirs and does **not** require a report first. If every stale packet already has a packet-bound residual, `of collect` / `of integrate` may still reduce that complete wave.
+
+Incomplete leftover packets (no residual) still fail collect/integrate; use `of next-wave` or `of unpack`.
+
 **Recover:**
 
 ```bash
 of resume
-of next-wave   # skips dirs whose packets are stale
+of next-wave   # skips dirs whose packets are stale; no hand-edit
+# complete stale wave (residuals already on disk) can also:
+of integrate --wave N
 # or unpack specific children that never reported:
 of unpack --child-id <id>
 ```
@@ -91,6 +97,46 @@ Another mutating `of` process holds `.orderfield/field.lock`. The error includes
 **Meaning:** Snapshot unreadable; kernel continues with empty session facts. Checkpoint summary may be lost. Safe to continue; next mutation rewrites `session.json`.
 
 Other generated JSON (`ORDER.json`, state, packets, reports) is validated against its public schema and mutations use atomic replacement. A schema error is not a cue to hand-edit around the contract; recover the invalid artifact from a trusted copy or rebuild the affected packet/wave through the CLI.
+
+## `of doctor`
+
+**Symptom:** adapter missing, field not writable, schemas absent, or lock stuck.
+
+**Meaning:** Doctor prints kernel-verifiable local checks: Python, kernel VERSION, writable `.orderfield/` + scratch, public schemas, and whether `.orderfield/field.lock` is acquirable. Adapter lines show PATH + best-effort `--version`. **PATH is not auth and not readiness** — doctor prints `auth=not-verified` / `ready=not-verified` on purpose. Kernel verifies PATH/argv/residual; the harness promises approval/auth/ready.
+
+**Recover:** Install a harness CLI onto PATH if you need headless spawn. `of init` if there is no field. Do not treat a PATH hit as logged-in.
+
+## Episodic retention (`of retain` / `of gc`)
+
+**Symptom:** old logs, archived waves, or leftover learnings accumulating under `.orderfield/`.
+
+**Meaning:** Retention is episodic, not archaeology. `of retain` is a read-only keep/drop/dump plan. `of gc` applies it. Keep still-useful current-wave / live-order residuals and applicable learnings (`.orderfield/learnings/*.json`). Drop inapplicable learnings (wrong `order_id` or a closed phase that is not current). Dump garbage, logs, spawn transcripts, and wave history older than 30 days. GC never copies transcripts into the field.
+
+```bash
+of retain           # plan only
+of gc --dry-run     # same
+of gc               # apply deletes
+```
+
+## Pre-0.4.2 artifacts / `of migrate`
+
+**Symptom:** identity-free packets, missing `integration_history`, or an ORDER that uses a writable alias instead of `writable_by_slaves`.
+
+**Meaning:** New packets bind identity. Pre-0.4.2 packets remain recovery-only until migrated. `of migrate --list` prints the versioned catalog. `of migrate --dry-run` plans. `of migrate` rewrites packets (adds `packet_id` / `order_id` / `packet_hash`), fills state defaults, and maps writable aliases onto `workspace.writable_by_slaves`. It does **not** invent integration hashes and does **not** rename `.orderfield/SLAVE.md`.
+
+```bash
+of migrate --list
+of migrate --dry-run
+of migrate
+```
+
+Recovery without migrate still works for collect/integrate on identity-free packets. Render/handoff/spawn still refuse them until migrate (or a fresh pack).
+
+## Worktree helper
+
+**Symptom:** leader and child share a dirty tree.
+
+**Recover:** `of worktree add --child-id <id>` creates a **detached** worktree *outside* the project (git refuses nested worktrees). It does not spawn, kill, or supervise the child. Install inside that worktree; do not symlink `node_modules` or `.orderfield`. `of worktree remove --child-id <id>` drops it. Spawn never calls this helper.
 
 ## More
 

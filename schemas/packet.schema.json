@@ -41,7 +41,11 @@
           "required": ["readable", "writable_by_slaves", "forbidden"],
           "properties": {
             "readable": { "type": "array", "items": { "type": "string" } },
-            "writable_by_slaves": { "type": "array", "items": { "type": "string" } },
+            "writable_by_slaves": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Frozen protocol key. Aliases migrate onto this name; do not rename without a versioned migration."
+            },
             "forbidden": { "type": "array", "items": { "type": "string" } }
           }
         },
@@ -52,16 +56,30 @@
           "properties": {
             "tool_failures": { "type": "integer", "minimum": 1 },
             "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
-            "local_budget_pct": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "local_budget_pct": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Reserved; not evaluated."
+            },
             "novelty": { "type": "boolean" }
           }
         },
         "backlog": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
-        }
+        },
+        "spec_ref": { "type": "string", "minLength": 1 },
+        "spec_hash": { "type": "string", "minLength": 1 }
       }
     },
+    "spec_ref": { "type": "string", "minLength": 1 },
+    "spec_hash": { "type": "string", "minLength": 1 },
+    "owns_requirements": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$" }
+    },
+    "reads_spec": { "type": "boolean" },
     "slice": { "type": "string", "minLength": 1 },
     "role": {
       "type": "string",
@@ -80,7 +98,11 @@
       "additionalProperties": false,
       "required": ["tokens", "seconds"],
       "properties": {
-        "tokens": { "type": "integer", "minimum": 1 },
+        "tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Reserved; carried in packets but not measured or enforced."
+        },
         "seconds": { "type": "integer", "minimum": 1 }
       }
     }

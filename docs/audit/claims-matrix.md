@@ -8,13 +8,13 @@
 **Intent:** audit → integrate (patch)  
 **Out:** root  
 **Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
-**Code rev:** VERSION `0.4.2` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.0` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 34 |
+| OK | 42 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -22,17 +22,17 @@
 
 | Severity | Count |
 |----------|------:|
-| critical | 26 |
-| normal | 12 |
+| critical | 32 |
+| normal | 13 |
 
-**Truth score (advisory):** `(34*100 + 3*50) / 38 = 93.4`
+**Truth score (advisory):** `(42*100 + 3*50) / 46 = 94.6`
 **CI gate:** no critical Contradicted after integrate patch.
 
 **Top risks (post-patch):**  
 1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
 2. `detect` ≠ login/auth — documented Partial.  
 3. Role/product-workspace compliance and metric truth remain contract boundaries; the field lock covers cooperating kernel mutations only.
-4. Token/local-budget/inherited-depth accounting and `scale_up` selection are explicitly deferred to 0.5.0.
+4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry), not implemented.
 
 **Recommended next Intent:** none (ship) | optional later: `of ask` / preference flag.
 
@@ -40,8 +40,8 @@
 
 | Kind | Evidence | Notes |
 |------|----------|-------|
-| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
-| Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv` |
+| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, doctor, retain, gc, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
+| Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv`, `TRUST_PROFILES` |
 | Schemas | `schemas/*.json` | order / state / packet / residual / wave-report / session |
 | Install | `install.sh` | harness dests + installed-kernel `of`; literal project source is staged outside its destination |
 | Tests | `tests/test_kernel.py`, `tests/test_packaging.py` | kernel + packaging |
@@ -87,9 +87,18 @@
 | C-034 | Phase/wave transitions require closure, no in-flight child, complete current digest, and post-escalation revision; phase force is audited | README / SKILL / principles / architecture | transition guards + state override history + regressions | `scripts/of.py` / `schemas/state.schema.json` / `tests/test_kernel.py` | `phase_transition_errors` / `wave_transition_errors` | critical | OK | keep |
 | C-035 | Identical integration replay is a no-op/state repair; changed inputs require auditable recompute | README / SKILL / architecture / troubleshooting | content digest, integration records/history, reconcile path | `scripts/of.py` / `schemas/wave-report.schema.json` / `tests/test_kernel.py` | `integration_input_digest` / `reconcile_integration_state` | critical | OK | keep |
 | C-036 | Pulse child verdict ignores shared-repo product writes | README / architecture / kernel feature | verdict signals contain packet + scratch only; repo mtime is display context | `scripts/of.py` / `tests/test_kernel.py` | `pulse_once` | normal | OK | keep boundary wording exact |
-| C-037 | Token/local-budget/inherited-depth accounting and scale_up selection are not active in 0.4.2 | README / SKILL / principles / architecture / roadmap | tokens/local budget are not read for decisions; depth only gates allow_nested; no scale_up return | `scripts/of.py` | `decide_regime` / `cmd_pack` | normal | OK | decide remove vs implement in 0.5.0 |
+| C-037 | Token/local-budget/inherited-depth accounting and scale_up selection are reserved, not implemented | README / SKILL / principles / architecture | `RUNTIME_OWNERSHIP` values are `reserved`; `decide_regime` remaps reserved regimes to hold; local_budget_pct is not read | `scripts/of.py` | `RUNTIME_OWNERSHIP` / `decide_regime` | normal | OK | keep reserved; no fake telemetry |
 | C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | canonical base + external staging + direct packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript.test_literal_project_install_uses_stable_source_and_absolute_link` | critical | OK | keep |
+| C-039 | Native `qwen` adapter uses Qwen-owned positional headless argv, conservative `--approval-mode default` (not yolo), visible `OF_TRUST` override, no hardcoded model/baseUrl/key; kernel verifies PATH/argv/residual, harness promises approval/auth/ready | adapters.md / adapters feature / SKILL / order schema | `ADAPTER_ORDER` includes `qwen`; schema harness enum matches `ADAPTER_ORDER`; `build_spawn_argv` qwen branch; `TRUST_PROFILES` | `scripts/of_adapters.py` / `schemas/order.schema.json` / `tests/test_kernel.py` | `build_spawn_argv` / `QwenHarnessEnum` | critical | OK | keep |
+| C-040 | `of doctor` reports prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready | README / troubleshooting / kernel feature | `cmd_doctor` prints `auth=not-verified` / `ready=not-verified` and kernel-vs-harness boundary | `scripts/of.py` / `tests/test_kernel.py` | `cmd_doctor` / `DoctorCommand` | critical | OK | keep |
+| C-041 | Episodic retention keeps useful residuals/learnings, drops inapplicable learnings, dumps garbage/logs/history older than 30 days, never copies transcripts | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_gc` / `EpisodicRetention` | critical | OK | keep |
+| C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER; complete stale waves may also integrate | troubleshooting / SKILL | `packets_all_stale` skips next-wave integration/in-flight; `complete_stale_wave_recoverable` | `scripts/of.py` / `tests/test_kernel.py` | `wave_transition_errors` / `StaleWaveRecovery` | critical | OK | keep |
+| C-043 | Spawn argv previews and logs redact secrets and escalated approval material | troubleshooting / kernel feature | `argv_preview` / `redact_text` / spawn log write | `scripts/of.py` / `tests/test_kernel.py` | `argv_preview` / `ArgvAndLogRedaction` | critical | OK | keep |
+| C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys `writable_by_slaves` and `SLAVE.md` stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` / `normalize_workspace` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_migrate` / `ArtifactMigrations` | critical | OK | keep |
+| C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree` add/remove/list; spawn does not call it; path must be outside the project | `scripts/of.py` / `tests/test_kernel.py` | `cmd_worktree` / `WorktreeHelper` | normal | OK | keep |
+| C-046 | Runtime ownership is encoded as reserve/remove; no fake token/depth/budget telemetry | architecture / principles / status | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` / `decide_regime` wrapper | `scripts/of.py` / `tests/test_kernel.py` | `RUNTIME_OWNERSHIP` / `DecideRegimeShipped` | critical | OK | keep |
+| C-047 | Verbatim SPEC.md is the lossless brief; packets reference-load it; deliver is blocked while binding requirements are UNOWNED/UNVERIFIED/FAILED | SKILL / architecture / SLAVE | `write_spec` / `cmd_spec` / `requirement_coverage_errors` / render SPEC block | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces remain honest/deferred rather than claimed as active.
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract (Qwen/trust, doctor, retain/gc, stale recovery, redaction, migrate, worktree, reserved runtime). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active.

@@ -2,11 +2,11 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.4.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.5.0` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
-Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / collect / integrate / phase / patch / next-wave.
+Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / collect / integrate / phase / patch / next-wave / doctor / retain / gc / migrate / worktree / spec / spec-diff.
 
 ## Notable behaviors (code-backed)
 
@@ -27,19 +27,28 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - Integration input digests make identical replay a no-op/state repair; changed inputs require audited `--recompute`
 - Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
 - Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Pulse leaves ORDER/state/session/wave artifacts unchanged, while update-notice throttling may write its user cache
+- `of doctor` reports Python/kernel, writable field, schemas, lock, and adapter PATH/version. PATH presence is not authentication or readiness
+- `of retain` (read-only) / `of gc` apply episodic retention: keep still-useful residuals and applicable learnings, drop inapplicable learnings, dump logs and wave history older than 30 days, never copy transcripts
+- Spawn `argv_preview` and child logs redact secrets and escalated approval flags
+- A fully stale wave is recoverable with `of next-wave` without hand-editing ORDER; a complete stale wave (residuals on disk) may also `collect`/`integrate`
+- `of migrate` applies versioned rewrites for pre-0.4.2 packets/state and maps writable aliases onto `workspace.writable_by_slaves`; `.orderfield/SLAVE.md` stays the protocol path
+- `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
+- Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
+- Spec fidelity: `of init --source-file` writes lossless `.orderfield/SPEC.md`; packets reference-load it; `--owns-requirement` plus `of spec` / `of spec-diff` / `of contrast`; deliver refuses UNOWNED/UNVERIFIED/FAILED binding requirements. ORDER may compress reasoning, never the contract. The close loop is SPEC + ORDER → slice → contrast → resolved.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in)
 - Optional `of --json` / `OF_JSON=1` event lines on stderr
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
 
-## Contract boundaries in 0.4.2
+## Contract boundaries
 
 - `budget.seconds` is enforced as spawn timeout.
-- `budget.tokens` and `thresholds.local_budget_pct` are carried/advisory, not measured.
+- `budget.tokens` and `thresholds.local_budget_pct` are reserved, not measured.
 - `caps.max_depth` gates permission to set `allow_nested`; inherited depth is not accounted.
-- `scale_up` remains a reserved regime enum and is not selected by current decision logic.
+- `scale_up` / `scale_across` remain reserved regime enums and are not selected by current decision logic.
 - The field lock protects cooperating kernel mutations, not product files or direct writes.
+- Worktrees are opt-in (`of worktree`); spawn does not create them.
 
 ## Tests
 
-`tests/test_kernel.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, and JSON events; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.
+`tests/test_kernel.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, and reserved runtime; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.

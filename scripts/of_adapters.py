@@ -26,6 +26,7 @@ ADAPTER_ORDER = [
     "orca",
     "grok",
     "agy",
+    "qwen",
     "generic",
 ]
 
@@ -37,6 +38,7 @@ ADAPTER_BINS = {
     "orca": ["orca"],
     "grok": ["grok", "grok-cli"],
     "agy": ["agy"],
+    "qwen": ["qwen"],
     "generic": [],
 }
 
@@ -50,6 +52,7 @@ ADAPTER_TOOLS = {
     "orca": {"read", "write", "bash"},
     "grok": {"read", "write", "bash", "web", "image", "video"},
     "agy": {"read", "write", "bash", "web", "mcp"},
+    "qwen": {"read", "write", "bash", "web", "mcp"},
     "generic": {"read", "write", "bash", "web", "image", "video", "subagents", "mcp"},
 }
 KNOWN_TOOLS = sorted(set().union(*ADAPTER_TOOLS.values()))
@@ -57,10 +60,54 @@ KNOWN_TOOLS = sorted(set().union(*ADAPTER_TOOLS.values()))
 # Adapters that do not reliably read a local path before acting: inline the contract.
 INLINE_CONTRACT_ADAPTERS = {"orca", "generic"}
 
+# Trust profiles (OF_TRUST). Default is conservative / non-escalated.
+# Kernel verifies: PATH binary, argv spawned, residual file exists, residual schema.
+# Harness merely promises: approval honored, sandbox, auth, model readiness.
+TRUST_ENV = "OF_TRUST"
+DEFAULT_TRUST_PROFILE = "conservative"
+TRUST_PROFILES = ("conservative", "plan", "auto-edit", "auto", "yolo")
+KERNEL_VERIFIES = (
+    "binary_on_path",
+    "spawn_argv",
+    "residual_file",
+    "residual_schema",
+)
+HARNESS_PROMISES = (
+    "approval_honored",
+    "sandbox",
+    "auth",
+    "model_ready",
+)
+# Qwen-owned --approval-mode values. Always passed so user settings cannot
+# silently escalate. Never copy grok/claude/codex approval flags.
+_QWEN_APPROVAL = {
+    "conservative": "default",
+    "plan": "plan",
+    "auto-edit": "auto-edit",
+    "auto": "auto",
+    "yolo": "yolo",
+}
+
 
 def missing_tools(adapter: str, required: list[str]) -> list[str]:
     have = ADAPTER_TOOLS.get(adapter, set(KNOWN_TOOLS))
     return [t for t in required if t not in have]
+
+
+def resolve_trust_profile() -> str:
+    raw = (os.environ.get(TRUST_ENV) or DEFAULT_TRUST_PROFILE).strip().lower()
+    aliases = {"": DEFAULT_TRUST_PROFILE, "default": "conservative", "escalated": "yolo"}
+    profile = aliases.get(raw, raw)
+    if profile not in TRUST_PROFILES:
+        die(
+            f"unknown {TRUST_ENV}={raw!r}; expected one of {', '.join(TRUST_PROFILES)}"
+        )
+    return profile
+
+
+def qwen_trust_flags(profile: str) -> list[str]:
+    mode = _QWEN_APPROVAL.get(profile, _QWEN_APPROVAL[DEFAULT_TRUST_PROFILE])
+    return ["--approval-mode", mode]
 
 
 def which_bin(names: list[str]) -> str | None:
@@ -153,6 +200,17 @@ def build_spawn_argv(
             "--output-format",
             "json",
             "-p",
+            prompt,
+        ]
+    if adapter == "qwen":
+        # Qwen-owned headless: positional prompt (`-p` is deprecated).
+        # Provider/model/credentials stay in the user's qwen CLI config.
+        bin_ = which_bin(["qwen"]) or "qwen"
+        return [
+            bin_,
+            "--output-format",
+            "json",
+            *qwen_trust_flags(resolve_trust_profile()),
             prompt,
         ]
     if adapter == "orca":
