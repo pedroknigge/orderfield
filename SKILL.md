@@ -78,6 +78,8 @@ Official phases: `explore | cut | build | verify | deliver`.
 | Colliding product paths or multiple harnesses that need explicit owners | Single agent, ordinary subagent, or one skill already fits |
 | Unknown territory that needs tools and will not fit one context | Explore/cut ceremony when the design is already in the feedback |
 
+**You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
+
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
 
 ### 3. Pack. Do not dump history
@@ -310,3 +312,4 @@ Per-harness detail: `references/adapters.md`.
 - The leader talks little.
 - A threshold produces a field patch, not a swarm.
 - Turning Orca off and installing the skill in Claude Code leaves an ORDER of the same shape.
+- The landing is better than a clean sprint at the public surface, even if it is not first.
