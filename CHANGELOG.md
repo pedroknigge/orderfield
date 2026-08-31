@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.6
+
+Eve cherry-picks: recovery evals, parked agents, context docs, expanded events.
+
+- **`of eval`**: run `evals/recovery/*.eval.json` (Quarry dirty-wave + Beacon amnesia fixtures); `--list`, `--strict`, optional `--kernel` for unittest eval modules.
+- **`of resume`**: `parked` section, per-child `parked_reason` (`scratch_active` | `awaiting_residual`), `agents_note` summary (Eve `[Agents]` analog).
+- **Docs**: [context-control.md](docs/context-control.md), [events.md](docs/events.md), [agent-discovery.md](docs/agent-discovery.md); SKILL steer policy + context table link.
+- **`OF_JSON` / `--json`**: events for `resume`, `handoff`, `unpack`, `wave.advanced`, `contrast`, `close`, `checkpoint`, `eval.completed`.
+- Packaging: VERSION 0.5.6; skill/alias description preview `v0.5.6 — …`.
+
 ## 0.5.5
 
 Open fields auto-revive after interleaved chats or compaction.

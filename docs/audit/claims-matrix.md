@@ -8,7 +8,7 @@
 **Intent:** audit → integrate (docs-only patch; no release)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.5.5` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.6` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 

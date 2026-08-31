@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.5.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.5.6` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -10,7 +10,8 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 
 ## Notable behaviors (code-backed)
 
-- Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief; open fields require executing `next` same turn; does not auto-spawn or dump logs
+- Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; open fields require executing `next` same turn; does not auto-spawn or dump logs
+- `of eval` runs recovery fixtures under `evals/recovery/`; `--strict`, `--kernel`, `--list`
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave; forbidden to slaves like `state.json`; corrupt session warns on stderr
 - `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty
@@ -37,7 +38,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - `--requires-tool` capability gate
 - Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in)
-- Optional `of --json` / `OF_JSON=1` event lines on stderr
+- Optional `of --json` / `OF_JSON=1` event lines on stderr — see [docs/events.md](../../events.md)
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
 
 ## Contract boundaries

@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.5.5</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.5.6</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.5-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.6-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -232,7 +232,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | Command | Purpose |
 |---|---|
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root) |
-| `resume` | one-screen continuation brief from disk (in-flight = packed child, missing residual). Does not auto-spawn. |
+| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Does not auto-spawn. |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
@@ -255,8 +255,9 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
+| `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
 
-Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
+Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`. **Agent discovery:** [docs/agent-discovery.md](docs/agent-discovery.md).
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 
@@ -269,4 +270,5 @@ CI runs the suite + `validate-skill.sh` on ubuntu/macos × Python 3.9/3.13, plus
 ```bash
 python3 -m unittest discover -s tests -v
 ./scripts/validate-skill.sh
+of eval --strict --kernel
 ```

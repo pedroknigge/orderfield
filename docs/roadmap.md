@@ -2,9 +2,16 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.5.5`
+**Status:** Shipped · **Current release line:** `0.5.6`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.5.6 — Eve-inspired ops (evals, parked agents, discovery)
+
+- `of eval` recovery fixtures (Quarry + Beacon) runnable in CI with `--strict`.
+- `of resume` parked-agent listing (`parked_reason`, `agents_note`).
+- Agent discovery index: [docs/agent-discovery.md](agent-discovery.md).
+- Context control + events vocabulary docs.
 
 ## 0.5.0 — operational contract
 

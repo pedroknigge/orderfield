@@ -4029,6 +4029,12 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     reconcile_children_spawned(root, state, int(wave))
     save_state(state, root)
     snapshot_session(root, "unpack")
+    emit_event(
+        "unpack",
+        child_id=child_id,
+        wave=int(wave),
+        ok=True,
+    )
     max_c = int(order.get("caps", {}).get("max_children", 4))
     print(f"unpacked {child_id} wave={wave}")
     print(f"children_spawned={state['children_spawned']} / {max_c}")
@@ -4081,6 +4087,12 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     print(f"child_id={child_id}")
     print(f"prompt={prompt_path}")
     print(f"residual={residual_rel}")
+    emit_event(
+        "handoff",
+        child_id=str(child_id),
+        wave=wave,
+        ok=True,
+    )
     print(
         "That file is the entire message to the child. "
         "Do not truncate. Do not tell the child to re-run render."
@@ -5114,9 +5126,16 @@ def cmd_next_wave(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
     state = load_state(root)
+    before = int(state.get("wave") or 1)
     advance_wave(state, root=root, order=order)
     save_state(state, root)
     snapshot_session(root, "next-wave")
+    emit_event(
+        "wave.advanced",
+        from_wave=before,
+        to_wave=int(state["wave"]),
+        ok=True,
+    )
     print(f"wave={state['wave']}")
 
 
@@ -5196,6 +5215,23 @@ def print_resume_completed(root: Path, completed: list[dict[str, Any]]) -> None:
         print_resume_child_owns(root, pkt)
 
 
+def parked_reason(root: Path, packet: dict[str, Any]) -> str:
+    """Why an in-flight child is parked (Eve-style resumable agent handle)."""
+    if scratch_nonempty(root, packet):
+        return "scratch_active"
+    return "awaiting_residual"
+
+
+def format_agents_note(root: Path, flying: list[dict[str, Any]]) -> str:
+    if not flying:
+        return ""
+    parts: list[str] = []
+    for pkt in flying:
+        cid = str(pkt.get("child_id") or "?")
+        parts.append(f"{cid} ({parked_reason(root, pkt)})")
+    return f"{len(flying)} parked — " + "; ".join(parts)
+
+
 def print_resume_in_flight(
     root: Path, flying: list[dict[str, Any]], *, now: float | None = None
 ) -> None:
@@ -5211,6 +5247,7 @@ def print_resume_in_flight(
         print("    residual    MISSING")
         print(f"    role        {role}")
         print(f"    scratch     {scratch}")
+        print(f"    parked_reason {parked_reason(root, pkt)}")
         print_resume_child_owns(root, pkt)
         print(f"    slice       {truncate_slice(pkt.get('slice') or '')}")
         packed_ts = parse_utc(pkt.get("packed_at"))
@@ -5219,6 +5256,14 @@ def print_resume_in_flight(
                 f"    packed      {pkt.get('packed_at')} "
                 f"({fmt_age(ts_now - packed_ts)} ago)"
             )
+    print("parked")
+    for pkt in flying:
+        cid = str(pkt.get("child_id") or "?")
+        print(f"  {cid}")
+        print(f"    reason      {parked_reason(root, pkt)}")
+    note = format_agents_note(root, flying)
+    if note:
+        print(f"agents_note   {note}")
 
 
 def resume_auto_continue_lines(order: dict[str, Any]) -> list[str]:
@@ -5271,6 +5316,15 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if isinstance(summary, str) and summary.strip():
         print("summary")
         print(summary.strip())
+    emit_event(
+        "resume",
+        wave=wave,
+        field="closed" if order.get("spec_closed") else "open",
+        in_flight=len(flying),
+        parked=len(flying),
+        next=nxt,
+        ok=True,
+    )
 
 
 def pulse_once(
@@ -5690,7 +5744,13 @@ def cmd_contrast(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)
-    if print_contrast_report(root, order):
+    blocked = print_contrast_report(root, order)
+    emit_event(
+        "contrast",
+        verdict="OPEN" if blocked else "RESOLVED",
+        ok=not blocked,
+    )
+    if blocked:
         raise SystemExit(2)
 
 
@@ -5714,6 +5774,12 @@ def cmd_close(args: argparse.Namespace) -> None:
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     snapshot_session(root, "close")
+    emit_event(
+        "close",
+        rev=int(order["rev"]),
+        spec_hash=str(order.get("spec_hash") or "")[:12],
+        ok=True,
+    )
     print(f"CLOSED      spec_hash={str(order.get('spec_hash') or '')[:12]}…  rev={order['rev']}")
 
 
@@ -5731,7 +5797,284 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
             f"{CHECKPOINT_MAX_LINES} lines)"
         )
     snapshot_session(root, "checkpoint", summary=text.strip())
+    emit_event("checkpoint", ok=True)
     print("checkpoint saved")
+
+
+def kernel_repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+EVAL_FIXTURES: dict[str, Any] = {}
+
+
+def _register_eval_fixture(name: str):
+    def decorator(fn):
+        EVAL_FIXTURES[name] = fn
+        return fn
+    return decorator
+
+
+def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    return subprocess.run(
+        [sys.executable, str(Path(__file__).resolve()), *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def eval_write_done_residual(root: Path, child_id: str, wave: int = 1) -> None:
+    pkt_path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
+    packet = load_json(pkt_path)
+    fixture = kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
+    residual = load_json(fixture)
+    for key in PACKET_IDENTITY_FIELDS:
+        residual[key] = packet[key]
+    result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
+    result.parent.mkdir(parents=True, exist_ok=True)
+    result.write_text("done\n", encoding="utf-8")
+    residual["result_ref"] = result.relative_to(root).as_posix()
+    dest = root / str(packet["residual_path"])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(dest, residual)
+
+
+def eval_pack_child(
+    root: Path,
+    child_id: str,
+    owns_path: str,
+    req_id: str,
+    slice_text: str,
+) -> None:
+    r = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        slice_text,
+        "--role",
+        "implementer",
+        "--child-id",
+        child_id,
+        "--owns-path",
+        owns_path,
+        "--owns-requirement",
+        req_id,
+    )
+    if r.returncode != 0:
+        die(f"eval fixture pack {child_id} failed: {r.stderr or r.stdout}")
+
+
+@_register_eval_fixture("recovery_quarry_dirty")
+def eval_setup_recovery_quarry_dirty(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "build quarry append-only log",
+        "--phase",
+        "build",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    for req_id, text in (
+        ("DOMAIN-001", "domain module"),
+        ("STORE-001", "store module"),
+        ("CLI-001", "cli module"),
+    ):
+        added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+        if added.returncode != 0:
+            die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    eval_pack_child(
+        root, "domain", "quarry/domain.py", "DOMAIN-001", "Implement quarry/domain.py"
+    )
+    eval_pack_child(
+        root, "store", "quarry/store.py", "STORE-001", "Implement quarry/store.py"
+    )
+    eval_pack_child(
+        root, "cli", "quarry/cli.py", "CLI-001", "Implement quarry/cli.py"
+    )
+    (root / "quarry").mkdir(exist_ok=True)
+    (root / "quarry" / "domain.py").write_text("# domain\n", encoding="utf-8")
+    eval_write_done_residual(root, "domain")
+    (root / "quarry" / "cli.py").write_text("# partial cli\n", encoding="utf-8")
+    scratch = root / ".orderfield" / "work" / "scratch" / "store"
+    scratch.mkdir(parents=True, exist_ok=True)
+    (scratch / "PULSE").write_text("waiting on domain.py\n", encoding="utf-8")
+
+
+@_register_eval_fixture("recovery_beacon_amnesia")
+def eval_setup_recovery_beacon_amnesia(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "beacon append-only log",
+        "--phase",
+        "build",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    for req_id, text in (
+        ("DOMAIN-001", "domain module"),
+        ("STORE-001", "store module"),
+        ("CLI-001", "cli module"),
+        ("HTTP-001", "http module"),
+    ):
+        added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+        if added.returncode != 0:
+            die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    for child_id, path, req_id in (
+        ("domain", "beacon/domain.py", "DOMAIN-001"),
+        ("store", "beacon/store.py", "STORE-001"),
+        ("cli", "beacon/cli.py", "CLI-001"),
+        ("http", "beacon/http_api.py", "HTTP-001"),
+    ):
+        eval_pack_child(root, child_id, path, req_id, f"Implement {path}")
+    (root / "beacon").mkdir(exist_ok=True)
+    (root / "beacon" / "domain.py").write_text("# domain\n", encoding="utf-8")
+    eval_write_done_residual(root, "domain")
+    (root / "beacon" / "cli.py").write_text("# cli stub\n", encoding="utf-8")
+    (root / "beacon" / "http_api.py").write_text("# http stub\n", encoding="utf-8")
+
+
+def discover_recovery_eval_specs() -> list[Path]:
+    base = kernel_repo_root() / "evals" / "recovery"
+    if not base.is_dir():
+        return []
+    return sorted(base.glob("*.eval.json"))
+
+
+def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
+    spec = load_json(spec_path)
+    eval_id = str(spec.get("id") or spec_path.stem)
+    fixture = str(spec.get("fixture") or "")
+    setup = EVAL_FIXTURES.get(fixture)
+    if not setup:
+        return {
+            "id": eval_id,
+            "status": "failed",
+            "error": f"unknown fixture {fixture!r}",
+        }
+    tmp = Path(tempfile.mkdtemp(prefix="of-eval-"))
+    try:
+        setup(tmp)
+        for idx, step in enumerate(spec.get("steps") or []):
+            cmd = step.get("run")
+            if not cmd:
+                return {
+                    "id": eval_id,
+                    "status": "failed",
+                    "error": f"step {idx}: missing run",
+                }
+            argv = [cmd] if isinstance(cmd, str) else [str(c) for c in cmd]
+            extra = step.get("args") or []
+            if extra:
+                argv.extend(str(a) for a in extra)
+            proc = eval_run_of(tmp, *argv)
+            want_exit = step.get("exit", 0)
+            if proc.returncode != want_exit:
+                return {
+                    "id": eval_id,
+                    "status": "failed",
+                    "error": (
+                        f"step {idx} {argv[0]} exit {proc.returncode} "
+                        f"(want {want_exit}): {(proc.stderr or proc.stdout)[:400]}"
+                    ),
+                }
+            blob = proc.stdout
+            for needle in step.get("stdout_contains") or []:
+                if str(needle) not in blob:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stdout missing {needle!r}",
+                    }
+            for needle in step.get("stdout_not_contains") or []:
+                if str(needle) in blob:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stdout must not contain {needle!r}",
+                    }
+        return {"id": eval_id, "status": "passed", "description": spec.get("description")}
+    except SystemExit as exc:
+        return {"id": eval_id, "status": "failed", "error": f"fixture/setup: {exc}"}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+EVAL_UNITTEST_MODULES = (
+    "tests.test_kernel.CliFieldResidual",
+    "tests.test_kernel.StalePackets",
+    "tests.test_kernel.ResumeRecoveryBrief",
+)
+
+
+def cmd_eval(args: argparse.Namespace) -> None:
+    repo = kernel_repo_root()
+    specs = discover_recovery_eval_specs()
+    if args.list:
+        for path in specs:
+            spec = load_json(path)
+            print(f"{spec.get('id') or path.stem}\t{path.name}\t{spec.get('description', '')}")
+        if args.kernel:
+            for mod in EVAL_UNITTEST_MODULES:
+                print(f"{mod}\t(unittest)\tkernel manifest eval")
+        return
+    selected = specs
+    if args.eval_id:
+        needle = args.eval_id.strip().lower()
+        selected = [
+            p
+            for p in specs
+            if needle in str(load_json(p).get("id") or p.stem).lower()
+            or needle in p.stem.lower()
+        ]
+        if not selected:
+            die(f"no recovery eval matches {args.eval_id!r}")
+    strict = bool(args.strict)
+    passed = 0
+    failed = 0
+    for path in selected:
+        result = run_recovery_eval_spec(path, strict=strict)
+        status = result.get("status")
+        label = result.get("id") or path.stem
+        if status == "passed":
+            passed += 1
+            print(f"PASS {label}")
+            emit_event("eval.completed", id=label, status="passed", ok=True)
+        else:
+            failed += 1
+            print(f"FAIL {label}: {result.get('error')}")
+            emit_event(
+                "eval.completed",
+                id=label,
+                status="failed",
+                ok=False,
+                error=str(result.get("error") or ""),
+            )
+    if args.kernel:
+        proc = subprocess.run(
+            [sys.executable, "-m", "unittest", *EVAL_UNITTEST_MODULES],
+            cwd=str(repo),
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
+        )
+        if proc.returncode != 0:
+            failed += 1
+            print("FAIL kernel unittest eval modules")
+            emit_event("eval.completed", id="kernel-unittests", status="failed", ok=False)
+        else:
+            passed += 1
+            print("PASS kernel unittest eval modules")
+            emit_event("eval.completed", id="kernel-unittests", status="passed", ok=True)
+    print(f"evals passed={passed} failed={failed}")
+    if failed:
+        raise SystemExit(1)
+    if not selected and not args.kernel:
+        die("no evals to run; try --list or --kernel")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -6153,6 +6496,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="stamp SPEC closed; refused while contrast is OPEN (slice done ≠ closed)",
     )
     s.set_defaults(func=cmd_close)
+
+    s = sub.add_parser(
+        "eval",
+        help="run recovery eval fixtures (and optional kernel unittest evals)",
+    )
+    s.add_argument(
+        "eval_id",
+        nargs="?",
+        help="optional eval id or substring filter (default: all recovery evals)",
+    )
+    s.add_argument(
+        "--list",
+        action="store_true",
+        help="list discovered recovery evals",
+    )
+    s.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit non-zero when any eval fails",
+    )
+    s.add_argument(
+        "--kernel",
+        action="store_true",
+        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief)",
+    )
+    s.set_defaults(func=cmd_eval)
 
     return p
 

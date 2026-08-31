@@ -1,0 +1,22 @@
+{
+  "id": "recovery/beacon-amnesia",
+  "description": "Beacon-style amnesia: domain done, store missing, cli/http stubs in flight",
+  "fixture": "recovery_beacon_amnesia",
+  "tags": ["recovery", "gate"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "completed",
+        "  domain",
+        "in_flight",
+        "  store",
+        "beacon/store.py          missing",
+        "parked",
+        "agents_note",
+        "HOLD"
+      ]
+    }
+  ]
+}

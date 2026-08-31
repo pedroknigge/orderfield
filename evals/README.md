@@ -2,6 +2,26 @@
 
 Kernel evals. CI (and `python3 -m unittest discover -s tests`) drives the shipped CLI against these manifests. They are not a second regime engine.
 
+## `of eval` (recovery fixtures)
+
+Recovery regressions inspired by Eve `eve eval` — runnable without unittest:
+
+```bash
+of eval --list
+of eval --strict              # all evals/recovery/*.eval.json
+of eval quarry --strict       # filter by id substring
+of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / ResumeRecoveryBrief
+```
+
+| Eval | Fixture | Must hold |
+| --- | --- | --- |
+| `recovery/quarry-dirty-wave` | `recovery_quarry_dirty` | `of resume` shows completed domain, parked store/cli, `HOLD` |
+| `recovery/beacon-amnesia` | `recovery_beacon_amnesia` | domain done, store path missing, parked agents note |
+
+Defaults: [`evals.config.json`](evals.config.json).
+
+## Unittest manifests (`evals/expected/`)
+
 | Manifest | Fixture | Must hold |
 |---|---|---|
 | `expected/field-residual.json` | `assets/fixtures/residual.threshold.json` | `integrate` → `escalate_up`; `--apply` bumps `rev`; spawn dry-run rejected |
@@ -12,4 +32,5 @@ Kernel evals. CI (and `python3 -m unittest discover -s tests`) drives the shippe
 
 ```bash
 python3 -m unittest discover -s tests -v
+of eval --strict --kernel
 ```

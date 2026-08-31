@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.5` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.6` — see [`VERSION`](../VERSION)
 
 ## Shape
 
@@ -45,11 +45,12 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `validate_residual_for_packet` | Residual identity binding and existing in-project `done.result_ref` |
 | `integration_input_digest` / `reconcile_integration_state` | Idempotent replay and interrupted-state repair; changed inputs use `--recompute` |
 | `phase_transition_errors` / `wave_transition_errors` | Sequential closed phase movement and complete current-digest wave movement |
-| `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; optional `--summary` |
+| `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; parked agents + `agents_note`; optional `--summary` |
 | `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary) |
-| in-flight | Packed child with missing residual; `of status` surfaces count |
+| in-flight | Packed child with missing residual; `of status` surfaces count; `of resume` lists `parked` + `parked_reason` |
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
-| `of --json` / `OF_JSON=1` | Optional machine-readable stderr events for pack/spawn/collect/integrate |
+| `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
+| `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
 | `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
 | `cmd_retain` / `cmd_gc` | Episodic keep/drop/dump; useful residuals/learnings kept; inapplicable dropped; logs/history >30d dumped; never copies transcripts |
