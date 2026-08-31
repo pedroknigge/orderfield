@@ -76,7 +76,23 @@ of pack … --force-spawn
 
 ## Phase or next-wave refused
 
-The transition error names the missing proof: in-flight children, no integration report, changed integration digest, unclosed phase, non-sequential target, wrong report regime, or no ORDER revision after escalation. Close that condition and retry. `phase --force --reason "…"` is the audited break-glass path for phase movement; `next-wave` has no force flag.
+The transition error names the missing proof: in-flight children, no integration report, changed integration digest, unclosed phase, non-sequential target, wrong report regime, or no ORDER revision after escalation. Close that condition and retry. `phase --force --reason "…"` is the audited break-glass path for phase movement; `next-wave` has no force flag. `--force` to `deliver` still requires `of close` / coverage / matching `spec_hash`.
+
+## Pack `--owns-path` overlap
+
+**Symptom:** pack dies with `owns_path … overlaps … in wave N` or `wave already has an implementer`.
+
+**Meaning:** Two implementers in the same wave must have disjoint product paths. The first may omit `--owns-path`; a second must pass it. This is pack exclusivity, not a file lock.
+
+**Recover:** Give disjoint `--owns-path` values, or `of unpack` the colliding child. Cross-wave reuse of a path is allowed and prints `consider continuing <child>`.
+
+## Verifier residual refused
+
+**Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, or `result_ref is empty`.
+
+**Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence.
+
+**Recover:** Rewrite the residual with a transcript path and evidence that cites the IDs or CLI you actually ran.
 
 ## Field lock wait exceeded
 

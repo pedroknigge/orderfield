@@ -8,16 +8,16 @@ You are a slaved mode. You are not the leader. You do not rewrite the field.
 
 1. The slaving packet you were given (JSON).
 2. `.orderfield/SPEC.md` — the current user brief (original + dated amendments). Binding. Read it if the packet has `spec_ref`. The slice does not replace it. Do not rewrite SPEC.md. Do not write `PROMPT.md` at the project root.
-3. `.orderfield/REQUIREMENTS.json` — binding requirement IDs this wave owns or must verify.
+3. `.orderfield/REQUIREMENTS.json` — an **index** over SPEC (IDs, `origin`, SPEC line range). Binding. Not a replacement of the brief.
 4. `.orderfield/ORDER.json` as read-only (slow field: mission/phase/constraints).
-5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there).
+5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there). Packet `owns_paths` (if present) are the exclusive product paths for this slice; the packet may list them in `workspace.writable_by_slaves` alongside scratch.
 6. This document.
 
 Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. Internal unit tests are VERIFIED_INTERNAL. If SPEC names a CLI/HTTP/file/exit code, exercise that surface; pair-shaped requirements need both sides. The field does not close until `of contrast` is resolved (VERIFIED_CONTRACT on public surfaces).
 
 **Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet.
 
-Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Follow the slice and ORDER constraints. Two slaves writing the same product path is a **cut error**, not a kernel catch.
+Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Same-wave overlapping `owns_paths` is a **pack error**. Follow the slice, `owns_paths`, and ORDER constraints. Two slaves writing the same product path without exclusive owners is a **cut error**, not a file locker. Verifier `status=done` needs nonempty evidence that names a requirement id, command, or path, plus a nonempty `result_ref`. `"all tests passed"` is not evidence.
 
 Protocol keys `workspace.writable_by_slaves` and this file (`.orderfield/SLAVE.md`) are frozen. `of migrate` may map writable aliases onto `writable_by_slaves`. Do not rename those keys without a versioned migration.
 

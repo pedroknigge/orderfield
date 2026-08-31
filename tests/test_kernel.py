@@ -4675,7 +4675,7 @@ class SpecFidelity(unittest.TestCase):
         ids = [
             line.split()[0]
             for line in listed.stdout.splitlines()
-            if line.strip().startswith(("CLI-", "REQ-"))
+            if line.split() and of.REQ_ID_RE.match(line.split()[0])
         ]
         internal_args = ["spec"]
         for rid in ids:
@@ -4854,7 +4854,7 @@ class SpecFidelity(unittest.TestCase):
         ids = [
             line.split()[0]
             for line in listed.stdout.splitlines()
-            if line.strip().startswith(("CLI-", "REQ-"))
+            if line.split() and of.REQ_ID_RE.match(line.split()[0])
         ]
         self.assertTrue(ids)
         drop = ids[0]
@@ -5009,3 +5009,288 @@ class SpecFidelity(unittest.TestCase):
         self.assertEqual(forced.returncode, 0, forced.stderr)
         self.assertIn("unowned", forced.stderr)
         self.assertIn("contrast", forced.stderr)
+
+
+class PathOwnership(unittest.TestCase):
+    """Same-wave exclusive owns_paths; cross-wave note; packet workspace union."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-paths-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        (self.tmp / "taskforge").mkdir()
+        (self.tmp / "taskforge" / "persistence.py").write_text("# p\n", encoding="utf-8")
+        (self.tmp / "taskforge" / "http_api.py").write_text("# h\n", encoding="utf-8")
+        r = run_of(
+            self.tmp, "init", "--mission", "build taskforge", "--phase", "explore"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_owns_paths_overlap_and_disjoint(self) -> None:
+        first = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "state machine",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "taskforge/persistence.py",
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        packet = load_json(packet_path(self.tmp, "imp1"))
+        self.assertEqual(packet["owns_paths"], ["taskforge/persistence.py"])
+        ws = packet["order"]["workspace"]["writable_by_slaves"]
+        self.assertIn(".orderfield/work/scratch/", ws)
+        self.assertIn("taskforge/persistence.py", ws)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(
+            order["workspace"]["writable_by_slaves"],
+            [".orderfield/work/scratch/"],
+        )
+        overlap = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "same file",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp2",
+            "--owns-path",
+            "taskforge/persistence.py",
+        )
+        self.assertNotEqual(overlap.returncode, 0, overlap.stdout)
+        self.assertIn("overlaps", overlap.stderr)
+        self.assertIn("imp1", overlap.stderr)
+        disjoint = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "http",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp2",
+            "--owns-path",
+            "taskforge/http_api.py",
+        )
+        self.assertEqual(disjoint.returncode, 0, disjoint.stderr)
+        missing = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "docs",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp3",
+        )
+        self.assertNotEqual(missing.returncode, 0, missing.stdout)
+        self.assertIn("--owns-path", missing.stderr)
+
+    def test_directory_owns_path_overlaps_child_file(self) -> None:
+        run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "all taskforge",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "taskforge",
+        )
+        nested = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "http only",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp2",
+            "--owns-path",
+            "taskforge/http_api.py",
+        )
+        self.assertNotEqual(nested.returncode, 0, nested.stdout)
+        self.assertIn("overlaps", nested.stderr)
+
+    def test_cross_wave_note_does_not_block(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "state",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "taskforge/persistence.py",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "imp1")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        second = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "retry on same file",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp2",
+            "--owns-path",
+            "taskforge/persistence.py",
+        )
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("was owned by child imp1", second.stderr)
+        self.assertIn("consider continuing imp1", second.stderr)
+
+
+class VerifierEvidence(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-verify-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "build", "--phase", "verify")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "contrast public surface",
+            "--role",
+            "verifier",
+            "--child-id",
+            "v1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _write(self, evidence: str, result_text: str = "transcript\n") -> Path:
+        packet = load_json(packet_path(self.tmp, "v1"))
+        residual = bound_residual(self.tmp, "v1")
+        residual["residual"]["evidence"] = evidence
+        dest = self.tmp / str(packet["residual_path"])
+        result = self.tmp / str(residual["result_ref"])
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text(result_text, encoding="utf-8")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        return dest
+
+    def test_empty_and_platitude_evidence_refused(self) -> None:
+        self._write("")
+        empty = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertNotEqual(empty.returncode, 0, empty.stdout)
+        self.assertIn("nonempty evidence", empty.stdout + empty.stderr)
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "v1.json"
+        dest.unlink()
+        self._write("all tests passed")
+        slogan = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertNotEqual(slogan.returncode, 0, slogan.stdout)
+        self.assertIn("platitude", slogan.stdout + slogan.stderr)
+
+    def test_evidence_naming_requirement_accepted(self) -> None:
+        self._write(
+            "LEASE-001 only queued jobs are leaseable; "
+            "ran python -m taskforge lease against the CLI."
+        )
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+
+
+class ForceDeliverSpec(unittest.TestCase):
+    def test_force_deliver_still_requires_spec_close(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-force-del-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        brief = tmp / "brief.md"
+        brief.write_text(
+            "python -m taskforge lease\n\n## Rules\n- only queued jobs may be leased\n",
+            encoding="utf-8",
+        )
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "build taskforge",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        forced = run_of(
+            tmp, "phase", "deliver", "--force", "--reason", "skip verify"
+        )
+        self.assertNotEqual(forced.returncode, 0, forced.stdout)
+        self.assertIn("cannot skip SPEC close", forced.stderr)
+
+
+class SemanticExtract(unittest.TestCase):
+    """REQUIREMENTS is an index over SPEC, not a second brief."""
+
+    def test_extract_semantic_prefixes_with_source_and_precision(self) -> None:
+        text = "\n".join(
+            [
+                "# TaskForge",
+                "",
+                "Only queued jobs whose available_at is due may be leased.",
+                "Fail must emit execution_failed.",
+                "Recover of retry_wait to queued must emit execution_requeued.",
+                "Eight concurrent identical enqueue requests must converge.",
+                "",
+                "You must consider retries when designing backoff.",
+                "",
+                "python -m taskforge lease",
+            ]
+        )
+        reqs = of.extract_requirements_from_spec(text)
+        by_prefix: dict[str, list[dict]] = {}
+        for item in reqs:
+            prefix = str(item["id"]).rsplit("-", 1)[0]
+            by_prefix.setdefault(prefix, []).append(item)
+            self.assertEqual(item.get("origin"), "extracted")
+            src = item.get("source") or {}
+            self.assertGreaterEqual(int(src.get("spec_line_start") or 0), 1)
+        self.assertIn("LEASE", by_prefix)
+        self.assertIn("AUDIT", by_prefix)
+        self.assertIn("IDEMP", by_prefix)
+        self.assertIn("CLI", by_prefix)
+        bodies = [str(item["text"]).lower() for item in reqs]
+        self.assertFalse(any("must consider retries" in body for body in bodies), bodies)
+        data = {"v": 1, "spec_hash": "", "requirements": list(reqs)}
+        again = of.extract_requirements_from_spec(text, existing=data["requirements"])
+        changed = of.merge_extracted_requirements(data, again)
+        self.assertFalse(changed)
+        self.assertEqual(len(data["requirements"]), len(reqs))
+
+    def test_contrast_cites_spec_line(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-extract-cite-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        brief = tmp / "brief.md"
+        brief.write_text(
+            "Only queued jobs whose available_at is due may be leased.\n"
+            "python -m taskforge lease\n",
+            encoding="utf-8",
+        )
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "build taskforge",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        contrast = run_of(tmp, "contrast")
+        self.assertIn("SPEC.md:", contrast.stdout)

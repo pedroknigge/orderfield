@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.2` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.3` — see [`VERSION`](../VERSION)
 
 ## Shape
 
@@ -55,7 +55,9 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_retain` / `cmd_gc` | Episodic keep/drop/dump; useful residuals/learnings kept; inapplicable dropped; logs/history >30d dumped; never copies transcripts |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
-| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger, SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`) |
+| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`) |
+| `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock |
+| `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
 | `argv_preview` / `redact_text` | Secrets and escalated approval flags stripped from spawn previews and logs |
 | `packets_all_stale` / `complete_stale_wave_recoverable` | Fully stale wave: `next-wave` without a report; complete stale wave may still integrate |

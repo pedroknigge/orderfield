@@ -42,7 +42,19 @@
             "enum": ["contract", "internal"]
           },
           "pair": { "type": "boolean" },
-          "pair_checked": { "type": "boolean" }
+          "pair_checked": { "type": "boolean" },
+          "origin": {
+            "type": "string",
+            "enum": ["extracted", "added", "from-file"]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "spec_line_start": { "type": "integer", "minimum": 1 },
+              "spec_line_end": { "type": "integer", "minimum": 1 }
+            }
+          }
         }
       }
     }

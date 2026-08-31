@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.5.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.5.3</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -131,6 +131,8 @@ of init --mission "decidable architecture for a pricing tool" --phase explore \
   --source "<verbatim user request>"
 of pack --slice "map pricing models, do not choose the phase" --role explorer \
   --owns-requirement CLI-001
+# second implementer in the same wave needs disjoint --owns-path
+# of pack --role implementer --owns-path src/http.py --owns-requirement HTTP-001
 of spawn --adapter generic --packet .orderfield/waves/001/packets/*.json
 of collect --wave 1
 of integrate --wave 1
@@ -235,21 +237,21 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`; refused while binding IDs are unowned and this packet owns none). Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies). Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds the child budget |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
 | `spawn` | launch a child, or generic handoff |
 | `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2, never freezes on one dead child |
 | `integrate` | reduce residuals and choose a regime (`--partial`; identical replay repairs/no-ops; changed inputs need `--recompute`) |
-| `phase` | guarded sequential phase change; audited break-glass is `--force --reason` |
+| `phase` | guarded sequential phase change; `--force --reason` is audited break-glass; `--force` to `deliver` still requires SPEC close |
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
 | `next-wave` | advance only after complete current-digest integration and required post-escalation revision |
 | `doctor` | local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
 | `retain` / `gc` | episodic keep/drop/dump; never copies transcripts |
 | `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
 | `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
-| `spec` | list/add/extract/verify/amend/supersede; `--verified` is internal; `--verified-contract` closes a public surface |
+| `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
