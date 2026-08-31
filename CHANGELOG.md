@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1
+
+Spec-fidelity patch: ingest hygiene, amendments, and a real hash check.
+
+- Ingest: `--source` / `--source-file` copies the brief to `.orderfield/SPEC.md`. Do not write `PROMPT.md` at the project root. Leftover `prompt.md` and `.orderfield/ingest.md` are discarded after copy.
+- Amend: `of spec --amend` / `--amend-file` appends a dated amendment; the original stays; requirement IDs continue. `of spec --supersede ID` drops a requirement that no longer applies.
+- Hash: `ORDER.spec_hash` is checked against SPEC.md bytes on pack/render/spawn/contrast/close/integrate. Silent rewrite is a field error. `--revise-file` replaces the brief and archives the previous bytes to `.orderfield/spec-log/` (dumped after 30 days).
+- Packaging: VERSION 0.5.1; skill/alias description preview `v0.5.1 — …`. README, architecture, claims matrix, kernel/adapters feature docs, and roadmap follow code.
+
 ## 0.5.0
 
 Operational contract. Qwen-any adapter, trust profiles, doctor, migrations, opt-in worktree, argv/log redaction, 30-day episodic retention, stale-wave recovery, reserved runtime, frozen terminology.
@@ -15,7 +24,7 @@ Operational contract. Qwen-any adapter, trust profiles, doctor, migrations, opt-
 - Terminology: protocol keys `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` stay frozen. `of migrate` maps writable aliases onto the protocol key.
 - Runtime ownership: `scale_up`, `scale_across`, token accounting, `local_budget_pct`, and inherited depth are reserved (no telemetry). `decide_regime` remaps reserved regimes to `hold`.
 - Spec fidelity: `of init --source-file` stores the verbatim user brief as immutable `.orderfield/SPEC.md` + `spec_hash`. Rewrite only via `of spec --revise-file`. Packets carry stable `owns_requirements` IDs, not copied prose. `of contrast` prints PASS/FAIL/MISS/UNVERIFIED and `CLOSE BLOCKED` while binding gaps remain. `of close` stamps `spec_closed` (slice `done` ≠ SPEC closed) and is refused until contrast is RESOLVED. `of phase deliver` requires `of close`.
-- Packaging: VERSION 0.5.0; skill/alias description preview `v0.5.0 — …`. README, architecture, claims matrix, kernel/adapters feature docs, and roadmap follow code. This bump does not tag or GitHub-release.
+- Packaging: VERSION 0.5.0; skill/alias description preview `v0.5.0 — …`. README, architecture, claims matrix, kernel/adapters feature docs, and roadmap follow code.
 
 ## 0.4.2
 

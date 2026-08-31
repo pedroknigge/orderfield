@@ -7,7 +7,7 @@ You are a slaved mode. You are not the leader. You do not rewrite the field.
 ## Your world
 
 1. The slaving packet you were given (JSON).
-2. `.orderfield/SPEC.md` — the verbatim user brief. Binding. Read it if the packet has `spec_ref`. The slice does not replace it.
+2. `.orderfield/SPEC.md` — the current user brief (original + dated amendments). Binding. Read it if the packet has `spec_ref`. The slice does not replace it. Do not rewrite SPEC.md. Do not write `PROMPT.md` at the project root.
 3. `.orderfield/REQUIREMENTS.json` — binding requirement IDs this wave owns or must verify.
 4. `.orderfield/ORDER.json` as read-only (slow field: mission/phase/constraints).
 5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there).

@@ -3418,7 +3418,7 @@ class InitForceArchivesWaves(unittest.TestCase):
     def test_force_archives_and_wave_counter_stays_true(self) -> None:
         r = run_of(self.tmp, "init", "--force", "--mission", "new field")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("archived old waves", r.stdout)
+        self.assertIn("archived old field", r.stdout)
         archive = self.tmp / ".orderfield" / f"waves-archived-{self.old_id}"
         self.assertTrue(archive.is_dir())
         self.assertTrue((archive / "001" / "packets" / "c1.json").is_file())
@@ -4310,6 +4310,21 @@ class EpisodicRetention(unittest.TestCase):
         self.assertIn("dry-run", r.stdout)
         self.assertTrue(old_log.is_file())
 
+    def test_gc_dumps_old_spec_log_keeps_current_spec(self) -> None:
+        spec = self.tmp / ".orderfield" / "SPEC.md"
+        spec.write_text("current contract\n", encoding="utf-8")
+        log = self.tmp / ".orderfield" / "spec-log"
+        log.mkdir(parents=True, exist_ok=True)
+        snap = log / "001-deadbeefabcd.md"
+        snap.write_text("previous contract\n", encoding="utf-8")
+        self._age(snap)
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(spec.is_file())
+        self.assertFalse(snap.exists())
+        self.assertIn("current-contract", r.stdout)
+        self.assertIn("history age>", r.stdout)
+
     def test_gc_dumps_old_wave_history(self) -> None:
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
@@ -4690,3 +4705,156 @@ class SpecFidelity(unittest.TestCase):
         self.assertEqual(status.returncode, 0, status.stderr)
         self.assertIn("spec        .orderfield/SPEC.md", status.stdout)
         self.assertIn("requirements", status.stdout)
+
+    def test_silent_spec_rewrite_blocks_gate_until_explicit_revise(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        spec = self.tmp / ".orderfield" / "SPEC.md"
+        spec.write_text("silently rewritten brief\n", encoding="utf-8")
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("HASH MISMATCH", status.stdout)
+        blocked = run_of(self.tmp, "contrast")
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn("hash mismatch", blocked.stderr)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("hash mismatch", refused.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement reverse",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        self.assertIn("hash mismatch", packed.stderr)
+        revised = run_of(self.tmp, "spec", "--revise-file", str(self.brief))
+        self.assertEqual(revised.returncode, 0, revised.stderr)
+        self.assertIn("spec revised", revised.stdout)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(order.get("spec_closed"))
+        self.assertEqual(
+            order["spec_hash"],
+            of.sha256_text(spec.read_text(encoding="utf-8")),
+        )
+        open_loop = run_of(self.tmp, "contrast")
+        self.assertEqual(open_loop.returncode, 2, open_loop.stdout)
+        self.assertIn("CLOSE BLOCKED", open_loop.stdout)
+
+    def test_revise_file_creates_spec_after_specless_init(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        created = run_of(self.tmp, "spec", "--revise-file", str(self.brief))
+        self.assertEqual(created.returncode, 0, created.stderr)
+        self.assertIn("spec created", created.stdout)
+        spec = self.tmp / ".orderfield" / "SPEC.md"
+        self.assertTrue(spec.is_file())
+        self.assertIn("amount_minor is a signed integer", spec.read_text(encoding="utf-8"))
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["spec_ref"], ".orderfield/SPEC.md")
+        self.assertEqual(
+            order["spec_hash"],
+            of.sha256_text(spec.read_text(encoding="utf-8")),
+        )
+
+    def test_product_root_prompt_md_is_discarded_after_ingest(self) -> None:
+        prompt = self.tmp / "PROMPT.md"
+        prompt.write_text(self.brief.read_text(encoding="utf-8"), encoding="utf-8")
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(prompt),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(prompt.exists(), r.stdout)
+        self.assertIn("discarded", r.stdout)
+        spec = self.tmp / ".orderfield" / "SPEC.md"
+        self.assertTrue(spec.is_file())
+        self.assertIn("amount_minor is a signed integer", spec.read_text(encoding="utf-8"))
+        self.assertFalse((self.tmp / "prompt.md").exists())
+
+    def test_amend_keeps_original_and_continues_ids(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        extra = self.tmp / "more.md"
+        extra.write_text(
+            "python -m ledgerlab verify --store PATH\n",
+            encoding="utf-8",
+        )
+        amended = run_of(self.tmp, "spec", "--amend-file", str(extra))
+        self.assertEqual(amended.returncode, 0, amended.stderr)
+        self.assertIn("spec amended", amended.stdout)
+        spec = (self.tmp / ".orderfield" / "SPEC.md").read_text(encoding="utf-8")
+        self.assertIn("amount_minor is a signed integer", spec)
+        self.assertIn("## Amendment 1 —", spec)
+        self.assertIn("python -m ledgerlab verify --store PATH", spec)
+        log_dir = self.tmp / ".orderfield" / "spec-log"
+        snaps = list(log_dir.glob("*.md"))
+        self.assertEqual(len(snaps), 1)
+        listed = run_of(self.tmp, "spec")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("CLI-003", listed.stdout)
+        self.assertTrue(extra.exists())
+        blocked = run_of(self.tmp, "close")
+        self.assertNotEqual(blocked.returncode, 0)
+
+    def test_supersede_drops_requirement_from_contrast_gate(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        listed = run_of(self.tmp, "spec")
+        ids = [
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if line.strip().startswith(("CLI-", "REQ-"))
+        ]
+        self.assertTrue(ids)
+        drop = ids[0]
+        keep = ids[1:]
+        gone = run_of(self.tmp, "spec", "--supersede", drop)
+        self.assertEqual(gone.returncode, 0, gone.stderr)
+        self.assertIn("superseded", gone.stdout)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertNotIn(drop, contrast.stdout)
+        for rid in keep:
+            v = run_of(self.tmp, "spec", "--verified", rid)
+            self.assertEqual(v.returncode, 0, v.stderr)
+        resolved = run_of(self.tmp, "contrast")
+        self.assertEqual(resolved.returncode, 0, resolved.stdout)
+        self.assertIn("RESOLVED", resolved.stdout)

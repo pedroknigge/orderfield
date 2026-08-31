@@ -27,7 +27,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["unowned", "owned", "verified", "failed"]
+            "enum": ["unowned", "owned", "verified", "failed", "superseded"]
           }
         }
       }

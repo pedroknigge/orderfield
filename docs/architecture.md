@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.0` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.1` — see [`VERSION`](../VERSION)
 
 ## Shape
 
@@ -24,7 +24,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | Packet/residual execution identity | Canonical live packet path + packet hash + exact ORDER revision + echoed residual identity |
 | Phase/wave movement | Current integration digest, closure, revision-after-escalation, and in-flight guards |
 | Product file exclusivity | Cut plan + constraints — **not** a kernel lock |
-| Binding specification | `.orderfield/SPEC.md` verbatim user brief + `spec_hash`; packets reference-load it |
+| Binding specification | `.orderfield/SPEC.md` current brief (original + amendments) + `spec_hash`; ingest is disposable; `spec-log` is episodic |
 | Binding requirements | `.orderfield/REQUIREMENTS.json`; pack `--owns-requirement`; deliver blocked while UNOWNED/UNVERIFIED/FAILED |
 | Role/workspace compliance and metric truth | Child/leader contract — values are shape-checked, not attested |
 

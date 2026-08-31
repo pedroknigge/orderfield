@@ -151,8 +151,10 @@ SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
 FIELD_SPEC_MD = ".orderfield/SPEC.md"
 FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
+FIELD_SPEC_LOG = ".orderfield/spec-log"
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
-REQ_STATUSES = ("unowned", "owned", "verified", "failed")
+REQ_STATUSES = ("unowned", "owned", "verified", "failed", "superseded")
+AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
 CHILD_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PACKET_ID_RE = re.compile(r"^pkt_[0-9a-f]{32}$")
 PACKET_IDENTITY_FIELDS = (
@@ -289,12 +291,41 @@ def spec_path(root: Path | None = None) -> Path:
     return of_dir(root) / "SPEC.md"
 
 
+def spec_log_dir(root: Path | None = None) -> Path:
+    return of_dir(root) / "spec-log"
+
+
 def requirements_path(root: Path | None = None) -> Path:
     return of_dir(root) / "REQUIREMENTS.json"
 
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def spec_bytes_hash(root: Path) -> str | None:
+    spec = spec_path(root)
+    if not spec.is_file():
+        return None
+    return sha256_text(spec.read_text(encoding="utf-8"))
+
+
+def require_spec_intact(root: Path, order: dict[str, Any]) -> None:
+    """SPEC.md bytes must match ORDER.spec_hash. Silent rewrite is a field error."""
+    stored = str(order.get("spec_hash") or "")
+    if not stored:
+        return
+    live = spec_bytes_hash(root)
+    if live is None:
+        die(
+            "SPEC.md missing but ORDER.spec_hash is set; "
+            "restore the brief or of spec --revise-file PATH"
+        )
+    if live != stored:
+        die(
+            "SPEC.md hash mismatch (silent rewrite); "
+            "of spec --revise-file PATH for an explicit revision"
+        )
 
 
 def require_req_id(value: str) -> str:
@@ -334,8 +365,10 @@ def canonical_requirements_hash(data: dict[str, Any]) -> str:
 def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
     spec = spec_path(root)
     if spec.is_file():
+        require_spec_intact(root, order)
+        live = spec_bytes_hash(root) or ""
         order["spec_ref"] = FIELD_SPEC_MD
-        order["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        order["spec_hash"] = live
         readable = order.setdefault("workspace", {}).setdefault("readable", [])
         if FIELD_SPEC_MD not in readable:
             readable.append(FIELD_SPEC_MD)
@@ -355,16 +388,157 @@ def write_spec(root: Path, text: str, *, revise: bool = False) -> str:
     if path.is_file() and not revise:
         die(
             "SPEC.md is immutable after init; "
-            "of spec --revise-file PATH to change the brief"
+            "of spec --amend / --amend-file for a new request, "
+            "or of spec --revise-file PATH to replace the brief"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     return sha256_text(body)
 
 
-def extract_requirements_from_spec(text: str) -> list[dict[str, Any]]:
+def snapshot_spec(root: Path) -> Path | None:
+    """Copy current SPEC.md into spec-log before an explicit amend/revise."""
+    spec = spec_path(root)
+    if not spec.is_file():
+        return None
+    body = spec.read_text(encoding="utf-8")
+    digest = sha256_text(body)
+    log = spec_log_dir(root)
+    log.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for path in log.glob("*.md"):
+        try:
+            n = max(n, int(path.name.split("-", 1)[0]))
+        except ValueError:
+            continue
+    dest = log / f"{n + 1:03d}-{digest[:12]}.md"
+    dest.write_text(body, encoding="utf-8")
+    return dest
+
+
+def next_amendment_index(text: str) -> int:
+    nums = [int(m.group(1)) for m in AMEND_RE.finditer(text or "")]
+    return (max(nums) + 1) if nums else 1
+
+
+def append_amendment(current: str, incoming: str) -> str:
+    body = incoming.strip()
+    if not body.endswith("\n"):
+        body += "\n"
+    n = next_amendment_index(current)
+    block = f"\n\n---\n\n## Amendment {n} — {utc_now()}\n\n{body}"
+    base = current if current.endswith("\n") else current + "\n"
+    return base.rstrip("\n") + block
+
+
+def read_brief_file(path_str: str, *, flag: str) -> str:
+    if path_str == "-":
+        return sys.stdin.read()
+    path = Path(path_str)
+    if not path.is_file():
+        die(f"{flag} not found: {path_str}")
+    return path.read_text(encoding="utf-8")
+
+
+def discard_disposable_ingest(root: Path, source: Path | None = None) -> None:
+    """Product-root prompt.md and .orderfield/ingest.md are ingest scratch, not product."""
+    targets = [of_dir(root) / "ingest.md", root / "PROMPT.md", root / "prompt.md"]
+    if source is not None:
+        try:
+            rel = source.expanduser().resolve().relative_to(root.resolve())
+        except (OSError, ValueError):
+            rel = None
+        if rel is not None and (
+            rel.as_posix() == ".orderfield/ingest.md"
+            or (len(rel.parts) == 1 and rel.name.lower() == "prompt.md")
+        ):
+            targets.append(source)
+    seen: set[str] = set()
+    for path in targets:
+        try:
+            if not path.is_file() or path.is_symlink():
+                continue
+            ident = str(path.resolve())
+            if ident in seen:
+                continue
+            seen.add(ident)
+            try:
+                shown = path.resolve().relative_to(root.resolve())
+            except ValueError:
+                shown = path
+            path.unlink()
+            print(f"ingest       discarded {shown} (contract is {FIELD_SPEC_MD})")
+        except OSError:
+            continue
+
+
+def archive_previous_field(root: Path, target: Path) -> None:
+    """On --force, move leftover waves + SPEC so the new field cannot inherit them."""
+    old_id = None
+    try:
+        if order_path(root).is_file():
+            old_id = json.loads(order_path(root).read_text(encoding="utf-8")).get("id")
+    except (OSError, json.JSONDecodeError):
+        pass
+    stamp = old_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest = target / f"waves-archived-{stamp}"
+    n = 0
+    while dest.exists():
+        n += 1
+        dest = target / f"waves-archived-{stamp}-{n}"
+    moved = False
+    waves = target / "waves"
+    if waves.is_dir() and any(waves.iterdir()):
+        waves.rename(dest)
+        moved = True
+    for name in ("SPEC.md", "REQUIREMENTS.json", "ingest.md"):
+        src = target / name
+        if src.exists():
+            dest.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dest / name))
+            moved = True
+    slog = target / "spec-log"
+    if slog.exists():
+        dest.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(slog), str(dest / "spec-log"))
+        moved = True
+    if moved:
+        print(f"archived old field -> {dest.relative_to(root)}")
+
+
+def is_active_requirement(item: Any) -> bool:
+    if not isinstance(item, dict) or not item.get("binding", True):
+        return False
+    return str(item.get("status") or "") != "superseded"
+
+
+def merge_extracted_requirements(
+    data: dict[str, Any], extracted: list[dict[str, Any]]
+) -> bool:
+    existing_ids = {r.get("id") for r in data.get("requirements") or []}
+    existing_text = {r.get("text") for r in data.get("requirements") or []}
+    changed = False
+    for item in extracted:
+        if item["id"] in existing_ids or item["text"] in existing_text:
+            continue
+        data.setdefault("requirements", []).append(item)
+        existing_ids.add(item["id"])
+        existing_text.add(item["text"])
+        changed = True
+    return changed
+
+
+def extract_requirements_from_spec(
+    text: str, existing: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     """Deterministic lossless-enough extraction. Leader may of spec --add."""
     counters: dict[str, int] = {}
+    for raw in existing or []:
+        rid = str(raw.get("id") or "")
+        if not REQ_ID_RE.match(rid):
+            continue
+        prefix, num = rid.rsplit("-", 1)
+        counters[prefix] = max(counters.get(prefix, 0), int(num))
 
     def next_id(prefix: str) -> str:
         counters[prefix] = counters.get(prefix, 0) + 1
@@ -425,11 +599,11 @@ def extract_requirements_from_spec(text: str) -> list[dict[str, Any]]:
 
 
 def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
-    items = [
-        r
-        for r in (data.get("requirements") or [])
-        if isinstance(r, dict) and r.get("binding", True)
-    ]
+    all_items = [r for r in (data.get("requirements") or []) if isinstance(r, dict)]
+    superseded = sum(
+        1 for r in all_items if str(r.get("status") or "") == "superseded"
+    )
+    items = [r for r in all_items if is_active_requirement(r)]
     owned = failed = verified = unowned = unverified = 0
     for item in items:
         status = str(item.get("status") or "unowned")
@@ -452,6 +626,7 @@ def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
         "failed": failed,
         "unowned": unowned,
         "unverified": unverified,
+        "superseded": superseded,
     }
 
 
@@ -462,7 +637,7 @@ def requirement_coverage_errors(root: Path) -> list[str]:
     items = [
         r
         for r in (data.get("requirements") or [])
-        if isinstance(r, dict) and r.get("binding", True)
+        if is_active_requirement(r)
     ]
     if not spec.is_file() and not items:
         return []
@@ -509,7 +684,7 @@ def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
     data = load_requirements(root)
     rows: list[tuple[str, str, str]] = []
     for item in data.get("requirements") or []:
-        if not isinstance(item, dict) or not item.get("binding", True):
+        if not is_active_requirement(item):
             continue
         rid = str(item.get("id") or "?")
         text = str(item.get("text") or "")
@@ -533,7 +708,7 @@ def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
     blob = order_text_blob(order)
     lines: list[str] = []
     for item in data.get("requirements") or []:
-        if not isinstance(item, dict) or not item.get("binding", True):
+        if not is_active_requirement(item):
             continue
         rid = str(item.get("id") or "?")
         status = str(item.get("status") or "unowned")
@@ -599,6 +774,8 @@ def release_requirement_owner(data: dict[str, Any], child_id: str) -> bool:
 
 
 def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bool:
+    if order_path(root).exists():
+        require_spec_intact(root, load_order(root))
     data = load_requirements(root)
     items = data.get("requirements") or []
     if not items:
@@ -623,9 +800,9 @@ def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bo
                 item["status"] = "failed"
                 changed = True
     if changed:
-        spec = spec_path(root)
-        if spec.is_file():
-            data["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        live = spec_bytes_hash(root)
+        if live is not None:
+            data["spec_hash"] = live
         save_requirements(data, root)
     return changed
 
@@ -2585,6 +2762,34 @@ def plan_field_retention(
                             )
                         )
 
+    spec = field / "SPEC.md"
+    if spec.is_file() and not spec.is_symlink():
+        actions.append(
+            _retention_action("keep", field_rel(root, spec), "current-contract")
+        )
+    req = field / "REQUIREMENTS.json"
+    if req.is_file() and not req.is_symlink():
+        actions.append(
+            _retention_action("keep", field_rel(root, req), "current-contract")
+        )
+    slog = field / "spec-log"
+    if slog.is_dir() and not slog.is_symlink():
+        for path in sorted(slog.glob("*.md")):
+            if not path.is_file() or path.is_symlink():
+                continue
+            rel = field_rel(root, path)
+            if artifact_older_than_retention(path):
+                actions.append(
+                    _retention_action("dump", rel, f"history age>{RETENTION_DAYS}d")
+                )
+            else:
+                actions.append(_retention_action("keep", rel, "recent-spec-log"))
+    ingest = field / "ingest.md"
+    if ingest.is_file() and not ingest.is_symlink():
+        actions.append(
+            _retention_action("dump", field_rel(root, ingest), "disposable-ingest")
+        )
+
     for arch in sorted(field.glob("waves-archived-*")):
         if not arch.is_dir() or arch.is_symlink():
             continue
@@ -3036,32 +3241,15 @@ def cmd_init(args: argparse.Namespace) -> None:
     if source_file and source_inline:
         die("pass only one of --source / --source-file")
     if source_file:
-        path = Path(source_file)
-        if not path.is_file():
-            die(f"--source-file not found: {source_file}")
-        source_text = path.read_text(encoding="utf-8")
+        source_text = read_brief_file(str(source_file), flag="--source-file")
     elif source_inline:
         source_text = str(source_inline)
     target.mkdir(parents=True, exist_ok=True)
-    # --force starts a new field; waves of the old one must not shadow it.
-    # state restarts at wave 1, so leftover wave dirs would desync the
-    # counter and force silent skips later. Archive them instead.
-    waves = target / "waves"
-    if args.force and waves.is_dir() and any(waves.iterdir()):
-        old_id = None
-        try:
-            old_id = json.loads(order_path(root).read_text(encoding="utf-8")).get("id")
-        except (OSError, json.JSONDecodeError):
-            pass
-        stamp = old_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        dest = target / f"waves-archived-{stamp}"
-        n = 0
-        while dest.exists():
-            n += 1
-            dest = target / f"waves-archived-{stamp}-{n}"
-        waves.rename(dest)
-        print(f"archived old waves -> {dest.relative_to(root)}")
+    # --force starts a new field; leftover waves AND SPEC must not shadow it.
+    if args.force:
+        archive_previous_field(root, target)
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
+    waves = target / "waves"
     waves.mkdir(parents=True, exist_ok=True)
     if source_text is not None:
         spec_hash = write_spec(root, source_text, revise=bool(args.force))
@@ -3072,11 +3260,14 @@ def cmd_init(args: argparse.Namespace) -> None:
         )
         sync_order_spec_fields(order, root)
         print(f"spec         {FIELD_SPEC_MD}  hash={spec_hash[:12]}…")
-        print(f"requirements {len(extracted)} extracted (of spec --add to amend)")
+        print(f"requirements {len(extracted)} extracted (of spec --add / --amend)")
+        src_path = Path(source_file) if source_file and str(source_file) != "-" else None
+        discard_disposable_ingest(root, src_path)
     else:
         print(
             "of: note — no --source/--source-file; ORDER may compress the contract. "
-            "Store the verbatim brief with of patch --source-file.",
+            "Pass the verbatim user brief with --source or --source-file "
+            "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
             file=sys.stderr,
         )
     save_order(order, root)
@@ -3136,9 +3327,19 @@ def cmd_status(args: argparse.Namespace) -> None:
     reserved = ", ".join(RUNTIME_OWNERSHIP)
     print(f"runtime     reserved (no telemetry): {reserved}")
     if order.get("spec_ref"):
-        print(f"spec        {order.get('spec_ref')}  hash={str(order.get('spec_hash') or '')[:12]}…")
+        stored = str(order.get("spec_hash") or "")
+        live = spec_bytes_hash(root)
+        extra = ""
+        if stored and live and live != stored:
+            extra = "  HASH MISMATCH — of spec --revise-file"
+        print(f"spec        {order.get('spec_ref')}  hash={stored[:12]}…{extra}")
+        slog = spec_log_dir(root)
+        if slog.is_dir():
+            snaps = [p for p in slog.glob("*.md") if p.is_file()]
+            if snaps:
+                print(f"spec-log    {len(snaps)} snapshot(s)")
     else:
-        print("spec        missing (of patch --source-file)")
+        print("spec        missing (of spec --amend / --source)")
     counts = requirement_counts(load_requirements(root))
     print(
         f"requirements  {counts['total']} total  "
@@ -3189,6 +3390,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
 def cmd_pack(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     state = load_state(root)
     if args.role not in ROLES:
         die(f"invalid role: {args.role}")
@@ -3381,6 +3583,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
 def cmd_render(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     state = load_state(root)
     packet = require_registered_packet(
         root, args.packet, order=order, state=state
@@ -3397,6 +3600,7 @@ def cmd_render(args: argparse.Namespace) -> None:
 def cmd_handoff(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     state = load_state(root)
     packet = require_registered_packet(
         root, args.packet, order=order, state=state
@@ -3434,6 +3638,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
 def cmd_spawn(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     state = load_state(root)
     packet = require_registered_packet(
         root, args.packet, order=order, state=state
@@ -3978,6 +4183,14 @@ def phase_transition_errors(
         errors.extend(requirement_coverage_errors(root))
         if spec_path(root).is_file() and not order.get("spec_closed"):
             errors.append("SPEC not closed; of close (contrast must be RESOLVED)")
+        stored = str(order.get("spec_hash") or "")
+        live = spec_bytes_hash(root)
+        if stored and live is None:
+            errors.append("SPEC.md missing but ORDER.spec_hash is set")
+        elif stored and live and live != stored:
+            errors.append(
+                "SPEC.md hash mismatch (silent rewrite); of spec --revise-file"
+            )
     return errors
 
 
@@ -4033,6 +4246,7 @@ def require_wave_transition(
 def cmd_integrate(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     state = load_state(root)
     wave = args.wave or state["wave"]
     packets = packed_children(root, int(wave))
@@ -4585,40 +4799,92 @@ def cmd_spec(args: argparse.Namespace) -> None:
     order = load_order(root)
     data = load_requirements(root)
     changed = False
+    amend_file = getattr(args, "amend_file", None)
+    amend_text = getattr(args, "amend", None)
     revise_file = getattr(args, "revise_file", None)
     revise_text = getattr(args, "revise", None)
-    if revise_file and revise_text:
-        die("pass only one of --revise / --revise-file")
-    if revise_file or revise_text:
-        if not spec_path(root).is_file():
-            die("no SPEC.md; of init --source-file first")
-        old_hash = order.get("spec_hash") or sha256_text(
-            spec_path(root).read_text(encoding="utf-8")
-        )
+    modes = [bool(amend_file), bool(amend_text), bool(revise_file), bool(revise_text)]
+    if sum(modes) > 1:
+        die("pass only one of --amend / --amend-file / --revise / --revise-file")
+    ingest_source: Path | None = None
+    if amend_file or amend_text:
+        if amend_file:
+            incoming = read_brief_file(str(amend_file), flag="--amend-file")
+            if str(amend_file) != "-":
+                ingest_source = Path(amend_file)
+        else:
+            incoming = str(amend_text)
+        creating = not spec_path(root).is_file()
+        if creating:
+            new_hash = write_spec(root, incoming, revise=True)
+            extracted = extract_requirements_from_spec(incoming)
+            merge_extracted_requirements(data, extracted)
+            print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
+            print(f"requirements {len(extracted)} extracted from original brief")
+        else:
+            require_spec_intact(root, order)
+            snap = snapshot_spec(root)
+            current = spec_path(root).read_text(encoding="utf-8")
+            merged = append_amendment(current, incoming)
+            new_hash = write_spec(root, merged, revise=True)
+            extracted = extract_requirements_from_spec(
+                incoming, existing=data.get("requirements") or []
+            )
+            added = merge_extracted_requirements(data, extracted)
+            if snap:
+                print(f"spec-log    {snap.relative_to(root)}")
+            print(f"spec amended {new_hash[:12]}…")
+            if added:
+                print(
+                    f"requirements +{len(extracted)} from amendment "
+                    "(IDs continue; original still binding)"
+                )
+        data["spec_hash"] = new_hash
+        order["spec_ref"] = FIELD_SPEC_MD
+        order["spec_hash"] = new_hash
+        order["spec_closed"] = False
+        changed = True
+    elif revise_file or revise_text:
+        creating = not spec_path(root).is_file()
+        old_hash = str(order.get("spec_hash") or "")
+        if not creating:
+            old_hash = old_hash or sha256_text(
+                spec_path(root).read_text(encoding="utf-8")
+            )
+            snap = snapshot_spec(root)
+            if snap:
+                print(f"spec-log    {snap.relative_to(root)}")
         if revise_file:
-            path = Path(revise_file)
-            if not path.is_file():
-                die(f"--revise-file not found: {revise_file}")
-            source_text = path.read_text(encoding="utf-8")
+            source_text = read_brief_file(str(revise_file), flag="--revise-file")
+            if str(revise_file) != "-":
+                ingest_source = Path(revise_file)
         else:
             source_text = str(revise_text)
         new_hash = write_spec(root, source_text, revise=True)
         data["spec_hash"] = new_hash
+        order["spec_ref"] = FIELD_SPEC_MD
+        order["spec_hash"] = new_hash
         order["spec_closed"] = False
         changed = True
-        print(f"spec revised {old_hash[:12]}… -> {new_hash[:12]}…")
+        if creating:
+            print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
+        else:
+            print(f"spec revised {old_hash[:12]}… -> {new_hash[:12]}…")
+            print(
+                "existing requirement IDs stay until of spec --supersede ID; "
+                "of spec --extract for new ones"
+            )
+    else:
+        require_spec_intact(root, order)
     if getattr(args, "extract", False):
         spec = spec_path(root)
         if not spec.is_file():
-            die("no SPEC.md; of patch --source-file first")
+            die("no SPEC.md; of init --source or of spec --amend")
         text = spec.read_text(encoding="utf-8")
-        extracted = extract_requirements_from_spec(text)
-        existing_ids = {r.get("id") for r in data.get("requirements") or []}
-        existing_text = {r.get("text") for r in data.get("requirements") or []}
-        for item in extracted:
-            if item["id"] in existing_ids or item["text"] in existing_text:
-                continue
-            data.setdefault("requirements", []).append(item)
+        extracted = extract_requirements_from_spec(
+            text, existing=data.get("requirements") or []
+        )
+        if merge_extracted_requirements(data, extracted):
             changed = True
         data["spec_hash"] = sha256_text(text)
     if getattr(args, "from_file", None):
@@ -4682,6 +4948,13 @@ def cmd_spec(args: argparse.Namespace) -> None:
             die(f"unknown requirement {rid}")
         item["status"] = "failed"
         changed = True
+    for rid in getattr(args, "supersede", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "superseded"
+        changed = True
+        print(f"superseded  {rid}")
     if changed:
         spec = spec_path(root)
         if spec.is_file():
@@ -4693,6 +4966,9 @@ def cmd_spec(args: argparse.Namespace) -> None:
             or getattr(args, "add", None)
             or getattr(args, "revise_file", None)
             or getattr(args, "revise", None)
+            or getattr(args, "amend_file", None)
+            or getattr(args, "amend", None)
+            or getattr(args, "supersede", None)
         )
         if identity:
             sync_order_spec_fields(order, root)
@@ -4700,12 +4976,13 @@ def cmd_spec(args: argparse.Namespace) -> None:
             save_order(order, root)
             print(f"rev={order['rev']}")
         snapshot_session(root, "spec")
+        discard_disposable_ingest(root, ingest_source)
     counts = requirement_counts(data)
     print(
         f"requirements  {counts['total']} total  "
         f"owned {counts['owned']}  verified {counts['verified']}  "
         f"failed {counts['failed']}  unowned {counts['unowned']}  "
-        f"unverified {counts['unverified']}"
+        f"unverified {counts['unverified']}  superseded {counts['superseded']}"
     )
     for item in data.get("requirements") or []:
         owners = ",".join(item.get("owned_by") or []) or "-"
@@ -4719,6 +4996,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
 def cmd_spec_diff(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     lines = spec_diff_lines(root, order)
     if not lines:
         print("spec-diff    none (no binding gaps vs ORDER / coverage)")
@@ -4768,6 +5046,7 @@ def cmd_contrast(args: argparse.Namespace) -> None:
     """Review gate: original brief vs coverage. Does not edit product or ORDER."""
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     if print_contrast_report(root, order):
         raise SystemExit(2)
 
@@ -4776,6 +5055,7 @@ def cmd_close(args: argparse.Namespace) -> None:
     """Stamp SPEC closed. Refused while contrast is OPEN. Slice done ≠ SPEC closed."""
     root = find_root()
     order = load_order(root)
+    require_spec_intact(root, order)
     if print_contrast_report(root, order):
         die("of close refused: binding FAIL/MISS/UNVERIFIED remain")
     if not spec_path(root).is_file():
@@ -4831,7 +5111,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--source-file",
         dest="source_file",
-        help="path to the verbatim user brief; stored as .orderfield/SPEC.md",
+        help="verbatim brief file or '-'; copied to SPEC.md then discarded if ingest/prompt.md",
     )
     s.add_argument("--force", action="store_true")
     s.set_defaults(func=cmd_init)
@@ -5110,12 +5390,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument(
         "--source",
-        help="replace the verbatim SPEC.md brief",
+        help="refused: SPEC.md is immutable; of spec --revise-file PATH",
     )
     s.add_argument(
         "--source-file",
         dest="source_file",
-        help="replace SPEC.md from a file",
+        help="refused: SPEC.md is immutable; of spec --revise-file PATH",
     )
     s.set_defaults(func=cmd_patch)
 
@@ -5157,13 +5437,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="mark requirement failed (repeatable)",
     )
     s.add_argument(
+        "--supersede",
+        action="append",
+        help="mark requirement superseded (no longer binding; repeatable)",
+    )
+    s.add_argument(
+        "--amend",
+        help="append a new human request to SPEC.md (original stays; dated amendment)",
+    )
+    s.add_argument(
+        "--amend-file",
+        dest="amend_file",
+        help="append a new human request from a file or '-' (stdin)",
+    )
+    s.add_argument(
         "--revise",
-        help="explicit SPEC revision (verbatim replacement; not a silent rewrite)",
+        help="replace SPEC.md (archives previous to spec-log; not a silent rewrite)",
     )
     s.add_argument(
         "--revise-file",
         dest="revise_file",
-        help="explicit SPEC revision from a file",
+        help="replace SPEC.md from a file or '-' (stdin)",
     )
     s.set_defaults(func=cmd_spec)
 
