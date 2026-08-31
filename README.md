@@ -9,27 +9,25 @@
 ```
 
 <p align="center">
-  <strong>v0.5.7</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.6.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · portable contract
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.7-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-# A portable contract for agent waves
+# Compared-to: authority over the plan, not a fleet
 
-Orderfield is an Agent Skill plus a Python stdlib CLI that keeps multi-agent work in a versioned, disk-backed protocol: one ORDER, bounded packets, structured residuals, and a closed regime decision after each wave. The harness starts processes; the contract survives when the harness changes.
+Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. One ORDER, bounded packets, structured residuals, and a closed regime decision after each wave live on disk. The harness starts processes; the contract survives when the harness changes.
 
-It is not a swarm, org chart, agent harness, automatic planner, filesystem sandbox, or proof that a child obeyed its role. It reduces coordination ambiguity; it does not replace process isolation or human authority.
+It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**. Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts.
 
-When a child reports that the field is insufficient, the kernel blocks more spawn in that wave. The leader then explicitly integrates the safe proposed keys or patches the ORDER before opening the next wave. Evidence can change the plan without pretending the field changes itself.
-
-Invoke the skill as `/orderfield` or the shorter alias `/of`. The `of` CLI on your PATH is the same short name.
+Invoke `/orderfield` or `/of`. Contract vocabulary: [docs/glossary.md](docs/glossary.md).
 
 ```
-  leader ──pack──► slave     slave     slave
+  leader ──pack──► child     child     child
      ▲               │         │         │
      │               ▼         ▼         ▼
      └──────── residual  residual  residual
@@ -38,13 +36,25 @@ Invoke the skill as `/orderfield` or the shorter alias `/of`. The `of` CLI on yo
               integrate → ORDER'
 ```
 
-## Use it where the contract earns its cost
+## Compared-to
 
-Orderfield pays when false-scope or marketing risk deserves an adversary, when product paths need explicit owners, or when a genuinely multi-slice investigation will not fit one context.
+| | Orchestrates | Orderfield is instead |
+|---|---|---|
+| **Orca** | Work: process bus, workers, gates, DAGs. Starts and stops coding CLIs. | Authority over the plan. Orca may transport a packet; it must not choose the phase, patch the mission, or invent a regime. |
+| **AWS CAO** ([CLI Agent Orchestrator](https://aws.amazon.com/blogs/opensource/introducing-cli-agent-orchestrator-transforming-developer-cli-tools-into-a-multi-agent-powerhouse/)) | A supervisor plus specialized workers over Q CLI / Claude Code. Session and fleet orchestration, AWS-adjacent. | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow, no CAO UI. |
+| **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
+| **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory. Orchestrates model calls. | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
+| **Dual-harness skills** (e.g. [claude-codex-orchestration](https://github.com/dy9759/claude-codex-orchestration)) | Which runtime does the work (Claude as brain, Codex as body, or symmetric dispatch). | Who may change the plan. Multi-harness only if the user asks. Packet, residual, and contrast are the authority — not a dual-runtime router. |
 
-It is theater for a VERSION bump plus one obvious change, for one ordinary subagent, or when a single skill already fits. **Skill beats child.**
+## When it pays vs theater (three examples)
 
-**You should be better.** The tortoise and the hare is not who arrives first — it is who arrives better. `/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish; `of contrast` clean is. If the field only adds startup tax, it is theater.
+**1. Public-surface lie vs a VERSION bump.** Pays: README claims a CLI exit code that tests never exercise. An adversary packet owns the claim; `of contrast` stays CLOSE BLOCKED until the public surface is actually verified. Theater: bump VERSION, append CHANGELOG, ship one obvious feature. Opening a field for that is ceremony.
+
+**2. Two writers, exclusive owners vs one ordinary subagent.** Pays: docs and `install.sh` share a mission but must not share a write set. Exclusive owners keep a false "docs shipped" from landing without the packaging slice. Theater: spawn a child to edit one file a skill on this agent already covers. **Skill beats child.**
+
+**3. Plan change after amnesia vs dual-harness theater.** Pays: the leader loses the chat (compaction, new session). Disk still has SPEC, packets, residuals. A threshold residual says the field is wrong; the leader patches ORDER and re-packs. Child transcripts stay out of the parent. Theater: opening a field because Agent Teams or a Claude↔Codex skill looks like orchestration. Those move work; they do not own who may change the plan.
+
+**You should be better.** `/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish; `of contrast` clean is. If the field only adds startup tax, it is theater.
 
 ---
 
@@ -140,6 +150,8 @@ of contrast    # CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR
 of close       # refused until contrast is RESOLVED
 of status
 ```
+
+90-second demo of the amnesia + threshold residual case (plan changes without swallowing transcripts): [docs/demo/README.md](docs/demo/README.md).
 
 Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Open fields print `auto_continue yes` — execute `next` in the same turn; interleaved chats are not pause. Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
 
@@ -257,7 +269,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
 
-Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`. **Agent discovery:** [docs/agent-discovery.md](docs/agent-discovery.md).
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`. **Agent discovery:** [docs/agent-discovery.md](docs/agent-discovery.md).
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

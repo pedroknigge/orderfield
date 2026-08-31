@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0
+
+0.6 form split of the kernel CLI. Protocol unchanged — not a new regime.
+
+- **Form:** `scripts/of.py` remains the public entry (`of` / `python3 scripts/of.py`); bounded contexts live in `scripts/of/{field,spec,pack,regime,cli}.py`. Public commands, JSON schemas, field lock, residual binding, closed regime menu, and reserved runtime (`scale_up` / `scale_across` / `budget.tokens` / `local_budget_pct` / inherited depth) behave as 0.5.7. Tests `import of` still bind the public kernel namespace.
+- **Tests:** `tests/test_kernel.py` split by invariant class (`test_kernel_{field,spec,pack,regime,cli}.py`).
+- **Packaging:** `install.sh` no longer uses `/dev/fd` process-substitution; packaging tests pass.
+- **Positioning:** README Compared-to first screen (no Haken); glossary; C4/mermaid; 90s demo of amnesia + threshold residual at [docs/demo/README.md](docs/demo/README.md).
+- **Audit:** claims-matrix re-audited after the split (C-053); no new contradictions. Test C remains optional harness QA, not kernel CI.
+- Packaging: VERSION 0.6.0; skill/alias description preview `v0.6.0 — …`.
+
 ## 0.5.7
 
 Eval CI gate and contrast/close recovery fixture.

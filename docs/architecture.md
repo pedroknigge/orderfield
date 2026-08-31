@@ -1,8 +1,106 @@
 # Architecture — Orderfield kernel
 
-> Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
+> Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to-authority-over-the-plan-not-a-fleet) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.7` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.0` — see [`VERSION`](../VERSION)
+
+## C4 — context, container, regime
+
+The first public artifact is [README Compared-to](../README.md#compared-to-authority-over-the-plan-not-a-fleet). This page follows it. Names match that screen; this is not a second dialect.
+
+Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. The **harness** is USB: process transport that starts a child. It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**.
+
+| C4 view | Shows | Compared-to name |
+|---------|--------|------------------|
+| Context | Who uses the kernel, and what sits beside it | portable contract; harness is USB; not a fleet / graph / vendor primitive |
+| Container | What the kernel is made of | stdlib CLI + adapters + disk JSON; harness starts processes |
+| Regime | Closed menu after `of integrate` | who may change the plan; children cannot redefine ORDER |
+
+Canonical contract words (ORDER, packet, residual, regime, contrast) stay in [docs/glossary.md](glossary.md). They are not redefined here.
+
+### Context
+
+```mermaid
+C4Context
+    title Orderfield context — portable contract of authority
+    Person(leader, "Leader", "Designs ORDER. Only they may change the plan.")
+    Person(child, "Child coding CLI", "Already authenticated. Packet in, residual out. Cannot redefine the plan.")
+    System(kernel, "Orderfield", "Portable contract of authority on disk: ORDER, packets, residuals, closed regime.")
+    System_Ext(harness, "Harness CLI", "USB / process transport. Starts the child. Does not choose the regime.")
+    System_Ext(orca, "Orca", "Orchestrates work. May transport a packet. Must not choose phase, mission, or regime.")
+    Rel(leader, kernel, "of pack / of patch")
+    Rel(kernel, child, "packet")
+    Rel(child, kernel, "residual")
+    Rel(kernel, harness, "spawn argv")
+    Rel(harness, child, "starts process")
+    Rel(orca, kernel, "optional transport")
+```
+
+Neighbors that are **not** Orderfield (same names as the README matrix):
+
+| System | What it orchestrates | Orderfield is instead |
+|--------|----------------------|------------------------|
+| **Orca** | Work: process bus, workers, gates, DAGs | Authority over the plan. Orca may carry a packet; it must not choose the phase, patch the mission, or invent a regime. |
+| **AWS CAO** | Vendor supervisor plus workers | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow. |
+| **Claude Agent Teams** | Vendor fleet inside one harness | Portable across already-authenticated CLIs. ORDER remains if you turn Claude off. Not a team of processes. |
+| **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
+| **Dual-harness skills** | Which runtime does the work | Who may change the plan. Multi-harness only if the user asks. |
+
+Evidence can change the plan without swallowing child transcripts. Disk is the session.
+
+### Container
+
+Inside the kernel boundary: CLI, adapters, public schemas, and the disk field. The harness stays outside — it is the USB plug, not a container of the contract.
+
+```mermaid
+C4Container
+    title Orderfield containers — kernel, not a fleet
+    Person(leader, "Leader", "Who may change the plan")
+    Container_Ext(child, "Child coding CLI", "already-authenticated CLI", "Executes one packet; writes a residual; cannot redefine ORDER")
+    System_Ext(harness, "Harness", "USB / process transport")
+    System_Boundary(ofb, "Orderfield") {
+        Container(cli, "of CLI", "Python 3.9+ stdlib", "pack, spawn, collect, integrate, contrast, close")
+        Container(adp, "Adapters", "of_adapters.py", "Headless argv per already-authenticated CLI")
+        ContainerDb(disk, "Disk field", "JSON on .orderfield/", "ORDER, SPEC, packets, residuals, state, session")
+        Container(sch, "Public schemas", "JSON Schema", "Runtime validation of artifacts")
+    }
+    Rel(leader, cli, "CLI")
+    Rel(cli, adp, "build_spawn_argv")
+    Rel(adp, harness, "headless argv")
+    Rel(harness, child, "process")
+    Rel(cli, disk, "read and write")
+    Rel(child, disk, "writes residual")
+    Rel(sch, cli, "validate")
+```
+
+There is no worker pool, no model graph, and no vendor supervisor in this boundary. `of spawn` asks the harness to start one coding CLI with a packet already on disk. Caps bind at `of pack`. Product-file exclusivity is a pack/cut concern, not a kernel lock.
+
+### Regime
+
+After `of collect`, `of integrate` runs `decide_regime`. The harness does not invent a menu. Children vote with residual `status`, `wants_to_change`, and metrics; they do not select the next phase.
+
+```mermaid
+flowchart TD
+    residuals["residuals<br/>status · wants_to_change · metrics"]
+    decide["of integrate · decide_regime<br/>closed menu — harness does not invent one"]
+    residuals --> decide
+    decide --> eu["escalate_up<br/>field insufficient<br/>spawn in this wave stops until the leader patches ORDER"]
+    decide --> so["scale_out<br/>same plan · more copies"]
+    decide --> hold["hold<br/>wait — missing residuals, or wave closed and done_when still open"]
+    decide --> phaseR["phase<br/>done_when closed · still an explicit of phase"]
+    decide --> human["human<br/>repeated mission change, irreversible action, or caps exhausted"]
+    decide --> reserved["scale_up / scale_across<br/>reserved compatibility values<br/>remapped to hold — no token or depth accounting"]
+```
+
+Who may change the plan:
+
+| Signal | Who acts | What does **not** happen |
+|--------|----------|---------------------------|
+| Residual `done` | Leader integrates; regime may be `hold`, `phase`, or `scale_out` | Child transcripts are not ingested into ORDER |
+| Residual `threshold` naming mission / phase / constraints / done_when / workspace | Kernel selects `escalate_up`; leader patches ORDER | Child does not rewrite the field; spawn in that wave stops |
+| Reserved `scale_up` / `scale_across` | Remapped to `hold` | No fake telemetry, no process supervisor |
+
+Loop on disk (same objects as the context diagram): leader → pack → packet → harness starts child → residual → collect → integrate → ORDER'. Compacted chat does not own this loop.
 
 ## Shape
 
@@ -32,6 +130,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 | Symbol / area | Role |
 |---------------|------|
+| `scripts/of.py` + `scripts/of/{field,spec,pack,regime,cli}.py` | Public CLI entry; 0.6 form split of internals. Protocol (schemas, lock, residual binding, closed regime, reserved runtime) unchanged vs 0.5.7 |
 | `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |

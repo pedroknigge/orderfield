@@ -2,9 +2,16 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.5.7`
+**Status:** Shipped · **Current release line:** `0.6.0`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.6.0 — form split (not a new regime)
+
+- Kernel internals: `scripts/of/{field,spec,pack,regime,cli}.py`; public `of` / `scripts/of.py` unchanged vs 0.5.7.
+- Positioning: README Compared-to, glossary, C4/mermaid, 90s demo (`docs/demo/README.md`).
+- `install.sh` without `/dev/fd` process-substitution; `test_kernel.py` split by invariant class.
+- Protocol unchanged. `scale_up` / `scale_across` / `budget.tokens` / `local_budget_pct` / inherited depth stay reserved. Test C is not kernel CI.
 
 ## 0.5.7 — eval CI + contrast recovery + Test C doc
 

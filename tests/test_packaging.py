@@ -258,6 +258,16 @@ class InstallScript(unittest.TestCase):
         self.assertIn("--full-depth -s '*'", src)
         self.assertIn("A harness name alone or one ordinary", src)
 
+    def test_install_sh_has_no_dev_fd_process_substitution(self) -> None:
+        # CLI-001: dest iteration must not use < <(cmd) / /dev/fd.
+        src = INSTALL.read_text(encoding="utf-8")
+        self.assertNotRegex(src, r"<\s*<\s*\(")
+        self.assertNotRegex(src, r"(^|[^<])<\(")
+        self.assertNotRegex(src, r">\(")
+        self.assertNotIn("/dev/fd", src)
+        self.assertIn("agy_dests", src)
+        self.assertIn("$(agy_dests)", src)
+
 
 class PhaseMdEnglish(unittest.TestCase):
     def test_init_writes_english_phase_md(self) -> None:
