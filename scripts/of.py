@@ -60,10 +60,13 @@ ROLE_CONTRACTS = {
         "picture; no new exploration, no edits outside its own scratch."
     ),
     "verifier": (
-        "verifier checks SPEC.md (the lossless brief) against ORDER and against "
-        "the product. It must detect SPEC→ORDER omissions as well as "
-        "ORDER→implementation omissions. Missing binding requirements are "
-        "threshold, not done. Read-only apart from running those checks."
+        "verifier checks SPEC.md against ORDER and against the product's "
+        "public surface. Internal unit tests are VERIFIED_INTERNAL, not closed. "
+        "If SPEC names a CLI, HTTP API, file format, exit code, or stdout schema, "
+        "exercise that surface (separate processes when the contract is a command). "
+        "Pair-shaped requirements (same/different, valid/invalid, success/fail) "
+        "need both sides. of spec --verified-contract ID [--both-sides]. "
+        "Missing or internal-only evidence is threshold, not done."
     ),
 }
 REGIMES = [
@@ -153,7 +156,40 @@ FIELD_SPEC_MD = ".orderfield/SPEC.md"
 FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
 FIELD_SPEC_LOG = ".orderfield/spec-log"
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
-REQ_STATUSES = ("unowned", "owned", "verified", "failed", "superseded")
+REQ_STATUSES = (
+    "unowned",
+    "owned",
+    "verified",
+    "verified_internal",
+    "verified_contract",
+    "failed",
+    "superseded",
+)
+REQ_INTERNAL_VERIFIED = frozenset({"verified", "verified_internal"})
+REQ_CONTRACT_VERIFIED = frozenset({"verified_contract"})
+CONTRACT_SURFACE_CUES = (
+    "python -m",
+    "python3 -m",
+    "http://",
+    "https://",
+    "exit code",
+    "stdout",
+    "stderr",
+    " cli",
+    "cli ",
+    "--",
+    "curl ",
+    ".jsonl",
+    "/events",
+)
+PAIR_TEXT_PAIRS = (
+    ("same", "different"),
+    ("valid", "invalid"),
+    ("success", "fail"),
+    ("duplicate", "conflict"),
+    ("allowed", "forbidden"),
+    ("before", "after"),
+)
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
 CHILD_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PACKET_ID_RE = re.compile(r"^pkt_[0-9a-f]{32}$")
@@ -512,6 +548,49 @@ def is_active_requirement(item: Any) -> bool:
     return str(item.get("status") or "") != "superseded"
 
 
+def requirement_is_pair(item: dict[str, Any]) -> bool:
+    if "pair" in item:
+        return bool(item.get("pair"))
+    text = str(item.get("text") or "").lower()
+    if "idempoten" in text or "twice" in text or "repeat" in text:
+        return True
+    return any(left in text and right in text for left, right in PAIR_TEXT_PAIRS)
+
+
+def requirement_surface(item: dict[str, Any]) -> str:
+    explicit = str(item.get("surface") or "").strip().lower()
+    if explicit in {"contract", "internal"}:
+        return explicit
+    rid = str(item.get("id") or "")
+    if rid.startswith("CLI-"):
+        return "contract"
+    text = f" {str(item.get('text') or '').lower()} "
+    if any(cue in text for cue in CONTRACT_SURFACE_CUES):
+        return "contract"
+    return "contract"
+
+
+def requirement_close_ok(item: dict[str, Any]) -> bool:
+    """True when this binding requirement may participate in SPEC close."""
+    status = str(item.get("status") or "unowned")
+    if status == "failed":
+        return False
+    if status in REQ_CONTRACT_VERIFIED:
+        if requirement_is_pair(item) and not item.get("pair_checked"):
+            return False
+        return True
+    if status in REQ_INTERNAL_VERIFIED:
+        return requirement_surface(item) == "internal"
+    return False
+
+
+def decorate_requirement(item: dict[str, Any]) -> dict[str, Any]:
+    item["surface"] = requirement_surface(item)
+    item["pair"] = requirement_is_pair(item)
+    item.setdefault("pair_checked", False)
+    return item
+
+
 def merge_extracted_requirements(
     data: dict[str, Any], extracted: list[dict[str, Any]]
 ) -> bool:
@@ -528,10 +607,30 @@ def merge_extracted_requirements(
     return changed
 
 
+def join_continued_lines(text: str) -> str:
+    """Join shell-style backslash continuations so CLI extract is not truncated."""
+    out: list[str] = []
+    buf = ""
+    for raw in text.splitlines():
+        stripped = raw.rstrip()
+        if stripped.endswith("\\"):
+            buf += stripped[:-1].rstrip() + " "
+            continue
+        if buf:
+            out.append((buf + stripped.strip()).rstrip())
+            buf = ""
+        else:
+            out.append(raw.rstrip("\n"))
+    if buf:
+        out.append(buf.rstrip())
+    return "\n".join(out)
+
+
 def extract_requirements_from_spec(
     text: str, existing: list[dict[str, Any]] | None = None
 ) -> list[dict[str, Any]]:
     """Deterministic lossless-enough extraction. Leader may of spec --add."""
+    text = join_continued_lines(text)
     counters: dict[str, int] = {}
     for raw in existing or []:
         rid = str(raw.get("id") or "")
@@ -553,18 +652,22 @@ def extract_requirements_from_spec(
             return
         seen.add(item)
         reqs.append(
-            {
-                "id": next_id(prefix),
-                "text": item,
-                "binding": True,
-                "owned_by": [],
-                "status": "unowned",
-            }
+            decorate_requirement(
+                {
+                    "id": next_id(prefix),
+                    "text": item,
+                    "binding": True,
+                    "owned_by": [],
+                    "status": "unowned",
+                }
+            )
         )
 
     for raw in text.splitlines():
         stripped = raw.strip().lstrip("`").rstrip("`")
         stripped = stripped.lstrip("$ ").strip()
+        if stripped.endswith("\\"):
+            continue
         if stripped.startswith("python -m") or stripped.startswith("python3 -m"):
             add("CLI", stripped)
 
@@ -604,18 +707,22 @@ def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
         1 for r in all_items if str(r.get("status") or "") == "superseded"
     )
     items = [r for r in all_items if is_active_requirement(r)]
-    owned = failed = verified = unowned = unverified = 0
+    owned = failed = verified = verified_internal = verified_contract = 0
+    unowned = unverified = 0
     for item in items:
         status = str(item.get("status") or "unowned")
         owners = item.get("owned_by") or []
         if status == "failed":
             failed += 1
-        elif status == "verified":
+        elif status in REQ_CONTRACT_VERIFIED:
+            verified_contract += 1
+            verified += 1
+        elif status in REQ_INTERNAL_VERIFIED:
+            verified_internal += 1
             verified += 1
         elif status == "owned" or owners:
             owned += 1
-            if status != "verified":
-                unverified += 1
+            unverified += 1
         else:
             unowned += 1
             unverified += 1
@@ -623,6 +730,8 @@ def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
         "total": len(items),
         "owned": owned + verified + failed,
         "verified": verified,
+        "verified_internal": verified_internal,
+        "verified_contract": verified_contract,
         "failed": failed,
         "unowned": unowned,
         "unverified": unverified,
@@ -654,13 +763,32 @@ def requirement_coverage_errors(root: Path) -> list[str]:
         if str(r.get("status") or "unowned") == "unowned" and not (r.get("owned_by") or [])
     ]
     failed = [str(r.get("id")) for r in items if str(r.get("status")) == "failed"]
+    internal_only = [
+        str(r.get("id"))
+        for r in items
+        if str(r.get("status") or "") in REQ_INTERNAL_VERIFIED
+        and requirement_surface(r) == "contract"
+    ]
+    pair_open = [
+        str(r.get("id"))
+        for r in items
+        if str(r.get("status") or "") in REQ_CONTRACT_VERIFIED
+        and requirement_is_pair(r)
+        and not r.get("pair_checked")
+    ]
     unverified = [
         str(r.get("id"))
         for r in items
-        if str(r.get("status") or "unowned") not in {"verified", "failed"}
+        if not requirement_close_ok(r)
+        and str(r.get("status")) != "failed"
+        and str(r.get("id")) not in set(internal_only + pair_open)
     ]
     if unowned:
         errors.append("UNOWNED " + ", ".join(unowned))
+    if internal_only:
+        errors.append("VERIFIED_INTERNAL " + ", ".join(internal_only))
+    if pair_open:
+        errors.append("PAIR " + ", ".join(pair_open))
     if unverified:
         errors.append("UNVERIFIED " + ", ".join(unverified))
     if failed:
@@ -671,13 +799,17 @@ def requirement_coverage_errors(root: Path) -> list[str]:
 def requirement_verdict(item: dict[str, Any]) -> str:
     status = str(item.get("status") or "unowned")
     owners = item.get("owned_by") or []
-    if status == "verified":
-        return "PASS"
     if status == "failed":
-        return "FAIL"
+        return "FAILED"
+    if status in REQ_CONTRACT_VERIFIED:
+        if requirement_is_pair(item) and not item.get("pair_checked"):
+            return "PAIR"
+        return "VERIFIED_CONTRACT"
+    if status in REQ_INTERNAL_VERIFIED:
+        return "VERIFIED_INTERNAL"
     if not owners or status == "unowned":
-        return "MISS"
-    return "UNVERIFIED"
+        return "MISSING"
+    return "DELIVERED"
 
 
 def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
@@ -717,8 +849,12 @@ def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
         flags: list[str] = []
         if status == "failed":
             flags.append("FAILED")
-        elif status != "verified":
+        elif not requirement_close_ok(item):
             flags.append("UNVERIFIED")
+            if str(item.get("status") or "") in REQ_INTERNAL_VERIFIED:
+                flags.append("VERIFIED_INTERNAL")
+            if requirement_is_pair(item) and not item.get("pair_checked"):
+                flags.append("PAIR")
         if not owners and status == "unowned":
             flags.append("UNOWNED")
         needle = text.lower()
@@ -789,8 +925,24 @@ def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bo
             item = find_requirement(data, str(rid))
             if item is None:
                 continue
-            if item.get("status") != "verified":
-                item["status"] = "verified"
+            # Child residuals can attest internal checks only. Public-surface
+            # close requires of spec --verified-contract after exercising the CLI/API.
+            if item.get("status") not in REQ_INTERNAL_VERIFIED:
+                item["status"] = "verified_internal"
+                changed = True
+        for rid in patch.get("requirements_verified_contract") or []:
+            item = find_requirement(data, str(rid))
+            if item is None:
+                continue
+            if item.get("status") != "verified_contract":
+                item["status"] = "verified_contract"
+                changed = True
+        for rid in patch.get("requirements_pair_checked") or []:
+            item = find_requirement(data, str(rid))
+            if item is None:
+                continue
+            if not item.get("pair_checked"):
+                item["pair_checked"] = True
                 changed = True
         for rid in patch.get("requirements_failed") or []:
             item = find_requirement(data, str(rid))
@@ -2549,14 +2701,16 @@ def render_prompt(
             "outrank a compressed mission or done_when.\n"
             + owns_line
             + "Before writing the residual, contrast Intent (SPEC.md) vs Delivered "
-            "(your files) vs missing. Gaps against SPEC are threshold, not done.\n"
+            "(your files) vs missing. Gaps against SPEC are threshold, not done. "
+            "Internal unit tests are not the public contract.\n"
         )
         if role == "verifier":
             body += (
-                "This is the close-the-loop review: SPEC ↔ ORDER ↔ product, "
-                "like a pre-landing review against the original request. "
-                "Report SPEC→ORDER omissions and ORDER→product omissions as "
-                "threshold (wants_to_change includes constraints or done_when). "
+                "This is the close-the-loop review: SPEC ↔ ORDER ↔ public surface. "
+                "Exercise the CLI/HTTP/file format named in SPEC, not only the "
+                "library behind it. Pair-shaped requirements need both sides. "
+                "Stamp of spec --verified-contract ID [--both-sides]. "
+                "VERIFIED_INTERNAL does not close a contract-surface requirement. "
                 "The loop is not resolved until of contrast exits 0.\n"
             )
     text = (
@@ -3260,7 +3414,13 @@ def cmd_init(args: argparse.Namespace) -> None:
         )
         sync_order_spec_fields(order, root)
         print(f"spec         {FIELD_SPEC_MD}  hash={spec_hash[:12]}…")
-        print(f"requirements {len(extracted)} extracted (of spec --add / --amend)")
+        unowned_n = sum(
+            1 for r in extracted if str(r.get("status") or "unowned") == "unowned"
+        )
+        print(
+            f"requirements {len(extracted)} extracted  unowned {unowned_n}  "
+            "(of pack --owns-requirement ID; do not implement without a packet)"
+        )
         src_path = Path(source_file) if source_file and str(source_file) != "-" else None
         discard_disposable_ingest(root, src_path)
     else:
@@ -3344,9 +3504,16 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(
         f"requirements  {counts['total']} total  "
         f"owned {counts['owned']}  verified {counts['verified']}  "
+        f"contract {counts.get('verified_contract', 0)}  "
+        f"internal {counts.get('verified_internal', 0)}  "
         f"failed {counts['failed']}  unowned {counts['unowned']}  "
         f"unverified {counts['unverified']}"
     )
+    if counts["unowned"]:
+        print(
+            f"next        pack --owns-requirement (unowned {counts['unowned']}); "
+            "do not implement in the leader tree; of contrast before close"
+        )
 
 
 def cmd_detect(args: argparse.Namespace) -> None:
@@ -3445,18 +3612,26 @@ def cmd_pack(args: argparse.Namespace) -> None:
         require_req_id(x)
         for x in (getattr(args, "owns_requirement", None) or [])
     ]
+    reqs = load_requirements(root)
+    unowned_ids = [
+        str(r.get("id"))
+        for r in (reqs.get("requirements") or [])
+        if is_active_requirement(r)
+        and str(r.get("status") or "unowned") == "unowned"
+        and not (r.get("owned_by") or [])
+    ]
     if owns:
-        reqs = load_requirements(root)
         mark_requirements_owned(reqs, child_id, owns)
         spec = spec_path(root)
         if spec.is_file():
             reqs["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
         save_requirements(reqs, root)
-    elif (load_requirements(root).get("requirements") or []):
-        print(
-            "of: note — binding requirements exist and this packet owns none; "
-            "pass --owns-requirement ID (repeatable).",
-            file=sys.stderr,
+    elif unowned_ids:
+        die(
+            "binding requirements are unowned; "
+            "of pack --owns-requirement ID (repeatable). "
+            f"unowned: {', '.join(unowned_ids[:12])}"
+            + ("…" if len(unowned_ids) > 12 else "")
         )
     packet = {
         "v": 1,
@@ -4463,6 +4638,14 @@ def cmd_phase(args: argparse.Namespace) -> None:
         save_state(state, root)
         emit_event("phase_override", **override)
         print("override=" + json.dumps(override, ensure_ascii=False, sort_keys=True))
+        counts = requirement_counts(load_requirements(root))
+        if counts["unowned"]:
+            print(
+                f"of: note — {counts['unowned']} unowned binding requirements; "
+                "skip-phase does not assign owners or close SPEC. "
+                "of pack --owns-requirement ID; of contrast before close.",
+                file=sys.stderr,
+            )
     snapshot_session(root, "phase")
     print(f"phase={order['phase']} rev={order['rev']}")
 
@@ -4904,7 +5087,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
                 die(f"requirement {rid} missing text")
             item = find_requirement(data, rid)
             if item is None:
-                data.setdefault("requirements", []).append(
+                incoming_item = decorate_requirement(
                     {
                         "id": rid,
                         "text": text,
@@ -4913,6 +5096,11 @@ def cmd_spec(args: argparse.Namespace) -> None:
                         "status": str(raw.get("status") or "unowned"),
                     }
                 )
+                if raw.get("surface") in {"contract", "internal"}:
+                    incoming_item["surface"] = raw["surface"]
+                if "pair" in raw:
+                    incoming_item["pair"] = bool(raw["pair"])
+                data.setdefault("requirements", []).append(incoming_item)
             else:
                 item["text"] = text
                 if "binding" in raw:
@@ -4926,7 +5114,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
         rid = require_req_id(add_id)
         if find_requirement(data, rid) is not None:
             die(f"requirement {rid} already exists")
-        data.setdefault("requirements", []).append(
+        added = decorate_requirement(
             {
                 "id": rid,
                 "text": str(add_text).strip(),
@@ -4935,12 +5123,51 @@ def cmd_spec(args: argparse.Namespace) -> None:
                 "status": "unowned",
             }
         )
+        surface_arg = str(getattr(args, "surface", None) or "").strip().lower()
+        if surface_arg in {"contract", "internal"}:
+            added["surface"] = surface_arg
+        data.setdefault("requirements", []).append(added)
         changed = True
+    both_sides = bool(getattr(args, "both_sides", False))
+    for rid in getattr(args, "verified_internal", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "verified_internal"
+        changed = True
+        if requirement_surface(item) == "contract":
+            print(
+                f"of: note — {rid} has a public surface; "
+                "of spec --verified-contract after exercising the CLI/API "
+                "(unit tests are VERIFIED_INTERNAL, not close).",
+                file=sys.stderr,
+            )
     for rid in getattr(args, "verified", None) or []:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
             die(f"unknown requirement {rid}")
-        item["status"] = "verified"
+        item["status"] = "verified_internal"
+        changed = True
+        if requirement_surface(item) == "contract":
+            print(
+                f"of: note — {rid} has a public surface; "
+                "of spec --verified-contract after exercising the CLI/API "
+                "(unit tests are VERIFIED_INTERNAL, not close).",
+                file=sys.stderr,
+            )
+    for rid in getattr(args, "verified_contract", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        if requirement_is_pair(item) and not both_sides:
+            die(
+                f"{rid} is pair-shaped (same/different, success/fail, …); "
+                "exercise both sides at the public surface, then "
+                f"of spec --verified-contract {rid} --both-sides"
+            )
+        item["status"] = "verified_contract"
+        if both_sides:
+            item["pair_checked"] = True
         changed = True
     for rid in getattr(args, "failed", None) or []:
         item = find_requirement(data, require_req_id(rid))
@@ -4981,15 +5208,18 @@ def cmd_spec(args: argparse.Namespace) -> None:
     print(
         f"requirements  {counts['total']} total  "
         f"owned {counts['owned']}  verified {counts['verified']}  "
+        f"contract {counts['verified_contract']}  internal {counts['verified_internal']}  "
         f"failed {counts['failed']}  unowned {counts['unowned']}  "
         f"unverified {counts['unverified']}  superseded {counts['superseded']}"
     )
     for item in data.get("requirements") or []:
         owners = ",".join(item.get("owned_by") or []) or "-"
         bind = "binding" if item.get("binding", True) else "advisory"
+        surf = requirement_surface(item)
+        pair = "pair" if requirement_is_pair(item) else "single"
         print(
-            f"  {item.get('id'):12} {item.get('status'):10} {bind:8} "
-            f"owners={owners}  {item.get('text')}"
+            f"  {item.get('id'):12} {item.get('status'):20} {surf:8} {pair:6} "
+            f"{bind:8} owners={owners}  {item.get('text')}"
         )
 
 
@@ -5023,11 +5253,12 @@ def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
     print()
     if rows:
         for verdict, rid, text in rows:
-            print(f"{verdict:11} {rid:12} {text[:80]}")
+            print(f"{verdict:20} {rid:12} {text[:80]}")
         print()
     print(
         f"coverage: {counts['owned']}/{counts['total']} assigned  "
-        f"verified: {counts['verified']}/{counts['total']}"
+        f"verified_contract: {counts['verified_contract']}/{counts['total']}  "
+        f"verified_internal: {counts['verified_internal']}/{counts['total']}"
     )
     open_loop = contrast_open(root)
     if not spec.is_file() and counts["total"] == 0:
@@ -5035,7 +5266,10 @@ def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
         return False
     if open_loop:
         print("CLOSE BLOCKED")
-        print("next: pack gaps")
+        print(
+            "next: pack gaps, or of spec --verified-contract ID [--both-sides] "
+            "after exercising the public surface (not only unit tests)"
+        )
         return True
     print("RESOLVED")
     print("done belongs to the slice; closed belongs to the SPEC (of close)")
@@ -5057,7 +5291,10 @@ def cmd_close(args: argparse.Namespace) -> None:
     order = load_order(root)
     require_spec_intact(root, order)
     if print_contrast_report(root, order):
-        die("of close refused: binding FAIL/MISS/UNVERIFIED remain")
+        die(
+            "of close refused: binding FAILED/MISSING/DELIVERED/"
+            "VERIFIED_INTERNAL/PAIR remain"
+        )
     if not spec_path(root).is_file():
         print("close       skipped (no SPEC)")
         return
@@ -5429,7 +5666,30 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--verified",
         action="append",
-        help="mark requirement verified (repeatable)",
+        help="mark VERIFIED_INTERNAL (repeatable; not enough for a public surface)",
+    )
+    s.add_argument(
+        "--verified-internal",
+        dest="verified_internal",
+        action="append",
+        help="mark VERIFIED_INTERNAL (unit/component checks)",
+    )
+    s.add_argument(
+        "--verified-contract",
+        dest="verified_contract",
+        action="append",
+        help="mark VERIFIED_CONTRACT after exercising the public surface",
+    )
+    s.add_argument(
+        "--both-sides",
+        dest="both_sides",
+        action="store_true",
+        help="with --verified-contract: pair-shaped requirement had both sides at the surface",
+    )
+    s.add_argument(
+        "--surface",
+        choices=("contract", "internal"),
+        help="with --add: public surface vs internal-only",
     )
     s.add_argument(
         "--failed",

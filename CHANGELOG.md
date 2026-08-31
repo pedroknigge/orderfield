@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.2
+
+Public-surface contrast: internal correctness is not contract correctness.
+
+- `of contrast` verdicts are MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. A requirement with a public surface (CLI, HTTP, file format, exit code, stdout) cannot close on VERIFIED_INTERNAL.
+- `of spec --verified` stamps VERIFIED_INTERNAL only. `of spec --verified-contract ID` is the close-level mark, after exercising that surface. Pair-shaped requirements (same/different, success/fail, idempotency) need `--both-sides`.
+- Child residuals `requirements_verified` stay internal. The LedgerLab blind (store idempotent, CLI mints a new tx_id) no longer closes.
+- Extract joins backslash-continued CLI lines (`account create \\` is not a requirement). `of pack` without `--owns-requirement` is refused while binding IDs are unowned. `of phase --force` warns that skip does not assign owners or close SPEC.
+- Packaging: VERSION 0.5.2; skill/alias description preview `v0.5.2 — …`.
+
 ## 0.5.1
 
 Spec-fidelity patch: ingest hygiene, amendments, and a real hash check.

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.1 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.2 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.1"
+  version: "0.5.2"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -109,7 +109,7 @@ python3 <skill>/scripts/of.py spec --amend "<new user request>"
 # or: of spec --amend-file .orderfield/ingest.md
 ```
 
-The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. Pack with `--owns-requirement CLI-001`. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product.
+The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
@@ -188,7 +188,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 prints **CLOSE BLOCKED**. Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. A verifier that only reads ORDER will certify the wrong product. SPEC.md is the **current** brief (original + in-force amendments). Bytes are hashed; a silent rewrite is a field error. New human requests use `of spec --amend`, not another root prompt and not a silent overwrite. Contrast does not generate work, fix code, or invent requirements.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)
@@ -259,6 +259,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
+- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. `of contrast` before close. `phase --force skip explore` is not a close.
 
 ## Enslaved roles (identities, not job titles)
 

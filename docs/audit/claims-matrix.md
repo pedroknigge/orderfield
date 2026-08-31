@@ -8,7 +8,7 @@
 **Intent:** audit → integrate (patch)  
 **Out:** root  
 **Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
-**Code rev:** VERSION `0.5.1` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.2` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -97,7 +97,7 @@
 | C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys `writable_by_slaves` and `SLAVE.md` stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` / `normalize_workspace` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_migrate` / `ArtifactMigrations` | critical | OK | keep |
 | C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree` add/remove/list; spawn does not call it; path must be outside the project | `scripts/of.py` / `tests/test_kernel.py` | `cmd_worktree` / `WorktreeHelper` | normal | OK | keep |
 | C-046 | Runtime ownership is encoded as reserve/remove; no fake token/depth/budget telemetry | architecture / principles / status | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` / `decide_regime` wrapper | `scripts/of.py` / `tests/test_kernel.py` | `RUNTIME_OWNERSHIP` / `DecideRegimeShipped` | critical | OK | keep |
-| C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate; deliver needs `of close` | SKILL / architecture / SLAVE | `write_spec` / `append_amendment` / `discard_disposable_ingest` / `require_spec_intact` / `cmd_contrast` / `cmd_close` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
+| C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate (VERIFIED_CONTRACT at public surface; internal tests do not close); deliver needs `of close` | SKILL / architecture / SLAVE | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
 
 ## Post-patch expectation
 

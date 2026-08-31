@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.5.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.5.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -243,9 +243,9 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `retain` / `gc` | episodic keep/drop/dump; never copies transcripts |
 | `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
 | `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
-| `spec` | list/add/extract/verify/amend/supersede binding requirements; `--amend` appends a new human request |
+| `spec` | list/add/extract/verify/amend/supersede; `--verified` is internal; `--verified-contract` closes a public surface |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
-| `contrast` | review gate: PASS/FAIL/MISS/UNVERIFIED vs SPEC; CLOSE BLOCKED while open |
+| `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 
 Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`.
