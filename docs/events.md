@@ -25,6 +25,7 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `gc` | After `of gc` | `dumped`, `ok` |
 | `doctor` | After `of doctor` | `ok` |
 | `migrate` | After `of migrate` | `applied`, `ok` |
+| `learn` | After `of learn` | `action` (`save` \| `list` \| `forget`), `ok`; `kind`/`id` on save/forget |
 
 ## Example
 

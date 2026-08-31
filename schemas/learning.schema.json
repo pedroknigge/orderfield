@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orderfield/learning.schema.json",
+  "title": "Orderfield learning",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "text", "created_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^lrn_[0-9a-f]{12}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["protocol", "field"],
+      "description": "protocol survives ORDER and repos (user cache). field is this mission only."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "created_at": { "type": "string", "minLength": 1 },
+    "last_confirmed_at": { "type": "string", "minLength": 1 },
+    "order_id": { "type": "string", "minLength": 1 },
+    "phase": {
+      "type": "string",
+      "enum": ["explore", "cut", "build", "verify", "deliver"]
+    },
+    "source": {
+      "type": "string",
+      "enum": ["leader"]
+    }
+  }
+}

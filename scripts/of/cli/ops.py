@@ -49,6 +49,7 @@ from of.field import (
     die,
     dump_json,
     emit_event,
+    forget_learning,
     field_lock,
     field_rel,
     find_root,
@@ -57,6 +58,7 @@ from of.field import (
     installed_version,
     kernel_repo_root,
     load_json,
+    list_learnings,
     load_order,
     load_session,
     load_state,
@@ -78,6 +80,7 @@ from of.field import (
     pulse_verdict,
     redact_text,
     remove_constraint,
+    save_learning,
     repo_newest_mtime,
     require_nonsymlink_kernel_root,
     require_public_schema,
@@ -198,6 +201,60 @@ from of.regime import (
     waves_since_across,
 )
 
+
+
+def print_learnings(
+    grouped: dict[str, list[dict[str, Any]]],
+    *,
+    empty: bool = False,
+) -> None:
+    protocol = grouped.get("protocol") or []
+    field = grouped.get("field") or []
+    if not protocol and not field:
+        if empty:
+            print("learnings    none")
+        return
+    print("learnings")
+    if protocol:
+        print("  protocol")
+        for item in protocol:
+            print(f"    {item.get('id')}  {item.get('text')}")
+    if field:
+        print("  field")
+        for item in field:
+            print(f"    {item.get('id')}  {item.get('text')}")
+
+
+def cmd_learn(args: argparse.Namespace) -> None:
+    root = find_root()
+    has_order = order_path(root).is_file()
+    order = load_order(root) if has_order else None
+    if getattr(args, "list", False):
+        print_learnings(list_learnings(root if has_order else None), empty=True)
+        emit_event("learn", action="list", ok=True)
+        return
+    forget = str(getattr(args, "forget", None) or "").strip()
+    if forget:
+        gone = forget_learning(root if has_order else None, forget)
+        snapshot_session(root, "learn") if has_order else None
+        emit_event("learn", action="forget", id=str(gone.get("id")), ok=True)
+        print(f"forgot      {gone.get('id')}  {gone.get('text')}")
+        return
+    text = str(getattr(args, "text", None) or "").strip()
+    if not text:
+        die("of learn TEXT   (or --list / --forget ID)")
+    want_field = bool(getattr(args, "field", False))
+    want_protocol = bool(getattr(args, "protocol", False))
+    if want_field and want_protocol:
+        die("use --protocol or --field, not both")
+    kind = "field" if want_field else "protocol"
+    if kind == "field" and not order:
+        die("of learn --field needs an ORDER (of init first)")
+    item = save_learning(root if has_order else None, text, kind=kind, order=order)
+    if has_order:
+        snapshot_session(root, "learn")
+    emit_event("learn", action="save", kind=kind, id=str(item["id"]), ok=True)
+    print(f"{kind:11} {item['id']}  {item['text']}")
 
 
 def cmd_retain(args: argparse.Namespace) -> None:
@@ -458,6 +515,11 @@ def cmd_status(args: argparse.Namespace) -> None:
         for i, b in enumerate(backlog, 1):
             mark = "x" if b.get("done") else " "
             print(f"  [{mark}] {i}. {b.get('text')}")
+    grouped = list_learnings(root)
+    n_proto = len(grouped["protocol"])
+    n_field = len(grouped["field"])
+    if n_proto or n_field:
+        print(f"learnings   protocol={n_proto} field={n_field}")
     print(f"wave        {state['wave']}")
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
@@ -686,6 +748,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print("next")
     for line in resume_next_lines(nxt):
         print(f"  {line}")
+    print_learnings(list_learnings(root))
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
         print("summary")

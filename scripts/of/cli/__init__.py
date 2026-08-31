@@ -25,6 +25,7 @@ from of.cli.ops import (
     cmd_detect,
     cmd_doctor,
     cmd_gc,
+    cmd_learn,
     cmd_migrate,
     cmd_pulse,
     cmd_resume,
@@ -170,6 +171,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the plan without deleting (same as of retain)",
     )
     s.set_defaults(func=cmd_gc)
+
+    s = sub.add_parser(
+        "learn",
+        help="durable Orderfield lessons (protocol) or this-mission notes (field)",
+        description=(
+            "Protocol learnings survive ORDER and repos (user cache, "
+            "OF_LEARNINGS). Field learnings die with the mission. "
+            "gc never drops protocol. Packets get a capped protocol list; "
+            "it is not SPEC."
+        ),
+    )
+    s.add_argument("text", nargs="?", default="", help="lesson text")
+    s.add_argument(
+        "--protocol",
+        action="store_true",
+        help="skill-scoped (default): how to run a field, not this product",
+    )
+    s.add_argument(
+        "--field",
+        action="store_true",
+        help="this ORDER only; dropped when the mission or phase no longer applies",
+    )
+    s.add_argument("--list", action="store_true", help="print protocol and field lessons")
+    s.add_argument(
+        "--forget",
+        dest="forget",
+        help="delete by id or unique substring",
+    )
+    s.set_defaults(func=cmd_learn)
 
     s = sub.add_parser(
         "migrate",

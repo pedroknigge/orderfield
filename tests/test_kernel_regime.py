@@ -40,6 +40,10 @@ DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     # hermetic: the suite must never hit the network for the update notice
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    env.setdefault(
+        "OF_LEARNINGS",
+        str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+    )
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
