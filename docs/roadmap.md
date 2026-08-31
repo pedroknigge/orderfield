@@ -34,4 +34,4 @@ No process supervisor, real token/depth accounting, or automatic `scale_up` ship
 
 ### Deferred validation
 
-- **Test B — leader amnesia recovery:** kill the leader harness/process, open a new session with no transcript, `cd` to the project, first act `of resume`, finish the mission. Test A (dirty wave, same process) passed in 0.5.3; Test B proves externalized memory without conversational fallback.
+- **Test B — leader amnesia recovery:** **PASS (simulated, 2026-08-31).** Beacon mission in `beacon-test-b/`: dirty cut (1 done, 2 partial stubs, 1 absent store), rot13 contamination, first act `of resume` (0.5.4). Brief sufficient; contrast RESOLVED; close CLOSED. Report: external `ORDERFIELD-TEST-B-REPORT.md`. **Still open:** true process kill + brand-new harness session (no shared agent process).
