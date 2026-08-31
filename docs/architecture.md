@@ -25,7 +25,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | Phase/wave movement | Current integration digest, closure, revision-after-escalation, and in-flight guards |
 | Product file exclusivity | Cut plan + constraints — **not** a kernel lock |
 | Binding specification | `.orderfield/SPEC.md` current brief (original + amendments) + `spec_hash`; ingest is disposable; `spec-log` is episodic |
-| Binding requirements | `.orderfield/REQUIREMENTS.json`; pack `--owns-requirement`; deliver blocked while UNOWNED/UNVERIFIED/FAILED |
+| Binding requirements | `.orderfield/REQUIREMENTS.json`; pack `--owns-requirement` (refused while unowned and the packet owns none); `of contrast` / `of close`; deliver blocked while UNOWNED / VERIFIED_INTERNAL / PAIR / FAILED |
 | Role/workspace compliance and metric truth | Child/leader contract — values are shape-checked, not attested |
 
 ## Key modules (code)
@@ -55,7 +55,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_retain` / `cmd_gc` | Episodic keep/drop/dump; useful residuals/learnings kept; inapplicable dropped; logs/history >30d dumped; never copies transcripts |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
-| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` | Binding-requirement ledger, SPEC↔ORDER omissions, and the review loop gate (`contrast` exit 2 while open) |
+| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger, SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`) |
 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
 | `argv_preview` / `redact_text` | Secrets and escalated approval flags stripped from spawn previews and logs |
 | `packets_all_stale` / `complete_stale_wave_recoverable` | Fully stale wave: `next-wave` without a report; complete stale wave may still integrate |
@@ -63,7 +63,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-All mutating commands (`init`, pack/unpack, handoff/spawn, integrate, phase/patch/next-wave, checkpoint) take one advisory OS file lock before reading and writing field state. JSON writes fsync a sibling temporary file, atomically replace the destination, then fsync the directory. This prevents cooperating CLI processes from overrunning caps or exposing partial JSON. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
+All mutating commands (`init`, pack/unpack, handoff/spawn, collect/integrate, phase/patch/next-wave, checkpoint, spec, close, gc, migrate, worktree) take one advisory OS file lock before reading and writing field state. JSON writes fsync a sibling temporary file, atomically replace the destination, then fsync the directory. This prevents cooperating CLI processes from overrunning caps or exposing partial JSON. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
 ## Advisory and reserved fields
 

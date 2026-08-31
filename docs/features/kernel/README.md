@@ -18,7 +18,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - Phase-scoped close via phase prefixes + `done_when_closed_phases` (Option B; legacy bool); `--reopen`
 - Reversible field: `of unpack` refunds budget; `collect` survives MISSING; `integrate --partial`; `--constraints-rm`
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
-- Pack/spawn caps and stale-packet refusal
+- Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, and wave reports
 - Mutating commands share a cross-process `.orderfield/field.lock`; JSON writes are durable atomic replacements
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
@@ -35,7 +35,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
-- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Public-surface requirements cannot close on VERIFIED_INTERNAL. Slice `done` ≠ SPEC closed.
+- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in)
 - Optional `of --json` / `OF_JSON=1` event lines on stderr
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
@@ -51,4 +51,4 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 
 ## Tests
 
-`tests/test_kernel.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, and reserved runtime; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.
+`tests/test_kernel.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.

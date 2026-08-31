@@ -3,18 +3,18 @@
 > Hub: [AGENTS.md](../../AGENTS.md)  
 > **Code is source of truth.** Docs do not override implementation.
 
-**Date:** 2026-08-30  
-**Scope:** project  
-**Intent:** audit → integrate (patch)  
-**Out:** root  
-**Auditor:** documentation-manager (+ vibe-proof 0.3.1 hardening)  
+**Date:** 2026-08-31
+**Scope:** project
+**Intent:** audit → integrate (docs-only patch; no release)
+**Out:** root
+**Auditor:** documentation-manager
 **Code rev:** VERSION `0.5.2` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 42 |
+| OK | 44 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -22,25 +22,26 @@
 
 | Severity | Count |
 |----------|------:|
-| critical | 32 |
+| critical | 34 |
 | normal | 13 |
 
-**Truth score (advisory):** `(42*100 + 3*50) / 46 = 94.6`
-**CI gate:** no critical Contradicted after integrate patch.
+**Truth score (advisory):** `(44*100 + 3*50) / 48 = 94.8`
+**CI gate:** no critical Contradicted after docs patch.
 
 **Top risks (post-patch):**  
 1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
 2. `detect` ≠ login/auth — documented Partial.  
 3. Role/product-workspace compliance and metric truth remain contract boundaries; the field lock covers cooperating kernel mutations only.
 4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry), not implemented.
+5. A disobedient leader can still write product files without pack (kernel does not lock product) — protocol in SKILL/README.
 
-**Recommended next Intent:** none (ship) | optional later: `of ask` / preference flag.
+**Recommended next Intent:** none (docs patched; no release this turn).
 
 ## Code inventory (high level)
 
 | Kind | Evidence | Notes |
 |------|----------|-------|
-| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, doctor, retain, gc, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave |
+| Kernel CLI | `scripts/of.py` | cmds: init, status, resume, checkpoint, detect, doctor, retain, gc, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv`, `TRUST_PROFILES` |
 | Schemas | `schemas/*.json` | order / state / packet / residual / wave-report / session |
 | Install | `install.sh` | harness dests + installed-kernel `of`; literal project source is staged outside its destination |
@@ -97,8 +98,10 @@
 | C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys `writable_by_slaves` and `SLAVE.md` stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` / `normalize_workspace` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_migrate` / `ArtifactMigrations` | critical | OK | keep |
 | C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree` add/remove/list; spawn does not call it; path must be outside the project | `scripts/of.py` / `tests/test_kernel.py` | `cmd_worktree` / `WorktreeHelper` | normal | OK | keep |
 | C-046 | Runtime ownership is encoded as reserve/remove; no fake token/depth/budget telemetry | architecture / principles / status | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` / `decide_regime` wrapper | `scripts/of.py` / `tests/test_kernel.py` | `RUNTIME_OWNERSHIP` / `DecideRegimeShipped` | critical | OK | keep |
-| C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate (VERIFIED_CONTRACT at public surface; internal tests do not close); deliver needs `of close` | SKILL / architecture / SLAVE | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
+| C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate (VERIFIED_CONTRACT at public surface; internal tests do not close); deliver needs `of close` | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
+| C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting / kernel feature | `cmd_pack` dies on unowned when packet owns none | `scripts/of.py` / `tests/test_kernel.py` | `cmd_pack` / `SpecFidelity.test_pack_refuses_unowned_without_owns_requirement` | critical | OK | keep |
+| C-049 | Extract joins backslash-continued CLI lines (truncated `account create \\` is not a requirement) | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` / `extract_requirements_from_spec` | `scripts/of.py` / `tests/test_kernel.py` | `join_continued_lines` / `SpecFidelity.test_extract_joins_backslash_continuations` | critical | OK | keep |
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract (Qwen/trust, doctor, retain/gc, stale recovery, redaction, migrate, worktree, reserved runtime). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active.
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass).
