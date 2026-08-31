@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.7
+
+Eval CI gate and contrast/close recovery fixture.
+
+- **CI**: `of eval --strict --kernel` runs after unittest on every matrix job (`.github/workflows/test.yml`).
+- **Eval**: `recovery/contrast-close-internal` — contrast OPEN → `--verified-internal` → RESOLVED → `close` CLOSED.
+- **Audit**: [recovery-test-c-harness-kill.md](docs/audit/recovery-test-c-harness-kill.md) documents optional Test C (real harness process kill; not kernel CI).
+- Packaging: VERSION 0.5.7; skill/alias description preview `v0.5.7 — …`.
+
 ## 0.5.6
 
 Eve cherry-picks: recovery evals, parked agents, context docs, expanded events.
