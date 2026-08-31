@@ -6,6 +6,7 @@ try:
 except ImportError:  # Windows has no fcntl
     fcntl = None
     import msvcrt
+import errno
 import hashlib
 import json
 import math
@@ -327,6 +328,19 @@ def dump_json(path: Path, data: Any) -> None:
 # LockFile would refuse if the lock covered the bytes holding the JSON.
 _WINDOWS_LOCK_OFFSET = 0x40000000
 
+# Contention on MSVC _locking with LK_NBLCK surfaces as EACCES; the deadlock
+# codes are the documented siblings. Anything else (EBADF, EINVAL) is a real
+# error, not a held lock, and must not be reported as a wait timeout.
+_WINDOWS_CONTENTION_ERRNOS = frozenset(
+    code
+    for code in (
+        getattr(errno, "EACCES", None),
+        getattr(errno, "EDEADLK", None),
+        getattr(errno, "EDEADLOCK", None),
+    )
+    if code is not None
+)
+
 
 def _windows_locking(handle: Any, mode: int) -> None:
     """msvcrt.locking on a fixed byte, restoring the caller's file position."""
@@ -352,6 +366,8 @@ def flock_acquire(handle: Any) -> None:
     try:
         _windows_locking(handle, msvcrt.LK_NBLCK)
     except OSError as exc:  # msvcrt raises OSError where flock raises BlockingIOError
+        if exc.errno not in _WINDOWS_CONTENTION_ERRNOS:
+            raise
         raise BlockingIOError(str(exc)) from exc
 
 

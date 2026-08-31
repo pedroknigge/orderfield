@@ -2,6 +2,8 @@
 """Kernel tests — field invariants (ORDER/state/session, lock, pulse, resume)."""
 from __future__ import annotations
 
+import contextlib
+import errno
 import json
 import math
 import os
@@ -1625,6 +1627,113 @@ class WorktreeHelper(unittest.TestCase):
         )
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("not a process manager", proc.stderr)
+
+
+class _FakeMsvcrt:
+    """Stand-in for the Windows msvcrt module.
+
+    Records the descriptor offset at call time, which is the only way to prove
+    the shim locks the high byte instead of the owner payload.
+    """
+
+    LK_NBLCK = 2
+    LK_UNLCK = 0
+
+    def __init__(self, raises: OSError | None = None) -> None:
+        self.calls: list[tuple[int, int, int]] = []
+        self.raises = raises
+
+    def locking(self, fd: int, mode: int, nbytes: int) -> None:
+        self.calls.append((mode, nbytes, os.lseek(fd, 0, os.SEEK_CUR)))
+        if self.raises is not None:
+            raise self.raises
+
+
+class WindowsFieldLockShim(unittest.TestCase):
+    """The Windows lock backend, exercised on any platform.
+
+    of.field falls back to msvcrt when fcntl is missing. These pin the parts a
+    POSIX CI would otherwise never see: which byte is locked, that the caller's
+    file position survives, and that only contention becomes BlockingIOError.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.path = self.tmp / "field.lock"
+        self.path.write_text("{}", encoding="utf-8")
+
+    @contextlib.contextmanager
+    def _windows(self, fake: _FakeMsvcrt):
+        with mock.patch.object(of.field, "fcntl", None), mock.patch.object(
+            of.field, "msvcrt", fake, create=True
+        ):
+            yield
+
+    def test_acquire_locks_past_the_owner_payload(self) -> None:
+        # Windows byte-range locks are mandatory: a lock covering the owner
+        # JSON would make Windows refuse _lock_owner_text()'s read from another
+        # process, and "field lock wait exceeded" would lose the pid and
+        # command it exists to report. Asserted against a literal floor rather
+        # than _WINDOWS_LOCK_OFFSET, which would move with the code.
+        owner = json.dumps(
+            {
+                "pid": 999999,
+                "command": "of pack --child-id implementer",
+                "acquired_at": "2026-08-31T20:00:00Z",
+            }
+        )
+        self.path.write_text(owner, encoding="utf-8")
+        fake = _FakeMsvcrt()
+        with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+            of.field.flock_acquire(handle)
+        mode, nbytes, offset = fake.calls[0]
+        self.assertEqual(mode, fake.LK_NBLCK)
+        self.assertEqual(nbytes, 1)
+        self.assertGreater(offset, len(owner))
+        self.assertGreaterEqual(offset, 1 << 16)
+
+    def test_lock_restores_the_caller_file_position(self) -> None:
+        fake = _FakeMsvcrt()
+        with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+            handle.seek(0)
+            before = os.lseek(handle.fileno(), 0, os.SEEK_CUR)
+            of.field.flock_acquire(handle)
+            self.assertEqual(os.lseek(handle.fileno(), 0, os.SEEK_CUR), before)
+            of.field.flock_release(handle)
+            self.assertEqual(os.lseek(handle.fileno(), 0, os.SEEK_CUR), before)
+        self.assertEqual([call[0] for call in fake.calls], [fake.LK_NBLCK, fake.LK_UNLCK])
+
+    def test_contention_becomes_blockingioerror(self) -> None:
+        fake = _FakeMsvcrt(OSError(errno.EACCES, "lock violation"))
+        with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+            with self.assertRaises(BlockingIOError):
+                of.field.flock_acquire(handle)
+
+    def test_real_errors_are_not_disguised_as_contention(self) -> None:
+        # field_lock() catches BlockingIOError and retries until the wait
+        # timeout, so mapping EBADF here would report a held lock that is not.
+        for code in (errno.EBADF, errno.EINVAL):
+            fake = _FakeMsvcrt(OSError(code, "boom"))
+            with self.subTest(errno=code):
+                with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+                    with self.assertRaises(OSError) as caught:
+                        of.field.flock_acquire(handle)
+                self.assertNotIsInstance(caught.exception, BlockingIOError)
+                self.assertEqual(caught.exception.errno, code)
+
+    def test_posix_path_still_uses_flock(self) -> None:
+        if of.field.fcntl is None:  # pragma: no cover - Windows runner
+            self.skipTest("no fcntl on this platform")
+        calls: list[int] = []
+        with self.path.open("a+", encoding="utf-8") as handle:
+            with mock.patch.object(of.field.fcntl, "flock", lambda fd, op: calls.append(op)):
+                of.field.flock_acquire(handle)
+                of.field.flock_release(handle)
+        self.assertEqual(
+            calls,
+            [of.field.fcntl.LOCK_EX | of.field.fcntl.LOCK_NB, of.field.fcntl.LOCK_UN],
+        )
 
 
 if __name__ == "__main__":
