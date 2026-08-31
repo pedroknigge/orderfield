@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.6.0 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.1 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.0"
+  version: "0.6.1"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -40,7 +40,7 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn** — handoff/spawn/collect/integrate/patch/next-wave/contrast/close as appropriate. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused or stopped the mission (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). A turn that runs `of resume` on an open field but performs no `next` work is a broken run.
 
-**Steer policy (Eve analog).** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission: amend or patch the contract (`of spec --amend`, `of patch`), continue parked children (`HOLD`), or integrate — do **not** `of init --force` unless the user explicitly cancels the mission. Interleaved chats and compaction are not pause; they are steering context back to disk.
+**Steer policy (Eve analog).** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission: amend or patch the contract (`of spec --amend`, `of patch`), continue parked children (`HOLD`), or integrate — do **not** `of init --force` unless the user explicitly cancels the mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words. Interleaved chats and compaction are not pause; they are steering context back to disk.
 
 Context layout (instructions vs skills vs packets vs subagents): [docs/context-control.md](docs/context-control.md).
 
@@ -122,10 +122,19 @@ Identify the invariant-dense slice **early** (not necessarily first): do not lea
 
 The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
 
-**Do not write `PROMPT.md` / `prompt.md` at the project root.** The user's current message *is* the brief. Ingest it into the field, never into the product tree:
+**Do not write `PROMPT.md` / `prompt.md` at the project root.** Ingest the **verbatim user brief** into the field, never into the product tree. The brief is the work the user asked for, not necessarily the current message. A deictic go-ahead (`dale`, `hacelo`, `do it`, `go ahead`, `as discussed`) pointing at a prior conversation is **steer**, not a contract:
+
+| Situation | Leader does |
+|---|---|
+| Same session, no ORDER, go-ahead | Reconstruct the prior request into `--source` / `.orderfield/ingest.md`. Do not init with the two words. If the work fits this same agent, skill beats child — do not open a field. |
+| Same session, ORDER open, go-ahead | Steer: `of resume`, execute `next`. Do not `of init --force`. Do not `of spec --amend "dale"`. |
+| New session / compacted, go-ahead, no ORDER | Disk only. Ask for the actual brief or refuse to init — do not invent SPEC from chat you no longer have. |
+| Child | Packet only. Never parent chat. |
+
+`of init --source` / `of spec --amend` / `--revise` print an advisory **note** when the text looks like a go-ahead; the SPEC is still written. Expand and `--revise-file` if you already landed a deictic.
 
 ```bash
-# short brief:
+# short brief (the actual request, never "dale"):
 python3 <skill>/scripts/of.py init --mission "build LedgerLab" --source "<verbatim user request>"
 # long brief (gitignored field scratch; discarded after copy):
 # write .orderfield/ingest.md then:
@@ -289,6 +298,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
+- Do not ingest a deictic go-ahead as SPEC. Expand the prior request, or resume and execute `next`.
 - Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
 

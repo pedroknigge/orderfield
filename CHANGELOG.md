@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1
+
+Deictic go-ahead ingest: a `dale` / `do it` is steer, not a brief.
+
+- **Leader:** the brief is the work the user asked for, not necessarily the current message. Same-session go-ahead → expand the prior request into `--source`; open field → execute `next` (do not `--amend "dale"`); compacted / new session with no ORDER → ask or refuse, do not invent SPEC. Skill beats child if the same agent already holds the context.
+- **Kernel:** `of init --source` / `of spec --amend` / `--revise` print an advisory `of: note — … go-ahead, not a brief` when the text matches; SPEC is still written (same shape as oversized `--slice`).
+- **Docs:** SKILL ingest table, context-control rows, invariant 17 sentence, troubleshooting recovery.
+- Packaging: VERSION 0.6.1; skill/alias description preview `v0.6.1 — …`.
+
 ## 0.6.0
 
 0.6 form split of the kernel CLI. Protocol unchanged — not a new regime.

@@ -128,6 +128,7 @@ from of.spec import (
     spec_bytes_hash,
     spec_diff_lines,
     sync_order_spec_fields,
+    warn_if_deictic_brief,
     write_spec,
 )
 
@@ -448,8 +449,10 @@ def cmd_init(args: argparse.Namespace) -> None:
         die("pass only one of --source / --source-file")
     if source_file:
         source_text = read_brief_file(str(source_file), flag="--source-file")
+        warn_if_deictic_brief(source_text, flag="--source-file")
     elif source_inline:
         source_text = str(source_inline)
+        warn_if_deictic_brief(source_text, flag="--source")
     target.mkdir(parents=True, exist_ok=True)
     # --force starts a new field; leftover waves AND SPEC must not shadow it.
     if args.force:
@@ -1746,10 +1749,12 @@ def cmd_spec(args: argparse.Namespace) -> None:
     if amend_file or amend_text:
         if amend_file:
             incoming = read_brief_file(str(amend_file), flag="--amend-file")
+            warn_if_deictic_brief(incoming, flag="--amend-file")
             if str(amend_file) != "-":
                 ingest_source = Path(amend_file)
         else:
             incoming = str(amend_text)
+            warn_if_deictic_brief(incoming, flag="--amend")
         creating = not spec_path(root).is_file()
         if creating:
             new_hash = write_spec(root, incoming, revise=True)
@@ -1792,10 +1797,12 @@ def cmd_spec(args: argparse.Namespace) -> None:
                 print(f"spec-log    {snap.relative_to(root)}")
         if revise_file:
             source_text = read_brief_file(str(revise_file), flag="--revise-file")
+            warn_if_deictic_brief(source_text, flag="--revise-file")
             if str(revise_file) != "-":
                 ingest_source = Path(revise_file)
         else:
             source_text = str(revise_text)
+            warn_if_deictic_brief(source_text, flag="--revise")
         new_hash = write_spec(root, source_text, revise=True)
         data["spec_hash"] = new_hash
         order["spec_ref"] = FIELD_SPEC_MD

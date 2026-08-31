@@ -56,10 +56,12 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | `/of` alias skill + versioned description | documented |
 | Optional `--json` / `OF_JSON` events | documented |
 | Lossless SPEC.md + amendments + `spec_hash` check | documented |
+| Deictic go-ahead ingest (`dale` / `do it` → expand prior brief; advisory note) | documented |
 | Pack `--owns-requirement` (refused while unowned) | documented |
 | Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
 | 0.4.2 … + 0.5.5 auto_continue + 0.5.6 eval/parked/events + 0.5.7 eval CI/contrast recovery/Test C doc | documented |
 | 0.6.0 form split (`scripts/of.py` internals; protocol unchanged) | documented |
+| 0.6.1 deictic go-ahead ingest (advisory, not a new regime) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
