@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.5.3`
+**Status:** Shipped · **Current release line:** `0.5.4`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -28,6 +28,10 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 - Managed parallel lifecycle, process IDs, cancellation, and child supervision remain out of scope; adopting them would expand Orderfield beyond a contract kernel.
 
-## Not in 0.5.0
+## Not in 0.5.4
 
-No process supervisor, real token/depth accounting, or automatic `scale_up` ships in 0.5.0. Those surfaces stay reserved. Publication (annotated tag, GitHub release, remote verify) is a separate deliver step.
+No process supervisor, real token/depth accounting, or automatic `scale_up` ships in 0.5.4. Those surfaces stay reserved. Publication (annotated tag, GitHub release, remote verify) is a separate deliver step.
+
+### Deferred validation
+
+- **Test B — leader amnesia recovery:** kill the leader harness/process, open a new session with no transcript, `cd` to the project, first act `of resume`, finish the mission. Test A (dirty wave, same process) passed in 0.5.3; Test B proves externalized memory without conversational fallback.

@@ -56,7 +56,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Lossless SPEC.md + amendments + `spec_hash` check | documented |
 | Pack `--owns-requirement` (refused while unowned) | documented |
 | Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
-| 0.4.2 state-machine integrity + 0.5.0 operational contract + 0.5.2 surface contrast + 0.5.3 owns_paths / verify evidence / extract index | documented |
+| 0.4.2 state-machine integrity + 0.5.0 operational contract + 0.5.2 surface contrast + 0.5.3 owns_paths / verify evidence / extract index + 0.5.4 resume recovery brief | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

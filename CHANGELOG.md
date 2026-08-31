@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.4
+
+Recovery brief: `of resume` becomes a one-screen operational reconstruction after interruption.
+
+- `of resume` prints `completed` and `in_flight` sections: residual state, `owns_requirements`, `owns_paths` with product `present`/`missing`, scratch, slice, packed age; explicit `next` action with guidance (`HOLD` → continue existing packets; do not repack).
+- Skill doctrine: same-wave implementers need disjoint write sets **and** no unresolved hard dependency on another in-flight packet (`path independence ≠ dependency independence`).
+- Roadmap: deferred **Test B — leader amnesia recovery** (kill harness, new session, `of resume` only).
+- Packaging: VERSION 0.5.4; skill/alias description preview `v0.5.4 — …`.
+
 ## 0.5.3
 
 Efficiency bind without new regimes: exclusive paths, host-owned verify, REQUIREMENTS as an index.

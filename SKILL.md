@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.3 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.4 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.3"
+  version: "0.5.4"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -44,7 +44,9 @@ python3 <skill>/scripts/of.py resume
 
 If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime.
 
-In-flight = packed child with missing residual. Follow the printed next legal action (`collect` | `patch then next-wave` | `pack` | `hold` | `next-wave`). `next=hold` with in-flight children means **continue those packets** (`of handoff` or `of spawn` on the existing packet, continuation note if scratch is nonempty) — not pack a second child, and not wait forever. `next=next-wave` means the wave is over: it was already integrated (`report.json` on disk) or every packet belongs to a dead field — collect would re-walk a closed wave.
+The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** children (residual MISSING, scratch, owners, owned-path `present`/`missing`, slice, packed age). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
+
+Follow the printed **`next`** action with guidance (`HOLD` → continue existing packets; do not repack | `COLLECT` | `NEXT-WAVE` | `PACK` | `PATCH THEN NEXT-WAVE`). `next=HOLD` with in-flight children means **continue those packets** (`of handoff` or `of spawn` on the existing packet, continuation note if scratch is nonempty) — not pack a second child, and not wait forever. `next=NEXT-WAVE` means the wave is over: it was already integrated (`report.json` on disk) or every packet belongs to a dead field — collect would re-walk a closed wave.
 
 Optional leader narrative for the next session (one screen; refuse huge dumps):
 
@@ -102,7 +104,11 @@ of pack --role implementer --child-id state --owns-path src/store.py --owns-requ
 of pack --role implementer --child-id http --owns-path src/http_api.py --owns-requirement HTTP-001
 ```
 
-Same-wave overlapping `--owns-path` dies. A second implementer in the wave **must** pass `--owns-path`. Cross-wave reuse of a path prints a note (`consider continuing <child>`) — not a lock. If the next work is the same files, that child is in-flight: continue from scratch; do not pack a sibling. Identify the invariant-dense slice **early** (not necessarily first): do not leave lease/audit/races for final integration.
+Same-wave overlapping `--owns-path` dies. A second implementer in the wave **must** pass `--owns-path`. Cross-wave reuse of a path prints a note (`consider continuing <child>`) — not a lock. If the next work is the same files, that child is in-flight: continue from scratch; do not pack a sibling.
+
+**Path independence ≠ dependency independence.** Same-wave implementers need disjoint write sets **and** no unresolved hard dependency on another in-flight packet. A DAG slice (`domain → store → cli`) is not parallelizable just because paths differ — pack for the **width** of independent work, not `max_children`. Example: `state machine + HTTP + docs` may share a wave; `domain → store → (cli | http)` does not.
+
+Identify the invariant-dense slice **early** (not necessarily first): do not leave lease/audit/races for final integration.
 
 The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
 

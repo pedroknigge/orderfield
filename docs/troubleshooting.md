@@ -4,11 +4,11 @@ Stranger-facing recovery for common field failures. Kernel commands only — do 
 
 ## Stale packets
 
-**Symptom:** `of pack` / `collect` / `integrate` dies with stale packet language; `of resume` may say `next-wave`.
+**Symptom:** `of pack` / `collect` / `integrate` dies with stale packet language; `of resume` may say `NEXT-WAVE`.
 
 **Meaning:** For a 0.4.2 packet, its registered wave or exact ORDER revision no longer matches the live field. Legacy packets use the pre-0.4.2 id/phase/mission check.
 
-A **fully stale wave** (every packet stale vs live ORDER) is recoverable without hand-editing `ORDER.json`. `of resume` prints `next-wave`. `of next-wave` skips occupied stale dirs and does **not** require a report first. If every stale packet already has a packet-bound residual, `of collect` / `of integrate` may still reduce that complete wave.
+A **fully stale wave** (every packet stale vs live ORDER) is recoverable without hand-editing `ORDER.json`. `of resume` prints `NEXT-WAVE` under `next`. `of next-wave` skips occupied stale dirs and does **not** require a report first. If every stale packet already has a packet-bound residual, `of collect` / `of integrate` may still reduce that complete wave.
 
 Incomplete leftover packets (no residual) still fail collect/integrate; use `of next-wave` or `of unpack`.
 

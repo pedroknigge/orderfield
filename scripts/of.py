@@ -5120,6 +5120,107 @@ def cmd_next_wave(args: argparse.Namespace) -> None:
     print(f"wave={state['wave']}")
 
 
+def completed_children(root: Path, wave: int) -> list[dict[str, Any]]:
+    return [p for p in packed_children(root, wave) if not packet_residual_missing(root, p)]
+
+
+def try_load_packet_residual(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+    rel = packet.get("residual_path")
+    if not rel:
+        return None
+    text = str(rel)
+    rel_path = Path(text)
+    if rel_path.is_absolute() or ".." in rel_path.parts:
+        return None
+    path = root / rel_path
+    if not path.is_file():
+        return None
+    return _read_json_object(path)
+
+
+def owned_path_presence(root: Path, path: str) -> str:
+    text = posix_owns_path(path)
+    if not text:
+        return "missing"
+    rel = Path(text)
+    if rel.is_absolute() or ".." in rel.parts:
+        return "missing"
+    return "present" if (root / rel).is_file() else "missing"
+
+
+def resume_next_lines(action: str) -> list[str]:
+    guidance: dict[str, tuple[str, str]] = {
+        "hold": ("HOLD", "continue existing packets; do not repack"),
+        "collect": ("COLLECT", "all residuals landed; run collect"),
+        "next-wave": ("NEXT-WAVE", "wave is closed or stale; run next-wave"),
+        "pack": ("PACK", "no packets on this wave; pack slices"),
+        "patch then next-wave": (
+            "PATCH THEN NEXT-WAVE",
+            "spawn blocked after escalate_up; patch ORDER then next-wave",
+        ),
+    }
+    label, detail = guidance.get(
+        action, (action.upper().replace(" ", "-"), action)
+    )
+    return [label, detail]
+
+
+def print_resume_child_owns(root: Path, packet: dict[str, Any]) -> None:
+    owned = packet.get("owns_requirements") or []
+    if owned:
+        print("    owns_requirements")
+        for req in owned:
+            print(f"      {req}")
+    paths = packet_owns_paths(packet)
+    if paths:
+        print("    owns_paths")
+        for owned_path in paths:
+            presence = owned_path_presence(root, owned_path)
+            print(f"      {owned_path:<24} {presence}")
+
+
+def print_resume_completed(root: Path, completed: list[dict[str, Any]]) -> None:
+    if not completed:
+        return
+    print("completed")
+    for pkt in completed:
+        cid = str(pkt.get("child_id") or "?")
+        print(f"  {cid}")
+        print("    residual    present")
+        residual = try_load_packet_residual(root, pkt)
+        if residual:
+            print(f"    status      {residual.get('status') or '-'}")
+            result_ref = residual.get("result_ref")
+            if result_ref:
+                print(f"    result_ref  {result_ref}")
+        print_resume_child_owns(root, pkt)
+
+
+def print_resume_in_flight(
+    root: Path, flying: list[dict[str, Any]], *, now: float | None = None
+) -> None:
+    if not flying:
+        return
+    print("in_flight")
+    ts_now = now if now is not None else time.time()
+    for pkt in flying:
+        cid = str(pkt.get("child_id") or "?")
+        role = str(pkt.get("role") or "?")
+        scratch = "present" if scratch_nonempty(root, pkt) else "missing"
+        print(f"  {cid}")
+        print("    residual    MISSING")
+        print(f"    role        {role}")
+        print(f"    scratch     {scratch}")
+        print_resume_child_owns(root, pkt)
+        print(f"    slice       {truncate_slice(pkt.get('slice') or '')}")
+        packed_ts = parse_utc(pkt.get("packed_at"))
+        if packed_ts is not None:
+            print(
+                f"    packed      {pkt.get('packed_at')} "
+                f"({fmt_age(ts_now - packed_ts)} ago)"
+            )
+
+
 def cmd_resume(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
@@ -5131,6 +5232,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     wave = int(state.get("wave") or 1)
     packets = packed_children(root, wave)
     flying = in_flight_children(root, wave)
+    completed = completed_children(root, wave)
     integrated = (wave_dir(wave, root) / "report.json").is_file()
     stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
     nxt = next_legal_action(
@@ -5146,20 +5248,13 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"last_cmd      {session.get('last_cmd') or '-'}")
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")
-    for pkt in flying:
-        cid = pkt.get("child_id") or "?"
-        role = pkt.get("role") or "?"
-        scratch = "yes" if scratch_nonempty(root, pkt) else "no"
-        print(f"  child_id    {cid}")
-        print(f"  role        {role}")
-        print(f"  slice       {truncate_slice(pkt.get('slice') or '')}")
-        print(f"  scratch     {scratch}")
-        packed_ts = parse_utc(pkt.get("packed_at"))
-        if packed_ts is not None:
-            print(f"  packed      {pkt.get('packed_at')} ({fmt_age(time.time() - packed_ts)} ago)")
+    print_resume_completed(root, completed)
+    print_resume_in_flight(root, flying)
     if flying:
         print("activity      of pulse (child scratch verdict + shared repo context)")
-    print(f"next          {nxt}")
+    print("next")
+    for line in resume_next_lines(nxt):
+        print(f"  {line}")
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
         print("summary")

@@ -2596,10 +2596,11 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("c1", r.stdout)
         self.assertIn("explorer", r.stdout)
         self.assertIn("map pricing models", r.stdout)
-        self.assertIn("scratch     no", r.stdout)
+        self.assertIn("scratch     missing", r.stdout)
         self.assertIn("activity      of pulse", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
-        self.assertIn("next          hold", r.stdout)
+        self.assertIn("next\n  HOLD", r.stdout)
+        self.assertIn("continue existing packets; do not repack", r.stdout)
         self.assertNotIn("auto-spawn", r.stdout.lower())
         self.assertNotRegex(r.stdout.lower(), r"\blogs\b")
         self.assertFalse((self.tmp / ".orderfield" / "waves" / "001" / "spawns").exists())
@@ -2618,7 +2619,8 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("status        idle", r.stdout)
         self.assertIn("in_flight     0", r.stdout)
         self.assertNotIn("status        in-flight", r.stdout)
-        self.assertIn("next          collect", r.stdout)
+        self.assertIn("next\n  COLLECT", r.stdout)
+        self.assertIn("all residuals landed; run collect", r.stdout)
 
     def test_escalate_up_resume_says_patch_then_next_wave(self) -> None:
         self._init()
@@ -2632,7 +2634,8 @@ class SessionCutResume(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("spawn_blocked True", r.stdout)
         self.assertIn("last_regime   escalate_up", r.stdout)
-        self.assertIn("patch then next-wave", r.stdout)
+        self.assertIn("PATCH THEN NEXT-WAVE", r.stdout)
+        self.assertIn("patch ORDER then next-wave", r.stdout)
         self.assertIn("status        idle", r.stdout)
 
     def test_checkpoint_summary_appears(self) -> None:
@@ -2792,6 +2795,102 @@ class SessionCutResume(unittest.TestCase):
         self.assertEqual(sess["last_cmd"], "next-wave")
         self.assertEqual(sess["wave"], 2)
         self.assertEqual(sess["in_flight"], [])
+
+
+class ResumeRecoveryBrief(unittest.TestCase):
+    """of resume prints recovery-relevant ownership and product presence."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-resume-brief-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        (self.tmp / "quarry").mkdir()
+        (self.tmp / "tests").mkdir()
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build quarry append-only log",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for req_id, text in (
+            ("DOMAIN-001", "domain module"),
+            ("STORE-001", "store module"),
+            ("CLI-001", "cli module"),
+        ):
+            added = run_of(self.tmp, "spec", "--add", req_id, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+
+    def _pack(
+        self,
+        child_id: str,
+        owns_path: str,
+        req_id: str,
+        slice_text: str,
+    ) -> None:
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            slice_text,
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+            "--owns-path",
+            owns_path,
+            "--owns-requirement",
+            req_id,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_dirty_wave_recovery_brief(self) -> None:
+        self._pack(
+            "domain",
+            "quarry/domain.py",
+            "DOMAIN-001",
+            "Implement quarry/domain.py",
+        )
+        self._pack(
+            "store",
+            "quarry/store.py",
+            "STORE-001",
+            "Implement quarry/store.py after domain lands",
+        )
+        self._pack(
+            "cli",
+            "quarry/cli.py",
+            "CLI-001",
+            "Implement quarry/cli.py after store lands",
+        )
+        (self.tmp / "quarry" / "domain.py").write_text("# domain\n", encoding="utf-8")
+        write_bound_residual(self.tmp, "domain")
+        (self.tmp / "quarry" / "cli.py").write_text("# partial cli\n", encoding="utf-8")
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "store"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("waiting on domain.py\n", encoding="utf-8")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        out = resumed.stdout
+        self.assertIn("completed", out)
+        self.assertIn("  domain", out)
+        self.assertIn("    residual    present", out)
+        self.assertIn("    status      done", out)
+        self.assertIn("      DOMAIN-001", out)
+        self.assertIn("quarry/domain.py         present", out)
+        self.assertIn("in_flight", out)
+        self.assertIn("  store", out)
+        self.assertIn("  cli", out)
+        self.assertIn("    residual    MISSING", out)
+        self.assertIn("    scratch     present", out)
+        self.assertIn("quarry/store.py          missing", out)
+        self.assertIn("quarry/cli.py            present", out)
+        self.assertIn("      STORE-001", out)
+        self.assertIn("      CLI-001", out)
+        self.assertIn("next\n  HOLD", out)
+        self.assertIn("continue existing packets; do not repack", out)
+        self.assertNotIn("  domain\n    residual    MISSING", out)
 
 
 class UnpackRefundsBudget(unittest.TestCase):
@@ -3292,18 +3391,18 @@ class ResumeAfterIntegrate(unittest.TestCase):
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
         write_bound_residual(self.tmp, "c1")
         before = run_of(self.tmp, "resume")
-        self.assertIn("next          collect", before.stdout)
+        self.assertIn("next\n  COLLECT", before.stdout)
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
         after = run_of(self.tmp, "resume")
-        self.assertIn("next          next-wave", after.stdout)
+        self.assertIn("next\n  NEXT-WAVE", after.stdout)
 
     def test_all_stale_packets_point_at_next_wave_not_hold(self) -> None:
         r = run_of(self.tmp, "patch", "--mission", "a different field")
         self.assertEqual(r.returncode, 0, r.stderr)
         resumed = run_of(self.tmp, "resume")
-        self.assertIn("next          next-wave", resumed.stdout)
-        self.assertNotIn("next          hold", resumed.stdout)
+        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertNotIn("next\n  HOLD", resumed.stdout)
         nxt = run_of(self.tmp, "next-wave")
         self.assertEqual(nxt.returncode, 0, nxt.stderr)
         self.assertIn("wave=2", nxt.stdout)
