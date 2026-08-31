@@ -198,6 +198,8 @@ from of.regime import (
     waves_since_across,
 )
 
+from of.integrate import update_path_owners_index
+
 
 
 def cmd_integrate(args: argparse.Namespace) -> None:
@@ -315,6 +317,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         state["blocked_at_order_rev"] = order_rev_at_decision
     state["waves_since_across"] = waves_since_across(state)
     state["last_regime"] = regime
+    update_path_owners_index(state, int(wave), packets)
     report = {
         "wave": int(wave),
         "order_rev": order["rev"],

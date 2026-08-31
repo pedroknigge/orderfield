@@ -396,20 +396,57 @@ def prior_wave_path_owners(
 ) -> list[tuple[str, int, str]]:
     hits: list[tuple[str, int, str]] = []
     seen: set[tuple[str, int, str]] = set()
-    for prior in wave_numbers(root):
-        if prior >= int(wave):
-            continue
-        for packet in packed_children(root, prior):
-            other = str(packet.get("child_id") or "?")
-            for theirs in packet_owns_paths(packet):
-                for mine in owns:
-                    if not owns_paths_overlap(mine, theirs):
-                        continue
-                    key = (other, prior, mine)
-                    if key in seen:
-                        continue
+    
+    state_path = root / ".orderfield/state.json"
+    if not state_path.is_file():
+        return hits
+        
+    try:
+        from of.field import _read_json_object
+        state = _read_json_object(state_path) or {}
+    except ImportError:
+        import json
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+            
+    path_index = state.get("path_index") or {}
+    
+    for mine in owns:
+        parts = mine.split("/")
+        
+        # 1. Check all ancestors (prefixes) of mine.
+        # If an ancestor is in the index, its 'exact' list contains paths that own mine.
+        for i in range(1, len(parts)):
+            prefix = "/".join(parts[:i])
+            node = path_index.get(prefix)
+            if not node:
+                continue
+            for owner in node.get("exact", []):
+                prior = int(owner["wave"])
+                if prior >= int(wave):
+                    continue
+                child_id = str(owner["child_id"])
+                theirs = str(owner["owned_path"])
+                key = (child_id, prior, theirs)
+                if key not in seen:
                     seen.add(key)
                     hits.append(key)
+                    
+        # 2. Check mine itself.
+        # Both exact matches and descendants of mine overlap with mine.
+        node = path_index.get(mine)
+        if node:
+            for owner in node.get("exact", []) + node.get("descendants", []):
+                prior = int(owner["wave"])
+                if prior >= int(wave):
+                    continue
+                child_id = str(owner["child_id"])
+                theirs = str(owner["owned_path"])
+                key = (child_id, prior, theirs)
+                if key not in seen:
+                    seen.add(key)
+                    hits.append(key)
+                    
     return hits
 
 
