@@ -30,8 +30,13 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 ## Not in 0.5.4
 
-No process supervisor, real token/depth accounting, or automatic `scale_up` ships in 0.5.4. Those surfaces stay reserved. Publication (annotated tag, GitHub release, remote verify) is a separate deliver step.
+No process supervisor, real token/depth accounting, or automatic `scale_up` ships in 0.5.4. Those surfaces stay reserved.
 
-### Deferred validation
+### Recovery validation (0.5.4 line — complete)
 
-- **Test B — leader amnesia recovery:** **PASS (simulated, 2026-08-31).** Beacon mission in `beacon-test-b/`: dirty cut (1 done, 2 partial stubs, 1 absent store), rot13 contamination, first act `of resume` (0.5.4). Brief sufficient; contrast RESOLVED; close CLOSED. Report: external `ORDERFIELD-TEST-B-REPORT.md`. **Still open:** true process kill + brand-new harness session (no shared agent process).
+| Test | Kernel | Verdict | Report |
+|------|--------|---------|--------|
+| A — dirty wave (Quarry) | 0.5.3 | RECOVERY WITH MINOR FRICTION | [recovery-test-a-quarry.md](audit/recovery-test-a-quarry.md) |
+| B — leader amnesia sim (Beacon) | 0.5.4 | RECOVERY CLEAN | [recovery-test-b-beacon.md](audit/recovery-test-b-beacon.md) |
+
+Test A showed packets/residuals/disk beat stale session and chat memory. Test B showed the 0.5.4 recovery brief is sufficient for an amnesiac leader (simulated; same agent process).

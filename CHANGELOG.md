@@ -6,7 +6,7 @@ Recovery brief: `of resume` becomes a one-screen operational reconstruction afte
 
 - `of resume` prints `completed` and `in_flight` sections: residual state, `owns_requirements`, `owns_paths` with product `present`/`missing`, scratch, slice, packed age; explicit `next` action with guidance (`HOLD` → continue existing packets; do not repack).
 - Skill doctrine: same-wave implementers need disjoint write sets **and** no unresolved hard dependency on another in-flight packet (`path independence ≠ dependency independence`).
-- Roadmap: deferred **Test B — leader amnesia recovery** (kill harness, new session, `of resume` only).
+- Recovery validation: Test A (Quarry, 0.5.3) **RECOVERY WITH MINOR FRICTION**; Test B (Beacon, 0.5.4) **RECOVERY CLEAN**. Reports: [docs/audit/recovery-test-a-quarry.md](docs/audit/recovery-test-a-quarry.md), [docs/audit/recovery-test-b-beacon.md](docs/audit/recovery-test-b-beacon.md).
 - Packaging: VERSION 0.5.4; skill/alias description preview `v0.5.4 — …`.
 
 ## 0.5.3
