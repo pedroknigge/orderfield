@@ -8,7 +8,7 @@
 **Intent:** audit → integrate (docs-only patch; no release)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.5.3` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.4` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -71,7 +71,7 @@
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | normal | Unverifiable | keep |
 | C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of.py` | `cmd_patch` | critical | OK | keep |
 | C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | normal | OK | keep doctrine |
-| C-020 | `of resume` reconstructs in-flight from disk (packed child, missing residual); one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `in_flight_children`; no spawn | `scripts/of.py` | `cmd_resume` | critical | OK | keep |
+| C-020 | `of resume` reconstructs in-flight from disk; recovery brief lists completed/in-flight, residual state, owners, owned-path presence, scratch; explicit next guidance; one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `print_resume_*`; `in_flight_children`; no spawn | `scripts/of.py` | `cmd_resume` | critical | OK | keep |
 | C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` / `CHECKPOINT_MAX_LINES` | `scripts/of.py` | `cmd_checkpoint` | normal | OK | keep |
 | C-022 | Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave | README / architecture / SKILL | `snapshot_session` on those cmds | `scripts/of.py` | `snapshot_session` | critical | OK | keep |
 | C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status` prints `in_flight`; `render_prompt` continuation | `scripts/of.py` | `cmd_status` / `render_prompt` | critical | OK | keep |
@@ -107,4 +107,4 @@
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass).
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass).
