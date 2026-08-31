@@ -4667,7 +4667,7 @@ class SpecFidelity(unittest.TestCase):
         open_loop = run_of(self.tmp, "contrast")
         self.assertEqual(open_loop.returncode, 2, open_loop.stdout)
         self.assertIn("CLOSE BLOCKED", open_loop.stdout)
-        self.assertIn("MISS", open_loop.stdout)
+        self.assertIn("MISSING", open_loop.stdout)
         refused = run_of(self.tmp, "close")
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("refused", refused.stderr)
@@ -4677,9 +4677,22 @@ class SpecFidelity(unittest.TestCase):
             for line in listed.stdout.splitlines()
             if line.strip().startswith(("CLI-", "REQ-"))
         ]
+        internal_args = ["spec"]
         for rid in ids:
-            v = run_of(self.tmp, "spec", "--verified", rid)
-            self.assertEqual(v.returncode, 0, v.stderr)
+            internal_args.extend(["--verified", rid])
+        internal = run_of(self.tmp, *internal_args)
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        still_open = run_of(self.tmp, "contrast")
+        self.assertEqual(still_open.returncode, 2, still_open.stdout)
+        self.assertIn("VERIFIED_INTERNAL", still_open.stdout)
+        refused_internal = run_of(self.tmp, "close")
+        self.assertNotEqual(refused_internal.returncode, 0)
+        args = ["spec"]
+        for rid in ids:
+            args.extend(["--verified-contract", rid])
+        args.append("--both-sides")
+        contract = run_of(self.tmp, *args)
+        self.assertEqual(contract.returncode, 0, contract.stderr)
         resolved = run_of(self.tmp, "contrast")
         self.assertEqual(resolved.returncode, 0, resolved.stdout)
         self.assertIn("RESOLVED", resolved.stdout)
@@ -4852,9 +4865,147 @@ class SpecFidelity(unittest.TestCase):
         contrast = run_of(self.tmp, "contrast")
         self.assertEqual(contrast.returncode, 2, contrast.stdout)
         self.assertNotIn(drop, contrast.stdout)
+        args = ["spec"]
         for rid in keep:
-            v = run_of(self.tmp, "spec", "--verified", rid)
-            self.assertEqual(v.returncode, 0, v.stderr)
+            args.extend(["--verified-contract", rid])
+        args.append("--both-sides")
+        v = run_of(self.tmp, *args)
+        self.assertEqual(v.returncode, 0, v.stderr)
         resolved = run_of(self.tmp, "contrast")
         self.assertEqual(resolved.returncode, 0, resolved.stdout)
         self.assertIn("RESOLVED", resolved.stdout)
+
+    def test_cli_idempotency_internal_verify_does_not_close(self) -> None:
+        """Store-level green is not the public CLI contract (LedgerLab blind)."""
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        listed = run_of(self.tmp, "spec")
+        pair_ids = [
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if "idempotency" in line.lower() or "different payload" in line.lower()
+        ]
+        self.assertTrue(pair_ids, listed.stdout)
+        rid = pair_ids[0]
+        internal = run_of(self.tmp, "spec", "--verified", rid)
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("VERIFIED_INTERNAL", refused.stderr)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        self.assertNotEqual(no_pair.returncode, 0)
+        self.assertIn("pair-shaped", no_pair.stderr)
+        both = run_of(
+            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+        )
+        self.assertEqual(both.returncode, 0, both.stderr)
+        after = run_of(self.tmp, "contrast")
+        self.assertIn("VERIFIED_CONTRACT", after.stdout)
+        self.assertNotRegex(after.stdout, rf"VERIFIED_INTERNAL\s+{rid}")
+
+    def test_internal_surface_can_close_on_verified_internal(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "index",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-requirement",
+            "ALG-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        marked = run_of(self.tmp, "spec", "--verified-internal", "ALG-001")
+        self.assertEqual(marked.returncode, 0, marked.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 0, contrast.stdout)
+        self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+        self.assertIn("RESOLVED", contrast.stdout)
+
+    def test_extract_joins_backslash_continuations(self) -> None:
+        text = "\n".join(
+            [
+                "python -m ledgerlab account create \\",
+                "  --name cash",
+                "python -m ledgerlab post --idempotency-key K",
+            ]
+        )
+        reqs = of.extract_requirements_from_spec(text)
+        bodies = [r["text"] for r in reqs]
+        self.assertTrue(
+            any("account create --name cash" in b for b in bodies),
+            bodies,
+        )
+        self.assertFalse(any(b.rstrip().endswith("\\") for b in bodies), bodies)
+
+    def test_pack_refuses_unowned_without_owns_requirement(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement everything",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+        )
+        self.assertNotEqual(packed.returncode, 0, packed.stdout)
+        self.assertIn("unowned", packed.stderr)
+        self.assertIn("--owns-requirement", packed.stderr)
+
+    def test_phase_force_warns_unowned_does_not_close_spec(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        forced = run_of(
+            self.tmp, "phase", "build", "--force", "--reason", "skip explore"
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertIn("unowned", forced.stderr)
+        self.assertIn("contrast", forced.stderr)

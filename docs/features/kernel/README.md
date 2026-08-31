@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.5.1` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.5.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -35,7 +35,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
-- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). `spec_hash` is checked against file bytes. `of contrast` is the close gate. Slice `done` ≠ SPEC closed.
+- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Public-surface requirements cannot close on VERIFIED_INTERNAL. Slice `done` ≠ SPEC closed.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in)
 - Optional `of --json` / `OF_JSON=1` event lines on stderr
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)

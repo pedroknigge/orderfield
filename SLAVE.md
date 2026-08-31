@@ -13,7 +13,7 @@ You are a slaved mode. You are not the leader. You do not rewrite the field.
 5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there).
 6. This document.
 
-Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. The field does not close until `of contrast` is resolved.
+Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. Internal unit tests are VERIFIED_INTERNAL. If SPEC names a CLI/HTTP/file/exit code, exercise that surface; pair-shaped requirements need both sides. The field does not close until `of contrast` is resolved (VERIFIED_CONTRACT on public surfaces).
 
 **Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet.
 

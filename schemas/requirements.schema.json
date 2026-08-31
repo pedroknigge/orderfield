@@ -27,8 +27,22 @@
           },
           "status": {
             "type": "string",
-            "enum": ["unowned", "owned", "verified", "failed", "superseded"]
-          }
+            "enum": [
+              "unowned",
+              "owned",
+              "verified",
+              "verified_internal",
+              "verified_contract",
+              "failed",
+              "superseded"
+            ]
+          },
+          "surface": {
+            "type": "string",
+            "enum": ["contract", "internal"]
+          },
+          "pair": { "type": "boolean" },
+          "pair_checked": { "type": "boolean" }
         }
       }
     }
