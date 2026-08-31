@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.5
+
+Open fields auto-revive after interleaved chats or compaction.
+
+- `of resume` prints `field` (`open`|`closed`) and `auto_continue` (`yes` → execute printed `next` this turn; interleaved chats/compaction are not pause).
+- Skill + AGENTS rule 0: open field (`spec_closed` false) auto-continues every leader turn; resume-only turns are broken; explicit user pause/stop/cancel or `spec_closed` only.
+- Principle 13: leader must not wait for "continue" after context loss.
+- Packaging: VERSION 0.5.5; skill/alias description preview `v0.5.5 — …`.
+
 ## 0.5.4
 
 Recovery brief: `of resume` becomes a one-screen operational reconstruction after interruption.

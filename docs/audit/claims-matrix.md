@@ -8,7 +8,7 @@
 **Intent:** audit → integrate (docs-only patch; no release)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.5.4` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.5` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -71,12 +71,12 @@
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | normal | Unverifiable | keep |
 | C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of.py` | `cmd_patch` | critical | OK | keep |
 | C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | normal | OK | keep doctrine |
-| C-020 | `of resume` reconstructs in-flight from disk; recovery brief lists completed/in-flight, residual state, owners, owned-path presence, scratch; explicit next guidance; one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `print_resume_*`; `in_flight_children`; no spawn | `scripts/of.py` | `cmd_resume` | critical | OK | keep |
+| C-020 | `of resume` reconstructs in-flight from disk; recovery brief lists field/auto_continue, completed/in-flight, residual state, owners, owned-path presence, scratch; explicit next guidance; one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `resume_auto_continue_lines`; `print_resume_*`; no spawn | `scripts/of.py` | `cmd_resume` | critical | OK | keep |
 | C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` / `CHECKPOINT_MAX_LINES` | `scripts/of.py` | `cmd_checkpoint` | normal | OK | keep |
 | C-022 | Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave | README / architecture / SKILL | `snapshot_session` on those cmds | `scripts/of.py` | `snapshot_session` | critical | OK | keep |
 | C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status` prints `in_flight`; `render_prompt` continuation | `scripts/of.py` | `cmd_status` / `render_prompt` | critical | OK | keep |
 | C-024 | `session.json` forbidden to slaves like `state.json` | SKILL / SLAVE / AGENTS | `SESSION_FORBIDDEN` in `default_order` | `scripts/of.py` | `default_order` | normal | OK | keep |
-| C-025 | Leader step 0 = `of resume` when ORDER exists; slave nonempty scratch + missing residual = continue | SKILL.md §0 / SLAVE.md / AGENTS | leader/slave protocol (no new regime) | `SKILL.md` | §0 | normal | OK | keep doctrine |
+| C-025 | Leader step 0 = `of resume` when ORDER exists; open field auto-continues (`auto_continue yes`); slave nonempty scratch + missing residual = continue | SKILL.md §0 / AGENTS rule 0 / SLAVE.md | leader/slave protocol (no new regime) | `SKILL.md` / `AGENTS.md` | §0 / rule 0 | normal | OK | keep doctrine |
 | C-026 | Residual metric types/ranges are rejected before regime selection | schema / CHANGELOG / architecture | `validate_residual` + integration regression | `scripts/of.py` / `tests/test_kernel.py` | `validate_residual` / `ResidualValidation` | critical | OK | keep |
 | C-027 | Codex routes output to a separate strict-compatible residual schema | adapters / CHANGELOG | `build_spawn_argv` selects the strict derivative; the canonical schema remains portable | `scripts/of_adapters.py` / `schemas/residual.codex.schema.json` / `tests/test_kernel.py` | `build_spawn_argv` / `HeadlessArgv.test_codex_output_schema_closes_every_object_branch` | critical | OK | keep |
 | C-028 | Pulse is an mtime activity heuristic, not process health or child attribution; it does not mutate ORDER/state/session/wave artifacts, while update throttling may write its user cache | README / SKILL / architecture / CHANGELOG | per-child scratch + shared `repo_newest_mtime`; field-artifact regression and update-cache tests | `scripts/of.py` / `tests/test_kernel.py` | `cmd_pulse` / `maybe_notify_update` / `PulseActivity` / `UpdateNotice` | normal | OK | keep boundary |

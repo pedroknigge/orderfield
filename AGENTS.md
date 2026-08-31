@@ -2,6 +2,7 @@
 
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 
+0. **Open field auto-continues.** If `.orderfield/ORDER.json` exists and `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken.
 1. If `.orderfield/ORDER.json` exists, `of resume` first (continue in-flight from disk; do not re-init). Then read ORDER.
 2. If you are the leader, do not implement the slice. Pack and delegate.
 3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
@@ -57,7 +58,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Lossless SPEC.md + amendments + `spec_hash` check | documented |
 | Pack `--owns-requirement` (refused while unowned) | documented |
 | Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
-| 0.4.2 state-machine integrity + 0.5.0 operational contract + 0.5.2 surface contrast + 0.5.3 owns_paths / verify evidence / extract index + 0.5.4 resume recovery brief + recovery tests A/B | documented |
+| 0.4.2 state-machine integrity + 0.5.0 operational contract + 0.5.2 surface contrast + 0.5.3 owns_paths + 0.5.4 resume recovery brief + 0.5.5 auto_continue / open-field revival | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

@@ -5221,6 +5221,15 @@ def print_resume_in_flight(
             )
 
 
+def resume_auto_continue_lines(order: dict[str, Any]) -> list[str]:
+    if order.get("spec_closed"):
+        return ["no", "field closed (spec_closed); do not pack or spawn"]
+    return [
+        "yes",
+        "execute printed next this turn; interleaved chats/compaction are not pause",
+    ]
+
+
 def cmd_resume(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
@@ -5246,6 +5255,9 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"last_regime   {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"last_cmd      {session.get('last_cmd') or '-'}")
+    print(f"field         {'closed' if order.get('spec_closed') else 'open'}")
+    ac_label, ac_detail = resume_auto_continue_lines(order)
+    print(f"auto_continue {ac_label} — {ac_detail}")
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")
     print_resume_completed(root, completed)
