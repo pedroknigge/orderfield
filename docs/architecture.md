@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to-authority-over-the-plan-not-a-fleet) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.1` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.2` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -130,7 +130,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 | Symbol / area | Role |
 |---------------|------|
-| `scripts/of.py` + `scripts/of/{field,spec,pack,regime,cli}.py` | Public CLI entry; 0.6 form split of internals. Protocol (schemas, lock, residual binding, closed regime, reserved runtime) unchanged vs 0.5.7 |
+| `scripts/of.py` + `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Public CLI entry; 0.6 form split, 0.6.2 command groups (`init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`). Protocol unchanged vs 0.5.7 |
 | `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |

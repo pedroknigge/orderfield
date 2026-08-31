@@ -1,0 +1,873 @@
+"""SPEC commands: spec, spec-diff, contrast, close, eval fixtures."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+from pathlib import Path
+from typing import Any
+
+from of_adapters import (
+    ADAPTER_ORDER,
+    DEFAULT_TRUST_PROFILE,
+    HARNESS_PROMISES,
+    INLINE_CONTRACT_ADAPTERS,
+    KERNEL_VERIFIES,
+    KNOWN_TOOLS,
+    TRUST_ENV,
+    TRUST_PROFILES,
+    build_spawn_argv,
+    detect_adapters,
+    missing_tools,
+    pick_adapter,
+)
+
+from of.field import (
+    CHECKPOINT_MAX_CHARS,
+    CHECKPOINT_MAX_LINES,
+    FIELD_SPEC_MD,
+    MUTATING_COMMANDS,
+    PHASES,
+    PROTOCOL_SLAVE_MD,
+    PROTOCOL_WRITABLE_KEY,
+    PUBLIC_SCHEMA_FILES,
+    PULSE_STALE_MINUTES,
+    ROLES,
+    _read_json_object,
+    apply_field_migrations,
+    apply_field_retention,
+    argv_preview,
+    default_order,
+    default_state,
+    default_worktree_path,
+    die,
+    dump_json,
+    emit_event,
+    field_lock,
+    field_rel,
+    find_root,
+    fmt_age,
+    git_repo_root,
+    installed_version,
+    kernel_repo_root,
+    load_json,
+    load_order,
+    load_session,
+    load_state,
+    load_worktrees,
+    maybe_notify_update,
+    newest_mtime,
+    next_legal_action,
+    of_dir,
+    open_backlog,
+    order_path,
+    parse_utc,
+    plan_field_migrations,
+    plan_field_retention,
+    print_migration_catalog,
+    print_migration_plan,
+    print_retention_plan,
+    probe_adapter_version,
+    probe_lock_capability,
+    pulse_verdict,
+    redact_text,
+    remove_constraint,
+    repo_newest_mtime,
+    require_nonsymlink_kernel_root,
+    require_public_schema,
+    run_git,
+    safe_relative_path,
+    save_order,
+    save_state,
+    save_worktrees,
+    session_path,
+    set_json_events,
+    sha256_text,
+    skill_root,
+    snapshot_session,
+    spec_log_dir,
+    spec_path,
+    utc_now,
+    validate_order,
+    wave_dir,
+    worktree_path_inside_project,
+    writable_status,
+    write_phase_md,
+)
+
+from of.spec import (
+    append_amendment,
+    apply_requirement_patches,
+    archive_previous_field,
+    contrast_open,
+    contrast_rows,
+    decorate_requirement,
+    discard_disposable_ingest,
+    extract_requirements_from_spec,
+    find_requirement,
+    is_active_requirement,
+    load_requirements,
+    mark_requirements_owned,
+    merge_extracted_requirements,
+    read_brief_file,
+    release_requirement_owner,
+    require_req_id,
+    require_spec_intact,
+    requirement_counts,
+    requirement_is_pair,
+    requirement_source_cite,
+    requirement_surface,
+    save_requirements,
+    snapshot_spec,
+    spec_bytes_hash,
+    spec_diff_lines,
+    sync_order_spec_fields,
+    warn_if_deictic_brief,
+    write_spec,
+)
+
+from of.pack import (
+    PACKET_IDENTITY_FIELDS,
+    SLICE_WARN_CHARS,
+    canonical_packet_rel,
+    canonical_residual_rel,
+    canonical_scratch_rel,
+    child_is_packed,
+    complete_stale_wave_recoverable,
+    completed_children,
+    copy_workspace_with_owns,
+    die_on_stale_packets,
+    enforce_wave_child_caps,
+    ensure_field_slave_md,
+    extract_json_object,
+    in_flight_children,
+    load_packet,
+    owned_path_presence,
+    packed_children,
+    packet_digest,
+    packet_owns_paths,
+    packet_residual_missing,
+    prior_wave_path_owners,
+    reconcile_children_spawned,
+    register_packed_child,
+    render_prompt,
+    require_child_id,
+    require_owns_paths,
+    require_packet_artifact_paths,
+    require_packet_residual,
+    require_registered_packet,
+    same_wave_owns_path_conflict,
+    scratch_nonempty,
+    spawn_is_blocked,
+    stale_packet_ids,
+    truncate_slice,
+    try_load_packet_residual,
+    validate_packet,
+    validate_residual,
+    validate_residual_for_packet,
+)
+
+from of.regime import (
+    RUNTIME_OWNERSHIP,
+    advance_wave,
+    apply_patches,
+    closed_phases,
+    decide_regime,
+    done_when_closed,
+    done_when_for,
+    done_when_tag,
+    existing_integration_report,
+    integration_input_digest,
+    mark_done_when_closed,
+    mission_done_when,
+    partial_apply_recovery_allowed,
+    phase_deliver_errors,
+    phase_done_when,
+    phase_transition_errors,
+    reconcile_integration_state,
+    reopen_done_when,
+    replace_done_when,
+    tag_for_phase,
+    wave_transition_errors,
+    waves_since_across,
+)
+
+
+
+def cmd_spec(args: argparse.Namespace) -> None:
+    """Binding-requirements ledger. Kernel does not LLM-extract; --extract is heuristic."""
+    root = find_root()
+    order = load_order(root)
+    data = load_requirements(root)
+    changed = False
+    amend_file = getattr(args, "amend_file", None)
+    amend_text = getattr(args, "amend", None)
+    revise_file = getattr(args, "revise_file", None)
+    revise_text = getattr(args, "revise", None)
+    modes = [bool(amend_file), bool(amend_text), bool(revise_file), bool(revise_text)]
+    if sum(modes) > 1:
+        die("pass only one of --amend / --amend-file / --revise / --revise-file")
+    ingest_source: Path | None = None
+    if amend_file or amend_text:
+        if amend_file:
+            incoming = read_brief_file(str(amend_file), flag="--amend-file")
+            warn_if_deictic_brief(incoming, flag="--amend-file")
+            if str(amend_file) != "-":
+                ingest_source = Path(amend_file)
+        else:
+            incoming = str(amend_text)
+            warn_if_deictic_brief(incoming, flag="--amend")
+        creating = not spec_path(root).is_file()
+        if creating:
+            new_hash = write_spec(root, incoming, revise=True)
+            extracted = extract_requirements_from_spec(incoming)
+            merge_extracted_requirements(data, extracted)
+            print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
+            print(f"requirements {len(extracted)} extracted from original brief")
+        else:
+            require_spec_intact(root, order)
+            snap = snapshot_spec(root)
+            current = spec_path(root).read_text(encoding="utf-8")
+            merged = append_amendment(current, incoming)
+            new_hash = write_spec(root, merged, revise=True)
+            extracted = extract_requirements_from_spec(
+                incoming, existing=data.get("requirements") or []
+            )
+            added = merge_extracted_requirements(data, extracted)
+            if snap:
+                print(f"spec-log    {snap.relative_to(root)}")
+            print(f"spec amended {new_hash[:12]}…")
+            if added:
+                print(
+                    f"requirements +{len(extracted)} from amendment "
+                    "(IDs continue; original still binding)"
+                )
+        data["spec_hash"] = new_hash
+        order["spec_ref"] = FIELD_SPEC_MD
+        order["spec_hash"] = new_hash
+        order["spec_closed"] = False
+        changed = True
+    elif revise_file or revise_text:
+        creating = not spec_path(root).is_file()
+        old_hash = str(order.get("spec_hash") or "")
+        if not creating:
+            old_hash = old_hash or sha256_text(
+                spec_path(root).read_text(encoding="utf-8")
+            )
+            snap = snapshot_spec(root)
+            if snap:
+                print(f"spec-log    {snap.relative_to(root)}")
+        if revise_file:
+            source_text = read_brief_file(str(revise_file), flag="--revise-file")
+            warn_if_deictic_brief(source_text, flag="--revise-file")
+            if str(revise_file) != "-":
+                ingest_source = Path(revise_file)
+        else:
+            source_text = str(revise_text)
+            warn_if_deictic_brief(source_text, flag="--revise")
+        new_hash = write_spec(root, source_text, revise=True)
+        data["spec_hash"] = new_hash
+        order["spec_ref"] = FIELD_SPEC_MD
+        order["spec_hash"] = new_hash
+        order["spec_closed"] = False
+        changed = True
+        if creating:
+            print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
+        else:
+            print(f"spec revised {old_hash[:12]}… -> {new_hash[:12]}…")
+            print(
+                "existing requirement IDs stay until of spec --supersede ID; "
+                "of spec --extract for new ones"
+            )
+    else:
+        require_spec_intact(root, order)
+    if getattr(args, "extract", False):
+        spec = spec_path(root)
+        if not spec.is_file():
+            die("no SPEC.md; of init --source or of spec --amend")
+        text = spec.read_text(encoding="utf-8")
+        extracted = extract_requirements_from_spec(
+            text, existing=data.get("requirements") or []
+        )
+        if merge_extracted_requirements(data, extracted):
+            changed = True
+        data["spec_hash"] = sha256_text(text)
+    if getattr(args, "from_file", None):
+        path = Path(args.from_file)
+        if not path.is_file():
+            die(f"--from-file not found: {args.from_file}")
+        incoming = load_json(path)
+        items = incoming if isinstance(incoming, list) else incoming.get("requirements")
+        if not isinstance(items, list):
+            die("--from-file must be a list or {requirements: [...]}")
+        for raw in items:
+            if not isinstance(raw, dict):
+                die("requirement entries must be objects")
+            rid = require_req_id(str(raw.get("id") or ""))
+            text = str(raw.get("text") or "").strip()
+            if not text:
+                die(f"requirement {rid} missing text")
+            item = find_requirement(data, rid)
+            if item is None:
+                incoming_item = decorate_requirement(
+                    {
+                        "id": rid,
+                        "text": text,
+                        "binding": bool(raw.get("binding", True)),
+                        "owned_by": list(raw.get("owned_by") or []),
+                        "status": str(raw.get("status") or "unowned"),
+                        "origin": str(raw.get("origin") or "from-file"),
+                    }
+                )
+                if raw.get("surface") in {"contract", "internal"}:
+                    incoming_item["surface"] = raw["surface"]
+                if "pair" in raw:
+                    incoming_item["pair"] = bool(raw["pair"])
+                data.setdefault("requirements", []).append(incoming_item)
+            else:
+                item["text"] = text
+                if "binding" in raw:
+                    item["binding"] = bool(raw["binding"])
+            changed = True
+    add_id = getattr(args, "add", None)
+    add_text = getattr(args, "text", None)
+    if add_id or add_text:
+        if not add_id or not add_text:
+            die("of spec --add ID requires --text")
+        rid = require_req_id(add_id)
+        if find_requirement(data, rid) is not None:
+            die(f"requirement {rid} already exists")
+        added = decorate_requirement(
+            {
+                "id": rid,
+                "text": str(add_text).strip(),
+                "binding": not bool(getattr(args, "non_binding", False)),
+                "owned_by": [],
+                "status": "unowned",
+                "origin": "added",
+            }
+        )
+        surface_arg = str(getattr(args, "surface", None) or "").strip().lower()
+        if surface_arg in {"contract", "internal"}:
+            added["surface"] = surface_arg
+        data.setdefault("requirements", []).append(added)
+        changed = True
+    both_sides = bool(getattr(args, "both_sides", False))
+    for rid in getattr(args, "verified_internal", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "verified_internal"
+        changed = True
+        if requirement_surface(item) == "contract":
+            print(
+                f"of: note — {rid} has a public surface; "
+                "of spec --verified-contract after exercising the CLI/API "
+                "(unit tests are VERIFIED_INTERNAL, not close).",
+                file=sys.stderr,
+            )
+    for rid in getattr(args, "verified", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "verified_internal"
+        changed = True
+        if requirement_surface(item) == "contract":
+            print(
+                f"of: note — {rid} has a public surface; "
+                "of spec --verified-contract after exercising the CLI/API "
+                "(unit tests are VERIFIED_INTERNAL, not close).",
+                file=sys.stderr,
+            )
+    for rid in getattr(args, "verified_contract", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        if requirement_is_pair(item) and not both_sides:
+            die(
+                f"{rid} is pair-shaped (same/different, success/fail, …); "
+                "exercise both sides at the public surface, then "
+                f"of spec --verified-contract {rid} --both-sides"
+            )
+        item["status"] = "verified_contract"
+        if both_sides:
+            item["pair_checked"] = True
+        changed = True
+    for rid in getattr(args, "failed", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "failed"
+        changed = True
+    for rid in getattr(args, "supersede", None) or []:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        item["status"] = "superseded"
+        changed = True
+        print(f"superseded  {rid}")
+    if changed:
+        spec = spec_path(root)
+        if spec.is_file():
+            data["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        save_requirements(data, root)
+        identity = bool(
+            getattr(args, "extract", False)
+            or getattr(args, "from_file", None)
+            or getattr(args, "add", None)
+            or getattr(args, "revise_file", None)
+            or getattr(args, "revise", None)
+            or getattr(args, "amend_file", None)
+            or getattr(args, "amend", None)
+            or getattr(args, "supersede", None)
+        )
+        if identity:
+            sync_order_spec_fields(order, root)
+            order["rev"] = int(order["rev"]) + 1
+            save_order(order, root)
+            print(f"rev={order['rev']}")
+        snapshot_session(root, "spec")
+        discard_disposable_ingest(root, ingest_source)
+    counts = requirement_counts(data)
+    print(
+        f"requirements  {counts['total']} total  "
+        f"owned {counts['owned']}  verified {counts['verified']}  "
+        f"contract {counts['verified_contract']}  internal {counts['verified_internal']}  "
+        f"failed {counts['failed']}  unowned {counts['unowned']}  "
+        f"unverified {counts['unverified']}  superseded {counts['superseded']}"
+    )
+    for item in data.get("requirements") or []:
+        owners = ",".join(item.get("owned_by") or []) or "-"
+        bind = "binding" if item.get("binding", True) else "advisory"
+        surf = requirement_surface(item)
+        pair = "pair" if requirement_is_pair(item) else "single"
+        print(
+            f"  {item.get('id'):12} {item.get('status'):20} {surf:8} {pair:6} "
+            f"{bind:8} owners={owners}  {item.get('text')}"
+        )
+
+
+def cmd_spec_diff(args: argparse.Namespace) -> None:
+    root = find_root()
+    order = load_order(root)
+    require_spec_intact(root, order)
+    lines = spec_diff_lines(root, order)
+    if not lines:
+        print("spec-diff    none (no binding gaps vs ORDER / coverage)")
+        return
+    print("Binding requirements absent from ORDER / active coverage:")
+    for line in lines:
+        print(line)
+    raise SystemExit(2)
+
+
+def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
+    """Print Intent vs Delivered. Return True if the SPEC loop is still open."""
+    spec = spec_path(root)
+    data = load_requirements(root)
+    counts = requirement_counts(data)
+    rows = contrast_rows(root)
+    by_id = {
+        str(item.get("id")): item
+        for item in (data.get("requirements") or [])
+        if isinstance(item, dict)
+    }
+    print("Intent vs Delivered")
+    print()
+    if spec.is_file():
+        digest = sha256_text(spec.read_text(encoding="utf-8"))
+        print(f"spec        {FIELD_SPEC_MD}  hash={digest[:12]}…")
+    else:
+        print("spec        missing — of init --source-file (verbatim brief)")
+    print(f"intent      {truncate_slice(order.get('mission') or '', 80)}")
+    print()
+    if rows:
+        for verdict, rid, text in rows:
+            cite = requirement_source_cite(by_id.get(rid) or {})
+            extra = f"{cite} " if cite else ""
+            print(f"{verdict:20} {rid:12} {extra}{text[:80]}")
+        print()
+    print(
+        f"coverage: {counts['owned']}/{counts['total']} assigned  "
+        f"verified_contract: {counts['verified_contract']}/{counts['total']}  "
+        f"verified_internal: {counts['verified_internal']}/{counts['total']}"
+    )
+    open_loop = contrast_open(root)
+    if not spec.is_file() and counts["total"] == 0:
+        print("CLOSE SKIP (no SPEC; legacy field)")
+        return False
+    if open_loop:
+        print("CLOSE BLOCKED")
+        print(
+            "next: pack gaps, or of spec --verified-contract ID [--both-sides] "
+            "after exercising the public surface (not only unit tests)"
+        )
+        return True
+    print("RESOLVED")
+    print("done belongs to the slice; closed belongs to the SPEC (of close)")
+    return False
+
+
+def cmd_contrast(args: argparse.Namespace) -> None:
+    """Review gate: original brief vs coverage. Does not edit product or ORDER."""
+    root = find_root()
+    order = load_order(root)
+    require_spec_intact(root, order)
+    blocked = print_contrast_report(root, order)
+    emit_event(
+        "contrast",
+        verdict="OPEN" if blocked else "RESOLVED",
+        ok=not blocked,
+    )
+    if blocked:
+        raise SystemExit(2)
+
+
+def cmd_close(args: argparse.Namespace) -> None:
+    """Stamp SPEC closed. Refused while contrast is OPEN. Slice done ≠ SPEC closed."""
+    root = find_root()
+    order = load_order(root)
+    require_spec_intact(root, order)
+    if print_contrast_report(root, order):
+        die(
+            "of close refused: binding FAILED/MISSING/DELIVERED/"
+            "VERIFIED_INTERNAL/PAIR remain"
+        )
+    if not spec_path(root).is_file():
+        print("close       skipped (no SPEC)")
+        return
+    if order.get("spec_closed"):
+        print("close       already spec_closed")
+        return
+    order["spec_closed"] = True
+    order["rev"] = int(order["rev"]) + 1
+    save_order(order, root)
+    snapshot_session(root, "close")
+    emit_event(
+        "close",
+        rev=int(order["rev"]),
+        spec_hash=str(order.get("spec_hash") or "")[:12],
+        ok=True,
+    )
+    print(f"CLOSED      spec_hash={str(order.get('spec_hash') or '')[:12]}…  rev={order['rev']}")
+
+
+EVAL_FIXTURES: dict[str, Any] = {}
+
+
+def _register_eval_fixture(name: str):
+    def decorator(fn):
+        EVAL_FIXTURES[name] = fn
+        return fn
+    return decorator
+
+
+def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    return subprocess.run(
+        [sys.executable, str(kernel_repo_root() / "scripts" / "of.py"), *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def eval_write_done_residual(root: Path, child_id: str, wave: int = 1) -> None:
+    pkt_path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
+    packet = load_json(pkt_path)
+    fixture = kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
+    residual = load_json(fixture)
+    for key in PACKET_IDENTITY_FIELDS:
+        residual[key] = packet[key]
+    result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
+    result.parent.mkdir(parents=True, exist_ok=True)
+    result.write_text("done\n", encoding="utf-8")
+    residual["result_ref"] = result.relative_to(root).as_posix()
+    dest = root / str(packet["residual_path"])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(dest, residual)
+
+
+def eval_pack_child(
+    root: Path,
+    child_id: str,
+    owns_path: str,
+    req_id: str,
+    slice_text: str,
+) -> None:
+    r = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        slice_text,
+        "--role",
+        "implementer",
+        "--child-id",
+        child_id,
+        "--owns-path",
+        owns_path,
+        "--owns-requirement",
+        req_id,
+    )
+    if r.returncode != 0:
+        die(f"eval fixture pack {child_id} failed: {r.stderr or r.stdout}")
+
+
+@_register_eval_fixture("recovery_quarry_dirty")
+def eval_setup_recovery_quarry_dirty(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "build quarry append-only log",
+        "--phase",
+        "build",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    for req_id, text in (
+        ("DOMAIN-001", "domain module"),
+        ("STORE-001", "store module"),
+        ("CLI-001", "cli module"),
+    ):
+        added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+        if added.returncode != 0:
+            die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    eval_pack_child(
+        root, "domain", "quarry/domain.py", "DOMAIN-001", "Implement quarry/domain.py"
+    )
+    eval_pack_child(
+        root, "store", "quarry/store.py", "STORE-001", "Implement quarry/store.py"
+    )
+    eval_pack_child(
+        root, "cli", "quarry/cli.py", "CLI-001", "Implement quarry/cli.py"
+    )
+    (root / "quarry").mkdir(exist_ok=True)
+    (root / "quarry" / "domain.py").write_text("# domain\n", encoding="utf-8")
+    eval_write_done_residual(root, "domain")
+    (root / "quarry" / "cli.py").write_text("# partial cli\n", encoding="utf-8")
+    scratch = root / ".orderfield" / "work" / "scratch" / "store"
+    scratch.mkdir(parents=True, exist_ok=True)
+    (scratch / "PULSE").write_text("waiting on domain.py\n", encoding="utf-8")
+
+
+@_register_eval_fixture("recovery_beacon_amnesia")
+def eval_setup_recovery_beacon_amnesia(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "beacon append-only log",
+        "--phase",
+        "build",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    for req_id, text in (
+        ("DOMAIN-001", "domain module"),
+        ("STORE-001", "store module"),
+        ("CLI-001", "cli module"),
+        ("HTTP-001", "http module"),
+    ):
+        added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+        if added.returncode != 0:
+            die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    for child_id, path, req_id in (
+        ("domain", "beacon/domain.py", "DOMAIN-001"),
+        ("store", "beacon/store.py", "STORE-001"),
+        ("cli", "beacon/cli.py", "CLI-001"),
+        ("http", "beacon/http_api.py", "HTTP-001"),
+    ):
+        eval_pack_child(root, child_id, path, req_id, f"Implement {path}")
+    (root / "beacon").mkdir(exist_ok=True)
+    (root / "beacon" / "domain.py").write_text("# domain\n", encoding="utf-8")
+    eval_write_done_residual(root, "domain")
+    (root / "beacon" / "cli.py").write_text("# cli stub\n", encoding="utf-8")
+    (root / "beacon" / "http_api.py").write_text("# http stub\n", encoding="utf-8")
+
+
+@_register_eval_fixture("recovery_contrast_close")
+def eval_setup_recovery_contrast_close(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval contrast gate",
+        "--phase",
+        "explore",
+        "--source",
+        "eval contrast gate: internal index ALG-001",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    added = eval_run_of(
+        root,
+        "spec",
+        "--add",
+        "ALG-001",
+        "--text",
+        "use an in-memory index for lookups",
+        "--surface",
+        "internal",
+    )
+    if added.returncode != 0:
+        die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "implement index",
+        "--role",
+        "implementer",
+        "--child-id",
+        "imp1",
+        "--owns-requirement",
+        "ALG-001",
+    )
+    if packed.returncode != 0:
+        die(f"eval fixture pack failed: {packed.stderr or packed.stdout}")
+
+
+def discover_recovery_eval_specs() -> list[Path]:
+    base = kernel_repo_root() / "evals" / "recovery"
+    if not base.is_dir():
+        return []
+    return sorted(base.glob("*.eval.json"))
+
+
+def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
+    spec = load_json(spec_path)
+    eval_id = str(spec.get("id") or spec_path.stem)
+    fixture = str(spec.get("fixture") or "")
+    setup = EVAL_FIXTURES.get(fixture)
+    if not setup:
+        return {
+            "id": eval_id,
+            "status": "failed",
+            "error": f"unknown fixture {fixture!r}",
+        }
+    tmp = Path(tempfile.mkdtemp(prefix="of-eval-"))
+    try:
+        setup(tmp)
+        for idx, step in enumerate(spec.get("steps") or []):
+            cmd = step.get("run")
+            if not cmd:
+                return {
+                    "id": eval_id,
+                    "status": "failed",
+                    "error": f"step {idx}: missing run",
+                }
+            argv = [cmd] if isinstance(cmd, str) else [str(c) for c in cmd]
+            extra = step.get("args") or []
+            if extra:
+                argv.extend(str(a) for a in extra)
+            proc = eval_run_of(tmp, *argv)
+            want_exit = step.get("exit", 0)
+            if proc.returncode != want_exit:
+                return {
+                    "id": eval_id,
+                    "status": "failed",
+                    "error": (
+                        f"step {idx} {argv[0]} exit {proc.returncode} "
+                        f"(want {want_exit}): {(proc.stderr or proc.stdout)[:400]}"
+                    ),
+                }
+            blob = proc.stdout
+            for needle in step.get("stdout_contains") or []:
+                if str(needle) not in blob:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stdout missing {needle!r}",
+                    }
+            for needle in step.get("stdout_not_contains") or []:
+                if str(needle) in blob:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stdout must not contain {needle!r}",
+                    }
+        return {"id": eval_id, "status": "passed", "description": spec.get("description")}
+    except SystemExit as exc:
+        return {"id": eval_id, "status": "failed", "error": f"fixture/setup: {exc}"}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+EVAL_UNITTEST_MODULES = (
+    "tests.test_kernel.CliFieldResidual",
+    "tests.test_kernel.StalePackets",
+    "tests.test_kernel.ResumeRecoveryBrief",
+)
+
+
+def cmd_eval(args: argparse.Namespace) -> None:
+    repo = kernel_repo_root()
+    specs = discover_recovery_eval_specs()
+    if args.list:
+        for path in specs:
+            spec = load_json(path)
+            print(f"{spec.get('id') or path.stem}\t{path.name}\t{spec.get('description', '')}")
+        if args.kernel:
+            for mod in EVAL_UNITTEST_MODULES:
+                print(f"{mod}\t(unittest)\tkernel manifest eval")
+        return
+    selected = specs
+    if args.eval_id:
+        needle = args.eval_id.strip().lower()
+        selected = [
+            p
+            for p in specs
+            if needle in str(load_json(p).get("id") or p.stem).lower()
+            or needle in p.stem.lower()
+        ]
+        if not selected:
+            die(f"no recovery eval matches {args.eval_id!r}")
+    strict = bool(args.strict)
+    passed = 0
+    failed = 0
+    for path in selected:
+        result = run_recovery_eval_spec(path, strict=strict)
+        status = result.get("status")
+        label = result.get("id") or path.stem
+        if status == "passed":
+            passed += 1
+            print(f"PASS {label}")
+            emit_event("eval.completed", id=label, status="passed", ok=True)
+        else:
+            failed += 1
+            print(f"FAIL {label}: {result.get('error')}")
+            emit_event(
+                "eval.completed",
+                id=label,
+                status="failed",
+                ok=False,
+                error=str(result.get("error") or ""),
+            )
+    if args.kernel:
+        proc = subprocess.run(
+            [sys.executable, "-m", "unittest", *EVAL_UNITTEST_MODULES],
+            cwd=str(repo),
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
+        )
+        if proc.returncode != 0:
+            failed += 1
+            print("FAIL kernel unittest eval modules")
+            emit_event("eval.completed", id="kernel-unittests", status="failed", ok=False)
+        else:
+            passed += 1
+            print("PASS kernel unittest eval modules")
+            emit_event("eval.completed", id="kernel-unittests", status="passed", ok=True)
+    print(f"evals passed={passed} failed={failed}")
+    if failed:
+        raise SystemExit(1)
+    if not selected and not args.kernel:
+        die("no evals to run; try --list or --kernel")
+
