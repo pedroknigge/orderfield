@@ -1,4 +1,5 @@
 """of init — create ORDER and ingest SPEC."""
+from __future__ import annotations
 
 import argparse
 import json

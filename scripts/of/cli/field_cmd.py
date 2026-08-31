@@ -1,4 +1,5 @@
 """Field mutations after collect: integrate, phase, patch, next-wave."""
+from __future__ import annotations
 
 import argparse
 import json

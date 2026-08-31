@@ -1,4 +1,5 @@
 """SPEC commands: spec, spec-diff, contrast, close, eval fixtures."""
+from __future__ import annotations
 
 import argparse
 import json

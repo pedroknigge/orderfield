@@ -1,4 +1,5 @@
 """Host ops: retain/gc/doctor/migrate/worktree, status/detect/validate, resume/pulse/checkpoint."""
+from __future__ import annotations
 
 import argparse
 import json
