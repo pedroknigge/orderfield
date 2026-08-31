@@ -20,6 +20,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -576,12 +577,17 @@ def validate_schema(
     return errs
 
 
+@lru_cache(maxsize=32)
+def _load_public_schema(filename: str) -> Any:
+    return load_json(skill_root() / "schemas" / filename)
+
+
 def validate_public_schema(
     data: Any,
     filename: str,
     label: str,
 ) -> list[str]:
-    schema = load_json(skill_root() / "schemas" / filename)
+    schema = _load_public_schema(filename)
     if not isinstance(schema, dict):
         return [f"{label} schema must be an object"]
     return validate_schema(data, schema, label)
