@@ -44,6 +44,8 @@ Orderfield pays when false-scope or marketing risk deserves an adversary, when p
 
 It is theater for a VERSION bump plus one obvious change, for one ordinary subagent, or when a single skill already fits. **Skill beats child.**
 
+**You should be better.** The tortoise and the hare is not who arrives first — it is who arrives better. `/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish; `of contrast` clean is. If the field only adds startup tax, it is theater.
+
 ---
 
 ## Install
