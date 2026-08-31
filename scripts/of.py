@@ -156,6 +156,20 @@ FIELD_SPEC_MD = ".orderfield/SPEC.md"
 FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
 FIELD_SPEC_LOG = ".orderfield/spec-log"
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
+REQ_ID_SEARCH_RE = re.compile(r"[A-Z][A-Z0-9]{0,15}-[0-9]{3}")
+VERIFIER_EVIDENCE_MIN = 24
+VERIFIER_PLATITUDE = frozenset(
+    {
+        "all tests passed",
+        "looks good",
+        "ok",
+        "passed",
+        "done",
+        "n/a",
+        "tests pass",
+        "verified",
+    }
+)
 REQ_STATUSES = (
     "unowned",
     "owned",
@@ -562,7 +576,7 @@ def requirement_surface(item: dict[str, Any]) -> str:
     if explicit in {"contract", "internal"}:
         return explicit
     rid = str(item.get("id") or "")
-    if rid.startswith("CLI-"):
+    if rid.startswith(("CLI-", "LEASE-", "AUDIT-", "IDEMP-", "HTTP-")):
         return "contract"
     text = f" {str(item.get('text') or '').lower()} "
     if any(cue in text for cue in CONTRACT_SURFACE_CUES):
@@ -609,28 +623,87 @@ def merge_extracted_requirements(
 
 def join_continued_lines(text: str) -> str:
     """Join shell-style backslash continuations so CLI extract is not truncated."""
-    out: list[str] = []
-    buf = ""
-    for raw in text.splitlines():
-        stripped = raw.rstrip()
-        if stripped.endswith("\\"):
-            buf += stripped[:-1].rstrip() + " "
-            continue
-        if buf:
-            out.append((buf + stripped.strip()).rstrip())
-            buf = ""
-        else:
-            out.append(raw.rstrip("\n"))
-    if buf:
-        out.append(buf.rstrip())
-    return "\n".join(out)
+    return "\n".join(span[2] for span in joined_lines_with_span(text))
+
+
+def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
+    """1-based line spans after joining shell-style backslash continuations."""
+    rows = text.splitlines()
+    out: list[tuple[int, int, str]] = []
+    i = 0
+    while i < len(rows):
+        start = i + 1
+        buf = rows[i].rstrip()
+        while buf.endswith("\\") and i + 1 < len(rows):
+            buf = buf[:-1].rstrip() + " " + rows[i + 1].strip()
+            i += 1
+        if buf.endswith("\\"):
+            buf = buf[:-1].rstrip()
+        out.append((start, i + 1, buf))
+        i += 1
+    return out
+
+
+EXTRACT_RULE_KEYS = (
+    "regla",
+    "rule",
+    "must",
+    "debe",
+    "invariant",
+    "done",
+    "entregable",
+    "deliverable",
+    "restriccion",
+    "constraint",
+    "formato",
+    "format",
+    "concurrencia",
+    "concurrency",
+    "lease",
+    "audit",
+    "idempoten",
+    "retry",
+    "event",
+)
+EXTRACT_PREFIX_CUES = (
+    ("LEASE", ("leaseable", "retry_wait", "stale token", "heartbeat", "lease")),
+    ("AUDIT", ("execution_failed", "execution_requeued", "audit", "event type")),
+    ("IDEMP", ("idempoten", "concurrent identical", "8 concurrent")),
+    ("HTTP", ("http://", "https://", "get /", "post /", "status code")),
+)
+NAMED_INVARIANT_CUES = (
+    "execution_failed",
+    "execution_requeued",
+    "retry_wait",
+    "only queued",
+    "idempoten",
+    "concurrent identical",
+)
+
+
+def _cue_in(text: str, cue: str) -> bool:
+    low = text.lower()
+    needle = cue.lower().strip()
+    if not needle:
+        return False
+    if " " in needle or "_" in needle or "/" in needle or "://" in needle:
+        return needle in low
+    return re.search(r"(?<![a-z0-9])" + re.escape(needle), low) is not None
+
+
+def classify_requirement_prefix(body: str, default: str = "REQ") -> str:
+    if body.lower().startswith("python -m") or body.lower().startswith("python3 -m"):
+        return "CLI"
+    for prefix, cues in EXTRACT_PREFIX_CUES:
+        if any(_cue_in(body, cue) for cue in cues):
+            return prefix
+    return default
 
 
 def extract_requirements_from_spec(
     text: str, existing: list[dict[str, Any]] | None = None
 ) -> list[dict[str, Any]]:
-    """Deterministic lossless-enough extraction. Leader may of spec --add."""
-    text = join_continued_lines(text)
+    """Deterministic index over SPEC. Leader may of spec --add. Precision over recall."""
     counters: dict[str, int] = {}
     for raw in existing or []:
         rid = str(raw.get("id") or "")
@@ -646,7 +719,7 @@ def extract_requirements_from_spec(
     reqs: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    def add(prefix: str, body: str) -> None:
+    def add(prefix: str, body: str, start: int, end: int) -> None:
         item = " ".join(body.split())
         if len(item) < 8 or item in seen:
             return
@@ -659,45 +732,48 @@ def extract_requirements_from_spec(
                     "binding": True,
                     "owned_by": [],
                     "status": "unowned",
+                    "origin": "extracted",
+                    "source": {
+                        "spec_line_start": int(start),
+                        "spec_line_end": int(end),
+                    },
                 }
             )
         )
 
-    for raw in text.splitlines():
-        stripped = raw.strip().lstrip("`").rstrip("`")
-        stripped = stripped.lstrip("$ ").strip()
-        if stripped.endswith("\\"):
-            continue
-        if stripped.startswith("python -m") or stripped.startswith("python3 -m"):
-            add("CLI", stripped)
-
+    spans = joined_lines_with_span(text)
+    in_fence = False
     in_rules = False
-    rule_keys = (
-        "regla",
-        "rule",
-        "must",
-        "debe",
-        "invariant",
-        "done",
-        "entregable",
-        "deliverable",
-        "restriccion",
-        "constraint",
-        "formato",
-        "format",
-        "concurrencia",
-        "concurrency",
-    )
-    for raw in text.splitlines():
-        heading = raw.strip()
-        if heading.startswith("#"):
-            title = heading.lstrip("#").strip().lower().rstrip(":")
-            in_rules = any(key in title for key in rule_keys)
+    for start, end, raw in spans:
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            in_rules = False
+            cli = stripped.lstrip("`").rstrip("`").lstrip("$ ").strip()
+            if cli.startswith("python -m") or cli.startswith("python3 -m"):
+                add("CLI", cli, start, end)
             continue
-        if not in_rules:
+        cli = stripped.lstrip("`").rstrip("`").lstrip("$ ").strip()
+        if cli.startswith("python -m") or cli.startswith("python3 -m"):
+            add("CLI", cli, start, end)
+        if stripped.startswith("#"):
+            title = stripped.lstrip("#").strip().lower().rstrip(":")
+            in_rules = any(key in title for key in EXTRACT_RULE_KEYS)
             continue
-        if heading.startswith(("-", "*")):
-            add("REQ", heading.lstrip("-* ").strip())
+        if in_rules and not in_fence and stripped.startswith(("-", "*")):
+            body = stripped.lstrip("-* ").strip()
+            add(classify_requirement_prefix(body), body, start, end)
+            continue
+        if in_fence:
+            continue
+        low = stripped.lower()
+        named = any(_cue_in(stripped, cue) for cue in NAMED_INVARIANT_CUES)
+        must_not = ("must not" in low or "shall not" in low) and any(
+            _cue_in(stripped, word) for word in ("lease", "audit", "event")
+        )
+        if named or must_not:
+            body = stripped.lstrip("-* ").strip()
+            add(classify_requirement_prefix(body), body, start, end)
     return reqs
 
 
@@ -810,6 +886,17 @@ def requirement_verdict(item: dict[str, Any]) -> str:
     if not owners or status == "unowned":
         return "MISSING"
     return "DELIVERED"
+
+
+def requirement_source_cite(item: dict[str, Any]) -> str:
+    src = item.get("source") if isinstance(item.get("source"), dict) else {}
+    start = src.get("spec_line_start")
+    end = src.get("spec_line_end")
+    if not isinstance(start, int) or start < 1:
+        return ""
+    if isinstance(end, int) and end != start:
+        return f"SPEC.md:{start}-{end}"
+    return f"SPEC.md:{start}"
 
 
 def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
@@ -1792,6 +1879,7 @@ def validate_residual_for_packet(
             errs.append(
                 f"done result_ref must be an existing path under the project: {result_ref!r}"
             )
+    errs.extend(verifier_done_errors(res, packet, root))
     return errs
 
 
@@ -2086,6 +2174,148 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
             )
         packets.append(packet)
     return packets
+
+
+def posix_owns_path(text: str) -> str:
+    return str(text).replace("\\", "/").strip().rstrip("/")
+
+
+def owns_paths_overlap(left: str, right: str) -> bool:
+    a = posix_owns_path(left)
+    b = posix_owns_path(right)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    return a.startswith(b + "/") or b.startswith(a + "/")
+
+
+def packet_owns_paths(packet: dict[str, Any]) -> list[str]:
+    raw = packet.get("owns_paths") or []
+    if not isinstance(raw, list):
+        return []
+    return [posix_owns_path(item) for item in raw if str(item).strip()]
+
+
+def wave_numbers(root: Path) -> list[int]:
+    wroot = of_dir(root) / "waves"
+    if not wroot.is_dir():
+        return []
+    nums: list[int] = []
+    for path in wroot.iterdir():
+        if path.is_dir() and path.name.isdigit():
+            nums.append(int(path.name))
+    return sorted(nums)
+
+
+def require_owns_paths(root: Path, raw: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        text = posix_owns_path(item)
+        safe_relative_path(root, text, "--owns-path", reject_symlinks=True)
+        if text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return out
+
+
+def copy_workspace_with_owns(
+    workspace: dict[str, Any], owns: list[str]
+) -> dict[str, Any]:
+    writable = list(workspace.get(PROTOCOL_WRITABLE_KEY) or [])
+    for path in owns:
+        if path not in writable:
+            writable.append(path)
+    return {
+        "readable": list(workspace.get("readable") or []),
+        PROTOCOL_WRITABLE_KEY: writable,
+        "forbidden": list(workspace.get("forbidden") or []),
+    }
+
+
+def same_wave_owns_path_conflict(
+    packets: list[dict[str, Any]], child_id: str, owns: list[str]
+) -> tuple[str, str, str] | None:
+    for packet in packets:
+        other = str(packet.get("child_id") or "?")
+        if other == child_id:
+            continue
+        for theirs in packet_owns_paths(packet):
+            for mine in owns:
+                if owns_paths_overlap(mine, theirs):
+                    return other, mine, theirs
+    return None
+
+
+def prior_wave_path_owners(
+    root: Path, wave: int, owns: list[str]
+) -> list[tuple[str, int, str]]:
+    hits: list[tuple[str, int, str]] = []
+    seen: set[tuple[str, int, str]] = set()
+    for prior in wave_numbers(root):
+        if prior >= int(wave):
+            continue
+        for packet in packed_children(root, prior):
+            other = str(packet.get("child_id") or "?")
+            for theirs in packet_owns_paths(packet):
+                for mine in owns:
+                    if not owns_paths_overlap(mine, theirs):
+                        continue
+                    key = (other, prior, mine)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    hits.append(key)
+    return hits
+
+
+def collapse_evidence(text: str) -> str:
+    return " ".join(str(text or "").split()).casefold()
+
+
+def verifier_done_errors(
+    res: dict[str, Any], packet: dict[str, Any], root: Path
+) -> list[str]:
+    if str(packet.get("role") or "") != "verifier" or res.get("status") != "done":
+        return []
+    errs: list[str] = []
+    rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+    evidence = str(rem.get("evidence") or "")
+    collapsed = collapse_evidence(evidence)
+    if not collapsed:
+        errs.append("verifier done requires nonempty evidence")
+    elif collapsed in VERIFIER_PLATITUDE:
+        errs.append(
+            "verifier done evidence is a platitude; name what was checked"
+        )
+    else:
+        if len(collapsed) < VERIFIER_EVIDENCE_MIN:
+            errs.append(
+                "verifier done evidence is too short to identify what was checked"
+            )
+        has_id = bool(REQ_ID_SEARCH_RE.search(evidence))
+        low = collapsed
+        has_cmd = "python -m" in low or "of spec" in low
+        has_path = "/" in evidence or bool(
+            re.search(r"[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,7}", evidence)
+        )
+        if not (has_id or has_cmd or has_path):
+            errs.append(
+                "verifier done evidence must name a requirement id, command, or path"
+            )
+    result_ref = res.get("result_ref")
+    if result_ref:
+        try:
+            path = safe_relative_path(
+                root, result_ref, "done result_ref", must_exist=True
+            )
+            if path.is_file() and path.stat().st_size == 0:
+                errs.append("verifier done result_ref is empty")
+        except SystemExit:
+            pass
+    return errs
 
 
 def reconcile_children_spawned(root: Path, state: dict[str, Any], wave: int | None = None) -> int:
@@ -2684,11 +2914,17 @@ def render_prompt(
     spec_ref = packet.get("spec_ref") or (packet.get("order") or {}).get("spec_ref")
     if spec_ref:
         owned = packet.get("owns_requirements") or []
+        paths = packet.get("owns_paths") or []
+        path_line = (
+            "This packet may write product paths: " + ", ".join(paths) + ".\n"
+            if paths
+            else ""
+        )
         owns_line = (
             "This packet owns: " + ", ".join(owned) + ".\n"
             if owned
             else "This packet declared no owns_requirements.\n"
-        )
+        ) + path_line
         body += (
             "\n## Binding specification\n\n"
             "ORDER may compress reasoning. It must not compress the contract.\n"
@@ -3592,6 +3828,47 @@ def cmd_pack(args: argparse.Namespace) -> None:
     wdir = wave_dir(wave, root)
     residual_path = canonical_residual_rel(int(wave), child_id)
     scratch = canonical_scratch_rel(child_id)
+    owns_paths_raw = [
+        str(x) for x in (getattr(args, "owns_path", None) or []) if str(x).strip()
+    ]
+    owns_paths = require_owns_paths(root, owns_paths_raw) if owns_paths_raw else []
+    live = packed_children(root, int(wave))
+    implementers = [p for p in live if p.get("role") == "implementer"]
+    if args.role == "implementer" and implementers:
+        if not owns_paths:
+            die(
+                "wave already has an implementer; of pack --owns-path PATH "
+                "(repeatable) so write sets are disjoint"
+            )
+        unbounded = [
+            str(p.get("child_id") or "?")
+            for p in implementers
+            if not packet_owns_paths(p)
+        ]
+        if unbounded:
+            die(
+                "wave already has implementer "
+                + ", ".join(unbounded)
+                + " without owns_paths; cannot prove disjoint write sets. "
+                "of unpack or pack the first child with --owns-path"
+            )
+    if owns_paths:
+        conflict = same_wave_owns_path_conflict(live, child_id, owns_paths)
+        if conflict:
+            other, mine, theirs = conflict
+            die(
+                f"owns_path {mine} overlaps {theirs} owned by {other} "
+                f"in wave {wave}; same-wave write sets must be disjoint"
+            )
+        for other, prior, mine in prior_wave_path_owners(
+            root, int(wave), owns_paths
+        ):
+            print(
+                f"note: {mine} was owned by child {other} in wave {prior}.\n"
+                f"new owner {child_id} in wave {wave}.\n"
+                f"consider continuing {other} if this is the same slice.",
+                file=sys.stderr,
+            )
     order_view: dict[str, Any] = {
         "id": order["id"],
         "rev": order["rev"],
@@ -3599,7 +3876,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "phase": order["phase"],
         "done_when": done_when_for(order),
         "constraints": order["constraints"],
-        "workspace": order["workspace"],
+        "workspace": copy_workspace_with_owns(order["workspace"], owns_paths),
         "thresholds": order["thresholds"],
     }
     backlog_open = open_backlog(order)
@@ -3659,6 +3936,8 @@ def cmd_pack(args: argparse.Namespace) -> None:
         packet["reads_spec"] = True
     if owns:
         packet["owns_requirements"] = owns
+    if owns_paths:
+        packet["owns_paths"] = owns_paths
     packet["packet_hash"] = packet_digest(packet)
     require_public_schema(packet, "packet.schema.json", "packet")
     errors = validate_packet(packet)
@@ -4355,17 +4634,24 @@ def phase_transition_errors(
             f"current wave report regime is {report.get('regime')}, not phase"
         )
     if target == "deliver":
-        errors.extend(requirement_coverage_errors(root))
-        if spec_path(root).is_file() and not order.get("spec_closed"):
-            errors.append("SPEC not closed; of close (contrast must be RESOLVED)")
-        stored = str(order.get("spec_hash") or "")
-        live = spec_bytes_hash(root)
-        if stored and live is None:
-            errors.append("SPEC.md missing but ORDER.spec_hash is set")
-        elif stored and live and live != stored:
-            errors.append(
-                "SPEC.md hash mismatch (silent rewrite); of spec --revise-file"
-            )
+        errors.extend(phase_deliver_errors(root, order))
+    return errors
+
+
+def phase_deliver_errors(root: Path, order: dict[str, Any]) -> list[str]:
+    """SPEC close gates. Run even under phase --force to deliver."""
+    errors: list[str] = []
+    errors.extend(requirement_coverage_errors(root))
+    if spec_path(root).is_file() and not order.get("spec_closed"):
+        errors.append("SPEC not closed; of close (contrast must be RESOLVED)")
+    stored = str(order.get("spec_hash") or "")
+    live = spec_bytes_hash(root)
+    if stored and live is None:
+        errors.append("SPEC.md missing but ORDER.spec_hash is set")
+    elif stored and live and live != stored:
+        errors.append(
+            "SPEC.md hash mismatch (silent rewrite); of spec --revise-file"
+        )
     return errors
 
 
@@ -4614,6 +4900,12 @@ def cmd_phase(args: argparse.Namespace) -> None:
         errors = phase_transition_errors(root, order, state, args.phase)
         if errors:
             die("phase transition refused: " + "; ".join(errors))
+    elif args.phase == "deliver":
+        errors = phase_deliver_errors(root, order)
+        if errors:
+            die(
+                "phase --force cannot skip SPEC close: " + "; ".join(errors)
+            )
     from_phase = str(order["phase"])
     before_rev = int(order["rev"])
     if order.get("done_when_closed"):
@@ -5094,6 +5386,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
                         "binding": bool(raw.get("binding", True)),
                         "owned_by": list(raw.get("owned_by") or []),
                         "status": str(raw.get("status") or "unowned"),
+                        "origin": str(raw.get("origin") or "from-file"),
                     }
                 )
                 if raw.get("surface") in {"contract", "internal"}:
@@ -5121,6 +5414,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
                 "binding": not bool(getattr(args, "non_binding", False)),
                 "owned_by": [],
                 "status": "unowned",
+                "origin": "added",
             }
         )
         surface_arg = str(getattr(args, "surface", None) or "").strip().lower()
@@ -5240,8 +5534,14 @@ def cmd_spec_diff(args: argparse.Namespace) -> None:
 def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
     """Print Intent vs Delivered. Return True if the SPEC loop is still open."""
     spec = spec_path(root)
-    counts = requirement_counts(load_requirements(root))
+    data = load_requirements(root)
+    counts = requirement_counts(data)
     rows = contrast_rows(root)
+    by_id = {
+        str(item.get("id")): item
+        for item in (data.get("requirements") or [])
+        if isinstance(item, dict)
+    }
     print("Intent vs Delivered")
     print()
     if spec.is_file():
@@ -5253,7 +5553,9 @@ def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
     print()
     if rows:
         for verdict, rid, text in rows:
-            print(f"{verdict:20} {rid:12} {text[:80]}")
+            cite = requirement_source_cite(by_id.get(rid) or {})
+            extra = f"{cite} " if cite else ""
+            print(f"{verdict:20} {rid:12} {extra}{text[:80]}")
         print()
     print(
         f"coverage: {counts['owned']}/{counts['total']} assigned  "
@@ -5486,6 +5788,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="owns_requirement",
         action="append",
         help="binding requirement id this packet owns (repeatable)",
+    )
+    s.add_argument(
+        "--owns-path",
+        dest="owns_path",
+        action="append",
+        help="exclusive product path this packet may write (repeatable; not a file lock)",
     )
     s.add_argument(
         "--force-spawn",

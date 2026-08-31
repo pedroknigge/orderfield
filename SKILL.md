@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.2 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.3 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.2"
+  version: "0.5.3"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -33,6 +33,8 @@ A harness name alone is not a trigger. If the task fits one agent, one ordinary 
 ## Mandatory leader process
 
 Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
+
+**Tool-call discipline.** A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run. Announce in the past tense only after the CLI returns. After compaction, the first act is `of resume` — rebuild the work list from disk packets/residuals/status, not from chat memory.
 
 ### 0. Resume from disk (when ORDER exists)
 
@@ -89,8 +91,18 @@ python3 <skill>/scripts/of.py pack \
   --slice "map pricing models, do not decide the phase" \
   --role explorer \
   --requires-tool browser \
+  --owns-requirement CLI-001 \
   --out .orderfield/waves/001/packets/p1.json
 ```
+
+`max_children` (default 4) is the parallel cap **in one wave**. `max_across_per_wave` is reserved leftover math; it does **not** serialize implementers. Pack multiple implementers in the **same** build wave when write sets are disjoint:
+
+```bash
+of pack --role implementer --child-id state --owns-path src/store.py --owns-requirement LEASE-001
+of pack --role implementer --child-id http --owns-path src/http_api.py --owns-requirement HTTP-001
+```
+
+Same-wave overlapping `--owns-path` dies. A second implementer in the wave **must** pass `--owns-path`. Cross-wave reuse of a path prints a note (`consider continuing <child>`) — not a lock. If the next work is the same files, that child is in-flight: continue from scratch; do not pack a sibling. Identify the invariant-dense slice **early** (not necessarily first): do not leave lease/audit/races for final integration.
 
 The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
 
@@ -111,7 +123,7 @@ python3 <skill>/scripts/of.py spec --amend "<new user request>"
 # or: of spec --amend-file .orderfield/ingest.md
 ```
 
-The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
+The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **SPEC is truth. REQUIREMENTS is an index** (`origin` + `source.spec_line_*`); contrast cites `SPEC.md:N`. Extract is a conservative heuristic (`LEASE-` / `AUDIT-` / `IDEMP-` / `HTTP-` / `CLI-`); misses go to `--add`. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. `phase --force` to `deliver` still runs those SPEC gates. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Verifier `done` needs nonempty evidence that names what was checked plus a nonempty `result_ref` (`"all tests passed"` is invalid). Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
@@ -261,7 +273,8 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
-- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. `of contrast` before close. `phase --force skip explore` is not a close.
+- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid.
+- Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
 
 ## Enslaved roles (identities, not job titles)
 
@@ -308,7 +321,7 @@ Per-harness detail: `references/adapters.md`.
 
 ## How you know the principle landed
 
-- ORDER moves slowly (few revisions per task).
+- ORDER moves slowly (few revisions per task). Four fast modes under one ORDER beat four slow ORDER revisions.
 - The leader talks little.
 - A threshold produces a field patch, not a swarm.
 - Turning Orca off and installing the skill in Claude Code leaves an ORDER of the same shape.

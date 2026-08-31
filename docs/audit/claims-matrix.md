@@ -8,7 +8,7 @@
 **Intent:** audit → integrate (docs-only patch; no release)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.5.2` / `scripts/of.py` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.5.3` / `scripts/of.py` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -101,7 +101,10 @@
 | C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate (VERIFIED_CONTRACT at public surface; internal tests do not close); deliver needs `of close` | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
 | C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting / kernel feature | `cmd_pack` dies on unowned when packet owns none | `scripts/of.py` / `tests/test_kernel.py` | `cmd_pack` / `SpecFidelity.test_pack_refuses_unowned_without_owns_requirement` | critical | OK | keep |
 | C-049 | Extract joins backslash-continued CLI lines (truncated `account create \\` is not a requirement) | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` / `extract_requirements_from_spec` | `scripts/of.py` / `tests/test_kernel.py` | `join_continued_lines` / `SpecFidelity.test_extract_joins_backslash_continuations` | critical | OK | keep |
+| C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; cross-wave reuse is a note; packet unions paths into `writable_by_slaves`; ORDER default stays scratch; not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` | `scripts/of.py` / `tests/test_kernel.py` | `cmd_pack` / `PathOwnership` | critical | OK | keep |
+| C-051 | Verifier `done` requires identifying evidence + nonempty `result_ref`; platitudes refused; `phase --force` to deliver still runs SPEC close gates | SKILL / SLAVE / troubleshooting | `verifier_done_errors` / `phase_deliver_errors` | `scripts/of.py` / `tests/test_kernel.py` | `VerifierEvidence` / `ForceDeliverSpec` | critical | OK | keep |
+| C-052 | REQUIREMENTS is an index over SPEC (`origin`, `source` line range, semantic prefixes); contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` / `requirement_source_cite` | `scripts/of.py` / `tests/test_kernel.py` | `SemanticExtract` | critical | OK | keep |
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass).
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass).

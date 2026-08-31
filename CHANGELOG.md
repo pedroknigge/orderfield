@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.3
+
+Efficiency bind without new regimes: exclusive paths, host-owned verify, REQUIREMENTS as an index.
+
+- `of pack --owns-path` (repeatable). Same-wave overlapping paths die. A second implementer in the wave must pass `--owns-path`. Cross-wave reuse prints a note (`consider continuing`), not a lock. The packet unions scratch + owned paths into `workspace.writable_by_slaves`; ORDER default stays scratch. Not a file locker.
+- Verifier `done` requires nonempty evidence that identifies what was checked and a nonempty `result_ref`. Platitudes (`all tests passed`) are invalid.
+- `phase --force` to `deliver` still runs SPEC close gates (`spec_closed`, coverage, hash).
+- Extract is a conservative index over SPEC: prefixes `LEASE` / `AUDIT` / `IDEMP` / `HTTP` / `CLI`, with `origin` + `source.spec_line_*`. Contrast cites `SPEC.md:N`. SPEC remains truth.
+- Skill: tool-call discipline; post-compact `of resume`; pack disjoint owners in one wave (`max_children` is the parallel cap; `max_across_per_wave` does not serialize). Invariant-dense slice early, not necessarily first.
+- Packaging: VERSION 0.5.3; skill/alias description preview `v0.5.3 — …`.
+
 ## 0.5.2
 
 Public-surface contrast: internal correctness is not contract correctness.

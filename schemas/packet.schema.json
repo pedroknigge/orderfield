@@ -79,6 +79,11 @@
       "type": "array",
       "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$" }
     },
+    "owns_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Exclusive product paths for this packet. Same-wave overlap is a pack error; not a file lock."
+    },
     "reads_spec": { "type": "boolean" },
     "slice": { "type": "string", "minLength": 1 },
     "role": {

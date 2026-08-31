@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.5.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.5.3` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -18,7 +18,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - Phase-scoped close via phase prefixes + `done_when_closed_phases` (Option B; legacy bool); `--reopen`
 - Reversible field: `of unpack` refunds budget; `collect` survives MISSING; `integrate --partial`; `--constraints-rm`
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
-- Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned
+- Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); packet workspace unions owned paths; not a file lock
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, and wave reports
 - Mutating commands share a cross-process `.orderfield/field.lock`; JSON writes are durable atomic replacements
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
@@ -35,7 +35,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
-- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed.
+- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). New requests are `of spec --amend` (original stays, IDs continue). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (dumped after 30 days). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in)
 - Optional `of --json` / `OF_JSON=1` event lines on stderr
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
