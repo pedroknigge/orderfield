@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.0 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.1 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -90,13 +90,26 @@ python3 <skill>/scripts/of.py pack \
   --out .orderfield/waves/001/packets/p1.json
 ```
 
-The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables). Store the verbatim user brief at init:
+The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
+
+**Do not write `PROMPT.md` / `prompt.md` at the project root.** The user's current message *is* the brief. Ingest it into the field, never into the product tree:
 
 ```bash
-python3 <skill>/scripts/of.py init --mission "build LedgerLab" --source-file ./PROMPT.md
+# short brief:
+python3 <skill>/scripts/of.py init --mission "build LedgerLab" --source "<verbatim user request>"
+# long brief (gitignored field scratch; discarded after copy):
+# write .orderfield/ingest.md then:
+python3 <skill>/scripts/of.py init --mission "build LedgerLab" --source-file .orderfield/ingest.md
 ```
 
-That writes `.orderfield/SPEC.md` (lossless) plus a `spec_hash`. `of spec --add` / `--from-file` / `--extract` maintains binding requirement IDs. Pack with `--owns-requirement CLI-001`. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product.
+That writes `.orderfield/SPEC.md` (lossless) plus a `spec_hash`. A product-root `prompt.md` left over from ingest is discarded. Mid-flight new requests are **amendments**, not a rewrite of the original and not a second root prompt:
+
+```bash
+python3 <skill>/scripts/of.py spec --amend "<new user request>"
+# or: of spec --amend-file .orderfield/ingest.md
+```
+
+The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. Pack with `--owns-requirement CLI-001`. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product.
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
@@ -175,7 +188,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 prints **CLOSE BLOCKED**. Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. A verifier that only reads ORDER will certify the wrong product. SPEC.md is immutable after init; change the brief with `of spec --revise-file`, never a silent rewrite.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Exit 2 prints **CLOSE BLOCKED**. Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. A verifier that only reads ORDER will certify the wrong product. SPEC.md is the **current** brief (original + in-force amendments). Bytes are hashed; a silent rewrite is a field error. New human requests use `of spec --amend`, not another root prompt and not a silent overwrite. Contrast does not generate work, fix code, or invent requirements.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)
@@ -245,6 +258,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
+- Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
 
 ## Enslaved roles (identities, not job titles)
 
@@ -263,6 +277,8 @@ Use the minimum. Explorer + adversary already prove the principle.
 | Thing | Path |
 |---|---|
 | Canonical field | `.orderfield/ORDER.json` |
+| Binding specification | `.orderfield/SPEC.md` (original + amendments). Never `PROMPT.md` at the project root. |
+| Spec history | `.orderfield/spec-log/` (previous SPEC snapshots; dumped after 30 days) |
 | Wave / cap state | `.orderfield/state.json` |
 | Session snapshot | `.orderfield/session.json` (facts: wave, last_cmd, in_flight, updated_at; optional `summary` from `of checkpoint --summary`). Forbidden to slaves like `state.json`. |
 | Wave packets | `.orderfield/waves/NNN/packets/` |

@@ -9,12 +9,12 @@
 ```
 
 <p align="center">
-  <strong>v0.5.0</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
+  <strong>v0.5.1</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · Haken-inspired
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.5.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -223,7 +223,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 
 | Command | Purpose |
 |---|---|
-| `init` | create `.orderfield/ORDER.json`; `--source-file` stores the verbatim brief as `SPEC.md` |
+| `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root) |
 | `resume` | one-screen continuation brief from disk (in-flight = packed child, missing residual). Does not auto-spawn. |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `status` | show field, wave, caps, in-flight |
@@ -243,7 +243,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `retain` / `gc` | episodic keep/drop/dump; never copies transcripts |
 | `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
 | `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
-| `spec` | list/add/extract/verify binding requirements from SPEC.md |
+| `spec` | list/add/extract/verify/amend/supersede binding requirements; `--amend` appends a new human request |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: PASS/FAIL/MISS/UNVERIFIED vs SPEC; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
