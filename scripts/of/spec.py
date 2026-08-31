@@ -64,6 +64,86 @@ PAIR_TEXT_PAIRS = (
     ("before", "after"),
 )
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
+# Whole-string go-ahead / pointer-to-prior-chat. Advisory only — still writes SPEC.
+DEICTIC_POINTER_MAX_CHARS = 280
+DEICTIC_GO_AHEAD_RE = re.compile(
+    r"^\s*"
+    r"(?:(?:ok(?:ay)?|bueno|bien|listo|ya|alright|sure|yes|s[ií]|please|porfa|che)"
+    r"[\s,.\-!]*)*"
+    r"(?:"
+    r"dale(?:\s+nom[aá]s)?"
+    r"|hacelo(?:\s+dale)?"
+    r"|hazlo(?:\s+dale)?"
+    r"|implementalo|mandale|metele|adelante|vamos|segu[ií]"
+    r"|(?:just\s+)?(?:do\s+it|go(?:\s+ahead)?|ship\s+it)"
+    r"|(?:please\s+)?(?:proceed|continue)"
+    r"|lfg"
+    r"|do\s+(?:that|this|it)"
+    r"|implement\s+(?:that|this|it)"
+    r"|make\s+it\s+so"
+    r")"
+    r"(?:[\s,.\-!]+(?:please|porfa|por\s+favor|thanks|gracias|now|ya|che))*"
+    r"[\s,.\-!]*$",
+    re.IGNORECASE,
+)
+DEICTIC_POINTER_RE = re.compile(
+    r"(?:"
+    r"as\s+discussed"
+    r"|as\s+we\s+(?:said|talked|agreed)"
+    r"|from\s+(?:earlier|before|the\s+(?:chat|conversation|thread))"
+    r"|(?:the\s+)?(?:thing|work|task|request)\s+we\s+(?:talked|spoke)\s+about"
+    r"|como\s+hablamos"
+    r"|lo\s+que\s+(?:dijimos|hablamos|ped[ií])"
+    r"|lo\s+de\s+(?:antes|arriba|la\s+charla)"
+    r")",
+    re.IGNORECASE,
+)
+DEICTIC_FILLER_RE = re.compile(
+    r"^(?:please|porfa|por\s+favor|thanks|gracias|now|ya|che|ok(?:ay)?|"
+    r"bueno|bien|listo|alright|sure|yes|s[ií])$",
+    re.IGNORECASE,
+)
+
+
+def looks_like_deictic_brief(text: str) -> bool:
+    """True when the brief is a go-ahead / pointer, not a lossless contract."""
+    collapsed = re.sub(r"\s+", " ", (text or "").strip())
+    if not collapsed:
+        return False
+    if DEICTIC_GO_AHEAD_RE.match(collapsed):
+        return True
+    if len(collapsed) > DEICTIC_POINTER_MAX_CHARS:
+        return False
+    if not DEICTIC_POINTER_RE.search(collapsed):
+        return False
+    remainder = DEICTIC_POINTER_RE.sub(" ", collapsed)
+    remainder = re.sub(r"[\s,.\-!?:;]+", " ", remainder).strip()
+    if not remainder or DEICTIC_GO_AHEAD_RE.match(remainder):
+        return True
+    if any(cue in remainder.lower() for cue in CONTRACT_SURFACE_CUES):
+        return False
+    tokens = remainder.split()
+    return bool(tokens) and all(DEICTIC_FILLER_RE.match(tok or "") for tok in tokens)
+
+
+def deictic_brief_note(text: str, *, flag: str) -> str | None:
+    if not looks_like_deictic_brief(text):
+        return None
+    return (
+        f"of: note — {flag} looks like a go-ahead, not a brief. "
+        "SPEC must not compress the contract. Expand the prior conversation into "
+        "--source / .orderfield/ingest.md (verbatim request). "
+        "If ORDER already exists this is steer — of resume and execute next; "
+        "do not of spec --amend a deictic. The SPEC was still written."
+    )
+
+
+def warn_if_deictic_brief(text: str, *, flag: str) -> bool:
+    note = deictic_brief_note(text, flag=flag)
+    if not note:
+        return False
+    print(note, file=sys.stderr)
+    return True
 
 
 def spec_bytes_hash(root: Path) -> str | None:

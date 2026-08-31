@@ -4,7 +4,7 @@ Canonical terms only. Product surface: [README Compared-to](../README.md). Leade
 
 ## SPEC vs ORDER
 
-**SPEC** (`.orderfield/SPEC.md`) is the lossless user brief: original request plus dated amendments. It is truth for CLI, schemas, types, exit codes, invariants, and deliverables.
+**SPEC** (`.orderfield/SPEC.md`) is the lossless user brief: original request plus dated amendments. It is truth for CLI, schemas, types, exit codes, invariants, and deliverables. A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a brief — expand the prior request, or steer an open field.
 
 **ORDER** (`.orderfield/ORDER.json`) is the slow field the leader designs: mission, phase, constraints, `done_when`, workspace. ORDER may compress reasoning (chat, discarded alternatives, transcripts). It must not compress the contract. Packets are a cut of work from SPEC + ORDER together; a slice does not replace SPEC.
 

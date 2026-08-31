@@ -18,7 +18,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | Doc | Role |
 | --- | --- |
 | [docs/architecture.md](architecture.md) | Kernel shape and authority |
-| [docs/context-control.md](context-control.md) | Where to put contract vs procedure vs slice |
+| [docs/context-control.md](context-control.md) | Where to put contract vs procedure vs slice (incl. deictic go-ahead vs SPEC) |
 | [docs/events.md](events.md) | `of --json` / `OF_JSON` event vocabulary |
 | [docs/troubleshooting.md](troubleshooting.md) | Field failure recovery |
 | [references/adapters.md](../references/adapters.md) | Headless argv per harness |

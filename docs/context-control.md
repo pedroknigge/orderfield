@@ -16,6 +16,11 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 | Session continuity after compaction | Disk | `of resume` + `auto_continue`; not chat memory |
 | Leader narrative one-liner | `of checkpoint --summary` | Optional; packets/residuals remain authority |
 | Durable checkpoint (compaction analog) | Packet isolation + SPEC | Packets must not carry parent transcript; ref-load SPEC only |
+| Deictic go-ahead, same session, no ORDER (`dale` / `do it` / `as discussed`) | Leader reconstructs the prior request into `--source` / `.orderfield/ingest.md` | `--source "dale"` compresses the contract. If the work fits this agent, skill beats child — do not open a field. |
+| Deictic go-ahead, ORDER already open | Steer: `of resume` → execute `next` | Not `of spec --amend "dale"` and not `of init --force` |
+| Deictic go-ahead, new session / compacted, no ORDER | Ask for the actual brief or refuse to init | Do not invent SPEC from chat the leader no longer has |
+
+Kernel: `of init --source` / `of spec --amend` / `--revise` print an advisory **note** when the text looks like a go-ahead; SPEC is still written. Expand and `--revise-file` if a deictic already landed.
 
 ## Compaction analog (low priority)
 

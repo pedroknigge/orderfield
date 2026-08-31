@@ -5,16 +5,16 @@
 
 **Date:** 2026-08-31
 **Scope:** project
-**Intent:** release-line 0.6 form (VERSION/docs/CHANGELOG/claims agree; not a new regime)
+**Intent:** release-line 0.6.1 deictic-ingest patch (VERSION/docs/CHANGELOG/claims agree; not a new regime)
 **Out:** root
-**Auditor:** rel_060 (docs vs symbols after 0.6.0 form bump)
-**Code rev:** VERSION `0.6.0` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Auditor:** leader (docs vs symbols after 0.6.1 deictic go-ahead ingest)
+**Code rev:** VERSION `0.6.1` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 49 |
+| OK | 50 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -23,9 +23,9 @@
 | Severity | Count |
 |----------|------:|
 | critical | 40 |
-| normal | 13 |
+| normal | 14 |
 
-**Truth score (advisory):** `(49*100 + 3*50) / 53 = 95.3`
+**Truth score (advisory):** `(50*100 + 3*50) / 54 = 95.4`
 **CI gate:** no critical Contradicted after docs patch.
 
 **Top risks (post-patch):**  
@@ -106,7 +106,8 @@
 | C-051 | Verifier `done` requires identifying evidence + nonempty `result_ref`; platitudes refused; `phase --force` to deliver still runs SPEC close gates | SKILL / SLAVE / troubleshooting | `verifier_done_errors` / `phase_deliver_errors` | `scripts/of/pack.py` / `scripts/of/regime.py` / `tests/test_kernel_spec.py` | `VerifierEvidence` / `ForceDeliverSpec` | critical | OK | keep |
 | C-052 | REQUIREMENTS is an index over SPEC (`origin`, `source` line range, semantic prefixes); contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` / `requirement_source_cite` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `SemanticExtract` | critical | OK | keep |
 | C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI (`of` / `scripts/of.py`) stays; schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7 | SPEC CLI-002 / architecture | package `scripts/of/` + shim entry; `python3 scripts/of.py` still runs `main`; tests `import of` | `scripts/of.py` / `scripts/of/` | `main` | critical | OK | keep; 0.6 form, not a new regime |
+| C-054 | A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a lossless brief: leader expands the prior request into `--source` or steers an open field (`next`); kernel prints an advisory note on init/amend/revise and still writes SPEC | SKILL / context-control / principles 17 / troubleshooting / README | `looks_like_deictic_brief` / `warn_if_deictic_brief` on `cmd_init` / `cmd_spec`; does not refuse | `scripts/of/spec.py` / `scripts/of/cli.py` / `tests/test_kernel_spec.py` | `looks_like_deictic_brief` / `DeicticBrief` | normal | OK | keep advisory; not a new regime |
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-053 records the 0.6 form split of `scripts/of.py` into internal packages; VERSION is `0.6.0` (form, not a new regime). C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass). README links the 90s demo at `docs/demo/README.md`.
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-053 records the 0.6 form split of `scripts/of.py` into internal packages. C-054 records the 0.6.1 deictic go-ahead ingest advisory (leader expands the prior brief; kernel notes, does not refuse). VERSION is `0.6.1`. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass). README links the 90s demo at `docs/demo/README.md`.

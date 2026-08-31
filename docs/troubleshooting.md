@@ -162,6 +162,14 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Recover:** `of spec --revise-file PATH` for an explicit replacement. Do not write `PROMPT.md` in the product tree.
 
+## Deictic `--source` / `--amend` note
+
+**Symptom:** `of: note — --source looks like a go-ahead, not a brief.`
+
+**Meaning:** The leader ingested `dale` / `do it` / `as discussed` as SPEC. That compresses the contract. Children never see the prior chat.
+
+**Recover:** Expand the prior request into `.orderfield/ingest.md` and `of spec --revise-file .orderfield/ingest.md`. If the field was already open, the go-ahead was steer — `of resume` and execute `next`. Revert a deictic amendment with `--revise-file` of the real brief.
+
 ## Pack refused: unowned requirements
 
 **Symptom:** `of pack` dies with `binding requirements are unowned`.

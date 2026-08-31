@@ -817,5 +817,94 @@ class SemanticExtract(unittest.TestCase):
         self.assertIn("SPEC.md:", contrast.stdout)
 
 
+class DeicticBrief(unittest.TestCase):
+    """A go-ahead is steer, not a lossless SPEC."""
+
+    def test_go_ahead_phrases_are_deictic(self) -> None:
+        for phrase in (
+            "dale",
+            "hacelo dale",
+            "Hacelo dale!",
+            "just do it",
+            "ok go ahead",
+            "as discussed",
+            "como hablamos",
+            "lo que dijimos",
+            "as discussed, please go ahead",
+        ):
+            self.assertTrue(
+                of.looks_like_deictic_brief(phrase),
+                phrase,
+            )
+
+    def test_real_briefs_are_not_deictic(self) -> None:
+        for phrase in (
+            "add --json to of status",
+            "dale, add --json to of status",
+            "as discussed: python -m ledgerlab reverse --store PATH",
+            "build a CLI for ledger reverse",
+            "go to deliver phase after contrast",
+        ):
+            self.assertFalse(
+                of.looks_like_deictic_brief(phrase),
+                phrase,
+            )
+
+    def test_init_source_go_ahead_is_advisory_not_refusal(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-deictic-init-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source",
+            "hacelo dale",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("go-ahead", r.stderr)
+        spec = (tmp / ".orderfield" / "SPEC.md").read_text(encoding="utf-8")
+        self.assertIn("hacelo dale", spec)
+
+    def test_init_real_source_has_no_go_ahead_note(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-deictic-ok-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source",
+            "add --json to of status",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("go-ahead", r.stderr)
+
+    def test_amend_go_ahead_is_advisory_not_refusal(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-deictic-amend-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        first = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "build LedgerLab",
+            "--phase",
+            "explore",
+            "--source",
+            "python -m ledgerlab reverse --store PATH",
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        r = run_of(tmp, "spec", "--amend", "dale")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("go-ahead", r.stderr)
+        spec = (tmp / ".orderfield" / "SPEC.md").read_text(encoding="utf-8")
+        self.assertIn("## Amendment 1", spec)
+        self.assertIn("dale", spec)
+
+
 if __name__ == "__main__":
     unittest.main()
