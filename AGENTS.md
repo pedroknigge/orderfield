@@ -59,6 +59,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Pack `--owns-requirement` (refused while unowned) | documented |
 | Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
 | 0.4.2 … + 0.5.5 auto_continue + 0.5.6 eval/parked/events + 0.5.7 eval CI/contrast recovery/Test C doc | documented |
+| 0.6.0 form split (`scripts/of.py` internals; protocol unchanged) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

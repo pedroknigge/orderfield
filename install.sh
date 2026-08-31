@@ -313,27 +313,35 @@ agy_dests() {
     "$base/.gemini/antigravity-cli/skills/$NAME"
 }
 
+# Iterate dests in this shell so copied/removed persist. Command
+# substitution into a here-doc, not process substitution.
 install_agy_dests() {
   local dest parent agy_bin=0
   if [[ "$MODE" == "global" ]] && command -v agy >/dev/null 2>&1; then
     agy_bin=1
   fi
   while IFS= read -r dest; do
+    [[ -n "$dest" ]] || continue
     parent="$(dirname "$(dirname "$dest")")"
     if [[ "$agy_bin" -eq 1 || -d "$parent" ]]; then
       copy_one "$dest"
       copied=$((copied + 1))
     fi
-  done < <(agy_dests)
+  done <<EOF
+$(agy_dests)
+EOF
 }
 
 uninstall_agy_dests() {
   local dest
   while IFS= read -r dest; do
+    [[ -n "$dest" ]] || continue
     if remove_one "$dest"; then
       removed=$((removed + 1))
     fi
-  done < <(agy_dests)
+  done <<EOF
+$(agy_dests)
+EOF
 }
 
 if [[ "$UNINSTALL" -eq 1 ]]; then

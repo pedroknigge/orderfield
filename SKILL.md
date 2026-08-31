@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.7 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.0 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.7"
+  version: "0.6.0"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -14,6 +14,8 @@ metadata:
 Orderfield is an Agent Skill plus a Python stdlib contract kernel for portable, disk-backed agent waves. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk.
 
 `/of` is an installed alias for this skill: invoking it means invoking `/orderfield` — same doctrine, same kernel.
+
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). Public Compared-to (what this is vs Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md).
 
 The leader designs the field, packs work, and explicitly integrates or patches it. Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
@@ -316,6 +318,7 @@ Use the minimum. Explorer + adversary already prove the principle.
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
 | Slave doctrine | `.orderfield/SLAVE.md` — a field copy kept in sync from this skill's `SLAVE.md` at init/pack/handoff/spawn. Prompts reference it **repo-relative**, so a child in a container, sandbox, or another host can read it; the skill's absolute path is only the fallback when the field copy is missing. `--inline` pastes it instead. |
 | Invariants | `references/principles.md` |
+| Glossary | [docs/glossary.md](docs/glossary.md) |
 | Context control | `docs/context-control.md` |
 | Kernel events | `docs/events.md` (`of --json` / `OF_JSON=1`) |
 | Evals | `evals/` — `of eval --strict` |
