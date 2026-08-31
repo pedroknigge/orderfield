@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.4` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.5.5` — see [`VERSION`](../VERSION)
 
 ## Shape
 

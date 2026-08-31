@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.5.4` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.5.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -10,7 +10,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 
 ## Notable behaviors (code-backed)
 
-- Session-cut: `of resume` reconstructs in-flight from disk; recovery brief lists `completed`/`in_flight`, residual state, owners, owned-path presence, scratch; explicit `next` guidance; does not auto-spawn or dump logs
+- Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief; open fields require executing `next` same turn; does not auto-spawn or dump logs
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave; forbidden to slaves like `state.json`; corrupt session warns on stderr
 - `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty
