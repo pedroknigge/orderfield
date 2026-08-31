@@ -1,7 +1,11 @@
 """Field I/O: ORDER/state/session, lock, schemas, pulse, migrate, worktree."""
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no fcntl
+    fcntl = None
+    import msvcrt
 import hashlib
 import json
 import math
@@ -318,6 +322,46 @@ def dump_json(path: Path, data: Any) -> None:
             pass
 
 
+# Byte-range offset for the Windows lock. Past any owner payload so
+# _lock_owner_text() can still read the file from another process, which
+# LockFile would refuse if the lock covered the bytes holding the JSON.
+_WINDOWS_LOCK_OFFSET = 0x40000000
+
+
+def _windows_locking(handle: Any, mode: int) -> None:
+    """msvcrt.locking on a fixed byte, restoring the caller's file position."""
+    fd = handle.fileno()
+    handle.flush()
+    pos = os.lseek(fd, 0, os.SEEK_CUR)
+    os.lseek(fd, _WINDOWS_LOCK_OFFSET, os.SEEK_SET)
+    try:
+        msvcrt.locking(fd, mode, 1)
+    finally:
+        os.lseek(fd, pos, os.SEEK_SET)
+
+
+def flock_acquire(handle: Any) -> None:
+    """Take the exclusive field lock, or raise BlockingIOError if it is held.
+
+    Both backends are byte-range locks the OS releases when the owner dies, so
+    a killed leader never strands the field.
+    """
+    if fcntl is not None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return
+    try:
+        _windows_locking(handle, msvcrt.LK_NBLCK)
+    except OSError as exc:  # msvcrt raises OSError where flock raises BlockingIOError
+        raise BlockingIOError(str(exc)) from exc
+
+
+def flock_release(handle: Any) -> None:
+    if fcntl is not None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        return
+    _windows_locking(handle, msvcrt.LK_UNLCK)
+
+
 def _lock_owner_text(path: Path) -> str:
     try:
         owner = json.loads(path.read_text(encoding="utf-8") or "{}")
@@ -355,7 +399,7 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
     try:
         while True:
             try:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                flock_acquire(handle)
                 break
             except BlockingIOError:
                 if time.monotonic() - started >= timeout:
@@ -384,7 +428,7 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
             handle.truncate()
             handle.flush()
             os.fsync(handle.fileno())
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            flock_release(handle)
     finally:
         handle.close()
 
@@ -1719,8 +1763,8 @@ def probe_lock_capability(root: Path) -> dict[str, str]:
         info["status"] = "not-writable"
         return info
     try:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        flock_acquire(handle)
+        flock_release(handle)
         info["status"] = "acquirable"
     except BlockingIOError:
         info["status"] = "held"
