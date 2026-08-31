@@ -1164,6 +1164,32 @@ def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str]
         return None
     skip = prune or set()
     best: tuple[float, str] | None = None
+
+    try:
+        res = subprocess.run(
+            ["git", "ls-files", "-z", "-c", "-o", "--exclude-standard"],
+            cwd=path, capture_output=True, text=False, check=True
+        )
+        files = res.stdout.split(b'\0')
+        if files and files[0]:
+            for fbytes in files:
+                if not fbytes:
+                    continue
+                fname = os.fsdecode(fbytes)
+                if any(p in skip for p in fname.split('/')):
+                    continue
+                
+                f = path / fname
+                try:
+                    m = f.stat().st_mtime
+                except OSError:
+                    continue
+                if best is None or m > best[0]:
+                    best = (m, fname)
+            return best
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        pass
+
     for dirpath, dirnames, filenames in os.walk(path):
         dirnames[:] = [d for d in dirnames if d not in skip]
         for name in filenames:
