@@ -2,9 +2,14 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.6.1`
+**Status:** Shipped · **Current release line:** `0.6.2`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.6.2 — CLI command groups (form)
+
+- `scripts/of/cli.py` → package `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Parser + dispatch stay in `cli/__init__.py`.
+- Public `of` / `scripts/of.py` / `import of` unchanged. Not a new regime.
 
 ## 0.6.1 — deictic go-ahead ingest (patch)
 

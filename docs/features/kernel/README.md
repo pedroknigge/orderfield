@@ -2,7 +2,7 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.6.1` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.6.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -10,7 +10,7 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 
 ## Notable behaviors (code-backed)
 
-- 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,spec,pack,regime,cli}.py`. Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
+- 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; open fields require executing `next` same turn; does not auto-spawn or dump logs
 - `of eval` runs recovery fixtures under `evals/recovery/`; `--strict`, `--kernel`, `--list`
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)

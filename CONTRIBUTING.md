@@ -13,7 +13,7 @@ How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH
 
 | Surface | Own it in | Notes |
 |---------|-----------|-------|
-| Field I/O, regimes, CLI cmds | `scripts/of.py` | One writer for ORDER mutations (`save_order`) |
+| Field I/O, regimes, CLI cmds | `scripts/of/` (`field`/`spec`/`pack`/`regime`/`cli/`) | Public entry `scripts/of.py`; command groups in `scripts/of/cli/`. One writer for ORDER mutations (`save_order`) |
 | Adapter tables + spawn argv | `scripts/of_adapters.py` | Keep stdlib-only; re-exported via `of` |
 | Contracts | `schemas/` | Validate with `of validate` |
 | Leader / slave doctrine | `SKILL.md`, `SLAVE.md`, `AGENTS.md` | Protocol, not a new regime |

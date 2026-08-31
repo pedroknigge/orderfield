@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2
+
+Form split of the CLI command god-class. Protocol unchanged — not a new regime.
+
+- **Form:** `scripts/of/cli.py` becomes package `scripts/of/cli/` — `__init__.py` (parser + dispatch + re-export), `init_cmd.py`, `ops.py` (status/resume/pulse/doctor/retain/gc/migrate/worktree), `wave.py` (pack/unpack/render/handoff/spawn/collect), `field_cmd.py` (integrate/phase/patch/next-wave), `spec_cmd.py` (spec/contrast/close/eval). Public entry `scripts/of.py` / `import of` unchanged. New symbols do not enter the `of/__init__.py` barrel unless the public CLI or tests need them.
+- **Tests:** still end-to-end against the `of` namespace (no protocol change). Eval fixture spawn path uses `kernel_repo_root()/scripts/of.py`.
+- Packaging: VERSION 0.6.2; skill/alias description preview `v0.6.2 — …`.
+
 ## 0.6.1
 
 Deictic go-ahead ingest: a `dale` / `do it` is steer, not a brief.
