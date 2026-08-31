@@ -5409,6 +5409,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("PASS recovery/quarry-dirty-wave", r.stdout)
         self.assertIn("PASS recovery/beacon-amnesia", r.stdout)
+        self.assertIn("PASS recovery/contrast-close-internal", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")

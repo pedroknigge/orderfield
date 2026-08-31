@@ -2,9 +2,15 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.5.6`
+**Status:** Shipped · **Current release line:** `0.5.7`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.5.7 — eval CI + contrast recovery + Test C doc
+
+- CI: `of eval --strict --kernel` after unittest (all matrix jobs).
+- Recovery eval: `recovery/contrast-close-internal` (contrast → close gate).
+- Optional harness QA: [recovery-test-c-harness-kill.md](audit/recovery-test-c-harness-kill.md) (real process kill; not kernel CI).
 
 ## 0.5.6 — Eve-inspired ops (evals, parked agents, discovery)
 

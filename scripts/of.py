@@ -5940,6 +5940,48 @@ def eval_setup_recovery_beacon_amnesia(root: Path) -> None:
     (root / "beacon" / "http_api.py").write_text("# http stub\n", encoding="utf-8")
 
 
+@_register_eval_fixture("recovery_contrast_close")
+def eval_setup_recovery_contrast_close(root: Path) -> None:
+    r = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval contrast gate",
+        "--phase",
+        "explore",
+        "--source",
+        "eval contrast gate: internal index ALG-001",
+    )
+    if r.returncode != 0:
+        die(f"eval fixture init failed: {r.stderr or r.stdout}")
+    added = eval_run_of(
+        root,
+        "spec",
+        "--add",
+        "ALG-001",
+        "--text",
+        "use an in-memory index for lookups",
+        "--surface",
+        "internal",
+    )
+    if added.returncode != 0:
+        die(f"eval fixture spec add failed: {added.stderr or added.stdout}")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "implement index",
+        "--role",
+        "implementer",
+        "--child-id",
+        "imp1",
+        "--owns-requirement",
+        "ALG-001",
+    )
+    if packed.returncode != 0:
+        die(f"eval fixture pack failed: {packed.stderr or packed.stdout}")
+
+
 def discover_recovery_eval_specs() -> list[Path]:
     base = kernel_repo_root() / "evals" / "recovery"
     if not base.is_dir():

@@ -17,8 +17,9 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | --- | --- | --- |
 | `recovery/quarry-dirty-wave` | `recovery_quarry_dirty` | `of resume` shows completed domain, parked store/cli, `HOLD` |
 | `recovery/beacon-amnesia` | `recovery_beacon_amnesia` | domain done, store path missing, parked agents note |
+| `recovery/contrast-close-internal` | `recovery_contrast_close` | contrast OPEN → verify internal → RESOLVED → `close` CLOSED |
 
-Defaults: [`evals.config.json`](evals.config.json).
+Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --kernel` after unittest (`.github/workflows/test.yml`).
 
 ## Unittest manifests (`evals/expected/`)
 

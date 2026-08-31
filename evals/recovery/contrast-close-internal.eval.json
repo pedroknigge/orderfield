@@ -1,0 +1,28 @@
+{
+  "id": "recovery/contrast-close-internal",
+  "description": "Internal requirement: contrast OPEN until verified, then RESOLVED and close CLOSED",
+  "fixture": "recovery_contrast_close",
+  "tags": ["recovery", "gate", "contrast"],
+  "steps": [
+    {
+      "run": "contrast",
+      "exit": 2,
+      "stdout_contains": ["CLOSE BLOCKED", "DELIVERED"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "ALG-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": ["RESOLVED", "VERIFIED_INTERNAL"]
+    },
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED"]
+    }
+  ]
+}

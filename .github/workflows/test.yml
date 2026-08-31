@@ -22,6 +22,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Unit tests (kernel + packaging)
         run: python3 -m unittest discover -s tests -v
+      - name: Recovery evals (of eval --strict --kernel)
+        env:
+          OF_NO_UPDATE_CHECK: "1"
+        run: python3 scripts/of.py eval --strict --kernel
       - name: Skill structure + version sync
         run: bash scripts/validate-skill.sh
 
