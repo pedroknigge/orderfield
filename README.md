@@ -122,14 +122,18 @@ Project-local ORDER state (`.orderfield/` in a working repo) is left alone — u
 
 ## 30-second loop
 
-From the **project you want to orchestrate**:
+From the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). Do not implement in the leader tree.
 
 ```bash
-of init --mission "decidable architecture for a pricing tool" --phase explore
-of pack --slice "map pricing models, do not choose the phase" --role explorer
+of init --mission "decidable architecture for a pricing tool" --phase explore \
+  --source "<verbatim user request>"
+of pack --slice "map pricing models, do not choose the phase" --role explorer \
+  --owns-requirement CLI-001
 of spawn --adapter generic --packet .orderfield/waves/001/packets/*.json
 of collect --wave 1
 of integrate --wave 1
+of contrast    # CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR
+of close       # refused until contrast is RESOLVED
 of status
 ```
 
@@ -229,7 +233,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`; oversized `--slice` is an advisory note, still charged). Packet stays one-screen; SPEC.md is the lossless brief |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`; refused while binding IDs are unowned and this packet owns none). Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds the child budget |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |

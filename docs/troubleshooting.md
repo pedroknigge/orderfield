@@ -138,6 +138,38 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Recover:** `of worktree add --child-id <id>` creates a **detached** worktree *outside* the project (git refuses nested worktrees). It does not spawn, kill, or supervise the child. Install inside that worktree; do not symlink `node_modules` or `.orderfield`. `of worktree remove --child-id <id>` drops it. Spawn never calls this helper.
 
+## SPEC / `PROMPT.md` / hash mismatch
+
+**Symptom:** `SPEC.md hash mismatch (silent rewrite)`; leftover `PROMPT.md` at the project root; `of patch --source` refused.
+
+**Meaning:** The verbatim brief lives at `.orderfield/SPEC.md`. A product-root `prompt.md` is ingest scratch and is discarded after copy. Changing the brief is `of spec --amend` (append) or `of spec --revise-file` (replace + spec-log). Silent rewrite of SPEC.md is a field error.
+
+**Recover:** `of spec --revise-file PATH` for an explicit replacement. Do not write `PROMPT.md` in the product tree.
+
+## Pack refused: unowned requirements
+
+**Symptom:** `of pack` dies with `binding requirements are unowned`.
+
+**Meaning:** SPEC extracted binding IDs. A packet that owns none does not govern the work (LedgerLab 0.5.0: 45/48 unowned).
+
+**Recover:** `of pack --slice "…" --role implementer --owns-requirement REQ-035` (repeatable). `of status` prints `next pack --owns-requirement` while unowned remain.
+
+## Contrast CLOSE BLOCKED
+
+**Symptom:** `of contrast` exit 2; `of close` refused; `VERIFIED_INTERNAL` / `PAIR` / `MISSING`.
+
+**Meaning:** Slice `done` is not SPEC closed. Unit tests and an internal store are `VERIFIED_INTERNAL`. A CLI/HTTP/file/exit-code requirement needs `of spec --verified-contract ID` after exercising that surface. Pair-shaped IDs (same/different, idempotency) need `--both-sides`.
+
+**Recover:**
+
+```bash
+of contrast
+of spec --verified-contract CLI-001
+of spec --verified-contract REQ-035 --both-sides
+of contrast   # RESOLVED
+of close
+```
+
 ## More
 
 - Architecture: [architecture.md](architecture.md)
