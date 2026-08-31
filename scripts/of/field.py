@@ -57,6 +57,9 @@ ROLE_CONTRACTS = {
 }
 CHECKPOINT_MAX_CHARS = 2000
 CHECKPOINT_MAX_LINES = 24
+LEARNING_MAX_CHARS = 400
+LEARNING_MAX_LINES = 4
+PROTOCOL_PROMPT_CAP = 8
 UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
 UPDATE_CHECK_INTERVAL_S = 24 * 3600
 UPDATE_CMD = "curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash"
@@ -73,6 +76,7 @@ PUBLIC_SCHEMA_FILES = (
     "session.schema.json",
     "wave-report.schema.json",
     "requirements.schema.json",
+    "learning.schema.json",
 )
 REDACTED = "<redacted>"
 APPROVAL_REDACTED = "<approval>"
@@ -147,6 +151,7 @@ MUTATING_COMMANDS = {
     "worktree",
     "spec",
     "close",
+    "learn",
 }
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
@@ -1398,6 +1403,200 @@ def learnings_dir(root: Path | None = None) -> Path:
     return of_dir(root) / "learnings"
 
 
+def protocol_learnings_path() -> Path:
+    override = os.environ.get("OF_LEARNINGS")
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "orderfield" / "learnings.json"
+
+
+def learning_kind(item: dict[str, Any]) -> str:
+    kind = str(item.get("kind") or "").strip().lower()
+    if kind in ("protocol", "field"):
+        return kind
+    if item.get("order_id"):
+        return "field"
+    return "protocol"
+
+
+def _normalize_learning_text(text: str) -> str:
+    return " ".join(str(text or "").split()).strip()
+
+
+def load_protocol_store() -> list[dict[str, Any]]:
+    path = protocol_learnings_path()
+    if not path.is_file():
+        return []
+    data = _read_json_object(path)
+    if data is None:
+        return []
+    items = data.get("items") if isinstance(data.get("items"), list) else []
+    out: list[dict[str, Any]] = []
+    for item in items:
+        if isinstance(item, dict) and learning_kind(item) == "protocol":
+            out.append(item)
+    return out
+
+
+def _save_protocol_store(items: list[dict[str, Any]]) -> None:
+    path = protocol_learnings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(path, {"v": 1, "items": items})
+
+
+def load_field_learnings(root: Path) -> list[dict[str, Any]]:
+    folder = learnings_dir(root)
+    if not folder.is_dir() or folder.is_symlink():
+        return []
+    out: list[dict[str, Any]] = []
+    for path in sorted(folder.glob("*.json")):
+        if path.is_symlink():
+            continue
+        item = _read_json_object(path)
+        if isinstance(item, dict) and item.get("text"):
+            out.append(item)
+    return out
+
+
+def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
+    protocol = load_protocol_store()
+    seen = {str(item.get("id") or "") for item in protocol}
+    field: list[dict[str, Any]] = []
+    if root is not None and order_path(root).is_file():
+        for item in load_field_learnings(root):
+            kind = learning_kind(item)
+            lid = str(item.get("id") or "")
+            if kind == "protocol":
+                if lid and lid not in seen:
+                    protocol.append(item)
+                    seen.add(lid)
+            else:
+                field.append(item)
+    protocol.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
+    field.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
+    return {"protocol": protocol, "field": field}
+
+
+def protocol_learning_lines(root: Path | None = None) -> list[str]:
+    # Child prompts read the user cache only. Field-dir protocol pins are
+    # for resume/list; a slave must not inject into the next packet by
+    # writing .orderfield/learnings/*.json.
+    _ = root
+    items = load_protocol_store()
+    items.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
+    lines: list[str] = []
+    for item in items:
+        text = _normalize_learning_text(str(item.get("text") or ""))
+        if text and text not in lines:
+            lines.append(text)
+        if len(lines) >= PROTOCOL_PROMPT_CAP:
+            break
+    return lines
+
+
+def _write_field_learning(root: Path, item: dict[str, Any]) -> None:
+    folder = learnings_dir(root)
+    folder.mkdir(parents=True, exist_ok=True)
+    dump_json(folder / f"{item['id']}.json", item)
+
+
+def save_learning(
+    root: Path | None,
+    text: str,
+    *,
+    kind: str,
+    order: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if kind not in ("protocol", "field"):
+        die("learning kind must be protocol or field")
+    raw = str(text or "").strip()
+    nlines = raw.count("\n") + 1 if raw else 0
+    cleaned = _normalize_learning_text(raw)
+    if not cleaned:
+        die("learning text is empty")
+    if len(cleaned) > LEARNING_MAX_CHARS or nlines > LEARNING_MAX_LINES:
+        die(
+            f"learning is {len(cleaned)} chars / {nlines} lines; "
+            f"refuse dumps (max {LEARNING_MAX_CHARS} chars, "
+            f"{LEARNING_MAX_LINES} lines)"
+        )
+    grouped = list_learnings(root)
+    bucket = grouped["protocol"] if kind == "protocol" else grouped["field"]
+    for item in bucket:
+        if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
+            item["last_confirmed_at"] = utc_now()
+            require_public_schema(item, "learning.schema.json", "learning")
+            if kind == "protocol":
+                items = load_protocol_store()
+                for i, existing in enumerate(items):
+                    if existing.get("id") == item.get("id"):
+                        items[i] = item
+                        break
+                else:
+                    items.insert(0, item)
+                _save_protocol_store(items)
+            if root is not None and order_path(root).is_file():
+                _write_field_learning(root, item)
+            return item
+    item: dict[str, Any] = {
+        "id": f"lrn_{uuid.uuid4().hex[:12]}",
+        "kind": kind,
+        "text": cleaned,
+        "created_at": utc_now(),
+        "source": "leader",
+    }
+    if kind == "field":
+        if not order:
+            die("of learn --field needs an ORDER (of init first)")
+        item["order_id"] = str(order["id"])
+        phase = str(order.get("phase") or "")
+        if phase in PHASES:
+            item["phase"] = phase
+    require_public_schema(item, "learning.schema.json", "learning")
+    if kind == "protocol":
+        items = load_protocol_store()
+        items.insert(0, item)
+        _save_protocol_store(items)
+    if root is not None and (kind == "field" or order_path(root).is_file()):
+        _write_field_learning(root, item)
+    return item
+
+
+def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
+    key = str(needle or "").strip()
+    if not key:
+        die("--forget needs an id or unique substring")
+    grouped = list_learnings(root)
+    hits: list[dict[str, Any]] = []
+    for item in grouped["protocol"] + grouped["field"]:
+        hay = f"{item.get('id') or ''} {item.get('text') or ''}"
+        if key == item.get("id") or key.lower() in hay.lower():
+            hits.append(item)
+    # unique by id
+    uniq: dict[str, dict[str, Any]] = {}
+    for item in hits:
+        uniq[str(item.get("id") or "")] = item
+    hits = [v for k, v in uniq.items() if k]
+    if not hits:
+        die(f"no learning matches {key!r}")
+    if len(hits) > 1:
+        die(
+            "forget is ambiguous ("
+            + ", ".join(str(h.get("id")) for h in hits)
+            + "); pass the id"
+        )
+    target = hits[0]
+    tid = str(target.get("id"))
+    _save_protocol_store(
+        [i for i in load_protocol_store() if str(i.get("id")) != tid]
+    )
+    if root is not None:
+        path = learnings_dir(root) / f"{tid}.json"
+        if path.is_file() and not path.is_symlink():
+            path.unlink()
+    return target
+
+
 def artifact_age_seconds(path: Path) -> float | None:
     try:
         return max(0.0, time.time() - path.stat().st_mtime)
@@ -1447,6 +1646,8 @@ def residual_still_useful(
 
 def learning_applicable(item: dict[str, Any], order: dict[str, Any]) -> tuple[bool, str]:
     from of.regime import closed_phases
+    if learning_kind(item) == "protocol":
+        return True, "protocol"
     oid = item.get("order_id")
     if oid and oid != order.get("id"):
         return False, "inapplicable-order"
@@ -1494,7 +1695,7 @@ def plan_field_retention(
             if not ok:
                 actions.append(_retention_action("drop", rel, why))
                 continue
-            if artifact_older_than_retention(path):
+            if why != "protocol" and artifact_older_than_retention(path):
                 actions.append(_retention_action("dump", rel, f"history age>{RETENTION_DAYS}d"))
                 continue
             actions.append(_retention_action("keep", rel, why))

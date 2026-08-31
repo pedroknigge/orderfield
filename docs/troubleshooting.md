@@ -126,7 +126,7 @@ Other generated JSON (`ORDER.json`, state, packets, reports) is validated agains
 
 **Symptom:** old logs, archived waves, or leftover learnings accumulating under `.orderfield/`.
 
-**Meaning:** Retention is episodic, not archaeology. `of retain` is a read-only keep/drop/dump plan. `of gc` applies it. Keep still-useful current-wave / live-order residuals and applicable learnings (`.orderfield/learnings/*.json`). Drop inapplicable learnings (wrong `order_id` or a closed phase that is not current). Dump garbage, logs, spawn transcripts, and wave history older than 30 days. GC never copies transcripts into the field.
+**Meaning:** Retention is episodic, not archaeology. `of retain` is a read-only keep/drop/dump plan. `of gc` applies it. Keep still-useful current-wave / live-order residuals and **protocol** learnings (`kind=protocol`; user cache `~/.cache/orderfield/learnings.json` is not deleted). Drop inapplicable **field** learnings (wrong `order_id` or a closed phase that is not current). Dump garbage, logs, spawn transcripts, and wave history older than 30 days. Protocol lessons are not dumped at 30 days. GC never copies transcripts into the field. Write path: `of learn` / `of learn --field` / `of learn --forget`.
 
 ```bash
 of retain           # plan only

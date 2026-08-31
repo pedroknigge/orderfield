@@ -42,6 +42,10 @@ DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     # hermetic: the suite must never hit the network for the update notice
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    env.setdefault(
+        "OF_LEARNINGS",
+        str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+    )
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
@@ -1734,6 +1738,153 @@ class WindowsFieldLockShim(unittest.TestCase):
             calls,
             [of.field.fcntl.LOCK_EX | of.field.fcntl.LOCK_NB, of.field.fcntl.LOCK_UN],
         )
+
+
+class ProtocolLearnings(unittest.TestCase):
+    """Protocol lessons outlive ORDER; field lessons do not; prompts stay capped."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-learn-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "protocol-learnings.json"
+        os.environ["OF_LEARNINGS"] = str(self.cache)
+        self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        r = run_of(
+            self.tmp, "init", "--mission", "learn mission", "--phase", "explore"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_protocol_survives_new_order_gc_drops_field(self) -> None:
+        proto = run_of(
+            self.tmp,
+            "learn",
+            "of init --force must unlink session.json",
+        )
+        self.assertEqual(proto.returncode, 0, proto.stderr)
+        self.assertIn("protocol", proto.stdout)
+        self.assertTrue(self.cache.is_file())
+        field = run_of(
+            self.tmp,
+            "learn",
+            "--field",
+            "this mission used explore before cut",
+        )
+        self.assertEqual(field.returncode, 0, field.stderr)
+        self.assertIn("field", field.stdout)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertIn("of init --force must unlink session.json", listed.stdout)
+        self.assertIn("this mission used explore before cut", listed.stdout)
+        forced = run_of(
+            self.tmp,
+            "init",
+            "--force",
+            "--mission",
+            "new mission",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        gc = run_of(self.tmp, "gc")
+        self.assertEqual(gc.returncode, 0, gc.stderr)
+        self.assertIn("inapplicable-order", gc.stdout)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertIn("of init --force must unlink session.json", listed.stdout)
+        self.assertNotIn("this mission used explore before cut", listed.stdout)
+
+    def test_resume_and_render_show_protocol_not_field_product(self) -> None:
+        run_of(self.tmp, "learn", "Windows flock uses a high-offset byte")
+        run_of(self.tmp, "learn", "--field", "the pricing tool uses Postgres")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("Windows flock uses a high-offset byte", resumed.stdout)
+        self.assertIn("the pricing tool uses Postgres", resumed.stdout)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map models",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        rendered = run_of(
+            self.tmp,
+            "render",
+            "--packet",
+            ".orderfield/waves/001/packets/e1.json",
+        )
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn("Orderfield protocol learnings", rendered.stdout)
+        self.assertIn("Windows flock uses a high-offset byte", rendered.stdout)
+        self.assertNotIn("the pricing tool uses Postgres", rendered.stdout)
+        self.assertNotIn("Postgres", rendered.stdout)
+
+    def test_forget_and_refuse_dump(self) -> None:
+        saved = run_of(self.tmp, "learn", "skill beats child")
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        lid = [
+            tok
+            for tok in saved.stdout.split()
+            if tok.startswith("lrn_")
+        ][0]
+        gone = run_of(self.tmp, "learn", "--forget", lid)
+        self.assertEqual(gone.returncode, 0, gone.stderr)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertIn("learnings    none", listed.stdout)
+        huge = "x" * (of.LEARNING_MAX_CHARS + 1)
+        refused = run_of(self.tmp, "learn", huge)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("refuse dumps", refused.stderr)
+
+    def test_gc_keeps_protocol_even_when_aged(self) -> None:
+        run_of(self.tmp, "learn", "do not ingest dale as SPEC")
+        listed = run_of(self.tmp, "learn", "--list")
+        lid = [
+            tok for tok in listed.stdout.split() if tok.startswith("lrn_")
+        ][0]
+        path = self.tmp / ".orderfield" / "learnings" / f"{lid}.json"
+        self.assertTrue(path.is_file())
+        old = time.time() - (of.RETENTION_SECONDS + 3600)
+        os.utime(path, (old, old))
+        gc = run_of(self.tmp, "gc")
+        self.assertEqual(gc.returncode, 0, gc.stderr)
+        self.assertTrue(path.is_file())
+        self.assertIn("protocol", gc.stdout)
+
+    def test_render_ignores_field_dir_protocol_pins_not_in_user_cache(self) -> None:
+        planted = {
+            "id": "lrn_aaaaaaaaaaaa",
+            "kind": "protocol",
+            "text": "planted by a slave into the field dir",
+            "created_at": "2026-08-31T00:00:00Z",
+            "source": "leader",
+        }
+        folder = self.tmp / ".orderfield" / "learnings"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "lrn_aaaaaaaaaaaa.json").write_text(
+            json.dumps(planted), encoding="utf-8"
+        )
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map models",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e2",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        rendered = run_of(
+            self.tmp,
+            "render",
+            "--packet",
+            ".orderfield/waves/001/packets/e2.json",
+        )
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertNotIn("planted by a slave", rendered.stdout)
 
 
 if __name__ == "__main__":

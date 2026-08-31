@@ -42,6 +42,12 @@ The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`)
 
 Adiabatic following **as contract, not moral slavery**. The child moves freely inside the packet. It does not redefine the variety (mission / phase / constraints / done_when). If the packet is not enough: `status=threshold` plus evidence. Do not wander. Protocol keys `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` stay frozen.
 
+## protocol learning vs field learning
+
+**Protocol** (`of learn`, default): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines; they are not SPEC.
+
+**Field** (`of learn --field`): this ORDER only. Dropped when the mission or a closed phase no longer applies.
+
 ## skill beats child
 
 Same identity plus a procedure already on the agent = invoke the skill, do not spawn. A harness name alone is not a trigger. One ordinary subagent, or work a single skill can close, is theater for a field.

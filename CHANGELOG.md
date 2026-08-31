@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.3
+
+Protocol learnings: durable Orderfield lessons that do not depend on the product repo.
+
+- **`of learn`:** default `--protocol` writes a capped lesson to the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS` override) and pins a copy under `.orderfield/learnings/`. `--field` binds to this ORDER only. `--list` / `--forget ID`. Not SPEC. Not a new regime.
+- **Retention:** `of gc` keeps protocol lessons (no 30-day dump, no drop on `order_id`). Field lessons still drop when the mission or closed phase no longer applies. Transcripts still never copy into the field.
+- **Resume / pack:** `of resume` lists both buckets. Child prompts get at most 8 protocol lines (`render` / `handoff`); field/product notes stay out of the packet.
+- Packaging: VERSION 0.6.3; skill/alias description preview `v0.6.3 — …`.
+
 ## 0.6.2
 
 Form split of the CLI command god-class. Protocol unchanged — not a new regime.

@@ -2,11 +2,11 @@
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.6.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.6.3` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
-Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / collect / integrate / phase / patch / next-wave / doctor / retain / gc / migrate / worktree / spec / spec-diff / contrast / close.
+Order-parameter orchestration: resume / checkpoint / learn / pack / unpack / spawn / collect / integrate / phase / patch / next-wave / doctor / retain / gc / migrate / worktree / spec / spec-diff / contrast / close.
 
 ## Notable behaviors (code-backed)
 
@@ -30,7 +30,8 @@ Order-parameter orchestration: resume / checkpoint / pack / unpack / spawn / col
 - Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
 - Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Pulse leaves ORDER/state/session/wave artifacts unchanged, while update-notice throttling may write its user cache
 - `of doctor` reports Python/kernel, writable field, schemas, lock, and adapter PATH/version. PATH presence is not authentication or readiness
-- `of retain` (read-only) / `of gc` apply episodic retention: keep still-useful residuals and applicable learnings, drop inapplicable learnings, dump logs and wave history older than 30 days, never copy transcripts
+- `of learn` writes protocol lessons (user cache `~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`) or `--field` notes bound to this ORDER. `--list` / `--forget`. Resume lists both; child prompts get at most 8 protocol lines; not SPEC
+- `of retain` (read-only) / `of gc` apply episodic retention: keep still-useful residuals and **protocol** learnings, drop inapplicable **field** learnings, dump logs and wave history older than 30 days, never copy transcripts. Protocol is not dumped at 30 days.
 - Spawn `argv_preview` and child logs redact secrets and escalated approval flags
 - A fully stale wave is recoverable with `of next-wave` without hand-editing ORDER; a complete stale wave (residuals on disk) may also `collect`/`integrate`
 - `of migrate` applies versioned rewrites for pre-0.4.2 packets/state and maps writable aliases onto `workspace.writable_by_slaves`; `.orderfield/SLAVE.md` stays the protocol path

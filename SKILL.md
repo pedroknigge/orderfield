@@ -1,21 +1,21 @@
 ---
 name: orderfield
-description: v0.6.2 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.3 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.2"
+  version: "0.6.3"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
 
 # Orderfield
 
-Orderfield is an Agent Skill plus a Python stdlib contract kernel for portable, disk-backed agent waves. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk.
+Orderfield is an Agent Skill plus a Python stdlib contract kernel for complex software work that will not fit one agent. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
 `/of` is an installed alias for this skill: invoking it means invoking `/orderfield` — same doctrine, same kernel.
 
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). Public Compared-to (what this is vs Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md).
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to).
 
 The leader designs the field, packs work, and explicitly integrates or patches it. Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
@@ -26,7 +26,7 @@ The kernel enforces public JSON schemas, atomic artifact writes, a cross-process
 ## When to use
 
 - The user explicitly invokes Orderfield, `/orderfield`, `/of`, Haken slaving, threshold delegation, or an order field.
-- The task does not fit one context without losing quality.
+- Complex software (a kernel, a product, a multi-slice build) that will not fit one context without losing quality.
 - Multiple slices or writers need explicit ownership, or multiple harnesses must coordinate.
 - `.orderfield/ORDER.json` already exists in the repo.
 
@@ -64,6 +64,15 @@ Optional leader narrative for the next session (one screen; refuse huge dumps):
 python3 <skill>/scripts/of.py checkpoint --summary "wave N: waiting on collect after spawn"
 ```
 
+Protocol learnings (`of learn`) are durable lessons about **running Orderfield**, not about the product in this repo. They survive `of init --force` and `of gc`. Field learnings (`of learn --field`) die with the mission. Put protocol lessons on disk; do not paste them into `--slice` or SPEC.
+
+```bash
+of learn "of init --force must unlink session.json"
+of learn --field "this wave's explorer skipped --owns-requirement"
+of learn --list
+of learn --forget lrn_ab12cd34ef56
+```
+
 ### 1. Field or nothing
 
 ```bash
@@ -88,9 +97,9 @@ Official phases: `explore | cut | build | verify | deliver`.
 
 | Pays | Theater |
 |------|---------|
-| False-scope / marketing risk (adversary can catch a lie before ship) | VERSION bump + one obvious feature |
+| A software mission that will not fit one context (exclusive owners, contrast before close) | VERSION bump + one obvious feature |
 | Colliding product paths or multiple harnesses that need explicit owners | Single agent, ordinary subagent, or one skill already fits |
-| Unknown territory that needs tools and will not fit one context | Explore/cut ceremony when the design is already in the feedback |
+| A false public claim (adversary can catch a lie before ship) | Explore/cut ceremony when the design is already in the feedback |
 
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
@@ -326,6 +335,8 @@ Use the minimum. Explorer + adversary already prove the principle.
 | Wave packets | `.orderfield/waves/NNN/packets/` |
 | Residuals | `.orderfield/waves/NNN/residuals/` |
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
+| Protocol learnings | `~/.cache/orderfield/learnings.json` (`OF_LEARNINGS`); field pin `.orderfield/learnings/*.json` with `kind=protocol`. Not SPEC. |
+| Field learnings | `.orderfield/learnings/*.json` with `kind=field` — this ORDER only; `gc` drops when inapplicable |
 | Slave doctrine | `.orderfield/SLAVE.md` — a field copy kept in sync from this skill's `SLAVE.md` at init/pack/handoff/spawn. Prompts reference it **repo-relative**, so a child in a container, sandbox, or another host can read it; the skill's absolute path is only the fallback when the field copy is missing. `--inline` pastes it instead. |
 | Invariants | `references/principles.md` |
 | Glossary | [docs/glossary.md](docs/glossary.md) |

@@ -9,22 +9,22 @@
 ```
 
 <p align="center">
-  <strong>v0.6.2</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · portable contract
+  <strong>v0.6.3</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · portable contract
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.2-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-# Compared-to: authority over the plan, not a fleet
+# A field for software that will not fit one agent
 
-Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. One ORDER, bounded packets, structured residuals, and a closed regime decision after each wave live on disk. The harness starts processes; the contract survives when the harness changes.
+Orderfield is a **portable contract of authority** for complex software work across already-authenticated coding CLIs. Use it when a kernel, a product, or a multi-slice build will lose quality in a single context: exclusive owners, a SPEC that survives compaction, and `of contrast` before close. One ORDER, bounded packets, structured residuals, and a closed regime decision after each wave live on disk. The harness starts processes; the contract survives when the harness changes.
 
 It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**. Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts.
 
-Invoke `/orderfield` or `/of`. Contract vocabulary: [docs/glossary.md](docs/glossary.md).
+Invoke `/orderfield` or `/of`. Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
 
 ```
   leader ──pack──► child     child     child
@@ -36,19 +36,9 @@ Invoke `/orderfield` or `/of`. Contract vocabulary: [docs/glossary.md](docs/glos
               integrate → ORDER'
 ```
 
-## Compared-to
-
-| | Orchestrates | Orderfield is instead |
-|---|---|---|
-| **Orca** | Work: process bus, workers, gates, DAGs. Starts and stops coding CLIs. | Authority over the plan. Orca may transport a packet; it must not choose the phase, patch the mission, or invent a regime. |
-| **AWS CAO** ([CLI Agent Orchestrator](https://aws.amazon.com/blogs/opensource/introducing-cli-agent-orchestrator-transforming-developer-cli-tools-into-a-multi-agent-powerhouse/)) | A supervisor plus specialized workers over Q CLI / Claude Code. Session and fleet orchestration, AWS-adjacent. | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow, no CAO UI. |
-| **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
-| **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory. Orchestrates model calls. | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
-| **Dual-harness skills** (e.g. [claude-codex-orchestration](https://github.com/dy9759/claude-codex-orchestration)) | Which runtime does the work (Claude as brain, Codex as body, or symmetric dispatch). | Who may change the plan. Multi-harness only if the user asks. Packet, residual, and contrast are the authority — not a dual-runtime router. |
-
 ## When it pays vs theater (three examples)
 
-**1. Public-surface lie vs a VERSION bump.** Pays: README claims a CLI exit code that tests never exercise. An adversary packet owns the claim; `of contrast` stays CLOSE BLOCKED until the public surface is actually verified. Theater: bump VERSION, append CHANGELOG, ship one obvious feature. Opening a field for that is ceremony.
+**1. A software mission that will not fit one context vs a VERSION bump.** Pays: several slices (store, HTTP, CLI, docs) under one ORDER, exclusive owners, contrast before close. Also pays when a public claim is false (README names an exit code tests never exercise) — an adversary packet owns the claim; `of contrast` stays CLOSE BLOCKED until the surface is verified. Theater: bump VERSION, append CHANGELOG, ship one obvious feature. Opening a field for that is ceremony.
 
 **2. Two writers, exclusive owners vs one ordinary subagent.** Pays: docs and `install.sh` share a mission but must not share a write set. Exclusive owners keep a false "docs shipped" from landing without the packaging slice. Theater: spawn a child to edit one file a skill on this agent already covers. **Skill beats child.**
 
@@ -172,9 +162,9 @@ Every CLI field mutation holds `.orderfield/field.lock`, and JSON artifacts are 
 
 **Session cut:** Disk is the session. In-flight = packed child with missing residual. `of resume` reconstructs a one-screen brief from packets / residuals / state plus an optional checkpoint summary. Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave — forbidden to slaves like `state.json`. `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart). No new regime.
 
-**When to open orderfield:** it pays for false-scope / marketing risk (an adversary can catch a lie), colliding product paths, and genuinely multi-slice work that will not fit one context. It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
+**When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals/learnings, drop inapplicable, dump logs/history older than 30 days; never copy transcripts). Spawn argv previews and logs redact secrets and escalated approval flags. Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals and **protocol** learnings, drop inapplicable **field** learnings, dump logs/history older than 30 days; never copy transcripts). `of learn` is the write path: protocol lessons are about running a field (survive ORDER and repos); field lessons die with the mission. Spawn argv previews and logs redact secrets and escalated approval flags. Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
@@ -237,6 +227,16 @@ Orca (and every other harness) starts and stops processes. It must not choose th
 
 The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s tests -v`
 
+## Compared-to
+
+| | Orchestrates | Orderfield is instead |
+|---|---|---|
+| **Orca** | Work: process bus, workers, gates, DAGs. Starts and stops coding CLIs. | Authority over the plan. Orca may transport a packet; it must not choose the phase, patch the mission, or invent a regime. |
+| **AWS CAO** ([CLI Agent Orchestrator](https://aws.amazon.com/blogs/opensource/introducing-cli-agent-orchestrator-transforming-developer-cli-tools-into-a-multi-agent-powerhouse/)) | A supervisor plus specialized workers over Q CLI / Claude Code. Session and fleet orchestration, AWS-adjacent. | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow, no CAO UI. |
+| **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
+| **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory. Orchestrates model calls. | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
+| **Dual-harness skills** (e.g. [claude-codex-orchestration](https://github.com/dy9759/claude-codex-orchestration)) | Which runtime does the work (Claude as brain, Codex as body, or symmetric dispatch). | Who may change the plan. Multi-harness only if the user asks. Packet, residual, and contrast are the authority — not a dual-runtime router. |
+
 ---
 
 ## Commands
@@ -246,6 +246,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
 | `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Does not auto-spawn. |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
+| `learn` | durable Orderfield lessons (`--protocol`, default) or this-mission notes (`--field`). `--list` / `--forget`. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |

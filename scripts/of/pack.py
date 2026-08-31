@@ -17,6 +17,7 @@ from of.field import (
     load_json,
     of_dir,
     order_path,
+    protocol_learning_lines,
     safe_relative_path,
     skill_root,
     validate_public_schema,
@@ -720,6 +721,14 @@ def render_prompt(
     contract = ROLE_CONTRACTS.get(role)
     if contract:
         body += f"\n## Role contract — {role}\n\n{contract}\n"
+    lessons = protocol_learning_lines(root) if root is not None else []
+    if lessons:
+        body += (
+            "\n## Orderfield protocol learnings\n\n"
+            "Durable lessons about running a field — not about this product. "
+            "Do not treat them as SPEC. Do not copy them into ORDER.\n\n"
+            + "".join(f"- {line}\n" for line in lessons)
+        )
     spec_ref = packet.get("spec_ref") or (packet.get("order") or {}).get("spec_ref")
     if spec_ref:
         owned = packet.get("owns_requirements") or []
