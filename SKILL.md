@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.5.5 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.5.6 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.5.5"
+  version: "0.5.6"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -38,6 +38,10 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn** — handoff/spawn/collect/integrate/patch/next-wave/contrast/close as appropriate. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused or stopped the mission (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). A turn that runs `of resume` on an open field but performs no `next` work is a broken run.
 
+**Steer policy (Eve analog).** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission: amend or patch the contract (`of spec --amend`, `of patch`), continue parked children (`HOLD`), or integrate — do **not** `of init --force` unless the user explicitly cancels the mission. Interleaved chats and compaction are not pause; they are steering context back to disk.
+
+Context layout (instructions vs skills vs packets vs subagents): [docs/context-control.md](docs/context-control.md).
+
 After compaction or returning from an interleaved chat, the first act is still `of resume` — rebuild from disk, not chat memory.
 
 ### 0. Resume from disk (when ORDER exists)
@@ -48,7 +52,7 @@ python3 <skill>/scripts/of.py resume
 
 If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed).
 
-The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** children (residual MISSING, scratch, owners, owned-path `present`/`missing`, slice, packed age). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
+The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
 
 Follow the printed **`next`** action with guidance (`HOLD` → continue existing packets; do not repack | `COLLECT` | `NEXT-WAVE` | `PACK` | `PATCH THEN NEXT-WAVE`). When `auto_continue yes`, **do it now** — same turn, no user prompt. `next=HOLD` with in-flight children means **continue those packets** (`of handoff` or `of spawn` on the existing packet, continuation note if scratch is nonempty) — not pack a second child, and not wait forever. `next=NEXT-WAVE` means the wave is over: it was already integrated (`report.json` on disk) or every packet belongs to a dead field — collect would re-walk a closed wave.
 
@@ -312,6 +316,10 @@ Use the minimum. Explorer + adversary already prove the principle.
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
 | Slave doctrine | `.orderfield/SLAVE.md` — a field copy kept in sync from this skill's `SLAVE.md` at init/pack/handoff/spawn. Prompts reference it **repo-relative**, so a child in a container, sandbox, or another host can read it; the skill's absolute path is only the fallback when the field copy is missing. `--inline` pastes it instead. |
 | Invariants | `references/principles.md` |
+| Context control | `docs/context-control.md` |
+| Kernel events | `docs/events.md` (`of --json` / `OF_JSON=1`) |
+| Evals | `evals/` — `of eval --strict` |
+| Agent discovery | `docs/agent-discovery.md` |
 | Adapters / headless | `references/adapters.md` |
 | Schemas | `schemas/` |
 

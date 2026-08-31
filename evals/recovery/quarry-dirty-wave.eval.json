@@ -1,0 +1,23 @@
+{
+  "id": "recovery/quarry-dirty-wave",
+  "description": "Quarry-style dirty wave: domain done, store/cli in flight — resume brief sufficient",
+  "fixture": "recovery_quarry_dirty",
+  "tags": ["recovery", "gate"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "completed",
+        "  domain",
+        "in_flight",
+        "  store",
+        "parked_reason scratch_active",
+        "parked",
+        "agents_note",
+        "next",
+        "HOLD"
+      ]
+    }
+  ]
+}

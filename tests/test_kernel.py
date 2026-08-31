@@ -2893,6 +2893,9 @@ class ResumeRecoveryBrief(unittest.TestCase):
         self.assertIn("      CLI-001", out)
         self.assertIn("next\n  HOLD", out)
         self.assertIn("continue existing packets; do not repack", out)
+        self.assertIn("parked_reason scratch_active", out)
+        self.assertIn("parked", out)
+        self.assertIn("agents_note", out)
         self.assertNotIn("  domain\n    residual    MISSING", out)
 
 
@@ -5396,3 +5399,19 @@ class SemanticExtract(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         contrast = run_of(tmp, "contrast")
         self.assertIn("SPEC.md:", contrast.stdout)
+
+
+class OfEvalRecovery(unittest.TestCase):
+    """of eval runs shipped recovery fixtures."""
+
+    def test_recovery_evals_pass(self) -> None:
+        r = run_of(ROOT, "eval", "--strict")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("PASS recovery/quarry-dirty-wave", r.stdout)
+        self.assertIn("PASS recovery/beacon-amnesia", r.stdout)
+
+    def test_eval_list(self) -> None:
+        r = run_of(ROOT, "eval", "--list")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("quarry-dirty-wave", r.stdout)
+        self.assertIn("beacon-amnesia", r.stdout)
