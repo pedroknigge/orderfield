@@ -1,9 +1,9 @@
 **STAR**
 
-- **Situation:** Software work that will not fit one agent needs exclusive owners, a SPEC that survives compaction, and contrast before close.
-- **Task:** Expose the product (install, 30-second loop, contract vs runtime, commands, docs index) without lying about the kernel.
-- **Action:** Document `of` 0.6.5 against `scripts/of.py` + `scripts/of/` + adapters; lock = `MUTATING_COMMANDS`; origin is provenance.
-- **Result:** A stranger can install, open a field, find the supporting docs, and tell theater from work that pays.
+- **Situation:** A job too big for one chat. The agent forgets, two writers hit the same files, and “we’re done” is a vibe.
+- **Task:** Keep one plan that survives a dead chat, give each piece of work an exclusive owner, and refuse “done” until you actually ran the CLI, file, or exit code the user asked for.
+- **Action:** Install `of`. `of init --source` with the real request (not “do it”). `of pack` with owners. The child writes a residual JSON. `of collect` → `of contrast` → `of close`. If you leave, `of resume` first. Do not hand-edit `ORDER.json`. Do not skip contrast. Do not open a field to bump a version.
+- **Result:** The plan lives on disk. Children cannot rewrite the mission. Close stays blocked until the CLI/file/exit code was exercised. Losing the chat does not lose the contract.
 
 ```
    ___  ____  ____  _____ ____  _____ ___ _____ _     ____
