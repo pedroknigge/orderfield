@@ -17,7 +17,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.5` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.6.6` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
@@ -54,7 +54,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | Packages / apps | single repo, no workspace / `pyproject.toml` | **Stack: python** (stdlib CLI). **Monorepo: no.** No ArkGate. |
 | Kernel CLI | `scripts/of.py` | Shim: `from of.cli import main`. Public cmds: init, status, resume, pulse, checkpoint, detect, doctor, retain, gc, learn, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close, eval |
 | Kernel internals | `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Groups: `init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`. Parser + lock wrapper in `cli/__init__.py` |
-| `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. Sole `with field_lock` is `of.cli.main` |
+| `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. Sole `with field_lock` is `of.cli.main` |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER` = claude, codex, cursor, opencode, orca, grok, agy, qwen, generic. `INLINE_CONTRACT_ADAPTERS` = orca, generic |
 | Schemas | `schemas/*.json` | order, state, packet, residual, residual.codex, wave-report, session, **learning**, **requirements** |
 | Install | `install.sh` | harness dests + installed-kernel `of`; copies `scripts/of/` with the skill tree |
@@ -123,7 +123,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-055 | CLI commands live in `scripts/of/cli/` groups; parser + dispatch in `cli/__init__.py`; public `of` unchanged | architecture / kernel feature / CHANGELOG | `from of.cli import main`; dispatch imports `cmd_spec` from `spec_cmd` | `scripts/of/cli/` / `scripts/of.py` | `main` | — | critical | Partial | dispatch is grouped; `ops.py` still defines unwired `cmd_spec`/`cmd_contrast`/`cmd_close` copies |
 | C-056 | `of learn` writes protocol vs `--field`; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep |
 | C-057 | Optional `ORDER.origin` provenance stamp; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts | SKILL / README / context-control / CHANGELOG | `origin` on order schema; `format_origin_line`; `pick_adapter` has no origin param | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `format_origin_line` | — | critical | OK | keep; 0.6.5 |
-| C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, close | architecture / README / principles (was overclaiming spawn/handoff/spec/gc/checkpoint/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs |
+| C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, new, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, close | architecture / README / principles (was overclaiming spawn/handoff/spec/gc/checkpoint/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs; 0.6.6 added `new` |
+| C-065 | Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight owns-path overlap dies | SKILL / README / glossary / CHANGELOG | `cmd_new` / `bind_active_field` / `cross_field_owns_path_conflict` | `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_fields.py` | `SiblingFields` | — | critical | OK | keep; 0.6.6 |
 | C-059 | `emit_event` lives in `scripts/of/field.py`, re-exported by `of`; not in the `scripts/of.py` shim | events.md | `def emit_event` | `scripts/of/field.py` | `emit_event` | — | normal | OK | patched events.md |
 | C-060 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` live in `scripts/of/regime.py` | roadmap (was `scripts/of.py`) | module location | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | normal | OK | patched roadmap |
 | C-061 | Public schemas include `learning.schema.json` and `requirements.schema.json` besides order/state/packet/residual/session/wave-report | architecture / kernel feature | `schemas/` listing | `schemas/` | | — | normal | OK | patched inventory + coverage |

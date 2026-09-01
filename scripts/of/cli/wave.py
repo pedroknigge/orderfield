@@ -270,6 +270,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 f"owns_path {mine} overlaps {theirs} owned by {other} "
                 f"in wave {wave}; same-wave write sets must be disjoint"
             )
+        from of.pack import cross_field_owns_path_conflict
+
+        foreign = cross_field_owns_path_conflict(root, owns_paths)
+        if foreign:
+            other_field, mine, theirs = foreign
+            die(
+                f"owns_path {mine} overlaps {theirs} in open field {other_field}; "
+                "sibling fields must keep disjoint in-flight write sets"
+            )
         for other, prior, mine in prior_wave_path_owners(
             root, int(wave), owns_paths
         ):

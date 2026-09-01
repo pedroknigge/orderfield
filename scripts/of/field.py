@@ -19,6 +19,7 @@ import tempfile
 import time
 import uuid
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -137,6 +138,7 @@ FIELD_SPEC_LOG = ".orderfield/spec-log"
 FIELD_LOCK_WAIT_SECONDS = 10.0
 MUTATING_COMMANDS = {
     "init",
+    "new",
     "integrate",
     "phase",
     "patch",
@@ -147,6 +149,50 @@ MUTATING_COMMANDS = {
     "unpack",
     "collect",
 }
+OF_FIELD_ENV = "OF_FIELD"
+FIELD_ID_RE = re.compile(r"^ord_[0-9a-f]{8}$")
+ROSTER_EXIT = 2
+# Commands that resolve a field before running. init/new/fields manage the roster
+# themselves; detect/eval/validate do not need a live ORDER.
+FIELD_BIND_COMMANDS = {
+    "resume",
+    "status",
+    "pulse",
+    "checkpoint",
+    "pack",
+    "unpack",
+    "spawn",
+    "handoff",
+    "render",
+    "collect",
+    "integrate",
+    "phase",
+    "patch",
+    "next-wave",
+    "close",
+    "contrast",
+    "spec",
+    "spec-diff",
+    "learn",
+    "retain",
+    "gc",
+    "migrate",
+    "worktree",
+    "doctor",
+}
+_LEGACY_FIELD_FILES = (
+    "ORDER.json",
+    "state.json",
+    "session.json",
+    "SPEC.md",
+    "REQUIREMENTS.json",
+    "PHASE.md",
+    "ingest.md",
+)
+_LEGACY_FIELD_DIRS = ("waves", "work", "spec-log", "learnings")
+_active_field_home: ContextVar[Path | None] = ContextVar(
+    "of_field_home", default=None
+)
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
 PROTOCOL_WRITABLE_KEY = "writable_by_slaves"
@@ -211,8 +257,17 @@ def kernel_repo_root() -> Path:
 def find_root(start: Path | None = None) -> Path:
     cur = (start or Path.cwd()).resolve()
     for p in [cur, *cur.parents]:
-        if (p / ".orderfield" / "ORDER.json").exists():
+        of = p / ".orderfield"
+        if (of / "ORDER.json").exists():
             return p
+        fields = of / "fields"
+        if fields.is_dir():
+            try:
+                for child in fields.iterdir():
+                    if child.is_dir() and (child / "ORDER.json").is_file():
+                        return p
+            except OSError:
+                pass
         if (p / ".git").exists():
             return p
     return cur
@@ -222,16 +277,225 @@ def of_dir(root: Path | None = None) -> Path:
     return (root or find_root()) / ".orderfield"
 
 
+def fields_dir(root: Path | None = None) -> Path:
+    return of_dir(root) / "fields"
+
+
+def field_home(root: Path | None = None) -> Path:
+    """Active field directory: legacy `.orderfield/` or `.orderfield/fields/<id>/`."""
+    override = _active_field_home.get()
+    if override is not None:
+        return override
+    return of_dir(root)
+
+
+def set_field_home(path: Path) -> None:
+    _active_field_home.set(path)
+
+
+def clear_field_home() -> None:
+    _active_field_home.set(None)
+
+
+def require_field_id(text: str) -> str:
+    fid = str(text or "").strip()
+    if not FIELD_ID_RE.match(fid):
+        die(f"invalid field id {text!r}; expected ord_<8 hex>")
+    return fid
+
+
+def list_field_homes(root: Path | None = None) -> list[tuple[str, Path, dict[str, Any]]]:
+    """Return (id, home, order-dict) for every live field. Legacy ORDER.json counts."""
+    root = root or find_root()
+    of = of_dir(root)
+    out: list[tuple[str, Path, dict[str, Any]]] = []
+    seen: set[str] = set()
+    fields = of / "fields"
+    if fields.is_dir():
+        try:
+            children = sorted(fields.iterdir(), key=lambda p: p.name)
+        except OSError:
+            children = []
+        for child in children:
+            if child.is_symlink() or not child.is_dir():
+                continue
+            order_file = child / "ORDER.json"
+            if not order_file.is_file():
+                continue
+            data = _read_json_object(order_file) or {}
+            fid = str(data.get("id") or child.name)
+            out.append((fid, child, data))
+            seen.add(fid)
+    legacy = of / "ORDER.json"
+    if legacy.is_file():
+        data = _read_json_object(legacy) or {}
+        fid = str(data.get("id") or "legacy")
+        if fid not in seen:
+            out.append((fid, of, data))
+    return out
+
+
+def field_is_open(order: dict[str, Any]) -> bool:
+    return not bool(order.get("spec_closed"))
+
+
+def origin_session_id(order: dict[str, Any]) -> str:
+    origin = order.get("origin")
+    if not isinstance(origin, dict):
+        return ""
+    return str(origin.get("session_id") or "").strip()
+
+
+def format_field_roster_lines(
+    homes: list[tuple[str, Path, dict[str, Any]]],
+) -> list[str]:
+    lines = [f"fields        {len(homes)}"]
+    for fid, home, order in homes:
+        state = "open" if field_is_open(order) else "closed"
+        mission = str(order.get("mission") or "").replace("\n", " ").strip()
+        if len(mission) > 60:
+            mission = mission[:57] + "..."
+        origin = origin_session_id(order)
+        origin_h = ""
+        raw = order.get("origin")
+        if isinstance(raw, dict) and raw.get("harness"):
+            origin_h = str(raw.get("harness"))
+        extra = f"  {origin_h}" if origin_h else ""
+        if origin:
+            extra += f" [{origin}]"
+        rel = home.name if home.name != ".orderfield" else "legacy"
+        lines.append(f"  {fid}  {state}  {rel}{extra}  {mission}")
+    return lines
+
+
+def print_field_roster(
+    homes: list[tuple[str, Path, dict[str, Any]]],
+) -> None:
+    for line in format_field_roster_lines(homes):
+        print(line)
+
+
+def die_field_roster(
+    homes: list[tuple[str, Path, dict[str, Any]]],
+    detail: str,
+) -> None:
+    print_field_roster(homes)
+    print("next          PICK --field <id> | of new")
+    die(detail, code=ROSTER_EXIT)
+
+
+def bind_active_field(
+    root: Path,
+    field_id: str | None = None,
+    *,
+    cmd: str = "",
+) -> Path | None:
+    """Resolve the field this process operates on. None = caller prints a roster."""
+    explicit = (field_id or os.environ.get(OF_FIELD_ENV) or "").strip() or None
+    homes = list_field_homes(root)
+    if explicit:
+        for fid, home, _order in homes:
+            if fid == explicit:
+                if home.is_symlink():
+                    die(f"unsafe field root {home}: kernel artifact root is a symlink")
+                set_field_home(home)
+                return home
+        die(f"unknown field {explicit}")
+    if not homes:
+        return None
+    if len(homes) == 1:
+        set_field_home(homes[0][1])
+        return homes[0][1]
+    session = (os.environ.get("OF_SESSION_ID") or "").strip()
+    origin_hits: list[tuple[str, Path, dict[str, Any]]] = []
+    open_homes: list[tuple[str, Path, dict[str, Any]]] = []
+    for fid, home, order in homes:
+        if field_is_open(order):
+            open_homes.append((fid, home, order))
+            if session and origin_session_id(order) == session:
+                origin_hits.append((fid, home, order))
+    if len(origin_hits) == 1:
+        set_field_home(origin_hits[0][1])
+        return origin_hits[0][1]
+    if len(open_homes) == 1:
+        set_field_home(open_homes[0][1])
+        return open_homes[0][1]
+    if cmd in {"resume", "status", "pulse", "fields"}:
+        return None
+    die_field_roster(
+        homes,
+        "multiple fields; pass --field <id> or OF_FIELD (of fields to list)",
+    )
+    return None
+
+
+def promote_legacy_layout(root: Path) -> Path | None:
+    """Move a top-level ORDER.json field into `.orderfield/fields/<id>/`.
+
+    Returns the new home, or None if there was no legacy ORDER.json.
+    """
+    of = of_dir(root)
+    legacy = of / "ORDER.json"
+    if not legacy.is_file():
+        return None
+    data = _read_json_object(legacy) or {}
+    fid = str(data.get("id") or "").strip()
+    if not FIELD_ID_RE.match(fid):
+        fid = f"ord_{uuid.uuid4().hex[:8]}"
+        if isinstance(data, dict) and data.get("id") != fid:
+            data = dict(data)
+            data["id"] = fid
+            dump_json(legacy, data)
+    dest = fields_dir(root) / fid
+    if dest.exists():
+        die(f"cannot promote legacy field: {dest} already exists")
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in _LEGACY_FIELD_FILES:
+        src = of / name
+        if src.exists() and src.resolve() != (dest / name).resolve():
+            shutil.move(str(src), str(dest / name))
+    for name in _LEGACY_FIELD_DIRS:
+        src = of / name
+        if src.is_dir() and src.resolve() != (dest / name).resolve():
+            shutil.move(str(src), str(dest / name))
+    try:
+        extras = list(of.glob("waves-archived-*"))
+    except OSError:
+        extras = []
+    for src in extras:
+        shutil.move(str(src), str(dest / src.name))
+    print(f"promoted     {dest.relative_to(root)}")
+    return dest
+
+
+def physical_field_rel(root: Path, canonical: str) -> str:
+    """Map a `.orderfield/...` contract path onto the active field home."""
+    prefix = ".orderfield/"
+    text = str(canonical or "")
+    if not text.startswith(prefix):
+        return text
+    home = field_home(root).resolve()
+    of = of_dir(root).resolve()
+    rest = text[len(prefix) :]
+    if home == of:
+        return text
+    try:
+        rel = home.relative_to(Path(root).resolve()).as_posix()
+    except ValueError:
+        return text
+    return f"{rel}/{rest}"
+
+
 def order_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "ORDER.json"
+    return field_home(root) / "ORDER.json"
 
 
 def state_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "state.json"
+    return field_home(root) / "state.json"
 
 
 def session_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "session.json"
+    return field_home(root) / "session.json"
 
 
 def field_lock_path(root: Path | None = None) -> Path:
@@ -239,15 +503,15 @@ def field_lock_path(root: Path | None = None) -> Path:
 
 
 def spec_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "SPEC.md"
+    return field_home(root) / "SPEC.md"
 
 
 def spec_log_dir(root: Path | None = None) -> Path:
-    return of_dir(root) / "spec-log"
+    return field_home(root) / "spec-log"
 
 
 def requirements_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "REQUIREMENTS.json"
+    return field_home(root) / "REQUIREMENTS.json"
 
 
 def sha256_text(text: str) -> str:
@@ -948,7 +1212,7 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
                     "notes": notes,
                 }
             )
-    waves = of_dir(root) / "waves"
+    waves = field_home(root) / "waves"
     if not waves.is_dir():
         return actions
     for wave_path in sorted(p for p in waves.iterdir() if p.is_dir()):
@@ -1049,7 +1313,7 @@ def apply_field_migrations(actions: list[dict[str, Any]]) -> None:
 
 
 def worktrees_path(root: Path | None = None) -> Path:
-    return of_dir(root) / "work" / "worktrees.json"
+    return field_home(root) / "work" / "worktrees.json"
 
 
 def load_worktrees(root: Path) -> dict[str, Any]:
@@ -1157,11 +1421,11 @@ def load_wave_report(path: Path) -> dict[str, Any]:
 
 
 def wave_dir(wave: int, root: Path | None = None) -> Path:
-    return of_dir(root) / "waves" / f"{wave:03d}"
+    return field_home(root) / "waves" / f"{wave:03d}"
 
 
 def wave_numbers(root: Path) -> list[int]:
-    wroot = of_dir(root) / "waves"
+    wroot = field_home(root) / "waves"
     if not wroot.is_dir():
         return []
     nums: list[int] = []
@@ -1431,7 +1695,7 @@ def write_phase_md(root: Path, order: dict[str, Any]) -> None:
         + "\n".join(f"- {x}" for x in done_when_for(order))
         + "\n"
     )
-    of_dir(root).joinpath("PHASE.md").write_text(body, encoding="utf-8")
+    field_home(root).joinpath("PHASE.md").write_text(body, encoding="utf-8")
 
 
 def _is_secret_flag(name: str) -> bool:
@@ -1527,7 +1791,7 @@ def argv_preview(argv: list[str]) -> str:
 
 
 def learnings_dir(root: Path | None = None) -> Path:
-    return of_dir(root) / "learnings"
+    return field_home(root) / "learnings"
 
 
 def protocol_learnings_path() -> Path:

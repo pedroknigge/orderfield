@@ -14,7 +14,11 @@ Canonical terms only. Product surface: [README Compared-to](../README.md). Leade
 
 **SPEC** (`.orderfield/SPEC.md`) is the lossless user brief: original request plus dated amendments. It is truth for CLI, schemas, types, exit codes, invariants, and deliverables. A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a brief — expand the prior request, or steer an open field.
 
-**ORDER** (`.orderfield/ORDER.json`) is the slow field the leader designs: mission, phase, constraints, `done_when`, workspace. ORDER may compress reasoning (chat, discarded alternatives, transcripts). It must not compress the contract. Packets are a cut of work from SPEC + ORDER together; a slice does not replace SPEC.
+**ORDER** (`.orderfield/ORDER.json` or `.orderfield/fields/<id>/ORDER.json`) is the slow field the leader designs: mission, phase, constraints, `done_when`, workspace. ORDER may compress reasoning (chat, discarded alternatives, transcripts). It must not compress the contract. Packets are a cut of work from SPEC + ORDER together; a slice does not replace SPEC.
+
+## sibling field
+
+A second (or Nth) ORDER in the same working tree. `of new` opens one without closing the others. Product files stay at the repo root; only contract artifacts are namespaced under `fields/<id>/`. `of resume` with several unmatched open fields prints a roster and exits 2. `--field` / `OF_FIELD` / matching `ORDER.origin.session_id` selects one. Not a file locker: overlapping in-flight `--owns-path` across open siblings dies at pack.
 
 ## spec_hash
 

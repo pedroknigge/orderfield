@@ -489,7 +489,14 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
 def cmd_status(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
+    from of.field import ROSTER_EXIT, list_field_homes, print_field_roster
+
     if not order_path(root).exists():
+        homes = list_field_homes(root)
+        if len(homes) > 1:
+            print_field_roster(homes)
+            print("next          PICK --field <id> | of new")
+            raise SystemExit(ROSTER_EXIT)
         print("no ORDER. of init --mission '...'")
         detect = detect_adapters()
         print("adapters:")
@@ -709,15 +716,60 @@ def print_resume_in_flight(
 def resume_auto_continue_lines(order: dict[str, Any]) -> list[str]:
     if order.get("spec_closed"):
         return ["no", "field closed (spec_closed); do not pack or spawn"]
+    session = (os.environ.get("OF_SESSION_ID") or "").strip()
+    origin = order.get("origin") if isinstance(order.get("origin"), dict) else {}
+    oid = str((origin or {}).get("session_id") or "").strip()
+    if oid and session and oid != session:
+        return [
+            "no",
+            "foreign field (origin session_id mismatch); attach with --field or of new",
+        ]
     return [
         "yes",
         "execute printed next this turn; interleaved chats/compaction are not pause",
     ]
 
 
+def cmd_fields(args: argparse.Namespace) -> None:
+    root = find_root()
+    from of.field import list_field_homes, print_field_roster
+
+    homes = list_field_homes(root)
+    if not homes:
+        print("fields        0")
+        print("next          of init --mission '...'")
+        emit_event("fields", count=0, ok=True)
+        return
+    print_field_roster(homes)
+    emit_event("fields", count=len(homes), ok=True)
+
+
 def cmd_resume(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
+    from of.field import (
+        ROSTER_EXIT,
+        bind_active_field,
+        field_home,
+        list_field_homes,
+        print_field_roster,
+    )
+
+    homes = list_field_homes(root)
+    bound = bind_active_field(
+        root,
+        getattr(args, "field_id", None),
+        cmd="resume",
+    )
+    if not homes:
+        print("no ORDER. of init --mission '...'")
+        return
+    if bound is None and len(homes) > 1:
+        print_field_roster(homes)
+        print("auto_continue no — multiple fields; this session matches none")
+        print("next          PICK --field <id> | of new")
+        emit_event("resume", field="roster", ok=False, next="PICK")
+        raise SystemExit(ROSTER_EXIT)
     if not order_path(root).exists():
         print("no ORDER. of init --mission '...'")
         return
@@ -734,6 +786,11 @@ def cmd_resume(args: argparse.Namespace) -> None:
     )
     session = load_session(root)
     print(f"id            {order['id']}")
+    try:
+        home_rel = field_home(root).resolve().relative_to(root.resolve())
+    except ValueError:
+        home_rel = field_home(root)
+    print(f"home          {home_rel}")
     print(f"rev           {order['rev']}")
     print(f"phase         {order['phase']}")
     print(f"wave          {wave}")
@@ -852,7 +909,14 @@ def pulse_once(
 def cmd_pulse(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
+    from of.field import ROSTER_EXIT, list_field_homes, print_field_roster
+
     if not order_path(root).exists():
+        homes = list_field_homes(root)
+        if len(homes) > 1:
+            print_field_roster(homes)
+            print("next          PICK --field <id> | of new")
+            raise SystemExit(ROSTER_EXIT)
         print("no ORDER. of init --mission '...'")
         return
     stale_minutes = float(getattr(args, "stale_min", None) or PULSE_STALE_MINUTES)

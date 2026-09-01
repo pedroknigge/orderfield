@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.6.5. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.6.6. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,16 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.6.5`
+**Status:** Shipped · **Current release line:** `0.6.6`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.6.6 — sibling fields
+
+- Several fields in one working tree: `of new`, `of fields`, `--field` / `OF_FIELD`.
+- Resume roster (exit 2) when several open fields do not match this session. Foreign origin gate on `auto_continue`. `pulse` / `status` use the same roster.
+- Cross-field in-flight `--owns-path` overlap dies at pack. Not a product-file locker. Not a TTY prompt. Not a new regime.
+- First `of init` stays legacy `.orderfield/ORDER.json`. First `of new` promotes it under `fields/<id>/`.
 
 ## 0.6.5 — origin provenance
 

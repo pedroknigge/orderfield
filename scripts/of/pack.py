@@ -233,22 +233,24 @@ def require_packet_artifact_paths(
         )
     if packet.get("scratch_dir") != expected_scratch:
         die(f"noncanonical scratch_dir for {child_id}: expected {expected_scratch}")
+    from of.field import physical_field_rel
+
     safe_relative_path(
         root,
-        expected_residual,
+        physical_field_rel(root, expected_residual),
         "packet residual_path",
         reject_symlinks=True,
     )
     safe_relative_path(
         root,
-        expected_scratch,
+        physical_field_rel(root, expected_scratch),
         "packet scratch_dir",
         reject_symlinks=True,
     )
     if source is not None:
         expected = safe_relative_path(
             root,
-            expected_packet,
+            physical_field_rel(root, expected_packet),
             "canonical packet",
             reject_symlinks=True,
         )
@@ -377,6 +379,47 @@ def copy_workspace_with_owns(
     }
 
 
+def cross_field_owns_path_conflict(
+    root: Path, owns: list[str]
+) -> tuple[str, str, str] | None:
+    """Overlap against in-flight packets in *other* open sibling fields."""
+    from of.field import (
+        clear_field_home,
+        field_home,
+        field_is_open,
+        list_field_homes,
+        load_state,
+        set_field_home,
+    )
+
+    if not owns:
+        return None
+    current = field_home(root)
+    saved = current
+    hit: tuple[str, str, str] | None = None
+    try:
+        for fid, home, order in list_field_homes(root):
+            if home.resolve() == current.resolve():
+                continue
+            if not field_is_open(order):
+                continue
+            set_field_home(home)
+            state = load_state(root)
+            wave = int(state.get("wave") or 1)
+            live = in_flight_children(root, wave)
+            conflict = same_wave_owns_path_conflict(live, "", owns)
+            if conflict:
+                other, mine, theirs = conflict
+                hit = (fid, mine, f"{other}:{theirs}")
+                break
+    finally:
+        if saved is not None:
+            set_field_home(saved)
+        else:
+            clear_field_home()
+    return hit
+
+
 def same_wave_owns_path_conflict(
     packets: list[dict[str, Any]], child_id: str, owns: list[str]
 ) -> tuple[str, str, str] | None:
@@ -397,18 +440,12 @@ def prior_wave_path_owners(
     hits: list[tuple[str, int, str]] = []
     seen: set[tuple[str, int, str]] = set()
     
-    state_path = root / ".orderfield/state.json"
-    if not state_path.is_file():
+    from of.field import _read_json_object, state_path as field_state_path
+
+    state_file = field_state_path(root)
+    if not state_file.is_file():
         return hits
-        
-    try:
-        from of.field import _read_json_object
-        state = _read_json_object(state_path) or {}
-    except ImportError:
-        import json
-        with open(state_path, "r", encoding="utf-8") as f:
-            state = json.load(f)
-            
+    state = _read_json_object(state_file) or {}
     path_index = state.get("path_index") or {}
     
     for mine in owns:

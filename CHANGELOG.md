@@ -8,6 +8,20 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.6.6
+
+Sibling fields in one working tree. Same 0.6 line. Not a new regime.
+
+- **Sibling fields:** several ORDERs under `.orderfield/fields/<id>/`. Same physics: one slow field each. Not a file locker.
+- **`of new --mission`:** open a sibling without archiving the others. First `of init` still writes legacy `.orderfield/ORDER.json`. The first `of new` promotes it into `fields/<id>/`.
+- **`of fields`:** roster (id, origin, mission). `--field <id>` / `OF_FIELD` select. No shared `CURRENT` pointer.
+- **`of resume` with several unmatched open fields:** roster, `auto_continue no`, exit 2 (`PICK --field | of new`). Origin `session_id` match auto-selects. Unique open field unchanged. `pulse` / `status` use the same roster.
+- **Foreign origin gate:** `ORDER.origin.session_id` set and `OF_SESSION_ID` different → `auto_continue no`. Missing `OF_SESSION_ID` keeps back-compat auto-continue.
+- **Cross-field `--owns-path`:** pack dies if an in-flight packet in another *open* sibling owns an overlapping path.
+- **CLI:** `new` is in `MUTATING_COMMANDS`. Kernel does not prompt on stdin.
+- Packet contract paths stay `.orderfield/waves/…`; `physical_field_rel` maps them onto the field home.
+- Packaging: VERSION 0.6.6; skill/alias description preview `v0.6.6 — …`.
+
 ## 0.6.5
 
 Optional origin provenance pointer. Not a new regime.

@@ -19,11 +19,12 @@ from of.field import (
 )
 from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 
-from of.cli.init_cmd import cmd_init
+from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.ops import (
     cmd_checkpoint,
     cmd_detect,
     cmd_doctor,
+    cmd_fields,
     cmd_gc,
     cmd_learn,
     cmd_migrate,
@@ -88,6 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="emit machine-readable event lines on stderr (also OF_JSON=1)",
     )
+    p.add_argument(
+        "--field",
+        dest="field_id",
+        help="operate on this field id (ord_…); OF_FIELD when omitted",
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("init", help="create .orderfield/ORDER.json")
@@ -117,6 +123,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
     )
     s.set_defaults(func=cmd_init)
+
+    s = sub.add_parser(
+        "new",
+        help="open a sibling field without closing the others",
+    )
+    s.add_argument("--mission", required=True)
+    s.add_argument("--phase", default="explore", choices=PHASES)
+    s.add_argument("--done-when", dest="done_when", action="append")
+    s.add_argument("--source", help="verbatim user brief (lossless SPEC.md)")
+    s.add_argument(
+        "--source-file",
+        dest="source_file",
+        help="verbatim brief file or '-'",
+    )
+    s.add_argument(
+        "--origin",
+        help=(
+            "stamp ORDER.origin harness (provenance, not spawn pin); "
+            f"one of {ADAPTER_ORDER}; OF_ORIGIN when omitted"
+        ),
+    )
+    s.add_argument(
+        "--session-id",
+        dest="session_id",
+        help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
+    )
+    s.set_defaults(func=cmd_new)
+
+    s = sub.add_parser("fields", help="list sibling fields in this working tree")
+    s.set_defaults(func=cmd_fields)
 
     s = sub.add_parser("status", help="show field and caps")
     s.set_defaults(func=cmd_status)
@@ -584,8 +620,12 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     set_json_events(bool(getattr(args, "json", False)))
+    from of.field import FIELD_BIND_COMMANDS, bind_active_field
+
+    root = find_root()
+    if args.cmd in FIELD_BIND_COMMANDS:
+        bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
-        root = find_root()
         require_nonsymlink_kernel_root(root)
         with field_lock(root, args.cmd):
             args.func(args)
