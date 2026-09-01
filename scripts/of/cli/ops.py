@@ -909,7 +909,14 @@ def pulse_once(
 def cmd_pulse(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
+    from of.field import ROSTER_EXIT, list_field_homes, print_field_roster
+
     if not order_path(root).exists():
+        homes = list_field_homes(root)
+        if len(homes) > 1:
+            print_field_roster(homes)
+            print("next          PICK --field <id> | of new")
+            raise SystemExit(ROSTER_EXIT)
         print("no ORDER. of init --mission '...'")
         return
     stale_minutes = float(getattr(args, "stale_min", None) or PULSE_STALE_MINUTES)

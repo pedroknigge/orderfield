@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.0. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.6.5. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,22 +10,16 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.0`
+**Status:** Shipped · **Current release line:** `0.6.5`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.7.0 — sibling fields
-
-- Several fields in one working tree: `of new`, `of fields`, `--field` / `OF_FIELD`.
-- Resume roster (exit 2) when several open fields do not match this session. Foreign origin gate on `auto_continue`.
-- Cross-field in-flight `--owns-path` overlap dies at pack. Not a product-file locker. Not a TTY prompt. Not a new regime menu.
-- First `of init` stays legacy `.orderfield/ORDER.json`. First `of new` promotes it under `fields/<id>/`.
-
-## 0.6.5 — origin provenance
+## 0.6.5 — origin provenance + sibling fields
 
 - Optional `ORDER.origin` `{harness, session_id?, recorded_at}` on the contract. Pointer, not transcript, not spawn pin, not `session.json`.
 - `of init --origin` / `--session-id`, `OF_ORIGIN` / `OF_SESSION_ID`, `of patch --origin` (`-` clears). `of resume` / `of status` print one line when present.
 - `pick_adapter` ignores origin. Kernel does not fetch harness sessions. Not a new regime.
+- Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`. Resume roster exit 2. Foreign origin gate. Cross-field in-flight `--owns-path` overlap dies at pack. First `of init` stays legacy; first `of new` promotes under `fields/<id>/`. Not a new regime.
 
 ## 0.6.4 — protocol learnings
 

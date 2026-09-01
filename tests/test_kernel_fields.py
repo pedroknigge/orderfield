@@ -85,6 +85,14 @@ class SiblingFields(unittest.TestCase):
         self.assertIn("PICK --field", r.stdout)
         self.assertIn("auto_continue no", r.stdout)
 
+    def test_pulse_roster_when_two_open_no_session(self) -> None:
+        self._init("first")
+        run_of(self.tmp, "new", "--mission", "second")
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("fields        2", r.stdout)
+        self.assertNotIn("no ORDER", r.stdout)
+
     def test_resume_selects_origin_session(self) -> None:
         run_of(
             self.tmp,

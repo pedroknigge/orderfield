@@ -8,23 +8,18 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
-## 0.7.0
-
-Sibling fields in one working tree. Same physics: one slow ORDER per field. Several fields may live under `.orderfield/fields/<id>/`. Not a file locker.
-
-- **`of new --mission`:** open a sibling field without archiving the others. First `of init` still writes legacy `.orderfield/ORDER.json`. The first `of new` promotes that field into `fields/<id>/` then creates the sibling.
-- **`of fields`:** roster of open/closed fields (id, origin, mission).
-- **`--field <id>` / `OF_FIELD`:** select the field this process operates on. No shared `CURRENT` pointer (two agents would steal it).
-- **`of resume` with several unmatched open fields:** prints the roster, `auto_continue no`, exit 2 (`PICK --field | of new`). Origin `session_id` match auto-selects that field. Unique open field behaves as 0.6.5.
-- **Foreign origin gate:** if `ORDER.origin.session_id` is set and `OF_SESSION_ID` is a different value, `auto_continue no` even for a single field. Missing `OF_SESSION_ID` keeps back-compat auto-continue.
-- **Cross-field `--owns-path`:** pack dies if an in-flight packet in another *open* sibling owns an overlapping path. Still not a product-file lock.
-- **CLI:** `new` is in `MUTATING_COMMANDS` (field.lock). Kernel does not prompt on stdin. The skill asks which field / whether to `of new`.
-- Packet contract paths stay `.orderfield/waves/…`; physical files live under the field home. `physical_field_rel` maps them.
-- Packaging: VERSION 0.7.0; skill/alias description preview `v0.7.0 — …`.
-
 ## 0.6.5
 
-Optional origin provenance pointer. Not a new regime.
+Optional origin provenance pointer. Sibling fields in one working tree. Not a new regime.
+
+- **Sibling fields:** several ORDERs under `.orderfield/fields/<id>/`. Same physics: one slow field each. Not a file locker.
+- **`of new --mission`:** open a sibling without archiving the others. First `of init` still writes legacy `.orderfield/ORDER.json`. The first `of new` promotes it into `fields/<id>/`.
+- **`of fields`:** roster (id, origin, mission). `--field <id>` / `OF_FIELD` select. No shared `CURRENT` pointer.
+- **`of resume` with several unmatched open fields:** roster, `auto_continue no`, exit 2 (`PICK --field | of new`). Origin `session_id` match auto-selects. Unique open field unchanged. `pulse` / `status` use the same roster.
+- **Foreign origin gate:** `ORDER.origin.session_id` set and `OF_SESSION_ID` different → `auto_continue no`. Missing `OF_SESSION_ID` keeps back-compat auto-continue.
+- **Cross-field `--owns-path`:** pack dies if an in-flight packet in another *open* sibling owns an overlapping path.
+- **CLI:** `new` is in `MUTATING_COMMANDS`. Kernel does not prompt on stdin.
+- Packet contract paths stay `.orderfield/waves/…`; `physical_field_rel` maps them onto the field home.
 
 - **`ORDER.origin`:** optional stamp `{harness, session_id?, recorded_at}` on the contract. Provenance, not authority. Missing key stays valid. Not `session.json`, not `ORDER.harness`, not a transcript store.
 - **`of init --origin <adapter> [--session-id <id>]`:** stamps at field creation. `OF_ORIGIN` / `OF_SESSION_ID` when flags are omitted; flag wins. `--session-id` without origin (flag or env) dies. Unknown adapter dies. Origin omitted: do not write the key.
