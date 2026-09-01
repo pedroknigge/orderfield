@@ -137,22 +137,15 @@ FIELD_SPEC_LOG = ".orderfield/spec-log"
 FIELD_LOCK_WAIT_SECONDS = 10.0
 MUTATING_COMMANDS = {
     "init",
-    "pack",
-    "unpack",
-    "handoff",
-    "spawn",
-    "collect",
     "integrate",
     "phase",
     "patch",
     "next-wave",
-    "checkpoint",
-    "gc",
     "migrate",
-    "worktree",
-    "spec",
     "close",
-    "learn",
+    "pack",
+    "unpack",
+    "collect",
 }
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
