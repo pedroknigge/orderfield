@@ -1,5 +1,12 @@
 # Feature: kernel
 
+**STAR**
+
+- **Situation:** The public kernel surface grew from 0.3.2 through 0.6.5 without a new regime.
+- **Task:** Entry pack for `scripts/of.py` + `scripts/of/` + schemas: resume, pack, lock, SPEC, contrast.
+- **Action:** List code-backed behaviors; name `MUTATING_COMMANDS` as the lock set; point tests at the split suite.
+- **Result:** A reader of this pack does not treat spawn/spec/gc as locked commands or reserved accounting as live.
+
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
 **Status:** Introduced by `0.3.2`, current in `0.6.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
@@ -14,15 +21,15 @@ Order-parameter orchestration: resume / checkpoint / learn / pack / unpack / spa
 - Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; open fields require executing `next` same turn; does not auto-spawn or dump logs
 - `of eval` runs recovery fixtures under `evals/recovery/`; `--strict`, `--kernel`, `--list`
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
-- Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave; forbidden to slaves like `state.json`; corrupt session warns on stderr
+- Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr
 - `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty
 - Mission vs phase `done_when`: `--done-when` (current phase) / `--done-when-mission` (untagged mission list); `mission_done_when` / `phase_done_when` / `done_when_for`
 - Phase-scoped close via phase prefixes + `done_when_closed_phases` (Option B; legacy bool); `--reopen`
 - Reversible field: `of unpack` refunds budget; `collect` survives MISSING; `integrate --partial`; `--constraints-rm`
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
 - Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); packet workspace unions owned paths; not a file lock
-- Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, and wave reports
-- Mutating commands share a cross-process `.orderfield/field.lock`; JSON writes are durable atomic replacements
+- Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
+- `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
 - Workspace residuals select `escalate_up`
@@ -54,4 +61,4 @@ Order-parameter orchestration: resume / checkpoint / learn / pack / unpack / spa
 
 ## Tests
 
-`tests/test_kernel.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.
+`tests/test_kernel.py` plus `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, origin stamp, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`.

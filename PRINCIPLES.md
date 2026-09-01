@@ -1,5 +1,12 @@
 # Principles
 
+**STAR**
+
+- **Situation:** Agents need a one-screen reminder of Haken-inspired invariants.
+- **Task:** Point at the canonical list without forking a second physics.
+- **Action:** Keep this file as a short-form index; detail stays in `references/principles.md`.
+- **Result:** Nobody treats this pointer as a second SSOT.
+
 Canonical invariants live in `references/principles.md`.
 
 Short form:

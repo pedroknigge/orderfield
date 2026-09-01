@@ -1,3 +1,10 @@
+**STAR**
+
+- **Situation:** A job too big for one chat. The agent forgets, two writers hit the same files, and “we’re done” is a vibe.
+- **Task:** Keep one plan that survives a dead chat, give each piece of work an exclusive owner, and refuse “done” until you actually ran the CLI, file, or exit code the user asked for.
+- **Action:** Install `of`. `of init --source` with the real request (not “do it”). `of pack` with owners. The child writes a residual JSON. `of collect` → `of contrast` → `of close`. If you leave, `of resume` first. Do not hand-edit `ORDER.json`. Do not skip contrast. Do not open a field to bump a version.
+- **Result:** The plan lives on disk. Children cannot rewrite the mission. Close stays blocked until the CLI/file/exit code was exercised. Losing the chat does not lose the contract.
+
 ```
    ___  ____  ____  _____ ____  _____ ___ _____ _     ____
   / _ \|  _ \|  _ \| ____|  _ \|  ___|_ _| ____| |   |  _ \
@@ -156,11 +163,11 @@ While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity h
 
 A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
 
-Every CLI field mutation holds `.orderfield/field.lock`, and JSON artifacts are replaced atomically. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
+CLI mutations in `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
-**Session cut:** Disk is the session. In-flight = packed child with missing residual. `of resume` reconstructs a one-screen brief from packets / residuals / state plus an optional checkpoint summary. Optional `ORDER.origin` is a provenance pointer (harness + session id) so a later leader can find the opening conversation; it is not resume authority, not the spawn pin, and the kernel does not fetch the transcript. Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave — forbidden to slaves like `state.json`. `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart). No new regime.
+**Session cut:** Disk is the session. In-flight = packed child with missing residual. `of resume` reconstructs a one-screen brief from packets / residuals / state plus an optional checkpoint summary. Optional `ORDER.origin` is a provenance pointer (harness + session id) so a later leader can find the opening conversation; it is not resume authority, not the spawn pin, and the kernel does not fetch the transcript. Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint — forbidden to slaves like `state.json`. `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart). No new regime.
 
 **When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
@@ -245,6 +252,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 |---|---|
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
 | `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Does not auto-spawn. |
+| `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `learn` | durable Orderfield lessons (`--protocol`, default) or this-mission notes (`--field`). `--list` / `--forget`. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
 | `status` | show field, wave, caps, in-flight |
@@ -270,7 +278,34 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
 
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). Contract, schemas, and adapters: `references/principles.md`, `references/adapters.md`. Ops: `docs/troubleshooting.md`, `docs/performance.md`, `CONTRIBUTING.md`, `DEPENDENCIES.md`. **Agent discovery:** [docs/agent-discovery.md](docs/agent-discovery.md).
+## Docs
+
+Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
+
+| Doc | Role |
+|-----|------|
+| [SKILL.md](SKILL.md) | Leader procedure (`/orderfield`, `/of`) |
+| [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
+| [SLAVE.md](SLAVE.md) | Child contract |
+| [docs/architecture.md](docs/architecture.md) | Kernel shape; `MUTATING_COMMANDS` lock set |
+| [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
+| [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |
+| [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |
+| [docs/roadmap.md](docs/roadmap.md) | Current release line / deferred work |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
+| [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
+| [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
+| [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
+| [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
+| [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
+| [docs/features/kernel/](docs/features/kernel/) | Kernel feature pack |
+| [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
+| [references/principles.md](references/principles.md) | Haken invariants |
+| [references/adapters.md](references/adapters.md) | Headless argv per harness |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
+| [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
+| [PUBLISH.md](PUBLISH.md) | Publish gate |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

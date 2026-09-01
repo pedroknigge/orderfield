@@ -1,5 +1,12 @@
 # Orderfield — rules for any harness
 
+**STAR**
+
+- **Situation:** Incoming agents (any harness) land in a repo that may already have an ORDER on disk.
+- **Task:** Give a one-screen hub: auto-continue, leader vs slave, docs index, surface coverage.
+- **Action:** Point at canonical docs; keep coverage rows in sync with shipped 0.6.5 surfaces; code wins.
+- **Result:** An agent runs `of resume` on an open field and does not invent a second hub.
+
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 
 0. **Open field auto-continues.** If `.orderfield/ORDER.json` exists and `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken.
@@ -21,18 +28,26 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 |-----|------|
 | [README.md](README.md) | Product surface / install |
 | [SKILL.md](SKILL.md) | Leader procedure (skill body) |
+| [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
 | [SLAVE.md](SLAVE.md) | Child contract |
+| [PRINCIPLES.md](PRINCIPLES.md) | Short-form pointer to invariants |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
 | [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
+| [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
+| [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |
+| [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |
 | [docs/roadmap.md](docs/roadmap.md) | Canonical deferred work / current release line |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
 | [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
+| [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
+| [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
+| [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
-| [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B) |
+| [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B/C) |
 | [docs/features/kernel/](docs/features/kernel/) | Kernel feature pack |
 | [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
@@ -42,6 +57,8 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Surface | Status |
 |---------|--------|
 | Kernel CLI (`of` / `scripts/of.py`) | documented |
+| Kernel internals (`scripts/of/` + `scripts/of/cli/`) | documented |
+| Field lock (`MUTATING_COMMANDS` only) | documented |
 | Adapter module (`scripts/of_adapters.py`) | documented |
 | Native adapters + generic | documented |
 | Install + `~/.local/bin/of` | documented |

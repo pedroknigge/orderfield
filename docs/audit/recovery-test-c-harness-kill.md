@@ -1,5 +1,12 @@
 # Test C — Real harness process kill (optional QA)
 
+**STAR**
+
+- **Situation:** Tests A and B keep the same leader process; a killed harness with a blank session is stricter.
+- **Task:** Document optional harness QA: kill the leader process, open a fresh session, `of resume` only.
+- **Action:** Procedure and pass criteria; do not put this in kernel CI.
+- **Result:** The gap after Test B is named; it is not claimed as shipped kernel coverage.
+
 **Status:** Optional future harness QA · **Not in CI** · **Kernel line:** documents the gap after Test B
 
 Test A (Quarry) and Test B (Beacon) prove disk-backed recovery when the **leader keeps the same process** but loses chat context. Test C asks a stricter question: after the harness process is **killed** and a **fresh** leader session opens with zero transcript, does `of resume` still reconstruct and finish?

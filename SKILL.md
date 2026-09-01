@@ -11,6 +11,13 @@ metadata:
 
 # Orderfield
 
+**STAR**
+
+- **Situation:** A leader in any harness must run a disk-backed field without compressing the contract into chat.
+- **Task:** State the leader procedure: resume, pack, spawn/handoff, collect, integrate, contrast, close.
+- **Action:** Bind every step to `of` / `scripts/of.py`; keep origin as provenance; keep lock language to `MUTATING_COMMANDS`.
+- **Result:** A leader who follows this file does not implement the slice and does not skip contrast before close.
+
 Orderfield is an Agent Skill plus a Python stdlib contract kernel for complex software work that will not fit one agent. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
 `/of` is an installed alias for this skill: invoking it means invoking `/orderfield` — same doctrine, same kernel.
@@ -21,7 +28,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for CLI mutations, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 

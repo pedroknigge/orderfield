@@ -1,5 +1,12 @@
 # Agent discovery
 
+**STAR**
+
+- **Situation:** Coding agents need an `llms.txt`-style index without dumping the whole knowledge base.
+- **Task:** Point at hub, skill, slave, kernel CLI docs, evals, and the current VERSION.
+- **Action:** Keep short tables; link rather than copy; match installed skill metadata to `of doctor`.
+- **Result:** A new agent finds resume-first rules and the kernel CLI in one screen.
+
 > Hub: [AGENTS.md](../AGENTS.md) · Install: [README.md](../README.md)
 
 Short index for coding agents working in or with Orderfield (Eve-style `llms.txt` discovery).

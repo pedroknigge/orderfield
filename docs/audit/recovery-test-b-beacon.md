@@ -1,5 +1,12 @@
 # Test B — Leader amnesia recovery (Beacon)
 
+**STAR**
+
+- **Situation:** Test A recovered in the same harness session; the next question is amnesia with only disk.
+- **Task:** Use the 0.5.4 recovery brief as the first signal and finish the wave.
+- **Action:** Simulate amnesia (same process, no Quarry transcript); `of resume` first; continue packets.
+- **Result:** RECOVERY CLEAN. A killed harness with a blank session is Test C, not this line.
+
 **Run:** 2026-08-31T03:59–04:00Z · **Kernel:** 0.5.4 · **Verdict:** RECOVERY CLEAN
 
 Test A proved dirty-wave recovery in the same harness session. Test B asks: can a leader reconstruct and finish using **only disk** when the 0.5.4 recovery brief is the first signal?

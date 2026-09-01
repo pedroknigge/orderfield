@@ -1,5 +1,12 @@
 # Troubleshooting
 
+**STAR**
+
+- **Situation:** Field failures look like they need a hand-edit of `ORDER.json`.
+- **Task:** Give stranger-facing recovery for stale packets, missing residuals, lock waits, SPEC, contrast.
+- **Action:** Map each symptom to an `of` command; never instruct a leader to rewrite ORDER by hand.
+- **Result:** A fully stale wave is recoverable with `of next-wave`; contrast stays the close gate.
+
 Stranger-facing recovery for common field failures. Kernel commands only — do not hand-edit `ORDER.json`.
 
 ## Stale packets

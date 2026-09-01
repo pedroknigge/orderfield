@@ -1,5 +1,12 @@
 # Roadmap
 
+**STAR**
+
+- **Situation:** The current line is 0.6.5 (origin provenance); accounting and `scale_up` stay reserved.
+- **Task:** Be the canonical index of deferred work and what already shipped, without inventing a new regime.
+- **Action:** Anchor `RUNTIME_OWNERSHIP` in `scripts/of/regime.py`; keep Test C out of kernel CI.
+- **Result:** An agent reads this page for what not to do now, not an invented backlog.
+
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
 **Status:** Shipped · **Current release line:** `0.6.5`
@@ -66,7 +73,7 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 ### Runtime ownership decision
 
-**Decision: reserve, do not implement.** Encoded as `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` in `scripts/of.py`. `scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, and inherited depth stay in schema for compatibility and are never used as accounting. `decide_regime` remaps a reserved regime to `hold`. Do not infer accounting from child-authored claims.
+**Decision: reserve, do not implement.** Encoded as `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` in `scripts/of/regime.py`. `scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, and inherited depth stay in schema for compatibility and are never used as accounting. `decide_regime` remaps a reserved regime to `hold`. Do not infer accounting from child-authored claims.
 
 - Managed parallel lifecycle, process IDs, cancellation, and child supervision remain out of scope; adopting them would expand Orderfield beyond a contract kernel.
 

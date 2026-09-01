@@ -1,6 +1,13 @@
 # Kernel events (`of --json` / `OF_JSON=1`)
 
-> Hub: [architecture.md](architecture.md) · Code: [`emit_event`](../scripts/of.py)
+**STAR**
+
+- **Situation:** Leader tooling and CI need an observational trail that is not a list of instructions to execute.
+- **Task:** Document the `of --json` / `OF_JSON=1` vocabulary against `emit_event`.
+- **Action:** Anchor the symbol in `scripts/of/field.py` (re-exported by `of`), not the `scripts/of.py` shim.
+- **Result:** Each stderr line is a JSON object with `event`; product writes and transcripts are not events.
+
+> Hub: [architecture.md](architecture.md) · Code: [`emit_event`](../scripts/of/field.py)
 
 When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object per line on **stderr**. These are observe-only hooks for audit, CI, or leader tooling — not instructions to execute.
 

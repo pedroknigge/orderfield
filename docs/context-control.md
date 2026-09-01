@@ -1,5 +1,12 @@
 # Context control
 
+**STAR**
+
+- **Situation:** Compaction and interleaved chats tempt leaders to stuff history into packets or SPEC.
+- **Task:** Put each kind of information on the narrowest surface that needs it.
+- **Action:** Table SPEC / ORDER / packet / origin / checkpoint / deictic go-ahead against what the child sees.
+- **Result:** Reasoning may compress; the contract does not. Origin is a pointer, not a transcript.
+
 > Hub: [SKILL.md](../SKILL.md) · Eve analog: [context control](https://eve.dev/docs/concepts/context-control)
 
 Orderfield is a contract kernel, not a model harness. Control context by putting information in the narrowest surface that needs it.

@@ -1,5 +1,12 @@
 # Contributing — Orderfield
 
+**STAR**
+
+- **Situation:** A stdlib package with protected `main` cannot accept PRs that lie about VERSION/docs or add pip.
+- **Task:** Say how to change the repo, what “done” means, and what debt remains.
+- **Action:** Point writers at `scripts/of/` (not the shim), real CI, and mark the 0.6 split as shipped.
+- **Result:** A contributor runs unittest + `validate-skill.sh` and does not reopen the god-file.
+
 How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH.md).
 
 ## What “done” means
@@ -39,13 +46,14 @@ Do not force-push `main`.
 
 ## Coverage (waiver)
 
-No third-party coverage tool in CI — this package is **stdlib only** (no `pip` deps, no lockfile). Critical paths are guarded by the unittest suite (`tests/test_kernel.py`, `tests/test_packaging.py`). Revisit if a stdlib-native coverage approach is adopted; do not add `coverage`/`pytest-cov` without an explicit product decision.
+No third-party coverage tool in CI — this package is **stdlib only** (no `pip` deps, no lockfile). Critical paths are guarded by the unittest suite (`tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py`). Revisit if a stdlib-native coverage approach is adopted; do not add `coverage`/`pytest-cov` without an explicit product decision.
 
 ## Debt / ownership (2026-08-30)
 
 | Item | Owner | Notes |
 |------|-------|-------|
-| Further split of `scripts/of.py` (field I/O / regime / CLI) | solo (`pedroknigge`) | Adapters extracted in 0.3.1; more modules optional |
+| Split of `scripts/of.py` | shipped 0.6.0 / 0.6.2 | Shim remains; internals in `scripts/of/` + `scripts/of/cli/` |
+| Unwired `cmd_spec` / `cmd_contrast` / `cmd_close` copies in `scripts/of/cli/ops.py` | solo (`pedroknigge`) | Parser dispatch uses `spec_cmd.py`; leftover defs are code debt (C-055) |
 | Claims matrix refresh after each public surface | solo | Code wins over docs |
 | Optional `of ask` for same-harness vs multi | solo | Protocol today; Partial by design |
 
