@@ -5,19 +5,19 @@
  | |_| |  _ <| |_| | |___|  _ <|  _|  | || |___| |___| |_| |
   \___/|_| \_\____/|_____|_| \_\_|   |___|_____|_____|____/
 
-          one field. bounded waves. portable contract.
+          the plan survives the session. close is proof.
 ```
 
-Nature already solved coordination. Order emerges when the slow constrains the fast — different speeds, one field.
+The model is fast. The chat is faster. A brief that lives only in the thread dies with the room.
 
-Working with AI inverts that: the model is fast, the chat is faster, and the plan dies with the session. More conversation does not mean better work.
+Orderfield is a **contract kernel** for software that will not fit one agent. The ORDER lives on disk. Children get bounded packets with exclusive owners. They cannot redefine the mission, the phase, the constraints, or done-when. `of contrast` refuses close until the public surface is proven.
 
-We take that physics as inspiration — a method — so you get better results from the agents you already have. One brief. Exclusive owners. A close that is proof.
+The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The kernel is what remains when the session is compacted, the model changes, or you switch harness. Python 3.9+ stdlib. Nine public schemas. A lock. Tests. No pip.
 
-The plan takes a cut, a resume, a different model. The work does not start over. The results do not have to change.
+One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.6.5</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · portable contract
+  <strong>v0.6.5</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
@@ -26,33 +26,41 @@ The plan takes a cut, a resume, a different model. The work does not start over.
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-# A field for software that will not fit one agent
+# The plan does not start over
 
-Orderfield is a **portable contract of authority** for complex software work across already-authenticated coding CLIs. Use it when a kernel, a product, or a multi-slice build will lose quality in a single context: exclusive owners, a SPEC that survives compaction, and `of contrast` before close. One ORDER, bounded packets, structured residuals, and a closed regime decision after each wave live on disk. The harness starts processes; the contract survives when the harness changes.
+## What it does
 
-It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**. Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts.
+One ORDER on disk. Bounded packets with exclusive owners. Structured residuals. A closed regime after each wave. The harness starts and stops processes; the contract survives when the harness changes, the chat is compacted, or the model is swapped.
 
-Invoke `/orderfield` or `/of`. Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
+Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.”
 
-```
-  leader ──pack──► child     child     child
-     ▲               │         │         │
-     │               ▼         ▼         ▼
-     └──────── residual  residual  residual
-                    │
-                    ▼
-              integrate → ORDER'
-```
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
 
-## When it pays vs theater (three examples)
+## When to reach for it
 
-**1. A software mission that will not fit one context vs a VERSION bump.** Pays: several slices (store, HTTP, CLI, docs) under one ORDER, exclusive owners, contrast before close. Also pays when a public claim is false (README names an exit code tests never exercise) — an adversary packet owns the claim; `of contrast` stays CLOSE BLOCKED until the surface is verified. Theater: bump VERSION, append CHANGELOG, ship one obvious feature. Opening a field for that is ceremony.
+- The user invokes `/orderfield` or `/of`.
+- An existing `.orderfield/ORDER.json` must be resumed (continue in-flight; do not re-init).
+- A software mission that will not fit one context: exclusive owners, a SPEC that survives compaction, contrast before close.
+- Multiple slices or writers need explicit ownership, or a public claim an adversary could catch as a lie.
 
-**2. Two writers, exclusive owners vs one ordinary subagent.** Pays: docs and `install.sh` share a mission but must not share a write set. Exclusive owners keep a false "docs shipped" from landing without the packaging slice. Theater: spawn a child to edit one file a skill on this agent already covers. **Skill beats child.**
+**Skill beats child.** If one agent, one ordinary subagent, or one skill already fits, do not open a field.
 
-**3. Plan change after amnesia vs dual-harness theater.** Pays: the leader loses the chat (compaction, new session). Disk still has SPEC, packets, residuals. A threshold residual says the field is wrong; the leader patches ORDER and re-packs. Child transcripts stay out of the parent. Theater: opening a field because Agent Teams or a Claude↔Codex skill looks like orchestration. Those move work; they do not own who may change the plan.
+## When it is theater
 
-**You should be better.** `/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish; `of contrast` clean is. If the field only adds startup tax, it is theater.
+- VERSION bump plus one obvious feature.
+- One ordinary subagent, or work a skill on this agent already covers.
+- Opening a field because a harness name was mentioned.
+- Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
+
+`/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish. If the field only adds startup tax, it is theater.
+
+## It's working if
+
+- The plan survives a cut, a resume, a different model. The results do not have to change.
+- Children cannot rewrite the mission.
+- Close is proof: `of contrast` RESOLVED, public surface verified.
+- Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
+- The landing is better than a cheap sprint at the public surface, even if it is not first.
 
 ---
 
@@ -180,7 +188,7 @@ Default spawn policy is **same harness** (current session adapter). Multi-harnes
 
 ## Contract and runtime boundary
 
-The model is inspired by Haken's slaving principle: a slow field constrains fresh-context children. The analogy is design discipline, not a claim of scientific validation or emergent self-organization. Named adapters and generic mode transport the same disk protocol.
+The model is inspired by Haken's slaving principle: a slow field constrains fresh-context children. *Analogy, not a science claim.* Named adapters and generic mode transport the same disk protocol.
 
 | Physics | Here |
 |---|---|
