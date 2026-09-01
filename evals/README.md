@@ -1,11 +1,12 @@
 # Evals
 
-**STAR**
+Recovery has to be proven, not remembered.
 
-- **Situation:** Recovery and regime regressions must run without a second engine.
-- **Task:** Document `of eval` recovery fixtures and unittest manifests under `evals/`.
-- **Action:** List quarry / beacon / contrast-close plus `evals/expected/`; CI runs `--strict --kernel`.
-- **Result:** A failing eval is a kernel regression, not a new regime.
+`of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
+
+Quarry, beacon, contrast-close. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+
+A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
 Kernel evals. CI (and `python3 -m unittest discover -s tests`) drives the shipped CLI against these manifests. They are not a second regime engine.
 

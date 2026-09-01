@@ -1,11 +1,12 @@
 # Dependencies
 
-**STAR**
+The field has to stay portable. Python 3.9+ stdlib. No lockfile.
 
-- **Situation:** The kernel must install as a skill and run on Python 3.9+ with no pip packages.
-- **Task:** Inventory runtime, optional host CLIs, and CI — no lockfile.
-- **Action:** Name the `scripts/of.py` shim, the `scripts/of/` package, and `scripts/of_adapters.py` as stdlib-only.
-- **Result:** Nobody adds a pip dependency without an explicit product decision and a changelog entry.
+Runtime is the kernel. Host CLIs are optional. CI is not a pip graph.
+
+`scripts/of.py` is the shim. Internals live in `scripts/of/`. Adapters in `scripts/of_adapters.py`. No third-party import.
+
+A cut, a resume, a different model — still no pip. The results do not have to change.
 
 **Third-party runtime packages: none.**
 

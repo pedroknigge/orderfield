@@ -1,11 +1,12 @@
 # Publish notes
 
-**STAR**
+A release that lies about VERSION is a mood, not a ship.
 
-- **Situation:** A tagged GitHub release must match VERSION, both skill entry points, and the installed kernel.
-- **Task:** Gate publish: tests, `validate-skill.sh`, package discovery of `orderfield` and `of`, then tag.
-- **Action:** Land through protected `main`, annotated tag, `gh release create --verify-tag`, then mortal install.
-- **Result:** Remote install reports the same version as `VERSION` and both skill names resolve.
+The gate is tests, `validate-skill.sh`, and package discovery of both `orderfield` and `of`. Then the tag.
+
+Land through protected `main`. Annotated tag. `gh release create --verify-tag`. Mortal install from the remote.
+
+A cut, a resume, a different host — the published kernel is the same. The results do not have to change.
 
 Public repo: https://github.com/pedroknigge/orderfield
 

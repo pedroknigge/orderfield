@@ -1,11 +1,12 @@
 # Glossary — Orderfield contract
 
-**STAR**
+Names fork. Then the plan dies in translation.
 
-- **Situation:** Compared-to prose and the skill body share names that must not fork into a second dialect.
-- **Task:** Hold canonical contract words: SPEC, ORDER, residual, regime, contrast, origin, learnings.
-- **Action:** Define each term against disk paths and `of` verbs; link README for positioning.
-- **Result:** Packets cut work from SPEC + ORDER; a slice never replaces the brief.
+The contract words stay one dialect: SPEC, ORDER, packet, residual, regime, contrast.
+
+Each term is a disk path or an `of` verb. A slice cuts work from SPEC + ORDER. It does not replace the brief.
+
+A cut, a resume, a different model — the words still mean the same. The results do not have to change.
 
 Canonical terms only. Product surface: [README Compared-to](../README.md). Leader procedure: [SKILL.md](../SKILL.md). Invariants: [references/principles.md](../references/principles.md).
 

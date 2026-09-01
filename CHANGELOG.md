@@ -1,11 +1,12 @@
 # Changelog
 
-**STAR**
+History is slow. The product is not allowed to invent a past.
 
-- **Situation:** Each release must record what shipped without rewriting history or inventing a regime.
-- **Task:** Keep a versioned log that `validate-skill.sh` can match to `VERSION`.
-- **Action:** First `##` heading stays the current version; bullets stay code-backed.
-- **Result:** Docs, skill metadata, and the tag describe the same line.
+This log matches `VERSION`. The first `##` heading is the current line. Bullets stay code-backed.
+
+Do not rewrite shipped notes to excuse a new regime.
+
+A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
 ## 0.6.5
 

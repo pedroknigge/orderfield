@@ -1,11 +1,12 @@
 # Kernel events (`of --json` / `OF_JSON=1`)
 
-**STAR**
+The field is slow. The log must not become another chat.
 
-- **Situation:** Leader tooling and CI need an observational trail that is not a list of instructions to execute.
-- **Task:** Document the `of --json` / `OF_JSON=1` vocabulary against `emit_event`.
-- **Action:** Anchor the symbol in `scripts/of/field.py` (re-exported by `of`), not the `scripts/of.py` shim.
-- **Result:** Each stderr line is a JSON object with `event`; product writes and transcripts are not events.
+`of --json` / `OF_JSON=1` is observe-only. `emit_event` lives in `scripts/of/field.py`, not the shim.
+
+One JSON object per stderr line, key `event`. Product writes and transcripts are not events.
+
+A cut, a resume, a different model — the trail is still on disk. The results do not have to change.
 
 > Hub: [architecture.md](architecture.md) · Code: [`emit_event`](../scripts/of/field.py)
 

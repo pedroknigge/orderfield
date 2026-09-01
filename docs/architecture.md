@@ -1,11 +1,12 @@
 # Architecture — Orderfield kernel
 
-**STAR**
+The slow thing is the field on disk. The fast thing is the child CLI. Form docs do not invent a regime.
 
-- **Situation:** The 0.6.5 kernel is a stdlib CLI (`scripts/of.py` shim + `scripts/of/`) whose contract lives on disk; form docs must not invent a regime.
-- **Task:** Describe kernel shape (C4, authority, modules, lock, reserved runtime) with precision to code.
-- **Action:** Map containers and symbols to `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` and the real `MUTATING_COMMANDS` set.
-- **Result:** An agent can find the owner of each concern and does not claim a lock on spawn/spec/gc.
+Architecture names who may change the plan, what the lock actually covers, and what stays reserved.
+
+Map to `scripts/of/{field,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — not spawn, spec, or gc.
+
+A cut, a resume, a different model — the shape holds. The results do not have to change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 

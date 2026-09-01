@@ -1,11 +1,12 @@
 # Contributing — Orderfield
 
-**STAR**
+The kernel is slow on purpose: stdlib, protected `main`, no pip by accident.
 
-- **Situation:** A stdlib package with protected `main` cannot accept PRs that lie about VERSION/docs or add pip.
-- **Task:** Say how to change the repo, what “done” means, and what debt remains.
-- **Action:** Point writers at `scripts/of/` (not the shim), real CI, and mark the 0.6 split as shipped.
-- **Result:** A contributor runs unittest + `validate-skill.sh` and does not reopen the god-file.
+Done is tests, docs that match code, and a VERSION that still tells the truth. Not a second physics.
+
+Write in `scripts/of/`, not the shim. CI is unittest plus `validate-skill.sh`. The 0.6 split already shipped.
+
+A cut, a resume, a different model — the package does not start over. The results do not have to change.
 
 How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH.md).
 

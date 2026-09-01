@@ -1,11 +1,12 @@
 # Roadmap
 
-**STAR**
+The current line is 0.6.5. Accounting and `scale_up` stay reserved. That is the slow decision.
 
-- **Situation:** The current line is 0.6.5 (origin provenance); accounting and `scale_up` stay reserved.
-- **Task:** Be the canonical index of deferred work and what already shipped, without inventing a new regime.
-- **Action:** Anchor `RUNTIME_OWNERSHIP` in `scripts/of/regime.py`; keep Test C out of kernel CI.
-- **Result:** An agent reads this page for what not to do now, not an invented backlog.
+This page indexes what shipped and what must not be invented. Not a second regime.
+
+`RUNTIME_OWNERSHIP` lives in `scripts/of/regime.py`. Test C is harness QA, not kernel CI.
+
+A cut, a resume, a different model — the deferred work is still deferred. The results do not have to change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 

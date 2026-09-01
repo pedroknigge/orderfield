@@ -1,11 +1,12 @@
 # Adapters and headless modes
 
-**STAR**
+Each harness has different headless flags. Mixing them silently escalates trust.
 
-- **Situation:** Each harness CLI has different headless flags; mixing them silently escalates trust.
-- **Task:** Translate spawn/wait/kill/share into per-adapter argv against `scripts/of_adapters.py`.
-- **Action:** Document detect order, reference-load vs inline, and kernel-vs-harness verification for Qwen.
-- **Result:** `of spawn --adapter <name>` matches this file; PATH presence is not login.
+Spawn, wait, kill, share translate through `scripts/of_adapters.py`. Detect order, reference-load vs inline, kernel vs harness for Qwen.
+
+`of spawn --adapter <name>` matches this file. PATH is not login.
+
+A cut, a resume, a different model — the argv table still holds. The results do not have to change.
 
 Adapter tables and `build_spawn_argv` live in [`scripts/of_adapters.py`](../scripts/of_adapters.py) (imported by the CLI). The kernel speaks four verbs. Each adapter translates them.
 

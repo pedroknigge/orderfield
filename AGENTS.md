@@ -1,11 +1,12 @@
 # Orderfield — rules for any harness
 
-**STAR**
+The chat is fast. The field has to be slow. An incoming agent may already be standing on a plan.
 
-- **Situation:** Incoming agents (any harness) land in a repo that may already have an ORDER on disk.
-- **Task:** Give a one-screen hub: auto-continue, leader vs slave, docs index, surface coverage.
-- **Action:** Point at canonical docs; keep coverage rows in sync with shipped 0.6.5 surfaces; code wins.
-- **Result:** An agent runs `of resume` on an open field and does not invent a second hub.
+This hub is not a second product. It is resume-first: one leader, children who cannot rewrite the mission, coverage that matches code.
+
+Read the index. Run `of resume` on an open field. Do not invent a parallel contract.
+
+A cut, a resume, a different model — the plan holds. The results do not have to change.
 
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 

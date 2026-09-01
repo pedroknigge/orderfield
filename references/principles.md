@@ -1,11 +1,12 @@
 # Orderfield invariants (Haken-inspired)
 
-**STAR**
+Nature already solved coordination. Order emerges when the slow constrains the fast.
 
-- **Situation:** A portable field needs invariants the kernel can enforce and protocol for what the kernel cannot.
-- **Task:** Name what `of` applies versus what stays contract (roles, workspace, metrics).
-- **Action:** Align the lock to `MUTATING_COMMANDS` and keep reserved runtime as reserve, not telemetry.
-- **Result:** A leader does not treat spawn/spec/gc as holding `field.lock`, nor `writable_by_slaves` as a file lock.
+We take that physics as inspiration — a method. The kernel enforces what it can. Roles, workspace, and metric truth stay protocol.
+
+Lock only `MUTATING_COMMANDS`. Reserve is reserve, not telemetry. `writable_by_slaves` is not a file lock.
+
+A cut, a resume, a different model — the field holds. The results do not have to change.
 
 These rules are the contract. For operations routed through `of`, the CLI enforces public JSON schemas, atomic artifact writes, a cross-process field lock, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu. Role obedience, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol; an adapter or child with filesystem access can violate them.
 

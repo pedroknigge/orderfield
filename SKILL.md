@@ -11,12 +11,13 @@ metadata:
 
 # Orderfield
 
-**STAR**
+The model is fast. The chat is faster. A brief that lives only in the thread dies with the room.
 
-- **Situation:** A leader in any harness must run a disk-backed field without compressing the contract into chat.
-- **Task:** State the leader procedure: resume, pack, spawn/handoff, collect, integrate, contrast, close.
-- **Action:** Bind every step to `of` / `scripts/of.py`; keep origin as provenance; keep lock language to `MUTATING_COMMANDS`.
-- **Result:** A leader who follows this file does not implement the slice and does not skip contrast before close.
+A leader is owed a slow field: one plan, exclusive owners, a close that is proof — physics as method, not more agents.
+
+Resume. Pack. Residual. Contrast. Close. Do not implement the slice. Do not skip the proof. Origin is a pointer, not the spawn pin.
+
+The plan takes a cut, a resume, a different model. The work does not start over. The results do not have to change.
 
 Orderfield is an Agent Skill plus a Python stdlib contract kernel for complex software work that will not fit one agent. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 

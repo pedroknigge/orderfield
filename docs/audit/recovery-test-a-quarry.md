@@ -1,11 +1,12 @@
 # Test A — Dirty wave recovery (Quarry)
 
-**STAR**
+A dirty mid-wave cut. Packets on disk. OS children cancelled. `session.json` stale.
 
-- **Situation:** A dirty mid-wave cut left packets on disk and cancelled OS children; `session.json` was stale.
-- **Task:** Prove packets + residuals + product state reconstruct the field without a checkpoint.
-- **Action:** Cut wave 1 after domain landed; resume from disk; record friction.
-- **Result:** RECOVERY WITH MINOR FRICTION on kernel 0.5.3; motivated the 0.5.4 recovery brief.
+Prove the field reconstructs from packets, residuals, and product state — no checkpoint.
+
+Cut after domain landed. Resume from disk. Record friction.
+
+RECOVERY WITH MINOR FRICTION on 0.5.3. That pass bought the 0.5.4 brief. A cut, a resume, a different model — disk still beats chat. The results do not have to change.
 
 **Run:** 2026-08-31 · **Kernel:** 0.5.3 · **Verdict:** RECOVERY WITH MINOR FRICTION
 

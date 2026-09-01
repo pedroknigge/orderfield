@@ -1,11 +1,12 @@
 # Principles
 
-**STAR**
+Nature already solved coordination: the slow constrains the fast. Different speeds, one field.
 
-- **Situation:** Agents need a one-screen reminder of Haken-inspired invariants.
-- **Task:** Point at the canonical list without forking a second physics.
-- **Action:** Keep this file as a short-form index; detail stays in `references/principles.md`.
-- **Result:** Nobody treats this pointer as a second SSOT.
+Orderfield takes that physics as inspiration — a method — not a second science.
+
+The short list is here. The contract is `references/principles.md`. Do not fork a parallel physics.
+
+A cut, a resume, a different model — the invariants hold. The results do not have to change.
 
 Canonical invariants live in `references/principles.md`.
 

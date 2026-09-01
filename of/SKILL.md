@@ -9,12 +9,13 @@ metadata:
 
 # /of — alias for orderfield
 
-**STAR**
+Hosts look up `/of` and `orderfield`. Two names. One field.
 
-- **Situation:** Hosts discover both `orderfield` and the shorter `/of` name.
-- **Task:** Keep a static alias that does not define a second contract.
-- **Action:** Point at the sibling `orderfield/SKILL.md` (installed) or `../SKILL.md` (checkout).
-- **Result:** Invoking `/of` is invoking `/orderfield`; missing sibling is a package error.
+The alias must not invent a second kernel.
+
+Load the sibling skill. Stop if it is missing.
+
+A cut, a resume, a different model — same contract, same results, whichever name opened the door.
 
 This skill is the short-name entry point for Orderfield. Load the complete
 Orderfield skill and follow it exactly; this alias does not define a second
