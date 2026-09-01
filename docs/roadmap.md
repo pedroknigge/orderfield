@@ -2,11 +2,11 @@
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.6.3`
+**Status:** Shipped · **Current release line:** `0.6.4`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.6.3 — protocol learnings
+## 0.6.4 — protocol learnings
 
 - `of learn` (default `--protocol`) writes durable Orderfield lessons to the user cache; `--field` binds to this ORDER. `--list` / `--forget`.
 - `of gc` keeps protocol; drops inapplicable field lessons. Child prompts get at most 8 protocol lines; not SPEC. Not a new regime.

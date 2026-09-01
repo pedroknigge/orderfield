@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.4
+
+Mass-scale structural optimizations for the Orderfield kernel.
+
+- **OPT-001:** Schema Validation caching in field.py.
+- **OPT-002:** Stop using os.walk in pulse_once / newest_mtime.
+- **OPT-003:** O(1) path checking index in pack.py and state.json.
+- **OPT-004:** Granularize lock in field.py (isolate packet/residual writes from ORDER/state).
+- **OPT-005:** Bypass directory fsyncs for ephemeral artifacts in dump_json.
+
 ## 0.6.3
 
 Protocol learnings: durable Orderfield lessons that do not depend on the product repo.

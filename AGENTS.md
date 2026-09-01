@@ -63,7 +63,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.6.0 form split (`scripts/of.py` internals; protocol unchanged) | documented |
 | 0.6.1 deictic go-ahead ingest (advisory, not a new regime) | documented |
 | 0.6.2 CLI command groups (`scripts/of/cli/`, not a new regime) | documented |
-| 0.6.3 `of learn` protocol vs field (not a new regime) | documented |
+| 0.6.4 `of learn` protocol vs field (not a new regime) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
