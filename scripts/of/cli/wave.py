@@ -378,7 +378,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 + ", ".join(blind),
                 file=sys.stderr,
             )
-    dump_json(out, packet)
+    dump_json(out, packet, skip_dir_fsync=True)
     ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
     (wdir / "prompts" / f"{child_id}.md").write_text(prompt, encoding="utf-8")
@@ -619,7 +619,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                     + "; ".join(errs)
                 )
             else:
-                dump_json(residual_abs, extracted)
+                dump_json(residual_abs, extracted, skip_dir_fsync=True)
                 print(f"residual extracted from stdout -> {residual_rel}")
         else:
             print(f"no residual yet. log={log_path}")

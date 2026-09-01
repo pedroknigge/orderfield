@@ -294,7 +294,7 @@ def load_json(path: Path) -> Any:
         die(f"invalid JSON in {path}: {e}")
 
 
-def dump_json(path: Path, data: Any) -> None:
+def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
     """Durably replace a JSON artifact without exposing a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
@@ -306,15 +306,16 @@ def dump_json(path: Path, data: Any) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(str(tmp), str(path))
-        try:
-            dir_fd = os.open(str(path.parent), os.O_RDONLY)
-        except OSError:
-            dir_fd = None
-        if dir_fd is not None:
+        if not skip_dir_fsync:
             try:
-                os.fsync(dir_fd)
-            finally:
-                os.close(dir_fd)
+                dir_fd = os.open(str(path.parent), os.O_RDONLY)
+            except OSError:
+                dir_fd = None
+            if dir_fd is not None:
+                try:
+                    os.fsync(dir_fd)
+                finally:
+                    os.close(dir_fd)
     finally:
         try:
             tmp.unlink()
