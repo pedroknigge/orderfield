@@ -17,12 +17,12 @@ The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The k
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.6.5</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.0</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.5-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -74,6 +74,8 @@ The plan is not a snapshot you defend. It is a slow object that absorbs three ki
 Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
 
 That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
+
+Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field. `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. Mid-flight extra ask on the same product: `of spec --amend`. The kernel does not prompt. It does not lock product files.
 
 ---
 
@@ -185,7 +187,7 @@ While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity h
 
 A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
 
-CLI mutations in `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
+CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
@@ -273,7 +275,9 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | Command | Purpose |
 |---|---|
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
-| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Does not auto-spawn. |
+| `new` | open a sibling field in this working tree without closing the others. First call promotes the legacy ORDER into `fields/<id>/` |
+| `fields` | list sibling fields (id, open/closed, origin, mission) |
+| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Several unmatched open fields: roster, exit 2. `--field` / `OF_FIELD`. Does not auto-spawn. |
 | `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `learn` | durable Orderfield lessons (`--protocol`, default) or this-mission notes (`--field`). `--list` / `--forget`. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |

@@ -22,7 +22,9 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `collect` | After `of collect` | `wave`, `ok`, `invalid`, `missing`, `total` |
 | `integrate` | After `of integrate` | `wave`, `regime`, `ok` |
 | `wave.advanced` | After `of next-wave` | `from_wave`, `to_wave`, `ok` |
-| `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok` |
+| `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
+| `new` | After `of new` | `field`, `ok` |
+| `fields` | After `of fields` | `count`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
 | `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok` |
 | `close` | After `of close` | `rev`, `spec_hash`, `ok` |

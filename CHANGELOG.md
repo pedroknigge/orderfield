@@ -8,6 +8,20 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.0
+
+Sibling fields in one working tree. Same physics: one slow ORDER per field. Several fields may live under `.orderfield/fields/<id>/`. Not a file locker.
+
+- **`of new --mission`:** open a sibling field without archiving the others. First `of init` still writes legacy `.orderfield/ORDER.json`. The first `of new` promotes that field into `fields/<id>/` then creates the sibling.
+- **`of fields`:** roster of open/closed fields (id, origin, mission).
+- **`--field <id>` / `OF_FIELD`:** select the field this process operates on. No shared `CURRENT` pointer (two agents would steal it).
+- **`of resume` with several unmatched open fields:** prints the roster, `auto_continue no`, exit 2 (`PICK --field | of new`). Origin `session_id` match auto-selects that field. Unique open field behaves as 0.6.5.
+- **Foreign origin gate:** if `ORDER.origin.session_id` is set and `OF_SESSION_ID` is a different value, `auto_continue no` even for a single field. Missing `OF_SESSION_ID` keeps back-compat auto-continue.
+- **Cross-field `--owns-path`:** pack dies if an in-flight packet in another *open* sibling owns an overlapping path. Still not a product-file lock.
+- **CLI:** `new` is in `MUTATING_COMMANDS` (field.lock). Kernel does not prompt on stdin. The skill asks which field / whether to `of new`.
+- Packet contract paths stay `.orderfield/waves/…`; physical files live under the field home. `physical_field_rel` maps them.
+- Packaging: VERSION 0.7.0; skill/alias description preview `v0.7.0 — …`.
+
 ## 0.6.5
 
 Optional origin provenance pointer. Not a new regime.

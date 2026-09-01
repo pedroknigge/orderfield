@@ -50,6 +50,7 @@ from of.field import (
     die,
     dump_json,
     emit_event,
+    field_home,
     field_lock,
     field_rel,
     find_root,
@@ -202,17 +203,20 @@ from of.regime import (
 
 
 
-def cmd_init(args: argparse.Namespace) -> None:
-    root = find_root()
-    target = of_dir(root)
-    if order_path(root).exists() and not args.force:
-        die(f"already exists {order_path(root)} (use --force)")
-    phase = args.phase
+def _stamp_and_write_new_field(
+    args: argparse.Namespace,
+    root: Path,
+    *,
+    force: bool,
+    order: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    phase = getattr(args, "phase", None) or "explore"
     if phase not in PHASES:
         die(f"invalid phase: {phase}")
     if not args.mission:
         die("--mission is required")
-    order = default_order(args.mission, phase)
+    if order is None:
+        order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
     origin_harness, origin_session = resolve_init_origin(
@@ -232,15 +236,14 @@ def cmd_init(args: argparse.Namespace) -> None:
     elif source_inline:
         source_text = str(source_inline)
         warn_if_deictic_brief(source_text, flag="--source")
+    target = field_home(root)
     target.mkdir(parents=True, exist_ok=True)
-    # --force starts a new field; leftover waves AND SPEC must not shadow it.
-    if args.force:
+    if force:
         archive_previous_field(root, target)
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
-    waves = target / "waves"
-    waves.mkdir(parents=True, exist_ok=True)
+    (target / "waves").mkdir(parents=True, exist_ok=True)
     if source_text is not None:
-        spec_hash = write_spec(root, source_text, revise=bool(args.force))
+        spec_hash = write_spec(root, source_text, revise=bool(force))
         extracted = extract_requirements_from_spec(source_text)
         save_requirements(
             {"v": 1, "spec_hash": spec_hash, "requirements": extracted},
@@ -271,5 +274,69 @@ def cmd_init(args: argparse.Namespace) -> None:
     sess = session_path(root)
     if sess.is_file():
         sess.unlink()
+    return order
+
+
+def cmd_init(args: argparse.Namespace) -> None:
+    root = find_root()
+    from of.field import (
+        bind_active_field,
+        field_home,
+        list_field_homes,
+        set_field_home,
+    )
+
+    homes = list_field_homes(root)
+    if homes and not args.force:
+        die(
+            "field(s) exist; of new --mission '...' opens a sibling "
+            "(or of init --force --field ID replaces one)"
+        )
+    if homes and args.force:
+        bound = bind_active_field(
+            root, getattr(args, "field_id", None), cmd="init"
+        )
+        if bound is None:
+            die(
+                "multiple fields; of init --force --field ID "
+                "(or of new to open a sibling)"
+            )
+        target = bound
+    else:
+        target = of_dir(root)
+        if order_path(root).exists() and not args.force:
+            die(f"already exists {order_path(root)} (use --force)")
+        set_field_home(target)
+    order = _stamp_and_write_new_field(args, root, force=bool(args.force))
+    print(f"initialized {order_path(root)}")
+    print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
+
+
+def cmd_new(args: argparse.Namespace) -> None:
+    """Open a sibling field. Does not archive or close the others."""
+    root = find_root()
+    from of.field import (
+        fields_dir,
+        list_field_homes,
+        promote_legacy_layout,
+        set_field_home,
+    )
+
+    if not args.mission:
+        die("--mission is required")
+    promote_legacy_layout(root)
+    homes = list_field_homes(root)
+    if not homes:
+        die("no ORDER. of init --mission '...' first; of new opens a sibling")
+    phase = getattr(args, "phase", None) or "explore"
+    order = default_order(args.mission, phase)
+    home = fields_dir(root) / order["id"]
+    if home.exists():
+        die(f"field home already exists {home}")
+    home.mkdir(parents=True, exist_ok=True)
+    set_field_home(home)
+    order = _stamp_and_write_new_field(args, root, force=False, order=order)
+    emit_event("new", field=order["id"], ok=True)
+    print(f"field         {order['id']}")
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")

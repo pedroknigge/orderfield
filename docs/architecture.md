@@ -10,7 +10,7 @@ A cut, a resume, a different model — the shape holds. The results do not have 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.5` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.7.0` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -174,7 +174,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
+`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
 
 Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `spec`, `gc`, `checkpoint`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 

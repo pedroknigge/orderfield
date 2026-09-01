@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.6.5 — Contract kernel. Use when the user invokes /orderfield or /of, an existing .orderfield/ORDER.json must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.0 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.5"
+  version: "0.7.0"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -29,7 +29,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 
@@ -46,7 +46,7 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Tool-call discipline.** A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run. Announce in the past tense only after the CLI returns.
 
-**Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn** — handoff/spawn/collect/integrate/patch/next-wave/contrast/close as appropriate. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused or stopped the mission (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). A turn that runs `of resume` on an open field but performs no `next` work is a broken run.
+**Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn** — handoff/spawn/collect/integrate/patch/next-wave/contrast/close as appropriate. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused or stopped the mission (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). If resume prints a **roster** (`PICK --field`, exit 2) or **foreign field**, that is not this session's `next` — ask which field or `of new`. A turn that runs `of resume` on an open field it owns but performs no `next` work is a broken run.
 
 **Steer policy (Eve analog).** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission: amend or patch the contract (`of spec --amend`, `of patch`), continue parked children (`HOLD`), or integrate — do **not** `of init --force` unless the user explicitly cancels the mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words. Interleaved chats and compaction are not pause; they are steering context back to disk.
 
@@ -60,7 +60,9 @@ After compaction or returning from an interleaved chat, the first act is still `
 python3 <skill>/scripts/of.py resume
 ```
 
-If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed). When `ORDER.origin` is present it prints one line `origin        <harness> [<session_id>]`; omit that line when the key is missing. Origin is provenance (which harness session opened the field), not resume authority and not a transcript.
+If a field exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init` when a field is already open. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed, foreign origin, or a roster). When `ORDER.origin` is present it prints one line `origin        <harness> [<session_id>]`; omit that line when the key is missing. Origin is provenance (which harness session opened the field), not resume authority and not a transcript.
+
+**Sibling fields.** One working tree may hold several fields (`.orderfield/fields/<id>/`). `of new` opens a sibling without killing the others. `of fields` lists them. Pass `--field <id>` or `OF_FIELD`. The kernel never prompts on stdin. If resume prints `PICK --field` (exit 2), **ask the user** which field to attach or whether to `of new`. If `auto_continue no` says **foreign field**, do **not** execute that field's `next` — attach with `--field` or open a sibling. Same brief, other agent → attach. Unrelated brief → `of new`. Mid-flight extra ask on the **same** product → `of spec --amend`, not `of new`.
 
 The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
 
@@ -94,7 +96,7 @@ python3 <skill>/scripts/of.py init --mission "..." --phase explore \
 
 Do not start doing the slice yourself. If there is no ORDER, initialize it. If ORDER exists, you already resumed — do not re-init. Read `references/principles.md` when invariants need reinforcing.
 
-`of init --force` starts a **new field**: old wave dirs are archived to `.orderfield/waves-archived-<old id>/` so `state.wave` stays true (no silent jump from wave 1 to wave N later) and stale packets never shadow the new mission.
+`of init --force` replaces **this** field: old wave dirs are archived to `waves-archived-<old id>/` so `state.wave` stays true (no silent jump from wave 1 to wave N later) and stale packets never shadow the new mission. To keep the current field and start another in the same tree: `of new --mission "…"`. First `of init` still writes legacy `.orderfield/ORDER.json`; the first `of new` promotes it under `fields/<id>/`.
 
 ### 2. Cut slices that match the phase (optional when owners are obvious)
 
@@ -316,7 +318,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). Only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
 - Do not spawn if a skill on the same agent is enough.
-- Do not `of init` when ORDER already exists. `of resume` first.
+- Do not `of init` when a field already exists. `of resume` first. Unrelated second mission in the same tree is `of new`, not `--force`.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
 - Do not treat `ORDER.origin` as spawn authority or as `session.json`. Do not fetch or dump harness transcripts; origin is a pointer. Fetch stays in harness-specific resume skills.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
@@ -340,8 +342,8 @@ Use the minimum. Explorer + adversary already prove the principle.
 
 | Thing | Path |
 |---|---|
-| Canonical field | `.orderfield/ORDER.json` |
-| Binding specification | `.orderfield/SPEC.md` (original + amendments). Never `PROMPT.md` at the project root. |
+| Canonical field | `.orderfield/ORDER.json` (legacy single field) or `.orderfield/fields/<id>/ORDER.json` |
+| Binding specification | `SPEC.md` in the field home (original + amendments). Never `PROMPT.md` at the project root. |
 | Spec history | `.orderfield/spec-log/` (previous SPEC snapshots; dumped after 30 days) |
 | Wave / cap state | `.orderfield/state.json` |
 | Session snapshot | `.orderfield/session.json` (facts: wave, last_cmd, in_flight, updated_at; optional `summary` from `of checkpoint --summary`). Forbidden to slaves like `state.json`. |
