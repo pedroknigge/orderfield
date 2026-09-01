@@ -61,6 +61,19 @@ Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Ag
 - Close is proof: `of contrast` RESOLVED, public surface verified.
 - Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
 - The landing is better than a cheap sprint at the public surface, even if it is not first.
+- Mid-flight you amend SPEC or a child reports threshold, and the next packet already carries the new field.
+
+## The field moves while the wave flies
+
+The plan is not a snapshot you defend. It is a slow object that absorbs three kinds of change without losing its shape:
+
+- **You intervene mid-flight.** `of spec --amend` dates your new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet the leader cuts already carries the new field.
+- **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
+- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
+
+Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
+
+That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
 
 ---
 
