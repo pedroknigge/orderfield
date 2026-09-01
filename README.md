@@ -74,3 +74,271 @@ The plan is not a snapshot you defend. It is a slow object that absorbs three ki
 Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
 
 That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
+
+---
+
+## Install
+
+Install the package into the Agent Skills hosts selected by `skills`:
+
+```bash
+npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
+```
+
+This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both. `npx skills` installs skills; it does not create a shell command.
+
+For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash
+```
+
+<details>
+<summary><strong>More install options</strong></summary>
+
+<br>
+
+```bash
+# generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
+curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --generic
+
+# this repo only
+./install.sh --project
+```
+
+Literal project install is safe from the checkout root: the installer canonicalizes the base, snapshots the source outside the destination, avoids recursive `.agents` copies, and creates an absolute project-local `.local/bin/of` target.
+
+`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
+
+Python 3.9+. No pip packages.
+
+</details>
+
+Where it lands:
+
+| Agent | Skill path |
+|---|---|
+| Any / unknown | `~/.agents/skills/orderfield` **(generic)** |
+| Claude Code | `~/.claude/skills/orderfield` |
+| Codex | `~/.agents/skills/orderfield` + pointer in `~/.codex/AGENTS.md` |
+| Cursor | `~/.cursor/skills/orderfield` |
+| OpenCode | `~/.opencode/skills/orderfield` |
+| Grok | `~/.grok/skills/orderfield` |
+| Antigravity (`agy`) | `~/.gemini/config/skills/orderfield` and `~/.gemini/antigravity-cli/skills/orderfield` |
+
+Then invoke `/orderfield` or `/of` in the host. A harness name by itself is not a trigger; use Orderfield explicitly or for a real multi-slice/multi-writer wave.
+
+---
+
+## Uninstall
+
+Remove both package skill names when they were installed with `npx skills`:
+
+```bash
+npx skills remove orderfield -g -y
+npx skills remove of -g -y
+```
+
+Or the classic uninstaller (removes skill copies, the `/of` alias dirs, the Codex pointer block, and `~/.local/bin/of`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --uninstall
+```
+
+From a checkout: `./install.sh --uninstall` (or `--project` / `--root PATH` to match how you installed).
+
+Project-local ORDER state (`.orderfield/` in a working repo) is left alone — uninstall only removes the skill install.
+
+---
+
+## 30-second loop
+
+From the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). If the user said only `dale` / `do it` pointing at prior chat, `--source` is that prior request, not the go-ahead. Do not implement in the leader tree.
+
+```bash
+of init --mission "decidable architecture for a pricing tool" --phase explore \
+  --source "<verbatim user request>"
+of pack --slice "map pricing models, do not choose the phase" --role explorer \
+  --owns-requirement CLI-001
+# second implementer in the same wave needs disjoint --owns-path
+# of pack --role implementer --owns-path src/http.py --owns-requirement HTTP-001
+of spawn --adapter generic --packet .orderfield/waves/001/packets/*.json
+of collect --wave 1
+of integrate --wave 1
+of contrast    # CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR
+of close       # refused until contrast is RESOLVED
+of status
+```
+
+90-second demo of the amnesia + threshold residual case (plan changes without swallowing transcripts): [docs/demo/README.md](docs/demo/README.md).
+
+Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). Open fields print `auto_continue yes` — execute `next` in the same turn; interleaved chats are not pause. Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs.
+
+While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. Each child verdict uses only its packet time and scratch mtime (including the contract-required heartbeat); the newest shared-repo product mtime is displayed separately as wave context. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision. Pulse does not mutate ORDER, state, session, or wave artifacts; update-notice throttling may write its user cache.
+
+`of status` / `of resume` / `of pulse` also tell you (once a day, one stderr line) when a newer release exists, with the upgrade one-liner. Silent offline; `OF_NO_UPDATE_CHECK=1` turns it off.
+
+<details>
+<summary><strong>When to open, session cut, and field rules</strong></summary>
+
+<br>
+
+A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
+
+CLI mutations in `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
+
+**Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
+
+**Session cut:** Disk is the session. In-flight = packed child with missing residual. `of resume` reconstructs a one-screen brief from packets / residuals / state plus an optional checkpoint summary. Optional `ORDER.origin` is a provenance pointer (harness + session id) so a later leader can find the opening conversation; it is not resume authority, not the spawn pin, and the kernel does not fetch the transcript. Auto snapshot `.orderfield/session.json` facts only (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint — forbidden to slaves like `state.json`. `of status` surfaces in-flight. `of render` / `of handoff` add a continuation note when scratch is nonempty (continue; do not restart). No new regime.
+
+**When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
+
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals and **protocol** learnings, drop inapplicable **field** learnings, dump logs/history older than 30 days; never copy transcripts). `of learn` is the write path: protocol lessons are about running a field (survive ORDER and repos); field lessons die with the mission. Spawn argv previews and logs redact secrets and escalated approval flags. Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+
+</details>
+
+---
+
+## Contract and runtime boundary
+
+The model is inspired by Haken's slaving principle: a slow field constrains fresh-context children. *Analogy, not a science claim.* Named adapters and generic mode transport the same disk protocol.
+
+| Physics | Here |
+|---|---|
+| Order parameter | `.orderfield/ORDER.json` — versioned; leader-owned by contract |
+| Slaving function | the packet — the intended child context boundary |
+| Instability | residual `status=threshold` plus child-authored, type-checked signals |
+| Circular causality | leader runs `integrate --apply` or `of patch`; the next wave receives the result |
+| Reduction of degrees of freedom | leaders consume residuals when they follow the protocol |
+
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+
+Accounting is reserved, not implemented: packet seconds are the spawn timeout; token budgets and `local_budget_pct` are not measured, `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
+
+Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
+
+---
+
+## Generic mode
+
+Named adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`.
+
+Everything else is generic.
+
+```bash
+# you have a CLI
+export OF_AGENT="my-agent --headless"
+of spawn --adapter generic --packet PACKET.json
+
+# you do not — handoff
+of spawn --adapter generic --packet PACKET.json
+# writes .orderfield/waves/NNN/prompts/<id>.md
+# paste it into any agent; the child writes the residual JSON
+```
+
+If `of detect` finds nothing, the default adapter **is** generic.
+
+---
+
+## Why this is not Orca with extra steps
+
+Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.
+
+```
+  escalate_up   patch the field. re-enslave.
+  scale_out     same role, more copies.
+  scale_across  reserved in 0.5.0; retained for report compatibility only.
+  scale_up      reserved; no runtime accounting selects it.
+  hold          wait (closed wave with done_when open, or done_when_closed applied this wave — of phase is still explicit).
+  phase         only when done_when is closed. still `of phase`.
+  human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done.
+```
+
+The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s tests -v`
+
+## Compared-to
+
+| | Orchestrates | Orderfield is instead |
+|---|---|---|
+| **Orca** | Work: process bus, workers, gates, DAGs. Starts and stops coding CLIs. | Authority over the plan. Orca may transport a packet; it must not choose the phase, patch the mission, or invent a regime. |
+| **AWS CAO** ([CLI Agent Orchestrator](https://aws.amazon.com/blogs/opensource/introducing-cli-agent-orchestrator-transforming-developer-cli-tools-into-a-multi-agent-powerhouse/)) | A supervisor plus specialized workers over Q CLI / Claude Code. Session and fleet orchestration, AWS-adjacent. | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow, no CAO UI. |
+| **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
+| **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory. Orchestrates model calls. | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
+| **Dual-harness skills** (e.g. [claude-codex-orchestration](https://github.com/dy9759/claude-codex-orchestration)) | Which runtime does the work (Claude as brain, Codex as body, or symmetric dispatch). | Who may change the plan. Multi-harness only if the user asks. Packet, residual, and contrast are the authority — not a dual-runtime router. |
+
+---
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
+| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Does not auto-spawn. |
+| `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
+| `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
+| `learn` | durable Orderfield lessons (`--protocol`, default) or this-mission notes (`--field`). `--list` / `--forget`. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
+| `status` | show field, wave, caps, in-flight |
+| `detect` | list installed harness CLIs |
+| `validate` | validate order / packet / residual JSON |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies). Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
+| `unpack` | release a packed child that never reported; refunds the child budget |
+| `render` | print the slave prompt (continuation note if scratch nonempty) |
+| `handoff` | write the prompt file and print the envelope for the child |
+| `spawn` | launch a child, or generic handoff |
+| `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2, never freezes on one dead child |
+| `integrate` | reduce residuals and choose a regime (`--partial`; identical replay repairs/no-ops; changed inputs need `--recompute`) |
+| `phase` | guarded sequential phase change; `--force --reason` is audited break-glass; `--force` to `deliver` still requires SPEC close |
+| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
+| `next-wave` | advance only after complete current-digest integration and required post-escalation revision |
+| `doctor` | local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
+| `retain` / `gc` | episodic keep/drop/dump; never copies transcripts |
+| `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
+| `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
+| `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
+| `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
+| `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
+| `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
+
+## Docs
+
+Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
+
+| Doc | Role |
+|-----|------|
+| [SKILL.md](SKILL.md) | Leader procedure (`/orderfield`, `/of`) |
+| [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
+| [SLAVE.md](SLAVE.md) | Child contract |
+| [docs/architecture.md](docs/architecture.md) | Kernel shape; `MUTATING_COMMANDS` lock set |
+| [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
+| [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |
+| [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |
+| [docs/roadmap.md](docs/roadmap.md) | Current release line / deferred work |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
+| [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
+| [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
+| [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
+| [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
+| [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
+| [docs/features/kernel/](docs/features/kernel/) | Kernel feature pack |
+| [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
+| [references/principles.md](references/principles.md) | Haken invariants |
+| [references/adapters.md](references/adapters.md) | Headless argv per harness |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
+| [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
+| [PUBLISH.md](PUBLISH.md) | Publish gate |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+
+Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
+
+---
+
+## Tests
+
+CI runs the suite + `validate-skill.sh` on ubuntu/macos × Python 3.9/3.13, plus a gitleaks scan (`.github/workflows/test.yml`). Locally:
+
+```bash
+python3 -m unittest discover -s tests -v
+./scripts/validate-skill.sh
+of eval --strict --kernel
+```
