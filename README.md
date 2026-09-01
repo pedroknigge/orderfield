@@ -1,10 +1,3 @@
-**STAR**
-
-- **Situation:** A job too big for one chat. The agent forgets, two writers hit the same files, and “we’re done” is a vibe.
-- **Task:** Keep one plan that survives a dead chat, give each piece of work an exclusive owner, and refuse “done” until you actually ran the CLI, file, or exit code the user asked for.
-- **Action:** Install `of`. `of init --source` with the real request (not “do it”). `of pack` with owners. The child writes a residual JSON. `of collect` → `of contrast` → `of close`. If you leave, `of resume` first. Do not hand-edit `ORDER.json`. Do not skip contrast. Do not open a field to bump a version.
-- **Result:** The plan lives on disk. Children cannot rewrite the mission. Close stays blocked until the CLI/file/exit code was exercised. Losing the chat does not lose the contract.
-
 ```
    ___  ____  ____  _____ ____  _____ ___ _____ _     ____
   / _ \|  _ \|  _ \| ____|  _ \|  ___|_ _| ____| |   |  _ \
@@ -14,6 +7,14 @@
 
           one field. bounded waves. portable contract.
 ```
+
+Nature already solved coordination. Order emerges when the slow constrains the fast — different speeds, one field.
+
+Working with AI inverts that: the model is fast, the chat is faster, and the plan dies with the session. More conversation does not mean better work.
+
+We take that physics as inspiration — a method — so you get better results from the agents you already have. One brief. Exclusive owners. A close that is proof.
+
+The plan takes a cut, a resume, a different model. The work does not start over. The results do not have to change.
 
 <p align="center">
   <strong>v0.6.5</strong> · <a href="https://agentskills.io">Agent Skill</a> · MIT · Python 3.9+ stdlib · portable contract
