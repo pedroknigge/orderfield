@@ -20,36 +20,103 @@
     "updated_at"
   ],
   "properties": {
-    "wave": { "type": "integer", "minimum": 1 },
-    "children_spawned": { "type": "integer", "minimum": 0 },
-    "across_this_wave": { "type": "integer", "minimum": 0 },
-    "waves_since_across": { "type": "integer", "minimum": 0 },
-    "last_across_wave": { "type": ["integer", "null"], "minimum": 1 },
-    "last_regime": {
-      "type": ["string", "null"],
-      "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase", null]
+    "wave": {
+      "type": "integer",
+      "minimum": 1
     },
-    "spawn_blocked": { "type": "boolean" },
-    "blocked_at_order_rev": { "type": ["integer", "null"], "minimum": 1 },
-    "mission_change_streak": { "type": "integer", "minimum": 0 },
+    "children_spawned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "across_this_wave": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "waves_since_across": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_across_wave": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "last_regime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "escalate_up",
+        "scale_out",
+        "scale_across",
+        "scale_up",
+        "human",
+        "hold",
+        "phase",
+        null
+      ]
+    },
+    "spawn_blocked": {
+      "type": "boolean"
+    },
+    "blocked_at_order_rev": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "mission_change_streak": {
+      "type": "integer",
+      "minimum": 0
+    },
     "mission_streak_waves": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "type": "integer", "minimum": 1 }
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
     },
     "integration_history": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["wave", "input_hash", "integrated_at", "partial", "recompute", "record_path"],
+        "required": [
+          "wave",
+          "input_hash",
+          "integrated_at",
+          "partial",
+          "recompute",
+          "record_path"
+        ],
         "properties": {
-          "wave": { "type": "integer", "minimum": 1 },
-          "input_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-          "integrated_at": { "type": "string", "minLength": 1 },
-          "partial": { "type": "boolean" },
-          "recompute": { "type": "boolean" },
-          "record_path": { "type": "string", "minLength": 1 }
+          "wave": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "input_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "integrated_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "recompute": {
+            "type": "boolean"
+          },
+          "record_path": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -68,22 +135,115 @@
           "order_rev_after"
         ],
         "properties": {
-          "at": { "type": "string", "minLength": 1 },
-          "wave": { "type": "integer", "minimum": 1 },
+          "at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "wave": {
+            "type": "integer",
+            "minimum": 1
+          },
           "from_phase": {
             "type": "string",
-            "enum": ["explore", "cut", "build", "verify", "deliver"]
+            "enum": [
+              "explore",
+              "cut",
+              "build",
+              "verify",
+              "deliver"
+            ]
           },
           "to_phase": {
             "type": "string",
-            "enum": ["explore", "cut", "build", "verify", "deliver"]
+            "enum": [
+              "explore",
+              "cut",
+              "build",
+              "verify",
+              "deliver"
+            ]
           },
-          "reason": { "type": "string", "minLength": 1 },
-          "order_rev_before": { "type": "integer", "minimum": 1 },
-          "order_rev_after": { "type": "integer", "minimum": 1 }
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "order_rev_before": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "order_rev_after": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       }
     },
-    "updated_at": { "type": "string", "minLength": 1 }
+    "updated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "path_index": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exact",
+            "descendants"
+          ],
+          "properties": {
+            "exact": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "child_id",
+                  "wave",
+                  "owned_path"
+                ],
+                "properties": {
+                  "child_id": {
+                    "type": "string"
+                  },
+                  "wave": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "owned_path": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "descendants": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "child_id",
+                  "wave",
+                  "owned_path"
+                ],
+                "properties": {
+                  "child_id": {
+                    "type": "string"
+                  },
+                  "wave": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "owned_path": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

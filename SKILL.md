@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.6.3 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.5 — Use when the user explicitly invokes orderfield (/orderfield or /of), an existing .orderfield/ORDER.json must be resumed, or a genuinely multi-slice or multi-writer agent wave needs a disk-backed contract. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.3"
+  version: "0.6.5"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -52,7 +52,7 @@ After compaction or returning from an interleaved chat, the first act is still `
 python3 <skill>/scripts/of.py resume
 ```
 
-If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed).
+If `.orderfield/ORDER.json` exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init`. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed). When `ORDER.origin` is present it prints one line `origin        <harness> [<session_id>]`; omit that line when the key is missing. Origin is provenance (which harness session opened the field), not resume authority and not a transcript.
 
 The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
 
@@ -78,8 +78,11 @@ of learn --forget lrn_ab12cd34ef56
 ```bash
 python3 <skill>/scripts/of.py status
 # if resume was empty/safe (no ORDER):
-python3 <skill>/scripts/of.py init --mission "..." --phase explore
+python3 <skill>/scripts/of.py init --mission "..." --phase explore \
+  --origin grok --session-id sess_abc
 ```
+
+`--origin` / `--session-id` (or `OF_ORIGIN` / `OF_SESSION_ID` when flags are omitted) stamp optional `ORDER.origin`. Flag wins over env. `--session-id` without origin dies. Unknown adapter dies. Omit both: do not write the key. Origin is not the spawn pin (`ORDER.harness`).
 
 Do not start doing the slice yourself. If there is no ORDER, initialize it. If ORDER exists, you already resumed — do not re-init. Read `references/principles.md` when invariants need reinforcing.
 
@@ -187,7 +190,7 @@ Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`,
 
 **Default: same harness.** Spawn every child with the current session’s adapter (or one named adapter for the whole ORDER). Do **not** mix Claude/Codex/Grok/agy/etc. in one wave unless the user **explicitly** asks for multi-harness.
 
-Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). If the user later asks for multi-harness, ask once, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters.
+Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). `ORDER.origin` must **not** change `pick_adapter`. If the user later asks for multi-harness, ask once, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters. Do not infer origin from PATH.
 
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
@@ -264,6 +267,7 @@ The field is editable in both directions — never edit `ORDER.json` by hand:
 - `of patch --constraints-rm <exact text | unique substring | 1-based index>` removes a constraint (repeatable). Re-pointing a mission means pruning the old mission's constraints too, or every future packet ships dead context as binding.
 - `of patch --reopen` reopens the current phase's `done_when` (the inverse of `--done-when-closed`). `--mission` and `--done-when-mission` **reopen automatically** — a new mission never inherits the old one's closure, so a stale `done_when_closed` cannot make `integrate` propose `phase` on work that has not started.
 - `of patch --backlog-add "step"` / `--backlog-done N` keep the user's binding step order as a **field** (`ORDER.backlog`), not a prose constraint. Open steps are projected into every packet's `order.backlog`.
+- `of patch --origin <adapter> [--session-id <id>]` sets or replaces `ORDER.origin` (first resume of a field created without a stamp, or a corrected session id). `--origin -` clears. `--session-id` alone without an existing origin or `--origin` dies.
 - `of patch` prints the summary first and `rev=N` as the **last** line (`--quiet` prints only `rev=N`), so `… | tail -1` always answers "did it land, at what rev".
 
 Role contracts are built in: every rendered prompt carries a `Role contract — <role>` section (explorer is read-only facts, adversary breaks without fixing, etc.). Do not restate the role's contract as a constraint.
@@ -306,6 +310,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when ORDER already exists. `of resume` first.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
+- Do not treat `ORDER.origin` as spawn authority or as `session.json`. Do not fetch or dump harness transcripts; origin is a pointer. Fetch stays in harness-specific resume skills.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
 - Do not ingest a deictic go-ahead as SPEC. Expand the prior request, or resume and execute `next`.
 - Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid.

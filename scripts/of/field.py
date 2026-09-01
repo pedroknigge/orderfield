@@ -20,6 +20,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -136,22 +137,15 @@ FIELD_SPEC_LOG = ".orderfield/spec-log"
 FIELD_LOCK_WAIT_SECONDS = 10.0
 MUTATING_COMMANDS = {
     "init",
-    "pack",
-    "unpack",
-    "handoff",
-    "spawn",
-    "collect",
     "integrate",
     "phase",
     "patch",
     "next-wave",
-    "checkpoint",
-    "gc",
     "migrate",
-    "worktree",
-    "spec",
     "close",
-    "learn",
+    "pack",
+    "unpack",
+    "collect",
 }
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
@@ -300,7 +294,7 @@ def load_json(path: Path) -> Any:
         die(f"invalid JSON in {path}: {e}")
 
 
-def dump_json(path: Path, data: Any) -> None:
+def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
     """Durably replace a JSON artifact without exposing a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
@@ -312,15 +306,16 @@ def dump_json(path: Path, data: Any) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(str(tmp), str(path))
-        try:
-            dir_fd = os.open(str(path.parent), os.O_RDONLY)
-        except OSError:
-            dir_fd = None
-        if dir_fd is not None:
+        if not skip_dir_fsync:
             try:
-                os.fsync(dir_fd)
-            finally:
-                os.close(dir_fd)
+                dir_fd = os.open(str(path.parent), os.O_RDONLY)
+            except OSError:
+                dir_fd = None
+            if dir_fd is not None:
+                try:
+                    os.fsync(dir_fd)
+                finally:
+                    os.close(dir_fd)
     finally:
         try:
             tmp.unlink()
@@ -576,12 +571,17 @@ def validate_schema(
     return errs
 
 
+@lru_cache(maxsize=32)
+def _load_public_schema(filename: str) -> Any:
+    return load_json(skill_root() / "schemas" / filename)
+
+
 def validate_public_schema(
     data: Any,
     filename: str,
     label: str,
 ) -> list[str]:
-    schema = load_json(skill_root() / "schemas" / filename)
+    schema = _load_public_schema(filename)
     if not isinstance(schema, dict):
         return [f"{label} schema must be an object"]
     return validate_schema(data, schema, label)
@@ -639,6 +639,107 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
         "done_when_closed": False,
         "notes": "",
     }
+
+
+ORIGIN_ENV = "OF_ORIGIN"
+SESSION_ID_ENV = "OF_SESSION_ID"
+
+
+def format_origin_line(order: dict[str, Any]) -> str | None:
+    """One resume/status line. None when origin is missing (zero cost)."""
+    origin = order.get("origin")
+    if not isinstance(origin, dict):
+        return None
+    harness = str(origin.get("harness") or "").strip()
+    if not harness:
+        return None
+    session_id = str(origin.get("session_id") or "").strip()
+    if session_id:
+        return f"origin        {harness} {session_id}"
+    return f"origin        {harness}"
+
+
+def apply_origin_stamp(
+    order: dict[str, Any],
+    harness: str,
+    session_id: str | None,
+) -> None:
+    stamp: dict[str, Any] = {
+        "harness": harness,
+        "recorded_at": utc_now(),
+    }
+    if session_id:
+        stamp["session_id"] = session_id
+    order["origin"] = stamp
+
+
+def _stripped_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
+def resolve_init_origin(
+    origin_flag: str | None,
+    session_id_flag: str | None,
+) -> tuple[str | None, str | None]:
+    """Flag wins over OF_ORIGIN / OF_SESSION_ID. Does not guess from PATH."""
+    from of_adapters import ADAPTER_ORDER
+
+    origin = _stripped_or_none(
+        origin_flag if origin_flag is not None else os.environ.get(ORIGIN_ENV)
+    )
+    session_id = _stripped_or_none(
+        session_id_flag
+        if session_id_flag is not None
+        else os.environ.get(SESSION_ID_ENV)
+    )
+    if session_id and not origin:
+        die("--session-id requires --origin or OF_ORIGIN")
+    if origin is None:
+        return None, None
+    name = origin.lower()
+    if name not in ADAPTER_ORDER:
+        die(f"--origin must be one of {ADAPTER_ORDER}")
+    return name, session_id
+
+
+def patch_origin(
+    order: dict[str, Any],
+    origin_flag: str | None,
+    session_id_flag: str | None,
+) -> bool:
+    """Apply of patch --origin / --session-id. Env is init-only."""
+    from of_adapters import ADAPTER_ORDER
+
+    if origin_flag is None and session_id_flag is None:
+        return False
+    session_id = _stripped_or_none(session_id_flag)
+    if origin_flag is None:
+        existing = order.get("origin")
+        if not isinstance(existing, dict) or not str(
+            existing.get("harness") or ""
+        ).strip():
+            die("--session-id requires --origin or an existing ORDER.origin")
+        if not session_id:
+            die("--session-id must be nonempty (omit the key when unknown)")
+        apply_origin_stamp(
+            order, str(existing["harness"]).strip().lower(), session_id
+        )
+        return True
+    value = str(origin_flag).strip().lower()
+    if value in ("-", "none"):
+        if session_id_flag is not None:
+            die("--session-id cannot be combined with --origin -")
+        if "origin" in order:
+            del order["origin"]
+            return True
+        return False
+    if value not in ADAPTER_ORDER:
+        die(f"--origin must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    apply_origin_stamp(order, value, session_id)
+    return True
 
 
 def default_state() -> dict[str, Any]:
@@ -1158,6 +1259,32 @@ def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str]
         return None
     skip = prune or set()
     best: tuple[float, str] | None = None
+
+    try:
+        res = subprocess.run(
+            ["git", "ls-files", "-z", "-c", "-o", "--exclude-standard"],
+            cwd=path, capture_output=True, text=False, check=True
+        )
+        files = res.stdout.split(b'\0')
+        if files and files[0]:
+            for fbytes in files:
+                if not fbytes:
+                    continue
+                fname = os.fsdecode(fbytes)
+                if any(p in skip for p in fname.split('/')):
+                    continue
+                
+                f = path / fname
+                try:
+                    m = f.stat().st_mtime
+                except OSError:
+                    continue
+                if best is None or m > best[0]:
+                    best = (m, fname)
+            return best
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        pass
+
     for dirpath, dirnames, filenames in os.walk(path):
         dirnames[:] = [d for d in dirnames if d not in skip]
         for name in filenames:

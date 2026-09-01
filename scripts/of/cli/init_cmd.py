@@ -43,6 +43,7 @@ from of.field import (
     apply_field_migrations,
     apply_field_retention,
     argv_preview,
+    apply_origin_stamp,
     default_order,
     default_state,
     default_worktree_path,
@@ -78,6 +79,7 @@ from of.field import (
     pulse_verdict,
     redact_text,
     remove_constraint,
+    resolve_init_origin,
     repo_newest_mtime,
     require_nonsymlink_kernel_root,
     require_public_schema,
@@ -213,6 +215,12 @@ def cmd_init(args: argparse.Namespace) -> None:
     order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
+    origin_harness, origin_session = resolve_init_origin(
+        getattr(args, "origin", None),
+        getattr(args, "session_id", None),
+    )
+    if origin_harness:
+        apply_origin_stamp(order, origin_harness, origin_session)
     source_text = None
     source_file = getattr(args, "source_file", None)
     source_inline = getattr(args, "source", None)

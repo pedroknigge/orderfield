@@ -53,6 +53,7 @@ from of.field import (
     field_lock,
     field_rel,
     find_root,
+    format_origin_line,
     fmt_age,
     git_repo_root,
     installed_version,
@@ -509,6 +510,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"constraints {order['constraints']}")
     if order.get("harness"):
         print(f"harness     {order['harness']}")
+    origin_line = format_origin_line(order)
+    if origin_line:
+        print(origin_line)
     backlog = order.get("backlog") or []
     if backlog:
         print("backlog")
@@ -737,6 +741,9 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"last_cmd      {session.get('last_cmd') or '-'}")
     print(f"field         {'closed' if order.get('spec_closed') else 'open'}")
+    origin_line = format_origin_line(order)
+    if origin_line:
+        print(origin_line)
     ac_label, ac_detail = resume_auto_continue_lines(order)
     print(f"auto_continue {ac_label} — {ac_detail}")
     print(f"status        {'in-flight' if flying else 'idle'}")

@@ -104,6 +104,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="verbatim brief file or '-'; copied to SPEC.md then discarded if ingest/prompt.md",
     )
     s.add_argument("--force", action="store_true")
+    s.add_argument(
+        "--origin",
+        help=(
+            "stamp ORDER.origin harness (provenance, not spawn pin); "
+            f"one of {ADAPTER_ORDER}; OF_ORIGIN when omitted"
+        ),
+    )
+    s.add_argument(
+        "--session-id",
+        dest="session_id",
+        help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
+    )
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser("status", help="show field and caps")
@@ -407,6 +419,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--reopen",
         action="store_true",
         help="reopen the current phase's done_when (inverse of --done-when-closed)",
+    )
+    s.add_argument(
+        "--origin",
+        help=(
+            f"set ORDER.origin harness {ADAPTER_ORDER} (provenance, not spawn pin); "
+            "'-' clears"
+        ),
+    )
+    s.add_argument(
+        "--session-id",
+        dest="session_id",
+        help="set origin session_id (requires --origin or an existing ORDER.origin)",
     )
     s.add_argument(
         "--quiet",
