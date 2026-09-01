@@ -17,12 +17,12 @@ The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The k
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.6.5</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.6.6</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.5-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.6-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
