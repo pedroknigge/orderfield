@@ -1,11 +1,12 @@
 # Feature: kernel
 
-**STAR**
+The kernel grew from 0.3.2 through 0.6.5. The physics stayed a method. No new regime.
 
-- **Situation:** The public kernel surface grew from 0.3.2 through 0.6.5 without a new regime.
-- **Task:** Entry pack for `scripts/of.py` + `scripts/of/` + schemas: resume, pack, lock, SPEC, contrast.
-- **Action:** List code-backed behaviors; name `MUTATING_COMMANDS` as the lock set; point tests at the split suite.
-- **Result:** A reader of this pack does not treat spawn/spec/gc as locked commands or reserved accounting as live.
+Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
+
+`MUTATING_COMMANDS` is the lock set. Spawn, spec, and gc are outside it. Tests live in the split suite.
+
+A cut, a resume, a different model — reserved accounting is still reserved. The results do not have to change.
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 

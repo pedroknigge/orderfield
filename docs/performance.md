@@ -1,11 +1,12 @@
 # Performance — wave wall-clock
 
-**STAR**
+No database. No HTTP server. Load is how long a wave takes at the caps you actually use.
 
-- **Situation:** This kernel has no database and no HTTP server; load is wave wall-clock at real caps.
-- **Task:** Give a probe for pack→collect time with handoff-style spawn, not fake telemetry.
-- **Action:** Measure from a throwaway tree; treat residual `metrics.*` as uncertainty signals, not SLOs.
-- **Result:** Caps in `ORDER.caps` stay the throttle; reserved accounting is not performance data.
+Measure pack→collect with handoff spawn. Residual `metrics.*` are uncertainty, not SLOs.
+
+Caps in `ORDER.caps` throttle. Reserved accounting is not performance data.
+
+A cut, a resume, a different model — the probe is still wall-clock. The results do not have to change.
 
 Orderfield has no database and no HTTP server. The only load that matters is **how long a wave takes** at the child caps you actually use.
 

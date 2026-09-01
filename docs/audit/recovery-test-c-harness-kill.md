@@ -1,11 +1,12 @@
 # Test C — Real harness process kill (optional QA)
 
-**STAR**
+Tests A and B keep the leader process. Killing the harness and opening a blank session is stricter.
 
-- **Situation:** Tests A and B keep the same leader process; a killed harness with a blank session is stricter.
-- **Task:** Document optional harness QA: kill the leader process, open a fresh session, `of resume` only.
-- **Action:** Procedure and pass criteria; do not put this in kernel CI.
-- **Result:** The gap after Test B is named; it is not claimed as shipped kernel coverage.
+Optional harness QA: kill, fresh session, `of resume` only. Not kernel CI.
+
+Procedure and pass criteria live below. Do not claim this as shipped kernel coverage.
+
+A cut, a resume, a different model — this is the harder cut. The results do not have to change if disk is the session.
 
 **Status:** Optional future harness QA · **Not in CI** · **Kernel line:** documents the gap after Test B
 

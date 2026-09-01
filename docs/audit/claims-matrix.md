@@ -1,11 +1,12 @@
 # Documentation claims audit
 
-**STAR**
+Supporting docs claimed a 0.6.5 contract while lock, snapshot, and paths still described the pre-split layout.
 
-- **Situation:** Supporting docs claimed a 0.6.5 CLI contract; several lock, snapshot, and path sentences still described the pre-split layout.
-- **Task:** Reconcile structural claims against `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py` + `schemas/` + tests, using living-claims v0.
-- **Action:** Code inventory first; matrix with anchors and severity; patch Contradicted/Partial rows in productive docs (STAR at the top of each supporting doc).
-- **Result:** Zero critical Contradicted. Remaining Partials are protocol (same-harness, PATH ≠ auth, workspace is not a lock) or code debt (unwired copies in `ops.py`). Truth score is advisory; CI gate = no critical Contradicted.
+Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
+
+Patch Contradicted and Partial rows. Do not invent kernel to match prose.
+
+Zero critical Contradicted after the pass. Remaining Partials are protocol or leftover `ops.py` copies. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.

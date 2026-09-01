@@ -1,11 +1,12 @@
 # Agent discovery
 
-**STAR**
+A new agent is fast and lost. Dumping the whole tree is more conversation, not more order.
 
-- **Situation:** Coding agents need an `llms.txt`-style index without dumping the whole knowledge base.
-- **Task:** Point at hub, skill, slave, kernel CLI docs, evals, and the current VERSION.
-- **Action:** Keep short tables; link rather than copy; match installed skill metadata to `of doctor`.
-- **Result:** A new agent finds resume-first rules and the kernel CLI in one screen.
+Point at hub, skill, slave, kernel, evals, VERSION. Link. Do not copy.
+
+Installed metadata matches `of doctor`. Resume first.
+
+A cut, a resume, a different model — the index still finds the field. The results do not have to change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Install: [README.md](../README.md)
 

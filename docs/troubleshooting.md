@@ -1,11 +1,12 @@
 # Troubleshooting
 
-**STAR**
+The field looks broken. The temptation is to rewrite `ORDER.json` by hand.
 
-- **Situation:** Field failures look like they need a hand-edit of `ORDER.json`.
-- **Task:** Give stranger-facing recovery for stale packets, missing residuals, lock waits, SPEC, contrast.
-- **Action:** Map each symptom to an `of` command; never instruct a leader to rewrite ORDER by hand.
-- **Result:** A fully stale wave is recoverable with `of next-wave`; contrast stays the close gate.
+Recovery is an `of` command: stale packets, missing residuals, lock waits, SPEC, contrast. Never a silent edit.
+
+A fully stale wave is `of next-wave`. Close stays contrast.
+
+A cut, a resume, a different model — disk still reconstructs. The results do not have to change.
 
 Stranger-facing recovery for common field failures. Kernel commands only — do not hand-edit `ORDER.json`.
 

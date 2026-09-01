@@ -1,11 +1,12 @@
 # 90 seconds: amnesia + threshold residual
 
-**STAR**
+The lead session dies. Fleets recover from logs and teammate messages. Nobody owns who may change the plan.
 
-- **Situation:** Fleets recover from logs and teammate messages after the lead session dies.
-- **Task:** Show the amnesia + threshold case: disk is the session; children cannot change the plan.
-- **Action:** Walk `of resume` → threshold residual → `escalate_up` → patch → next-wave without opening child logs.
-- **Result:** The plan changes without swallowing transcripts; theater (Agent Teams as orchestration) is named.
+Disk is the session. Children cannot rewrite the mission. Threshold does not patch ORDER.
+
+`of resume` → residual → `escalate_up` → patch → next-wave. Do not open the child's log.
+
+A cut, a resume, a different model — the plan changes without swallowing transcripts. The results do not have to change.
 
 Orca orchestrates **work**. Orderfield orchestrates **authority over the plan** — a portable contract across already-authenticated coding CLIs. Not a fleet, not an LLM graph, not a vendor primitive.
 

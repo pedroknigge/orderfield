@@ -1,11 +1,12 @@
 # Context control
 
-**STAR**
+The chat is fast. Compaction is faster. History stuffed into a packet is not a plan.
 
-- **Situation:** Compaction and interleaved chats tempt leaders to stuff history into packets or SPEC.
-- **Task:** Put each kind of information on the narrowest surface that needs it.
-- **Action:** Table SPEC / ORDER / packet / origin / checkpoint / deictic go-ahead against what the child sees.
-- **Result:** Reasoning may compress; the contract does not. Origin is a pointer, not a transcript.
+Put each fact on the narrowest surface: SPEC, ORDER, packet, origin, checkpoint. A go-ahead is steer, not a brief.
+
+Reasoning may compress. The contract does not. Origin is a pointer, not a transcript.
+
+A cut, a resume, a different model — come back to disk. The results do not have to change.
 
 > Hub: [SKILL.md](../SKILL.md) · Eve analog: [context control](https://eve.dev/docs/concepts/context-control)
 

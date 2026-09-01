@@ -1,11 +1,12 @@
 # Audit
 
-**STAR**
+Docs rot. Code does not wait.
 
-- **Situation:** Claims about the public surface rot unless they are re-checked against code.
-- **Task:** Index the claims matrix and recovery reports A/B/C.
-- **Action:** Keep this folder as the audit entry; matrix is SSOT for verdicts; Test C stays optional harness QA.
-- **Result:** An auditor starts here and does not treat recovery reports as the claims matrix.
+The matrix is the verdict. Recovery reports A/B/C are evidence, not a second SSOT. Test C is optional harness QA.
+
+Start here. Do not treat a recovery story as the claims list.
+
+A cut, a resume, a different model — code still wins. The results do not have to change.
 
 | Doc | Role |
 |-----|------|

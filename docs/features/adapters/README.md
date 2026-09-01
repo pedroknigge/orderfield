@@ -1,11 +1,12 @@
 # Feature: adapters
 
-**STAR**
+The child is already authenticated. It needs argv, not a second kernel.
 
-- **Situation:** Already-authenticated coding CLIs need a headless argv table, not a second kernel.
-- **Task:** Inventory native adapters plus generic/`OF_AGENT` against `scripts/of_adapters.py`.
-- **Action:** Keep detect = PATH (not auth); default same-harness; note grok/codex/agy/qwen argv facts.
-- **Result:** Spawn argv matches code; Qwen does not inherit another adapter's approval flags.
+Native adapters plus generic/`OF_AGENT` live in `scripts/of_adapters.py`. Detect is PATH, not login. Default is same harness.
+
+Grok, Codex, agy, Qwen keep their own flags. Qwen does not inherit another approval model.
+
+A cut, a resume, a different model — spawn still matches this table. The results do not have to change.
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 

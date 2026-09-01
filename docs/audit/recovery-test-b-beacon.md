@@ -1,11 +1,12 @@
 # Test B — Leader amnesia recovery (Beacon)
 
-**STAR**
+Test A recovered in the same session. The next question is amnesia with only disk.
 
-- **Situation:** Test A recovered in the same harness session; the next question is amnesia with only disk.
-- **Task:** Use the 0.5.4 recovery brief as the first signal and finish the wave.
-- **Action:** Simulate amnesia (same process, no Quarry transcript); `of resume` first; continue packets.
-- **Result:** RECOVERY CLEAN. A killed harness with a blank session is Test C, not this line.
+The 0.5.4 recovery brief is the first signal. Finish the wave from that.
+
+Same process, no Quarry transcript. `of resume` first. Continue packets.
+
+RECOVERY CLEAN. A killed harness with a blank session is Test C. A cut, a resume, a different model — the brief still holds. The results do not have to change.
 
 **Run:** 2026-08-31T03:59–04:00Z · **Kernel:** 0.5.4 · **Verdict:** RECOVERY CLEAN
 
