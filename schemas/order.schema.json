@@ -81,6 +81,19 @@
       "type": "string",
       "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
     },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["harness", "recorded_at"],
+      "properties": {
+        "harness": {
+          "type": "string",
+          "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
+        },
+        "session_id": { "type": "string", "minLength": 1 },
+        "recorded_at": { "type": "string", "minLength": 1 }
+      }
+    },
     "backlog": {
       "type": "array",
       "items": {

@@ -3,18 +3,18 @@
 > Hub: [AGENTS.md](../../AGENTS.md)  
 > **Code is source of truth.** Docs do not override implementation.
 
-**Date:** 2026-08-31
+**Date:** 2026-09-01
 **Scope:** project
-**Intent:** release-line 0.6.4 protocol learnings (`of learn`; VERSION/docs/CHANGELOG/claims agree; not a new regime)
+**Intent:** release-line 0.6.5 optional origin provenance stamp (`ORDER.origin`; VERSION/docs/CHANGELOG/claims agree; not a new regime)
 **Out:** root
-**Auditor:** leader (docs vs symbols after 0.6.4 `of learn`)
-**Code rev:** VERSION `0.6.4` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Auditor:** implementer (docs vs symbols after 0.6.5 origin stamp)
+**Code rev:** VERSION `0.6.5` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 51 |
+| OK | 52 |
 | Partial | 3 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -22,10 +22,10 @@
 
 | Severity | Count |
 |----------|------:|
-| critical | 41 |
+| critical | 42 |
 | normal | 14 |
 
-**Truth score (advisory):** `(51*100 + 3*50) / 55 = 95.5`
+**Truth score (advisory):** `(52*100 + 3*50) / 56 = 95.5`
 **CI gate:** no critical Contradicted after docs patch.
 
 **Top risks (post-patch):**  
@@ -46,7 +46,7 @@
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv`, `TRUST_PROFILES` |
 | Schemas | `schemas/*.json` | order / state / packet / residual / wave-report / session |
 | Install | `install.sh` | harness dests + installed-kernel `of`; literal project source is staged outside its destination; copies `scripts/of/` with the skill tree |
-| Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli}.py`, `tests/test_packaging.py` | kernel (split by invariant class) + packaging |
+| Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py` | kernel (split by invariant class) + packaging |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
 
 ## Claims matrix
@@ -109,7 +109,8 @@
 | C-054 | A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a lossless brief: leader expands the prior request into `--source` or steers an open field (`next`); kernel prints an advisory note on init/amend/revise and still writes SPEC | SKILL / context-control / principles 17 / troubleshooting / README | `looks_like_deictic_brief` / `warn_if_deictic_brief` on `cmd_init` / `cmd_spec`; does not refuse | `scripts/of/spec.py` / `scripts/of/cli/` / `tests/test_kernel_spec.py` | `looks_like_deictic_brief` / `DeicticBrief` | normal | OK | keep advisory; not a new regime |
 | C-055 | CLI commands live in `scripts/of/cli/` groups (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`); parser + dispatch stay in `cli/__init__.py`; public `of` / `scripts/of.py` / `import of` unchanged vs 0.6.1; not a new regime | architecture / kernel feature / CHANGELOG | package `scripts/of/cli/`; `from of.cli import main`; tests `import of` | `scripts/of/cli/` / `scripts/of.py` | `main` / `cmd_pack` | critical | OK | keep; 0.6.2 form |
 | C-056 | `of learn` writes protocol lessons (user cache, survive ORDER/repos) vs `--field` (this ORDER); resume lists both; child prompts inject at most 8 protocol lines from the user cache only (not field-dir pins); not SPEC; `gc` never drops protocol | SKILL / README / kernel feature / troubleshooting | `cmd_learn` / `save_learning` / `protocol_learning_lines` / `ProtocolLearnings` | `scripts/of/field.py` / `scripts/of/cli/` / `scripts/of/pack.py` / `schemas/learning.schema.json` / `tests/test_kernel_field.py` | `cmd_learn` / `ProtocolLearnings` | critical | OK | keep; 0.6.4; not a new regime |
+| C-057 | Optional `ORDER.origin` provenance stamp: `of init --origin/--session-id` + `OF_ORIGIN`/`OF_SESSION_ID`; `of patch --origin` (`-` clears); resume/status one-line pointer when present, omit when absent; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts; missing origin remains valid | SKILL / README / context-control / principles 13 / CHANGELOG | `origin` on order schema; `cmd_init` / `cmd_patch` / `format_origin_line`; `pick_adapter` has no origin parameter | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `cmd_patch` / `format_origin_line` / `OriginInit` | critical | OK | keep; 0.6.5; not a new regime; do not claim auto-fetch |
 
 ## Post-patch expectation
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-053 records the 0.6 form split of `scripts/of.py` into internal packages. C-054 records the 0.6.1 deictic go-ahead ingest advisory. C-055 records the 0.6.2 CLI command-group package (`scripts/of/cli/`). C-056 records 0.6.4 `of learn` (protocol vs field). VERSION is `0.6.4`. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass). README links the 90s demo at `docs/demo/README.md`.
+C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-053 records the 0.6 form split of `scripts/of.py` into internal packages. C-054 records the 0.6.1 deictic go-ahead ingest advisory. C-055 records the 0.6.2 CLI command-group package (`scripts/of/cli/`). C-056 records 0.6.4 `of learn` (protocol vs field). C-057 records 0.6.5 optional `ORDER.origin` provenance (not spawn, not fetch). VERSION is `0.6.5`. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass). README links the 90s demo at `docs/demo/README.md`.

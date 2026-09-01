@@ -641,6 +641,107 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
     }
 
 
+ORIGIN_ENV = "OF_ORIGIN"
+SESSION_ID_ENV = "OF_SESSION_ID"
+
+
+def format_origin_line(order: dict[str, Any]) -> str | None:
+    """One resume/status line. None when origin is missing (zero cost)."""
+    origin = order.get("origin")
+    if not isinstance(origin, dict):
+        return None
+    harness = str(origin.get("harness") or "").strip()
+    if not harness:
+        return None
+    session_id = str(origin.get("session_id") or "").strip()
+    if session_id:
+        return f"origin        {harness} {session_id}"
+    return f"origin        {harness}"
+
+
+def apply_origin_stamp(
+    order: dict[str, Any],
+    harness: str,
+    session_id: str | None,
+) -> None:
+    stamp: dict[str, Any] = {
+        "harness": harness,
+        "recorded_at": utc_now(),
+    }
+    if session_id:
+        stamp["session_id"] = session_id
+    order["origin"] = stamp
+
+
+def _stripped_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
+def resolve_init_origin(
+    origin_flag: str | None,
+    session_id_flag: str | None,
+) -> tuple[str | None, str | None]:
+    """Flag wins over OF_ORIGIN / OF_SESSION_ID. Does not guess from PATH."""
+    from of_adapters import ADAPTER_ORDER
+
+    origin = _stripped_or_none(
+        origin_flag if origin_flag is not None else os.environ.get(ORIGIN_ENV)
+    )
+    session_id = _stripped_or_none(
+        session_id_flag
+        if session_id_flag is not None
+        else os.environ.get(SESSION_ID_ENV)
+    )
+    if session_id and not origin:
+        die("--session-id requires --origin or OF_ORIGIN")
+    if origin is None:
+        return None, None
+    name = origin.lower()
+    if name not in ADAPTER_ORDER:
+        die(f"--origin must be one of {ADAPTER_ORDER}")
+    return name, session_id
+
+
+def patch_origin(
+    order: dict[str, Any],
+    origin_flag: str | None,
+    session_id_flag: str | None,
+) -> bool:
+    """Apply of patch --origin / --session-id. Env is init-only."""
+    from of_adapters import ADAPTER_ORDER
+
+    if origin_flag is None and session_id_flag is None:
+        return False
+    session_id = _stripped_or_none(session_id_flag)
+    if origin_flag is None:
+        existing = order.get("origin")
+        if not isinstance(existing, dict) or not str(
+            existing.get("harness") or ""
+        ).strip():
+            die("--session-id requires --origin or an existing ORDER.origin")
+        if not session_id:
+            die("--session-id must be nonempty (omit the key when unknown)")
+        apply_origin_stamp(
+            order, str(existing["harness"]).strip().lower(), session_id
+        )
+        return True
+    value = str(origin_flag).strip().lower()
+    if value in ("-", "none"):
+        if session_id_flag is not None:
+            die("--session-id cannot be combined with --origin -")
+        if "origin" in order:
+            del order["origin"]
+            return True
+        return False
+    if value not in ADAPTER_ORDER:
+        die(f"--origin must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    apply_origin_stamp(order, value, session_id)
+    return True
+
+
 def default_state() -> dict[str, Any]:
     return {
         "wave": 1,

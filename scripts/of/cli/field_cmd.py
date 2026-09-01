@@ -68,6 +68,7 @@ from of.field import (
     open_backlog,
     order_path,
     parse_utc,
+    patch_origin,
     plan_field_migrations,
     plan_field_retention,
     print_migration_catalog,
@@ -479,6 +480,15 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 changed = True
         else:
             die(f"--harness must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    if getattr(args, "origin", None) is not None or getattr(
+        args, "session_id", None
+    ) is not None:
+        if patch_origin(
+            order,
+            getattr(args, "origin", None),
+            getattr(args, "session_id", None),
+        ):
+            changed = True
     if getattr(args, "backlog_add", None):
         backlog = order.get("backlog") or []
         for text in args.backlog_add:
@@ -552,6 +562,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         }
         if order.get("harness"):
             summary["harness"] = order["harness"]
+        if order.get("origin"):
+            summary["origin"] = order["origin"]
         if order.get("backlog"):
             summary["backlog"] = order["backlog"]
         print(json.dumps(summary, indent=2, ensure_ascii=False))

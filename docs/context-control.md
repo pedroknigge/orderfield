@@ -14,6 +14,7 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 | Exclusive product writes | `--owns-path` on packet | Same-wave overlap dies; cross-wave reuse is a note |
 | Specialist with disjoint work | Child + residual JSON | Parent consumes residual; child never sees parent chat |
 | Session continuity after compaction | Disk | `of resume` + `auto_continue`; not chat memory |
+| Origin of the opening harness session | `ORDER.origin` (optional) | One-line pointer on `of resume` / `of status`; kernel does not fetch or store the transcript |
 | Leader narrative one-liner | `of checkpoint --summary` | Optional; packets/residuals remain authority |
 | Durable checkpoint (compaction analog) | Packet isolation + SPEC | Packets must not carry parent transcript; ref-load SPEC only |
 | Deictic go-ahead, same session, no ORDER (`dale` / `do it` / `as discussed`) | Leader reconstructs the prior request into `--source` / `.orderfield/ingest.md` | `--source "dale"` compresses the contract. If the work fits this agent, skill beats child — do not open a field. |
@@ -32,4 +33,4 @@ Eve compacts model context inside the harness. Orderfield compacts **reasoning**
 
 ## Out of scope (by design)
 
-Orderfield does not park compute, run Workflow SDK steps, or host NDJSON session streams. Harnesses own process lifecycle; the field owns the contract on disk.
+Orderfield does not park compute, run Workflow SDK steps, or host NDJSON session streams. Harnesses own process lifecycle; the field owns the contract on disk. `ORDER.origin` is a pointer to the opening harness session, not a transcript store and not resume authority.

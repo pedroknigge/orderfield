@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.5
+
+Optional origin provenance pointer. Not a new regime.
+
+- **`ORDER.origin`:** optional stamp `{harness, session_id?, recorded_at}` on the contract. Provenance, not authority. Missing key stays valid. Not `session.json`, not `ORDER.harness`, not a transcript store.
+- **`of init --origin <adapter> [--session-id <id>]`:** stamps at field creation. `OF_ORIGIN` / `OF_SESSION_ID` when flags are omitted; flag wins. `--session-id` without origin (flag or env) dies. Unknown adapter dies. Origin omitted: do not write the key.
+- **`of patch --origin <adapter> [--session-id <id>]`:** set or replace after init. `--origin -` clears. `--session-id` alone without an existing origin or `--origin` dies. Summary then `rev=N` last.
+- **`of resume` / `of status`:** one line `origin        <harness> [<session_id>]` when present; omit when absent. No transcript dump.
+- **Spawn isolation:** `of spawn` / `pick_adapter` ignore origin. Pin remains `--adapter` > `OF_ADAPTER` > `ORDER.harness` > detect.
+- **Kernel:** does not fetch, store, or dump harness transcripts. No `of fetch`.
+- Packaging: VERSION 0.6.5; skill/alias description preview `v0.6.5 — …`.
+
 ## 0.6.4
 
 Mass-scale structural optimizations for the Orderfield kernel.

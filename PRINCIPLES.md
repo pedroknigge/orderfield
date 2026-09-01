@@ -4,7 +4,7 @@ Canonical invariants live in `references/principles.md`.
 
 Short form:
 
-1. One leader-owned ORDER write path; no filesystem lock.
+1. One leader-owned ORDER write path; `.orderfield/field.lock` serializes kernel mutations, not product files.
 2. One phase per wave.
 3. Escalate-up before spawn.
 4. Closed regime menu.
