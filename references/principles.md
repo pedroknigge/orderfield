@@ -1,5 +1,12 @@
 # Orderfield invariants (Haken-inspired)
 
+**STAR**
+
+- **Situation:** A portable field needs invariants the kernel can enforce and protocol for what the kernel cannot.
+- **Task:** Name what `of` applies versus what stays contract (roles, workspace, metrics).
+- **Action:** Align the lock to `MUTATING_COMMANDS` and keep reserved runtime as reserve, not telemetry.
+- **Result:** A leader does not treat spawn/spec/gc as holding `field.lock`, nor `writable_by_slaves` as a file lock.
+
 These rules are the contract. For operations routed through `of`, the CLI enforces public JSON schemas, atomic artifact writes, a cross-process field lock, pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu. Role obedience, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol; an adapter or child with filesystem access can violate them.
 
 ## Physics, one page
@@ -22,7 +29,7 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 
 ## Numbered invariants
 
-1. **Serialized kernel mutations.** The leader routes ORDER changes through `of integrate`, `of patch`, and `of phase`. All mutating CLI commands hold `.orderfield/field.lock`, and JSON artifacts use durable atomic replacement. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`; mission is never auto-applied (`of patch --mission`). Direct filesystem writes can still bypass the kernel.
+1. **Serialized kernel mutations.** The leader routes ORDER changes through `of integrate`, `of patch`, and `of phase`. Commands in `MUTATING_COMMANDS` (`init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts use durable atomic replacement. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` are outside that wrapper. `integrate --apply` may take residual keys `constraints+`, `done_when+`, `notes`, `done_when_closed`; mission is never auto-applied (`of patch --mission`). Direct filesystem writes can still bypass the kernel.
 2. **One phase at a time.** `explore` and `implement`/`build` do not coexist in the same wave.
 3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when|workspace` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until a later ORDER revision and guarded `next-wave`. Pack is the bind surface; interactive Agent/render does not bypass it.
 4. **Closed menu.** Regimes: `escalate_up`, `scale_out`, `scale_across`, `scale_up`, `human`, `hold`, `phase`. Anything else is a contract error.

@@ -1,5 +1,12 @@
 # Audit
 
+**STAR**
+
+- **Situation:** Claims about the public surface rot unless they are re-checked against code.
+- **Task:** Index the claims matrix and recovery reports A/B/C.
+- **Action:** Keep this folder as the audit entry; matrix is SSOT for verdicts; Test C stays optional harness QA.
+- **Result:** An auditor starts here and does not treat recovery reports as the claims matrix.
+
 | Doc | Role |
 |-----|------|
 | [claims-matrix.md](claims-matrix.md) | Docs vs code claims |

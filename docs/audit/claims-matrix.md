@@ -1,116 +1,164 @@
 # Documentation claims audit
 
-> Hub: [AGENTS.md](../../AGENTS.md)  
-> **Code is source of truth.** Docs do not override implementation.
+**STAR**
 
-**Date:** 2026-09-01
+- **Situation:** Supporting docs claimed a 0.6.5 CLI contract; several lock, snapshot, and path sentences still described the pre-split layout.
+- **Task:** Reconcile structural claims against `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py` + `schemas/` + tests, using living-claims v0.
+- **Action:** Code inventory first; matrix with anchors and severity; patch Contradicted/Partial rows in productive docs (STAR at the top of each supporting doc).
+- **Result:** Zero critical Contradicted. Remaining Partials are protocol (same-harness, PATH ≠ auth, workspace is not a lock) or code debt (unwired copies in `ops.py`). Truth score is advisory; CI gate = no critical Contradicted.
+
+> Hub: [AGENTS.md](../../AGENTS.md)
+> **Code is source of truth.** Docs do not override implementation.
+> **Living claims v0:** anchors + severity.
+
+**Date:** 2026-08-31
 **Scope:** project
-**Intent:** release-line 0.6.5 optional origin provenance stamp (`ORDER.origin`; VERSION/docs/CHANGELOG/claims agree; not a new regime)
+**Intent:** audit → integrate (patch supporting docs)
 **Out:** root
-**Auditor:** implementer (docs vs symbols after 0.6.5 origin stamp)
+**Auditor:** documentation-manager
 **Code rev:** VERSION `0.6.5` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 52 |
-| Partial | 3 |
+| OK | 60 |
+| Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
 | Unverifiable | 1 |
 
 | Severity | Count |
-|----------|------:|
-| critical | 42 |
-| normal | 14 |
+|----------------:|
+| critical | 45 |
+| normal | 20 |
 
-**Truth score (advisory):** `(52*100 + 3*50) / 56 = 95.5`
-**CI gate:** no critical Contradicted after docs patch.
+**Truth score (advisory):** `(60*100 + 4*50) / 65 = 95.4`
+**CI gate:** no critical Contradicted after docs patch. Local `scripts/audit-claims.sh` is not in this repo; the gate here is the matrix + `validate-skill.sh`.
 
-**Top risks (post-patch):**  
-1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.  
-2. `detect` ≠ login/auth — documented Partial.  
-3. Role/product-workspace compliance and metric truth remain contract boundaries; the field lock covers cooperating kernel mutations only.
-4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry), not implemented.
-5. A disobedient leader can still write product files without pack (kernel does not lock product) — protocol in SKILL/README.
+**Top risks (post-patch):**
+1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.
+2. `detect` / `doctor` PATH ≠ auth/ready — documented Partial.
+3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/spec/gc/checkpoint/learn/handoff/worktree.
+4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry).
+5. `scripts/of/cli/ops.py` still defines unwired `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close`; parser dispatch uses `spec_cmd.py`.
+6. A disobedient leader can still write product files without pack (kernel does not lock product).
 
-**Recommended next Intent:** contrast/close on the 0.6 form line. Do not bump protocol claims.
+**Recommended next Intent:** none for docs. Optional code cleanup: delete unwired spec handlers in `ops.py`. Do not bump protocol claims.
 
 ## Code inventory (high level)
 
 | Kind | Evidence | Notes |
 |------|----------|-------|
-| Kernel CLI | `scripts/of.py` | Public entry (`python3 scripts/of.py` / installed `of`). cmds: init, status, resume, checkpoint, detect, doctor, retain, gc, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close, eval |
-| Kernel internals | `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Bounded contexts; CLI commands grouped (`init_cmd`/`ops`/`wave`/`field_cmd`/`spec_cmd`); tests `import of` still bind the public kernel namespace |
-| Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER`, `ADAPTER_BINS`, `ADAPTER_TOOLS`, `build_spawn_argv`, `TRUST_PROFILES` |
-| Schemas | `schemas/*.json` | order / state / packet / residual / wave-report / session |
-| Install | `install.sh` | harness dests + installed-kernel `of`; literal project source is staged outside its destination; copies `scripts/of/` with the skill tree |
-| Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py` | kernel (split by invariant class) + packaging |
+| Packages / apps | single repo, no workspace / `pyproject.toml` | **Stack: python** (stdlib CLI). **Monorepo: no.** No ArkGate. |
+| Kernel CLI | `scripts/of.py` | Shim: `from of.cli import main`. Public cmds: init, status, resume, pulse, checkpoint, detect, doctor, retain, gc, learn, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close, eval |
+| Kernel internals | `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Groups: `init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`. Parser + lock wrapper in `cli/__init__.py` |
+| `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. Sole `with field_lock` is `of.cli.main` |
+| Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER` = claude, codex, cursor, opencode, orca, grok, agy, qwen, generic. `INLINE_CONTRACT_ADAPTERS` = orca, generic |
+| Schemas | `schemas/*.json` | order, state, packet, residual, residual.codex, wave-report, session, **learning**, **requirements** |
+| Install | `install.sh` | harness dests + installed-kernel `of`; copies `scripts/of/` with the skill tree |
+| Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py` | kernel split by invariant class + packaging |
+| CI | `.github/workflows/test.yml` | unittest + `of eval --strict --kernel` + `validate-skill.sh`; gitleaks; ubuntu/macos × 3.9/3.13 |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
 
 ## Claims matrix
 
-| ID | Claim | Source doc | Code evidence | Anchor path | Anchor symbol | Severity | Verdict | Action |
-|----|-------|------------|---------------|-------------|---------------|----------|---------|--------|
-| C-001 | Native adapters include `agy` | SKILL / README / adapters | `ADAPTER_ORDER` includes `agy` | `scripts/of_adapters.py` | `ADAPTER_ORDER` | critical | OK | keep |
-| C-002 | Flags before `-p` for agy | adapters.md | `build_spawn_argv` agy branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
-| C-003 | Phase-prefix `done_when` | SKILL / README / CHANGELOG | `done_when_for`, `done_when_closed_phases` | `scripts/of/regime.py` | `done_when_for` | critical | OK | keep |
-| C-004 | `--requires-tool` on pack; spawn refuses | SKILL / adapters / CHANGELOG | pack argparse + `missing_tools` | `scripts/of/cli/` / `scripts/of_adapters.py` | `missing_tools` / `ADAPTER_TOOLS` | critical | OK | keep |
-| C-005 | Reference-load SLAVE (abs path); orca/generic may inline | SKILL / README / CHANGELOG | `render_prompt`, `INLINE_CONTRACT_ADAPTERS` | `scripts/of/pack.py` | `render_prompt` | critical | OK | keep |
-| C-006 | Grok headless `-p` + `--always-approve` | adapters / CHANGELOG | grok argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
-| C-007 | Codex uses `--dangerously-bypass-approvals-and-sandbox`, not `--full-auto` | adapters / CHANGELOG | codex argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | critical | OK | keep |
-| C-008 | `install.sh` symlinks `of` to **installed** skill copy | CHANGELOG / adapters | `of_bin_dirs` / link to dest `scripts/of.py` | `install.sh` | | critical | OK | keep |
-| C-009 | Detect lists harness CLIs on PATH | README / adapters | `cmd_detect` | `scripts/of/cli/` | `cmd_detect` | normal | OK | keep |
-| C-010 | Pack is cap surface (`max_children`, `spawn_blocked`) | SKILL | `cmd_pack` / `spawn_is_blocked` | `scripts/of/cli/` / `scripts/of/pack.py` | `cmd_pack` | critical | OK | keep |
-| C-011 | PATH via install → installed skill `of` | README.md (patched) | `install.sh` of symlink | `install.sh` | | critical | OK | keep |
-| C-012 | Cursor prompt is reference-load | adapters.md (patched) | `render_prompt` | `scripts/of/pack.py` | `render_prompt` | critical | OK | keep |
-| C-013 | SLAVE reference-load by default | SKILL.md (patched) | `render_prompt` / `--inline` | `scripts/of/pack.py` | `render_prompt` | critical | OK | keep |
-| C-014 | Leader asks same-harness vs multi; uses detect inventory | SKILL.md / AGENTS.md | protocol + `cmd_detect`; no `of ask` | `scripts/of/cli/` | `cmd_detect` | normal | Partial | keep protocol; optional CLI later |
-| C-015 | `detect` proves auth / “logueado” | user phrasing | only PATH binary presence | `scripts/of/cli/` | `cmd_detect` | normal | Partial | doc honesty: PATH ≠ login |
-| C-016 | Worktree isolation always enforced by kernel | SKILL isolation notes | workspace is documentation only | `scripts/of/field.py` / adapters | `default_order` | normal | Partial | keep adapters honesty |
-| C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | normal | Unverifiable | keep |
-| C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of/cli/` / `scripts/of/regime.py` | `cmd_patch` | critical | OK | keep |
-| C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | normal | OK | keep doctrine |
-| C-020 | `of resume` reconstructs in-flight from disk; recovery brief lists field/auto_continue, completed/in-flight, residual state, owners, owned-path presence, scratch; explicit next guidance; one-screen; no auto-spawn; no log dump; no new regime | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `resume_auto_continue_lines`; `print_resume_*`; no spawn | `scripts/of/cli/` | `cmd_resume` | critical | OK | keep |
-| C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` / `CHECKPOINT_MAX_LINES` | `scripts/of/cli/` / `scripts/of/field.py` | `cmd_checkpoint` | normal | OK | keep |
-| C-022 | Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/spawn/collect/integrate/patch/phase/next-wave | README / architecture / SKILL | `snapshot_session` on those cmds | `scripts/of/field.py` | `snapshot_session` | critical | OK | keep |
-| C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status` prints `in_flight`; `render_prompt` continuation | `scripts/of/cli/` / `scripts/of/pack.py` | `cmd_status` / `render_prompt` | critical | OK | keep |
-| C-024 | `session.json` forbidden to slaves like `state.json` | SKILL / SLAVE / AGENTS | `SESSION_FORBIDDEN` in `default_order` | `scripts/of/field.py` | `default_order` | normal | OK | keep |
-| C-025 | Leader step 0 = `of resume` when ORDER exists; open field auto-continues (`auto_continue yes`); slave nonempty scratch + missing residual = continue | SKILL.md §0 / AGENTS rule 0 / SLAVE.md | leader/slave protocol (no new regime) | `SKILL.md` / `AGENTS.md` | §0 / rule 0 | normal | OK | keep doctrine |
-| C-026 | Residual metric types/ranges are rejected before regime selection | schema / CHANGELOG / architecture | `validate_residual` + integration regression | `scripts/of/pack.py` / `tests/test_kernel_regime.py` | `validate_residual` / `ResidualValidation` | critical | OK | keep |
-| C-027 | Codex routes output to a separate strict-compatible residual schema | adapters / CHANGELOG | `build_spawn_argv` selects the strict derivative; the canonical schema remains portable | `scripts/of_adapters.py` / `schemas/residual.codex.schema.json` / `tests/test_kernel_cli.py` | `build_spawn_argv` / `HeadlessArgv.test_codex_output_schema_closes_every_object_branch` | critical | OK | keep |
-| C-028 | Pulse is an mtime activity heuristic, not process health or child attribution; it does not mutate ORDER/state/session/wave artifacts, while update throttling may write its user cache | README / SKILL / architecture / CHANGELOG | per-child scratch + shared `repo_newest_mtime`; field-artifact regression and update-cache tests | `scripts/of/cli/` / `scripts/of/field.py` / `tests/test_kernel_field.py` / `tests/test_kernel_cli.py` | `cmd_pulse` / `maybe_notify_update` / `PulseActivity` / `UpdateNotice` | normal | OK | keep boundary |
-| C-029 | Preferred package discovery exposes `orderfield` and `of` | README / PUBLISH | repository-owned alias skill + packaging test | `of/SKILL.md` / `tests/test_packaging.py` | `RepositoryAliasSkill` | critical | OK | keep |
-| C-030 | Generated JSON matches public schemas and runtime validation uses the same contract | architecture / kernel feature / CHANGELOG | schema-driven validators plus generated-artifact regressions | `scripts/of/field.py` / `schemas/` / `tests/test_kernel_field.py` | `validate_public_schema` / `PublicJsonContracts` | critical | OK | keep |
-| C-031 | Mutating CLI commands serialize through a field lock and JSON replacement is atomic/durable | README / SKILL / principles / architecture | `field_lock`, `MUTATING_COMMANDS`, `dump_json`, concurrency tests | `scripts/of/field.py` / `tests/test_kernel_field.py` | `field_lock` / `dump_json` | critical | OK | keep product-file boundary explicit |
-| C-032 | New packet execution is bound to canonical live identity, revision, content, and nonsymlink artifact paths | README / SKILL / architecture / troubleshooting | packet digest/registration/path guards and adversarial tests | `scripts/of/pack.py` / `tests/test_kernel_pack.py` | `require_registered_packet` / `require_packet_artifact_paths` | critical | OK | preserve legacy recovery note |
-| C-033 | Residual identity must match its packet; workspace escalates; done result_ref exists under project | SKILL / kernel feature / troubleshooting | packet-bound residual validator + regime field set | `scripts/of/pack.py` / `scripts/of/regime.py` / `tests/test_kernel_regime.py` | `validate_residual_for_packet` / `decide_regime` | critical | OK | keep |
-| C-034 | Phase/wave transitions require closure, no in-flight child, complete current digest, and post-escalation revision; phase force is audited | README / SKILL / principles / architecture | transition guards + state override history + regressions | `scripts/of/regime.py` / `schemas/state.schema.json` / `tests/test_kernel_regime.py` | `phase_transition_errors` / `wave_transition_errors` | critical | OK | keep |
-| C-035 | Identical integration replay is a no-op/state repair; changed inputs require auditable recompute | README / SKILL / architecture / troubleshooting | content digest, integration records/history, reconcile path | `scripts/of/regime.py` / `schemas/wave-report.schema.json` / `tests/test_kernel_field.py` | `integration_input_digest` / `reconcile_integration_state` | critical | OK | keep |
-| C-036 | Pulse child verdict ignores shared-repo product writes | README / architecture / kernel feature | verdict signals contain packet + scratch only; repo mtime is display context | `scripts/of/cli/` / `tests/test_kernel_field.py` | `pulse_once` | normal | OK | keep boundary wording exact |
-| C-037 | Token/local-budget/inherited-depth accounting and scale_up selection are reserved, not implemented | README / SKILL / principles / architecture | `RUNTIME_OWNERSHIP` values are `reserved`; `decide_regime` remaps reserved regimes to hold; local_budget_pct is not read | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` / `decide_regime` | normal | OK | keep reserved; no fake telemetry |
-| C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | canonical base + external staging + direct packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript.test_literal_project_install_uses_stable_source_and_absolute_link` | critical | OK | keep |
-| C-039 | Native `qwen` adapter uses Qwen-owned positional headless argv, conservative `--approval-mode default` (not yolo), visible `OF_TRUST` override, no hardcoded model/baseUrl/key; kernel verifies PATH/argv/residual, harness promises approval/auth/ready | adapters.md / adapters feature / SKILL / order schema | `ADAPTER_ORDER` includes `qwen`; schema harness enum matches `ADAPTER_ORDER`; `build_spawn_argv` qwen branch; `TRUST_PROFILES` | `scripts/of_adapters.py` / `schemas/order.schema.json` / `tests/test_kernel_cli.py` | `build_spawn_argv` / `QwenHarnessEnum` | critical | OK | keep |
-| C-040 | `of doctor` reports prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready | README / troubleshooting / kernel feature | `cmd_doctor` prints `auth=not-verified` / `ready=not-verified` and kernel-vs-harness boundary | `scripts/of/cli/` / `tests/test_kernel_cli.py` | `cmd_doctor` / `DoctorCommand` | critical | OK | keep |
-| C-041 | Episodic retention keeps useful residuals and protocol learnings, drops inapplicable field learnings, dumps garbage/logs/history older than 30 days, never copies transcripts; protocol is not age-dumped | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` / `learning_applicable` | `scripts/of/cli/` / `scripts/of/field.py` / `tests/test_kernel_field.py` | `cmd_gc` / `EpisodicRetention` / `ProtocolLearnings` | critical | OK | keep |
-| C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER; complete stale waves may also integrate | troubleshooting / SKILL | `packets_all_stale` skips next-wave integration/in-flight; `complete_stale_wave_recoverable` | `scripts/of/pack.py` / `scripts/of/regime.py` / `tests/test_kernel_field.py` | `wave_transition_errors` / `StaleWaveRecovery` | critical | OK | keep |
-| C-043 | Spawn argv previews and logs redact secrets and escalated approval material | troubleshooting / kernel feature | `argv_preview` / `redact_text` / spawn log write | `scripts/of/field.py` / `tests/test_kernel_cli.py` | `argv_preview` / `ArgvAndLogRedaction` | critical | OK | keep |
-| C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys `writable_by_slaves` and `SLAVE.md` stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` / `normalize_workspace` | `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_field.py` | `cmd_migrate` / `ArtifactMigrations` | critical | OK | keep |
-| C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree` add/remove/list; spawn does not call it; path must be outside the project | `scripts/of/cli/` / `tests/test_kernel_field.py` | `cmd_worktree` / `WorktreeHelper` | normal | OK | keep |
-| C-046 | Runtime ownership is encoded as reserve/remove; no fake token/depth/budget telemetry | architecture / principles / status | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` / `decide_regime` wrapper | `scripts/of/regime.py` / `tests/test_kernel_regime.py` | `RUNTIME_OWNERSHIP` / `DecideRegimeShipped` | critical | OK | keep |
-| C-047 | SPEC.md is the current brief (original + amendments); product-root prompt.md is discarded after ingest; `spec_hash` is checked; packets own requirement IDs; contrast is a close gate (VERIFIED_CONTRACT at public surface; internal tests do not close); deliver needs `of close` | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of/spec.py` / `scripts/of/cli/` / `tests/test_kernel_spec.py` | `cmd_spec` / `SpecFidelity` | critical | OK | keep |
-| C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting / kernel feature | `cmd_pack` dies on unowned when packet owns none | `scripts/of/cli/` / `tests/test_kernel_spec.py` | `cmd_pack` / `SpecFidelity.test_pack_refuses_unowned_without_owns_requirement` | critical | OK | keep |
-| C-049 | Extract joins backslash-continued CLI lines (truncated `account create \\` is not a requirement) | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` / `extract_requirements_from_spec` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `join_continued_lines` / `SpecFidelity.test_extract_joins_backslash_continuations` | critical | OK | keep |
-| C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; cross-wave reuse is a note; packet unions paths into `writable_by_slaves`; ORDER default stays scratch; not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` | `scripts/of/cli/` / `scripts/of/pack.py` / `tests/test_kernel_pack.py` | `cmd_pack` / `PathOwnership` | critical | OK | keep |
-| C-051 | Verifier `done` requires identifying evidence + nonempty `result_ref`; platitudes refused; `phase --force` to deliver still runs SPEC close gates | SKILL / SLAVE / troubleshooting | `verifier_done_errors` / `phase_deliver_errors` | `scripts/of/pack.py` / `scripts/of/regime.py` / `tests/test_kernel_spec.py` | `VerifierEvidence` / `ForceDeliverSpec` | critical | OK | keep |
-| C-052 | REQUIREMENTS is an index over SPEC (`origin`, `source` line range, semantic prefixes); contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` / `requirement_source_cite` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `SemanticExtract` | critical | OK | keep |
-| C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI (`of` / `scripts/of.py`) stays; schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7 | SPEC CLI-002 / architecture | package `scripts/of/` + shim entry; `python3 scripts/of.py` still runs `main`; tests `import of` | `scripts/of.py` / `scripts/of/` | `main` | critical | OK | keep; 0.6 form, not a new regime |
-| C-054 | A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a lossless brief: leader expands the prior request into `--source` or steers an open field (`next`); kernel prints an advisory note on init/amend/revise and still writes SPEC | SKILL / context-control / principles 17 / troubleshooting / README | `looks_like_deictic_brief` / `warn_if_deictic_brief` on `cmd_init` / `cmd_spec`; does not refuse | `scripts/of/spec.py` / `scripts/of/cli/` / `tests/test_kernel_spec.py` | `looks_like_deictic_brief` / `DeicticBrief` | normal | OK | keep advisory; not a new regime |
-| C-055 | CLI commands live in `scripts/of/cli/` groups (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`); parser + dispatch stay in `cli/__init__.py`; public `of` / `scripts/of.py` / `import of` unchanged vs 0.6.1; not a new regime | architecture / kernel feature / CHANGELOG | package `scripts/of/cli/`; `from of.cli import main`; tests `import of` | `scripts/of/cli/` / `scripts/of.py` | `main` / `cmd_pack` | critical | OK | keep; 0.6.2 form |
-| C-056 | `of learn` writes protocol lessons (user cache, survive ORDER/repos) vs `--field` (this ORDER); resume lists both; child prompts inject at most 8 protocol lines from the user cache only (not field-dir pins); not SPEC; `gc` never drops protocol | SKILL / README / kernel feature / troubleshooting | `cmd_learn` / `save_learning` / `protocol_learning_lines` / `ProtocolLearnings` | `scripts/of/field.py` / `scripts/of/cli/` / `scripts/of/pack.py` / `schemas/learning.schema.json` / `tests/test_kernel_field.py` | `cmd_learn` / `ProtocolLearnings` | critical | OK | keep; 0.6.4; not a new regime |
-| C-057 | Optional `ORDER.origin` provenance stamp: `of init --origin/--session-id` + `OF_ORIGIN`/`OF_SESSION_ID`; `of patch --origin` (`-` clears); resume/status one-line pointer when present, omit when absent; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts; missing origin remains valid | SKILL / README / context-control / principles 13 / CHANGELOG | `origin` on order schema; `cmd_init` / `cmd_patch` / `format_origin_line`; `pick_adapter` has no origin parameter | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `cmd_patch` / `format_origin_line` / `OriginInit` | critical | OK | keep; 0.6.5; not a new regime; do not claim auto-fetch |
+| ID | Claim (quote or paraphrase) | Source doc | Code evidence | Anchor path | Anchor symbol | Anchor hash | Severity | Verdict | Action |
+|----|----------------------------|------------|---------------|-------------|---------------|-------------|----------|---------|--------|
+| C-001 | Native adapters include `agy` | SKILL / README / adapters | `ADAPTER_ORDER` includes `agy` | `scripts/of_adapters.py` | `ADAPTER_ORDER` | — | critical | OK | keep |
+| C-002 | Flags before `-p` for agy | adapters.md | `build_spawn_argv` agy branch | `scripts/of_adapters.py` | `build_spawn_argv` | — | critical | OK | keep |
+| C-003 | Phase-prefix `done_when` | SKILL / README / CHANGELOG | `done_when_for`, `done_when_closed_phases` | `scripts/of/regime.py` | `done_when_for` | — | critical | OK | keep |
+| C-004 | `--requires-tool` on pack; spawn refuses | SKILL / adapters / CHANGELOG | pack argparse + `missing_tools` | `scripts/of/cli/` / `scripts/of_adapters.py` | `missing_tools` | — | critical | OK | keep |
+| C-005 | Reference-load SLAVE (abs path); orca/generic may inline | SKILL / README / CHANGELOG | `render_prompt`, `INLINE_CONTRACT_ADAPTERS` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
+| C-006 | Grok headless `-p` + `--always-approve` | adapters / CHANGELOG | grok argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | — | critical | OK | keep |
+| C-007 | Codex uses `--dangerously-bypass-approvals-and-sandbox`, not `--full-auto` | adapters / CHANGELOG | codex argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | — | critical | OK | keep |
+| C-008 | `install.sh` symlinks `of` to **installed** skill copy | CHANGELOG / adapters | `of_bin_dirs` / link to dest `scripts/of.py` | `install.sh` | | — | critical | OK | keep |
+| C-009 | Detect lists harness CLIs on PATH | README / adapters | `cmd_detect` | `scripts/of/cli/ops.py` | `cmd_detect` | — | normal | OK | keep |
+| C-010 | Pack is cap surface (`max_children`, `spawn_blocked`) | SKILL | `cmd_pack` / `spawn_is_blocked` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
+| C-011 | PATH via install → installed skill `of` | README.md | `install.sh` of symlink | `install.sh` | | — | critical | OK | keep |
+| C-012 | Cursor prompt is reference-load | adapters.md | `render_prompt` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
+| C-013 | SLAVE reference-load by default | SKILL.md | `render_prompt` / `--inline` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
+| C-014 | Leader asks same-harness vs multi; uses detect inventory | SKILL.md / AGENTS.md | protocol + `cmd_detect`; no `of ask` | `scripts/of/cli/ops.py` | `cmd_detect` | — | normal | Partial | keep protocol; optional CLI later |
+| C-015 | `detect` proves auth / “logueado” | user phrasing | only PATH binary presence | `scripts/of/cli/ops.py` | `cmd_detect` | — | normal | Partial | doc honesty: PATH ≠ login |
+| C-016 | Worktree isolation always enforced by kernel | SKILL isolation notes | workspace is documentation only | `scripts/of/field.py` | `default_order` | — | normal | Partial | keep adapters honesty |
+| C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | — | normal | Unverifiable | keep |
+| C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of/cli/field_cmd.py` / `scripts/of/regime.py` | `cmd_patch` | — | critical | OK | keep |
+| C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | — | normal | OK | keep doctrine |
+| C-020 | `of resume` reconstructs in-flight from disk; recovery brief; auto_continue; no auto-spawn | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `resume_auto_continue_lines` | `scripts/of/cli/ops.py` | `cmd_resume` | — | critical | OK | keep |
+| C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_checkpoint` | — | normal | OK | keep |
+| C-022 | Auto snapshot `.orderfield/session.json` facts on pack/spawn/collect/integrate/patch/phase/next-wave **and** unpack/spec/close/gc/learn/migrate/checkpoint | README / architecture / SKILL / kernel feature | `snapshot_session` call sites | `scripts/of/cli/` | `snapshot_session` | — | critical | OK | patched docs to name the full set |
+| C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status`; `render_prompt` continuation | `scripts/of/cli/ops.py` / `scripts/of/pack.py` | `cmd_status` / `render_prompt` | — | critical | OK | keep |
+| C-024 | `session.json` forbidden to slaves like `state.json` | SKILL / SLAVE / AGENTS | `SESSION_FORBIDDEN` in `default_order` | `scripts/of/field.py` | `default_order` | — | normal | OK | keep |
+| C-025 | Leader step 0 = `of resume` when ORDER exists; open field auto-continues | SKILL.md §0 / AGENTS rule 0 / SLAVE.md | leader/slave protocol | `SKILL.md` / `AGENTS.md` | §0 / rule 0 | — | normal | OK | keep doctrine |
+| C-026 | Residual metric types/ranges are rejected before regime selection | schema / CHANGELOG / architecture | `validate_residual` | `scripts/of/pack.py` / `tests/test_kernel_regime.py` | `validate_residual` | — | critical | OK | keep |
+| C-027 | Codex routes output to a separate strict-compatible residual schema | adapters / CHANGELOG | `build_spawn_argv` selects derivative | `scripts/of_adapters.py` / `schemas/residual.codex.schema.json` | `build_spawn_argv` | — | critical | OK | keep |
+| C-028 | Pulse is an mtime activity heuristic, not process health; does not mutate ORDER/state/session/wave | README / SKILL / architecture | `cmd_pulse` / `maybe_notify_update` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_pulse` | — | normal | OK | keep boundary |
+| C-029 | Preferred package discovery exposes `orderfield` and `of` | README / PUBLISH | alias skill + packaging test | `of/SKILL.md` / `tests/test_packaging.py` | `RepositoryAliasSkill` | — | critical | OK | keep |
+| C-030 | Generated JSON matches public schemas; runtime validation uses the same contract | architecture / kernel feature | `validate_public_schema` | `scripts/of/field.py` / `schemas/` | `validate_public_schema` | — | critical | OK | keep; schemas include learning + requirements |
+| C-031 | `MUTATING_COMMANDS` take `.orderfield/field.lock` in `of.cli.main`; JSON replacement is atomic via `dump_json` | README / SKILL / principles / architecture | `MUTATING_COMMANDS`, `field_lock`, `dump_json` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` / `main` | — | critical | OK | patched: lock set is **not** spawn/handoff/spec/gc/checkpoint/learn/worktree |
+| C-032 | New packet execution is bound to canonical live identity, revision, content, and nonsymlink paths | README / SKILL / architecture / troubleshooting | `require_registered_packet` | `scripts/of/pack.py` / `tests/test_kernel_pack.py` | `require_registered_packet` | — | critical | OK | keep |
+| C-033 | Residual identity must match its packet; workspace escalates; done result_ref exists under project | SKILL / kernel feature / troubleshooting | `validate_residual_for_packet` | `scripts/of/pack.py` / `scripts/of/regime.py` | `validate_residual_for_packet` | — | critical | OK | keep |
+| C-034 | Phase/wave transitions require closure, no in-flight child, complete current digest; phase force is audited | README / SKILL / principles / architecture | `phase_transition_errors` / `wave_transition_errors` | `scripts/of/regime.py` | `phase_transition_errors` | — | critical | OK | keep |
+| C-035 | Identical integration replay is a no-op/state repair; changed inputs require `--recompute` | README / SKILL / architecture / troubleshooting | `integration_input_digest` | `scripts/of/regime.py` | `integration_input_digest` | — | critical | OK | keep |
+| C-036 | Pulse child verdict ignores shared-repo product writes as evidence | README / architecture / kernel feature | verdict from packet + scratch only | `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `pulse_once` | — | normal | OK | keep |
+| C-037 | Token/local-budget/inherited-depth accounting and scale_up selection are reserved | README / SKILL / principles / architecture | `RUNTIME_OWNERSHIP`; remapped to hold | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` / `decide_regime` | — | normal | OK | keep reserved |
+| C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript` | — | critical | OK | keep |
+| C-039 | Native `qwen` adapter uses Qwen-owned positional headless argv, conservative `--approval-mode default` | adapters.md / SKILL | `ADAPTER_ORDER` includes `qwen`; `TRUST_PROFILES` | `scripts/of_adapters.py` / `schemas/order.schema.json` | `build_spawn_argv` | — | critical | OK | keep |
+| C-040 | `of doctor` reports prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready | README / troubleshooting / kernel feature | `cmd_doctor` prints `auth=not-verified` | `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `cmd_doctor` | — | critical | OK | keep |
+| C-041 | Episodic retention keeps useful residuals and protocol learnings; dumps garbage/logs/history >30d | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_gc` | — | critical | OK | keep |
+| C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER | troubleshooting / SKILL | `packets_all_stale` / `complete_stale_wave_recoverable` | `scripts/of/pack.py` / `scripts/of/regime.py` | `wave_transition_errors` | — | critical | OK | keep |
+| C-043 | Spawn argv previews and logs redact secrets and escalated approval material | troubleshooting / kernel feature | `argv_preview` / `redact_text` | `scripts/of/field.py` / `tests/test_kernel_cli.py` | `argv_preview` | — | critical | OK | keep |
+| C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` | `scripts/of/field.py` / `scripts/of/cli/ops.py` | `cmd_migrate` | — | critical | OK | keep |
+| C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree`; spawn does not call it | `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `cmd_worktree` | — | normal | OK | keep |
+| C-046 | Runtime ownership is encoded as reserve/remove; no fake telemetry | architecture / principles | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | critical | OK | keep; location is `regime.py` not `scripts/of.py` |
+| C-047 | SPEC.md is the current brief; product-root prompt.md discarded; contrast is a close gate | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` | `cmd_spec` | — | critical | OK | keep |
+| C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting | `cmd_pack` dies on unowned when packet owns none | `scripts/of/cli/wave.py` / `tests/test_kernel_spec.py` | `cmd_pack` | — | critical | OK | keep |
+| C-049 | Extract joins backslash-continued CLI lines | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `join_continued_lines` | — | critical | OK | keep |
+| C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
+| C-051 | Verifier `done` requires identifying evidence + nonempty `result_ref`; `phase --force` to deliver still runs SPEC close | SKILL / SLAVE / troubleshooting | `verifier_done_errors` / `phase_deliver_errors` | `scripts/of/pack.py` / `scripts/of/regime.py` | `VerifierEvidence` | — | critical | OK | keep |
+| C-052 | REQUIREMENTS is an index over SPEC; contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `SemanticExtract` | — | critical | OK | keep |
+| C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI stays; protocol unchanged vs 0.5.7 | architecture | package `scripts/of/` + shim entry | `scripts/of.py` / `scripts/of/` | `main` | — | critical | OK | keep; 0.6 form |
+| C-054 | A deictic go-ahead is not a lossless brief; kernel prints advisory note and still writes SPEC | SKILL / context-control / principles 17 | `looks_like_deictic_brief` / `warn_if_deictic_brief` | `scripts/of/spec.py` / `scripts/of/cli/` | `looks_like_deictic_brief` | — | normal | OK | keep advisory |
+| C-055 | CLI commands live in `scripts/of/cli/` groups; parser + dispatch in `cli/__init__.py`; public `of` unchanged | architecture / kernel feature / CHANGELOG | `from of.cli import main`; dispatch imports `cmd_spec` from `spec_cmd` | `scripts/of/cli/` / `scripts/of.py` | `main` | — | critical | Partial | dispatch is grouped; `ops.py` still defines unwired `cmd_spec`/`cmd_contrast`/`cmd_close` copies |
+| C-056 | `of learn` writes protocol vs `--field`; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep |
+| C-057 | Optional `ORDER.origin` provenance stamp; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts | SKILL / README / context-control / CHANGELOG | `origin` on order schema; `format_origin_line`; `pick_adapter` has no origin param | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `format_origin_line` | — | critical | OK | keep; 0.6.5 |
+| C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, close | architecture / README / principles (was overclaiming spawn/handoff/spec/gc/checkpoint/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs |
+| C-059 | `emit_event` lives in `scripts/of/field.py`, re-exported by `of`; not in the `scripts/of.py` shim | events.md | `def emit_event` | `scripts/of/field.py` | `emit_event` | — | normal | OK | patched events.md |
+| C-060 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` live in `scripts/of/regime.py` | roadmap (was `scripts/of.py`) | module location | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | normal | OK | patched roadmap |
+| C-061 | Public schemas include `learning.schema.json` and `requirements.schema.json` besides order/state/packet/residual/session/wave-report | architecture / kernel feature | `schemas/` listing | `schemas/` | | — | normal | OK | patched inventory + coverage |
+| C-062 | Hub docs table lists glossary, events, context-control, demo, evals, PRINCIPLES.md, `/of` alias | AGENTS.md | files exist | `docs/` / `of/SKILL.md` / `PRINCIPLES.md` | | — | normal | OK | patched AGENTS.md |
+| C-063 | Architecture Compared-to link resolves to README `#compared-to` | architecture.md | heading `## Compared-to` | `README.md` | | — | normal | OK | patched fragment |
+| C-064 | CI matrix is unittest + `of eval --strict --kernel` + `validate-skill.sh` + gitleaks on ubuntu/macos × 3.9/3.13 | CONTRIBUTING / README / evals | `.github/workflows/test.yml` | `.github/workflows/test.yml` | | — | critical | OK | keep |
+| C-065 | `scripts/of.py` is a one-function shim (`from of.cli import main`); internals are `scripts/of/` | architecture / DEPENDENCIES / CONTRIBUTING | file contents | `scripts/of.py` | `main` | — | critical | OK | patched DEPENDENCIES + contributing debt |
 
-## Post-patch expectation
+### Verdict definitions
 
-C-030–C-038 cover the 0.4.2 integrity patch. C-039–C-046 cover the 0.5.0 operational contract. C-047–C-049 cover SPEC fidelity + public-surface contrast + pack-owns + extract join (0.5.1/0.5.2). C-050–C-052 cover 0.5.3 owns_paths, verifier evidence / force-deliver, and extract-as-index. C-020 enhanced in 0.5.4 with recovery brief (owners + product presence). C-053 records the 0.6 form split of `scripts/of.py` into internal packages. C-054 records the 0.6.1 deictic go-ahead ingest advisory. C-055 records the 0.6.2 CLI command-group package (`scripts/of/cli/`). C-056 records 0.6.4 `of learn` (protocol vs field). C-057 records 0.6.5 optional `ORDER.origin` provenance (not spawn, not fetch). VERSION is `0.6.5`. C-014 remains Partial (leader protocol, not `of ask`); accounting surfaces are reserved rather than claimed as active. README 30-second loop now includes `--source`, `--owns-requirement`, `contrast`, and `close` (was teaching the LedgerLab bypass). README links the 90s demo at `docs/demo/README.md`.
+| Verdict | Meaning |
+|---------|---------|
+| **OK** | Matches code |
+| **Partial** | Exists but incomplete vs claim |
+| **Missing** | Not found in code |
+| **Contradicted** | Code conflicts with claim |
+| **Unverifiable** | Not a structural claim |
+
+### Truth score (advisory) vs CI
+
+```text
+score = (OK_N * 100 + PARTIAL_N * 50) / TOTAL_V   # TOTAL_V > 0
+```
+
+If any **critical Contradicted** exists, CI **must** fail. This repo gates version/docs sync with `scripts/validate-skill.sh`, not a copied `audit-claims.sh`.
+
+## Follow-on plan
+
+- [x] Patch Contradicted lock/path/location claims in supporting docs
+- [x] Add STAR to each supporting markdown doc
+- [x] Expand hub coverage + docs table
+- [ ] Optional: delete unwired `cmd_spec`/`cmd_spec_diff`/`cmd_contrast`/`cmd_close` from `scripts/of/cli/ops.py` (code, not docs)
+- [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`
+
+## Related
+
+- Hub: [AGENTS.md](../../AGENTS.md)
+- Architecture: [architecture.md](../architecture.md)
+- Recovery reports: [README.md](README.md)

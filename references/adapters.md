@@ -1,5 +1,12 @@
 # Adapters and headless modes
 
+**STAR**
+
+- **Situation:** Each harness CLI has different headless flags; mixing them silently escalates trust.
+- **Task:** Translate spawn/wait/kill/share into per-adapter argv against `scripts/of_adapters.py`.
+- **Action:** Document detect order, reference-load vs inline, and kernel-vs-harness verification for Qwen.
+- **Result:** `of spawn --adapter <name>` matches this file; PATH presence is not login.
+
 Adapter tables and `build_spawn_argv` live in [`scripts/of_adapters.py`](../scripts/of_adapters.py) (imported by the CLI). The kernel speaks four verbs. Each adapter translates them.
 
 ```

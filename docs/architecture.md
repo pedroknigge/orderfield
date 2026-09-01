@@ -1,12 +1,19 @@
 # Architecture — Orderfield kernel
 
-> Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to-authority-over-the-plan-not-a-fleet) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
+**STAR**
+
+- **Situation:** The 0.6.5 kernel is a stdlib CLI (`scripts/of.py` shim + `scripts/of/`) whose contract lives on disk; form docs must not invent a regime.
+- **Task:** Describe kernel shape (C4, authority, modules, lock, reserved runtime) with precision to code.
+- **Action:** Map containers and symbols to `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` and the real `MUTATING_COMMANDS` set.
+- **Result:** An agent can find the owner of each concern and does not claim a lock on spawn/spec/gc.
+
+> Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
 **Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.5` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
-The first public artifact is [README Compared-to](../README.md#compared-to-authority-over-the-plan-not-a-fleet). This page follows it. Names match that screen; this is not a second dialect.
+The first public artifact is [README Compared-to](../README.md#compared-to). This page follows it. Names match that screen; this is not a second dialect.
 
 Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. The **harness** is USB: process transport that starts a child. It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**.
 
@@ -145,7 +152,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `integration_input_digest` / `reconcile_integration_state` | Idempotent replay and interrupted-state repair; changed inputs use `--recompute` |
 | `phase_transition_errors` / `wave_transition_errors` | Sequential closed phase movement and complete current-digest wave movement |
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; parked agents + `agents_note`; optional `--summary` |
-| `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary) |
+| `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary). Written from pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint |
 | in-flight | Packed child with missing residual; `of status` surfaces count; `of resume` lists `parked` + `parked_reason` |
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
@@ -166,7 +173,9 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-All mutating commands (`init`, pack/unpack, handoff/spawn, collect/integrate, phase/patch/next-wave, checkpoint, spec, close, gc, migrate, worktree) take one advisory OS file lock before reading and writing field state. JSON writes fsync a sibling temporary file, atomically replace the destination, then fsync the directory. This prevents cooperating CLI processes from overrunning caps or exposing partial JSON. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
+`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
+
+Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `spec`, `gc`, `checkpoint`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
 ## Advisory and reserved fields
 

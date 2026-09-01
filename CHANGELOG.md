@@ -1,5 +1,12 @@
 # Changelog
 
+**STAR**
+
+- **Situation:** Each release must record what shipped without rewriting history or inventing a regime.
+- **Task:** Keep a versioned log that `validate-skill.sh` can match to `VERSION`.
+- **Action:** First `##` heading stays the current version; bullets stay code-backed.
+- **Result:** Docs, skill metadata, and the tag describe the same line.
+
 ## 0.6.5
 
 Optional origin provenance pointer. Not a new regime.

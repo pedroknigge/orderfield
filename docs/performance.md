@@ -1,5 +1,12 @@
 # Performance — wave wall-clock
 
+**STAR**
+
+- **Situation:** This kernel has no database and no HTTP server; load is wave wall-clock at real caps.
+- **Task:** Give a probe for pack→collect time with handoff-style spawn, not fake telemetry.
+- **Action:** Measure from a throwaway tree; treat residual `metrics.*` as uncertainty signals, not SLOs.
+- **Result:** Caps in `ORDER.caps` stay the throttle; reserved accounting is not performance data.
+
 Orderfield has no database and no HTTP server. The only load that matters is **how long a wave takes** at the child caps you actually use.
 
 ## Measure

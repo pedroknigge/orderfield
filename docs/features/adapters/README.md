@@ -1,5 +1,12 @@
 # Feature: adapters
 
+**STAR**
+
+- **Situation:** Already-authenticated coding CLIs need a headless argv table, not a second kernel.
+- **Task:** Inventory native adapters plus generic/`OF_AGENT` against `scripts/of_adapters.py`.
+- **Action:** Keep detect = PATH (not auth); default same-harness; note grok/codex/agy/qwen argv facts.
+- **Result:** Spawn argv matches code; Qwen does not inherit another adapter's approval flags.
+
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
 **Status:** Introduced by `0.3.2`, current in `0.6.5` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))

@@ -1,5 +1,12 @@
 # Publish notes
 
+**STAR**
+
+- **Situation:** A tagged GitHub release must match VERSION, both skill entry points, and the installed kernel.
+- **Task:** Gate publish: tests, `validate-skill.sh`, package discovery of `orderfield` and `of`, then tag.
+- **Action:** Land through protected `main`, annotated tag, `gh release create --verify-tag`, then mortal install.
+- **Result:** Remote install reports the same version as `VERSION` and both skill names resolve.
+
 Public repo: https://github.com/pedroknigge/orderfield
 
 ## Pre-publish gate
