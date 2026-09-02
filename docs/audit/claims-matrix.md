@@ -17,7 +17,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.9` / `031f6f7` (default branch after #41/#42/#43/#45)
+**Code rev:** VERSION `0.7.0` / release line after #41/#42/#43/#45/#46
 
 ## Summary
 
