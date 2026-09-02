@@ -499,6 +499,29 @@ class SiblingFieldPack(unittest.TestCase):
 
         render = self.of("render", "--packet", printed)
         self.assertEqual(render.returncode, 0, render.stderr)
+        start = render.stdout.find("{")
+        end = render.stdout.rfind("}")
+        self.assertGreater(end, start, render.stdout)
+        shown = json.loads(render.stdout[start : end + 1])
+        self.assertEqual(
+            shown["residual_path"],
+            f".orderfield/fields/{self.fid}/waves/001/residuals/c1.json",
+        )
+        self.assertEqual(
+            shown["scratch_dir"],
+            f".orderfield/fields/{self.fid}/work/scratch/c1",
+        )
+        if shown.get("spec_ref"):
+            self.assertEqual(
+                shown["spec_ref"],
+                f".orderfield/fields/{self.fid}/SPEC.md",
+            )
+        nested = shown.get("order") or {}
+        if nested.get("spec_ref"):
+            self.assertEqual(
+                nested["spec_ref"],
+                f".orderfield/fields/{self.fid}/SPEC.md",
+            )
 
         spawn = self.of("spawn", "--packet", printed, "--adapter", "claude", "--dry-run")
         self.assertEqual(spawn.returncode, 0, spawn.stderr)
@@ -514,6 +537,25 @@ class SiblingFieldPack(unittest.TestCase):
         res_path = self.home / "waves/001/residuals/c1.json"
         res_path.parent.mkdir(parents=True, exist_ok=True)
         res_path.write_text(json.dumps(residual), encoding="utf-8")
+        collect = self.of("collect")
+        self.assertEqual(collect.returncode, 0, collect.stdout + collect.stderr)
+        self.assertIn("ok=1", collect.stdout)
+
+    def test_collect_finds_leftover_canonical_residual(self) -> None:
+        """#48: a child that trusted packet JSON wrote to .orderfield/waves/…"""
+        pack = self.of("pack", "--slice", "s", "--role", "explorer", "--child-id", "c1")
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        printed = pack.stdout.splitlines()[0].strip()
+        packet = load_json(self.tmp / printed)
+        residual = load_json(DONE)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        (self.tmp / "notes.md").write_text("done\n", encoding="utf-8")
+        residual["result_ref"] = "notes.md"
+        leftover = self.tmp / ".orderfield/waves/001/residuals/c1.json"
+        leftover.parent.mkdir(parents=True, exist_ok=True)
+        leftover.write_text(json.dumps(residual), encoding="utf-8")
+        self.assertFalse((self.home / "waves/001/residuals/c1.json").is_file())
         collect = self.of("collect")
         self.assertEqual(collect.returncode, 0, collect.stdout + collect.stderr)
         self.assertIn("ok=1", collect.stdout)
