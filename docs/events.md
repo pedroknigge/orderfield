@@ -17,7 +17,7 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | Event | When | Typical fields |
 | --- | --- | --- |
 | `pack` | After `of pack` | `child_id`, `wave`, `residual`, `ok` |
-| `spawn` | After `of spawn` / generic handoff spawn path | `adapter`, `child_id`, `mode`, `exit`, `ok` |
+| `spawn` | After `of spawn` / generic handoff spawn path | `adapter`, `child_id`, `ok`, `outcome` (`ok` \| `nonzero_exit` \| `timeout` \| `missing_binary` \| `error` \| `dry_run`); `exit` on ok/nonzero_exit, `timeout_s` on timeout, `mode: handoff` on the generic path |
 | `handoff` | After `of handoff` | `child_id`, `wave`, `ok` |
 | `collect` | After `of collect` | `wave`, `ok`, `invalid`, `missing`, `total` |
 | `integrate` | After `of integrate` | `wave`, `regime`, `ok` |
@@ -35,7 +35,9 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `gc` | After `of gc` | `dumped`, `ok` |
 | `doctor` | After `of doctor` | `ok` |
 | `migrate` | After `of migrate` | `applied`, `ok` |
-| `learn` | After `of learn` | `action` (`save` \| `list` \| `forget`), `ok`; `kind`/`id` on save/forget |
+| `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
+| `warning` | Learnings skipped on load (no provenance / schema failure) | `ok: true`, `kind: learning_skipped`, `message` |
+| `error` | A deliberate refusal (`die`, `kind: refused`) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, or the exception class, e.g. `UnicodeDecodeError`, `OSError`, `JSONDecodeError`), `message` (one sanitized line, secrets and home paths redacted) |
 
 ## Example
 
@@ -45,6 +47,24 @@ of --json pack --slice "…" --role explorer --child-id e1
 ```
 
 Each line is a standalone JSON object with an `event` key plus command-specific fields.
+
+## Errors
+
+`of` never prints a Python traceback by default. Any exception that escapes a
+command exits `1`; in plain mode the only output is one stderr line
+
+```
+of: error: <kind>: <message>
+```
+
+and under `--json` / `OF_JSON=1` the same failure is the `error` event instead:
+
+```json
+{"event": "error", "kind": "UnicodeDecodeError", "message": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte", "ok": false}
+```
+
+Under `--json` a deliberate refusal (`die`) is the `error` event with `kind: refused` and prints no prose line, so stderr stays one JSON object per line; in plain mode it is the redacted `of: <message>` line. argparse usage errors are unchanged. `KeyboardInterrupt` exits `130`. `OF_DEBUG=1` re-raises
+with the full traceback for debugging.
 
 ## Not covered
 

@@ -60,7 +60,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100,
-              "description": "Reserved; not evaluated."
+              "description": "Reserved / unenforced. No telemetry feeds it; the kernel never evaluates it."
             },
             "novelty": { "type": "boolean" }
           }
@@ -102,13 +102,18 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tokens", "seconds"],
+      "description": "Only `seconds` is enforced (spawned-process timeout). `tokens` is reserved: the kernel has no token telemetry and never meters or enforces it.",
       "properties": {
         "tokens": {
           "type": "integer",
           "minimum": 1,
-          "description": "Reserved; carried in packets but not measured or enforced."
+          "description": "Reserved / unenforced. Carried in packets for future accounting; not measured, not metered, never selects a regime."
         },
-        "seconds": { "type": "integer", "minimum": 1 }
+        "seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Enforced: wall-clock timeout for the spawned child process."
+        }
       }
     }
   }

@@ -4,13 +4,13 @@ The slow thing is the field on disk. The fast thing is the child CLI. Form docs 
 
 Architecture names who may change the plan, what the lock actually covers, and what stays reserved.
 
-Map to `scripts/of/{field,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — not spawn, spec, or gc.
+Map to `scripts/of/{field,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec` and `checkpoint`; not spawn, handoff, learn, or gc.
 
 A cut, a resume, a different model — the shape holds. The results do not have to change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.9+ stdlib · **Version:** `0.6.6` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.6.7` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -67,7 +67,7 @@ C4Container
     Container_Ext(child, "Child coding CLI", "already-authenticated CLI", "Executes one packet; writes a residual; cannot redefine ORDER")
     System_Ext(harness, "Harness", "USB / process transport")
     System_Boundary(ofb, "Orderfield") {
-        Container(cli, "of CLI", "Python 3.9+ stdlib", "pack, spawn, collect, integrate, contrast, close")
+        Container(cli, "of CLI", "Python 3.11+ stdlib", "pack, spawn, collect, integrate, contrast, close")
         Container(adp, "Adapters", "of_adapters.py", "Headless argv per already-authenticated CLI")
         ContainerDb(disk, "Disk field", "JSON on .orderfield/", "ORDER, SPEC, packets, residuals, state, session")
         Container(sch, "Public schemas", "JSON Schema", "Runtime validation of artifacts")
@@ -174,9 +174,9 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
+`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
 
-Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `spec`, `gc`, `checkpoint`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
+Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `gc`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
 ## Advisory and reserved fields
 

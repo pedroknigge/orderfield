@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -26,10 +27,14 @@ from of_adapters import (
     detect_adapters,
     missing_tools,
     pick_adapter,
+    resolve_trust_profile,
+    spawn_env,
+    spawn_env_mode,
 )
 
 from of.field import (
     CHECKPOINT_MAX_CHARS,
+    OF_FIELD_ENV,
     CHECKPOINT_MAX_LINES,
     FIELD_SPEC_MD,
     MUTATING_COMMANDS,
@@ -68,6 +73,8 @@ from of.field import (
     open_backlog,
     order_path,
     parse_utc,
+    physical_artifact_path,
+    physical_field_rel,
     plan_field_migrations,
     plan_field_retention,
     print_migration_catalog,
@@ -199,6 +206,59 @@ from of.regime import (
 )
 
 
+# Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
+field_artifact_path = physical_artifact_path
+
+# Harnesses whose headless mode cannot prompt: a conservative child that must
+# write simply exits without a residual. Named so spawn can say why.
+PRINT_MODE_ADAPTERS = {"claude", "codex", "cursor", "agy", "opencode", "grok", "qwen"}
+
+
+def kill_child_tree(proc: "subprocess.Popen[str]") -> None:
+    """Kill the harness AND its tool subprocesses. Popen(start_new_session)
+    put them in one process group; a bare proc.kill() would orphan the
+    grandchildren, which keep spending budget and can still write the residual
+    after the kernel recorded 'timeout'."""
+    try:
+        if os.name == "posix":
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            proc.kill()
+    except (ProcessLookupError, PermissionError, OSError):
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def run_child(
+    argv: list[str], root: Path, env: dict[str, str], timeout_s: float | None
+) -> "subprocess.CompletedProcess[str]":
+    """subprocess.run with a process group and no stdin.
+
+    stdin=/dev/null: a harness that prompts for approval fails fast on EOF
+    instead of blocking invisibly on the leader's terminal until timeout.
+    On timeout the whole group is killed and TimeoutExpired carries whatever
+    output was captured, like subprocess.run."""
+    kwargs: dict[str, Any] = {
+        "cwd": str(root),
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "stdin": subprocess.DEVNULL,
+        "text": True,
+        "env": env,
+    }
+    if os.name == "posix":
+        kwargs["start_new_session"] = True
+    proc = subprocess.Popen(argv, **kwargs)
+    try:
+        out, err = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        kill_child_tree(proc)
+        out, err = proc.communicate()
+        raise subprocess.TimeoutExpired(argv, timeout_s or 0, output=out, stderr=err)
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
 
 def cmd_pack(args: argparse.Namespace) -> None:
     root = find_root()
@@ -316,13 +376,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         and str(r.get("status") or "unowned") == "unowned"
         and not (r.get("owned_by") or [])
     ]
-    if owns:
-        mark_requirements_owned(reqs, child_id, owns)
-        spec = spec_path(root)
-        if spec.is_file():
-            reqs["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
-        save_requirements(reqs, root)
-    elif unowned_ids:
+    if not owns and unowned_ids:
         die(
             "binding requirements are unowned; "
             "of pack --owns-requirement ID (repeatable). "
@@ -364,14 +418,24 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die("invalid packet:\n  " + "\n  ".join(errors))
     canonical_out = canonical_packet_rel(int(wave), child_id)
     out_rel = str(args.out) if args.out else canonical_out
-    out = safe_relative_path(root, out_rel, "--out", reject_symlinks=True)
     if out_rel != canonical_out:
         die(f"noncanonical --out {out_rel!r}; expected {canonical_out}")
+    # Sibling fields: the packet lives at the physical field home, like wdir.
+    out_physical_rel = physical_field_rel(root, canonical_out)
+    out = safe_relative_path(root, out_physical_rel, "--out", reject_symlinks=True)
     register_packed_child(
         order, state, force=bool(getattr(args, "force_spawn", False))
     )
     save_state(state, root)
-    (root / scratch).mkdir(parents=True, exist_ok=True)
+    if owns:
+        # Ownership is written only once the cap check has passed: a refused
+        # pack must not leave requirements owned by a child that never existed.
+        mark_requirements_owned(reqs, child_id, owns)
+        spec = spec_path(root)
+        if spec.is_file():
+            reqs["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+        save_requirements(reqs, root)
+    (root / physical_field_rel(root, scratch)).mkdir(parents=True, exist_ok=True)
     (wdir / "packets").mkdir(parents=True, exist_ok=True)
     (wdir / "residuals").mkdir(parents=True, exist_ok=True)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
@@ -399,7 +463,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         residual=residual_path,
         ok=True,
     )
-    print(str(out))
+    print(out_physical_rel)
     print(f"child_id={child_id} wave={wave} residual={residual_path}")
 
 
@@ -418,7 +482,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     packet = load_packet(pkt_path)
     require_packet_artifact_paths(root, packet, pkt_path)
     res_rel = packet.get("residual_path")
-    if res_rel and safe_relative_path(root, res_rel, "packet residual_path").is_file():
+    if res_rel and field_artifact_path(root, res_rel, "packet residual_path").is_file():
         die(
             f"{child_id} already wrote a residual; collect/integrate it "
             "instead of unpacking"
@@ -534,12 +598,25 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     adapter = pick_adapter(args.adapter, order.get("harness"))
     child_id = require_child_id(packet.get("child_id"), "packet child_id")
     wave = packet.get("wave") or state["wave"]
+    profile = resolve_trust_profile()
+    if (
+        profile == "conservative"
+        and adapter in PRINT_MODE_ADAPTERS
+        and (packet.get("owns_paths") or packet.get("role") == "implementer")
+    ):
+        print(
+            f"of: note — {TRUST_ENV}=conservative: {adapter} runs headless with no "
+            "approval prompt, so a child that must write files usually exits with "
+            "no residual. OF_TRUST=auto-edit is the working headless profile; "
+            "yolo is never implied.",
+            file=sys.stderr,
+        )
     already = child_is_packed(root, int(wave), child_id)
     if not already and state["children_spawned"] >= order["caps"]["max_children"]:
         die(f"max_children cap {order['caps']['max_children']} reached")
     wdir = wave_dir(int(wave), root)
     residual_rel = str(packet["residual_path"])
-    residual_abs = safe_relative_path(root, residual_rel, "packet residual_path")
+    residual_abs = field_artifact_path(root, residual_rel, "packet residual_path")
     residual_abs.parent.mkdir(parents=True, exist_ok=True)
     required = [str(t).strip().lower() for t in (packet.get("requires_tool") or [])]
     lacking = missing_tools(adapter, required)
@@ -578,7 +655,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     argv = build_spawn_argv(
         adapter, prompt, packet, residual_abs, dry_run=bool(args.dry_run)
     )
-    meta = {
+    meta: dict[str, Any] = {
         "child_id": child_id,
         "adapter": adapter,
         "argv_preview": argv_preview(argv),
@@ -587,34 +664,96 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "residual": residual_rel,
         "started_at": utc_now(),
         "dry_run": bool(args.dry_run),
+        "trust": resolve_trust_profile(),
+        "env_mode": spawn_env_mode(),
     }
-    dump_json(wdir / "spawns" / f"{child_id}.json", meta)
+    meta_path = wdir / "spawns" / f"{child_id}.json"
+    log_path = wdir / "logs" / f"{child_id}.log"
+    if meta_path.is_file() and not args.dry_run:
+        prior = load_json(meta_path)
+        if isinstance(prior, dict) and "outcome" not in prior and not prior.get("dry_run"):
+            if not args.force_spawn:
+                die(
+                    f"{child_id} already has a spawn in flight since "
+                    f"{prior.get('started_at')} ({meta_path}). "
+                    "Wait for it, or --force-spawn to override a dead one."
+                )
+            print(f"of: note — overriding in-flight spawn record {meta_path}", file=sys.stderr)
+
+    def finalize(outcome: str, **extra: Any) -> None:
+        """Every spawn outcome lands here: never leave started-only metadata."""
+        meta.update(extra)
+        meta["outcome"] = outcome
+        meta["ended_at"] = utc_now()
+        dump_json(meta_path, meta)
+
+    dump_json(meta_path, meta)
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={residual_rel}")
     if args.dry_run:
+        finalize("dry_run", ok=True)
         snapshot_session(root, "spawn")
+        emit_event("spawn", adapter=adapter, child_id=child_id, outcome="dry_run", ok=True)
         print("dry-run argv:")
         print(argv_preview(argv))
         return
-    log_path = wdir / "logs" / f"{child_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        proc = subprocess.run(
-            argv,
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            timeout=packet.get("budget", {}).get("seconds") or args.timeout,
+
+    def write_log(stdout: Any, stderr: Any) -> None:
+        def text_of(chunk: Any) -> str:
+            if chunk is None:
+                return ""
+            if isinstance(chunk, bytes):
+                return chunk.decode("utf-8", errors="replace")
+            return str(chunk)
+
+        log_path.write_text(
+            f"# stdout\n{redact_text(text_of(stdout))}\n\n"
+            f"# stderr\n{redact_text(text_of(stderr))}\n",
+            encoding="utf-8",
         )
+
+    def fail(outcome: str, message: str, **extra: Any) -> None:
+        finalize(outcome, ok=False, log=str(log_path), **extra)
+        snapshot_session(root, "spawn")
+        emit_event(
+            "spawn",
+            adapter=adapter,
+            child_id=child_id,
+            outcome=outcome,
+            ok=False,
+            **{k: v for k, v in extra.items() if k in ("timeout_s",)},
+        )
+        die(message)
+
+    timeout_s = packet.get("budget", {}).get("seconds") or args.timeout
+    # The child gets the field binding explicitly: bind_active_field only
+    # reads OF_FIELD, so a sibling-field child running `of spec ...` would
+    # otherwise hit the roster and exit 2.
+    child_env = spawn_env(adapter)
+    child_env[OF_FIELD_ENV] = str(order["id"])
+    try:
+        proc = run_child(argv, root, child_env, timeout_s)
     except FileNotFoundError:
-        die(f"binary not found for adapter={adapter}")
-    except subprocess.TimeoutExpired:
-        die(f"timeout child_id={child_id}")
-    log_path.write_text(
-        f"# stdout\n{redact_text(proc.stdout or '')}\n\n"
-        f"# stderr\n{redact_text(proc.stderr or '')}\n",
-        encoding="utf-8",
-    )
+        write_log("", f"binary not found: {argv[0]}")
+        fail("missing_binary", f"binary not found for adapter={adapter}")
+    except subprocess.TimeoutExpired as exc:
+        write_log(exc.stdout, exc.stderr)
+        fail(
+            "timeout",
+            f"timeout child_id={child_id} after {timeout_s}s log={log_path}",
+            timeout_s=timeout_s,
+            residual_present=residual_abs.exists(),
+        )
+    except KeyboardInterrupt:
+        finalize("interrupted", ok=False)
+        raise
+    except SystemExit:
+        raise
+    except Exception as exc:  # PermissionError, ENOEXEC, E2BIG, OSError ...
+        write_log("", f"{exc.__class__.__name__}: {exc}")
+        fail("error", f"spawn failed for adapter={adapter}: {exc.__class__.__name__}: {exc}")
+    write_log(proc.stdout, proc.stderr)
     if proc.returncode != 0:
         print(f"spawn exit={proc.returncode} log={log_path}", file=sys.stderr)
     # best-effort: if residual missing, try to extract JSON from stdout
@@ -633,14 +772,26 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         else:
             print(f"no residual yet. log={log_path}")
     if not already:
-        state["children_spawned"] += 1
-        save_state(state, root)
+        # The child may have run for hours; a sibling pack/spawn has moved
+        # state.json since we loaded it. Re-load and bump under the lock.
+        with field_lock(root, "spawn"):
+            state = load_state(root)
+            state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
+            save_state(state, root)
+    finalize(
+        "ok" if proc.returncode == 0 else "nonzero_exit",
+        ok=proc.returncode == 0,
+        exit=proc.returncode,
+        log=str(log_path),
+        residual_present=residual_abs.exists(),
+    )
     snapshot_session(root, "spawn")
     emit_event(
         "spawn",
         adapter=adapter,
         child_id=child_id,
         exit=proc.returncode,
+        outcome=meta["outcome"],
         ok=proc.returncode == 0,
     )
     print(f"exit={proc.returncode} log={log_path}")
@@ -663,15 +814,29 @@ def cmd_collect(args: argparse.Namespace) -> None:
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
-        if not rel or not (root / str(rel)).is_file():
+        try:
+            present = bool(rel) and field_artifact_path(
+                root, str(rel), "packet residual_path"
+            ).is_file()
+        except SystemExit:
+            present = False  # malformed path: count as lost, do not abort the wave
+        if not present:
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
+            trust_note = ""
+            meta_path = wave_dir(int(pkt.get("wave") or args.wave), root) / "spawns" / f"{child}.json"
+            if meta_path.is_file():
+                meta = load_json(meta_path)
+                if isinstance(meta, dict) and meta.get("trust"):
+                    trust_note = f" spawned trust={meta.get('trust')} outcome={meta.get('outcome') or 'in-flight'}"
+                    if meta.get("trust") == "conservative":
+                        trust_note += "; a conservative print-mode child cannot write files"
             print(
                 f"MISSING {child}: missing residual at {rel or '(no residual_path)'} "
-                f"(still in flight; of unpack --child-id {child} releases it)"
+                f"(still in flight; of unpack --child-id {child} releases it){trust_note}"
             )
             continue
-        path = root / str(rel)
+        path = field_artifact_path(root, str(rel), "packet residual_path")
         data = load_json(path)
         errs = validate_residual_for_packet(data, pkt, root)
         if errs:

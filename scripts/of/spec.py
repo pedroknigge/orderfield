@@ -146,11 +146,66 @@ def warn_if_deictic_brief(text: str, *, flag: str) -> bool:
     return True
 
 
+USER_TEXT_MAX_BYTES = 8 * 1024 * 1024  # a brief, not a dump
+
+
+def read_user_text(path_str: str | Path, *, flag: str) -> str:
+    """Read one user-supplied text file ('-' = stdin) as UTF-8.
+
+    The single ingress for SPEC.md, --source-file, --amend-file,
+    --revise-file, --from-file and stdin. Undecodable bytes or an OS
+    failure become one die() line naming the offending path — never a
+    traceback (ERR-003).
+    """
+    label = str(path_str)
+    try:
+        if label == "-":
+            label = "<stdin>"
+            if sys.stdin is None or sys.stdin.isatty():
+                die(f"{flag} -: stdin is a terminal; pipe or redirect the brief")
+            buffer = getattr(sys.stdin, "buffer", None)
+            data = buffer.read(USER_TEXT_MAX_BYTES + 1) if buffer is not None else None
+            if data is None:
+                text = sys.stdin.read(USER_TEXT_MAX_BYTES + 1)
+                if len(text) > USER_TEXT_MAX_BYTES:
+                    die(f"{flag} -: brief exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
+                return text
+            if len(data) > USER_TEXT_MAX_BYTES:
+                die(f"{flag} -: brief exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
+            return data.decode("utf-8")
+        if Path(path_str).is_file() and Path(path_str).stat().st_size > USER_TEXT_MAX_BYTES:
+            die(f"{flag} {label}: file exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
+        with open(path_str, "r", encoding="utf-8") as handle:
+            return handle.read()
+    except UnicodeDecodeError as e:
+        die(
+            f"{flag} {label}: not valid UTF-8 text "
+            f"(byte {e.start}: {e.reason}); re-save the file as UTF-8"
+        )
+    except OSError as e:
+        die(f"{flag} {label}: cannot read ({e.strerror or e})")
+    raise AssertionError("unreachable")  # die() exits
+
+
+def load_user_json(path_str: str | Path, *, flag: str) -> Any:
+    """JSON variant of read_user_text: malformed JSON is a die(), not a trace."""
+    text = read_user_text(path_str, flag=flag)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        die(f"{flag} {path_str}: invalid JSON ({e})")
+    raise AssertionError("unreachable")
+
+
+def read_spec_text(root: Path) -> str:
+    return read_user_text(spec_path(root), flag=FIELD_SPEC_MD)
+
+
 def spec_bytes_hash(root: Path) -> str | None:
     spec = spec_path(root)
     if not spec.is_file():
         return None
-    return sha256_text(spec.read_text(encoding="utf-8"))
+    return sha256_text(read_spec_text(root))
 
 
 def require_spec_intact(root: Path, order: dict[str, Any]) -> None:
@@ -244,7 +299,7 @@ def snapshot_spec(root: Path) -> Path | None:
     spec = spec_path(root)
     if not spec.is_file():
         return None
-    body = spec.read_text(encoding="utf-8")
+    body = read_spec_text(root)
     digest = sha256_text(body)
     log = spec_log_dir(root)
     log.mkdir(parents=True, exist_ok=True)
@@ -275,12 +330,9 @@ def append_amendment(current: str, incoming: str) -> str:
 
 
 def read_brief_file(path_str: str, *, flag: str) -> str:
-    if path_str == "-":
-        return sys.stdin.read()
-    path = Path(path_str)
-    if not path.is_file():
+    if path_str != "-" and not Path(path_str).is_file():
         die(f"{flag} not found: {path_str}")
-    return path.read_text(encoding="utf-8")
+    return read_user_text(path_str, flag=flag)
 
 
 def discard_disposable_ingest(root: Path, source: Path | None = None) -> None:

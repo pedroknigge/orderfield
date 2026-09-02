@@ -12,18 +12,18 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 > **Code is source of truth.** Docs do not override implementation.
 > **Living claims v0:** anchors + severity.
 
-**Date:** 2026-08-31
+**Date:** 2026-09-01
 **Scope:** project
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.6` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.6.7` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 60 |
+| OK | 64 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,16 +31,16 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 
 | Severity | Count |
 |----------------:|
-| critical | 45 |
+| critical | 49 |
 | normal | 20 |
 
-**Truth score (advisory):** `(60*100 + 4*50) / 65 = 95.4`
+**Truth score (advisory):** `(64*100 + 4*50) / 69 = 95.7`
 **CI gate:** no critical Contradicted after docs patch. Local `scripts/audit-claims.sh` is not in this repo; the gate here is the matrix + `validate-skill.sh`.
 
 **Top risks (post-patch):**
 1. Same-harness is the default; multi only on explicit ask (no `of ask` CLI) — Partial by design.
 2. `detect` / `doctor` PATH ≠ auth/ready — documented Partial.
-3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/spec/gc/checkpoint/learn/handoff/worktree.
+3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/handoff/gc/learn/worktree. `spec` and `checkpoint` joined the lock in 0.6.7.
 4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry).
 5. `scripts/of/cli/ops.py` still defines unwired `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close`; parser dispatch uses `spec_cmd.py`.
 6. A disobedient leader can still write product files without pack (kernel does not lock product).
@@ -54,12 +54,12 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | Packages / apps | single repo, no workspace / `pyproject.toml` | **Stack: python** (stdlib CLI). **Monorepo: no.** No ArkGate. |
 | Kernel CLI | `scripts/of.py` | Shim: `from of.cli import main`. Public cmds: init, status, resume, pulse, checkpoint, detect, doctor, retain, gc, learn, migrate, worktree, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close, eval |
 | Kernel internals | `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Groups: `init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`. Parser + lock wrapper in `cli/__init__.py` |
-| `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`. Sole `with field_lock` is `of.cli.main` |
+| `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. Sole `with field_lock` is `of.cli.main` |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER` = claude, codex, cursor, opencode, orca, grok, agy, qwen, generic. `INLINE_CONTRACT_ADAPTERS` = orca, generic |
 | Schemas | `schemas/*.json` | order, state, packet, residual, residual.codex, wave-report, session, **learning**, **requirements** |
 | Install | `install.sh` | harness dests + installed-kernel `of`; copies `scripts/of/` with the skill tree |
 | Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py` | kernel split by invariant class + packaging |
-| CI | `.github/workflows/test.yml` | unittest + `of eval --strict --kernel` + `validate-skill.sh`; gitleaks; ubuntu/macos × 3.9/3.13 |
+| CI | `.github/workflows/test.yml` | unittest + `of eval --strict --kernel` + `validate-skill.sh`; gitleaks; ubuntu/macos × 3.11/3.13 |
 | Doctrine | `SLAVE.md`, `references/principles.md`, `references/adapters.md` | |
 
 ## Claims matrix
@@ -71,8 +71,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-003 | Phase-prefix `done_when` | SKILL / README / CHANGELOG | `done_when_for`, `done_when_closed_phases` | `scripts/of/regime.py` | `done_when_for` | — | critical | OK | keep |
 | C-004 | `--requires-tool` on pack; spawn refuses | SKILL / adapters / CHANGELOG | pack argparse + `missing_tools` | `scripts/of/cli/` / `scripts/of_adapters.py` | `missing_tools` | — | critical | OK | keep |
 | C-005 | Reference-load SLAVE (abs path); orca/generic may inline | SKILL / README / CHANGELOG | `render_prompt`, `INLINE_CONTRACT_ADAPTERS` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
-| C-006 | Grok headless `-p` + `--always-approve` | adapters / CHANGELOG | grok argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | — | critical | OK | keep |
-| C-007 | Codex uses `--dangerously-bypass-approvals-and-sandbox`, not `--full-auto` | adapters / CHANGELOG | codex argv branch | `scripts/of_adapters.py` | `build_spawn_argv` | — | critical | OK | keep |
+| C-006 | Grok headless `-p`; `--always-approve` only under `OF_TRUST=yolo` | adapters / CHANGELOG | grok argv + `YOLO_FLAGS` | `scripts/of_adapters.py` | `build_spawn_argv` / `trust_flags` | — | critical | OK | patched; 0.6.7 trust |
+| C-007 | Codex `exec`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`) | adapters / CHANGELOG | codex argv + `YOLO_FLAGS` | `scripts/of_adapters.py` | `build_spawn_argv` / `trust_flags` | — | critical | OK | patched; 0.6.7 trust |
 | C-008 | `install.sh` symlinks `of` to **installed** skill copy | CHANGELOG / adapters | `of_bin_dirs` / link to dest `scripts/of.py` | `install.sh` | | — | critical | OK | keep |
 | C-009 | Detect lists harness CLIs on PATH | README / adapters | `cmd_detect` | `scripts/of/cli/ops.py` | `cmd_detect` | — | normal | OK | keep |
 | C-010 | Pack is cap surface (`max_children`, `spawn_blocked`) | SKILL | `cmd_pack` / `spawn_is_blocked` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
@@ -96,7 +96,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-028 | Pulse is an mtime activity heuristic, not process health; does not mutate ORDER/state/session/wave | README / SKILL / architecture | `cmd_pulse` / `maybe_notify_update` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_pulse` | — | normal | OK | keep boundary |
 | C-029 | Preferred package discovery exposes `orderfield` and `of` | README / PUBLISH | alias skill + packaging test | `of/SKILL.md` / `tests/test_packaging.py` | `RepositoryAliasSkill` | — | critical | OK | keep |
 | C-030 | Generated JSON matches public schemas; runtime validation uses the same contract | architecture / kernel feature | `validate_public_schema` | `scripts/of/field.py` / `schemas/` | `validate_public_schema` | — | critical | OK | keep; schemas include learning + requirements |
-| C-031 | `MUTATING_COMMANDS` take `.orderfield/field.lock` in `of.cli.main`; JSON replacement is atomic via `dump_json` | README / SKILL / principles / architecture | `MUTATING_COMMANDS`, `field_lock`, `dump_json` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` / `main` | — | critical | OK | patched: lock set is **not** spawn/handoff/spec/gc/checkpoint/learn/worktree |
+| C-031 | `MUTATING_COMMANDS` take `.orderfield/field.lock` in `of.cli.main`; JSON replacement is atomic via `dump_json` | README / SKILL / principles / architecture | `MUTATING_COMMANDS`, `field_lock`, `dump_json` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` / `main` | — | critical | OK | patched: lock set is **not** spawn/handoff/gc/learn/worktree; 0.6.7 added spec/checkpoint |
 | C-032 | New packet execution is bound to canonical live identity, revision, content, and nonsymlink paths | README / SKILL / architecture / troubleshooting | `require_registered_packet` | `scripts/of/pack.py` / `tests/test_kernel_pack.py` | `require_registered_packet` | — | critical | OK | keep |
 | C-033 | Residual identity must match its packet; workspace escalates; done result_ref exists under project | SKILL / kernel feature / troubleshooting | `validate_residual_for_packet` | `scripts/of/pack.py` / `scripts/of/regime.py` | `validate_residual_for_packet` | — | critical | OK | keep |
 | C-034 | Phase/wave transitions require closure, no in-flight child, complete current digest; phase force is audited | README / SKILL / principles / architecture | `phase_transition_errors` / `wave_transition_errors` | `scripts/of/regime.py` | `phase_transition_errors` | — | critical | OK | keep |
@@ -121,17 +121,21 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI stays; protocol unchanged vs 0.5.7 | architecture | package `scripts/of/` + shim entry | `scripts/of.py` / `scripts/of/` | `main` | — | critical | OK | keep; 0.6 form |
 | C-054 | A deictic go-ahead is not a lossless brief; kernel prints advisory note and still writes SPEC | SKILL / context-control / principles 17 | `looks_like_deictic_brief` / `warn_if_deictic_brief` | `scripts/of/spec.py` / `scripts/of/cli/` | `looks_like_deictic_brief` | — | normal | OK | keep advisory |
 | C-055 | CLI commands live in `scripts/of/cli/` groups; parser + dispatch in `cli/__init__.py`; public `of` unchanged | architecture / kernel feature / CHANGELOG | `from of.cli import main`; dispatch imports `cmd_spec` from `spec_cmd` | `scripts/of/cli/` / `scripts/of.py` | `main` | — | critical | Partial | dispatch is grouped; `ops.py` still defines unwired `cmd_spec`/`cmd_contrast`/`cmd_close` copies |
-| C-056 | `of learn` writes protocol vs `--field`; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep |
+| C-056 | `of learn TEXT` writes a field note (default), `--protocol` / `--promote` write protocol; provenance required on load; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep |
 | C-057 | Optional `ORDER.origin` provenance stamp; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts | SKILL / README / context-control / CHANGELOG | `origin` on order schema; `format_origin_line`; `pick_adapter` has no origin param | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `format_origin_line` | — | critical | OK | keep; 0.6.5 |
-| C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, new, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, close | architecture / README / principles (was overclaiming spawn/handoff/spec/gc/checkpoint/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs; 0.6.6 added `new` |
+| C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, new, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, spec, checkpoint, close | architecture / README / principles (was overclaiming spawn/handoff/gc/learn/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs; 0.6.6 added `new`; 0.6.7 added `spec`/`checkpoint` |
 | C-065 | Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight owns-path overlap dies | SKILL / README / glossary / CHANGELOG | `cmd_new` / `bind_active_field` / `cross_field_owns_path_conflict` | `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_fields.py` | `SiblingFields` | — | critical | OK | keep; 0.6.6 |
 | C-059 | `emit_event` lives in `scripts/of/field.py`, re-exported by `of`; not in the `scripts/of.py` shim | events.md | `def emit_event` | `scripts/of/field.py` | `emit_event` | — | normal | OK | patched events.md |
 | C-060 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` live in `scripts/of/regime.py` | roadmap (was `scripts/of.py`) | module location | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | normal | OK | patched roadmap |
 | C-061 | Public schemas include `learning.schema.json` and `requirements.schema.json` besides order/state/packet/residual/session/wave-report | architecture / kernel feature | `schemas/` listing | `schemas/` | | — | normal | OK | patched inventory + coverage |
 | C-062 | Hub docs table lists glossary, events, context-control, demo, evals, PRINCIPLES.md, `/of` alias | AGENTS.md | files exist | `docs/` / `of/SKILL.md` / `PRINCIPLES.md` | | — | normal | OK | patched AGENTS.md |
 | C-063 | Architecture Compared-to link resolves to README `#compared-to` | architecture.md | heading `## Compared-to` | `README.md` | | — | normal | OK | patched fragment |
-| C-064 | CI matrix is unittest + `of eval --strict --kernel` + `validate-skill.sh` + gitleaks on ubuntu/macos × 3.9/3.13 | CONTRIBUTING / README / evals | `.github/workflows/test.yml` | `.github/workflows/test.yml` | | — | critical | OK | keep |
+| C-064 | CI matrix is unittest + `of eval --strict --kernel` + `validate-skill.sh` + gitleaks on ubuntu/macos × 3.11/3.13 | CONTRIBUTING / README / evals | `.github/workflows/test.yml` | `.github/workflows/test.yml` | | — | critical | OK | keep |
 | C-065 | `scripts/of.py` is a one-function shim (`from of.cli import main`); internals are `scripts/of/` | architecture / DEPENDENCIES / CONTRIBUTING | file contents | `scripts/of.py` | `main` | — | critical | OK | patched DEPENDENCIES + contributing debt |
+| C-066 | `OF_TRUST` is authoritative for every adapter; conservative default emits no bypass; only `yolo` (alias `escalated`) emits `YOLO_FLAGS`; unknown profiles die | SKILL / README / adapters / CHANGELOG | `resolve_trust_profile` / `trust_flags` / `YOLO_FLAGS` | `scripts/of_adapters.py` / `tests/test_spawn_trust.py` | `trust_flags` | — | critical | OK | keep; 0.6.7 |
+| C-067 | Spawn env is an allowlist, not parent inherit; `OF_SPAWN_ENV` extends or `inherit` opts out; child has no stdin and own process group; spawn metadata finalized on every outcome | SKILL / README / adapters / CHANGELOG | `spawn_env` / `SPAWN_ENV_*` | `scripts/of_adapters.py` / `scripts/of/cli/wave.py` / `tests/test_spawn_trust.py` | `spawn_env` | — | critical | OK | keep; 0.6.7 |
+| C-068 | CLI error boundary: one-line `of: error: <kind>: <message>` exit 1; `--json` emits `error` event and no prose; traceback only under `OF_DEBUG=1`; Ctrl-C exits 130 | SKILL / README / events.md / CHANGELOG | CLI `main` wrapper | `scripts/of/cli/__init__.py` / `tests/test_cli_error_boundary.py` | `main` | — | critical | OK | keep; 0.6.7 |
+| C-069 | Python floor 3.11 on every public surface; CI matrix 3.11 + 3.13 | README / CONTRIBUTING / CHANGELOG | `scripts/of.py` refuse; `tests/test_python_floor.py` | `scripts/of.py` / `.github/workflows/test.yml` | | — | critical | OK | keep; 0.6.7 |
 
 ### Verdict definitions
 

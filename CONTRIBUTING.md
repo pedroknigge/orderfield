@@ -37,9 +37,9 @@ Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the s
 
 `main` requires a PR and these status checks (GitHub branch protection):
 
-- `test (ubuntu-latest, 3.9)`
+- `test (ubuntu-latest, 3.11)`
 - `test (ubuntu-latest, 3.13)`
-- `test (macos-latest, 3.9)`
+- `test (macos-latest, 3.11)`
 - `test (macos-latest, 3.13)`
 - `gitleaks`
 

@@ -12,17 +12,17 @@ The model is fast. The chat is faster. A brief that lives only in the thread die
 
 Orderfield is a **contract kernel** for software that will not fit one agent. The ORDER lives on disk. Children get bounded packets with exclusive owners. They cannot redefine the mission, the phase, the constraints, or done-when. `of contrast` refuses close until the public surface is proven.
 
-The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The kernel is what remains when the session is compacted, the model changes, or you switch harness. Python 3.9+ stdlib. Nine public schemas. A lock. Tests. No pip.
+The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The kernel is what remains when the session is compacted, the model changes, or you switch harness. Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip.
 
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.6.6</strong> · contract kernel · MIT · Python 3.9+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.6.7</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.6-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.7-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -112,7 +112,7 @@ Literal project install is safe from the checkout root: the installer canonicali
 
 `install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
 
-Python 3.9+. No pip packages.
+Python 3.11+ (3.9 and 3.10 are end-of-life; `scripts/of.py` refuses older interpreters with one line). No pip packages.
 
 </details>
 
@@ -159,18 +159,34 @@ From the **project you want to orchestrate**. The user's brief is the contract �
 
 ```bash
 of init --mission "decidable architecture for a pricing tool" --phase explore \
-  --source "<verbatim user request>"
+  --source "the pricing tool must print a price table from the CLI"
+# binding requirement IDs come from the brief; extract finds LEASE-/AUDIT-/HTTP-/CLI- prefixes, misses go to --add
+of spec --add CLI-001 --surface contract --text "the CLI prints a price table"
 of pack --slice "map pricing models, do not choose the phase" --role explorer \
-  --owns-requirement CLI-001
+  --child-id explorer --owns-requirement CLI-001
 # second implementer in the same wave needs disjoint --owns-path
 # of pack --role implementer --owns-path src/http.py --owns-requirement HTTP-001
-of spawn --adapter generic --packet .orderfield/waves/001/packets/*.json
+of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
+# no OF_AGENT set -> handoff mode: paste .orderfield/waves/001/prompts/explorer.md into any agent.
+# The child writes the residual, echoing the packet identity. Simulated here:
+python3 - <<'EOF'
+import json
+p = json.load(open(".orderfield/waves/001/packets/explorer.json"))
+r = {k: p[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
+r.update(status="done", result_ref=".orderfield/waves/001/prompts/explorer.md",
+         residual={"wants_to_change": [], "evidence": "CLI-001: pricing models mapped", "proposed_patch": None},
+         metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False})
+json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=2)
+EOF
 of collect --wave 1
 of integrate --wave 1
-of contrast    # CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR
+of spec --verified-contract CLI-001   # only after exercising the public surface, not unit tests
+of contrast    # CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
 of close       # refused until contrast is RESOLVED
 of status
 ```
+
+`tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel.
 
 90-second demo of the amnesia + threshold residual case (plan changes without swallowing transcripts): [docs/demo/README.md](docs/demo/README.md).
 
@@ -187,7 +203,7 @@ While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity h
 
 A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
 
-CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) hold `.orderfield/field.lock`. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
+CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`) hold `.orderfield/field.lock` — `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json`, the authority ledger. JSON artifacts are replaced atomically via `dump_json`. `spawn` / `handoff` / `gc` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
@@ -195,7 +211,7 @@ CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`
 
 **When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals and **protocol** learnings, drop inapplicable **field** learnings, dump logs/history older than 30 days; never copy transcripts). `of learn` is the write path: protocol lessons are about running a field (survive ORDER and repos); field lessons die with the mission. Spawn argv previews and logs redact secrets and escalated approval flags. Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` apply episodic field retention (keep useful residuals and **protocol** learnings, drop inapplicable **field** learnings, dump logs/history older than 30 days; never copy transcripts). `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
@@ -215,7 +231,7 @@ The model is inspired by Haken's slaving principle: a slow field constrains fres
 
 The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
-Accounting is reserved, not implemented: packet seconds are the spawn timeout; token budgets and `local_budget_pct` are not measured, `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
+Accounting is reserved, not implemented: `budget.seconds` is the only enforced field (the spawned-process timeout); `budget.tokens` and `thresholds.local_budget_pct` are carried in packets but never measured or enforced — there is no token telemetry and no surface should imply otherwise — `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
 
 Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
 
@@ -239,6 +255,8 @@ of spawn --adapter generic --packet PACKET.json
 ```
 
 If `of detect` finds nothing, the default adapter **is** generic.
+
+Every adapter (generic included) honours `OF_TRUST` — `conservative` (default) adds no escalation flag anywhere; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` is the only bypass and is never implied. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
 
 ---
 
@@ -280,7 +298,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Several unmatched open fields: roster, exit 2. `--field` / `OF_FIELD`. Does not auto-spawn. |
 | `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
-| `learn` | durable Orderfield lessons (`--protocol`, default) or this-mission notes (`--field`). `--list` / `--forget`. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
+| `learn` | bare text = this-mission **field** note (default); `--protocol` = durable cross-project lesson; `--promote <id>` copies field → protocol. `--list` / `--forget`. Every item carries provenance; unprovenanced or invalid items are skipped on load with one warning. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
 | `status` | show field, wave, caps, in-flight |
 | `detect` | list installed harness CLIs |
 | `validate` | validate order / packet / residual JSON |
@@ -339,7 +357,7 @@ Portability test: turn the current harness off. Install the same skill in anothe
 
 ## Tests
 
-CI runs the suite + `validate-skill.sh` on ubuntu/macos × Python 3.9/3.13, plus a gitleaks scan (`.github/workflows/test.yml`). Locally:
+CI runs the suite (including the README quickstart from a fresh temp dir) + `of eval --strict --kernel` + `validate-skill.sh` on ubuntu/macos × Python 3.11/3.13, plus a gitleaks scan (`.github/workflows/test.yml`). Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment, the workflow runs with `permissions: contents: read`, and Dependabot bumps the pins weekly. Locally:
 
 ```bash
 python3 -m unittest discover -s tests -v

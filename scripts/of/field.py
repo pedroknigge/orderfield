@@ -108,7 +108,27 @@ _SECRET_ASSIGN_RE = re.compile(
     r"DASHSCOPE_API_KEY|OPENAI_API_KEY|QWEN_API_KEY)\s*[:=]\s*(\S+)"
 )
 _BEARER_RE = re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-+/=]+")
-_SK_RE = re.compile(r"\bsk-[A-Za-z0-9]{8,}\b")
+# Provider API keys: OpenAI sk-…/sk-proj-…, Anthropic sk-ant-… (hyphens allowed).
+# Real keys are 40+ chars; the 20-char floor keeps `sk-learn-pipeline` and
+# `wave/sk-runner-abcdefgh` (identifiers, not secrets) readable in logs.
+_SK_RE = re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_\-]{20,}\b")
+_STRIPE_KEY_RE = re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")
+_XAI_KEY_RE = re.compile(r"\bxai-[A-Za-z0-9]{20,}\b")
+_GOOGLE_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")
+_GITHUB_TOKEN_RE = re.compile(r"\b(?:gh[oprsu]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})")
+_SLACK_TOKEN_RE = re.compile(r"\bxox[abeprs]-[A-Za-z0-9\-]{8,}")
+_AWS_KEY_RE = re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")
+_JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
+# PII: e-mail addresses. Bounded quantifiers (RFC 5321: local part <= 64,
+# label <= 63) keep the scan linear on long runs of local-part characters,
+# and the trailing guard leaves `git@github.com:org/repo.git` (an SSH remote,
+# not a mailbox) untouched.
+_EMAIL_RE = re.compile(
+    r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]{1,64}@"
+    r"[A-Za-z0-9\-]{1,63}(?:\.[A-Za-z0-9\-]{1,63})*\.[A-Za-z]{2,24}(?![A-Za-z0-9\-:])"
+)
+LEARNING_SOURCE_LEADER = "leader"
+PYTHON_FLOOR = (3, 11)  # mirrored literally in scripts/of.py (checked before import)
 _PEM_RE = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
     re.DOTALL,
@@ -148,6 +168,8 @@ MUTATING_COMMANDS = {
     "pack",
     "unpack",
     "collect",
+    "spec",
+    "checkpoint",
 }
 OF_FIELD_ENV = "OF_FIELD"
 FIELD_ID_RE = re.compile(r"^ord_[0-9a-f]{8}$")
@@ -472,8 +494,8 @@ def physical_field_rel(root: Path, canonical: str) -> str:
     """Map a `.orderfield/...` contract path onto the active field home."""
     prefix = ".orderfield/"
     text = str(canonical or "")
-    if not text.startswith(prefix):
-        return text
+    if not text.startswith(prefix) or text.startswith(".orderfield/fields/"):
+        return text  # not a contract path, or already physical (idempotent)
     home = field_home(root).resolve()
     of = of_dir(root).resolve()
     rest = text[len(prefix) :]
@@ -484,6 +506,16 @@ def physical_field_rel(root: Path, canonical: str) -> str:
     except ValueError:
         return text
     return f"{rel}/{rest}"
+
+
+def physical_artifact_path(
+    root: Path, canonical: str, label: str, *, reject_symlinks: bool = False
+) -> Path:
+    """Canonical `.orderfield/...` artifact -> absolute path at the physical
+    field home, containment-checked. The one composition every reader uses."""
+    return safe_relative_path(
+        root, physical_field_rel(root, canonical), label, reject_symlinks=reject_symlinks
+    )
 
 
 def order_path(root: Path | None = None) -> Path:
@@ -529,7 +561,19 @@ def require_nonsymlink_kernel_root(root: Path) -> None:
 
 
 def die(msg: str, code: int = 1) -> None:
-    print(f"of: {msg}", file=sys.stderr)
+    """Deliberate refusal: one stderr line, exit `code`. Plain mode prints
+    `of: <msg>`; under --json / OF_JSON=1 the refusal is the `error` event
+    instead, so stderr stays machine-parseable."""
+    if json_events_enabled():
+        # --json: stderr stays one JSON object per line; the refusal is the event.
+        emit_event(
+            "error",
+            ok=False,
+            kind="refused",
+            message=redact_text(" ".join(str(msg).split())),
+        )
+    else:
+        print(f"of: {redact_text(str(msg))}", file=sys.stderr)
     raise SystemExit(code)
 
 
@@ -541,9 +585,13 @@ def set_json_events(enabled: bool) -> None:
     _JSON_EVENTS = bool(enabled)
 
 
+def json_events_enabled() -> bool:
+    return bool(_JSON_EVENTS or os.environ.get("OF_JSON") == "1")
+
+
 def emit_event(event: str, **fields: Any) -> None:
     """Optional machine-readable line on stderr when --json or OF_JSON=1."""
-    if not (_JSON_EVENTS or os.environ.get("OF_JSON") == "1"):
+    if not json_events_enabled():
         return
     payload = {"event": event, **fields}
     print(json.dumps(payload, sort_keys=True), file=sys.stderr)
@@ -1715,6 +1763,14 @@ def redact_text(text: str) -> str:
     out = _PEM_RE.sub(f"-----BEGIN PRIVATE KEY----- {REDACTED} -----END PRIVATE KEY-----", text)
     out = _BEARER_RE.sub(lambda m: f"{m.group(1)} {REDACTED}", out)
     out = _SK_RE.sub(REDACTED, out)
+    out = _STRIPE_KEY_RE.sub(REDACTED, out)
+    out = _XAI_KEY_RE.sub(REDACTED, out)
+    out = _GOOGLE_KEY_RE.sub(REDACTED, out)
+    out = _GITHUB_TOKEN_RE.sub(REDACTED, out)
+    out = _SLACK_TOKEN_RE.sub(REDACTED, out)
+    out = _AWS_KEY_RE.sub(REDACTED, out)
+    out = _JWT_RE.sub(REDACTED, out)
+    out = _EMAIL_RE.sub(REDACTED, out)
     out = _SECRET_ASSIGN_RE.sub(lambda m: f"{m.group(1)}={REDACTED}", out)
     for token in sorted(APPROVAL_FLAG_NAMES, key=len, reverse=True):
         out = re.sub(rf"(?<!\S){re.escape(token)}(?!\S)", APPROVAL_REDACTED, out)
@@ -1814,7 +1870,66 @@ def _normalize_learning_text(text: str) -> str:
     return " ".join(str(text or "").split()).strip()
 
 
-def load_protocol_store() -> list[dict[str, Any]]:
+def learning_provenance(
+    root: Path | None, order: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Who wrote this lesson, from which repo, under which ORDER origin."""
+    project = Path(root) if root is not None else Path.cwd()
+    try:
+        resolved = str(project.resolve())
+    except OSError:
+        resolved = str(project)
+    origin = (order or {}).get("origin") if isinstance(order, dict) else None
+    return {
+        "source": LEARNING_SOURCE_LEADER,
+        "repo": sha256_text(resolved)[:12],
+        "origin": origin if isinstance(origin, dict) else None,
+        "of_version": installed_version() or "unknown",
+    }
+
+
+_LEARNING_SKIP_WARNED = False
+
+
+def learning_accepted(item: Any) -> bool:
+    """Schema-valid and provenanced. Anything else never enters a prompt."""
+    if not isinstance(item, dict):
+        return False
+    prov = item.get("provenance")
+    if not isinstance(prov, dict) or prov.get("source") != LEARNING_SOURCE_LEADER:
+        return False
+    text = _normalize_learning_text(str(item.get("text") or ""))
+    if not text or len(text) > LEARNING_MAX_CHARS:
+        return False
+    return not validate_public_schema(item, "learning.schema.json", "learning")
+
+
+def _filter_learnings(items: list[Any], where: str) -> list[dict[str, Any]]:
+    global _LEARNING_SKIP_WARNED
+    kept: list[dict[str, Any]] = []
+    skipped = 0
+    for item in items:
+        if learning_accepted(item):
+            kept.append(item)
+        else:
+            skipped += 1
+    if skipped and not _LEARNING_SKIP_WARNED:
+        _LEARNING_SKIP_WARNED = True
+        message = (
+            f"skipped {skipped} learning(s) in {where} lacking provenance or "
+            "failing schema; they never enter a prompt "
+            "(of learn --forget ID removes one; re-add with of learn / --protocol)"
+        )
+        if json_events_enabled():
+            emit_event("warning", ok=True, kind="learning_skipped", message=message)
+        else:
+            print(f"of: warning: {message}", file=sys.stderr)
+    return kept
+
+
+def _load_protocol_store_raw() -> list[dict[str, Any]]:
+    """Every dict item on disk, unvalidated. Writers use this so a skipped
+    (unprovenanced) item is preserved, never silently deleted."""
     path = protocol_learnings_path()
     if not path.is_file():
         return []
@@ -1822,9 +1937,13 @@ def load_protocol_store() -> list[dict[str, Any]]:
     if data is None:
         return []
     items = data.get("items") if isinstance(data.get("items"), list) else []
+    return [item for item in items if isinstance(item, dict)]
+
+
+def load_protocol_store() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    for item in items:
-        if isinstance(item, dict) and learning_kind(item) == "protocol":
+    for item in _filter_learnings(_load_protocol_store_raw(), "OF_LEARNINGS"):
+        if learning_kind(item) == "protocol":
             out.append(item)
     return out
 
@@ -1833,6 +1952,41 @@ def _save_protocol_store(items: list[dict[str, Any]]) -> None:
     path = protocol_learnings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     dump_json(path, {"v": 1, "items": items})
+
+
+PROTOCOL_STORE_LOCK_WAIT_SECONDS = 10.0
+
+
+@contextmanager
+def protocol_store_lock() -> Any:
+    """Serialize read-modify-write on the machine-wide learnings store.
+
+    The field lock is per field; two fields (or two repos) learning at once
+    would otherwise overwrite each other's `learnings.json`. flock on a
+    sibling `.lock` file; released by the OS if the owner dies."""
+    path = protocol_learnings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + ".lock")
+    handle = lock_path.open("a+", encoding="utf-8")
+    started = time.monotonic()
+    try:
+        while True:
+            try:
+                flock_acquire(handle)
+                break
+            except BlockingIOError:
+                if time.monotonic() - started >= PROTOCOL_STORE_LOCK_WAIT_SECONDS:
+                    die(
+                        f"learnings store lock wait exceeded "
+                        f"{PROTOCOL_STORE_LOCK_WAIT_SECONDS:g}s ({lock_path})"
+                    )
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            flock_release(handle)
+    finally:
+        handle.close()
 
 
 def load_field_learnings(root: Path) -> list[dict[str, Any]]:
@@ -1846,7 +2000,7 @@ def load_field_learnings(root: Path) -> list[dict[str, Any]]:
         item = _read_json_object(path)
         if isinstance(item, dict) and item.get("text"):
             out.append(item)
-    return out
+    return _filter_learnings(out, "field learnings")
 
 
 def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
@@ -1911,21 +2065,23 @@ def save_learning(
             f"refuse dumps (max {LEARNING_MAX_CHARS} chars, "
             f"{LEARNING_MAX_LINES} lines)"
         )
-    grouped = list_learnings(root)
-    bucket = grouped["protocol"] if kind == "protocol" else grouped["field"]
+    # Dedupe protocol saves against the user cache only: field-dir items are
+    # child-writable and must never be re-persisted into cross-repo memory.
+    bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
             item["last_confirmed_at"] = utc_now()
             require_public_schema(item, "learning.schema.json", "learning")
             if kind == "protocol":
-                items = load_protocol_store()
-                for i, existing in enumerate(items):
-                    if existing.get("id") == item.get("id"):
-                        items[i] = item
-                        break
-                else:
-                    items.insert(0, item)
-                _save_protocol_store(items)
+                with protocol_store_lock():
+                    items = _load_protocol_store_raw()
+                    for i, existing in enumerate(items):
+                        if existing.get("id") == item.get("id"):
+                            items[i] = item
+                            break
+                    else:
+                        items.insert(0, item)
+                    _save_protocol_store(items)
             if root is not None and order_path(root).is_file():
                 _write_field_learning(root, item)
             return item
@@ -1943,13 +2099,60 @@ def save_learning(
         phase = str(order.get("phase") or "")
         if phase in PHASES:
             item["phase"] = phase
+    item["provenance"] = learning_provenance(root, order)
     require_public_schema(item, "learning.schema.json", "learning")
     if kind == "protocol":
-        items = load_protocol_store()
-        items.insert(0, item)
-        _save_protocol_store(items)
+        with protocol_store_lock():
+            items = _load_protocol_store_raw()
+            items.insert(0, item)
+            _save_protocol_store(items)
     if root is not None and (kind == "field" or order_path(root).is_file()):
         _write_field_learning(root, item)
+    return item
+
+
+def promote_learning(
+    root: Path, learning_id: str, order: dict[str, Any]
+) -> dict[str, Any]:
+    """Copy a field learning of THIS ORDER into the protocol store.
+
+    Refuses ids that are not field learnings of the active ORDER: promotion is
+    the explicit leader confirmation that a lesson may cross repositories."""
+    key = str(learning_id or "").strip()
+    if not key:
+        die("--promote needs a field learning id")
+    field_items = [
+        item
+        for item in load_field_learnings(root)
+        if learning_kind(item) == "field"
+        and str(item.get("order_id") or "") == str(order.get("id") or "")
+    ]
+    hits = [item for item in field_items if str(item.get("id") or "") == key]
+    if not hits:
+        die(
+            f"--promote refused: {key!r} is not a field learning of ORDER "
+            f"{order.get('id')} (of learn --list)"
+        )
+    source = hits[0]
+    text = _normalize_learning_text(str(source.get("text") or ""))
+    for existing in load_protocol_store():
+        if _normalize_learning_text(str(existing.get("text") or "")).lower() == text.lower():
+            return {**existing, "_already_present": True}
+    item: dict[str, Any] = {
+        "id": f"lrn_{uuid.uuid4().hex[:12]}",
+        "kind": "protocol",
+        "text": text,
+        "created_at": utc_now(),
+        "source": LEARNING_SOURCE_LEADER,
+        "promoted_from": key,
+        "provenance": learning_provenance(root, order),
+    }
+    require_public_schema(item, "learning.schema.json", "learning")
+    with protocol_store_lock():
+        items = _load_protocol_store_raw()
+        items.insert(0, item)
+        _save_protocol_store(items)
+    _write_field_learning(root, item)
     return item
 
 
@@ -1957,9 +2160,16 @@ def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
     key = str(needle or "").strip()
     if not key:
         die("--forget needs an id or unique substring")
-    grouped = list_learnings(root)
+    # Search the RAW stores: an item skipped on load (legacy, no provenance)
+    # must still be removable, or the skip warning has no exit.
+    candidates: list[dict[str, Any]] = list(_load_protocol_store_raw())
+    if root is not None and order_path(root).is_file():
+        for path in sorted(learnings_dir(root).glob("*.json")):
+            raw_item = _read_json_object(path)
+            if isinstance(raw_item, dict):
+                candidates.append(raw_item)
     hits: list[dict[str, Any]] = []
-    for item in grouped["protocol"] + grouped["field"]:
+    for item in candidates:
         hay = f"{item.get('id') or ''} {item.get('text') or ''}"
         if key == item.get("id") or key.lower() in hay.lower():
             hits.append(item)
@@ -1978,9 +2188,10 @@ def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
         )
     target = hits[0]
     tid = str(target.get("id"))
-    _save_protocol_store(
-        [i for i in load_protocol_store() if str(i.get("id")) != tid]
-    )
+    with protocol_store_lock():
+        _save_protocol_store(
+            [i for i in _load_protocol_store_raw() if str(i.get("id")) != tid]
+        )
     if root is not None:
         path = learnings_dir(root) / f"{tid}.json"
         if path.is_file() and not path.is_symlink():

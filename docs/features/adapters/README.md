@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.6.6` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.6.7` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -22,9 +22,11 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 ## Live argv notes
 
-- **grok:** `--always-approve -p`
-- **codex:** `exec --dangerously-bypass-approvals-and-sandbox` (no `--full-auto`)
-- **agy:** flags before `-p`
-- **qwen:** positional prompt (not deprecated `-p`); `--output-format json --approval-mode default`; never `--yolo` unless `OF_TRUST=yolo`; never `-m` / `--openai-base-url` / `--openai-api-key`. Kernel verifies PATH + argv + residual file/schema; harness promises approval, sandbox, auth, readiness.
+`OF_TRUST` is authoritative for every adapter. Conservative (default) emits no bypass flag. `yolo` is the only bypass. Full table: [references/adapters.md](../../../references/adapters.md#trust-profiles-of_trust).
+
+- **grok:** `-p`; `--always-approve` only under `OF_TRUST=yolo`
+- **codex:** `exec`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`)
+- **agy:** flags before `-p`; `--dangerously-skip-permissions` only under `OF_TRUST=yolo`
+- **qwen:** positional prompt (not deprecated `-p`); `--output-format json --approval-mode default` in conservative; never `--yolo` unless `OF_TRUST=yolo`; never `-m` / `--openai-base-url` / `--openai-api-key`. Kernel verifies PATH + argv + residual file/schema; harness promises approval, sandbox, auth, readiness.
 
 Session-cut is kernel, not adapter-specific: `of resume` / `of checkpoint --summary`. Render/handoff add a continuation note when scratch is nonempty.

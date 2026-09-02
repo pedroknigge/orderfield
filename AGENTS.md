@@ -84,6 +84,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.6.4 `of learn` protocol vs field (not a new regime) | documented |
 | 0.6.5 optional `ORDER.origin` provenance (not spawn, not fetch) | documented |
 | 0.6.6 sibling fields (`of new` / `of fields` / `--field` / origin gate / cross-field owns-path) | documented |
+| 0.6.7 vibe-proof hardening (`OF_TRUST` / spawn env allowlist / spec+checkpoint lock / learn provenance / error boundary / 3.11 floor) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

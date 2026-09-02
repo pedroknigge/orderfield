@@ -6,6 +6,9 @@ Command groups: init_cmd, ops, wave, field_cmd, spec_cmd.
 from __future__ import annotations
 
 import argparse
+import os
+import sys
+from pathlib import Path
 
 from of.field import (
     MUTATING_COMMANDS,
@@ -14,6 +17,9 @@ from of.field import (
     ROLES,
     field_lock,
     find_root,
+    emit_event,
+    json_events_enabled,
+    redact_text,
     require_nonsymlink_kernel_root,
     set_json_events,
 )
@@ -222,10 +228,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "learn",
-        help="durable Orderfield lessons (protocol) or this-mission notes (field)",
+        help="this-mission notes (field, default) or durable Orderfield lessons (--protocol)",
         description=(
-            "Protocol learnings survive ORDER and repos (user cache, "
-            "OF_LEARNINGS). Field learnings die with the mission. "
+            "Bare 'of learn TEXT' is field-local (this ORDER; needs of init). "
+            "Cross-project memory needs an explicit --protocol, or "
+            "--promote ID to copy a field learning into the protocol store "
+            "(user cache, OF_LEARNINGS). Every learning carries provenance; "
+            "unprovenanced items are skipped on load and never enter a prompt (an audit trail, not authentication). "
             "gc never drops protocol. Packets get a capped protocol list; "
             "it is not SPEC."
         ),
@@ -234,12 +243,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--protocol",
         action="store_true",
-        help="skill-scoped (default): how to run a field, not this product",
+        help="explicit cross-project memory: how to run a field, not this product",
     )
     s.add_argument(
         "--field",
         action="store_true",
-        help="this ORDER only; dropped when the mission or phase no longer applies",
+        help="this ORDER only (the default); dropped when the mission no longer applies",
+    )
+    s.add_argument(
+        "--promote",
+        dest="promote",
+        metavar="ID",
+        help="copy a field learning of this ORDER into the protocol store",
     )
     s.add_argument("--list", action="store_true", help="print protocol and field lessons")
     s.add_argument(
@@ -616,7 +631,10 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main() -> None:
+ERROR_MESSAGE_MAX_CHARS = 400
+
+
+def _dispatch() -> None:
     parser = build_parser()
     args = parser.parse_args()
     set_json_events(bool(getattr(args, "json", False)))
@@ -627,7 +645,51 @@ def main() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
+        if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():
+            # No field here: let the handler refuse ("no ORDER") without
+            # creating a stray .orderfield/field.lock first.
+            args.func(args)
+            return
         with field_lock(root, args.cmd):
             args.func(args)
     else:
         args.func(args)
+
+
+def _error_message(exc: BaseException) -> str:
+    text = " ".join(str(exc).split()) or exc.__class__.__name__
+    home = str(Path.home())
+    if home and home != "/":
+        text = text.replace(home, "~")  # no local username / home layout in output
+    text = redact_text(text)
+    if len(text) > ERROR_MESSAGE_MAX_CHARS:
+        text = text[: ERROR_MESSAGE_MAX_CHARS - 1] + "…"
+    return text
+
+
+def report_error(exc: BaseException) -> None:
+    """One sanitized line. Plain: stderr 'of: error: <kind>: <message>'.
+    --json / OF_JSON=1: the `error` event (docs/events.md) instead."""
+    kind = exc.__class__.__name__
+    message = _error_message(exc)
+    if json_events_enabled():
+        emit_event("error", ok=False, kind=kind, message=message)
+    else:
+        print(f"of: error: {kind}: {message}", file=sys.stderr)
+
+
+def main() -> None:
+    """Sanitized exception boundary. SystemExit (die, argparse) passes through
+    untouched; KeyboardInterrupt exits 130; any other exception exits 1 with one
+    line and no traceback unless OF_DEBUG=1."""
+    try:
+        _dispatch()
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except Exception as exc:  # noqa: BLE001 — this is the boundary
+        if os.environ.get("OF_DEBUG") == "1":
+            raise
+        report_error(exc)
+        raise SystemExit(1)

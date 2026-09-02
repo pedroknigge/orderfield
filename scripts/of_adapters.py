@@ -78,14 +78,104 @@ HARNESS_PROMISES = (
     "auth",
     "model_ready",
 )
-# Qwen-owned --approval-mode values. Always passed so user settings cannot
-# silently escalate. Never copy grok/claude/codex approval flags.
-_QWEN_APPROVAL = {
-    "conservative": "default",
-    "plan": "plan",
-    "auto-edit": "auto-edit",
-    "auto": "auto",
-    "yolo": "yolo",
+# Escalated (bypass) flags per adapter. Emitted ONLY under OF_TRUST=yolo.
+# conservative never emits any of these; plan/auto-edit/auto map onto the
+# harness's closest non-bypass mode when one exists (see _TRUST_FLAGS), else
+# behave as conservative. Adding a flag here is a trust decision, not a fix.
+YOLO_FLAGS = {
+    "claude": ["--dangerously-skip-permissions"],
+    "codex": ["--dangerously-bypass-approvals-and-sandbox"],
+    "cursor": ["--force"],
+    "opencode": ["--auto"],
+    "grok": ["--always-approve"],
+    "agy": ["--dangerously-skip-permissions", "--mode", "accept-edits"],
+    "qwen": ["--approval-mode", "yolo"],
+    "orca": [],
+    "generic": [],
+}
+
+# Non-bypass trust flags per adapter and profile. Missing entry = conservative.
+_TRUST_FLAGS: dict[str, dict[str, list[str]]] = {
+    "claude": {
+        "plan": ["--permission-mode", "plan"],
+        "auto-edit": ["--permission-mode", "acceptEdits"],
+        "auto": ["--permission-mode", "acceptEdits"],
+    },
+    "codex": {
+        "plan": ["--sandbox", "read-only"],
+        "auto-edit": ["--sandbox", "workspace-write"],
+        "auto": ["--sandbox", "workspace-write"],
+    },
+    "agy": {
+        "auto-edit": ["--mode", "accept-edits"],
+        "auto": ["--mode", "accept-edits"],
+    },
+    # Qwen-owned --approval-mode. Always passed (even conservative) so a user
+    # setting such as tools.approvalMode=yolo cannot silently escalate.
+    "qwen": {
+        "conservative": ["--approval-mode", "default"],
+        "plan": ["--approval-mode", "plan"],
+        "auto-edit": ["--approval-mode", "auto-edit"],
+        "auto": ["--approval-mode", "auto"],
+    },
+}
+
+# Environment allowlist for spawned children (OF_SPAWN_ENV extends; `inherit` opts out).
+SPAWN_ENV_VAR = "OF_SPAWN_ENV"
+SPAWN_ENV_BASE_NAMES = (
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "TERM",
+    "LANG",
+    "TZ",
+    "TMPDIR",
+    # network egress: corporate proxies and private CAs, else child auth fails
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "all_proxy",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "NODE_EXTRA_CA_CERTS",
+    "SSH_AUTH_SOCK",
+    # Windows: Node-based CLIs die without these
+    "SYSTEMROOT",
+    "SystemRoot",
+    "COMSPEC",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    # kernel: only what a child's own `of` calls need. Not OF_TRUST (nested
+    # spawns re-choose their trust), not OF_LEARNINGS / OF_DEBUG / OF_AGENT /
+    # OF_SPAWN_ENV (leader knobs; the cross-repo store path stays private).
+    "OF_FIELD",
+    "OF_JSON",
+    "OF_NO_UPDATE_CHECK",
+)
+SPAWN_ENV_BASE_PREFIXES = ("LC_", "XDG_", "SSL_CERT_")
+# Credential / config prefixes each harness needs to authenticate.
+SPAWN_ENV_ADAPTER_PREFIXES = {
+    # Claude via Bedrock / Vertex needs AWS_* / GOOGLE_APPLICATION_CREDENTIALS:
+    # opt in with OF_SPAWN_ENV rather than forwarding cloud credentials by default.
+    "claude": ("ANTHROPIC_", "CLAUDE_"),
+    "codex": ("OPENAI_", "CODEX_"),
+    "cursor": ("CURSOR_",),
+    "opencode": ("OPENCODE_", "ANTHROPIC_", "OPENAI_", "GOOGLE_", "GEMINI_", "OPENROUTER_"),
+    "orca": ("ORCA_",),
+    "grok": ("XAI_", "GROK_"),
+    "agy": ("GOOGLE_", "GEMINI_", "AGY_", "ANTIGRAVITY_"),
+    "qwen": ("DASHSCOPE_", "QWEN_", "OPENAI_", "GEMINI_", "ANTHROPIC_", "OLLAMA_"),
+    "generic": (),
 }
 
 
@@ -105,9 +195,38 @@ def resolve_trust_profile() -> str:
     return profile
 
 
-def qwen_trust_flags(profile: str) -> list[str]:
-    mode = _QWEN_APPROVAL.get(profile, _QWEN_APPROVAL[DEFAULT_TRUST_PROFILE])
-    return ["--approval-mode", mode]
+def trust_flags(adapter: str, profile: str | None = None) -> list[str]:
+    """Flags OF_TRUST adds for `adapter`. conservative -> nothing escalated."""
+    profile = profile or resolve_trust_profile()
+    if profile == "yolo":
+        return list(YOLO_FLAGS.get(adapter, []))
+    table = _TRUST_FLAGS.get(adapter, {})
+    return list(table.get(profile) or table.get("conservative") or [])
+
+
+def spawn_env_mode(parent: dict[str, str] | None = None) -> str:
+    """'inherit' when OF_SPAWN_ENV=inherit, else 'allowlist'. One decision,
+    used by spawn_env() and recorded in spawns/<child>.json as env_mode."""
+    src = os.environ if parent is None else parent
+    raw = (src.get(SPAWN_ENV_VAR) or "").strip().lower()
+    return "inherit" if raw == "inherit" else "allowlist"
+
+
+def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
+    """Environment for a spawned child: allowlist, not the parent's whole env.
+
+    OF_SPAWN_ENV=NAME1,NAME2 adds names; OF_SPAWN_ENV=inherit opts out."""
+    src = dict(os.environ if parent is None else parent)
+    extra_raw = (src.get(SPAWN_ENV_VAR) or "").strip()
+    if spawn_env_mode(src) == "inherit":
+        return src
+    extra = {n.strip() for n in extra_raw.split(",") if n.strip()}
+    prefixes = SPAWN_ENV_BASE_PREFIXES + tuple(SPAWN_ENV_ADAPTER_PREFIXES.get(adapter, ()))
+    out: dict[str, str] = {}
+    for key, value in src.items():
+        if key in SPAWN_ENV_BASE_NAMES or key in extra or key.startswith(prefixes):
+            out[key] = value
+    return out
 
 
 def which_bin(names: list[str]) -> str | None:
@@ -152,67 +271,41 @@ def build_spawn_argv(
     residual_abs: Path,
     dry_run: bool = False,
 ) -> list[str]:
+    profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
+    trust = trust_flags(adapter, profile)
     env_agent = os.environ.get("OF_AGENT")
     if adapter == "generic" and env_agent:
         return env_agent.split() + [prompt]
     if adapter == "claude":
         bin_ = which_bin(["claude"]) or "claude"
-        return [
-            bin_,
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--dangerously-skip-permissions",
-        ]
+        return [bin_, "-p", prompt, "--output-format", "json", *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
         schema = skill_root() / "schemas" / "residual.codex.schema.json"
-        argv = [
-            bin_,
-            "exec",
-            "--dangerously-bypass-approvals-and-sandbox",
-            "-o",
-            str(residual_abs),
-        ]
+        argv = [bin_, "exec", *trust, "-o", str(residual_abs)]
         if schema.exists():
             argv += ["--output-schema", str(schema)]
         argv.append(prompt)
         return argv
     if adapter == "cursor":
         bin_ = which_bin(["agent", "cursor-agent"]) or "agent"
-        return [bin_, "-p", "--force", "--output-format", "text", prompt]
+        return [bin_, "-p", *trust, "--output-format", "text", prompt]
     if adapter == "opencode":
         bin_ = which_bin(["opencode"]) or "opencode"
-        return [bin_, "run", "--format", "json", "--auto", prompt]
+        return [bin_, "run", "--format", "json", *trust, prompt]
     if adapter == "grok":
         bin_ = which_bin(["grok", "grok-cli"]) or "grok"
         # headless: bare `grok <prompt>` opens the TUI and dies on no tty.
-        return [bin_, "--always-approve", "-p", prompt]
+        return [bin_, *trust, "-p", prompt]
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
         bin_ = which_bin(["agy"]) or "agy"
-        return [
-            bin_,
-            "--dangerously-skip-permissions",
-            "--mode",
-            "accept-edits",
-            "--output-format",
-            "json",
-            "-p",
-            prompt,
-        ]
+        return [bin_, *trust, "--output-format", "json", "-p", prompt]
     if adapter == "qwen":
         # Qwen-owned headless: positional prompt (`-p` is deprecated).
         # Provider/model/credentials stay in the user's qwen CLI config.
         bin_ = which_bin(["qwen"]) or "qwen"
-        return [
-            bin_,
-            "--output-format",
-            "json",
-            *qwen_trust_flags(resolve_trust_profile()),
-            prompt,
-        ]
+        return [bin_, "--output-format", "json", *trust, prompt]
     if adapter == "orca":
         bin_ = which_bin(["orca"]) or "orca"
         # substrate only: create a one-shot worker on current worktree

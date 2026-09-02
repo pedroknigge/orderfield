@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.6.6. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.6.7. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,16 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.6.6`
+**Status:** Shipped · **Current release line:** `0.6.7`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.6.7 — vibe-proof hardening
+
+- `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawn env is an allowlist (`OF_SPAWN_ENV`); children get no stdin and their own process group.
+- `spec` and `checkpoint` join `MUTATING_COMMANDS`. Learnings carry provenance; bare `of learn` is field-local; `--protocol` is explicit.
+- Error boundary: one-line `of: error: <kind>: <message>` (exit 1); `--json` `error` event; `OF_DEBUG=1` for tracebacks; Ctrl-C 130.
+- Python 3.11 floor on every surface. CI pins Actions SHAs. README quickstart is a CI fixture. Not a new regime.
 
 ## 0.6.6 — sibling fields
 

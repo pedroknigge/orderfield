@@ -458,7 +458,21 @@ class AgyAdapter(unittest.TestCase):
         self.assertIn("-", found[0])
         self.assertNotIn("antigravity", proc.stdout.split("default:")[0])
 
+    def _with_trust(self, profile: str) -> None:
+        # escalated flags are emitted only under an explicit OF_TRUST=yolo
+        saved = os.environ.get("OF_TRUST")
+
+        def restore() -> None:
+            if saved is None:
+                os.environ.pop("OF_TRUST", None)
+            else:
+                os.environ["OF_TRUST"] = saved
+
+        self.addCleanup(restore)
+        os.environ["OF_TRUST"] = profile
+
     def test_build_spawn_argv_flags_precede_dash_p(self) -> None:
+        self._with_trust("yolo")
         prompt = "ping"
         argv = of.build_spawn_argv(
             "agy", prompt, {"child_id": "agy1"}, Path("/tmp/r.json"), dry_run=True
@@ -483,6 +497,7 @@ class AgyAdapter(unittest.TestCase):
         self.assertNotIn("-p --mode", joined)
 
     def test_dry_run_cli_flag_order(self) -> None:
+        self._with_trust("yolo")
         tmp = Path(tempfile.mkdtemp(prefix="of-agy-dry-"))
         self.addCleanup(shutil.rmtree, tmp, True)
         init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
@@ -628,6 +643,7 @@ class HeadlessArgv(unittest.TestCase):
         )
 
     def test_grok_is_headless_and_auto_approved(self) -> None:
+        os.environ["OF_TRUST"] = "yolo"
         argv = self.argv("grok")
         self.assertIn("-p", argv)
         self.assertIn("--always-approve", argv)
@@ -635,6 +651,7 @@ class HeadlessArgv(unittest.TestCase):
         self.assertEqual(argv[argv.index("-p") + 1], "PROMPT")
 
     def test_codex_drops_full_auto_for_the_bypass_flag(self) -> None:
+        os.environ["OF_TRUST"] = "yolo"
         argv = self.argv("codex")
         self.assertNotIn("--full-auto", argv)
         self.assertIn("--dangerously-bypass-approvals-and-sandbox", argv)
@@ -718,11 +735,13 @@ class HeadlessArgv(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.argv("qwen")
 
-    def test_grok_ignores_of_trust(self) -> None:
+    def test_grok_honours_of_trust(self) -> None:
         os.environ["OF_TRUST"] = "conservative"
         argv = self.argv("grok")
-        self.assertIn("--always-approve", argv)
+        self.assertNotIn("--always-approve", argv)
         self.assertIn("-p", argv)
+        os.environ["OF_TRUST"] = "yolo"
+        self.assertIn("--always-approve", self.argv("grok"))
 
     def test_qwen_trust_boundary_is_documented(self) -> None:
         import of_adapters

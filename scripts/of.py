@@ -6,7 +6,20 @@ Public CLI entry. Internals live in the `scripts/of/` package
 """
 from __future__ import annotations
 
-from of.cli import main
+import sys
+
+# Compatibility floor (SKILL.md `compatibility:`). Checked before any package
+# import so an old interpreter gets one line, not a SyntaxError traceback.
+PYTHON_FLOOR = (3, 11)
+
+if sys.version_info[:2] < PYTHON_FLOOR:
+    sys.stderr.write(
+        "of: error: python: Orderfield requires Python %d.%d+ (found %d.%d)\n"
+        % (PYTHON_FLOOR + tuple(sys.version_info[:2]))
+    )
+    sys.exit(1)
+
+from of.cli import main  # noqa: E402
 
 
 if __name__ == "__main__":
