@@ -38,6 +38,16 @@ jobs:
       - name: Skill structure + version sync
         run: bash scripts/validate-skill.sh
 
+  unused-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Unused import / F401 (stdlib; no pip)
+        run: python3 scripts/check_unused_imports.py --self-test && python3 scripts/check_unused_imports.py
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

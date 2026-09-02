@@ -136,3 +136,11 @@ grep -q "version: \"$release_version\"" "$remote_root/.agents/skills/orderfield/
 grep -q "version: \"$release_version\"" "$remote_root/.agents/skills/of/SKILL.md"
 "$remote_root/.local/bin/of" --help
 ```
+
+## Residuals (not kernel)
+
+These are publish/ecosystem limits. They are not Orderfield defects. Do not invent kernel code to close them. Durable auditor note: [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md).
+
+**npx pin (SCOPE-NPX).** `npx skills add pedroknigge/orderfield` follows whatever the skills CLI resolves from the GitHub repo. There is no versioned source argument until that ecosystem supports one. Do not fake a pin in this tree. The pin path is the classic installer: tag-pinned archive + SHA-256 (`ORDERFIELD_REF` / `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS` above).
+
+**Signing / immutable releases (SCOPE-SIGN).** Tag signing, attestation, and GitHub `immutable=true` releases are publish-process, not kernel. Classic install is already tag-pinned and SHA-256 verified (`install.sh`, `orderfield-<ver>.tar.gz`, `SHA256SUMS` on the GitHub release). Do not add cosign/sigstore/signing code to the stdlib CLI. Residual stays here until a human publish process adds those artifacts.

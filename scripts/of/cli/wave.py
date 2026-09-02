@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import signal
@@ -225,11 +226,47 @@ TOKENS_RESERVED_MSG = (
     "budget.tokens is reserved accounting; of pack --tokens N for N>0 is "
     "refused (only budget.seconds is enforced; the kernel has no token telemetry)"
 )
+# Bounded warning line: secrets and home paths stripped; same cap as CLI errors.
+WARNING_MESSAGE_MAX_CHARS = 400
+_EXPECTED_SCRATCH_RMDIR = (errno.ENOTEMPTY, errno.ENOENT, errno.ENOTDIR)
 
 
 def refuse_nonzero_tokens(tokens: int) -> None:
     if int(tokens) != 0:
         die(TOKENS_RESERVED_MSG, kind="reserved")
+
+
+def _bounded_message(text: str) -> str:
+    """One line, no secrets, no home layout. JSON events stay parseable."""
+    message = " ".join(str(text).split())
+    home = str(Path.home())
+    if home and home != "/":
+        message = message.replace(home, "~")
+    message = redact_text(message)
+    if len(message) > WARNING_MESSAGE_MAX_CHARS:
+        message = message[: WARNING_MESSAGE_MAX_CHARS - 1] + "…"
+    return message
+
+
+def emit_wave_warning(
+    kind: str, message: str, *, plain: str | None = None, **fields: Any
+) -> None:
+    """Stderr note: JSON `warning` event; plain keeps legacy prose."""
+    bounded = _bounded_message(message)
+    if json_events_enabled():
+        emit_event("warning", ok=True, kind=kind, message=bounded, **fields)
+        return
+    print(plain if plain is not None else f"of: warning: {bounded}", file=sys.stderr)
+
+
+def _warn_oserror(kind: str, exc: OSError) -> None:
+    """SWALLOW-001: process-kill / cleanup OSError is a bounded warning."""
+    bits = [exc.__class__.__name__]
+    if exc.strerror:
+        bits.append(exc.strerror)
+    if exc.errno is not None:
+        bits.append(f"errno={exc.errno}")
+    emit_wave_warning(kind, " ".join(bits))
 
 
 def print_cost_disclaimer() -> None:
@@ -255,11 +292,28 @@ def kill_child_tree(proc: "subprocess.Popen[str]") -> None:
             os.killpg(proc.pid, signal.SIGKILL)
         else:
             proc.kill()
-    except (ProcessLookupError, PermissionError, OSError):
+        return
+    except ProcessLookupError:
+        return
+    except OSError as exc:
         try:
             proc.kill()
-        except OSError:
-            pass
+        except ProcessLookupError:
+            return
+        except OSError as inner:
+            _warn_oserror("process_kill", inner)
+            return
+        _warn_oserror("process_kill", exc)
+
+
+def cleanup_scratch_dir(path: Path) -> None:
+    """Remove an empty scratch dir. Nonempty is evidence; other OSError warns."""
+    try:
+        path.rmdir()
+    except OSError as exc:
+        if exc.errno in _EXPECTED_SCRATCH_RMDIR:
+            return
+        _warn_oserror("cleanup", exc)
 
 
 def run_child(
@@ -300,11 +354,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die(f"invalid role: {args.role}")
     slice_text = args.slice or ""
     if len(slice_text) >= SLICE_WARN_CHARS:
-        print(
-            f"of: note — slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
+        slice_note = (
+            f"slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
             "shared procedure belongs in ORDER.constraints via of patch, not in --slice. "
-            "The packet was still written; of unpack --child-id <id> releases it.",
-            file=sys.stderr,
+            "The packet was still written; of unpack --child-id <id> releases it."
+        )
+        emit_wave_warning(
+            "slice_long",
+            slice_note,
+            plain=f"of: note — {slice_note}",
         )
     requires_tool = [t.strip().lower() for t in (getattr(args, "requires_tool", None) or [])]
     unknown = [t for t in requires_tool if t not in KNOWN_TOOLS]
@@ -375,11 +433,16 @@ def cmd_pack(args: argparse.Namespace) -> None:
         for other, prior, mine in prior_wave_path_owners(
             root, int(wave), owns_paths
         ):
-            print(
-                f"note: {mine} was owned by child {other} in wave {prior}.\n"
-                f"new owner {child_id} in wave {wave}.\n"
+            emit_wave_warning(
+                "owns_path_prior",
+                f"{mine} was owned by child {other} in wave {prior}. "
+                f"new owner {child_id} in wave {wave}. "
                 f"consider continuing {other} if this is the same slice.",
-                file=sys.stderr,
+                plain=(
+                    f"note: {mine} was owned by child {other} in wave {prior}.\n"
+                    f"new owner {child_id} in wave {wave}.\n"
+                    f"consider continuing {other} if this is the same slice."
+                ),
             )
     order_view: dict[str, Any] = {
         "id": order["id"],
@@ -479,10 +542,14 @@ def cmd_pack(args: argparse.Namespace) -> None:
             if a != "generic" and missing_tools(a, requires_tool)
         ]
         if blind:
-            print(
-                f"of: requires_tool={requires_tool}; these adapters will refuse: "
+            emit_wave_warning(
+                "requires_tool",
+                f"requires_tool={requires_tool}; these adapters will refuse: "
                 + ", ".join(blind),
-                file=sys.stderr,
+                plain=(
+                    f"of: requires_tool={requires_tool}; these adapters will refuse: "
+                    + ", ".join(blind)
+                ),
             )
     dump_json(out, packet, skip_dir_fsync=True)
     ensure_field_slave_md(root)
@@ -535,10 +602,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     scratch_rel = packet.get("scratch_dir")
     if scratch_rel:
         scratch = safe_relative_path(root, scratch_rel, "packet scratch_dir")
-        try:
-            scratch.rmdir()  # only removes an empty dir; nonempty is evidence
-        except OSError:
-            pass
+        cleanup_scratch_dir(scratch)  # empty only; nonempty is evidence
     reqs = load_requirements(root)
     if release_requirement_owner(reqs, child_id):
         save_requirements(reqs, root)
@@ -637,12 +701,18 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         and adapter in PRINT_MODE_ADAPTERS
         and (packet.get("owns_paths") or packet.get("role") == "implementer")
     ):
-        print(
-            f"of: note — {TRUST_ENV}=conservative: {adapter} runs headless with no "
+        emit_wave_warning(
+            "trust_conservative",
+            f"{TRUST_ENV}=conservative: {adapter} runs headless with no "
             "approval prompt, so a child that must write files usually exits with "
             "no residual. OF_TRUST=auto-edit is the working headless profile; "
             "yolo is never implied.",
-            file=sys.stderr,
+            plain=(
+                f"of: note — {TRUST_ENV}=conservative: {adapter} runs headless with no "
+                "approval prompt, so a child that must write files usually exits with "
+                "no residual. OF_TRUST=auto-edit is the working headless profile; "
+                "yolo is never implied."
+            ),
         )
     already = child_is_packed(root, int(wave), child_id)
     if not already and state["children_spawned"] >= order["caps"]["max_children"]:
@@ -713,7 +783,11 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                     f"{prior.get('started_at')} ({meta_path}). "
                     "Wait for it, or --force-spawn to override a dead one."
                 )
-            print(f"of: note — overriding in-flight spawn record {meta_path}", file=sys.stderr)
+            emit_wave_warning(
+                "spawn_in_flight",
+                f"overriding in-flight spawn record {meta_path}",
+                plain=f"of: note — overriding in-flight spawn record {meta_path}",
+            )
 
     def finalize(outcome: str, **extra: Any) -> None:
         """Every spawn outcome lands here: never leave started-only metadata."""
@@ -791,7 +865,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         fail("error", f"spawn failed for adapter={adapter}: {exc.__class__.__name__}: {exc}")
     write_log(proc.stdout, proc.stderr)
     if proc.returncode != 0:
-        print(f"spawn exit={proc.returncode} log={log_path}", file=sys.stderr)
+        emit_wave_warning(
+            "spawn_exit",
+            f"spawn exit={proc.returncode} log={log_path}",
+            plain=f"spawn exit={proc.returncode} log={log_path}",
+            exit=proc.returncode,
+        )
     # best-effort: if residual missing, try to extract JSON from stdout
     if not residual_abs.exists():
         extracted = extract_json_object(proc.stdout)

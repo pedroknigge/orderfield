@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ISSUE-006..009: public CLI of issue (dry-run vs submit, OF_CHILD, gh missing/unauth)."""
+"""ISSUE-006..009 / ISSUE-002 / GH-001: of issue CLI (spawned-child, body-file, gh timeout)."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -23,7 +24,7 @@ DEPENDENCIES = ROOT / "DEPENDENCIES.md"
 REPO = "pedroknigge/orderfield"
 
 FAKE_GH = r"""
-import json, os, sys
+import json, os, sys, time
 from pathlib import Path
 
 log_path = Path(os.environ["OF_GH_LOG"])
@@ -35,6 +36,14 @@ rec = {
 with log_path.open("a", encoding="utf-8") as handle:
     handle.write(json.dumps(rec) + "\n")
 cmd = sys.argv[1:]
+hang = os.environ.get("OF_GH_HANG", "")
+fail = os.environ.get("OF_GH_FAIL", "")
+if hang == "auth" and cmd[:2] == ["auth", "status"]:
+    time.sleep(60)
+if hang == "list" and cmd[:2] == ["issue", "list"]:
+    time.sleep(60)
+if hang == "create" and cmd[:2] == ["issue", "create"]:
+    time.sleep(60)
 if cmd[:2] == ["auth", "status"]:
     if os.environ.get("OF_GH_AUTH", "1") != "1":
         sys.stderr.write(
@@ -44,13 +53,47 @@ if cmd[:2] == ["auth", "status"]:
     sys.stderr.write("github.com\n  Logged in\n")
     sys.exit(0)
 if cmd[:2] == ["issue", "create"]:
+    if fail == "create":
+        sys.stderr.write("GraphQL: Resource not accessible\n")
+        sys.exit(1)
     print("https://github.com/pedroknigge/orderfield/issues/99")
     sys.exit(0)
 if cmd[:2] == ["issue", "list"]:
+    if fail == "list":
+        sys.stderr.write("HTTP 500: list failed\n")
+        sys.exit(1)
     print("99\tOPEN\tfake duplicate")
     sys.exit(0)
 sys.stderr.write("unexpected: " + " ".join(cmd) + "\n")
 sys.exit(2)
+"""
+
+_SPAWNED_PARENT_HELPER = """\
+# Parent exec'd with OF_CHILD set; child of-process unsets or replaces it.
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+
+
+def main() -> None:
+    policy = sys.argv[1]
+    cwd = sys.argv[2]
+    argv = sys.argv[3:]
+    env = dict(os.environ)
+    if policy == "UNSET":
+        env.pop("OF_CHILD", None)
+    else:
+        env["OF_CHILD"] = policy
+    proc = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    raise SystemExit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()
 """
 
 
@@ -134,6 +177,67 @@ class IssueCli(unittest.TestCase):
             *extra,
         )
 
+    def write_draft(
+        self,
+        text: str,
+        *,
+        child: str = "leader",
+        slug: str | None = None,
+    ) -> str:
+        if slug:
+            path = (
+                self.tmp
+                / ".orderfield"
+                / "work"
+                / "scratch"
+                / child
+                / "issues"
+                / f"{slug}.md"
+            )
+        else:
+            path = (
+                self.tmp
+                / ".orderfield"
+                / "work"
+                / "scratch"
+                / child
+                / "ISSUE.md"
+            )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path.relative_to(self.tmp).as_posix()
+
+    def issue_from_spawned_parent(
+        self,
+        *args: str,
+        parent_child_id: str = "kernel",
+        child_marker: str | None = None,
+        env_extra: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        helper = self.tmp / "_spawned_parent_helper.py"
+        helper.write_text(_SPAWNED_PARENT_HELPER, encoding="utf-8")
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_CHILD": parent_child_id}
+        env.pop("OF_DEBUG", None)
+        env.pop("OF_JSON", None)
+        env.update(self.gh_env)
+        env.update(env_extra or {})
+        env["PATH"] = self.gh_path
+        policy = "UNSET" if child_marker is None else child_marker
+        return subprocess.run(
+            [
+                sys.executable,
+                str(helper),
+                policy,
+                str(self.tmp),
+                sys.executable,
+                str(OF_PY),
+                *args,
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
     def test_not_a_mutating_command(self) -> None:
         self.assertNotIn("issue", of.MUTATING_COMMANDS)
 
@@ -148,8 +252,12 @@ class IssueCli(unittest.TestCase):
         self.assertIn("--body-file", help_out.stdout)
         self.assertIn("--label", help_out.stdout)
         self.assertIn("--search", help_out.stdout)
+        self.assertIn("kernel defects", help_out.stdout)
+        self.assertIn("consumer origin", help_out.stdout)
         # no user flag to retarget away from the platform repo
         self.assertNotRegex(help_out.stdout, r"--repo\s")
+        self.assertNotIn("OF_ISSUE_REPO", ops.__doc__ or "")
+        self.assertNotIn("OF_ISSUE_REPO", help_out.stdout)
 
     def test_works_with_no_order(self) -> None:
         self.assertFalse((self.tmp / ".orderfield").exists())
@@ -190,14 +298,13 @@ class IssueCli(unittest.TestCase):
         self.assertFalse(auths[0]["tty"])
 
     def test_body_file_and_enhancement_label(self) -> None:
-        body = self.tmp / "body.md"
-        body.write_text("enhancement body\n", encoding="utf-8")
+        rel = self.write_draft("enhancement body\n")
         r = self.issue(
             "issue",
             "--title",
             "add of issue search",
             "--body-file",
-            str(body),
+            rel,
             "--label",
             "enhancement",
         )
@@ -207,8 +314,9 @@ class IssueCli(unittest.TestCase):
         ]
         self.assertEqual(len(creates), 1)
         argv = creates[0]["argv"]
-        self.assertIn("--body-file", argv)
-        self.assertNotIn("--body", argv)
+        self.assertNotIn("--body-file", argv)
+        self.assertIn("--body", argv)
+        self.assertEqual(argv[argv.index("--body") + 1], "enhancement body\n")
         self.assertEqual(argv[argv.index("--label") + 1], "enhancement")
 
     def test_of_child_refuses_submit_allows_dry_run(self) -> None:
@@ -288,6 +396,44 @@ class IssueCli(unittest.TestCase):
         self.assertIn("`gh`", deps)
         self.assertIn("of issue", deps)
 
+    def test_cwd_origin_cannot_appear_in_gh_argv(self) -> None:
+        git_dir = self.tmp / ".git"
+        git_dir.mkdir()
+        origin_url = "https://git.example.com/acme/consumer-app.git"
+        origin_host = "git.example.com"
+        (git_dir / "config").write_text(
+            "[remote \"origin\"]\n"
+            f"\turl = {origin_url}\n"
+            "\tfetch = +refs/heads/*:refs/heads/*\n",
+            encoding="utf-8",
+        )
+        dry_create = self.issue(*self.create_flags("--dry-run"))
+        self.assertEqual(dry_create.returncode, 0, dry_create.stderr)
+        dry_blob = dry_create.stdout + dry_create.stderr
+        self.assertIn(f"--repo {REPO}", dry_blob)
+        self.assertNotIn(origin_url, dry_blob)
+        self.assertNotIn(origin_host, dry_blob)
+        dry_search = self.issue("issue", "--search", "glossary", "--dry-run")
+        self.assertEqual(dry_search.returncode, 0, dry_search.stderr)
+        search_blob = dry_search.stdout + dry_search.stderr
+        self.assertIn(f"--repo {REPO}", search_blob)
+        self.assertNotIn(origin_url, search_blob)
+        self.assertNotIn(origin_host, search_blob)
+        submit = self.issue(*self.create_flags())
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1, load_log(self.log))
+        argv = creates[0]["argv"]
+        self.assertEqual(argv[argv.index("--repo") + 1], REPO)
+        joined = " ".join(argv)
+        self.assertNotIn(origin_url, joined)
+        self.assertNotIn(origin_host, joined)
+        for part in argv:
+            self.assertNotIn(origin_host, part)
+            self.assertNotIn("consumer-app", part)
+
     def test_invalid_label_is_usage_error(self) -> None:
         r = self.issue(
             "issue",
@@ -302,6 +448,195 @@ class IssueCli(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         blob = (r.stdout + r.stderr).lower()
         self.assertTrue("invalid" in blob or "choose" in blob, blob)
+
+    def test_submit_refused_when_of_child_unset_from_spawned_parent(self) -> None:
+        r = self.issue_from_spawned_parent(
+            *self.create_flags(),
+            parent_child_id="kernel",
+            child_marker=None,
+        )
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("OF_CHILD=kernel", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_submit_refused_when_of_child_replaced_from_spawned_parent(self) -> None:
+        r = self.issue_from_spawned_parent(
+            *self.create_flags(),
+            parent_child_id="kernel",
+            child_marker="fake",
+        )
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("OF_CHILD=fake", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_leader_dry_run_can_after_spawned_child_cannot_create(self) -> None:
+        child = self.issue(*self.create_flags(), env_extra={"OF_CHILD": "issue-cli"})
+        self.assertEqual(child.returncode, 1, child.stderr)
+        self.assertEqual(load_log(self.log), [])
+        dry = self.issue(*self.create_flags("--dry-run"))
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertIn("dry-run argv:", dry.stdout)
+        self.assertIn(f"gh issue create --repo {REPO}", dry.stdout)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_child_submit_refuses_before_reading_body_file(self) -> None:
+        outside = self.tmp / "secret-body.md"
+        outside.write_text("should-not-be-opened\n", encoding="utf-8")
+        r = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            str(outside),
+            "--label",
+            "bug",
+            env_extra={"OF_CHILD": "issue-cli"},
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("OF_CHILD=issue-cli", r.stderr)
+        self.assertNotIn("should-not-be-opened", r.stdout + r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_rejects_external_path(self) -> None:
+        outside = self.tmp / "outside.md"
+        outside.write_text("external body\n", encoding="utf-8")
+        r = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            str(outside),
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("canonical", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_rejects_symlink(self) -> None:
+        rel = self.write_draft("real draft\n")
+        real = self.tmp / rel
+        real.unlink()
+        target = self.tmp / "outside.md"
+        target.write_text("via symlink\n", encoding="utf-8")
+        real.symlink_to(target)
+        r = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("symlink", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_rejects_oversize(self) -> None:
+        rel = self.write_draft("x" * (ops.ISSUE_BODY_MAX_BYTES + 1))
+        r = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertTrue(
+            "exceeds" in r.stderr or "refuse huge dumps" in r.stderr,
+            r.stderr,
+        )
+        self.assertEqual(load_log(self.log), [])
+        lines = "\n".join(["l"] * (ops.ISSUE_BODY_MAX_LINES + 1)) + "\n"
+        rel_lines = self.write_draft(lines)
+        too_many = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            rel_lines,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(too_many.returncode, 1, too_many.stderr)
+        self.assertIn("refuse huge dumps", too_many.stderr)
+
+    def test_body_file_redacts_secret(self) -> None:
+        secret = "ghp_" + "".join(chr(ord("A") + i) for i in range(20))
+        rel = self.write_draft(f"token {secret} in draft\n")
+        r = self.issue(
+            "issue",
+            "--title",
+            "x",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        blob = r.stdout + r.stderr + self.log.read_text(encoding="utf-8")
+        self.assertNotIn(secret, blob)
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1)
+        joined = " ".join(creates[0]["argv"])
+        self.assertNotIn(secret, joined)
+        self.assertIn(of.REDACTED, joined)
+
+    def test_body_file_accepts_issues_slug(self) -> None:
+        rel = self.write_draft("slug body\n", child="issue", slug="wal-crash")
+        r = self.issue(
+            "issue",
+            "--title",
+            "wal crash",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run argv:", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_create_nonzero_is_issue_error_and_not_retried(self) -> None:
+        r = self.issue(*self.create_flags(), env_extra={"OF_GH_FAIL": "create"})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("create", r.stderr.lower())
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1, load_log(self.log))
+        self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_gh_create_hang_times_out_and_does_not_retry(self) -> None:
+        started = time.monotonic()
+        r = self.issue(*self.create_flags(), env_extra={"OF_GH_HANG": "create"})
+        elapsed = time.monotonic() - started
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("timed out", r.stderr)
+        self.assertLess(elapsed, ops.ISSUE_GH_TIMEOUT_S + 8)
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1, load_log(self.log))
+        self.assertNotIn("https://github.com/", r.stdout)
 
 
 if __name__ == "__main__":

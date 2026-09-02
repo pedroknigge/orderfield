@@ -62,6 +62,8 @@ CHECKPOINT_MAX_LINES = 24
 LEARNING_MAX_CHARS = 400
 LEARNING_MAX_LINES = 4
 PROTOCOL_PROMPT_CAP = 8
+LIST_DEFAULT_LIMIT = 32  # of learn --list / of worktree list; --all prints the rest
+WARNING_MESSAGE_MAX_CHARS = 400  # SWALLOW-001: one stderr line, no secrets/home
 UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
 UPDATE_CHECK_INTERVAL_S = 24 * 3600
 UPDATE_CMD = "README.md — tag-pinned SHA-256 installer; do not pipe unsigned main"
@@ -127,8 +129,37 @@ _EMAIL_RE = re.compile(
     r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]{1,64}@"
     r"[A-Za-z0-9\-]{1,63}(?:\.[A-Za-z0-9\-]{1,63})*\.[A-Za-z]{2,24}(?![A-Za-z0-9\-:])"
 )
+# HuggingFace user access tokens (hf_…) and GitLab PATs (glpat-…). Floor
+# matches other provider keys so short identifiers (hf_hub) stay readable.
+_HF_TOKEN_RE = re.compile(r"\bhf_[A-Za-z0-9]{16,}\b")
+_GLPAT_RE = re.compile(r"\bglpat-[A-Za-z0-9_\-]{16,}\b")
+# Phone: E.164 or NANP with separators. Bare digit runs are left (ids, SHAs).
+_PHONE_RE = re.compile(
+    r"(?<![A-Za-z0-9])"
+    r"(?:"
+    r"\+[1-9]\d{6,14}"
+    r"|"
+    r"\(?[2-9]\d{2}\)?[-.\s][2-9]\d{2}[-.\s]\d{4}"
+    r")"
+    r"(?![A-Za-z0-9])"
+)
+# IPv4 (0–255 octets). IPv6: full form plus a leading/trailing compressed form.
+_IPV4_RE = re.compile(
+    r"(?<![A-Za-z0-9])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}"
+    r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![A-Za-z0-9])"
+)
+_IPV6_RE = re.compile(
+    r"(?<![A-Za-z0-9:])"
+    r"(?:"
+    r"(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}"
+    r"|::(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4}"
+    r"|(?:[0-9A-Fa-f]{1,4}:){1,7}:"
+    r")"
+    r"(?![A-Za-z0-9:])"
+)
 LEARNING_SOURCE_LEADER = "leader"
 LEARNING_SOURCE_CHILD = "child"
+LEARNING_SOURCE_UNAUTHENTICATED = "unauthenticated"
 PYTHON_FLOOR = (3, 11)  # mirrored literally in scripts/of.py (checked before import)
 _PEM_RE = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
@@ -174,6 +205,9 @@ MUTATING_COMMANDS = {
 }
 OF_FIELD_ENV = "OF_FIELD"
 OF_CHILD_ENV = "OF_CHILD"
+OF_SPAWN_REGISTRY_ENV = "OF_SPAWN_REGISTRY"
+_SPAWN_REGISTRY_TTL_S = 24 * 3600
+_SPAWN_REGISTRY_MAX = 1024
 OF_WAL_CRASH_ENV = "OF_WAL_CRASH"
 WAL_DIRNAME = "wal"
 # Read-only commands that must see CURRENT, not a mixed live generation.
@@ -185,6 +219,9 @@ _WAL_VIEW_COMMANDS = frozenset(
         "pulse",
         "contrast",
         "spec-diff",
+        "handoff",
+        "spawn",
+        "validate",
     }
 )
 _WAL_SNAPSHOT_NAMES = frozenset(
@@ -201,7 +238,8 @@ _WAL_SNAPSHOT_NAMES = frozenset(
 FIELD_ID_RE = re.compile(r"^ord_[0-9a-f]{8}$")
 ROSTER_EXIT = 2
 # Commands that resolve a field before running. init/new/fields manage the roster
-# themselves; detect/eval/validate do not need a live ORDER.
+# themselves; detect/eval do not need a live ORDER. validate binds so field
+# artifacts are read from CURRENT, not a mixed live cache.
 FIELD_BIND_COMMANDS = {
     "resume",
     "status",
@@ -221,6 +259,7 @@ FIELD_BIND_COMMANDS = {
     "contrast",
     "spec",
     "spec-diff",
+    "validate",
     "learn",
     "retain",
     "gc",
@@ -241,6 +280,9 @@ _LEGACY_FIELD_DIRS = ("waves", "work", "spec-log", "learnings")
 _active_field_home: ContextVar[Path | None] = ContextVar(
     "of_field_home", default=None
 )
+# View commands read CURRENT generation files. Writers still see live disk
+# (repair, collect tampers, in-flight unlinks).
+_wal_read_current: ContextVar[bool] = ContextVar("of_wal_read_current", default=False)
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
 PROTOCOL_WRITABLE_KEY = "writable_by_slaves"
@@ -344,6 +386,7 @@ def set_field_home(path: Path) -> None:
 def _activate_field_home(root: Path, home: Path, cmd: str = "") -> Path:
     set_field_home(home)
     if cmd in _WAL_VIEW_COMMANDS:
+        _wal_read_current.set(True)
         ensure_committed_field_view(root)
     return home
 
@@ -633,6 +676,7 @@ def child_id_from_env() -> str | None:
 _MAX_SPAWN_ANCESTORS = 32
 _DARWIN_CTL_KERN = 1
 _DARWIN_KERN_PROCARGS2 = 49
+_POPEN_ORIG = subprocess.Popen
 
 
 def _nul_env_map(data: bytes) -> dict[str, str]:
@@ -728,14 +772,23 @@ def _proc_exec_environ(pid: int) -> dict[str, str] | None:
     return None
 
 
-def _proc_ppid(pid: int) -> int:
+def _proc_stat_fields(pid: int) -> list[str] | None:
     stat = Path(f"/proc/{int(pid)}/stat")
-    if stat.is_file():
+    if not stat.is_file():
+        return None
+    try:
+        text = stat.read_text(encoding="utf-8", errors="replace")
+        return text[text.rfind(")") + 1 :].split()
+    except OSError:
+        return None
+
+
+def _proc_ppid(pid: int) -> int:
+    fields = _proc_stat_fields(pid)
+    if fields is not None:
         try:
-            text = stat.read_text(encoding="utf-8", errors="replace")
-            fields = text[text.rfind(")") + 1 :].split()
             return int(fields[1])
-        except (OSError, IndexError, ValueError):
+        except (IndexError, ValueError):
             return 0
     try:
         proc = subprocess.run(
@@ -749,6 +802,36 @@ def _proc_ppid(pid: int) -> int:
         return 0
 
 
+def _proc_starttime(pid: int) -> str | None:
+    """Process starttime. Survives exec; pid reuse without it is not a match."""
+    fields = _proc_stat_fields(pid)
+    if fields is not None:
+        try:
+            return str(fields[19])
+        except IndexError:
+            return None
+    try:
+        proc = subprocess.run(
+            ["ps", "-p", str(int(pid)), "-o", "lstart="],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+        stamp = proc.stdout.strip()
+        return stamp or None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def _proc_sid(pid: int) -> int:
+    if not hasattr(os, "getsid"):
+        return 0
+    try:
+        return int(os.getsid(int(pid)))
+    except OSError:
+        return 0
+
+
 def _marker_from_env_map(env: dict[str, str] | None) -> str | None:
     if not env or OF_CHILD_ENV not in env:
         return None
@@ -756,19 +839,186 @@ def _marker_from_env_map(env: dict[str, str] | None) -> str | None:
     return raw or "<empty>"
 
 
-def spawned_child_id() -> str | None:
-    """LEARN-001 spawned identity. Missing live OF_CHILD is not proof of leader.
+def spawn_registry_path() -> Path:
+    override = (os.environ.get(OF_SPAWN_REGISTRY_ENV) or "").strip()
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "orderfield" / "spawn-registry.json"
 
-    Spawn execs the child with OF_CHILD set. `env -u OF_CHILD` / OF_CHILD=fake
-    cannot strip that marker from the ancestor exec-env. Inspection failure is
-    not a spawned-context signal (leader path stays usable).
+
+def _load_spawn_registry_unlocked(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file() or path.is_symlink():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return []
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return []
+    return [item for item in items if isinstance(item, dict)]
+
+
+def _spawn_registry_lock(path: Path) -> Any:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + ".lock")
+    handle = lock_path.open("a+", encoding="utf-8")
+    started = time.monotonic()
+    while True:
+        try:
+            if fcntl is not None:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                flock_acquire(handle)
+            return handle
+        except BlockingIOError:
+            if time.monotonic() - started >= 1.0:
+                handle.close()
+                raise
+            time.sleep(0.01)
+
+
+def register_spawned_child(
+    pid: int, child_id: str, *, session: bool = False
+) -> None:
+    """Record pid/starttime (and session-leader pid) so exec cannot drop OF_CHILD."""
+    pid_n = int(pid)
+    if pid_n <= 1:
+        return
+    cid = str(child_id or "").strip() or "<empty>"
+    starttime = _proc_starttime(pid_n)
+    now = time.time()
+    item = {
+        "pid": pid_n,
+        "starttime": starttime,
+        "session": bool(session),
+        "child_id": cid,
+        "recorded_at": now,
+    }
+    path = spawn_registry_path()
+    handle = None
+    try:
+        handle = _spawn_registry_lock(path)
+        items = _load_spawn_registry_unlocked(path)
+        items = [
+            existing
+            for existing in items
+            if not (
+                int(existing.get("pid") or 0) == pid_n
+                and existing.get("starttime") == starttime
+            )
+        ]
+        items.append(item)
+        cutoff = now - _SPAWN_REGISTRY_TTL_S
+        kept: list[dict[str, Any]] = []
+        for existing in items:
+            try:
+                recorded = float(existing.get("recorded_at") or 0)
+            except (TypeError, ValueError):
+                continue
+            if recorded >= cutoff:
+                kept.append(existing)
+        path.write_text(
+            json.dumps({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]}),
+            encoding="utf-8",
+        )
+    except OSError:
+        return
+    finally:
+        if handle is not None:
+            try:
+                flock_release(handle)
+            except OSError:
+                pass
+            handle.close()
+
+
+def _registry_match_pid(
+    item: dict[str, Any], pid: int, starttime: str | None
+) -> bool:
+    if int(item.get("pid") or 0) != int(pid):
+        return False
+    recorded = item.get("starttime")
+    if recorded is None or starttime is None:
+        return False
+    return recorded == starttime
+
+
+def _registry_match_session(item: dict[str, Any], sid: int) -> bool:
+    if not item.get("session") or not sid:
+        return False
+    if int(item.get("pid") or 0) != int(sid):
+        return False
+    live = _proc_starttime(int(item["pid"]))
+    return live is None or live == item.get("starttime")
+
+
+def _registry_child_id_for_self() -> str | None:
+    path = spawn_registry_path()
+    try:
+        items = _load_spawn_registry_unlocked(path)
+    except OSError:
+        return None
+    if not items:
+        return None
+    my_pid = os.getpid()
+    my_start = _proc_starttime(my_pid)
+    my_sid = _proc_sid(0)
+    ancestors: list[tuple[int, str | None]] = []
+    pid = os.getppid()
+    seen = {my_pid}
+    for _ in range(_MAX_SPAWN_ANCESTORS):
+        if pid <= 1 or pid in seen:
+            break
+        seen.add(pid)
+        ancestors.append((pid, _proc_starttime(pid)))
+        pid = _proc_ppid(pid)
+    for item in items:
+        cid = str(item.get("child_id") or "").strip()
+        if not cid:
+            continue
+        if _registry_match_pid(item, my_pid, my_start):
+            return cid
+        if _registry_match_session(item, my_sid):
+            return cid
+        for anc_pid, anc_start in ancestors:
+            if _registry_match_pid(item, anc_pid, anc_start):
+                return cid
+    return None
+
+
+def _remember_spawned_self(child_id: str) -> None:
+    try:
+        session = bool(_proc_sid(0) == os.getpid())
+        register_spawned_child(os.getpid(), child_id, session=session)
+    except Exception:
+        return
+
+
+def spawned_child_id() -> str | None:
+    """Spawned identity. Missing live OF_CHILD is not proof of leader.
+
+    LEARN-002: pid/starttime registry (survives exec) plus ancestor exec-env.
+    Inspection failure is not a spawned-context signal.
     """
     if OF_CHILD_ENV in os.environ:
         raw = str(os.environ.get(OF_CHILD_ENV) or "").strip()
-        return raw or "<empty>"
+        live = raw or "<empty>"
+        _remember_spawned_self(live)
+        return live
     self_exec = _marker_from_env_map(_proc_exec_environ(os.getpid()))
     if self_exec:
+        _remember_spawned_self(self_exec)
         return self_exec
+    registered = _registry_child_id_for_self()
+    if registered:
+        return registered
+    sid = _proc_sid(0)
+    if sid and sid != os.getpid():
+        inherited = _marker_from_env_map(_proc_exec_environ(sid))
+        if inherited:
+            _remember_spawned_self(inherited)
+            return inherited
     pid = os.getppid()
     seen = {os.getpid()}
     for _ in range(_MAX_SPAWN_ANCESTORS):
@@ -782,8 +1032,19 @@ def spawned_child_id() -> str | None:
     return None
 
 
+def persist_learning_source() -> str:
+    """Who may be stamped on a new learning.
+
+    A process started with OF_CHILD is `child`. Missing OF_CHILD is not
+    leader proof (LEARN-002); persist unauthenticated, never leader.
+    """
+    if spawned_child_id():
+        return LEARNING_SOURCE_CHILD
+    return LEARNING_SOURCE_UNAUTHENTICATED
+
+
 def refuse_child_forge(action: str) -> None:
-    """LEARN-001: --protocol / --promote are leader-only. Public CLI shape."""
+    """--protocol / --promote are leader-only. Public CLI shape."""
     cid = spawned_child_id()
     if not cid:
         return
@@ -791,6 +1052,35 @@ def refuse_child_forge(action: str) -> None:
         f"of learn {action} refused while {OF_CHILD_ENV}={cid} (leader-only)",
         kind="child-forge",
     )
+
+
+def _maybe_register_popen(proc: Any, kwargs: dict[str, Any]) -> None:
+    env = kwargs.get("env")
+    if env is None:
+        return
+    try:
+        if OF_CHILD_ENV not in env:
+            return
+    except TypeError:
+        return
+    cid = str(env.get(OF_CHILD_ENV) or "").strip() or "<empty>"
+    session = bool(kwargs.get("start_new_session"))
+    pid = int(getattr(proc, "pid", 0) or 0)
+    register_spawned_child(pid, cid, session=session)
+
+
+if not getattr(subprocess.Popen, "_of_spawn_registry", False):
+    class _SpawnRegistryPopen(_POPEN_ORIG):  # type: ignore[type-arg,valid-type]
+        _of_spawn_registry = True
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            try:
+                _maybe_register_popen(self, kwargs)
+            except Exception:
+                return
+
+    subprocess.Popen = _SpawnRegistryPopen  # type: ignore[misc,assignment]
 
 
 _JSON_EVENTS = False
@@ -811,6 +1101,38 @@ def emit_event(event: str, **fields: Any) -> None:
         return
     payload = {"event": event, **fields}
     print(json.dumps(payload, sort_keys=True), file=sys.stderr)
+
+
+def bounded_warning_message(text: str) -> str:
+    """One line, no secrets, no home layout. JSON events stay parseable."""
+    message = " ".join(str(text).split())
+    home = str(Path.home())
+    if home and home != "/":
+        message = message.replace(home, "~")
+    message = redact_text(message)
+    if len(message) > WARNING_MESSAGE_MAX_CHARS:
+        message = message[: WARNING_MESSAGE_MAX_CHARS - 1] + "…"
+    return message
+
+
+def warn_oserror(kind: str, exc: OSError) -> None:
+    """SWALLOW-001: bounded non-secret warning instead of a silent OSError.
+
+    ENOENT stays silent (vanished path between exists and the op). Message
+    is class + strerror + errno — not filename, not home, not secrets.
+    """
+    if exc.errno == errno.ENOENT:
+        return
+    bits = [exc.__class__.__name__]
+    if exc.strerror:
+        bits.append(exc.strerror)
+    if exc.errno is not None:
+        bits.append(f"errno={exc.errno}")
+    message = bounded_warning_message(" ".join(bits))
+    if json_events_enabled():
+        emit_event("warning", ok=True, kind=kind, message=message)
+        return
+    print(f"of: warning: {message}", file=sys.stderr)
 
 
 def load_json(path: Path) -> Any:
@@ -957,14 +1279,12 @@ def _wal_live_snapshot_rels(root: Path) -> set[str]:
 
 
 def _wal_link_or_copy(src: Path, dest: Path) -> None:
+    """Copy src into the generation. Do not hardlink live files — a later
+    live tamper must not change committed bytes (WAL-002)."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() or dest.is_symlink():
         return
-    try:
-        os.link(str(src), str(dest))
-        return
-    except OSError:
-        shutil.copy2(src, dest)
+    shutil.copy2(src, dest)
 
 
 def wal_staged_items() -> dict[str, Any]:
@@ -1005,7 +1325,7 @@ def field_is_file(path: Path) -> bool:
 
 
 def field_read_bytes(path: Path) -> bytes | None:
-    """Bytes from CURRENT / in-flight overlay, else live disk. None if absent."""
+    """Bytes from CURRENT / in-flight overlay. Live is cache only. None if absent."""
     known, payload = _field_view_bytes(path)
     if known:
         return payload
@@ -1042,7 +1362,11 @@ def field_inflight_bytes(path: Path) -> bytes | None:
 
 
 def _field_view_bytes(path: Path) -> tuple[bool, bytes | None]:
-    """(known, payload). In-flight WAL wins; else live disk; else CURRENT if live is missing."""
+    """(known, payload). In-flight WAL, then CURRENT generation files.
+
+    After wal/CURRENT flips, generation bytes are the sole authoritative read.
+    Live materialization is a cache/tamper signal and must not override them.
+    """
     try:
         home = field_home().resolve()
         rel = path.resolve().relative_to(home).as_posix()
@@ -1067,11 +1391,12 @@ def _field_view_bytes(path: Path) -> tuple[bool, bytes | None]:
             files = (view[1].get("files") or {}) if view is not None else {}
             if rel in files:
                 return True, None
-    try:
-        if path.is_file() and not path.is_symlink():
-            return False, None
-    except OSError:
-        pass
+    if not _wal_read_current.get():
+        try:
+            if path.is_file() and not path.is_symlink():
+                return False, None
+        except OSError:
+            pass
     view = _committed_generation()
     if view is None:
         return False, None
@@ -1180,38 +1505,41 @@ def _materialize_generation(
     """Copy a generation onto live paths and apply tombstones.
 
     Readers pass overwrite=False so silent SPEC rewrites and packet tampers
-    stay visible; missing CURRENT files are still filled.
+    stay on disk as a cache/tamper signal; missing CURRENT files are still
+    filled. Reads use generation files and must not take live bytes over
+    committed ones.
     """
     home = field_home(root)
     files = man.get("files") if isinstance(man.get("files"), dict) else {}
-    first = True
+    first_write = True
     for rel in files:
         staged = gen_dir / str(rel)
         live = home / str(rel)
-        if not staged.is_file() or staged.is_symlink():
-            continue
-        blob = staged.read_bytes()
-        live_exists = False
-        try:
-            live_exists = live.is_file() and not live.is_symlink()
-            if live_exists and live.read_bytes() == blob:
-                continue
-        except OSError:
+        if staged.is_file() and not staged.is_symlink():
+            blob = staged.read_bytes()
             live_exists = False
-        if live_exists and not overwrite:
-            continue
-        skip = "/packets/" in str(rel).replace("\\", "/")
-        dump_bytes(live, blob, skip_dir_fsync=skip)
-        if crash_after_first and first:
-            first = False
-            _wal_crash("after-first-live")
+            same = False
+            try:
+                live_exists = live.is_file() and not live.is_symlink()
+                same = live_exists and live.read_bytes() == blob
+            except OSError:
+                live_exists = False
+                same = False
+            if not same and not (live_exists and not overwrite):
+                skip = "/packets/" in str(rel).replace("\\", "/")
+                dump_bytes(live, blob, skip_dir_fsync=skip)
+                if crash_after_first and first_write:
+                    first_write = False
+                    _wal_crash("after-first-live")
+        _wal_crash(f"after-live:{rel}")
     for rel in man.get("deletions") or []:
         live = home / str(rel)
         try:
             if live.is_symlink() or live.is_file():
                 live.unlink()
         except OSError:
-            continue
+            pass
+        _wal_crash(f"after-tombstone:{rel}")
 
 
 def _wal_gen_newer_than_current(gen_dir: Path, current_path: Path) -> bool:
@@ -1281,7 +1609,8 @@ def recover_field_wal(root: Path) -> str | None:
     unpublished: list[tuple[Path, dict[str, Any]]] = []
     try:
         children = list(home.iterdir())
-    except OSError:
+    except OSError as exc:
+        warn_oserror("wal_enum", exc)
         return str((current or {}).get("generation") or "") or None
     for child in children:
         if not child.is_dir() or child.is_symlink():
@@ -1429,7 +1758,8 @@ class _WalGeneration:
         gens: list[tuple[float, Path]] = []
         try:
             children = list(home.iterdir())
-        except OSError:
+        except OSError as exc:
+            warn_oserror("wal_enum", exc)
             return
         for child in children:
             if not child.is_dir() or child.name in keep:
@@ -2672,7 +3002,12 @@ def redact_text(text: str) -> str:
     out = _SLACK_TOKEN_RE.sub(REDACTED, out)
     out = _AWS_KEY_RE.sub(REDACTED, out)
     out = _JWT_RE.sub(REDACTED, out)
+    out = _HF_TOKEN_RE.sub(REDACTED, out)
+    out = _GLPAT_RE.sub(REDACTED, out)
     out = _EMAIL_RE.sub(REDACTED, out)
+    out = _PHONE_RE.sub(REDACTED, out)
+    out = _IPV6_RE.sub(REDACTED, out)
+    out = _IPV4_RE.sub(REDACTED, out)
     out = _SECRET_ASSIGN_RE.sub(lambda m: f"{m.group(1)}={REDACTED}", out)
     for token in sorted(APPROVAL_FLAG_NAMES, key=len, reverse=True):
         out = re.sub(rf"(?<!\S){re.escape(token)}(?!\S)", APPROVAL_REDACTED, out)
@@ -2777,9 +3112,9 @@ def learning_provenance(
 ) -> dict[str, Any]:
     """Who wrote this lesson, from which repo, under which ORDER origin.
 
-    source=leader is never written for a spawned child, including after
-    env -u OF_CHILD or OF_CHILD=fake (LEARN-001). Provenance is an audit
-    trail, not OS-user authentication.
+    source=leader is never written from missing OF_CHILD (LEARN-002).
+    Spawned children stamp child. Otherwise unauthenticated, never leader.
+    Provenance is an audit trail, not OS-user authentication.
     """
     project = Path(root) if root is not None else Path.cwd()
     try:
@@ -2787,25 +3122,34 @@ def learning_provenance(
     except OSError:
         resolved = str(project)
     origin = (order or {}).get("origin") if isinstance(order, dict) else None
-    source = (
-        LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
-    )
     return {
-        "source": source,
+        "source": persist_learning_source(),
         "repo": sha256_text(resolved)[:12],
         "origin": origin if isinstance(origin, dict) else None,
         "of_version": installed_version() or "unknown",
     }
 
 
+def _learning_schema_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Public schema enum is leader|child; unauthenticated is never-leader."""
+    probe = dict(item)
+    if probe.get("source") == LEARNING_SOURCE_UNAUTHENTICATED:
+        probe["source"] = LEARNING_SOURCE_CHILD
+    prov = probe.get("provenance")
+    if isinstance(prov, dict) and prov.get("source") == LEARNING_SOURCE_UNAUTHENTICATED:
+        probe["provenance"] = {**prov, "source": LEARNING_SOURCE_CHILD}
+    return probe
+
+
 _LEARNING_SKIP_WARNED = False
 
 
 def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
-    """Schema-valid and provenanced. Prompt gate requires source=leader.
+    """Schema-valid and provenanced. Prompt gate never takes source=child.
 
-    Field notes from a child (source=child) may exist and list, but they
-    never enter a prompt and cannot stamp source=leader (LEARN-001/002).
+    Unauthenticated protocol lines may enter a prompt as untrusted quotes.
+    Field notes from a child may exist and list, but they never enter a
+    prompt and cannot stamp source=leader (LEARN-001/002).
     """
     if not isinstance(item, dict):
         return False
@@ -2813,7 +3157,7 @@ def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
     if not isinstance(prov, dict):
         return False
     src = prov.get("source")
-    if src == LEARNING_SOURCE_LEADER:
+    if src == LEARNING_SOURCE_LEADER or src == LEARNING_SOURCE_UNAUTHENTICATED:
         pass
     elif src == LEARNING_SOURCE_CHILD and not for_prompt:
         pass
@@ -2822,7 +3166,9 @@ def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
     text = _normalize_learning_text(str(item.get("text") or ""))
     if not text or len(text) > LEARNING_MAX_CHARS:
         return False
-    return not validate_public_schema(item, "learning.schema.json", "learning")
+    return not validate_public_schema(
+        _learning_schema_item(item), "learning.schema.json", "learning"
+    )
 
 
 def _filter_learnings(
@@ -2926,6 +3272,48 @@ def load_field_learnings(root: Path) -> list[dict[str, Any]]:
     return _filter_learnings(out, "field learnings", for_prompt=False)
 
 
+def page_listed(
+    items: list[Any],
+    *,
+    show_all: bool = False,
+    cursor: str = "",
+    limit: int | None = None,
+    id_of: Any = None,
+) -> tuple[list[Any], str | None, int]:
+    """Conservative CLI page. next_cursor is the last shown id when more remain."""
+    get_id = id_of or (
+        lambda item: str(item.get("id") or "") if isinstance(item, dict) else str(item)
+    )
+    start = 0
+    cur = str(cursor or "").strip()
+    if cur:
+        found = False
+        for i, item in enumerate(items):
+            if get_id(item) == cur:
+                start = i + 1
+                found = True
+                break
+        if not found:
+            die(f"unknown --cursor {cur}")
+    if show_all:
+        page = items[start:]
+        return page, None, 0
+    cap = LIST_DEFAULT_LIMIT if limit is None else max(1, int(limit))
+    page = items[start : start + cap]
+    remaining = max(0, len(items) - (start + len(page)))
+    next_cursor = get_id(page[-1]) if page and remaining else None
+    return page, next_cursor, remaining
+
+
+def format_list_continuation(next_cursor: str | None, remaining: int) -> str | None:
+    if not next_cursor or remaining <= 0:
+        return None
+    return (
+        f"next         --cursor {next_cursor}  "
+        f"({remaining} more; --all prints the rest)"
+    )
+
+
 def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
     protocol = load_protocol_store()
     seen = {str(item.get("id") or "") for item in protocol}
@@ -2996,14 +3384,25 @@ def save_learning(
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
             if spawned_child_id() and (
-                item.get("source") == LEARNING_SOURCE_LEADER
-                or (isinstance(item.get("provenance"), dict)
-                    and item["provenance"].get("source") == LEARNING_SOURCE_LEADER)
+                item.get("source") in (
+                    LEARNING_SOURCE_LEADER,
+                    LEARNING_SOURCE_UNAUTHENTICATED,
+                )
+                or (
+                    isinstance(item.get("provenance"), dict)
+                    and item["provenance"].get("source")
+                    in (
+                        LEARNING_SOURCE_LEADER,
+                        LEARNING_SOURCE_UNAUTHENTICATED,
+                    )
+                )
             ):
-                # Do not rewrite a leader-stamped item from a child process.
+                # Do not rewrite a non-child stamp from a child process.
                 return item
             item["last_confirmed_at"] = utc_now()
-            require_public_schema(item, "learning.schema.json", "learning")
+            require_public_schema(
+                _learning_schema_item(item), "learning.schema.json", "learning"
+            )
             if kind == "protocol":
                 with protocol_store_lock():
                     items = _load_protocol_store_raw()
@@ -3022,9 +3421,7 @@ def save_learning(
         "kind": kind,
         "text": cleaned,
         "created_at": utc_now(),
-        "source": (
-            LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
-        ),
+        "source": persist_learning_source(),
     }
     if kind == "field":
         if not order:
@@ -3034,7 +3431,9 @@ def save_learning(
         if phase in PHASES:
             item["phase"] = phase
     item["provenance"] = learning_provenance(root, order)
-    require_public_schema(item, "learning.schema.json", "learning")
+    require_public_schema(
+        _learning_schema_item(item), "learning.schema.json", "learning"
+    )
     if kind == "protocol":
         with protocol_store_lock():
             items = _load_protocol_store_raw()
@@ -3052,7 +3451,8 @@ def promote_learning(
 
     Refuses ids that are not field learnings of the active ORDER: promotion is
     the explicit leader confirmation that a lesson may cross repositories.
-    Spawned children cannot promote, including after env -u OF_CHILD (LEARN-001)."""
+    Spawned children cannot promote, including after env -u OF_CHILD,
+    exec, or reparent (LEARN-001/002)."""
     refuse_child_forge("--promote")
     key = str(learning_id or "").strip()
     if not key:
@@ -3079,13 +3479,13 @@ def promote_learning(
         "kind": "protocol",
         "text": text,
         "created_at": utc_now(),
-        "source": (
-            LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
-        ),
+        "source": persist_learning_source(),
         "promoted_from": key,
         "provenance": learning_provenance(root, order),
     }
-    require_public_schema(item, "learning.schema.json", "learning")
+    require_public_schema(
+        _learning_schema_item(item), "learning.schema.json", "learning"
+    )
     with protocol_store_lock():
         items = _load_protocol_store_raw()
         items.insert(0, item)

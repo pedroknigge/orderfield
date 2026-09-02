@@ -17,12 +17,12 @@ The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The k
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.7.0</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.1</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.1-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -32,7 +32,7 @@ One brief. Exclusive owners. A close that is proof.
 
 One ORDER on disk. Bounded packets with exclusive owners. Structured residuals. A closed regime after each wave. The harness starts and stops processes; the contract survives when the harness changes, the chat is compacted, or the model is swapped.
 
-Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.” Anyone with `of` on PATH files HITL-confirmed product feedback to `pedroknigge/orderfield` via `of issue` — not the consumer origin.
+Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.” Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin.
 
 Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
 
@@ -92,8 +92,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.0
-release_version=0.7.0
+release_tag=v0.7.1
+release_version=0.7.1
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -341,7 +341,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
-| `issue` | file HITL-confirmed product feedback to `pedroknigge/orderfield` (`--dry-run` prints argv; omit to submit). Works with no ORDER. Children cannot submit |
+| `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm; never consumer origin. Report ONLY invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT report child did not finish, SPEC incomplete, product tests red, consumer build, “user is stuck” (`--dry-run` prints argv; omit to submit). Works with no ORDER. Children cannot submit |
 
 ## Docs
 

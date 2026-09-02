@@ -20,7 +20,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 7. **Same harness only** by default: spawn with the current session adapter for the whole ORDER. Pin it with `of patch --harness <adapter>` (a field, not a prose constraint). Do not mix harnesses unless the user explicitly asks. Then `of detect` (PATH ≠ auth).
 8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
 9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for a software mission that will not fit one context, colliding writers, and a false public claim (adversary catch); theater for bump+obvious feature (doc-manager + grok-build feedbacks).
-10. **HITL GitHub issues.** Product feedback found while using Orderfield is filed to `pedroknigge/orderfield` via `of issue` **only after** the human confirms in the same turn. Confirm creates; refuse / edit-later / silence does not. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [SLAVE.md](SLAVE.md) (child). Not a second contract.
+10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates; refuse / edit-later / silence does not. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [SLAVE.md](SLAVE.md) (child). Not a second contract.
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
@@ -89,6 +89,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.6.8 P1 close + theater cut (`OF_CHILD` / WAL / tokens=0 / main review / owned-but-unverified / constraint dedupe / PHASE.md / backlog-undone / compact render / spec --add writes SPEC) | documented |
 | 0.6.9 HITL `of issue` + sibling `--packet`/`of new` recovery + stay-on-run STALE continue | documented |
 | 0.7.0 Vibe-Proof Deep P1 (LEARN-001 ancestor exec-env, WAL CURRENT read view, COST disclaimer, INSTALL pin, REVIEW config) | documented |
+| 0.7.1 Vibe-Proof Deep P1/P2 (LEARN-002 exec registry, ISSUE body-file, WAL-002 CURRENT read, JSON-all-lines, SCOPE-001) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

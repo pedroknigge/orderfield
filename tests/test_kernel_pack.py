@@ -57,6 +57,12 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def committed_artifact(home: Path, rel: str) -> Path:
+    """WAL-002: view commands read generation files, not live cache."""
+    current = json.loads((home / "wal" / "CURRENT.json").read_text(encoding="utf-8"))
+    return home / "wal" / str(current["generation"]) / rel
+
+
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
     return (
         root
@@ -256,7 +262,9 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
 
         packet = load_json(path)
         packet["slice"] = "tampered after registration"
-        path.write_text(json.dumps(packet), encoding="utf-8")
+        committed_artifact(
+            self.tmp / ".orderfield", "waves/001/packets/c1.json"
+        ).write_text(json.dumps(packet), encoding="utf-8")
         rendered = run_of(
             self.tmp, "render", "--packet", ".orderfield/waves/001/packets/c1.json"
         )
@@ -298,7 +306,9 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
         packet = load_json(path)
         for key in ("packet_id", "packet_hash", "order_id"):
             packet.pop(key)
-        path.write_text(json.dumps(packet), encoding="utf-8")
+        committed_artifact(
+            self.tmp / ".orderfield", "waves/001/packets/c1.json"
+        ).write_text(json.dumps(packet), encoding="utf-8")
 
         packet_arg = ".orderfield/waves/001/packets/c1.json"
         commands = (

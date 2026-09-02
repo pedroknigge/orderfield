@@ -69,9 +69,19 @@ Product comments are short and factual, not the field diary.
 - Treat workspace as a lock, or invent `of claim` / file leases.
 - Post a GitHub issue (`of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.
 
-## Product feedback (HITL GitHub issues)
+## Auto-report (HITL)
 
-If you find a product bug, an improvable functionality, a docs lie, or similar durable product feedback while using Orderfield (kernel, adapters, skill/docs, install, CLI):
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. This is self-telemetry of the kernel/skill/CLI/docs/install — not a ticket against the consumer working tree.
+
+Auto-report ONLY if the failure is Orderfield's:
+
+- kernel emitted invalid schema / WAL incoherent / pack produced a packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken.
+
+Do NOT auto-report:
+
+- child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate).
+
+If unsure, draft + HITL, default to *not* posting.
 
 1. Search open issues on `pedroknigge/orderfield` first (`of issue --search`). Skip duplicates.
 2. **Never post.** `OF_CHILD` is set, spawn is headless, or this session cannot ask the human — so you cannot get confirmation. Confirm creates; refuse / edit-later / silence does not. A child never reaches confirm. Non-dry-run `of issue` is refused.

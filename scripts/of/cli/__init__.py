@@ -88,6 +88,72 @@ from of.cli.spec_cmd import (
     run_recovery_eval_spec,
 )
 
+# Re-exports consumed by of/__init__.py. Keep the barrel; shrinking it
+# ImportErrors the package. Names here count as used for F401.
+__all__ = [
+    "ADAPTER_ORDER",
+    "ERROR_MESSAGE_MAX_CHARS",
+    "EVAL_FIXTURES",
+    "EVAL_UNITTEST_MODULES",
+    "ISSUE_LABELS",
+    "KNOWN_TOOLS",
+    "build_parser",
+    "cmd_checkpoint",
+    "cmd_close",
+    "cmd_collect",
+    "cmd_contrast",
+    "cmd_detect",
+    "cmd_doctor",
+    "cmd_eval",
+    "cmd_fields",
+    "cmd_gc",
+    "cmd_handoff",
+    "cmd_init",
+    "cmd_integrate",
+    "cmd_issue",
+    "cmd_learn",
+    "cmd_migrate",
+    "cmd_new",
+    "cmd_next_wave",
+    "cmd_pack",
+    "cmd_patch",
+    "cmd_phase",
+    "cmd_pulse",
+    "cmd_render",
+    "cmd_resume",
+    "cmd_retain",
+    "cmd_spawn",
+    "cmd_spec",
+    "cmd_spec_diff",
+    "cmd_status",
+    "cmd_unpack",
+    "cmd_validate",
+    "cmd_worktree",
+    "cmd_worktree_add",
+    "cmd_worktree_list",
+    "cmd_worktree_remove",
+    "discover_recovery_eval_specs",
+    "eval_pack_child",
+    "eval_run_of",
+    "eval_setup_recovery_beacon_amnesia",
+    "eval_setup_recovery_contrast_close",
+    "eval_setup_recovery_quarry_dirty",
+    "eval_write_done_residual",
+    "format_agents_note",
+    "main",
+    "parked_reason",
+    "print_contrast_report",
+    "print_resume_child_owns",
+    "print_resume_completed",
+    "print_resume_in_flight",
+    "pulse_once",
+    "report_error",
+    "resume_auto_continue_lines",
+    "resume_next_lines",
+    "run_recovery_eval_spec",
+]
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="of",
@@ -204,10 +270,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "issue",
-        help="file a HITL-confirmed GitHub issue to pedroknigge/orderfield",
+        help="auto-report of kernel defects; never consumer origin",
         description=(
-            "Public CLI. Always targets pedroknigge/orderfield (not git origin). "
-            "Works with no ORDER. --dry-run prints gh argv and does not post. "
+            "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
+            "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post. "
             "Omitting --dry-run submits via gh (logged-in account). "
             "OF_CHILD cannot submit. Kernel never prompts on stdin."
         ),
