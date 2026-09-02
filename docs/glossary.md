@@ -63,3 +63,7 @@ Adiabatic following **as contract, not moral slavery**. The child moves freely i
 ## skill beats child
 
 Same identity plus a procedure already on the agent = invoke the skill, do not spawn. A harness name alone is not a trigger. One ordinary subagent, or work a single skill can close, is theater for a field.
+
+## HITL issue loop
+
+Product feedback found while using Orderfield (bug, improvable functionality, docs lie) is drafted, then filed as a GitHub issue to `pedroknigge/orderfield` via `of issue` **only after** explicit human confirmation in the same turn. Confirm creates (`of issue` without `--dry-run`). Refuse / edit-later / silence does not create. A child never posts: it writes `scratch/ISSUE.md` (or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. Search open issues first (`of issue --search`); skip duplicates, secrets, transcripts, and field-internal residuals. One draft per distinct finding. Target is always the Orderfield platform, not consumer `origin`. Leader: [SKILL.md](../SKILL.md). Child: [SLAVE.md](../SLAVE.md).

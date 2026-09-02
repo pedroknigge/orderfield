@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.6.8 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.9 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.8"
+  version: "0.6.9"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -39,6 +39,29 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 - `.orderfield/ORDER.json` already exists in the repo.
 
 A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child.
+
+## Product feedback (HITL GitHub issues)
+
+If you find a product bug, an improvable functionality, a docs lie, or similar durable product feedback while using Orderfield (kernel, adapters, skill/docs, install, CLI), prepare a GitHub issue against the Orderfield platform (`pedroknigge/orderfield`) — not the consumer working-tree `origin`. Anyone with `of` on PATH can file. Use `of issue`. That is real-time feedback as the product is used. Not a one-wave constraint.
+
+**Never create a GitHub issue without an explicit human confirmation in the same turn.**
+
+- Confirm → create (`of issue` without `--dry-run` after HITL; running it **is** the send).
+- Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
+
+Both sides are the contract. Auto-post, yolo post, and posting from a child are forbidden.
+
+`of issue` always targets `--repo pedroknigge/orderfield`. It works with no ORDER. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate, do not invent a token, do not post to consumer origin. The kernel never prompts on stdin — HITL stays the leader/human.
+
+```bash
+of issue --search
+of issue --title "…" --body "…" --label bug --dry-run
+of issue --title "…" --body-file scratch/ISSUE.md --label enhancement
+```
+
+A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`: title, body, labels `bug` or `enhancement`, evidence paths) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue`.
+
+Search open issues first (`of issue --search`); skip duplicates. Do not file secrets, tokens, private transcripts, or field-internal residuals (those stay on disk: residual → integrate). One draft or issue per distinct finding; not a diary. Child procedure: [SLAVE.md](SLAVE.md).
 
 ## Mandatory leader process
 
@@ -118,6 +141,7 @@ Official phases: `explore | cut | build | verify | deliver`.
 | A software mission that will not fit one context (exclusive owners, contrast before close) | VERSION bump + one obvious feature |
 | Colliding product paths or multiple harnesses that need explicit owners | Single agent, ordinary subagent, or one skill already fits |
 | A false public claim (adversary can catch a lie before ship) | Explore/cut ceremony when the design is already in the feedback |
+| Stay-on-the-run: pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); written Grok Bot contrast | Bot org, Notion, cloud-agent manager, auto-merge, 5-minute kernel loop, process supervisor |
 
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
@@ -219,6 +243,8 @@ python3 <skill>/scripts/of.py pulse --watch    # refresh every 30s until Ctrl+C
 ```
 
 Read-only activity heuristic over the in-flight children: per child it shows when it was packed, the newest write in its scratch, and the newest shared-repo product write (`.orderfield/` excluded), then a verdict — `ALIVE` (< 5 min), `QUIET` (< 30 min, normal during long installs/tests), `STALE` (`--stale-min` overrides). Scratch includes the child's contract-required heartbeat, and the repo signal is shared across children, so pulse is neither process health nor per-child product-write attribution. `STALE` is a signal, not an action: the kernel never kills or unpacks; releasing a dead child stays a human/leader call (`of unpack`). Pulse does not mutate ORDER, state, session, or wave artifacts; its update-notice throttle may write the user cache (`~/.cache/orderfield/update-check.json`, or `OF_UPDATE_CACHE`). Do not use pulse as a checkpoint.
+
+**Stay-on-the-run.** Pulse `STALE` means continue the **same packet this turn** (`of handoff` or `of spawn` on the existing packet). Do not unpack by default. Do not wait forever. Do not pack a sibling. `of pulse --watch` refreshes until Ctrl+C; it is not a daemon, not a 5-minute kernel loop, and not a process supervisor. The kernel still never kills or unpacks on STALE — a truly dead child is an explicit `of unpack`.
 
 Slaves keep the lens honest with the heartbeat in `SLAVE.md`: one line appended to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command, so a long read-only stretch does not look dead. It is metadata for pulse, not a diary — the leader never judges its content.
 
@@ -332,6 +358,9 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not ingest a deictic go-ahead as SPEC. Expand the prior request, or resume and execute `next`.
 - Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
+- Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates; refuse / edit-later / silence does not.
+- Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue` (omit `--dry-run`) to `pedroknigge/orderfield`.
+- Do not file Orderfield product feedback to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
 
 ## Enslaved roles (identities, not job titles)
 

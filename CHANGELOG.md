@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.6.9
+
+HITL GitHub feedback as a public CLI, sibling-field recovery, stay-on-the-run. Same 0.6 line. Not a new regime.
+
+- **`of issue` (ISSUE-006..010):** public CLI, no ORDER required. Always `--repo pedroknigge/orderfield` (not consumer `origin`). `--dry-run` prints `gh` argv and does not post; omit `--dry-run` submits with the logged-in `gh` account after HITL. `OF_CHILD` cannot submit. `gh` missing/unauth → `of: error: issue:`. Not `MUTATING_COMMANDS`. Doctrine in SKILL.md / SLAVE.md / AGENTS.md.
+- **Sibling leftover (#38):** `of new` skips promote when a stale top-level `ORDER.json` id already lives under `fields/<id>/` (`stale-legacy`); does not clobber the live field.
+- **Canonical `--packet` (#39):** `require_registered_packet` resolves `.orderfield/waves/…` through `physical_field_rel` on sibling fields. SKILL's canonical path works.
+- **Stay-on-the-run (REQ-002):** pulse `STALE` → continue the same packet this turn. Not a daemon. `RUNTIME_OWNERSHIP` untouched.
+- **Grok Bot contrast:** docs/roadmap.md maps Grok Bot org patterns to Orderfield surfaces vs reserved kernel. Pick is stay-on-run + contrast; no bot org.
+- Packaging: VERSION 0.6.9; skill/alias description preview `v0.6.9 — …`.
+
 ## 0.6.8
 
 Post-0.6.7 P1s plus kernel theater cut from real fields. Same 0.6 line. Not a new regime.

@@ -17,12 +17,12 @@ The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The k
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.6.8</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.6.9</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.8-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.6.9-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -32,7 +32,7 @@ One brief. Exclusive owners. A close that is proof.
 
 One ORDER on disk. Bounded packets with exclusive owners. Structured residuals. A closed regime after each wave. The harness starts and stops processes; the contract survives when the harness changes, the chat is compacted, or the model is swapped.
 
-Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.”
+Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.” Anyone with `of` on PATH files HITL-confirmed product feedback to `pedroknigge/orderfield` via `of issue` — not the consumer origin.
 
 Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
 
@@ -322,6 +322,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
+| `issue` | file HITL-confirmed product feedback to `pedroknigge/orderfield` (`--dry-run` prints argv; omit to submit). Works with no ORDER. Children cannot submit |
 
 ## Docs
 
