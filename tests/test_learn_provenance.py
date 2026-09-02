@@ -22,10 +22,72 @@ OF_PY = SCRIPTS / "of.py"
 
 
 def run_of(cwd: Path, *args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", **(env_extra or {})}
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    env.pop("OF_CHILD", None)
+    env.update(env_extra or {})
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd), capture_output=True, text=True, env=env,
+    )
+
+
+_SPAWNED_PARENT_HELPER = """\
+# Parent exec'd with OF_CHILD set; child of-process unsets or replaces it.
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+
+
+def main() -> None:
+    policy = sys.argv[1]
+    cwd = sys.argv[2]
+    argv = sys.argv[3:]
+    env = dict(os.environ)
+    if policy == "UNSET":
+        env.pop("OF_CHILD", None)
+    else:
+        env["OF_CHILD"] = policy
+    proc = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    raise SystemExit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+
+def run_of_from_spawned_parent(
+    cwd: Path,
+    *args: str,
+    parent_child_id: str = "kernel",
+    child_marker: str | None = None,
+    env_extra: dict | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """env -u OF_CHILD / OF_CHILD=fake from a process spawn exec'd as a child."""
+    helper = cwd / "_spawned_parent_helper.py"
+    helper.write_text(_SPAWNED_PARENT_HELPER, encoding="utf-8")
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_CHILD": parent_child_id}
+    env.pop("OF_DEBUG", None)
+    env.pop("OF_JSON", None)
+    env.update(env_extra or {})
+    policy = "UNSET" if child_marker is None else child_marker
+    return subprocess.run(
+        [
+            sys.executable,
+            str(helper),
+            policy,
+            str(cwd),
+            sys.executable,
+            str(OF_PY),
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -193,6 +255,60 @@ class LearnChildForge(unittest.TestCase):
         )
         self.assertNotEqual(promo.returncode, 0)
         self.assertIn("of: error: child-forge:", promo.stderr)
+        self.assertFalse(self.cache.exists())
+
+    def test_protocol_and_promote_refuse_when_of_child_unset_from_spawned_parent(
+        self,
+    ) -> None:
+        proto = run_of_from_spawned_parent(
+            self.tmp, "learn", "--protocol", "forged after env -u OF_CHILD",
+            parent_child_id="kernel",
+            child_marker=None,
+        )
+        self.assertNotEqual(proto.returncode, 0, proto.stdout + proto.stderr)
+        self.assertIn("of: error: child-forge:", proto.stderr)
+        self.assertIn("OF_CHILD=kernel", proto.stderr)
+        self.assertFalse(self.cache.exists())
+        field = run_of(
+            self.tmp, "learn", "field note to promote after unset",
+        )
+        self.assertEqual(field.returncode, 0, field.stderr)
+        fid = learning_ids(field.stdout)[0]
+        promo = run_of_from_spawned_parent(
+            self.tmp, "learn", "--promote", fid,
+            parent_child_id="kernel",
+            child_marker=None,
+        )
+        self.assertNotEqual(promo.returncode, 0, promo.stdout + promo.stderr)
+        self.assertIn("of: error: child-forge:", promo.stderr)
+        self.assertIn("OF_CHILD=kernel", promo.stderr)
+        self.assertFalse(self.cache.exists())
+
+    def test_protocol_and_promote_refuse_when_of_child_replaced_from_spawned_parent(
+        self,
+    ) -> None:
+        proto = run_of_from_spawned_parent(
+            self.tmp, "learn", "--protocol", "forged with OF_CHILD=fake",
+            parent_child_id="kernel",
+            child_marker="fake",
+        )
+        self.assertNotEqual(proto.returncode, 0, proto.stdout + proto.stderr)
+        self.assertIn("of: error: child-forge:", proto.stderr)
+        self.assertIn("OF_CHILD=fake", proto.stderr)
+        self.assertFalse(self.cache.exists())
+        field = run_of(
+            self.tmp, "learn", "field note to promote after replace",
+        )
+        self.assertEqual(field.returncode, 0, field.stderr)
+        fid = learning_ids(field.stdout)[0]
+        promo = run_of_from_spawned_parent(
+            self.tmp, "learn", "--promote", fid,
+            parent_child_id="kernel",
+            child_marker="fake",
+        )
+        self.assertNotEqual(promo.returncode, 0, promo.stdout + promo.stderr)
+        self.assertIn("of: error: child-forge:", promo.stderr)
+        self.assertIn("OF_CHILD=fake", promo.stderr)
         self.assertFalse(self.cache.exists())
 
     def test_protocol_item_written_under_of_child_never_reaches_prompt(self) -> None:
