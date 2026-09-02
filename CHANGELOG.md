@@ -8,6 +8,22 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.6.7
+
+Vibe-Proof v0.9.0 P0/P1 hardening. Same 0.6 line. Not a new regime.
+
+- **Trust is authoritative for every adapter:** `OF_TRUST` in `conservative` (default), `plan`, `auto-edit`, `auto`, `yolo`. Conservative emits no escalation flag for any harness; `plan`/`auto-edit`/`auto` map to the closest non-bypass mode or fall back to conservative; only `yolo` (alias `escalated`) emits the bypass flags that were previously hardcoded. Unknown profiles die.
+- **Spawn environment allowlist:** children no longer inherit the parent environment (proxy / CA / SSH-agent / Windows base vars kept; kernel knobs are not forwarded except `OF_FIELD` (always set to the ORDER id), `OF_JSON`, `OF_NO_UPDATE_CHECK`). `OF_SPAWN_ENV=NAME1,NAME2` extends the allowlist; `OF_SPAWN_ENV=inherit` opts out. Children get no stdin and run in their own process group (timeout kills the tree). A packet with a spawn already in flight refuses a second `of spawn` (`--force-spawn` overrides). `of spawn` warns when a conservative print-mode child owns paths, and `collect` shows the recorded trust for a MISSING child. Spawn metadata is finalized on every outcome (exit, timeout, missing binary, interrupt, OS error); the post-run `children_spawned` bump re-reads state under the field lock.
+- **Sibling-field pack path:** packets written under a `fields/<id>/` home keep canonical `.orderfield/waves/…` paths and resolve physically through the active field.
+- **Learning provenance:** bare `of learn TEXT` is now a **field** learning; `--protocol` is explicit; `--promote <id>` copies field → protocol. Items carry `{source, repo, origin, of_version}`; unprovenanced or schema-invalid items are skipped on load with one stderr warning (malicious-learning regression added). Provenance is an audit trail, not authentication. `--forget` still removes legacy items without provenance.
+- **Spec lock:** `spec` and `checkpoint` join `MUTATING_COMMANDS`; ORDER/REQUIREMENTS updates no longer race the field lock. `--amend`/`--revise` refuse to combine with `--from-file`/`--extract`/`--add`/`--supersede`. `of pack` writes requirement ownership only after the cap check passes. The machine-wide learnings store has its own lock (`learnings.json.lock`).
+- **Redaction:** GitHub, Slack, OpenAI project, Anthropic, xAI, Google, Stripe, AWS, JWT tokens and e-mail addresses are masked in logs, argv previews and error lines; SSH remotes and short `sk-` identifiers stay readable; the e-mail scan is linear on large child output.
+- **Error boundary:** CLI dispatch is wrapped. Failures print `of: error: <kind>: <message>` (exit 1); `--json` emits `{"event":"error","ok":false,…}` and no prose (stderr stays JSONL); tracebacks only under `OF_DEBUG=1`; Ctrl-C exits 130. Non-UTF-8 input no longer leaks a traceback.
+- **Quickstart:** the README 30-second loop is self-contained (creates `CLI-001` via `of spec --add`, simulates the child residual, verifies before contrast). `tests/test_quickstart.py` extracts the fenced block and runs it from a fresh temp dir in CI.
+- **Supply chain:** Python floor 3.11 on every surface (`scripts/of.py` refuses older interpreters with one line; `tests/test_python_floor.py` asserts the surfaces agree). CI matrix 3.11 + 3.13. Actions pinned to full commit SHAs with `# vX.Y.Z` comments, `permissions: contents: read`, weekly Dependabot for `github-actions`.
+- **Accounting stays honest:** README, SKILL.md, and `schemas/packet.schema.json` state that `budget.tokens` / `local_budget_pct` are reserved and unenforced; only `budget.seconds` is enforced.
+- Packaging: VERSION 0.6.7; skill/alias description preview `v0.6.7 — …`.
+
 ## 0.6.6
 
 Sibling fields in one working tree. Same 0.6 line. Not a new regime.
@@ -21,21 +37,6 @@ Sibling fields in one working tree. Same 0.6 line. Not a new regime.
 - **CLI:** `new` is in `MUTATING_COMMANDS`. Kernel does not prompt on stdin.
 - Packet contract paths stay `.orderfield/waves/…`; `physical_field_rel` maps them onto the field home.
 - Packaging: VERSION 0.6.6; skill/alias description preview `v0.6.6 — …`.
-
-## Unreleased
-
-Remediation of the Vibe-Proof v0.9.0 audit (P0/P1). Kernel hardening only; no product features, no VERSION bump. Listed under `0.6.6` because `validate-skill.sh` requires the first heading to match `VERSION`.
-
-- **Trust is authoritative for every adapter:** `OF_TRUST` in `conservative` (default), `plan`, `auto-edit`, `auto`, `yolo`. Conservative emits no escalation flag for any harness; `plan`/`auto-edit`/`auto` map to the closest non-bypass mode or fall back to conservative; only `yolo` (alias `escalated`) emits the bypass flags that were previously hardcoded. Unknown profiles die.
-- **Spawn environment allowlist:** children no longer inherit the parent environment (proxy / CA / SSH-agent / Windows base vars kept; kernel knobs are not forwarded except `OF_FIELD` (always set to the ORDER id), `OF_JSON`, `OF_NO_UPDATE_CHECK`). `OF_SPAWN_ENV=NAME1,NAME2` extends the allowlist; `OF_SPAWN_ENV=inherit` opts out. Children get no stdin and run in their own process group (timeout kills the tree). A packet with a spawn already in flight refuses a second `of spawn` (`--force-spawn` overrides). `of spawn` warns when a conservative print-mode child owns paths, and `collect` shows the recorded trust for a MISSING child. Spawn metadata is finalized on every outcome (exit, timeout, missing binary, interrupt, OS error); the post-run `children_spawned` bump re-reads state under the field lock.
-- **Sibling-field pack path:** packets written under a `fields/<id>/` home keep canonical `.orderfield/waves/…` paths and resolve physically through the active field.
-- **Learning provenance:** bare `of learn TEXT` is now a **field** learning; `--protocol` is explicit; `--promote <id>` copies field → protocol. Items carry `{source, repo, origin, of_version}`; unprovenanced or schema-invalid items are skipped on load with one stderr warning (malicious-learning regression added). Provenance is an audit trail, not authentication. `--forget` still removes legacy items without provenance.
-- **Spec lock:** `spec` and `checkpoint` join `MUTATING_COMMANDS`; ORDER/REQUIREMENTS updates no longer race the field lock. `--amend`/`--revise` refuse to combine with `--from-file`/`--extract`/`--add`/`--supersede`. `of pack` writes requirement ownership only after the cap check passes. The machine-wide learnings store has its own lock (`learnings.json.lock`).
-- **Redaction:** GitHub, Slack, OpenAI project, Anthropic, xAI, Google, Stripe, AWS, JWT tokens and e-mail addresses are masked in logs, argv previews and error lines; SSH remotes and short `sk-` identifiers stay readable; the e-mail scan is linear on large child output.
-- **Error boundary:** CLI dispatch is wrapped. Failures print `of: error: <kind>: <message>` (exit 1); `--json` emits `{"event":"error","ok":false,…}` and no prose (stderr stays JSONL); tracebacks only under `OF_DEBUG=1`; Ctrl-C exits 130. Non-UTF-8 input no longer leaks a traceback.
-- **Quickstart:** the README 30-second loop is self-contained (creates `CLI-001` via `of spec --add`, simulates the child residual, verifies before contrast). `tests/test_quickstart.py` extracts the fenced block and runs it from a fresh temp dir in CI.
-- **Supply chain:** Python floor 3.11 on every surface (`scripts/of.py` refuses older interpreters with one line; `tests/test_python_floor.py` asserts the surfaces agree). CI matrix 3.11 + 3.13. Actions pinned to full commit SHAs with `# vX.Y.Z` comments, `permissions: contents: read`, weekly Dependabot for `github-actions`.
-- **Accounting stays honest:** README, SKILL.md, and `schemas/packet.schema.json` state that `budget.tokens` / `local_budget_pct` are reserved and unenforced; only `budget.seconds` is enforced.
 
 ## 0.6.5
 

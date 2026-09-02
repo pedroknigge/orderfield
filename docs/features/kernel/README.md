@@ -1,16 +1,16 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.6.6. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.6.7. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
-`MUTATING_COMMANDS` is the lock set. Spawn, spec, and gc are outside it. Tests live in the split suite.
+`MUTATING_COMMANDS` is the lock set (includes `spec` and `checkpoint`). Spawn, handoff, learn, gc, and worktree stay outside it. Tests live in the split suite.
 
 A cut, a resume, a different model — reserved accounting is still reserved. The results do not have to change.
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.6.6` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.6.7` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -30,7 +30,8 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
 - Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); packet workspace unions owned paths; not a file lock
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
-- `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. `spawn` / `handoff` / `spec` / `gc` / `checkpoint` / `learn` / `worktree` write artifacts without that wrapper
+- `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. `spawn` / `handoff` / `gc` / `learn` / `worktree` write artifacts without that wrapper
+- `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
 - Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight `--owns-path` overlap dies. Legacy `.orderfield/ORDER.json` remains valid until the first `of new` promotes it.
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
