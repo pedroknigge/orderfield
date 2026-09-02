@@ -2,11 +2,13 @@
 """Install + version sync against the shipped package."""
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,6 +69,22 @@ class VersionSync(unittest.TestCase):
         self.assertIn('--json tagName --jq .tagName', publish)
         self.assertIn('--json publishedAt --jq .publishedAt', publish)
         self.assertIn("url,tagName,isDraft,isPrerelease,publishedAt", publish)
+        self.assertIn("SHA256SUMS", publish)
+        self.assertIn("git archive", publish)
+        self.assertIn("gh release upload", publish)
+        self.assertIn("SHA-256", publish)
+        self.assertNotIn(
+            "raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh",
+            publish,
+        )
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn(
+            "raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh",
+            readme,
+        )
+        self.assertIn("SHA-256", readme)
+        self.assertIn("releases/download", readme)
+        self.assertIn("SHA256SUMS", readme)
 
     def test_slave_heartbeat_is_activity_evidence_not_process_health(self) -> None:
         slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
@@ -257,6 +275,14 @@ class InstallScript(unittest.TestCase):
         )
         self.assertIn("--full-depth -s '*'", src)
         self.assertIn("A harness name alone or one ordinary", src)
+        self.assertIn("DEFAULT_VERSION=", src)
+        self.assertIn("fetch_pinned_source", src)
+        self.assertIn("SHA-256", src)
+        self.assertNotIn("git clone", src)
+        self.assertNotIn(
+            "raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh",
+            src,
+        )
 
     def test_install_sh_has_no_dev_fd_process_substitution(self) -> None:
         # CLI-001: dest iteration must not use < <(cmd) / /dev/fd.
@@ -267,6 +293,158 @@ class InstallScript(unittest.TestCase):
         self.assertNotIn("/dev/fd", src)
         self.assertIn("agy_dests", src)
         self.assertIn("$(agy_dests)", src)
+
+
+class InstallPin(unittest.TestCase):
+    """INSTALL-001: tag-pinned remote install with SHA-256 verify."""
+
+    def _detached_installer(self, tmp: Path) -> Path:
+        script = tmp / "install.sh"
+        shutil.copy(INSTALL, script)
+        return script
+
+    def _archive(self, tmp: Path, version: str) -> Path:
+        tree = tmp / "tree"
+        (tree / "scripts").mkdir(parents=True)
+        (tree / "of").mkdir()
+        (tree / "SKILL.md").write_text(
+            f'---\nname: orderfield\nversion: "{version}"\n---\n# skill\n',
+            encoding="utf-8",
+        )
+        (tree / "of" / "SKILL.md").write_text(
+            "---\nname: of\nalias-of: orderfield\n---\n",
+            encoding="utf-8",
+        )
+        of_py = tree / "scripts" / "of.py"
+        of_py.write_text("#!/usr/bin/env python3\nprint('ok')\n", encoding="utf-8")
+        of_py.chmod(0o755)
+        archive = tmp / f"orderfield-{version}.tar.gz"
+        with tarfile.open(archive, "w:gz") as tf:
+            tf.add(tree, arcname=f"orderfield-{version}")
+        return archive
+
+    def _sha256(self, path: Path) -> str:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def _run_detached(
+        self,
+        tmp: Path,
+        dest: Path,
+        env: dict[str, str],
+        extra_args: tuple[str, ...] = (),
+    ) -> subprocess.CompletedProcess[str]:
+        script = self._detached_installer(tmp)
+        merged = {
+            "HOME": str(tmp / "home"),
+            "ORDERFIELD_REF": env.get("ORDERFIELD_REF", "v0.0.0-pin"),
+            "ORDERFIELD_VERSION": env.get("ORDERFIELD_VERSION", "0.0.0-pin"),
+        }
+        merged.update(env)
+        return run(
+            tmp,
+            "bash",
+            str(script),
+            "--root",
+            str(dest),
+            *extra_args,
+            env=merged,
+        )
+
+    def test_default_pin_matches_version_file(self) -> None:
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        src = INSTALL.read_text(encoding="utf-8")
+        self.assertIn(f'DEFAULT_VERSION="{ver}"', src)
+
+    def test_remote_archive_matching_sha256_installs(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-ok-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        digest = self._sha256(archive)
+        proc = self._run_detached(
+            tmp,
+            dest,
+            {
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256": digest,
+            },
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        skill = dest / ".agents" / "skills" / "orderfield"
+        self.assertTrue((skill / "SKILL.md").is_file(), proc.stdout)
+        self.assertTrue((skill / "scripts" / "of.py").is_file())
+        self.assertIn("copied to", proc.stdout)
+
+    def test_remote_archive_matching_sha256sums_file_installs(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-sums-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        digest = self._sha256(archive)
+        sums = tmp / "SHA256SUMS"
+        sums.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
+        proc = self._run_detached(
+            tmp,
+            dest,
+            {
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256SUMS": str(sums),
+            },
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(
+            (dest / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
+
+    def test_remote_archive_sha256_mismatch_refuses(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-bad-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        proc = self._run_detached(
+            tmp,
+            dest,
+            {
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256": "0" * 64,
+            },
+        )
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("SHA-256 mismatch", proc.stderr)
+        self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
+
+    def test_remote_archive_without_checksum_refuses(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-nocheck-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        proc = self._run_detached(
+            tmp,
+            dest,
+            {"ORDERFIELD_ARCHIVE": str(archive)},
+        )
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("ORDERFIELD_SHA256", proc.stderr)
+        self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
+
+    def test_unsigned_mutable_main_refuses(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-main-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        proc = self._run_detached(
+            tmp,
+            dest,
+            {
+                "ORDERFIELD_REF": "main",
+                "ORDERFIELD_VERSION": "0.0.0-pin",
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256": self._sha256(archive),
+            },
+        )
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("refusing unsigned mutable ref", proc.stderr)
+        self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
 
 
 class PhaseMdEnglish(unittest.TestCase):

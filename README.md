@@ -89,11 +89,26 @@ npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
 
 This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both. `npx skills` installs skills; it does not create a shell command.
 
-For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`:
+For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash
+release_tag=v0.6.9
+release_version=0.6.9
+asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
+verify_root="$(mktemp -d)"
+curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
+curl -fsSL "$asset_base/install.sh" -o "$verify_root/install.sh"
+curl -fsSL "$asset_base/orderfield-${release_version}.tar.gz" \
+  -o "$verify_root/orderfield-${release_version}.tar.gz"
+# SHA-256 verify (same recipe as PUBLISH.md), then:
+ORDERFIELD_REF="$release_tag" \
+ORDERFIELD_VERSION="$release_version" \
+ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
+ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
+bash "$verify_root/install.sh"
 ```
+
+The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md). A checkout next to `install.sh` is installed as-is (`./install.sh`).
 
 <details>
 <summary><strong>More install options</strong></summary>
@@ -102,7 +117,11 @@ curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --generic
+ORDERFIELD_REF="$release_tag" \
+ORDERFIELD_VERSION="$release_version" \
+ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
+ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
+bash "$verify_root/install.sh" --generic
 
 # this repo only
 ./install.sh --project
@@ -141,10 +160,10 @@ npx skills remove orderfield -g -y
 npx skills remove of -g -y
 ```
 
-Or the classic uninstaller (removes skill copies, the `/of` alias dirs, the Codex pointer block, and `~/.local/bin/of`):
+Or the classic uninstaller (removes skill copies, the `/of` alias dirs, the Codex pointer block, and `~/.local/bin/of`). Download and SHA-256-verify `install.sh` from the same release assets (see Install / [PUBLISH.md](PUBLISH.md)), then:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --uninstall
+bash "$verify_root/install.sh" --uninstall
 ```
 
 From a checkout: `./install.sh --uninstall` (or `--project` / `--root PATH` to match how you installed).

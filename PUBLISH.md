@@ -48,7 +48,28 @@ git push origin "$release_tag"
 gh release create "$release_tag" --verify-tag --title "Orderfield $release_version" --notes-from-tag
 ```
 
-Verify the remote tag target and published release before calling the release complete:
+Publish the tag-pinned installer asset and SHA-256 checksums. Do not leave curl-pipe of unsigned `main` as the only install path.
+
+```bash
+asset_dir="$(mktemp -d)"
+git archive --format=tar --prefix="orderfield-${release_version}/" "$release_tag" \
+  | gzip -n > "${asset_dir}/orderfield-${release_version}.tar.gz"
+cp install.sh "${asset_dir}/install.sh"
+(
+  cd "$asset_dir"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum install.sh "orderfield-${release_version}.tar.gz" > SHA256SUMS
+  else
+    shasum -a 256 install.sh "orderfield-${release_version}.tar.gz" > SHA256SUMS
+  fi
+)
+gh release upload "$release_tag" \
+  "${asset_dir}/install.sh" \
+  "${asset_dir}/orderfield-${release_version}.tar.gz" \
+  "${asset_dir}/SHA256SUMS"
+```
+
+Verify the remote tag target, published release, and checksum assets before calling the release complete:
 
 ```bash
 git fetch origin main --tags
@@ -56,22 +77,61 @@ test "$(git rev-list -n 1 "$release_tag")" = "$(git rev-parse origin/main)"
 test "$(gh release view "$release_tag" --json tagName --jq .tagName)" = "$release_tag"
 test -n "$(gh release view "$release_tag" --json publishedAt --jq .publishedAt)"
 gh release view "$release_tag" --json url,tagName,isDraft,isPrerelease,publishedAt
+test "$(gh release view "$release_tag" --json assets --jq '[.assets[].name] | sort | join(" ")')" = "SHA256SUMS install.sh orderfield-${release_version}.tar.gz"
 ```
 
 ## Mortal install (after push)
 
 ```bash
 npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
-# or
-curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash
 ```
 
-Confirm the published source still exposes both skill names and that the remote classic installer reports the release version:
+Classic install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
+
+```bash
+release_version="$(tr -d '[:space:]' < VERSION)"
+release_tag="v${release_version}"
+asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
+verify_root="$(mktemp -d)"
+curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
+curl -fsSL "$asset_base/install.sh" -o "$verify_root/install.sh"
+curl -fsSL "$asset_base/orderfield-${release_version}.tar.gz" \
+  -o "$verify_root/orderfield-${release_version}.tar.gz"
+python3 - "$verify_root" <<'PY'
+import hashlib, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+wanted = {}
+for line in (root / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line or line.startswith("#"):
+        continue
+    digest, name = line.split(None, 1)
+    wanted[name.lstrip("*")] = digest.lower()
+for path in root.iterdir():
+    if path.name == "SHA256SUMS":
+        continue
+    expected = wanted.get(path.name)
+    if expected is None:
+        raise SystemExit(f"SHA256SUMS missing {path.name}")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual != expected:
+        raise SystemExit(f"SHA-256 mismatch: {path.name}")
+if "install.sh" not in wanted:
+    raise SystemExit("SHA256SUMS missing install.sh")
+print("SHA-256 ok")
+PY
+```
+
+Confirm the published source still exposes both skill names and that the verified classic installer reports the release version:
 
 ```bash
 npx --yes skills add pedroknigge/orderfield --list --full-depth
 remote_root="$(mktemp -d)"
-curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --root "$remote_root"
+ORDERFIELD_REF="$release_tag" \
+ORDERFIELD_VERSION="$release_version" \
+ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
+ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
+bash "$verify_root/install.sh" --root "$remote_root"
 grep -q "version: \"$release_version\"" "$remote_root/.agents/skills/orderfield/SKILL.md"
 grep -q "version: \"$release_version\"" "$remote_root/.agents/skills/of/SKILL.md"
 "$remote_root/.local/bin/of" --help

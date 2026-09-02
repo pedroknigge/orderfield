@@ -5,6 +5,8 @@ set -euo pipefail
 
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
+# INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
+DEFAULT_VERSION="0.6.9"
 KNOWN_HARNESSES=(claude codex cursor opencode grok)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
@@ -42,8 +44,18 @@ Usage: install.sh [--global|--project|--generic] [--uninstall] [--root PATH]
     --root / project → <base>/.local/bin/of (hermetic; does not touch $HOME)
   Uninstall removes that symlink when it is a symlink.
 
-  One-liner uninstall (no local checkout needed):
-    curl -fsSL https://raw.githubusercontent.com/pedroknigge/orderfield/main/install.sh | bash -s -- --uninstall
+  A checkout next to this script is installed as-is. A remote install
+  fetches a tag-pinned GitHub release archive and verifies SHA-256.
+  It does not clone unsigned mutable main.
+
+  Pin / verify (remote only):
+    ORDERFIELD_REF / ORDERFIELD_VERSION   release tag (default: v<VERSION>)
+    ORDERFIELD_ARCHIVE / ORDERFIELD_SHA256  local archive + expected hash
+    ORDERFIELD_SHA256SUMS                 local SHA256SUMS file
+    ORDERFIELD_RELEASE_BASE               override release asset base URL
+
+  Uninstall without a checkout: download+verify install.sh (see PUBLISH.md),
+  then: bash install.sh --uninstall
 EOF
       exit 0
       ;;
@@ -85,11 +97,154 @@ have_local() {
   [[ -n "${SRC}" && -f "${SRC}/SKILL.md" && -f "${SRC}/scripts/of.py" ]]
 }
 
-# Uninstall only deletes dests; no clone required (curl | bash -s -- --uninstall).
+resolve_pin() {
+  PINNED_VERSION="${ORDERFIELD_VERSION:-$DEFAULT_VERSION}"
+  PINNED_REF="${ORDERFIELD_REF:-v${PINNED_VERSION}}"
+  if [[ -n "${ORDERFIELD_REF:-}" && -z "${ORDERFIELD_VERSION:-}" ]]; then
+    PINNED_VERSION="${PINNED_REF#v}"
+  fi
+}
+
+mutable_ref() {
+  case "$1" in
+    main|master|HEAD|origin/main|origin/master|refs/heads/main|refs/heads/master)
+      return 0 ;;
+    *)
+      return 1 ;;
+  esac
+}
+
+lower_hex() {
+  printf '%s' "$1" | tr 'ABCDEF' 'abcdef'
+}
+
+is_sha256() {
+  local h
+  h="$(lower_hex "$1")"
+  [[ ${#h} -eq 64 ]] || return 1
+  [[ "$h" != *[!0-9a-f]* ]] || return 1
+  return 0
+}
+
+sha256_of() {
+  local f="$1" out
+  if command -v sha256sum >/dev/null 2>&1; then
+    out="$(sha256sum "$f" | awk '{print $1}')"
+  elif command -v shasum >/dev/null 2>&1; then
+    out="$(shasum -a 256 "$f" | awk '{print $1}')"
+  elif command -v openssl >/dev/null 2>&1; then
+    out="$(openssl dgst -sha256 "$f" | awk '{print $NF}')"
+  elif command -v python3 >/dev/null 2>&1; then
+    out="$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$f")"
+  else
+    echo "install.sh: need sha256sum, shasum, openssl, or python3" >&2
+    exit 1
+  fi
+  if [[ -z "$out" ]]; then
+    echo "install.sh: empty SHA-256 for $f" >&2
+    exit 1
+  fi
+  printf '%s\n' "$out"
+}
+
+fetch_url() {
+  local url="$1" dest="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url" -o "$dest"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$dest" "$url"
+  else
+    echo "install.sh: need curl or wget to fetch $url" >&2
+    exit 1
+  fi
+}
+
+expected_sha256_from_sums() {
+  local sums="$1" name="$2"
+  awk -v n="$name" '
+    NF >= 2 {
+      f=$NF
+      sub(/^\*/, "", f)
+      if (f == n) { print $1; exit }
+    }
+  ' "$sums"
+}
+
+github_release_base() {
+  local url="${REPO_URL%.git}"
+  printf '%s/releases/download/%s\n' "$url" "$PINNED_REF"
+}
+
+pinned_source_root() {
+  local dest="$1" d
+  if [[ -f "$dest/SKILL.md" && -f "$dest/scripts/of.py" ]]; then
+    printf '%s\n' "$dest"
+    return 0
+  fi
+  for d in "$dest"/*; do
+    if [[ -d "$d" && -f "$d/SKILL.md" && -f "$d/scripts/of.py" ]]; then
+      printf '%s\n' "$d"
+      return 0
+    fi
+  done
+  echo "install.sh: pinned archive is missing SKILL.md + scripts/of.py" >&2
+  return 1
+}
+
+fetch_pinned_source() {
+  local dest="$1" archive sums_file expected actual archive_name release_base
+  resolve_pin
+  if mutable_ref "$PINNED_REF"; then
+    echo "install.sh: refusing unsigned mutable ref '$PINNED_REF'" >&2
+    echo "install.sh: set ORDERFIELD_REF to a release tag (e.g. v${DEFAULT_VERSION})" >&2
+    exit 2
+  fi
+  archive_name="orderfield-${PINNED_VERSION}.tar.gz"
+  release_base="${ORDERFIELD_RELEASE_BASE:-$(github_release_base)}"
+  archive="${dest}/.orderfield-src.tar.gz"
+  if [[ -n "${ORDERFIELD_ARCHIVE:-}" ]]; then
+    cp "${ORDERFIELD_ARCHIVE}" "$archive"
+  else
+    fetch_url "${ORDERFIELD_ARCHIVE_URL:-${release_base}/${archive_name}}" "$archive"
+  fi
+  if [[ -n "${ORDERFIELD_SHA256:-}" ]]; then
+    expected="${ORDERFIELD_SHA256}"
+  elif [[ -n "${ORDERFIELD_SHA256SUMS:-}" ]]; then
+    expected="$(expected_sha256_from_sums "${ORDERFIELD_SHA256SUMS}" "$archive_name")"
+  elif [[ -n "${ORDERFIELD_ARCHIVE:-}" ]]; then
+    echo "install.sh: ORDERFIELD_ARCHIVE requires ORDERFIELD_SHA256 or ORDERFIELD_SHA256SUMS" >&2
+    exit 1
+  else
+    sums_file="${dest}/.orderfield-SHA256SUMS"
+    fetch_url "${ORDERFIELD_SUMS_URL:-${release_base}/SHA256SUMS}" "$sums_file"
+    expected="$(expected_sha256_from_sums "$sums_file" "$archive_name")"
+    rm -f "$sums_file"
+  fi
+  if [[ -z "$expected" ]]; then
+    echo "install.sh: SHA256SUMS has no entry for ${archive_name}" >&2
+    exit 1
+  fi
+  if ! is_sha256 "$expected"; then
+    echo "install.sh: invalid SHA-256 '$expected'" >&2
+    exit 1
+  fi
+  actual="$(sha256_of "$archive")"
+  if [[ "$(lower_hex "$actual")" != "$(lower_hex "$expected")" ]]; then
+    echo "install.sh: SHA-256 mismatch for ${archive_name}" >&2
+    echo "install.sh: expected ${expected}" >&2
+    echo "install.sh: actual   ${actual}" >&2
+    exit 1
+  fi
+  tar -xzf "$archive" -C "$dest"
+  rm -f "$archive"
+}
+
+# Uninstall only deletes dests; no fetch required.
 if [[ "$UNINSTALL" -eq 0 ]] && ! have_local; then
   SRC="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
   cleanup_src="$SRC"
-  git clone --depth 1 "$REPO_URL" "$SRC" >/dev/null
+  fetch_pinned_source "$SRC"
+  SRC="$(pinned_source_root "$SRC")"
 fi
 
 # A literal `./install.sh --project` installs below its own checkout. Copy from
