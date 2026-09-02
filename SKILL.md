@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.6.7 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.6.8 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.6.7"
+  version: "0.6.8"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -29,7 +29,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic per-file writes plus a field-wide WAL (stage + MANIFEST + publish) for multi-file mutations, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 
@@ -74,7 +74,7 @@ Optional leader narrative for the next session (one screen; refuse huge dumps):
 python3 <skill>/scripts/of.py checkpoint --summary "wave N: waiting on collect after spawn"
 ```
 
-Learnings (`of learn`) are **field-local by default**: bare `of learn TEXT` is a note about this ORDER and dies with the mission. Protocol learnings need an explicit `--protocol` — durable lessons about **running Orderfield**, not about the product in this repo; they survive `of init --force`, `of gc`, and other repos, and up to 8 lines reach every child prompt. Promotion is a leader decision after reading the text: `of learn --promote <id>` copies a field lesson into protocol. Every stored item carries provenance (`source: leader`, `repo` = sha256 of the resolved project root, `origin` = `ORDER.origin` or null, `of_version`); items without provenance or failing the schema are skipped on load with one stderr warning. Provenance is an audit trail, not authentication: anything running as your user can write a well-formed item, so read a lesson before you `--promote` it, and keep child prompts reading the user cache only. Put lessons on disk; do not paste them into `--slice` or SPEC.
+Learnings (`of learn`) are **field-local by default**: bare `of learn TEXT` is a note about this ORDER and dies with the mission. Protocol learnings need an explicit `--protocol` — durable lessons about **running Orderfield**, not about the product in this repo; they survive `of init --force`, `of gc`, and other repos, and up to 8 **untrusted quoted** lines reach every child prompt (never naked leader doctrine). Promotion is a leader decision after reading the text: `of learn --promote <id>` copies a field lesson into protocol. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` and `--promote` refuse while it is set (`of: error: child-forge: …`). `source=leader` is never written for a child; field notes from a child may exist (`source=child`) but cannot promote themselves. Every stored item carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin` = `ORDER.origin` or null, `of_version`); items without provenance or failing the schema are skipped on load with one stderr warning. Provenance is an audit trail, not authentication: anything running as your user can write a well-formed item, so read a lesson before you `--promote` it, and keep child prompts reading the user cache only. Put lessons on disk; do not paste them into `--slice` or SPEC.
 
 ```bash
 of learn "this wave's explorer skipped --owns-requirement"        # field (default)
@@ -84,7 +84,7 @@ of learn --list
 of learn --forget lrn_ab12cd34ef56
 ```
 
-**Spawn trust.** `OF_TRUST` is authoritative for **every** adapter: `conservative` (default; also `''`/`default`) adds no escalation flag anywhere — approvals and sandboxing stay as the harness ships them; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` (alias `escalated`) is the only profile that emits bypass flags and must be selected explicitly. Children receive an environment **allowlist**, not the parent environment: `OF_SPAWN_ENV=NAME1,NAME2` adds names, `OF_SPAWN_ENV=inherit` opts out. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
+**Spawn trust.** `OF_TRUST` is authoritative for **every** adapter: `conservative` (default; also `''`/`default`) adds no escalation flag anywhere — approvals and sandboxing stay as the harness ships them; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` (alias `escalated`) is the only profile that emits bypass flags and must be selected explicitly. Children receive an environment **allowlist**, not the parent environment: `OF_SPAWN_ENV=NAME1,NAME2` adds names, `OF_SPAWN_ENV=inherit` opts out. Spawn always sets `OF_FIELD=<ORDER id>` and `OF_CHILD=<child_id>`. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
 
 **Error contract.** Kernel failures are one line on stderr — `of: error: <kind>: <message>`, exit 1; with `--json` the same failure is `{"event":"error","ok":false,"kind":…,"message":…}`. No traceback unless `OF_DEBUG=1`. Ctrl-C exits 130.
 
@@ -147,7 +147,7 @@ Same-wave overlapping `--owns-path` dies. A second implementer in the wave **mus
 
 Identify the invariant-dense slice **early** (not necessarily first): do not leave lease/audit/races for final integration.
 
-The packet must fit on one screen. **The specification does not have to.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
+The packet must fit on one screen. **The specification does not have to.** **Do not pack a whole phase as one slice.** ORDER may compress reasoning (leader chat, discarded alternatives, transcripts). It must **never** compress the contract (CLI, schemas, types, exit codes, invariants, deliverables).
 
 **Do not write `PROMPT.md` / `prompt.md` at the project root.** Ingest the **verbatim user brief** into the field, never into the product tree. The brief is the work the user asked for, not necessarily the current message. A deictic go-ahead (`dale`, `hacelo`, `do it`, `go ahead`, `as discussed`) pointing at a prior conversation is **steer**, not a contract:
 
@@ -175,13 +175,13 @@ python3 <skill>/scripts/of.py spec --amend "<new user request>"
 # or: of spec --amend-file .orderfield/ingest.md
 ```
 
-The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **SPEC is truth. REQUIREMENTS is an index** (`origin` + `source.spec_line_*`); contrast cites `SPEC.md:N`. Extract is a conservative heuristic (`LEASE-` / `AUDIT-` / `IDEMP-` / `HTTP-` / `CLI-`); misses go to `--add`. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. `phase --force` to `deliver` still runs those SPEC gates. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Verifier `done` needs nonempty evidence that names what was checked plus a nonempty `result_ref` (`"all tests passed"` is invalid). Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
+The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **SPEC is truth. REQUIREMENTS is an index** (`origin` + `source.spec_line_*`); contrast cites `SPEC.md:N`. `of spec --add ID` leaves the ID visible in SPEC.md: if missing, it appends a dated binding line (original brief stays) and refreshes `spec_hash`. Extract is a conservative heuristic (`LEASE-` / `AUDIT-` / `IDEMP-` / `HTTP-` / `CLI-`); misses go to `--add`. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. `phase --force` to `deliver` still runs those SPEC gates. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Verifier `done` needs nonempty evidence that names what was checked plus a nonempty `result_ref` (`"all tests passed"` is invalid). Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
-An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds the child budget**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence).
+An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds the child budget**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence).
 
 New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
@@ -209,7 +209,7 @@ Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harn
 
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
-For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch is nonempty, render/handoff add a **continuation note**: continue from scratch; do not restart the slice.
+For an interactive child, `of handoff --packet …` writes `prompts/<child_id>.md` and prints a short envelope. **That file is the entire message** (or the full stdout of `of render`). Do not truncate. Do not tell the child to re-run render. `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document into every prompt. The prompt's ORDER view is compact (`id` / `rev` / `mission` / `phase` / `spec_ref` plus a line to read ORDER.json for constraints, backlog, workspace); the canonical packet JSON on disk stays full. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch is nonempty, render/handoff add a **continuation note**: continue from scratch; do not restart the slice.
 
 ### 4b. Liveness while a wave flies: `of pulse`
 
@@ -234,13 +234,15 @@ python3 <skill>/scripts/of.py status
 
 Collect and integrate refuse mixed leftover stale packets (they do not silently drop them). A **fully stale** wave is recoverable without hand-editing ORDER: `of resume` prints `next-wave`, and `of next-wave` skips occupied stale dirs without requiring a report. If every stale packet already has a bound residual, collect/integrate may still reduce that complete wave.
 
+`collect` and `integrate` print `owned-but-unverified <ID>…` when a binding requirement is owned but not yet `verified_*`. They never auto-stamp `verified_contract` — that remains `of spec --verified-contract`.
+
 One dead child does not freeze the wave: `collect` prints `MISSING <child_id>` per absent residual, keeps walking, and exits 2 when anything is missing or invalid. To reduce what did land while a straggler keeps flying, use `of integrate --wave N --partial` — skipped children are listed in the report as `skipped_in_flight` and stay in flight. Without `--partial`, integrate still refuses an incomplete wave. A child that will never report is released with `of unpack`.
 
 Integration hashes the canonical packet/residual set plus reduction options. Replaying identical inputs is a no-op that also repairs report-derived state after interruption. Changed inputs require explicit `--recompute`, which preserves an auditable integration record. Phase and wave movement require complete, current-digest integration with no in-flight children; phase movement is sequential and closed, and `phase --force --reason …` is the audited break-glass path.
 
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
-Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Packet `budget.tokens`, `thresholds.local_budget_pct`, and inherited depth stay reserved — carried, never measured or enforced; only `budget.seconds` is enforced, as the spawn timeout. The kernel does not invent telemetry.
+Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Packet `budget.tokens`, `thresholds.local_budget_pct`, and inherited depth stay reserved — `of pack` writes `tokens=0` and `--tokens N` for N>0 dies; never measured or enforced; only `budget.seconds` is enforced, as the spawn timeout. The kernel does not invent telemetry.
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
@@ -281,7 +283,7 @@ The field is editable in both directions — never edit `ORDER.json` by hand:
 
 - `of patch --constraints-rm <exact text | unique substring | 1-based index>` removes a constraint (repeatable). Re-pointing a mission means pruning the old mission's constraints too, or every future packet ships dead context as binding.
 - `of patch --reopen` reopens the current phase's `done_when` (the inverse of `--done-when-closed`). `--mission` and `--done-when-mission` **reopen automatically** — a new mission never inherits the old one's closure, so a stale `done_when_closed` cannot make `integrate` propose `phase` on work that has not started.
-- `of patch --backlog-add "step"` / `--backlog-done N` keep the user's binding step order as a **field** (`ORDER.backlog`), not a prose constraint. Open steps are projected into every packet's `order.backlog`.
+- `of patch --backlog-add "step"` / `--backlog-done N` / `--backlog-undone N` keep the user's binding step order as a **field** (`ORDER.backlog`), not a prose constraint. Open steps are projected into every packet's `order.backlog`. `--backlog-undone` reopens a done row; it does not append a ghost.
 - `of patch --origin <adapter> [--session-id <id>]` sets or replaces `ORDER.origin` (first resume of a field created without a stamp, or a corrected session id). `--origin -` clears. `--session-id` alone without an existing origin or `--origin` dies.
 - `of patch` prints the summary first and `rev=N` as the **last** line (`--quiet` prints only `rev=N`), so `… | tail -1` always answers "did it land, at what rev".
 
@@ -321,7 +323,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
-- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). Only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
+- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when a field already exists. `of resume` first. Unrelated second mission in the same tree is `of new`, not `--force`.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.

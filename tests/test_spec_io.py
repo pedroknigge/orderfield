@@ -238,7 +238,9 @@ class SpecWriteOrder(unittest.TestCase):
         after = json.loads(self.order_path.read_text(encoding="utf-8"))
         self.assertEqual(after, before)
         req = json.loads(self.req_path.read_text(encoding="utf-8"))
-        self.assertIn("ADD-001", [r["id"] for r in req["requirements"]])
+        # WAL-001: a crash before publish leaves the previous generation intact
+        # (REQUIREMENTS is not a live partial write).
+        self.assertNotIn("ADD-001", [r["id"] for r in req["requirements"]])
         self.assertIsNone(field._HELD_FIELD_LOCK)
 
     def test_cmd_spec_takes_lock_without_main(self) -> None:

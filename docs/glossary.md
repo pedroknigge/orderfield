@@ -14,7 +14,7 @@ Canonical terms only. Product surface: [README Compared-to](../README.md). Leade
 
 **SPEC** (`.orderfield/SPEC.md`) is the lossless user brief: original request plus dated amendments. It is truth for CLI, schemas, types, exit codes, invariants, and deliverables. A deictic go-ahead (`dale` / `do it` / `as discussed`) is not a brief — expand the prior request, or steer an open field.
 
-**ORDER** (`.orderfield/ORDER.json` or `.orderfield/fields/<id>/ORDER.json`) is the slow field the leader designs: mission, phase, constraints, `done_when`, workspace. ORDER may compress reasoning (chat, discarded alternatives, transcripts). It must not compress the contract. Packets are a cut of work from SPEC + ORDER together; a slice does not replace SPEC.
+**ORDER** (`.orderfield/ORDER.json` or `.orderfield/fields/<id>/ORDER.json`) is the slow field the leader designs: mission, phase, constraints, `done_when`, workspace. ORDER may compress reasoning (chat, discarded alternatives, transcripts). It must not compress the contract. Packets are a cut of work from SPEC + ORDER together; a slice does not replace SPEC. Render/handoff compact the prompt's ORDER view; the canonical packet JSON on disk stays full.
 
 ## sibling field
 
@@ -56,9 +56,9 @@ Adiabatic following **as contract, not moral slavery**. The child moves freely i
 
 ## protocol learning vs field learning
 
-**Protocol** (`of learn --protocol`, or `of learn --promote <id>` from a field lesson): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines; they are not SPEC.
+**Protocol** (`of learn --protocol`, or `of learn --promote <id>` from a field lesson): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines as untrusted quoted data; they are not SPEC. `--protocol` / `--promote` refuse when `OF_CHILD` is set.
 
-**Field** (`of learn TEXT`, the default): this ORDER only. Dropped when the mission or a closed phase no longer applies.
+**Field** (`of learn TEXT`, the default): this ORDER only. Dropped when the mission or a closed phase no longer applies. A child may write a field note (`source=child`); it cannot stamp `source=leader` or promote itself.
 
 ## skill beats child
 

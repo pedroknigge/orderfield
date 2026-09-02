@@ -540,6 +540,8 @@ class CloseProtocolApply(unittest.TestCase):
         self.assertIn("patched mission text", text)
         self.assertIn("new close criterion", text)
         self.assertIn("# Phase:", text)
+        self.assertIn("done_when_mission:", text)
+        self.assertIn("done_when_phase:", text)
 
 
 class NotesDedup(unittest.TestCase):
@@ -572,6 +574,33 @@ class NotesDedup(unittest.TestCase):
         self.assertIn(note, order["notes"])
         self.assertIn(substring, order["notes"])
         self.assertGreaterEqual(order["notes"].count(substring), 2)
+
+
+class ConstraintsWhitespaceDedupe(unittest.TestCase):
+    def test_apply_patches_skips_whitespace_normalized_constraint(self) -> None:
+        order = of.default_order("m", "explore")
+        existing = "slaves do not mutate ORDER"
+        self.assertIn(existing, order["constraints"])
+
+        def residual_with(text: str) -> dict:
+            r = load_json(DONE)
+            r["residual"]["proposed_patch"] = {"constraints+": [text]}
+            return r
+
+        of.apply_patches(order, [residual_with("  slaves   do not mutate ORDER  ")])
+        self.assertEqual(order["constraints"].count(existing), 1)
+        self.assertNotIn("  slaves   do not mutate ORDER  ", order["constraints"])
+        of.apply_patches(order, [residual_with("keep the contract kernel")])
+        self.assertIn("keep the contract kernel", order["constraints"])
+        of.apply_patches(order, [residual_with("keep  the   contract kernel")])
+        self.assertEqual(
+            sum(
+                1
+                for c in order["constraints"]
+                if " ".join(str(c).split()) == "keep the contract kernel"
+            ),
+            1,
+        )
 
 
 class PhaseScopedDoneWhen(unittest.TestCase):
@@ -669,6 +698,8 @@ class PhaseScopedDoneWhen(unittest.TestCase):
         text = (self.tmp / ".orderfield" / "PHASE.md").read_text(encoding="utf-8")
         self.assertIn("build: land it", text)
         self.assertNotIn("explore: map it", text)
+        self.assertIn("done_when_mission:", text)
+        self.assertIn("done_when_phase:", text)
         r = run_of(
             self.tmp, "pack", "--slice", "s", "--role", "implementer",
             "--child-id", "b1",

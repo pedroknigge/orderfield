@@ -35,7 +35,7 @@ Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the s
 
 ## Branch protection
 
-`main` requires a PR and these status checks (GitHub branch protection):
+`main` requires a PR, `required_approving_review_count >= 1` (one independent approving review; not a fake human CI job), and these five status checks (GitHub branch protection):
 
 - `test (ubuntu-latest, 3.11)`
 - `test (ubuntu-latest, 3.13)`
@@ -43,7 +43,7 @@ Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the s
 - `test (macos-latest, 3.13)`
 - `gitleaks`
 
-Do not force-push `main`.
+Do not force-push `main`. Do not drop these checks.
 
 ## Coverage (waiver)
 

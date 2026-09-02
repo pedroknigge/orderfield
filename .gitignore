@@ -1,4 +1,6 @@
 .orderfield/
+scratch/
+vibe-proof-audit-report.*
 __pycache__/
 *.py[cod]
 .venv/

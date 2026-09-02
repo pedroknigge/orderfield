@@ -54,8 +54,10 @@
     "source": {
       "type": "string",
       "enum": [
-        "leader"
-      ]
+        "leader",
+        "child"
+      ],
+      "description": "Who persisted this item. Children may write field notes (source=child); they cannot persist protocol or stamp source=leader."
     },
     "promoted_from": {
       "type": "string",
@@ -75,7 +77,8 @@
         "source": {
           "type": "string",
           "enum": [
-            "leader"
+            "leader",
+            "child"
           ]
         },
         "repo": {

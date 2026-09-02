@@ -19,6 +19,7 @@ from of.field import (
     find_root,
     emit_event,
     json_events_enabled,
+    print_owned_unverified,
     redact_text,
     require_nonsymlink_kernel_root,
     set_json_events,
@@ -324,7 +325,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help=f"tool the slice needs; spawn refuses adapters without it {KNOWN_TOOLS}",
     )
-    s.add_argument("--tokens", type=int, default=80000)
+    s.add_argument(
+        "--tokens",
+        type=int,
+        default=0,
+        help="reserved; must be 0. N>0 is refused (no token telemetry)",
+    )
     s.add_argument("--seconds", type=int, default=600)
     s.add_argument(
         "--owns-requirement",
@@ -394,7 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("collect", help="validate residuals for a wave")
     s.add_argument("--wave", type=int)
-    s.set_defaults(func=cmd_collect)
+    s.set_defaults(func=_collect_with_unverified)
 
     s = sub.add_parser("integrate", help="reduce residuals and choose a regime")
     s.add_argument("--wave", type=int)
@@ -451,6 +457,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         type=int,
         help="mark backlog step N (1-based) done",
+    )
+    s.add_argument(
+        "--backlog-undone",
+        dest="backlog_undone",
+        action="append",
+        type=int,
+        help="mark backlog step N (1-based) not done",
     )
     s.add_argument(
         "--done-when",
@@ -629,6 +642,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_eval)
 
     return p
+
+
+def _collect_with_unverified(args: argparse.Namespace) -> None:
+    try:
+        cmd_collect(args)
+    except SystemExit as exc:
+        if exc.code not in (0, None, 2):
+            raise
+        print_owned_unverified(find_root())
+        if exc.code not in (0, None):
+            raise
+        return
+    print_owned_unverified(find_root())
 
 
 ERROR_MESSAGE_MAX_CHARS = 400

@@ -329,6 +329,30 @@ def append_amendment(current: str, incoming: str) -> str:
     return base.rstrip("\n") + block
 
 
+def spec_mentions_req_id(text: str, req_id: str) -> bool:
+    rid = str(req_id or "")
+    if not rid:
+        return False
+    return bool(re.search(rf"(?<![A-Z0-9]){re.escape(rid)}(?![0-9])", text or ""))
+
+
+def spec_id_line_span(text: str, req_id: str) -> tuple[int, int] | None:
+    rid = str(req_id or "")
+    if not rid:
+        return None
+    hit: tuple[int, int] | None = None
+    for i, line in enumerate((text or "").splitlines(), 1):
+        if spec_mentions_req_id(line, rid):
+            hit = (i, i)
+    return hit
+
+
+def append_binding_line(current: str, req_id: str, text: str) -> str:
+    """Dated binding line. Does not rewrite the original brief."""
+    line = f"{req_id}: {' '.join(str(text or '').split())}"
+    return append_amendment(current, line)
+
+
 def read_brief_file(path_str: str, *, flag: str) -> str:
     if path_str != "-" and not Path(path_str).is_file():
         die(f"{flag} not found: {path_str}")

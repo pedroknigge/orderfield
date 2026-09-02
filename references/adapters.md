@@ -102,7 +102,7 @@ allowlist:
   lowercase, `REQUESTS_CA_BUNDLE CURL_CA_BUNDLE NODE_EXTRA_CA_CERTS`),
   `SSH_AUTH_SOCK`, and the Windows set (`SYSTEMROOT COMSPEC USERPROFILE
   APPDATA LOCALAPPDATA PATHEXT TEMP TMP`)
-- kernel: `OF_FIELD` (set to the ORDER id), `OF_JSON`, `OF_NO_UPDATE_CHECK` — not `OF_TRUST` (a nested `of spawn` re-chooses its trust), not `OF_LEARNINGS` / `OF_DEBUG` / `OF_AGENT` / `OF_SPAWN_ENV`
+- kernel: `OF_FIELD` (set to the ORDER id), `OF_CHILD` (set to the packet child id), `OF_JSON`, `OF_NO_UPDATE_CHECK` — not `OF_TRUST` (a nested `of spawn` re-chooses its trust), not `OF_LEARNINGS` / `OF_DEBUG` / `OF_AGENT` / `OF_SPAWN_ENV`
 - per adapter: `claude` `ANTHROPIC_* CLAUDE_*` (Bedrock / Vertex users add `AWS_*` / `GOOGLE_APPLICATION_CREDENTIALS` via `OF_SPAWN_ENV`); `codex` `OPENAI_* CODEX_*`;
   `cursor` `CURSOR_*`; `opencode` `OPENCODE_* ANTHROPIC_* OPENAI_* GOOGLE_*
   GEMINI_* OPENROUTER_*`; `orca` `ORCA_*`; `grok` `XAI_* GROK_*`; `agy`
@@ -112,7 +112,7 @@ allowlist:
 `OF_SPAWN_ENV=NAME1,NAME2` adds names. `OF_SPAWN_ENV=inherit` opts out and
 passes the whole parent environment (recorded as `env_mode: inherit`). The
 child always receives `OF_FIELD=<ORDER id>` so its own `of` calls bind the
-same field in a multi-field tree. `generic` forwards no credential prefixes:
+same field in a multi-field tree, and `OF_CHILD=<child_id>` so `of learn --protocol` / `--promote` refuse (leader-only). `generic` forwards no credential prefixes:
 an `OF_AGENT` harness needs `OF_SPAWN_ENV` for its API keys.
 Table: `SPAWN_ENV_*` in `scripts/of_adapters.py`.
 

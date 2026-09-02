@@ -36,7 +36,7 @@ Kernel: `of init --source` / `of spec --amend` / `--revise` print an advisory **
 
 Eve compacts model context inside the harness. Orderfield compacts **reasoning**, never the contract:
 
-- Packets fit on one screen; SPEC may be long but is never silently rewritten.
+- Packets fit on one screen; SPEC may be long but is never silently rewritten. `of render` / `of handoff` compact the prompt ORDER view to id/rev/mission/phase/spec_ref plus a line to read ORDER.json for constraints, backlog, workspace; the canonical packet file stays full.
 - Nonempty scratch + missing residual → continue the packet (`HOLD`), do not repack.
 - `of checkpoint --summary` is episodic leader memory, not a substitute for residuals.
 

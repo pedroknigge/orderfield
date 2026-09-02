@@ -34,6 +34,7 @@ from of_adapters import (
 
 from of.field import (
     CHECKPOINT_MAX_CHARS,
+    OF_CHILD_ENV,
     OF_FIELD_ENV,
     CHECKPOINT_MAX_LINES,
     FIELD_SPEC_MD,
@@ -53,6 +54,7 @@ from of.field import (
     default_worktree_path,
     die,
     dump_json,
+    dump_text,
     emit_event,
     field_lock,
     field_rel,
@@ -281,6 +283,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die(
             f"unknown --requires-tool: {sorted(set(unknown))}; known tools: {KNOWN_TOOLS}"
         )
+    tokens = int(getattr(args, "tokens", 0) or 0)
+    if tokens != 0:
+        die(
+            "budget.tokens is reserved accounting; of pack --tokens N for N>0 is "
+            "refused (only budget.seconds is enforced; the kernel has no token telemetry)",
+            kind="reserved",
+        )
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
@@ -399,7 +408,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "allow_nested": bool(args.allow_nested),
         "requires_tool": requires_tool,
         "budget": {
-            "tokens": args.tokens,
+            "tokens": 0,
             "seconds": args.seconds,
         },
     }
@@ -454,7 +463,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
     dump_json(out, packet, skip_dir_fsync=True)
     ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
-    (wdir / "prompts" / f"{child_id}.md").write_text(prompt, encoding="utf-8")
+    dump_text(wdir / "prompts" / f"{child_id}.md", prompt, skip_dir_fsync=True)
     snapshot_session(root, "pack")
     emit_event(
         "pack",
@@ -732,6 +741,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     # otherwise hit the roster and exit 2.
     child_env = spawn_env(adapter)
     child_env[OF_FIELD_ENV] = str(order["id"])
+    child_env[OF_CHILD_ENV] = str(child_id)
     try:
         proc = run_child(argv, root, child_env, timeout_s)
     except FileNotFoundError:

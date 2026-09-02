@@ -8,6 +8,23 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.6.8
+
+Post-0.6.7 P1s plus kernel theater cut from real fields. Same 0.6 line. Not a new regime.
+
+- **Child-forge closed (LEARN-001/002):** `of spawn` always sets `OF_CHILD=<child_id>`. `of learn --protocol` and `--promote` refuse while `OF_CHILD` is set (`of: error: child-forge:`). `source=leader` is never written for a child; field notes from a child may exist (`source=child`) but cannot promote themselves. `render_prompt` wraps each protocol line as untrusted JSON-quoted data. Provenance is still not OS-user authentication.
+- **Field WAL (WAL-001):** multi-file mutations under `field.lock` stage one generation, write `wal/<id>/MANIFEST.json` (paths+hashes), then publish live paths and `wal/CURRENT.json`. Per-file fsync+replace stays. Crash mid-write leaves the previous published generation readable; recovery is idempotent.
+- **Accounting stays honest (BUDGET-001):** `of pack` writes `budget.tokens=0` and does not default 80000; `--tokens N` for N>0 dies (`kind=reserved`). Schema minimum for tokens is 0. Only `budget.seconds` is enforced. No token telemetry.
+- **Main requires a human (REVIEW-001):** branch protection `required_approving_review_count >= 1` plus the five CI checks. CONTRIBUTING.md matches. Not a fake human CI job.
+- **Residual→requirement loop (LOOP-001):** `of collect` and `of integrate` print `owned-but-unverified` binding IDs. A done residual does not stamp `verified_*`; never auto-stamp `verified_contract`. Leader still runs `of spec --verified-contract`.
+- **Constraint dedupe (DEDUPE-001):** `constraints+` and `of patch --constraints-add` skip after whitespace-normalize (`" ".join(split())`). No fuzzy merge.
+- **PHASE.md (PHASE-001):** prints `done_when_mission` and `done_when_phase` as separate lists. Both empty: one line `no phase criteria; of patch --done-when`.
+- **Backlog undo (BACKLOG-001):** `of patch --backlog-undone N` reopens that row. No ghost rows.
+- **Compact render (RENDER-001):** prompt ORDER view is `id` / `rev` / `mission` / `phase` / `spec_ref` plus a line to read ORDER.json. Canonical packet JSON on disk stays full.
+- **SPEC is truth (SPEC-001):** `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`).
+- **Doctrine (DOCTRINE-001):** SLAVE.md — product comments are short and factual, not the field diary. SKILL.md — do not pack a whole phase as one slice; oversized-slice note stays advisory.
+- Packaging: VERSION 0.6.8; skill/alias description preview `v0.6.8 — …`.
+
 ## 0.6.7
 
 Vibe-Proof v0.9.0 P0/P1 hardening. Same 0.6 line. Not a new regime.
