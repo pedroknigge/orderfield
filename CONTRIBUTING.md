@@ -45,16 +45,21 @@ Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the s
 
 Do not force-push `main`. Do not drop these checks.
 
+**Adoption:** the protection config is real (count=1, dismiss stale reviews, enforce admins, five checks, force-push and deletion disabled). Independent review in merge history is still unproven: [PR #40](https://github.com/pedroknigge/orderfield/pull/40) and the 0.7.0 landings [#41](https://github.com/pedroknigge/orderfield/pull/41)/[#42](https://github.com/pedroknigge/orderfield/pull/42)/[#43](https://github.com/pedroknigge/orderfield/pull/43)/[#45](https://github.com/pedroknigge/orderfield/pull/45) merged with empty reviews after a temporary review-requirement window (human-authorized). REVIEW-001 is not closed as shipped.
+
 ## Coverage (waiver)
 
 No third-party coverage tool in CI — this package is **stdlib only** (no `pip` deps, no lockfile). Critical paths are guarded by the unittest suite (`tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py`). Revisit if a stdlib-native coverage approach is adopted; do not add `coverage`/`pytest-cov` without an explicit product decision.
 
-## Debt / ownership (2026-08-30)
+## Debt / ownership (2026-09-02)
 
 | Item | Owner | Notes |
 |------|-------|-------|
 | Split of `scripts/of.py` | shipped 0.6.0 / 0.6.2 | Shim remains; internals in `scripts/of/` + `scripts/of/cli/` |
-| Unwired `cmd_spec` / `cmd_contrast` / `cmd_close` copies in `scripts/of/cli/ops.py` | solo (`pedroknigge`) | Parser dispatch uses `spec_cmd.py`; leftover defs are code debt (C-055) |
+| Duplicate `cmd_spec` / `cmd_contrast` / `cmd_close` copies in `ops.py` | gone on 0.6.9 / `17709e5` | Parser dispatch is `spec_cmd.py`; leftover defs are not present (C-055) |
+| LEARN-001 ancestor-exec-env refuse | shipped [PR #41](https://github.com/pedroknigge/orderfield/pull/41) | `spawned_child_id` walks ancestor exec-env; `env -u OF_CHILD` still refuses `--protocol`/`--promote` |
+| WAL CURRENT-only read view | shipped [PR #45](https://github.com/pedroknigge/orderfield/pull/45) | CURRENT is the only reader-visible generation |
+| REVIEW-001 independent review in merge history | unproven | Protection count≥1 is restored; 0.7.0 PRs merged with empty reviews after a temporary review-requirement window |
 | Claims matrix refresh after each public surface | solo | Code wins over docs |
 | Optional `of ask` for same-harness vs multi | solo | Protocol today; Partial by design |
 
