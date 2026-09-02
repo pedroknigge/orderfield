@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.0
+
+Vibe-Proof v0.9.4 Deep P1 hardening. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved.
+
+- **LEARN-001:** `spawned_child_id` walks ancestor exec-env. `of learn --protocol` / `--promote` refuse after `env -u OF_CHILD` or a fake id. Protocol lines stay JSON-quoted untrusted.
+- **WAL-001:** `wal/CURRENT.json` is the only reader-visible generation. SPEC, phase Markdown, and unpack tombstones are captured. Crash before CURRENT stays previous; after CURRENT is coherent.
+- **COST-001:** `of spawn` prints `of: cost: harness paid usage is not measured; this is not a budget`. JSON `kind=cost_unmeasured`. `--tokens N>0` still dies. No fake budget.
+- **INSTALL-001:** remote `install.sh` is tag-pinned and SHA-256 verified. Mutable `main`/`master`/`HEAD` exit 2. Release uploads `install.sh`, `orderfield-<ver>.tar.gz`, `SHA256SUMS`. `UPDATE_CMD` no longer pipes unsigned main.
+- **REVIEW-001:** branch protection `required_approving_review_count >= 1` plus five checks remains. 0.7.0 PRs landed after a human-authorized review-requirement window; independent review in merge history is still unproven.
+- Packaging: VERSION 0.7.0; skill/alias description preview `v0.7.0 — …`.
+
 ## 0.6.9
 
 HITL GitHub feedback as a public CLI, sibling-field recovery, stay-on-the-run. Same 0.6 line. Not a new regime.

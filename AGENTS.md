@@ -88,6 +88,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.6.7 vibe-proof hardening (`OF_TRUST` / spawn env allowlist / spec+checkpoint lock / learn provenance / error boundary / 3.11 floor) | documented |
 | 0.6.8 P1 close + theater cut (`OF_CHILD` / WAL / tokens=0 / main review / owned-but-unverified / constraint dedupe / PHASE.md / backlog-undone / compact render / spec --add writes SPEC) | documented |
 | 0.6.9 HITL `of issue` + sibling `--packet`/`of new` recovery + stay-on-run STALE continue | documented |
+| 0.7.0 Vibe-Proof Deep P1 (LEARN-001 ancestor exec-env, WAL CURRENT read view, COST disclaimer, INSTALL pin, REVIEW config) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
