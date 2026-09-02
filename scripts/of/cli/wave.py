@@ -62,6 +62,7 @@ from of.field import (
     fmt_age,
     git_repo_root,
     installed_version,
+    json_events_enabled,
     kernel_repo_root,
     load_json,
     load_order,
@@ -215,6 +216,34 @@ field_artifact_path = physical_artifact_path
 # write simply exits without a residual. Named so spawn can say why.
 PRINT_MODE_ADAPTERS = {"claude", "codex", "cursor", "agy", "opencode", "grok", "qwen"}
 
+# COST-001: no harness reports paid usage to the kernel. Never label tokens
+# as a budget; 0 is reserved accounting, not a measured ceiling.
+COST_DISCLAIMER = (
+    "harness paid usage is not measured; this is not a budget"
+)
+TOKENS_RESERVED_MSG = (
+    "budget.tokens is reserved accounting; of pack --tokens N for N>0 is "
+    "refused (only budget.seconds is enforced; the kernel has no token telemetry)"
+)
+
+
+def refuse_nonzero_tokens(tokens: int) -> None:
+    if int(tokens) != 0:
+        die(TOKENS_RESERVED_MSG, kind="reserved")
+
+
+def print_cost_disclaimer() -> None:
+    """Pre-spawn: paid usage is unmeasured. Not a budget line."""
+    if json_events_enabled():
+        emit_event(
+            "warning",
+            ok=True,
+            kind="cost_unmeasured",
+            message=COST_DISCLAIMER,
+        )
+        return
+    print(f"of: cost: {COST_DISCLAIMER}", file=sys.stderr)
+
 
 def kill_child_tree(proc: "subprocess.Popen[str]") -> None:
     """Kill the harness AND its tool subprocesses. Popen(start_new_session)
@@ -284,12 +313,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
             f"unknown --requires-tool: {sorted(set(unknown))}; known tools: {KNOWN_TOOLS}"
         )
     tokens = int(getattr(args, "tokens", 0) or 0)
-    if tokens != 0:
-        die(
-            "budget.tokens is reserved accounting; of pack --tokens N for N>0 is "
-            "refused (only budget.seconds is enforced; the kernel has no token telemetry)",
-            kind="reserved",
-        )
+    refuse_nonzero_tokens(tokens)
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
@@ -635,6 +659,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             f"(packet requires_tool={required}); pick --adapter with those tools "
             "or use --force-tool to acknowledge the capability override"
         )
+    refuse_nonzero_tokens(int((packet.get("budget") or {}).get("tokens") or 0))
+    print_cost_disclaimer()
     ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root

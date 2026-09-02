@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BUDGET-001 — pack must not advertise a token ceiling; only seconds are enforced."""
+"""COST-001 / BUDGET-001 — spawn disclaims unmeasured cost; tokens stay reserved."""
 from __future__ import annotations
 
 import json
@@ -17,14 +17,23 @@ sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
+COST_MARKERS = ("not measured", "not a budget")
 
 
-def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def run_of(
+    cwd: Path,
+    *args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     env.setdefault(
         "OF_LEARNINGS",
         str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
     )
+    for key in ("OF_AGENT", "OF_JSON", "OF_TRUST", "OF_ADAPTER", "OF_FIELD"):
+        env.pop(key, None)
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
@@ -34,12 +43,38 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def combined(proc: subprocess.CompletedProcess[str]) -> str:
+    return f"{proc.stdout}\n{proc.stderr}"
+
+
+def assert_cost_disclaimer(test: unittest.TestCase, text: str) -> None:
+    low = text.lower()
+    for marker in COST_MARKERS:
+        test.assertIn(marker, low, text)
+    test.assertNotIn("80000", text)
+    test.assertNotRegex(text.lower(), r"budget\s*[:=]\s*\d+")
+
+
 class BudgetTokensReserved(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-budget-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         r = run_of(self.tmp, "init", "--mission", "budget mission", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str) -> str:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "s",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return packed.stdout.splitlines()[0].strip()
 
     def test_pack_defaults_tokens_to_zero_not_80000(self) -> None:
         packed = run_of(
@@ -86,6 +121,88 @@ class BudgetTokensReserved(unittest.TestCase):
         self.assertEqual(tokens["minimum"], 0)
         self.assertEqual(of.RUNTIME_OWNERSHIP["budget.tokens"], "reserved")
         self.assertIn("budget.seconds", of.RUNTIME_ENFORCED)
+
+    def test_spawn_dry_run_prints_cost_disclaimer(self) -> None:
+        pkt = self._pack("dry1")
+        for adapter in ("generic", "grok"):
+            with self.subTest(adapter=adapter):
+                r = run_of(
+                    self.tmp,
+                    "spawn",
+                    "--adapter",
+                    adapter,
+                    "--packet",
+                    pkt,
+                    "--dry-run",
+                )
+                self.assertEqual(r.returncode, 0, r.stderr)
+                assert_cost_disclaimer(self, combined(r))
+                self.assertIn("of: cost:", r.stderr)
+
+    def test_spawn_live_prints_cost_disclaimer(self) -> None:
+        pkt = self._pack("live1")
+        agent = self.tmp / "ok.sh"
+        agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        agent.chmod(0o755)
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        assert_cost_disclaimer(self, combined(r))
+        self.assertIn("of: cost:", r.stderr)
+        self.assertIn("exit=0", r.stdout)
+
+    def test_spawn_tokens_positive_still_dies(self) -> None:
+        pkt = self._pack("tok1")
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            "--dry-run",
+            "--tokens",
+            "80000",
+        )
+        self.assertNotEqual(r.returncode, 0)
+        blob = combined(r).lower()
+        self.assertTrue(
+            "unrecognized arguments" in blob or "reserved" in blob,
+            r.stderr,
+        )
+        self.assertNotIn("of: cost:", r.stderr)
+
+    def test_json_spawn_emits_cost_unmeasured_warning(self) -> None:
+        pkt = self._pack("json1")
+        r = run_of(
+            self.tmp,
+            "--json",
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        events = []
+        for line in r.stderr.splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            events.append(json.loads(line))
+        kinds = [e.get("kind") for e in events if e.get("event") == "warning"]
+        self.assertIn("cost_unmeasured", kinds, r.stderr)
+        warning = next(e for e in events if e.get("kind") == "cost_unmeasured")
+        assert_cost_disclaimer(self, str(warning.get("message") or ""))
+        self.assertNotIn("of: cost:", r.stderr)
 
 
 if __name__ == "__main__":
