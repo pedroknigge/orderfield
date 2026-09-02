@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -51,8 +52,10 @@ def assert_cost_disclaimer(test: unittest.TestCase, text: str) -> None:
     low = text.lower()
     for marker in COST_MARKERS:
         test.assertIn(marker, low, text)
-    test.assertNotIn("80000", text)
-    test.assertNotRegex(text.lower(), r"budget\s*[:=]\s*\d+")
+    # macOS mkdtemp paths can contain "80000" (e.g. .../wsm_g8s980000gn/T/...).
+    stripped = re.sub(r"(?i)(?:/private)?(?:/var/folders|/tmp|/Users)[^\s]+", " ", text)
+    test.assertNotIn("80000", stripped)
+    test.assertNotRegex(stripped.lower(), r"budget\s*[:=]\s*\d+")
 
 
 class BudgetTokensReserved(unittest.TestCase):
