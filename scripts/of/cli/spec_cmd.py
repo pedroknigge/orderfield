@@ -205,9 +205,11 @@ from of.regime import (
 def cmd_spec(args: argparse.Namespace) -> None:
     """Binding-requirements ledger. Kernel does not LLM-extract; --extract is heuristic."""
     root = find_root()
-    # LOCK-002: SPEC.md, REQUIREMENTS and ORDER are the authority ledger;
-    # every mutation here runs under the field lock (re-entrant when main()
-    # already holds it for a mutating command).
+    # LOCK-002: SPEC.md, REQUIREMENTS and ORDER are the authority ledger.
+    # `spec` is in MUTATING_COMMANDS, so the CLI path already holds the lock;
+    # this nested (re-entrant, no-op) acquisition guards direct callers/tests.
+    if not (root / ".orderfield").is_dir():
+        load_order(root)  # dies "no ORDER" without creating a stray field.lock
     with field_lock(root, "spec"):
         _cmd_spec_locked(args, root)
 

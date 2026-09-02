@@ -56,9 +56,9 @@ Adiabatic following **as contract, not moral slavery**. The child moves freely i
 
 ## protocol learning vs field learning
 
-**Protocol** (`of learn`, default): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines; they are not SPEC.
+**Protocol** (`of learn --protocol`, or `of learn --promote <id>` from a field lesson): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines; they are not SPEC.
 
-**Field** (`of learn --field`): this ORDER only. Dropped when the mission or a closed phase no longer applies.
+**Field** (`of learn TEXT`, the default): this ORDER only. Dropped when the mission or a closed phase no longer applies.
 
 ## skill beats child
 

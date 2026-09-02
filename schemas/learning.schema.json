@@ -70,7 +70,7 @@
         "repo",
         "of_version"
       ],
-      "description": "Who wrote it and where. Items without provenance are skipped on load and never enter a prompt.",
+      "description": "Audit trail of who wrote it and where (self-asserted, not authentication). Items without provenance are skipped on load and never enter a prompt.",
       "properties": {
         "source": {
           "type": "string",

@@ -26,11 +26,14 @@ from of_adapters import (
     detect_adapters,
     missing_tools,
     pick_adapter,
+    resolve_trust_profile,
     spawn_env,
+    spawn_env_mode,
 )
 
 from of.field import (
     CHECKPOINT_MAX_CHARS,
+    OF_FIELD_ENV,
     CHECKPOINT_MAX_LINES,
     FIELD_SPEC_MD,
     MUTATING_COMMANDS,
@@ -69,6 +72,7 @@ from of.field import (
     open_backlog,
     order_path,
     parse_utc,
+    physical_artifact_path,
     physical_field_rel,
     plan_field_migrations,
     plan_field_retention,
@@ -201,13 +205,8 @@ from of.regime import (
 )
 
 
-def field_artifact_path(root: Path, canonical: str, label: str) -> Path:
-    """Resolve a canonical `.orderfield/...` artifact at the physical field home.
-
-    Packets carry canonical paths (`.orderfield/waves/NNN/...`); sibling fields
-    live under `.orderfield/fields/<id>/`. wave_dir() already maps directories;
-    this maps the file paths so pack -> handoff -> residual -> collect agree."""
-    return safe_relative_path(root, physical_field_rel(root, canonical), label)
+# Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
+field_artifact_path = physical_artifact_path
 
 
 def cmd_pack(args: argparse.Namespace) -> None:
@@ -383,7 +382,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         order, state, force=bool(getattr(args, "force_spawn", False))
     )
     save_state(state, root)
-    (root / scratch).mkdir(parents=True, exist_ok=True)
+    (root / physical_field_rel(root, scratch)).mkdir(parents=True, exist_ok=True)
     (wdir / "packets").mkdir(parents=True, exist_ok=True)
     (wdir / "residuals").mkdir(parents=True, exist_ok=True)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
@@ -599,10 +598,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "residual": residual_rel,
         "started_at": utc_now(),
         "dry_run": bool(args.dry_run),
-        "trust": os.environ.get(TRUST_ENV) or DEFAULT_TRUST_PROFILE,
-        "env_mode": "inherit"
-        if (os.environ.get("OF_SPAWN_ENV") or "").strip().lower() == "inherit"
-        else "allowlist",
+        "trust": resolve_trust_profile(),
+        "env_mode": spawn_env_mode(),
     }
     meta_path = wdir / "spawns" / f"{child_id}.json"
     log_path = wdir / "logs" / f"{child_id}.log"
@@ -620,6 +617,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if args.dry_run:
         finalize("dry_run", ok=True)
         snapshot_session(root, "spawn")
+        emit_event("spawn", adapter=adapter, child_id=child_id, outcome="dry_run", ok=True)
         print("dry-run argv:")
         print(argv_preview(argv))
         return
@@ -648,19 +646,27 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             child_id=child_id,
             outcome=outcome,
             ok=False,
-            **{k: v for k, v in extra.items() if k in ("exit", "timeout_s")},
+            **{k: v for k, v in extra.items() if k in ("timeout_s",)},
         )
         die(message)
 
     timeout_s = packet.get("budget", {}).get("seconds") or args.timeout
+    # The child gets the field binding explicitly: bind_active_field only
+    # reads OF_FIELD, so a sibling-field child running `of spec ...` would
+    # otherwise hit the roster and exit 2.
+    child_env = spawn_env(adapter)
+    child_env[OF_FIELD_ENV] = str(order["id"])
     try:
         proc = subprocess.run(
             argv,
             cwd=str(root),
             capture_output=True,
             text=True,
+            # headless: a harness that prompts for approval must fail fast on
+            # EOF, not block invisibly on the leader's terminal until timeout.
+            stdin=subprocess.DEVNULL,
             timeout=timeout_s,
-            env=spawn_env(adapter),
+            env=child_env,
         )
     except FileNotFoundError:
         write_log("", f"binary not found: {argv[0]}")
@@ -672,6 +678,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             f"timeout child_id={child_id} after {timeout_s}s log={log_path}",
             timeout_s=timeout_s,
         )
+    except KeyboardInterrupt:
+        finalize("interrupted", ok=False)
+        raise
+    except SystemExit:
+        raise
+    except Exception as exc:  # PermissionError, ENOEXEC, E2BIG, OSError ...
+        write_log("", f"{exc.__class__.__name__}: {exc}")
+        fail("error", f"spawn failed for adapter={adapter}: {exc.__class__.__name__}: {exc}")
     write_log(proc.stdout, proc.stderr)
     if proc.returncode != 0:
         print(f"spawn exit={proc.returncode} log={log_path}", file=sys.stderr)
@@ -691,8 +705,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         else:
             print(f"no residual yet. log={log_path}")
     if not already:
-        state["children_spawned"] += 1
-        save_state(state, root)
+        # The child may have run for hours; a sibling pack/spawn has moved
+        # state.json since we loaded it. Re-load and bump under the lock.
+        with field_lock(root, "spawn"):
+            state = load_state(root)
+            state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
+            save_state(state, root)
     finalize(
         "ok" if proc.returncode == 0 else "nonzero_exit",
         ok=proc.returncode == 0,
@@ -729,7 +747,13 @@ def cmd_collect(args: argparse.Namespace) -> None:
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
-        if not rel or not field_artifact_path(root, str(rel), "packet residual_path").is_file():
+        try:
+            present = bool(rel) and field_artifact_path(
+                root, str(rel), "packet residual_path"
+            ).is_file()
+        except SystemExit:
+            present = False  # malformed path: count as lost, do not abort the wave
+        if not present:
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
             print(

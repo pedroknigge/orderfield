@@ -146,6 +146,9 @@ def warn_if_deictic_brief(text: str, *, flag: str) -> bool:
     return True
 
 
+USER_TEXT_MAX_BYTES = 8 * 1024 * 1024  # a brief, not a dump
+
+
 def read_user_text(path_str: str | Path, *, flag: str) -> str:
     """Read one user-supplied text file ('-' = stdin) as UTF-8.
 
@@ -158,10 +161,20 @@ def read_user_text(path_str: str | Path, *, flag: str) -> str:
     try:
         if label == "-":
             label = "<stdin>"
+            if sys.stdin is None or sys.stdin.isatty():
+                die(f"{flag} -: stdin is a terminal; pipe or redirect the brief")
             buffer = getattr(sys.stdin, "buffer", None)
-            if buffer is None:
-                return sys.stdin.read()
-            return buffer.read().decode("utf-8")
+            data = buffer.read(USER_TEXT_MAX_BYTES + 1) if buffer is not None else None
+            if data is None:
+                text = sys.stdin.read(USER_TEXT_MAX_BYTES + 1)
+                if len(text) > USER_TEXT_MAX_BYTES:
+                    die(f"{flag} -: brief exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
+                return text
+            if len(data) > USER_TEXT_MAX_BYTES:
+                die(f"{flag} -: brief exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
+            return data.decode("utf-8")
+        if Path(path_str).is_file() and Path(path_str).stat().st_size > USER_TEXT_MAX_BYTES:
+            die(f"{flag} {label}: file exceeds {USER_TEXT_MAX_BYTES // (1024 * 1024)} MiB; refuse dumps")
         with open(path_str, "r", encoding="utf-8") as handle:
             return handle.read()
     except UnicodeDecodeError as e:

@@ -176,7 +176,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 `MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
 
-Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `spec`, `gc`, `checkpoint`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
+Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `gc`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
 ## Advisory and reserved fields
 

@@ -11,7 +11,7 @@ from of.field import (
     die,
     load_json,
     load_wave_report,
-    physical_field_rel,
+    physical_artifact_path,
     safe_relative_path,
     spec_path,
     wave_dir,
@@ -347,10 +347,8 @@ def integration_input_digest(
     """Hash the canonical packet/residual set and reduction-affecting options."""
     children: list[dict[str, Any]] = []
     for packet in sorted(packets, key=lambda item: str(item.get("child_id") or "")):
-        residual_path = safe_relative_path(
-            root,
-            physical_field_rel(root, packet.get("residual_path")),
-            "packet residual_path",
+        residual_path = physical_artifact_path(
+            root, packet.get("residual_path"), "packet residual_path"
         )
         residual: Any = None
         if residual_path.is_file():

@@ -79,25 +79,39 @@ is a trust decision, not a fix.
 Observable via `of spawn --dry-run` (argv preview; approval flags render as
 `<approval>`) and recorded in `spawns/<child_id>.json` as `trust`.
 
-A conservative child may be **asked** by its harness before writing the
-residual; that is the point. If the harness cannot write the residual under
-its default sandbox (codex read-only), use `OF_TRUST=auto-edit`, not `yolo`.
+A conservative child runs with the harness's own approval policy and **no
+stdin** (`of spawn` passes `/dev/null`, so a prompt fails fast instead of
+hanging on the leader's terminal). Print-mode harnesses cannot prompt at
+all: `claude -p` denies permission-gated tools, `codex exec` stays in its
+read-only sandbox, `agent -p` (cursor) does not apply edits — so a
+conservative child that must write a residual or product files exits with
+`no residual yet`. That is the deliberate default: pick `OF_TRUST=auto-edit`
+(acceptEdits / workspace-write) for a headless implementer, never `yolo` by
+reflex. `spawns/<child_id>.json` records `trust` so a lost child is
+explainable.
 
 ## Spawn environment (`OF_SPAWN_ENV`)
 
 `of spawn` does **not** hand the child the parent's environment. It builds an
 allowlist:
 
-- base: `PATH HOME USER LOGNAME SHELL TERM LANG LC_* TZ TMPDIR XDG_* SSL_CERT_*`
+- base: `PATH HOME USER LOGNAME SHELL TERM LANG LC_* TZ TMPDIR XDG_* SSL_CERT_*`,
+  proxies and private CAs (`HTTP_PROXY HTTPS_PROXY NO_PROXY ALL_PROXY` and
+  lowercase, `REQUESTS_CA_BUNDLE CURL_CA_BUNDLE NODE_EXTRA_CA_CERTS`),
+  `SSH_AUTH_SOCK`, and the Windows set (`SYSTEMROOT COMSPEC USERPROFILE
+  APPDATA LOCALAPPDATA PATHEXT TEMP TMP`)
 - kernel: `OF_*`
-- per adapter: `claude` `ANTHROPIC_* CLAUDE_*`; `codex` `OPENAI_* CODEX_*`;
+- per adapter: `claude` `ANTHROPIC_* CLAUDE_*` (Bedrock / Vertex users add `AWS_*` / `GOOGLE_APPLICATION_CREDENTIALS` via `OF_SPAWN_ENV`); `codex` `OPENAI_* CODEX_*`;
   `cursor` `CURSOR_*`; `opencode` `OPENCODE_* ANTHROPIC_* OPENAI_* GOOGLE_*
   GEMINI_* OPENROUTER_*`; `orca` `ORCA_*`; `grok` `XAI_* GROK_*`; `agy`
   `GOOGLE_* GEMINI_* AGY_* ANTIGRAVITY_*`; `qwen` `DASHSCOPE_* QWEN_* OPENAI_*
   GEMINI_* ANTHROPIC_* OLLAMA_*`; `generic` nothing extra.
 
 `OF_SPAWN_ENV=NAME1,NAME2` adds names. `OF_SPAWN_ENV=inherit` opts out and
-passes the whole parent environment (recorded as `env_mode: inherit`).
+passes the whole parent environment (recorded as `env_mode: inherit`). The
+child always receives `OF_FIELD=<ORDER id>` so its own `of` calls bind the
+same field in a multi-field tree. `generic` forwards no credential prefixes:
+an `OF_AGENT` harness needs `OF_SPAWN_ENV` for its API keys.
 Table: `SPAWN_ENV_*` in `scripts/of_adapters.py`.
 
 ## Claude Code

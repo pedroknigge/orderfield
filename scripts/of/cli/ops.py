@@ -26,6 +26,7 @@ from of.field import (
     PROTOCOL_WRITABLE_KEY,
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
+    PYTHON_FLOOR,
     _read_json_object,
     apply_field_migrations,
     apply_field_retention,
@@ -52,6 +53,7 @@ from of.field import (
     of_dir,
     order_path,
     parse_utc,
+    physical_field_rel,
     plan_field_migrations,
     plan_field_retention,
     print_migration_catalog,
@@ -152,6 +154,10 @@ def cmd_learn(args: argparse.Namespace) -> None:
             die("of learn --promote needs an ORDER (of init first)")
         item = promote_learning(root, promote, order)
         snapshot_session(root, "learn")
+        if item.pop("_already_present", False):
+            emit_event("learn", action="promote", kind="protocol", id=str(item["id"]), already=True, ok=True)
+            print(f"{'protocol':11} {item['id']}  {item['text']}  (already in protocol store; nothing promoted)")
+            return
         emit_event("learn", action="promote", kind="protocol", id=str(item["id"]), ok=True)
         print(f"{'protocol':11} {item['id']}  {item['text']}  (promoted from {promote})")
         return
@@ -203,11 +209,11 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     """Local prereqs. PATH presence is not auth or readiness."""
     failed = False
     py = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    py_ok = sys.version_info >= (3, 9)
+    py_ok = sys.version_info[:2] >= PYTHON_FLOOR
     if not py_ok:
         failed = True
     print("prereqs")
-    print(f"  python        {py}  {'ok' if py_ok else 'FAIL'} (>= 3.9)")
+    print(f"  python        {py}  {'ok' if py_ok else 'FAIL'} (>= {PYTHON_FLOOR[0]}.{PYTHON_FLOOR[1]})")
     ver = installed_version() or "-"
     print(f"  kernel        {ver}  {'ok' if ver != '-' else 'FAIL'}")
     if ver == "-":
@@ -795,7 +801,11 @@ def pulse_once(
         # started (no writes yet) reads ALIVE, not dead.
         signals: list[tuple[float, str]] = [(packed_ts, "packed (no writes yet)")]
         scratch_rel = pkt.get("scratch_dir")
-        scratch = newest_mtime(root / str(scratch_rel)) if scratch_rel else None
+        scratch = (
+            newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
+            if scratch_rel
+            else None
+        )
         if scratch:
             print(f"    scratch: last write {fmt_age(now - scratch[0])} ago ({scratch[1]})")
             signals.append((scratch[0], f"scratch/{scratch[1]}"))

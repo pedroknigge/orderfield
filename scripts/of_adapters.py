@@ -78,16 +78,6 @@ HARNESS_PROMISES = (
     "auth",
     "model_ready",
 )
-# Qwen-owned --approval-mode values. Always passed so user settings cannot
-# silently escalate. Never copy grok/claude/codex approval flags.
-_QWEN_APPROVAL = {
-    "conservative": "default",
-    "plan": "plan",
-    "auto-edit": "auto-edit",
-    "auto": "auto",
-    "yolo": "yolo",
-}
-
 # Escalated (bypass) flags per adapter. Emitted ONLY under OF_TRUST=yolo.
 # conservative never emits any of these; plan/auto-edit/auto map onto the
 # harness's closest non-bypass mode when one exists (see _TRUST_FLAGS), else
@@ -120,6 +110,8 @@ _TRUST_FLAGS: dict[str, dict[str, list[str]]] = {
         "auto-edit": ["--mode", "accept-edits"],
         "auto": ["--mode", "accept-edits"],
     },
+    # Qwen-owned --approval-mode. Always passed (even conservative) so a user
+    # setting such as tools.approvalMode=yolo cannot silently escalate.
     "qwen": {
         "conservative": ["--approval-mode", "default"],
         "plan": ["--approval-mode", "plan"],
@@ -140,10 +132,35 @@ SPAWN_ENV_BASE_NAMES = (
     "LANG",
     "TZ",
     "TMPDIR",
+    # network egress: corporate proxies and private CAs, else child auth fails
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "all_proxy",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "NODE_EXTRA_CA_CERTS",
+    "SSH_AUTH_SOCK",
+    # Windows: Node-based CLIs die without these
+    "SYSTEMROOT",
+    "SystemRoot",
+    "COMSPEC",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
 )
 SPAWN_ENV_BASE_PREFIXES = ("LC_", "XDG_", "SSL_CERT_", "OF_")
 # Credential / config prefixes each harness needs to authenticate.
 SPAWN_ENV_ADAPTER_PREFIXES = {
+    # Claude via Bedrock / Vertex needs AWS_* / GOOGLE_APPLICATION_CREDENTIALS:
+    # opt in with OF_SPAWN_ENV rather than forwarding cloud credentials by default.
     "claude": ("ANTHROPIC_", "CLAUDE_"),
     "codex": ("OPENAI_", "CODEX_"),
     "cursor": ("CURSOR_",),
@@ -172,11 +189,6 @@ def resolve_trust_profile() -> str:
     return profile
 
 
-def qwen_trust_flags(profile: str) -> list[str]:
-    mode = _QWEN_APPROVAL.get(profile, _QWEN_APPROVAL[DEFAULT_TRUST_PROFILE])
-    return ["--approval-mode", mode]
-
-
 def trust_flags(adapter: str, profile: str | None = None) -> list[str]:
     """Flags OF_TRUST adds for `adapter`. conservative -> nothing escalated."""
     profile = profile or resolve_trust_profile()
@@ -186,13 +198,21 @@ def trust_flags(adapter: str, profile: str | None = None) -> list[str]:
     return list(table.get(profile) or table.get("conservative") or [])
 
 
+def spawn_env_mode(parent: dict[str, str] | None = None) -> str:
+    """'inherit' when OF_SPAWN_ENV=inherit, else 'allowlist'. One decision,
+    used by spawn_env() and recorded in spawns/<child>.json as env_mode."""
+    src = os.environ if parent is None else parent
+    raw = (src.get(SPAWN_ENV_VAR) or "").strip().lower()
+    return "inherit" if raw == "inherit" else "allowlist"
+
+
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
     """Environment for a spawned child: allowlist, not the parent's whole env.
 
     OF_SPAWN_ENV=NAME1,NAME2 adds names; OF_SPAWN_ENV=inherit opts out."""
     src = dict(os.environ if parent is None else parent)
     extra_raw = (src.get(SPAWN_ENV_VAR) or "").strip()
-    if extra_raw.lower() == "inherit":
+    if spawn_env_mode(src) == "inherit":
         return src
     extra = {n.strip() for n in extra_raw.split(",") if n.strip()}
     prefixes = SPAWN_ENV_BASE_PREFIXES + tuple(SPAWN_ENV_ADAPTER_PREFIXES.get(adapter, ()))

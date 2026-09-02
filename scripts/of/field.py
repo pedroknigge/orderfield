@@ -109,12 +109,26 @@ _SECRET_ASSIGN_RE = re.compile(
 )
 _BEARER_RE = re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-+/=]+")
 # Provider API keys: OpenAI sk-…/sk-proj-…, Anthropic sk-ant-… (hyphens allowed).
-_SK_RE = re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_\-]{8,}")
+# Real keys are 40+ chars; the 20-char floor keeps `sk-learn-pipeline` and
+# `wave/sk-runner-abcdefgh` (identifiers, not secrets) readable in logs.
+_SK_RE = re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_\-]{20,}\b")
+_STRIPE_KEY_RE = re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")
+_XAI_KEY_RE = re.compile(r"\bxai-[A-Za-z0-9]{20,}\b")
+_GOOGLE_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")
 _GITHUB_TOKEN_RE = re.compile(r"\b(?:gh[oprsu]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})")
 _SLACK_TOKEN_RE = re.compile(r"\bxox[abeprs]-[A-Za-z0-9\-]{8,}")
 _AWS_KEY_RE = re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
-_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
+# PII: e-mail addresses. Bounded quantifiers (RFC 5321: local part <= 64,
+# label <= 63) keep the scan linear on long runs of local-part characters,
+# and the trailing guard leaves `git@github.com:org/repo.git` (an SSH remote,
+# not a mailbox) untouched.
+_EMAIL_RE = re.compile(
+    r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]{1,64}@"
+    r"[A-Za-z0-9\-]{1,63}(?:\.[A-Za-z0-9\-]{1,63})*\.[A-Za-z]{2,24}(?![A-Za-z0-9\-:])"
+)
+LEARNING_SOURCE_LEADER = "leader"
+PYTHON_FLOOR = (3, 11)  # mirrored literally in scripts/of.py (checked before import)
 _PEM_RE = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
     re.DOTALL,
@@ -480,8 +494,8 @@ def physical_field_rel(root: Path, canonical: str) -> str:
     """Map a `.orderfield/...` contract path onto the active field home."""
     prefix = ".orderfield/"
     text = str(canonical or "")
-    if not text.startswith(prefix):
-        return text
+    if not text.startswith(prefix) or text.startswith(".orderfield/fields/"):
+        return text  # not a contract path, or already physical (idempotent)
     home = field_home(root).resolve()
     of = of_dir(root).resolve()
     rest = text[len(prefix) :]
@@ -492,6 +506,16 @@ def physical_field_rel(root: Path, canonical: str) -> str:
     except ValueError:
         return text
     return f"{rel}/{rest}"
+
+
+def physical_artifact_path(
+    root: Path, canonical: str, label: str, *, reject_symlinks: bool = False
+) -> Path:
+    """Canonical `.orderfield/...` artifact -> absolute path at the physical
+    field home, containment-checked. The one composition every reader uses."""
+    return safe_relative_path(
+        root, physical_field_rel(root, canonical), label, reject_symlinks=reject_symlinks
+    )
 
 
 def order_path(root: Path | None = None) -> Path:
@@ -540,14 +564,13 @@ def die(msg: str, code: int = 1) -> None:
     """Deliberate refusal: one plain stderr line, exit `code`. Under --json /
     OF_JSON=1 the same refusal is also visible as an `error` event so a
     machine consumer never has to parse prose."""
-    print(f"of: {msg}", file=sys.stderr)
-    if json_events_enabled():
-        emit_event(
-            "error",
-            ok=False,
-            kind="refused",
-            message=redact_text(" ".join(str(msg).split())),
-        )
+    print(f"of: {redact_text(str(msg))}", file=sys.stderr)
+    emit_event(
+        "error",
+        ok=False,
+        kind="refused",
+        message=redact_text(" ".join(str(msg).split())),
+    )
     raise SystemExit(code)
 
 
@@ -565,7 +588,7 @@ def json_events_enabled() -> bool:
 
 def emit_event(event: str, **fields: Any) -> None:
     """Optional machine-readable line on stderr when --json or OF_JSON=1."""
-    if not (_JSON_EVENTS or os.environ.get("OF_JSON") == "1"):
+    if not json_events_enabled():
         return
     payload = {"event": event, **fields}
     print(json.dumps(payload, sort_keys=True), file=sys.stderr)
@@ -1737,6 +1760,9 @@ def redact_text(text: str) -> str:
     out = _PEM_RE.sub(f"-----BEGIN PRIVATE KEY----- {REDACTED} -----END PRIVATE KEY-----", text)
     out = _BEARER_RE.sub(lambda m: f"{m.group(1)} {REDACTED}", out)
     out = _SK_RE.sub(REDACTED, out)
+    out = _STRIPE_KEY_RE.sub(REDACTED, out)
+    out = _XAI_KEY_RE.sub(REDACTED, out)
+    out = _GOOGLE_KEY_RE.sub(REDACTED, out)
     out = _GITHUB_TOKEN_RE.sub(REDACTED, out)
     out = _SLACK_TOKEN_RE.sub(REDACTED, out)
     out = _AWS_KEY_RE.sub(REDACTED, out)
@@ -1852,7 +1878,7 @@ def learning_provenance(
         resolved = str(project)
     origin = (order or {}).get("origin") if isinstance(order, dict) else None
     return {
-        "source": "leader",
+        "source": LEARNING_SOURCE_LEADER,
         "repo": sha256_text(resolved)[:12],
         "origin": origin if isinstance(origin, dict) else None,
         "of_version": installed_version() or "unknown",
@@ -1867,7 +1893,7 @@ def learning_accepted(item: Any) -> bool:
     if not isinstance(item, dict):
         return False
     prov = item.get("provenance")
-    if not isinstance(prov, dict) or prov.get("source") != "leader":
+    if not isinstance(prov, dict) or prov.get("source") != LEARNING_SOURCE_LEADER:
         return False
     text = _normalize_learning_text(str(item.get("text") or ""))
     if not text or len(text) > LEARNING_MAX_CHARS:
@@ -1998,8 +2024,9 @@ def save_learning(
             f"refuse dumps (max {LEARNING_MAX_CHARS} chars, "
             f"{LEARNING_MAX_LINES} lines)"
         )
-    grouped = list_learnings(root)
-    bucket = grouped["protocol"] if kind == "protocol" else grouped["field"]
+    # Dedupe protocol saves against the user cache only: field-dir items are
+    # child-writable and must never be re-persisted into cross-repo memory.
+    bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
             item["last_confirmed_at"] = utc_now()
@@ -2067,13 +2094,13 @@ def promote_learning(
     text = _normalize_learning_text(str(source.get("text") or ""))
     for existing in load_protocol_store():
         if _normalize_learning_text(str(existing.get("text") or "")).lower() == text.lower():
-            return existing
+            return {**existing, "_already_present": True}
     item: dict[str, Any] = {
         "id": f"lrn_{uuid.uuid4().hex[:12]}",
         "kind": "protocol",
         "text": text,
         "created_at": utc_now(),
-        "source": "leader",
+        "source": LEARNING_SOURCE_LEADER,
         "promoted_from": key,
         "provenance": learning_provenance(root, order),
     }
@@ -2089,9 +2116,16 @@ def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
     key = str(needle or "").strip()
     if not key:
         die("--forget needs an id or unique substring")
-    grouped = list_learnings(root)
+    # Search the RAW stores: an item skipped on load (legacy, no provenance)
+    # must still be removable, or the skip warning has no exit.
+    candidates: list[dict[str, Any]] = list(_load_protocol_store_raw())
+    if root is not None and order_path(root).is_file():
+        for path in sorted(learnings_dir(root).glob("*.json")):
+            raw_item = _read_json_object(path)
+            if isinstance(raw_item, dict):
+                candidates.append(raw_item)
     hits: list[dict[str, Any]] = []
-    for item in grouped["protocol"] + grouped["field"]:
+    for item in candidates:
         hay = f"{item.get('id') or ''} {item.get('text') or ''}"
         if key == item.get("id") or key.lower() in hay.lower():
             hits.append(item)

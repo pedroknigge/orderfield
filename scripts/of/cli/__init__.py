@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from of.field import (
     MUTATING_COMMANDS,
@@ -233,7 +234,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Cross-project memory needs an explicit --protocol, or "
             "--promote ID to copy a field learning into the protocol store "
             "(user cache, OF_LEARNINGS). Every learning carries provenance; "
-            "unprovenanced items are skipped on load and never enter a prompt. "
+            "unprovenanced items are skipped on load and never enter a prompt (an audit trail, not authentication). "
             "gc never drops protocol. Packets get a capped protocol list; "
             "it is not SPEC."
         ),
@@ -644,6 +645,11 @@ def _dispatch() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
+        if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():
+            # No field here: let the handler refuse ("no ORDER") without
+            # creating a stray .orderfield/field.lock first.
+            args.func(args)
+            return
         with field_lock(root, args.cmd):
             args.func(args)
     else:
@@ -652,6 +658,9 @@ def _dispatch() -> None:
 
 def _error_message(exc: BaseException) -> str:
     text = " ".join(str(exc).split()) or exc.__class__.__name__
+    home = str(Path.home())
+    if home and home != "/":
+        text = text.replace(home, "~")  # no local username / home layout in output
     text = redact_text(text)
     if len(text) > ERROR_MESSAGE_MAX_CHARS:
         text = text[: ERROR_MESSAGE_MAX_CHARS - 1] + "…"

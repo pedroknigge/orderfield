@@ -17,6 +17,7 @@ from of.field import (
     load_json,
     of_dir,
     order_path,
+    physical_artifact_path,
     physical_field_rel,
     protocol_learning_lines,
     safe_relative_path,
@@ -234,8 +235,6 @@ def require_packet_artifact_paths(
         )
     if packet.get("scratch_dir") != expected_scratch:
         die(f"noncanonical scratch_dir for {child_id}: expected {expected_scratch}")
-    from of.field import physical_field_rel
-
     safe_relative_path(
         root,
         physical_field_rel(root, expected_residual),
@@ -590,7 +589,7 @@ def complete_stale_wave_recoverable(
         rel = packet.get("residual_path")
         if not rel:
             return False
-        path = root / str(rel)
+        path = root / physical_field_rel(root, str(rel))
         if not path.is_file():
             return False
         data = _read_json_object(path)
@@ -645,9 +644,7 @@ def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     if not rel:
         die(f"packet {child} missing residual_path")
     require_packet_artifact_paths(root, packet)
-    path = safe_relative_path(
-        root, physical_field_rel(root, rel), "packet residual_path"
-    )
+    path = physical_artifact_path(root, rel, "packet residual_path")
     if not path.is_file():
         die(f"missing residual at {rel} (packet residual_path)")
     return path
@@ -658,9 +655,7 @@ def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
     if not rel:
         return True
     require_packet_artifact_paths(root, packet)
-    return not safe_relative_path(
-        root, physical_field_rel(root, rel), "packet residual_path"
-    ).is_file()
+    return not physical_artifact_path(root, rel, "packet residual_path").is_file()
 
 
 def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
@@ -673,9 +668,7 @@ def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
     if not rel:
         return False
     require_packet_artifact_paths(root, packet)
-    path = safe_relative_path(
-        root, physical_field_rel(root, rel), "packet scratch_dir"
-    )
+    path = physical_artifact_path(root, rel, "packet scratch_dir")
     if not path.is_dir():
         return False
     try:
@@ -914,7 +907,7 @@ def try_load_packet_residual(root: Path, packet: dict[str, Any]) -> dict[str, An
     if not rel:
         return None
     text = str(rel)
-    rel_path = Path(text)
+    rel_path = Path(physical_field_rel(root, text))
     if rel_path.is_absolute() or ".." in rel_path.parts:
         return None
     path = root / rel_path
