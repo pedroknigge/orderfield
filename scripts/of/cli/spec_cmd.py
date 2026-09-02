@@ -103,6 +103,7 @@ from of.field import (
 
 from of.spec import (
     append_amendment,
+    append_binding_line,
     apply_requirement_patches,
     archive_previous_field,
     contrast_open,
@@ -129,6 +130,8 @@ from of.spec import (
     snapshot_spec,
     spec_bytes_hash,
     spec_diff_lines,
+    spec_id_line_span,
+    spec_mentions_req_id,
     sync_order_spec_fields,
     warn_if_deictic_brief,
     write_spec,
@@ -374,10 +377,11 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         rid = require_req_id(add_id)
         if find_requirement(data, rid) is not None:
             die(f"requirement {rid} already exists")
+        added_text = str(add_text).strip()
         added = decorate_requirement(
             {
                 "id": rid,
-                "text": str(add_text).strip(),
+                "text": added_text,
                 "binding": not bool(getattr(args, "non_binding", False)),
                 "owned_by": [],
                 "status": "unowned",
@@ -387,6 +391,25 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         surface_arg = str(getattr(args, "surface", None) or "").strip().lower()
         if surface_arg in {"contract", "internal"}:
             added["surface"] = surface_arg
+        spec_file = spec_path(root)
+        current_spec = read_spec_text(root) if spec_file.is_file() else ""
+        if not spec_mentions_req_id(current_spec, rid):
+            merged = append_binding_line(current_spec, rid, added_text)
+            new_hash = write_spec(root, merged, revise=True)
+            spec_updates.update(
+                {
+                    "spec_ref": FIELD_SPEC_MD,
+                    "spec_hash": new_hash,
+                    "spec_closed": False,
+                }
+            )
+            span = spec_id_line_span(merged, rid)
+            if span:
+                added["source"] = {
+                    "spec_line_start": span[0],
+                    "spec_line_end": span[1],
+                }
+            print(f"spec        bound {rid} in {FIELD_SPEC_MD}")
         data.setdefault("requirements", []).append(added)
         changed = True
     both_sides = bool(getattr(args, "both_sides", False))
@@ -447,8 +470,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         spec = spec_path(root)
         if spec.is_file():
             data["spec_hash"] = sha256_text(read_spec_text(root))
-        # REQUIREMENTS before ORDER: a crash between the two leaves ORDER at
-        # the previous revision pointing at a superset index (LOCK-002).
+        # REQUIREMENTS then ORDER in one field generation (WAL-001). A crash
+        # before publish leaves the previous generation readable.
         save_requirements(data, root)
         identity = bool(
             getattr(args, "extract", False)

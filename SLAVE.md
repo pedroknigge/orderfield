@@ -57,11 +57,14 @@ Format: UTC timestamp, one space, what you are doing in ten words or fewer. This
 - Write product files only when the slice names exclusive paths.
 - Load your own skills if they do not change the role identity.
 
+Product comments are short and factual, not the field diary.
+
 ## You must not
 
 - Mutate `.orderfield/ORDER.json`, `.orderfield/state.json`, or `.orderfield/session.json`.
 - Change mission, phase, or constraints.
 - Spawn grandchildren unless the packet has `allow_nested: true`.
+- Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
 - Return a thinking diary as the result.
 - Treat workspace as a lock, or invent `of claim` / file leases.
 

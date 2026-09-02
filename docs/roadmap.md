@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.6.7. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.6.8. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,14 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.6.7`
+**Status:** Shipped · **Current release line:** `0.6.8`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.6.8 — P1 close + theater cut
+
+- `OF_CHILD` closes the protocol-learning forge; field WAL (stage+MANIFEST+publish); pack tokens are 0 / `--tokens N>0` dies. `main` requires one approving review plus the five checks.
+- Collect/integrate print owned-but-unverified (never auto-stamp). Constraint whitespace dedupe. PHASE.md splits mission vs phase. `--backlog-undone`. Compact render ORDER view. `of spec --add` writes the ID into SPEC.md. SLAVE comments are not the field diary. Not a new regime.
 
 ## 0.6.7 — vibe-proof hardening
 

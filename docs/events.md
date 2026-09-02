@@ -37,7 +37,7 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `migrate` | After `of migrate` | `applied`, `ok` |
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
 | `warning` | Learnings skipped on load (no provenance / schema failure) | `ok: true`, `kind: learning_skipped`, `message` |
-| `error` | A deliberate refusal (`die`, `kind: refused`) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, or the exception class, e.g. `UnicodeDecodeError`, `OSError`, `JSONDecodeError`), `message` (one sanitized line, secrets and home paths redacted) |
+| `error` | A deliberate refusal (`die`, `kind: refused` or a named kind) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, `child-forge` for `of learn --protocol/--promote` under `OF_CHILD`, `reserved` for `of pack --tokens N>0`, `wal-crash` test-only, or the exception class), `message` (one sanitized line, secrets and home paths redacted) |
 
 ## Example
 

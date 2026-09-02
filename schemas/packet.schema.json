@@ -106,8 +106,8 @@
       "properties": {
         "tokens": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Reserved / unenforced. Carried in packets for future accounting; not measured, not metered, never selects a regime."
+          "minimum": 0,
+          "description": "Reserved / unenforced. Compat key: of pack writes 0; --tokens N for N>0 dies. Not measured, not metered, never selects a regime."
         },
         "seconds": {
           "type": "integer",

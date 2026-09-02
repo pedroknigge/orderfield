@@ -134,7 +134,9 @@ class SiblingFieldChildBinding(unittest.TestCase):
         sp = run_of(tmp, "spawn", "--adapter", "generic", "--packet", pk.stdout.splitlines()[0].strip(),
                     env={"OF_FIELD": fid, "OF_AGENT": str(dump)})
         self.assertEqual(sp.returncode, 0, sp.stderr)
-        self.assertIn(f"OF_FIELD={fid}", (tmp / "env.txt").read_text())
+        env_text = (tmp / "env.txt").read_text()
+        self.assertIn(f"OF_FIELD={fid}", env_text)
+        self.assertIn("OF_CHILD=c", env_text)
         self.assertEqual((tmp / "stdin.txt").read_text().strip(), "closed")
 
 
@@ -237,3 +239,4 @@ class ApprovedDesignFixes(unittest.TestCase):
         self.assertNotIn("OF_DEBUG=", env_text)
         self.assertNotIn("OF_LEARNINGS=", env_text)
         self.assertIn("OF_FIELD=", env_text)
+        self.assertIn("OF_CHILD=e", env_text)

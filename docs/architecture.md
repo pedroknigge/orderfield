@@ -10,7 +10,7 @@ A cut, a resume, a different model — the shape holds. The results do not have 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.6.7` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.6.8` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -155,7 +155,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; parked agents + `agents_note`; optional `--summary` |
 | `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary). Written from pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint |
 | in-flight | Packed child with missing residual; `of status` surfaces count; `of resume` lists `parked` + `parked_reason` |
-| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; continuation note when scratch nonempty |
+| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; compact prompt ORDER view (id/rev/mission/phase/spec_ref); continuation note when scratch nonempty |
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
@@ -174,7 +174,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory.
+`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory. Mutations that publish more than one field artifact (ORDER, state, session, REQUIREMENTS, packet, prompt) additionally stage one generation under `wal/<id>/`, write a MANIFEST (paths+hashes), then publish live paths and `wal/CURRENT.json`. A crash mid-write leaves the previous published generation readable; recovery of a partial generation is idempotent. Public JSON schemas stay the store.
 
 Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `gc`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
@@ -185,7 +185,7 @@ Runtime ownership is **reserved**, not implemented. `of status` prints the reser
 | Field/surface | Behavior |
 |---------------|----------------|
 | `budget.seconds` | Enforced as the spawned subprocess timeout |
-| `budget.tokens` | Reserved; carried in packets; not measured or enforced |
+| `budget.tokens` | Reserved; `of pack` writes 0; `--tokens N` for N>0 dies; not measured or enforced |
 | `thresholds.local_budget_pct` | Reserved; not evaluated |
 | `caps.max_depth` | Permission check for `--allow-nested`; inherited depth is not tracked |
 | `scale_up` / `scale_across` | Reserved regime enums; decision logic never selects them from accounting |

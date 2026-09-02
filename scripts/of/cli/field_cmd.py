@@ -71,9 +71,12 @@ from of.field import (
     patch_origin,
     plan_field_migrations,
     plan_field_retention,
+    json_events_enabled,
     print_migration_catalog,
     print_migration_plan,
+    print_owned_unverified,
     print_retention_plan,
+    residuals_without_verification_stamps,
     probe_adapter_version,
     probe_lock_capability,
     pulse_verdict,
@@ -180,6 +183,7 @@ from of.regime import (
     advance_wave,
     apply_patches,
     closed_phases,
+    constraint_norm,
     decide_regime,
     done_when_closed,
     done_when_for,
@@ -202,6 +206,11 @@ from of.regime import (
 
 from of.integrate import update_path_owners_index
 
+
+def _emit_owned_unverified(root: Path) -> None:
+    if json_events_enabled():
+        return
+    print_owned_unverified(root, file=sys.stderr)
 
 
 def cmd_integrate(args: argparse.Namespace) -> None:
@@ -243,6 +252,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             save_state(state, root)
             snapshot_session(root, "integrate")
         print(json.dumps(previous_report, indent=2, ensure_ascii=False))
+        _emit_owned_unverified(root)
         return
     if previous_report is not None and not bool(getattr(args, "recompute", False)):
         die(
@@ -278,7 +288,9 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     if args.apply:
         before = order["rev"]
         order = apply_patches(order, residuals)
-        req_changed = apply_requirement_patches(root, residuals)
+        req_changed = apply_requirement_patches(
+            root, residuals_without_verification_stamps(residuals)
+        )
         if req_changed:
             sync_order_spec_fields(order, root)
         if order["rev"] != before or req_changed:
@@ -384,6 +396,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         ok=True,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
+    _emit_owned_unverified(root)
 
 
 def cmd_phase(args: argparse.Namespace) -> None:
@@ -462,9 +475,12 @@ def cmd_patch(args: argparse.Namespace) -> None:
             "of spec --revise-file PATH to change the brief"
         )
     if args.constraints_add:
+        existing = {constraint_norm(c) for c in order["constraints"]}
         for c in args.constraints_add:
-            if c not in order["constraints"]:
+            key = constraint_norm(c)
+            if key and key not in existing:
                 order["constraints"].append(c)
+                existing.add(key)
                 changed = True
     if getattr(args, "constraints_rm", None):
         for spec in args.constraints_rm:
@@ -508,6 +524,16 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 die(f"--backlog-done: index {n} out of range (1..{len(backlog)})")
             if not backlog[i].get("done"):
                 backlog[i]["done"] = True
+                changed = True
+        order["backlog"] = backlog
+    if getattr(args, "backlog_undone", None):
+        backlog = order.get("backlog") or []
+        for n in args.backlog_undone:
+            i = int(n) - 1
+            if not 0 <= i < len(backlog):
+                die(f"--backlog-undone: index {n} out of range (1..{len(backlog)})")
+            if backlog[i].get("done"):
+                backlog[i]["done"] = False
                 changed = True
         order["backlog"] = backlog
     if args.done_when:

@@ -120,7 +120,7 @@ Another mutating `of` process holds `.orderfield/field.lock`. The error includes
 
 **Meaning:** Snapshot unreadable; kernel continues with empty session facts. Checkpoint summary may be lost. Safe to continue; next mutation rewrites `session.json`.
 
-Other generated JSON (`ORDER.json`, state, packets, reports) is validated against its public schema and mutations use atomic replacement. A schema error is not a cue to hand-edit around the contract; recover the invalid artifact from a trusted copy or rebuild the affected packet/wave through the CLI.
+Other generated JSON (`ORDER.json`, state, packets, reports) is validated against its public schema and mutations use atomic replacement. Multi-file publishes also write `wal/<generation>/MANIFEST.json` then `wal/CURRENT.json`. A crash mid-write leaves the previous published generation readable; the next mutating command recovers a complete unpublished generation (idempotent) and discards incomplete staging. A schema error is not a cue to hand-edit around the contract; recover the invalid artifact from a trusted copy or rebuild the affected packet/wave through the CLI.
 
 ## `of doctor`
 

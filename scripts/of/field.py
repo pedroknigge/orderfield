@@ -128,6 +128,7 @@ _EMAIL_RE = re.compile(
     r"[A-Za-z0-9\-]{1,63}(?:\.[A-Za-z0-9\-]{1,63})*\.[A-Za-z]{2,24}(?![A-Za-z0-9\-:])"
 )
 LEARNING_SOURCE_LEADER = "leader"
+LEARNING_SOURCE_CHILD = "child"
 PYTHON_FLOOR = (3, 11)  # mirrored literally in scripts/of.py (checked before import)
 _PEM_RE = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
@@ -172,6 +173,9 @@ MUTATING_COMMANDS = {
     "checkpoint",
 }
 OF_FIELD_ENV = "OF_FIELD"
+OF_CHILD_ENV = "OF_CHILD"
+OF_WAL_CRASH_ENV = "OF_WAL_CRASH"
+WAL_DIRNAME = "wal"
 FIELD_ID_RE = re.compile(r"^ord_[0-9a-f]{8}$")
 ROSTER_EXIT = 2
 # Commands that resolve a field before running. init/new/fields manage the roster
@@ -560,21 +564,45 @@ def require_nonsymlink_kernel_root(root: Path) -> None:
         die(f"unsafe field root {field}: kernel artifact root is a symlink")
 
 
-def die(msg: str, code: int = 1) -> None:
-    """Deliberate refusal: one stderr line, exit `code`. Plain mode prints
-    `of: <msg>`; under --json / OF_JSON=1 the refusal is the `error` event
-    instead, so stderr stays machine-parseable."""
+def die(msg: str, code: int = 1, *, kind: str | None = None) -> None:
+    """Deliberate refusal: one stderr line, exit `code`.
+
+    Plain mode prints `of: <msg>`, or `of: error: <kind>: <msg>` when `kind`
+    is set (LEARN-001 public CLI). Under --json / OF_JSON=1 the refusal is
+    the `error` event instead, so stderr stays machine-parseable.
+    """
+    message = redact_text(" ".join(str(msg).split()))
+    event_kind = kind or "refused"
     if json_events_enabled():
         # --json: stderr stays one JSON object per line; the refusal is the event.
         emit_event(
             "error",
             ok=False,
-            kind="refused",
-            message=redact_text(" ".join(str(msg).split())),
+            kind=event_kind,
+            message=message,
         )
+    elif kind:
+        print(f"of: error: {kind}: {redact_text(str(msg))}", file=sys.stderr)
     else:
         print(f"of: {redact_text(str(msg))}", file=sys.stderr)
     raise SystemExit(code)
+
+
+def child_id_from_env() -> str | None:
+    """Packet child id when this process is a spawned slave. None for the leader."""
+    raw = (os.environ.get(OF_CHILD_ENV) or "").strip()
+    return raw or None
+
+
+def refuse_child_forge(action: str) -> None:
+    """LEARN-001: --protocol / --promote are leader-only. Public CLI shape."""
+    cid = child_id_from_env()
+    if not cid:
+        return
+    die(
+        f"of learn {action} refused while {OF_CHILD_ENV}={cid} (leader-only)",
+        kind="child-forge",
+    )
 
 
 _JSON_EVENTS = False
@@ -598,6 +626,9 @@ def emit_event(event: str, **fields: Any) -> None:
 
 
 def load_json(path: Path) -> Any:
+    overlay = _wal_overlay_json(path)
+    if overlay is not None:
+        return overlay
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -606,10 +637,13 @@ def load_json(path: Path) -> Any:
         die(f"invalid JSON in {path}: {e}")
 
 
-def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
-    """Durably replace a JSON artifact without exposing a partial file."""
+def json_payload_bytes(data: Any) -> bytes:
+    return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def dump_bytes(path: Path, payload: bytes, skip_dir_fsync: bool = False) -> None:
+    """Durably replace a file without exposing a partial write. Per-file fsync+replace."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     tmp = Path(tmp_name)
     try:
@@ -633,6 +667,291 @@ def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
             tmp.unlink()
         except FileNotFoundError:
             pass
+
+
+def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
+    """Durably replace a JSON artifact without exposing a partial file.
+
+    Inside a multi-file field generation the write is staged (WAL-001) and
+    published with a MANIFEST; otherwise this is a live fsync+replace.
+    """
+    ctx = _WAL_CTX.get()
+    if ctx is not None and ctx.capture(path, data):
+        return
+    dump_bytes(path, json_payload_bytes(data), skip_dir_fsync=skip_dir_fsync)
+
+
+def dump_text(path: Path, text: str, skip_dir_fsync: bool = False) -> None:
+    """Durably replace a text artifact (prompt.md). Joins the field WAL when open."""
+    payload = text.encode("utf-8")
+    ctx = _WAL_CTX.get()
+    if ctx is not None and ctx.capture(path, payload):
+        return
+    dump_bytes(path, payload, skip_dir_fsync=skip_dir_fsync)
+
+
+_WAL_CTX: ContextVar[Any] = ContextVar("of_wal", default=None)
+
+
+def wal_home(root: Path | None = None) -> Path:
+    return field_home(root) / WAL_DIRNAME
+
+
+def wal_current_path(root: Path | None = None) -> Path:
+    return wal_home(root) / "CURRENT.json"
+
+
+def _wal_rel(root: Path, path: Path) -> str | None:
+    """Field-home-relative posix path, or None when the file is not a field artifact."""
+    try:
+        home = field_home(root).resolve()
+        rel = path.resolve().relative_to(home)
+    except (OSError, ValueError):
+        return None
+    posix = rel.as_posix()
+    if posix == WAL_DIRNAME or posix.startswith(WAL_DIRNAME + "/"):
+        return None
+    return posix
+
+
+def _wal_payload_bytes(data: Any) -> bytes:
+    if isinstance(data, bytes):
+        return data
+    if isinstance(data, str):
+        return data.encode("utf-8")
+    return json_payload_bytes(data)
+
+
+def wal_staged_items() -> dict[str, Any]:
+    """Field-home-relative path → staged payload for the open generation."""
+    ctx = _WAL_CTX.get()
+    if ctx is None:
+        return {}
+    return dict(ctx.staged)
+
+
+def field_is_file(path: Path) -> bool:
+    """True if the path is live on disk or staged in the open field generation."""
+    ctx = _WAL_CTX.get()
+    if ctx is not None:
+        rel = _wal_rel(ctx.root, path)
+        if rel is not None and rel in ctx.staged:
+            return True
+    return path.is_file()
+
+
+def _wal_overlay_json(path: Path) -> Any | None:
+    ctx = _WAL_CTX.get()
+    if ctx is None:
+        return None
+    rel = _wal_rel(ctx.root, path)
+    if rel is None or rel not in ctx.staged:
+        return None
+    payload = ctx.staged[rel]
+    if isinstance(payload, (dict, list)):
+        return json.loads(json.dumps(payload))
+    raw = payload.decode("utf-8") if isinstance(payload, bytes) else str(payload)
+    return json.loads(raw)
+
+
+def _wal_crash(point: str) -> None:
+    """Test-only: OF_WAL_CRASH=<point> dies after that publish step."""
+    want = (os.environ.get(OF_WAL_CRASH_ENV) or "").strip()
+    if want and want == point:
+        die(f"{OF_WAL_CRASH_ENV}={point}", kind="wal-crash")
+
+
+def _manifest_complete(gen_dir: Path, man: Any) -> bool:
+    if not isinstance(man, dict) or man.get("complete") is not True:
+        return False
+    files = man.get("files")
+    if not isinstance(files, dict) or not files:
+        return False
+    for rel, digest in files.items():
+        staged = gen_dir / str(rel)
+        if not staged.is_file() or staged.is_symlink():
+            return False
+        got = hashlib.sha256(staged.read_bytes()).hexdigest()
+        if got != str(digest):
+            return False
+    return True
+
+
+def _load_wal_current(root: Path) -> dict[str, Any] | None:
+    path = wal_current_path(root)
+    if not path.is_file():
+        return None
+    data = _read_json_object(path)
+    return data if isinstance(data, dict) and data.get("generation") else None
+
+
+def _publish_manifest_files(root: Path, gen_dir: Path, man: dict[str, Any]) -> None:
+    home = field_home(root)
+    files = man.get("files") if isinstance(man.get("files"), dict) else {}
+    for rel in files:
+        staged = gen_dir / str(rel)
+        live = home / str(rel)
+        skip = "/packets/" in str(rel).replace("\\", "/")
+        dump_bytes(live, staged.read_bytes(), skip_dir_fsync=skip)
+
+
+def _wal_gen_newer_than_current(gen_dir: Path, current_path: Path) -> bool:
+    """Previous snapshots are older than CURRENT; a crashed publish is newer."""
+    man_path = gen_dir / "MANIFEST.json"
+    try:
+        return man_path.stat().st_mtime >= current_path.stat().st_mtime
+    except OSError:
+        return False
+
+
+def recover_field_wal(root: Path) -> str | None:
+    """Idempotent WAL recovery. Incomplete gens are dropped; complete unpublished
+    gens newer than CURRENT are published. Previous published snapshots stay."""
+    home = wal_home(root)
+    if not home.is_dir():
+        return None
+    current = _load_wal_current(root)
+    current_path = wal_current_path(root)
+    unpublished: list[tuple[Path, dict[str, Any]]] = []
+    try:
+        children = list(home.iterdir())
+    except OSError:
+        return str((current or {}).get("generation") or "") or None
+    for child in children:
+        if not child.is_dir() or child.is_symlink():
+            continue
+        man = _read_json_object(child / "MANIFEST.json")
+        if not _manifest_complete(child, man):
+            shutil.rmtree(child, ignore_errors=True)
+            continue
+        assert isinstance(man, dict)
+        gid = str(man.get("generation") or child.name)
+        if current and str(current.get("generation") or "") == gid:
+            continue
+        if current and not _wal_gen_newer_than_current(child, current_path):
+            continue
+        unpublished.append((child, man))
+    unpublished.sort(key=lambda item: item[0].stat().st_mtime)
+    for child, man in unpublished:
+        _publish_manifest_files(root, child, man)
+        current = {
+            "v": 1,
+            "generation": str(man.get("generation") or child.name),
+            "published_at": utc_now(),
+            "files": man.get("files") or {},
+        }
+        dump_bytes(current_path, json_payload_bytes(current))
+    return str((current or {}).get("generation") or "") or None
+
+
+class _WalGeneration:
+    """One in-flight field generation: stage files, MANIFEST, then publish."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.generation = uuid.uuid4().hex[:12]
+        self.staged: dict[str, Any] = {}
+        self.blobs: dict[str, bytes] = {}
+        self.stage_dir = wal_home(root) / self.generation
+        self._manifest_written = False
+
+    def capture(self, path: Path, data: Any) -> bool:
+        rel = _wal_rel(self.root, path)
+        if rel is None:
+            return False
+        blob = _wal_payload_bytes(data)
+        dest = self.stage_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dump_bytes(dest, blob, skip_dir_fsync=True)
+        self.staged[rel] = data
+        self.blobs[rel] = blob
+        return True
+
+    def abort(self) -> None:
+        if self._manifest_written:
+            return
+        shutil.rmtree(self.stage_dir, ignore_errors=True)
+
+    def commit(self) -> None:
+        if not self.blobs:
+            return
+        if len(self.blobs) == 1:
+            rel, blob = next(iter(self.blobs.items()))
+            dump_bytes(field_home(self.root) / rel, blob)
+            shutil.rmtree(self.stage_dir, ignore_errors=True)
+            return
+        files = {
+            rel: hashlib.sha256(blob).hexdigest() for rel, blob in self.blobs.items()
+        }
+        manifest = {
+            "v": 1,
+            "generation": self.generation,
+            "complete": True,
+            "files": files,
+        }
+        dump_bytes(self.stage_dir / "MANIFEST.json", json_payload_bytes(manifest))
+        self._manifest_written = True
+        _wal_crash("after-manifest")
+        first = True
+        for rel, blob in self.blobs.items():
+            skip = "/packets/" in rel.replace("\\", "/")
+            dump_bytes(field_home(self.root) / rel, blob, skip_dir_fsync=skip)
+            if first:
+                first = False
+                _wal_crash("after-first-live")
+        current = {
+            "v": 1,
+            "generation": self.generation,
+            "published_at": utc_now(),
+            "files": files,
+        }
+        dump_bytes(wal_current_path(self.root), json_payload_bytes(current))
+        self._prune()
+
+    def _prune(self) -> None:
+        home = wal_home(self.root)
+        current = _load_wal_current(self.root)
+        keep = {self.generation}
+        if current and current.get("generation"):
+            keep.add(str(current["generation"]))
+        # Keep the previous published generation so a crash mid-write still
+        # has a readable snapshot besides live paths.
+        gens: list[tuple[float, Path]] = []
+        try:
+            children = list(home.iterdir())
+        except OSError:
+            return
+        for child in children:
+            if not child.is_dir() or child.name in keep:
+                continue
+            try:
+                gens.append((child.stat().st_mtime, child))
+            except OSError:
+                continue
+        gens.sort(reverse=True)
+        for i, (_mtime, child) in enumerate(gens):
+            if i == 0:
+                continue  # newest extra gen is the previous published snapshot
+            shutil.rmtree(child, ignore_errors=True)
+
+
+@contextmanager
+def field_generation(root: Path) -> Any:
+    """Batch dump_json/dump_text into one generation while the field lock is held."""
+    if _WAL_CTX.get() is not None:
+        yield
+        return
+    gen = _WalGeneration(root)
+    token = _WAL_CTX.set(gen)
+    try:
+        yield gen
+    except BaseException:
+        gen.abort()
+        raise
+    else:
+        gen.commit()
+    finally:
+        _WAL_CTX.reset(token)
 
 
 # Byte-range offset for the Windows lock. Past any owner payload so
@@ -749,7 +1068,9 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
         os.fsync(handle.fileno())
         _HELD_FIELD_LOCK = path
         try:
-            yield
+            recover_field_wal(root)
+            with field_generation(root):
+                yield
         finally:
             _HELD_FIELD_LOCK = None
             handle.seek(0)
@@ -1735,15 +2056,85 @@ def next_legal_action(
 
 
 def write_phase_md(root: Path, order: dict[str, Any]) -> None:
-    from of.regime import done_when_for
-    body = (
-        f"# Phase: {order['phase']}\n\n"
-        f"Mission: {order['mission']}\n\n"
-        "Done when:\n"
-        + "\n".join(f"- {x}" for x in done_when_for(order))
-        + "\n"
-    )
-    field_home(root).joinpath("PHASE.md").write_text(body, encoding="utf-8")
+    from of.regime import mission_done_when, phase_done_when
+
+    mission = mission_done_when(order)
+    phase = phase_done_when(order)
+    lines = [
+        f"# Phase: {order['phase']}",
+        "",
+        f"Mission: {order['mission']}",
+        "",
+    ]
+    if not mission and not phase:
+        lines.append("no phase criteria; of patch --done-when")
+        lines.append("")
+    else:
+        lines.append("done_when_mission:")
+        lines.extend(f"- {x}" for x in mission)
+        lines.append("")
+        lines.append("done_when_phase:")
+        lines.extend(f"- {x}" for x in phase)
+        lines.append("")
+    field_home(root).joinpath("PHASE.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+_REQ_STAMP_KEYS = ("requirements_verified", "requirements_verified_contract")
+
+
+def residuals_without_verification_stamps(
+    residuals: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop residual verified_* stamps. Leader stamps via of spec --verified-contract."""
+    out: list[dict[str, Any]] = []
+    for res in residuals:
+        residual = res.get("residual")
+        if not isinstance(residual, dict):
+            out.append(res)
+            continue
+        patch = residual.get("proposed_patch")
+        if not isinstance(patch, dict) or not any(k in patch for k in _REQ_STAMP_KEYS):
+            out.append(res)
+            continue
+        new_patch = {k: v for k, v in patch.items() if k not in _REQ_STAMP_KEYS}
+        new_residual = dict(residual)
+        new_residual["proposed_patch"] = new_patch
+        new_res = dict(res)
+        new_res["residual"] = new_residual
+        out.append(new_res)
+    return out
+
+
+def owned_unverified_ids(root: Path) -> list[str]:
+    """Binding IDs that are owned and not yet verified_contract."""
+    from of.spec import REQ_CONTRACT_VERIFIED, is_active_requirement, load_requirements
+
+    data = load_requirements(root)
+    ids: list[str] = []
+    for item in data.get("requirements") or []:
+        if not is_active_requirement(item):
+            continue
+        owners = item.get("owned_by") or []
+        status = str(item.get("status") or "unowned")
+        if not owners and status != "owned":
+            continue
+        if status in REQ_CONTRACT_VERIFIED:
+            continue
+        rid = str(item.get("id") or "").strip()
+        if rid:
+            ids.append(rid)
+    return ids
+
+
+def format_owned_unverified_line(ids: list[str] | None = None) -> str:
+    found = list(ids or [])
+    if found:
+        return "owned-but-unverified " + " ".join(found)
+    return "owned-but-unverified"
+
+
+def print_owned_unverified(root: Path, *, file: Any = None) -> None:
+    print(format_owned_unverified_line(owned_unverified_ids(root)), file=file or sys.stdout)
 
 
 def _is_secret_flag(name: str) -> bool:
@@ -1873,15 +2264,22 @@ def _normalize_learning_text(text: str) -> str:
 def learning_provenance(
     root: Path | None, order: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """Who wrote this lesson, from which repo, under which ORDER origin."""
+    """Who wrote this lesson, from which repo, under which ORDER origin.
+
+    source=leader is never written when OF_CHILD is set (LEARN-001).
+    Provenance is an audit trail, not OS-user authentication.
+    """
     project = Path(root) if root is not None else Path.cwd()
     try:
         resolved = str(project.resolve())
     except OSError:
         resolved = str(project)
     origin = (order or {}).get("origin") if isinstance(order, dict) else None
+    source = (
+        LEARNING_SOURCE_CHILD if child_id_from_env() else LEARNING_SOURCE_LEADER
+    )
     return {
-        "source": LEARNING_SOURCE_LEADER,
+        "source": source,
         "repo": sha256_text(resolved)[:12],
         "origin": origin if isinstance(origin, dict) else None,
         "of_version": installed_version() or "unknown",
@@ -1891,12 +2289,23 @@ def learning_provenance(
 _LEARNING_SKIP_WARNED = False
 
 
-def learning_accepted(item: Any) -> bool:
-    """Schema-valid and provenanced. Anything else never enters a prompt."""
+def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
+    """Schema-valid and provenanced. Prompt gate requires source=leader.
+
+    Field notes from a child (source=child) may exist and list, but they
+    never enter a prompt and cannot stamp source=leader (LEARN-001/002).
+    """
     if not isinstance(item, dict):
         return False
     prov = item.get("provenance")
-    if not isinstance(prov, dict) or prov.get("source") != LEARNING_SOURCE_LEADER:
+    if not isinstance(prov, dict):
+        return False
+    src = prov.get("source")
+    if src == LEARNING_SOURCE_LEADER:
+        pass
+    elif src == LEARNING_SOURCE_CHILD and not for_prompt:
+        pass
+    else:
         return False
     text = _normalize_learning_text(str(item.get("text") or ""))
     if not text or len(text) > LEARNING_MAX_CHARS:
@@ -1904,12 +2313,14 @@ def learning_accepted(item: Any) -> bool:
     return not validate_public_schema(item, "learning.schema.json", "learning")
 
 
-def _filter_learnings(items: list[Any], where: str) -> list[dict[str, Any]]:
+def _filter_learnings(
+    items: list[Any], where: str, *, for_prompt: bool = True
+) -> list[dict[str, Any]]:
     global _LEARNING_SKIP_WARNED
     kept: list[dict[str, Any]] = []
     skipped = 0
     for item in items:
-        if learning_accepted(item):
+        if learning_accepted(item, for_prompt=for_prompt):
             kept.append(item)
         else:
             skipped += 1
@@ -2000,7 +2411,7 @@ def load_field_learnings(root: Path) -> list[dict[str, Any]]:
         item = _read_json_object(path)
         if isinstance(item, dict) and item.get("text"):
             out.append(item)
-    return _filter_learnings(out, "field learnings")
+    return _filter_learnings(out, "field learnings", for_prompt=False)
 
 
 def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
@@ -2054,6 +2465,8 @@ def save_learning(
 ) -> dict[str, Any]:
     if kind not in ("protocol", "field"):
         die("learning kind must be protocol or field")
+    if kind == "protocol":
+        refuse_child_forge("--protocol")
     raw = str(text or "").strip()
     nlines = raw.count("\n") + 1 if raw else 0
     cleaned = _normalize_learning_text(raw)
@@ -2070,6 +2483,13 @@ def save_learning(
     bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
+            if child_id_from_env() and (
+                item.get("source") == LEARNING_SOURCE_LEADER
+                or (isinstance(item.get("provenance"), dict)
+                    and item["provenance"].get("source") == LEARNING_SOURCE_LEADER)
+            ):
+                # Do not rewrite a leader-stamped item from a child process.
+                return item
             item["last_confirmed_at"] = utc_now()
             require_public_schema(item, "learning.schema.json", "learning")
             if kind == "protocol":
@@ -2090,7 +2510,9 @@ def save_learning(
         "kind": kind,
         "text": cleaned,
         "created_at": utc_now(),
-        "source": "leader",
+        "source": (
+            LEARNING_SOURCE_CHILD if child_id_from_env() else LEARNING_SOURCE_LEADER
+        ),
     }
     if kind == "field":
         if not order:
@@ -2117,7 +2539,9 @@ def promote_learning(
     """Copy a field learning of THIS ORDER into the protocol store.
 
     Refuses ids that are not field learnings of the active ORDER: promotion is
-    the explicit leader confirmation that a lesson may cross repositories."""
+    the explicit leader confirmation that a lesson may cross repositories.
+    OF_CHILD processes cannot promote (LEARN-001)."""
+    refuse_child_forge("--promote")
     key = str(learning_id or "").strip()
     if not key:
         die("--promote needs a field learning id")

@@ -9,6 +9,7 @@ from typing import Any
 from of.field import (
     PHASES,
     die,
+    field_is_file,
     load_json,
     load_wave_report,
     physical_artifact_path,
@@ -290,6 +291,17 @@ def _select_regime(
     return "human", "no applicable enabled regime"
 
 
+def constraint_norm(text: Any) -> str:
+    return " ".join(str(text).split())
+
+
+def constraint_present(constraints: list[Any], incoming: Any) -> bool:
+    key = constraint_norm(incoming)
+    if not key:
+        return True
+    return any(constraint_norm(c) == key for c in constraints)
+
+
 def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dict[str, Any]:
     changed = False
     for res in residuals:
@@ -297,9 +309,12 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
         if not patch or not isinstance(patch, dict):
             continue
         if "constraints+" in patch and isinstance(patch["constraints+"], list):
+            existing = {constraint_norm(c) for c in order["constraints"]}
             for c in patch["constraints+"]:
-                if c not in order["constraints"]:
+                key = constraint_norm(c)
+                if key and key not in existing:
                     order["constraints"].append(c)
+                    existing.add(key)
                     changed = True
         if "done_when+" in patch and isinstance(patch["done_when+"], list):
             for c in patch["done_when+"]:
@@ -325,7 +340,7 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
 def current_wave_report(root: Path, state: dict[str, Any]) -> dict[str, Any] | None:
     wave = int(state.get("wave") or 1)
     path = wave_dir(wave, root) / "report.json"
-    if not path.is_file():
+    if not field_is_file(path):
         return None
     report = load_wave_report(path)
     if int(report.get("wave") or 0) != wave:
@@ -376,7 +391,7 @@ def integration_input_digest(
 
 def existing_integration_report(root: Path, wave: int) -> dict[str, Any] | None:
     path = wave_dir(int(wave), root) / "report.json"
-    return load_wave_report(path) if path.is_file() else None
+    return load_wave_report(path) if field_is_file(path) else None
 
 
 def wave_report_covers_packets(

@@ -343,8 +343,9 @@ class SpawnEnvAllowlist(unittest.TestCase):
         _, child = self._spawn_dump({})
         self.assertIn("PATH", child)
         self.assertIn("HOME", child)
-        self.assertNotIn("OF_KEEP_ME", child)  # only OF_FIELD/OF_JSON/OF_NO_UPDATE_CHECK cross
+        self.assertNotIn("OF_KEEP_ME", child)  # only OF_FIELD/OF_CHILD/OF_JSON/OF_NO_UPDATE_CHECK cross
         self.assertIn("OF_FIELD", child)
+        self.assertEqual(child.get("OF_CHILD"), "e1")
         self.assertNotIn("CANARY_SECRET", child)
 
     def test_of_spawn_env_adds_names(self) -> None:

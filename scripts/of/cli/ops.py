@@ -32,9 +32,11 @@ from of.field import (
     apply_field_retention,
     default_worktree_path,
     die,
+    field_is_file,
     emit_event,
     forget_learning,
     promote_learning,
+    refuse_child_forge,
     field_rel,
     find_root,
     format_origin_line,
@@ -150,6 +152,7 @@ def cmd_learn(args: argparse.Namespace) -> None:
         return
     promote = str(getattr(args, "promote", None) or "").strip()
     if promote:
+        refuse_child_forge("--promote")
         if not order:
             die("of learn --promote needs an ORDER (of init first)")
         item = promote_learning(root, promote, order)
@@ -168,6 +171,8 @@ def cmd_learn(args: argparse.Namespace) -> None:
     want_protocol = bool(getattr(args, "protocol", False))
     if want_field and want_protocol:
         die("use --protocol or --field, not both")
+    if want_protocol:
+        refuse_child_forge("--protocol")
     # Field-local by default: cross-project memory is an explicit --protocol.
     kind = "protocol" if want_protocol else "field"
     if kind == "field" and not order:
@@ -703,7 +708,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     packets = packed_children(root, wave)
     flying = in_flight_children(root, wave)
     completed = completed_children(root, wave)
-    integrated = (wave_dir(wave, root) / "report.json").is_file()
+    integrated = field_is_file(wave_dir(wave, root) / "report.json")
     stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
     nxt = next_legal_action(
         state, flying, packets, integrated=integrated, stale=stale

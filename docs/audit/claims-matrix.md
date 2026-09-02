@@ -12,18 +12,18 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 > **Code is source of truth.** Docs do not override implementation.
 > **Living claims v0:** anchors + severity.
 
-**Date:** 2026-09-01
+**Date:** 2026-09-02
 **Scope:** project
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.7` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.6.8` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 64 |
+| OK | 75 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 
 | Severity | Count |
 |----------------:|
-| critical | 49 |
+| critical | 60 |
 | normal | 20 |
 
-**Truth score (advisory):** `(64*100 + 4*50) / 69 = 95.7`
+**Truth score (advisory):** `(75*100 + 4*50) / 80 = 96.3`
 **CI gate:** no critical Contradicted after docs patch. Local `scripts/audit-claims.sh` is not in this repo; the gate here is the matrix + `validate-skill.sh`.
 
 **Top risks (post-patch):**
@@ -133,9 +133,20 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-064 | CI matrix is unittest + `of eval --strict --kernel` + `validate-skill.sh` + gitleaks on ubuntu/macos × 3.11/3.13 | CONTRIBUTING / README / evals | `.github/workflows/test.yml` | `.github/workflows/test.yml` | | — | critical | OK | keep |
 | C-065 | `scripts/of.py` is a one-function shim (`from of.cli import main`); internals are `scripts/of/` | architecture / DEPENDENCIES / CONTRIBUTING | file contents | `scripts/of.py` | `main` | — | critical | OK | patched DEPENDENCIES + contributing debt |
 | C-066 | `OF_TRUST` is authoritative for every adapter; conservative default emits no bypass; only `yolo` (alias `escalated`) emits `YOLO_FLAGS`; unknown profiles die | SKILL / README / adapters / CHANGELOG | `resolve_trust_profile` / `trust_flags` / `YOLO_FLAGS` | `scripts/of_adapters.py` / `tests/test_spawn_trust.py` | `trust_flags` | — | critical | OK | keep; 0.6.7 |
-| C-067 | Spawn env is an allowlist, not parent inherit; `OF_SPAWN_ENV` extends or `inherit` opts out; child has no stdin and own process group; spawn metadata finalized on every outcome | SKILL / README / adapters / CHANGELOG | `spawn_env` / `SPAWN_ENV_*` | `scripts/of_adapters.py` / `scripts/of/cli/wave.py` / `tests/test_spawn_trust.py` | `spawn_env` | — | critical | OK | keep; 0.6.7 |
+| C-067 | Spawn env is an allowlist, not parent inherit; `OF_SPAWN_ENV` extends or `inherit` opts out; child has no stdin and own process group; spawn metadata finalized on every outcome; `OF_CHILD` always set | SKILL / README / adapters / CHANGELOG | `spawn_env` / `SPAWN_ENV_*` / `OF_CHILD_ENV` | `scripts/of_adapters.py` / `scripts/of/cli/wave.py` / `tests/test_spawn_trust.py` | `spawn_env` | — | critical | OK | keep; 0.6.7; LEARN-001 sets OF_CHILD |
 | C-068 | CLI error boundary: one-line `of: error: <kind>: <message>` exit 1; `--json` emits `error` event and no prose; traceback only under `OF_DEBUG=1`; Ctrl-C exits 130 | SKILL / README / events.md / CHANGELOG | CLI `main` wrapper | `scripts/of/cli/__init__.py` / `tests/test_cli_error_boundary.py` | `main` | — | critical | OK | keep; 0.6.7 |
 | C-069 | Python floor 3.11 on every public surface; CI matrix 3.11 + 3.13 | README / CONTRIBUTING / CHANGELOG | `scripts/of.py` refuse; `tests/test_python_floor.py` | `scripts/of.py` / `.github/workflows/test.yml` | | — | critical | OK | keep; 0.6.7 |
+| C-070 | Spawn always sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`of: error: child-forge:`); `source=leader` never written for a child; protocol lines render as untrusted quotes | SKILL / README / SLAVE / adapters | `refuse_child_forge` / `child_env[OF_CHILD]` / `render_prompt` | `scripts/of/field.py` / `scripts/of/cli/wave.py` / `scripts/of/pack.py` / `tests/test_learn_provenance.py` | `LearnChildForge` | — | critical | OK | LEARN-001/002 |
+| C-071 | Multi-file field mutations stage one generation, write MANIFEST (paths+hashes), then publish; crash leaves previous generation readable; recovery is idempotent | architecture / README / SKILL / troubleshooting | `field_generation` / `recover_field_wal` | `scripts/of/field.py` / `tests/test_field_wal.py` | `FieldWalBothSides` | — | critical | OK | WAL-001 both sides |
+| C-072 | `of pack` does not default tokens=80000; `--tokens N` for N>0 dies pointing at reserved accounting; only `budget.seconds` is enforced | README / SKILL / packet.schema.json | `cmd_pack` tokens check; schema minimum 0 | `scripts/of/cli/wave.py` / `schemas/packet.schema.json` / `tests/test_budget_tokens.py` | `BudgetTokensReserved` | — | critical | OK | BUDGET-001 |
+| C-073 | `of collect` / `of integrate` print owned-but-unverified binding IDs; never auto-stamp `verified_contract` | SKILL / CHANGELOG / kernel feature | collect/integrate note; `cmd_spec --verified-contract` is the stamp | `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | `Loop001CollectIntegrate` | — | critical | OK | LOOP-001 |
+| C-074 | `constraints+` and `--constraints-add` skip whitespace-normalized duplicates | SKILL / CHANGELOG | `constraint_norm` | `scripts/of/regime.py` / `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | | — | critical | OK | DEDUPE-001 |
+| C-075 | `PHASE.md` lists `done_when_mission` and `done_when_phase` separately; both empty prints `no phase criteria; of patch --done-when` | SKILL / CHANGELOG | `write_phase_md` | `scripts/of/field.py` / `tests/test_theater_fieldops.py` | `write_phase_md` | — | critical | OK | PHASE-001 |
+| C-076 | Render/handoff compact the prompt ORDER view; disk packet stays full | SKILL / CHANGELOG | `render_prompt` order view | `scripts/of/pack.py` / `tests/test_theater_renderdoc.py` | `render_prompt` | — | critical | OK | RENDER-001 |
+| C-077 | `of patch --backlog-undone N` sets that row `done=false`; no ghost rows | SKILL / CHANGELOG | `--backlog-undone` | `scripts/of/cli/__init__.py` / `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | | — | critical | OK | BACKLOG-001 |
+| C-078 | `of spec --add ID` leaves the ID in SPEC.md (append dated line if missing; refresh spec_hash) | SKILL / kernel feature / CHANGELOG | `cmd_spec --add` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` / `tests/test_theater_renderdoc.py` | | — | critical | OK | SPEC-001 |
+| C-079 | SLAVE: product comments short/factual not field diary; SKILL: do not pack a whole phase; oversized slice stays advisory | SLAVE / SKILL / CHANGELOG | doctrine text; pack does not refuse ≥800 | `SLAVE.md` / `SKILL.md` / `scripts/of/cli/wave.py` | | — | critical | OK | DOCTRINE-001 |
+| C-080 | `main` requires `required_approving_review_count >= 1` and the five CI checks | CONTRIBUTING / CHANGELOG | GitHub branch protection | `CONTRIBUTING.md` | | — | critical | OK | REVIEW-001 |
 
 ### Verdict definitions
 
