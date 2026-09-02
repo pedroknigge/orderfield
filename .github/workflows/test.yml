@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: the suite only reads the checkout. Nothing here pushes,
+# comments, or publishes.
+permissions:
+  contents: read
+
+# Actions are pinned to full commit SHAs (mutable tags can be moved). The
+# trailing comment is the tag the SHA was resolved from; Dependabot
+# (.github/dependabot.yml) proposes bumps weekly.
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -13,14 +21,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        # 3.9 is the compatibility floor declared in SKILL.md; 3.13 is current.
-        python-version: ["3.9", "3.13"]
+        # 3.11 is the compatibility floor declared in SKILL.md (3.9/3.10 are EOL);
+        # 3.13 is current. scripts/of.py refuses anything below the floor.
+        python-version: ["3.11", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Unit tests (kernel + packaging)
+      - name: Unit tests (kernel + packaging + README quickstart from a fresh temp dir)
         run: python3 -m unittest discover -s tests -v
       - name: Recovery evals (of eval --strict --kernel)
         env:
@@ -32,9 +41,9 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

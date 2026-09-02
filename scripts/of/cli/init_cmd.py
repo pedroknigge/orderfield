@@ -203,12 +203,34 @@ from of.regime import (
 
 
 
+def resolve_source_text(args: argparse.Namespace) -> str | None:
+    """Read --source/--source-file BEFORE any field write.
+
+    A missing or non-UTF-8 brief must leave the tree unchanged: no promotion,
+    no fields/<id>/, no swallowed ingest file. UnicodeDecodeError propagates
+    to the CLI error boundary (one sanitized line, exit 1)."""
+    source_file = getattr(args, "source_file", None)
+    source_inline = getattr(args, "source", None)
+    if source_file and source_inline:
+        die("pass only one of --source / --source-file")
+    if source_file:
+        text = read_brief_file(str(source_file), flag="--source-file")
+        warn_if_deictic_brief(text, flag="--source-file")
+        return text
+    if source_inline:
+        text = str(source_inline)
+        warn_if_deictic_brief(text, flag="--source")
+        return text
+    return None
+
+
 def _stamp_and_write_new_field(
     args: argparse.Namespace,
     root: Path,
     *,
     force: bool,
     order: dict[str, Any] | None = None,
+    source_text: str | None = None,
 ) -> dict[str, Any]:
     phase = getattr(args, "phase", None) or "explore"
     if phase not in PHASES:
@@ -225,17 +247,7 @@ def _stamp_and_write_new_field(
     )
     if origin_harness:
         apply_origin_stamp(order, origin_harness, origin_session)
-    source_text = None
     source_file = getattr(args, "source_file", None)
-    source_inline = getattr(args, "source", None)
-    if source_file and source_inline:
-        die("pass only one of --source / --source-file")
-    if source_file:
-        source_text = read_brief_file(str(source_file), flag="--source-file")
-        warn_if_deictic_brief(source_text, flag="--source-file")
-    elif source_inline:
-        source_text = str(source_inline)
-        warn_if_deictic_brief(source_text, flag="--source")
     target = field_home(root)
     target.mkdir(parents=True, exist_ok=True)
     if force:
@@ -292,6 +304,7 @@ def cmd_init(args: argparse.Namespace) -> None:
             "field(s) exist; of new --mission '...' opens a sibling "
             "(or of init --force --field ID replaces one)"
         )
+    source_text = resolve_source_text(args)
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -307,7 +320,9 @@ def cmd_init(args: argparse.Namespace) -> None:
         if order_path(root).exists() and not args.force:
             die(f"already exists {order_path(root)} (use --force)")
         set_field_home(target)
-    order = _stamp_and_write_new_field(args, root, force=bool(args.force))
+    order = _stamp_and_write_new_field(
+        args, root, force=bool(args.force), source_text=source_text
+    )
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
 
@@ -324,6 +339,8 @@ def cmd_new(args: argparse.Namespace) -> None:
 
     if not args.mission:
         die("--mission is required")
+    # Validate the brief before promoting the legacy layout or creating fields/<id>/.
+    source_text = resolve_source_text(args)
     promote_legacy_layout(root)
     homes = list_field_homes(root)
     if not homes:
@@ -335,7 +352,9 @@ def cmd_new(args: argparse.Namespace) -> None:
         die(f"field home already exists {home}")
     home.mkdir(parents=True, exist_ok=True)
     set_field_home(home)
-    order = _stamp_and_write_new_field(args, root, force=False, order=order)
+    order = _stamp_and_write_new_field(
+        args, root, force=False, order=order, source_text=source_text
+    )
     emit_event("new", field=order["id"], ok=True)
     print(f"field         {order['id']}")
     print(f"initialized {order_path(root)}")

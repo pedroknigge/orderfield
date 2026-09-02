@@ -4,7 +4,13 @@
   "title": "Orderfield learning",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "text", "created_at"],
+  "required": [
+    "id",
+    "kind",
+    "text",
+    "created_at",
+    "provenance"
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -12,7 +18,10 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["protocol", "field"],
+      "enum": [
+        "protocol",
+        "field"
+      ],
       "description": "protocol survives ORDER and repos (user cache). field is this mission only."
     },
     "text": {
@@ -20,16 +29,72 @@
       "minLength": 1,
       "maxLength": 400
     },
-    "created_at": { "type": "string", "minLength": 1 },
-    "last_confirmed_at": { "type": "string", "minLength": 1 },
-    "order_id": { "type": "string", "minLength": 1 },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_confirmed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "order_id": {
+      "type": "string",
+      "minLength": 1
+    },
     "phase": {
       "type": "string",
-      "enum": ["explore", "cut", "build", "verify", "deliver"]
+      "enum": [
+        "explore",
+        "cut",
+        "build",
+        "verify",
+        "deliver"
+      ]
     },
     "source": {
       "type": "string",
-      "enum": ["leader"]
+      "enum": [
+        "leader"
+      ]
+    },
+    "promoted_from": {
+      "type": "string",
+      "pattern": "^lrn_[0-9a-f]{12}$",
+      "description": "field learning id this protocol item was promoted from (of learn --promote)."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "repo",
+        "of_version"
+      ],
+      "description": "Who wrote it and where. Items without provenance are skipped on load and never enter a prompt.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "leader"
+          ]
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$",
+          "description": "sha256 of the resolved project root, first 12 hex."
+        },
+        "origin": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "ORDER.origin at save time (harness/session), or null."
+        },
+        "of_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   }
 }

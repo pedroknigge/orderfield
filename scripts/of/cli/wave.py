@@ -26,6 +26,7 @@ from of_adapters import (
     detect_adapters,
     missing_tools,
     pick_adapter,
+    spawn_env,
 )
 
 from of.field import (
@@ -68,6 +69,7 @@ from of.field import (
     open_backlog,
     order_path,
     parse_utc,
+    physical_field_rel,
     plan_field_migrations,
     plan_field_retention,
     print_migration_catalog,
@@ -198,6 +200,14 @@ from of.regime import (
     waves_since_across,
 )
 
+
+def field_artifact_path(root: Path, canonical: str, label: str) -> Path:
+    """Resolve a canonical `.orderfield/...` artifact at the physical field home.
+
+    Packets carry canonical paths (`.orderfield/waves/NNN/...`); sibling fields
+    live under `.orderfield/fields/<id>/`. wave_dir() already maps directories;
+    this maps the file paths so pack -> handoff -> residual -> collect agree."""
+    return safe_relative_path(root, physical_field_rel(root, canonical), label)
 
 
 def cmd_pack(args: argparse.Namespace) -> None:
@@ -364,9 +374,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die("invalid packet:\n  " + "\n  ".join(errors))
     canonical_out = canonical_packet_rel(int(wave), child_id)
     out_rel = str(args.out) if args.out else canonical_out
-    out = safe_relative_path(root, out_rel, "--out", reject_symlinks=True)
     if out_rel != canonical_out:
         die(f"noncanonical --out {out_rel!r}; expected {canonical_out}")
+    # Sibling fields: the packet lives at the physical field home, like wdir.
+    out_physical_rel = physical_field_rel(root, canonical_out)
+    out = safe_relative_path(root, out_physical_rel, "--out", reject_symlinks=True)
     register_packed_child(
         order, state, force=bool(getattr(args, "force_spawn", False))
     )
@@ -399,7 +411,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         residual=residual_path,
         ok=True,
     )
-    print(str(out))
+    print(out_physical_rel)
     print(f"child_id={child_id} wave={wave} residual={residual_path}")
 
 
@@ -418,7 +430,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     packet = load_packet(pkt_path)
     require_packet_artifact_paths(root, packet, pkt_path)
     res_rel = packet.get("residual_path")
-    if res_rel and safe_relative_path(root, res_rel, "packet residual_path").is_file():
+    if res_rel and field_artifact_path(root, res_rel, "packet residual_path").is_file():
         die(
             f"{child_id} already wrote a residual; collect/integrate it "
             "instead of unpacking"
@@ -539,7 +551,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         die(f"max_children cap {order['caps']['max_children']} reached")
     wdir = wave_dir(int(wave), root)
     residual_rel = str(packet["residual_path"])
-    residual_abs = safe_relative_path(root, residual_rel, "packet residual_path")
+    residual_abs = field_artifact_path(root, residual_rel, "packet residual_path")
     residual_abs.parent.mkdir(parents=True, exist_ok=True)
     required = [str(t).strip().lower() for t in (packet.get("requires_tool") or [])]
     lacking = missing_tools(adapter, required)
@@ -578,7 +590,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     argv = build_spawn_argv(
         adapter, prompt, packet, residual_abs, dry_run=bool(args.dry_run)
     )
-    meta = {
+    meta: dict[str, Any] = {
         "child_id": child_id,
         "adapter": adapter,
         "argv_preview": argv_preview(argv),
@@ -587,34 +599,80 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "residual": residual_rel,
         "started_at": utc_now(),
         "dry_run": bool(args.dry_run),
+        "trust": os.environ.get(TRUST_ENV) or DEFAULT_TRUST_PROFILE,
+        "env_mode": "inherit"
+        if (os.environ.get("OF_SPAWN_ENV") or "").strip().lower() == "inherit"
+        else "allowlist",
     }
-    dump_json(wdir / "spawns" / f"{child_id}.json", meta)
+    meta_path = wdir / "spawns" / f"{child_id}.json"
+    log_path = wdir / "logs" / f"{child_id}.log"
+
+    def finalize(outcome: str, **extra: Any) -> None:
+        """Every spawn outcome lands here: never leave started-only metadata."""
+        meta.update(extra)
+        meta["outcome"] = outcome
+        meta["ended_at"] = utc_now()
+        dump_json(meta_path, meta)
+
+    dump_json(meta_path, meta)
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={residual_rel}")
     if args.dry_run:
+        finalize("dry_run", ok=True)
         snapshot_session(root, "spawn")
         print("dry-run argv:")
         print(argv_preview(argv))
         return
-    log_path = wdir / "logs" / f"{child_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write_log(stdout: Any, stderr: Any) -> None:
+        def text_of(chunk: Any) -> str:
+            if chunk is None:
+                return ""
+            if isinstance(chunk, bytes):
+                return chunk.decode("utf-8", errors="replace")
+            return str(chunk)
+
+        log_path.write_text(
+            f"# stdout\n{redact_text(text_of(stdout))}\n\n"
+            f"# stderr\n{redact_text(text_of(stderr))}\n",
+            encoding="utf-8",
+        )
+
+    def fail(outcome: str, message: str, **extra: Any) -> None:
+        finalize(outcome, ok=False, log=str(log_path), **extra)
+        snapshot_session(root, "spawn")
+        emit_event(
+            "spawn",
+            adapter=adapter,
+            child_id=child_id,
+            outcome=outcome,
+            ok=False,
+            **{k: v for k, v in extra.items() if k in ("exit", "timeout_s")},
+        )
+        die(message)
+
+    timeout_s = packet.get("budget", {}).get("seconds") or args.timeout
     try:
         proc = subprocess.run(
             argv,
             cwd=str(root),
             capture_output=True,
             text=True,
-            timeout=packet.get("budget", {}).get("seconds") or args.timeout,
+            timeout=timeout_s,
+            env=spawn_env(adapter),
         )
     except FileNotFoundError:
-        die(f"binary not found for adapter={adapter}")
-    except subprocess.TimeoutExpired:
-        die(f"timeout child_id={child_id}")
-    log_path.write_text(
-        f"# stdout\n{redact_text(proc.stdout or '')}\n\n"
-        f"# stderr\n{redact_text(proc.stderr or '')}\n",
-        encoding="utf-8",
-    )
+        write_log("", f"binary not found: {argv[0]}")
+        fail("missing_binary", f"binary not found for adapter={adapter}")
+    except subprocess.TimeoutExpired as exc:
+        write_log(exc.stdout, exc.stderr)
+        fail(
+            "timeout",
+            f"timeout child_id={child_id} after {timeout_s}s log={log_path}",
+            timeout_s=timeout_s,
+        )
+    write_log(proc.stdout, proc.stderr)
     if proc.returncode != 0:
         print(f"spawn exit={proc.returncode} log={log_path}", file=sys.stderr)
     # best-effort: if residual missing, try to extract JSON from stdout
@@ -635,12 +693,20 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if not already:
         state["children_spawned"] += 1
         save_state(state, root)
+    finalize(
+        "ok" if proc.returncode == 0 else "nonzero_exit",
+        ok=proc.returncode == 0,
+        exit=proc.returncode,
+        log=str(log_path),
+        residual_present=residual_abs.exists(),
+    )
     snapshot_session(root, "spawn")
     emit_event(
         "spawn",
         adapter=adapter,
         child_id=child_id,
         exit=proc.returncode,
+        outcome=meta["outcome"],
         ok=proc.returncode == 0,
     )
     print(f"exit={proc.returncode} log={log_path}")
@@ -663,7 +729,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
-        if not rel or not (root / str(rel)).is_file():
+        if not rel or not field_artifact_path(root, str(rel), "packet residual_path").is_file():
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
             print(
@@ -671,7 +737,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"(still in flight; of unpack --child-id {child} releases it)"
             )
             continue
-        path = root / str(rel)
+        path = field_artifact_path(root, str(rel), "packet residual_path")
         data = load_json(path)
         errs = validate_residual_for_packet(data, pkt, root)
         if errs:

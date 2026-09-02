@@ -35,7 +35,8 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `gc` | After `of gc` | `dumped`, `ok` |
 | `doctor` | After `of doctor` | `ok` |
 | `migrate` | After `of migrate` | `applied`, `ok` |
-| `learn` | After `of learn` | `action` (`save` \| `list` \| `forget`), `ok`; `kind`/`id` on save/forget |
+| `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
+| `error` | When a command fails with an unexpected exception (the CLI error boundary in `main()`) | `ok: false`, `kind` (exception class, e.g. `UnicodeDecodeError`, `OSError`, `JSONDecodeError`), `message` (one sanitized line, secrets redacted) |
 
 ## Example
 
@@ -45,6 +46,25 @@ of --json pack --slice "…" --role explorer --child-id e1
 ```
 
 Each line is a standalone JSON object with an `event` key plus command-specific fields.
+
+## Errors
+
+`of` never prints a Python traceback by default. Any exception that escapes a
+command exits `1`; in plain mode the only output is one stderr line
+
+```
+of: error: <kind>: <message>
+```
+
+and under `--json` / `OF_JSON=1` the same failure is the `error` event instead:
+
+```json
+{"event": "error", "kind": "UnicodeDecodeError", "message": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte", "ok": false}
+```
+
+`of: <message>` lines from a deliberate refusal (`die`) and argparse usage
+errors are unchanged. `KeyboardInterrupt` exits `130`. `OF_DEBUG=1` re-raises
+with the full traceback for debugging.
 
 ## Not covered
 

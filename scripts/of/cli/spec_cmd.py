@@ -113,9 +113,11 @@ from of.spec import (
     find_requirement,
     is_active_requirement,
     load_requirements,
+    load_user_json,
     mark_requirements_owned,
     merge_extracted_requirements,
     read_brief_file,
+    read_spec_text,
     release_requirement_owner,
     require_req_id,
     require_spec_intact,
@@ -203,9 +205,20 @@ from of.regime import (
 def cmd_spec(args: argparse.Namespace) -> None:
     """Binding-requirements ledger. Kernel does not LLM-extract; --extract is heuristic."""
     root = find_root()
+    # LOCK-002: SPEC.md, REQUIREMENTS and ORDER are the authority ledger;
+    # every mutation here runs under the field lock (re-entrant when main()
+    # already holds it for a mutating command).
+    with field_lock(root, "spec"):
+        _cmd_spec_locked(args, root)
+
+
+def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
     order = load_order(root)
     data = load_requirements(root)
     changed = False
+    # ORDER deltas produced by this command; applied to a fresh ORDER read
+    # right before the revision bump, never to the copy loaded above.
+    spec_updates: dict[str, Any] = {}
     amend_file = getattr(args, "amend_file", None)
     amend_text = getattr(args, "amend", None)
     revise_file = getattr(args, "revise_file", None)
@@ -233,7 +246,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
         else:
             require_spec_intact(root, order)
             snap = snapshot_spec(root)
-            current = spec_path(root).read_text(encoding="utf-8")
+            current = read_spec_text(root)
             merged = append_amendment(current, incoming)
             new_hash = write_spec(root, merged, revise=True)
             extracted = extract_requirements_from_spec(
@@ -249,17 +262,15 @@ def cmd_spec(args: argparse.Namespace) -> None:
                     "(IDs continue; original still binding)"
                 )
         data["spec_hash"] = new_hash
-        order["spec_ref"] = FIELD_SPEC_MD
-        order["spec_hash"] = new_hash
-        order["spec_closed"] = False
+        spec_updates.update(
+            {"spec_ref": FIELD_SPEC_MD, "spec_hash": new_hash, "spec_closed": False}
+        )
         changed = True
     elif revise_file or revise_text:
         creating = not spec_path(root).is_file()
         old_hash = str(order.get("spec_hash") or "")
         if not creating:
-            old_hash = old_hash or sha256_text(
-                spec_path(root).read_text(encoding="utf-8")
-            )
+            old_hash = old_hash or sha256_text(read_spec_text(root))
             snap = snapshot_spec(root)
             if snap:
                 print(f"spec-log    {snap.relative_to(root)}")
@@ -273,9 +284,9 @@ def cmd_spec(args: argparse.Namespace) -> None:
             warn_if_deictic_brief(source_text, flag="--revise")
         new_hash = write_spec(root, source_text, revise=True)
         data["spec_hash"] = new_hash
-        order["spec_ref"] = FIELD_SPEC_MD
-        order["spec_hash"] = new_hash
-        order["spec_closed"] = False
+        spec_updates.update(
+            {"spec_ref": FIELD_SPEC_MD, "spec_hash": new_hash, "spec_closed": False}
+        )
         changed = True
         if creating:
             print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
@@ -291,7 +302,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
         spec = spec_path(root)
         if not spec.is_file():
             die("no SPEC.md; of init --source or of spec --amend")
-        text = spec.read_text(encoding="utf-8")
+        text = read_spec_text(root)
         extracted = extract_requirements_from_spec(
             text, existing=data.get("requirements") or []
         )
@@ -302,7 +313,7 @@ def cmd_spec(args: argparse.Namespace) -> None:
         path = Path(args.from_file)
         if not path.is_file():
             die(f"--from-file not found: {args.from_file}")
-        incoming = load_json(path)
+        incoming = load_user_json(path, flag="--from-file")
         items = incoming if isinstance(incoming, list) else incoming.get("requirements")
         if not isinstance(items, list):
             die("--from-file must be a list or {requirements: [...]}")
@@ -415,7 +426,9 @@ def cmd_spec(args: argparse.Namespace) -> None:
     if changed:
         spec = spec_path(root)
         if spec.is_file():
-            data["spec_hash"] = sha256_text(spec.read_text(encoding="utf-8"))
+            data["spec_hash"] = sha256_text(read_spec_text(root))
+        # REQUIREMENTS before ORDER: a crash between the two leaves ORDER at
+        # the previous revision pointing at a superset index (LOCK-002).
         save_requirements(data, root)
         identity = bool(
             getattr(args, "extract", False)
@@ -428,6 +441,10 @@ def cmd_spec(args: argparse.Namespace) -> None:
             or getattr(args, "supersede", None)
         )
         if identity:
+            # LOCK-002: re-read ORDER under the lock right before mutating
+            # revision/spec_hash; carry only this command's spec deltas.
+            order = load_order(root)
+            order.update(spec_updates)
             sync_order_spec_fields(order, root)
             order["rev"] = int(order["rev"]) + 1
             save_order(order, root)
@@ -481,7 +498,7 @@ def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
     print("Intent vs Delivered")
     print()
     if spec.is_file():
-        digest = sha256_text(spec.read_text(encoding="utf-8"))
+        digest = sha256_text(read_spec_text(root))
         print(f"spec        {FIELD_SPEC_MD}  hash={digest[:12]}…")
     else:
         print("spec        missing — of init --source-file (verbatim brief)")

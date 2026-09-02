@@ -83,6 +83,7 @@ from of.field import (
     require_nonsymlink_kernel_root,
     require_public_schema,
     run_git,
+    physical_field_rel,
     safe_relative_path,
     save_order,
     save_state,
@@ -363,7 +364,9 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         "record_path": report["integration"]["record_path"],
     }
     state.setdefault("integration_history", []).append(history_entry)
-    dump_json(root / report["integration"]["record_path"], report)
+    dump_json(
+        root / physical_field_rel(root, report["integration"]["record_path"]), report
+    )
     dump_json(wave_dir(int(wave), root) / "report.json", report)
     save_state(state, root)
     if args.next_wave:

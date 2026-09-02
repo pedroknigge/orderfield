@@ -2,7 +2,7 @@
 name: orderfield
 description: v0.6.6 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
-compatibility: Requires Python 3.9+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
+compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
   version: "0.6.6"
   author: Soy Pei / orderfield
@@ -29,7 +29,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 
@@ -74,14 +74,19 @@ Optional leader narrative for the next session (one screen; refuse huge dumps):
 python3 <skill>/scripts/of.py checkpoint --summary "wave N: waiting on collect after spawn"
 ```
 
-Protocol learnings (`of learn`) are durable lessons about **running Orderfield**, not about the product in this repo. They survive `of init --force` and `of gc`. Field learnings (`of learn --field`) die with the mission. Put protocol lessons on disk; do not paste them into `--slice` or SPEC.
+Learnings (`of learn`) are **field-local by default**: bare `of learn TEXT` is a note about this ORDER and dies with the mission. Protocol learnings need an explicit `--protocol` — durable lessons about **running Orderfield**, not about the product in this repo; they survive `of init --force`, `of gc`, and other repos, and up to 8 lines reach every child prompt. Promotion is a leader decision after reading the text: `of learn --promote <id>` copies a field lesson into protocol. Every stored item carries provenance (`source: leader`, `repo` = sha256 of the resolved project root, `origin` = `ORDER.origin` or null, `of_version`); items without provenance or failing the schema are skipped on load with one stderr warning, so an edited or foreign learnings file cannot poison prompts. Put lessons on disk; do not paste them into `--slice` or SPEC.
 
 ```bash
-of learn "of init --force must unlink session.json"
-of learn --field "this wave's explorer skipped --owns-requirement"
+of learn "this wave's explorer skipped --owns-requirement"        # field (default)
+of learn --protocol "of init --force must unlink session.json"    # cross-project, explicit
+of learn --promote lrn_ab12cd34ef56                               # field -> protocol, after reading it
 of learn --list
 of learn --forget lrn_ab12cd34ef56
 ```
+
+**Spawn trust.** `OF_TRUST` is authoritative for **every** adapter: `conservative` (default; also `''`/`default`) adds no escalation flag anywhere — approvals and sandboxing stay as the harness ships them; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` (alias `escalated`) is the only profile that emits bypass flags and must be selected explicitly. Children receive an environment **allowlist**, not the parent environment: `OF_SPAWN_ENV=NAME1,NAME2` adds names, `OF_SPAWN_ENV=inherit` opts out. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
+
+**Error contract.** Kernel failures are one line on stderr — `of: error: <kind>: <message>`, exit 1; with `--json` the same failure is `{"event":"error","ok":false,"kind":…,"message":…}`. No traceback unless `OF_DEBUG=1`. Ctrl-C exits 130.
 
 ### 1. Field or nothing
 
@@ -235,7 +240,7 @@ Integration hashes the canonical packet/residual set plus reduction options. Rep
 
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
-Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Token budgets, `local_budget_pct`, and inherited depth stay reserved; the kernel does not invent telemetry.
+Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Packet `budget.tokens`, `thresholds.local_budget_pct`, and inherited depth stay reserved — carried, never measured or enforced; only `budget.seconds` is enforced, as the spawn timeout. The kernel does not invent telemetry.
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 

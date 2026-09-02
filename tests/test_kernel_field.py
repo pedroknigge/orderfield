@@ -1758,6 +1758,7 @@ class ProtocolLearnings(unittest.TestCase):
         proto = run_of(
             self.tmp,
             "learn",
+            "--protocol",
             "of init --force must unlink session.json",
         )
         self.assertEqual(proto.returncode, 0, proto.stderr)
@@ -1792,7 +1793,9 @@ class ProtocolLearnings(unittest.TestCase):
         self.assertNotIn("this mission used explore before cut", listed.stdout)
 
     def test_resume_and_render_show_protocol_not_field_product(self) -> None:
-        run_of(self.tmp, "learn", "Windows flock uses a high-offset byte")
+        run_of(
+            self.tmp, "learn", "--protocol", "Windows flock uses a high-offset byte"
+        )
         run_of(self.tmp, "learn", "--field", "the pricing tool uses Postgres")
         resumed = run_of(self.tmp, "resume")
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
@@ -1839,7 +1842,7 @@ class ProtocolLearnings(unittest.TestCase):
         self.assertIn("refuse dumps", refused.stderr)
 
     def test_gc_keeps_protocol_even_when_aged(self) -> None:
-        run_of(self.tmp, "learn", "do not ingest dale as SPEC")
+        run_of(self.tmp, "learn", "--protocol", "do not ingest dale as SPEC")
         listed = run_of(self.tmp, "learn", "--list")
         lid = [
             tok for tok in listed.stdout.split() if tok.startswith("lrn_")

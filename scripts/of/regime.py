@@ -11,6 +11,7 @@ from of.field import (
     die,
     load_json,
     load_wave_report,
+    physical_field_rel,
     safe_relative_path,
     spec_path,
     wave_dir,
@@ -347,7 +348,9 @@ def integration_input_digest(
     children: list[dict[str, Any]] = []
     for packet in sorted(packets, key=lambda item: str(item.get("child_id") or "")):
         residual_path = safe_relative_path(
-            root, packet.get("residual_path"), "packet residual_path"
+            root,
+            physical_field_rel(root, packet.get("residual_path")),
+            "packet residual_path",
         )
         residual: Any = None
         if residual_path.is_file():

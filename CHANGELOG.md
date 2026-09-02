@@ -22,6 +22,20 @@ Sibling fields in one working tree. Same 0.6 line. Not a new regime.
 - Packet contract paths stay `.orderfield/waves/…`; `physical_field_rel` maps them onto the field home.
 - Packaging: VERSION 0.6.6; skill/alias description preview `v0.6.6 — …`.
 
+## Unreleased
+
+Remediation of the Vibe-Proof v0.9.0 audit (P0/P1). Kernel hardening only; no product features, no VERSION bump. Listed under `0.6.6` because `validate-skill.sh` requires the first heading to match `VERSION`.
+
+- **Trust is authoritative for every adapter:** `OF_TRUST` in `conservative` (default), `plan`, `auto-edit`, `auto`, `yolo`. Conservative emits no escalation flag for any harness; `plan`/`auto-edit`/`auto` map to the closest non-bypass mode or fall back to conservative; only `yolo` (alias `escalated`) emits the bypass flags that were previously hardcoded. Unknown profiles die.
+- **Spawn environment allowlist:** children no longer inherit the parent environment. `OF_SPAWN_ENV=NAME1,NAME2` extends the allowlist; `OF_SPAWN_ENV=inherit` opts out. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
+- **Sibling-field pack path:** packets written under a `fields/<id>/` home keep canonical `.orderfield/waves/…` paths and resolve physically through the active field.
+- **Learning provenance:** bare `of learn TEXT` is now a **field** learning; `--protocol` is explicit; `--promote <id>` copies field → protocol. Items carry `{source, repo, origin, of_version}`; unprovenanced or schema-invalid items are skipped on load with one stderr warning (malicious-learning regression added).
+- **Spec lock:** `spec` and `checkpoint` join `MUTATING_COMMANDS`; ORDER/REQUIREMENTS updates no longer race the field lock.
+- **Error boundary:** CLI dispatch is wrapped. Failures print `of: error: <kind>: <message>` (exit 1); `--json` emits `{"event":"error","ok":false,…}`; tracebacks only under `OF_DEBUG=1`; Ctrl-C exits 130. Non-UTF-8 input no longer leaks a traceback.
+- **Quickstart:** the README 30-second loop is self-contained (creates `CLI-001` via `of spec --add`, simulates the child residual, verifies before contrast). `tests/test_quickstart.py` extracts the fenced block and runs it from a fresh temp dir in CI.
+- **Supply chain:** Python floor 3.11 on every surface (`scripts/of.py` refuses older interpreters with one line; `tests/test_python_floor.py` asserts the surfaces agree). CI matrix 3.11 + 3.13. Actions pinned to full commit SHAs with `# vX.Y.Z` comments, `permissions: contents: read`, weekly Dependabot for `github-actions`.
+- **Accounting stays honest:** README, SKILL.md, and `schemas/packet.schema.json` state that `budget.tokens` / `local_budget_pct` are reserved and unenforced; only `budget.seconds` is enforced.
+
 ## 0.6.5
 
 Optional origin provenance pointer. Not a new regime.

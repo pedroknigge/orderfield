@@ -17,6 +17,7 @@ from of.field import (
     load_json,
     of_dir,
     order_path,
+    physical_field_rel,
     protocol_learning_lines,
     safe_relative_path,
     skill_root,
@@ -644,7 +645,9 @@ def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     if not rel:
         die(f"packet {child} missing residual_path")
     require_packet_artifact_paths(root, packet)
-    path = safe_relative_path(root, rel, "packet residual_path")
+    path = safe_relative_path(
+        root, physical_field_rel(root, rel), "packet residual_path"
+    )
     if not path.is_file():
         die(f"missing residual at {rel} (packet residual_path)")
     return path
@@ -655,7 +658,9 @@ def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
     if not rel:
         return True
     require_packet_artifact_paths(root, packet)
-    return not safe_relative_path(root, rel, "packet residual_path").is_file()
+    return not safe_relative_path(
+        root, physical_field_rel(root, rel), "packet residual_path"
+    ).is_file()
 
 
 def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
@@ -668,7 +673,9 @@ def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
     if not rel:
         return False
     require_packet_artifact_paths(root, packet)
-    path = safe_relative_path(root, rel, "packet scratch_dir")
+    path = safe_relative_path(
+        root, physical_field_rel(root, rel), "packet scratch_dir"
+    )
     if not path.is_dir():
         return False
     try:
@@ -804,6 +811,16 @@ def render_prompt(
             + "".join(f"- {line}\n" for line in lessons)
         )
     spec_ref = packet.get("spec_ref") or (packet.get("order") or {}).get("spec_ref")
+    # Paths a child must open resolve to the physical field home (sibling
+    # fields live under .orderfield/fields/<id>/); the packet JSON stays canonical.
+    spec_ref_physical = (
+        physical_field_rel(root, str(spec_ref)) if (root is not None and spec_ref) else spec_ref
+    )
+    residual_physical = (
+        physical_field_rel(root, str(packet["residual_path"]))
+        if root is not None
+        else packet["residual_path"]
+    )
     if spec_ref:
         owned = packet.get("owns_requirements") or []
         paths = packet.get("owns_paths") or []
@@ -822,7 +839,7 @@ def render_prompt(
             "ORDER may compress reasoning. It must not compress the contract.\n"
             "The packet fits on one screen. The specification does not have to.\n"
             "Read this file in full before acting — it is the verbatim user brief:\n\n"
-            f"    {spec_ref}\n\n"
+            f"    {spec_ref_physical}\n\n"
             "The slice is a cut of work determined from SPEC + ORDER together. "
             "It does not replace the specification. "
             "CLI, schemas, types, exit codes, invariants, and deliverables in SPEC "
@@ -847,7 +864,7 @@ def render_prompt(
         + json.dumps(packet, indent=2, ensure_ascii=False)
         + "\n```\n\n"
         + "Write the residual to `"
-        + packet["residual_path"]
+        + str(residual_physical)
         + "`. Do not mutate `.orderfield/ORDER.json`.\n"
     )
     if packet_has_identity(packet):
