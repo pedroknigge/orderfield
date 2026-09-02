@@ -34,12 +34,12 @@ from of.field import (
     apply_field_migrations,
     apply_field_retention,
     argv_preview,
-    child_id_from_env,
     default_worktree_path,
     die,
     field_is_file,
     emit_event,
     forget_learning,
+    format_list_continuation,
     promote_learning,
     refuse_child_forge,
     field_rel,
@@ -59,6 +59,7 @@ from of.field import (
     next_legal_action,
     of_dir,
     order_path,
+    page_listed,
     parse_utc,
     physical_field_rel,
     plan_field_migrations,
@@ -69,7 +70,9 @@ from of.field import (
     probe_adapter_version,
     probe_lock_capability,
     pulse_verdict,
+    redact_text,
     save_learning,
+    spawned_child_id,
     repo_newest_mtime,
     require_nonsymlink_kernel_root,
     run_git,
@@ -122,22 +125,43 @@ def print_learnings(
     grouped: dict[str, list[dict[str, Any]]],
     *,
     empty: bool = False,
-) -> None:
-    protocol = grouped.get("protocol") or []
-    field = grouped.get("field") or []
-    if not protocol and not field:
+    show_all: bool = True,
+    cursor: str = "",
+) -> dict[str, Any]:
+    rows: list[tuple[str, dict[str, Any]]] = []
+    for kind in ("protocol", "field"):
+        for item in grouped.get(kind) or []:
+            rows.append((kind, item))
+    page, next_cursor, remaining = page_listed(
+        rows,
+        show_all=show_all,
+        cursor=cursor,
+        id_of=lambda row: str(row[1].get("id") or ""),
+    )
+    meta = {
+        "shown": len(page),
+        "total": len(rows),
+        "next_cursor": next_cursor,
+        "remaining": remaining,
+    }
+    if not page:
         if empty:
             print("learnings    none")
-        return
+        cont = format_list_continuation(next_cursor, remaining)
+        if cont:
+            print(cont)
+        return meta
     print("learnings")
-    if protocol:
-        print("  protocol")
-        for item in protocol:
-            print(f"    {item.get('id')}  {item.get('text')}")
-    if field:
-        print("  field")
-        for item in field:
-            print(f"    {item.get('id')}  {item.get('text')}")
+    current = ""
+    for kind, item in page:
+        if kind != current:
+            print(f"  {kind}")
+            current = kind
+        print(f"    {item.get('id')}  {item.get('text')}")
+    cont = format_list_continuation(next_cursor, remaining)
+    if cont:
+        print(cont)
+    return meta
 
 
 def cmd_learn(args: argparse.Namespace) -> None:
@@ -145,8 +169,20 @@ def cmd_learn(args: argparse.Namespace) -> None:
     has_order = order_path(root).is_file()
     order = load_order(root) if has_order else None
     if getattr(args, "list", False):
-        print_learnings(list_learnings(root if has_order else None), empty=True)
-        emit_event("learn", action="list", ok=True)
+        meta = print_learnings(
+            list_learnings(root if has_order else None),
+            empty=True,
+            show_all=bool(getattr(args, "list_all", False)),
+            cursor=str(getattr(args, "list_cursor", "") or ""),
+        )
+        emit_event(
+            "learn",
+            action="list",
+            ok=True,
+            shown=meta["shown"],
+            total=meta["total"],
+            next_cursor=meta["next_cursor"],
+        )
         return
     forget = str(getattr(args, "forget", None) or "").strip()
     if forget:
@@ -411,13 +447,25 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
     root = find_root()
     records = load_worktrees(root)
     trees = records.get("trees") or {}
-    if not trees:
+    rows = sorted(trees.items())
+    if not rows:
         print("worktrees    none")
         print("note         opt-in helper; not a process manager")
         return
-    for child_id, meta in sorted(trees.items()):
+    page, next_cursor, remaining = page_listed(
+        rows,
+        show_all=bool(getattr(args, "list_all", False)),
+        cursor=str(getattr(args, "list_cursor", "") or ""),
+        id_of=lambda row: str(row[0]),
+    )
+    if not page:
+        print("worktrees    none")
+    for child_id, meta in page:
         path = meta.get("path") if isinstance(meta, dict) else meta
         print(f"{child_id:16} {path}")
+    cont = format_list_continuation(next_cursor, remaining)
+    if cont:
+        print(cont)
     print("note         opt-in helper; not a process manager")
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -893,8 +941,12 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
     print("checkpoint saved")
 
 
-ISSUE_FEEDBACK_REPO = "pedroknigge/orderfield"
+ISSUE_FEEDBACK_REPO = "pedroknigge/orderfield"  # product identity; never cwd origin
 ISSUE_LABELS = ("bug", "enhancement")
+ISSUE_GH_TIMEOUT_S = 10
+ISSUE_BODY_MAX_BYTES = 32 * 1024
+ISSUE_BODY_MAX_LINES = 400
+ISSUE_DRAFT_NAME = "ISSUE.md"
 
 
 def _issue_die(msg: str) -> None:
@@ -917,6 +969,14 @@ def _require_gh() -> str:
     return bin_
 
 
+def _gh_timeout_label(argv: list[str]) -> str:
+    if len(argv) >= 3:
+        return f"{argv[1]} {argv[2]}"
+    if len(argv) >= 2:
+        return str(argv[1])
+    return "gh"
+
+
 def _spawn_gh(argv: list[str]) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
@@ -926,10 +986,15 @@ def _spawn_gh(argv: list[str]) -> subprocess.CompletedProcess[str]:
             stderr=subprocess.PIPE,
             text=True,
             env=_gh_env(),
+            timeout=ISSUE_GH_TIMEOUT_S,
         )
     except FileNotFoundError:
         _issue_die(
             "gh is not on PATH; install GitHub CLI and run gh auth login"
+        )
+    except subprocess.TimeoutExpired:
+        _issue_die(
+            f"gh {_gh_timeout_label(argv)} timed out after {ISSUE_GH_TIMEOUT_S}s"
         )
     raise AssertionError("unreachable")
 
@@ -949,7 +1014,7 @@ def _require_gh_auth(gh_bin: str) -> None:
 
 
 def _refuse_child_issue_submit() -> None:
-    cid = child_id_from_env()
+    cid = spawned_child_id()
     if not cid:
         return
     _issue_die(
@@ -1016,23 +1081,100 @@ def _issue_preview(argv: list[str], *, action: str, dry_run: bool) -> None:
     )
 
 
-def _resolve_body_file(raw: str) -> str:
-    path = Path(raw).expanduser()
-    if not path.is_file():
-        _issue_die(f"--body-file not found: {raw}")
+def _issue_id_ok(name: str) -> bool:
+    if not name or len(name) > 64 or not name[0].isalnum():
+        return False
+    return all(ch.isalnum() or ch in "_-" for ch in name)
+
+
+def _issue_field_id_ok(name: str) -> bool:
+    if not name.startswith("ord_") or len(name) != 12:
+        return False
+    return all(ch in "0123456789abcdef" for ch in name[4:])
+
+
+def _issue_scratch_rel_ok(rel: Path) -> bool:
+    parts = rel.parts
+    if not parts or parts[0] != ".orderfield":
+        return False
+    rest = parts[1:]
+    if rest and rest[0] == "fields":
+        if len(rest) < 2 or not _issue_field_id_ok(rest[1]):
+            return False
+        rest = rest[2:]
+    if len(rest) not in (4, 5):
+        return False
+    if rest[0] != "work" or rest[1] != "scratch" or not _issue_id_ok(rest[2]):
+        return False
+    if len(rest) == 4:
+        return rest[3] == ISSUE_DRAFT_NAME
+    slug = rest[4]
+    return (
+        rest[3] == "issues"
+        and slug.endswith(".md")
+        and _issue_id_ok(slug[:-3])
+    )
+
+
+def _require_issue_body_size(text: str, *, flag: str) -> None:
+    nlines = text.count("\n") + 1
+    nbytes = len(text.encode("utf-8"))
+    if nbytes > ISSUE_BODY_MAX_BYTES or nlines > ISSUE_BODY_MAX_LINES:
+        _issue_die(
+            f"{flag} is {nbytes} bytes / {nlines} lines; "
+            f"refuse huge dumps (max {ISSUE_BODY_MAX_BYTES} bytes, "
+            f"{ISSUE_BODY_MAX_LINES} lines)"
+        )
+    if not text.strip():
+        _issue_die(f"{flag} is empty")
+
+
+def _load_issue_body_file(raw: str) -> str:
+    """Canonical non-symlink scratch draft only. Returns redacted body text."""
+    text_path = str(raw or "")
+    if not text_path.strip() or text_path != text_path.strip():
+        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+    if text_path.startswith("~") or text_path.startswith("-"):
+        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+    if any(ord(ch) < 32 for ch in text_path) or "\\" in text_path:
+        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+    project = find_root().resolve()
+    given = Path(text_path)
+    abs_given = given if given.is_absolute() else (Path.cwd() / given)
+    norm = Path(os.path.normpath(str(abs_given)))
     try:
-        text = path.read_text(encoding="utf-8")
+        rel = norm.relative_to(project)
+    except ValueError:
+        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+    if not _issue_scratch_rel_ok(rel):
+        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+    cursor = project
+    for part in rel.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            _issue_die("--body-file cannot be a symlink")
+    if not cursor.is_file():
+        _issue_die("--body-file not found")
+    try:
+        size = cursor.stat().st_size
+    except OSError as exc:
+        _issue_die(f"--body-file cannot read: {exc}")
+    if size > ISSUE_BODY_MAX_BYTES:
+        _issue_die(
+            f"--body-file exceeds {ISSUE_BODY_MAX_BYTES} bytes"
+        )
+    try:
+        text = cursor.read_text(encoding="utf-8")
     except OSError as exc:
         _issue_die(f"--body-file cannot read: {exc}")
     except UnicodeDecodeError:
         _issue_die("--body-file is not UTF-8")
-    if not text.strip():
-        _issue_die("--body-file is empty")
-    return str(path)
+    _require_issue_body_size(text, flag="--body-file")
+    return redact_text(text)
 
 
 def cmd_issue(args: argparse.Namespace) -> None:
-    """Public CLI. Always pedroknigge/orderfield. No ORDER. Never prompts stdin."""
+    """Auto-report of kernel defects; never consumer origin. Always pedroknigge/orderfield. No ORDER. Never prompts stdin."""
     search = getattr(args, "search", None)
     dry_run = bool(getattr(args, "dry_run", False))
     if search is not None:
@@ -1069,19 +1211,20 @@ def cmd_issue(args: argparse.Namespace) -> None:
     if body_raw is not None and body_file_raw:
         _issue_die("--body and --body-file cannot both be set")
 
-    body_file = None
-    body_text = None
+    if not dry_run:
+        _refuse_child_issue_submit()
+
     if body_file_raw:
-        body_file = _resolve_body_file(str(body_file_raw))
+        body_text = _load_issue_body_file(str(body_file_raw))
     else:
         body_text = str(body_raw)
-        if not body_text.strip():
-            _issue_die("--body is empty")
+        _require_issue_body_size(body_text, flag="--body")
+        body_text = redact_text(body_text)
 
     argv = issue_create_argv(
         title=title,
         body=body_text,
-        body_file=body_file,
+        body_file=None,
         label=str(label),
         gh_bin="gh",
     )
@@ -1089,11 +1232,10 @@ def cmd_issue(args: argparse.Namespace) -> None:
         _issue_preview(argv, action="create", dry_run=True)
         return
 
-    _refuse_child_issue_submit()
     gh_bin = _require_gh()
     _require_gh_auth(gh_bin)
     argv[0] = gh_bin
-    proc = _spawn_gh(argv)
+    proc = _spawn_gh(argv)  # create is not retried
     if proc.returncode != 0:
         _issue_die(_gh_err("gh issue create failed", proc))
     _print_gh_stdout(proc)
@@ -1104,4 +1246,73 @@ def cmd_issue(args: argparse.Namespace) -> None:
         dry_run=False,
         ok=True,
     )
+
+
+def _subparser_choices(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentParser]:
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return dict(action.choices)
+    return {}
+
+
+def _parser_has_dest(parser: argparse.ArgumentParser, dest: str) -> bool:
+    return any(getattr(action, "dest", None) == dest for action in parser._actions)
+
+
+def attach_list_cli_flags(parser: argparse.ArgumentParser) -> None:
+    """LIST-001 flags live next to cmd_learn / cmd_worktree_list (not the barrel)."""
+    choices = _subparser_choices(parser)
+    learn = choices.get("learn")
+    if learn is not None and not _parser_has_dest(learn, "list_all"):
+        exclusive = learn.add_mutually_exclusive_group()
+        exclusive.add_argument(
+            "--all",
+            dest="list_all",
+            action="store_true",
+            help="print every learning (default of learn --list is capped)",
+        )
+        exclusive.add_argument(
+            "--cursor",
+            dest="list_cursor",
+            default="",
+            help="continue a capped of learn --list from this id",
+        )
+    worktree = choices.get("worktree")
+    if worktree is None:
+        return
+    wlist = _subparser_choices(worktree).get("list")
+    if wlist is not None and not _parser_has_dest(wlist, "list_all"):
+        exclusive = wlist.add_mutually_exclusive_group()
+        exclusive.add_argument(
+            "--all",
+            dest="list_all",
+            action="store_true",
+            help="print every recorded worktree (default list is capped)",
+        )
+        exclusive.add_argument(
+            "--cursor",
+            dest="list_cursor",
+            default="",
+            help="continue a capped of worktree list from this child id",
+        )
+
+
+def install_list_cli_flag_hook() -> None:
+    orig = argparse.ArgumentParser.parse_args
+    if getattr(orig, "_of_list_flags", False):
+        return
+
+    def parse_args(
+        self: argparse.ArgumentParser,
+        args: Any = None,
+        namespace: Any = None,
+    ) -> argparse.Namespace:
+        attach_list_cli_flags(self)
+        return orig(self, args=args, namespace=namespace)
+
+    parse_args._of_list_flags = True  # type: ignore[attr-defined]
+    argparse.ArgumentParser.parse_args = parse_args  # type: ignore[method-assign]
+
+
+install_list_cli_flag_hook()
 

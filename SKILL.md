@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.0 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.1 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.0"
+  version: "0.7.1"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -40,9 +40,19 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 
 A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child.
 
-## Product feedback (HITL GitHub issues)
+## Auto-report (HITL)
 
-If you find a product bug, an improvable functionality, a docs lie, or similar durable product feedback while using Orderfield (kernel, adapters, skill/docs, install, CLI), prepare a GitHub issue against the Orderfield platform (`pedroknigge/orderfield`) — not the consumer working-tree `origin`. Anyone with `of` on PATH can file. Use `of issue`. That is real-time feedback as the product is used. Not a one-wave constraint.
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. This is self-telemetry of the kernel/skill/CLI/docs/install — not a helpdesk and not a ticket against the consumer working tree. Consumer `git origin` is out of scope forever. A fork of amarilla-platform cannot receive these issues. Use `of issue`. Not a one-wave constraint.
+
+Auto-report ONLY if the failure is Orderfield's:
+
+- kernel emitted invalid schema / WAL incoherent / pack produced a packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken.
+
+Do NOT auto-report:
+
+- child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate).
+
+If unsure, draft + HITL, default to *not* posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
@@ -360,7 +370,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
 - Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates; refuse / edit-later / silence does not.
 - Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue` (omit `--dry-run`) to `pedroknigge/orderfield`.
-- Do not file Orderfield product feedback to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
+- Do not auto-report Orderfield defects to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
 
 ## Enslaved roles (identities, not job titles)
 

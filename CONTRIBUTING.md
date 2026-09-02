@@ -57,9 +57,16 @@ No third-party coverage tool in CI — this package is **stdlib only** (no `pip`
 |------|-------|-------|
 | Split of `scripts/of.py` | shipped 0.6.0 / 0.6.2 | Shim remains; internals in `scripts/of/` + `scripts/of/cli/` |
 | Duplicate `cmd_spec` / `cmd_contrast` / `cmd_close` copies in `ops.py` | gone on 0.6.9 / `17709e5` | Parser dispatch is `spec_cmd.py`; leftover defs are not present (C-055) |
-| LEARN-001 ancestor-exec-env refuse | shipped [PR #41](https://github.com/pedroknigge/orderfield/pull/41) | `spawned_child_id` walks ancestor exec-env; `env -u OF_CHILD` still refuses `--protocol`/`--promote` |
-| WAL CURRENT-only read view | shipped [PR #45](https://github.com/pedroknigge/orderfield/pull/45) | CURRENT is the only reader-visible generation |
-| REVIEW-001 independent review in merge history | unproven | Protection count≥1 is restored; 0.7.0 PRs merged with empty reviews after a temporary review-requirement window |
+| LEARN-001 ancestor-exec-env refuse | shipped [PR #41](https://github.com/pedroknigge/orderfield/pull/41) | Ancestor exec-env walk. |
+| LEARN-002 spawn registry + unauthenticated source | shipped 0.7.1 | Pid/starttime registry survives exec. Missing `OF_CHILD` never stamps `source=leader`. Not OS-user auth. |
+| WAL-001 publish (stage+MANIFEST+CURRENT) | shipped [PR #45](https://github.com/pedroknigge/orderfield/pull/45) | Crash before CURRENT stays previous. |
+| WAL-002 CURRENT-only read | shipped 0.7.1 | Generation files are the sole read after CURRENT. Live disk is cache/tamper. |
+| REVIEW-001 independent review in merge history | unproven | Protection count≥1 is restored; 0.7.0 PRs merged with empty reviews after a temporary review-requirement window. Human merge practice — not `of merge` (SCOPE-REVIEW). |
+| Claims matrix unique IDs | this field | `python3 docs/audit/check-claims.py`; duplicate C-065 retired (shim is C-081). C-071 Partial. |
+| Auditor out-of-scope (SCOPE-*) | this field | [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md). Do not re-score as kernel fails. |
+| `field.py` WAL/view/learning split (SCOPE-GODSPLIT) | later form PR | Do not mix into LEARN-002 / WAL-002 behavior PRs. |
+| npx skills version pin (SCOPE-NPX) | ecosystem residual | Skills CLI has no versioned source. Do not fake a pin. [PUBLISH.md](PUBLISH.md). |
+| Tag signing / immutable releases (SCOPE-SIGN) | publish-process | Classic install is already tag-pinned SHA-256. Not kernel code. [PUBLISH.md](PUBLISH.md). |
 | Claims matrix refresh after each public surface | solo | Code wins over docs |
 | Optional `of ask` for same-harness vs multi | solo | Protocol today; Partial by design |
 

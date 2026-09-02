@@ -30,6 +30,7 @@ from of.field import (
     spec_path,
     utc_now,
     wal_staged_items,
+    warn_oserror,
 )
 
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
@@ -417,7 +418,8 @@ def discard_disposable_ingest(root: Path, source: Path | None = None) -> None:
                 shown = path
             path.unlink()
             print(f"ingest       discarded {shown} (contract is {FIELD_SPEC_MD})")
-        except OSError:
+        except OSError as exc:
+            warn_oserror("ingest", exc)
             continue
 
 

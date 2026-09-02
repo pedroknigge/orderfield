@@ -59,6 +59,12 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def committed_artifact(home: Path, rel: str) -> Path:
+    """WAL-002: view commands read generation files, not live cache."""
+    current = json.loads((home / "wal" / "CURRENT.json").read_text(encoding="utf-8"))
+    return home / "wal" / str(current["generation"]) / rel
+
+
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
     return (
         root
@@ -880,8 +886,9 @@ class InvalidOrderAndSession(unittest.TestCase):
     def test_invalid_order_json_dies(self) -> None:
         r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
-        order = self.tmp / ".orderfield" / "ORDER.json"
-        order.write_text("{not-json", encoding="utf-8")
+        committed_artifact(self.tmp / ".orderfield", "ORDER.json").write_text(
+            "{not-json", encoding="utf-8"
+        )
         status = run_of(self.tmp, "status")
         self.assertNotEqual(status.returncode, 0)
         self.assertIn("invalid JSON", status.stderr)
@@ -968,7 +975,9 @@ class PulseActivity(unittest.TestCase):
 
     def test_shared_repo_activity_cannot_refresh_a_stale_child(self) -> None:
         self._pack()
-        pkt_path = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        pkt_path = committed_artifact(
+            self.tmp / ".orderfield", "waves/001/packets/c1.json"
+        )
         pkt = load_json(pkt_path)
         pkt["packed_at"] = "2020-01-01T00:00:00Z"
         pkt["packet_hash"] = of.packet_digest(pkt)
@@ -1003,7 +1012,9 @@ class PulseActivity(unittest.TestCase):
 
     def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
         self._pack()
-        pkt_path = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        pkt_path = committed_artifact(
+            self.tmp / ".orderfield", "waves/001/packets/c1.json"
+        )
         pkt = load_json(pkt_path)
         pkt["packed_at"] = "2020-01-01T00:00:00Z"
         pkt["packet_hash"] = of.packet_digest(pkt)

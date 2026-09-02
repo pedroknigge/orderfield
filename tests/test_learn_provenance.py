@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -29,6 +30,13 @@ def run_of(cwd: Path, *args: str, env_extra: dict | None = None) -> subprocess.C
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd), capture_output=True, text=True, env=env,
     )
+
+
+def _isolate_spawn_registry(test: unittest.TestCase, tmp: Path) -> Path:
+    registry = tmp / "spawn-registry.json"
+    os.environ["OF_SPAWN_REGISTRY"] = str(registry)
+    test.addCleanup(os.environ.pop, "OF_SPAWN_REGISTRY", None)
+    return registry
 
 
 _SPAWNED_PARENT_HELPER = """\
@@ -53,6 +61,61 @@ def main() -> None:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
     raise SystemExit(proc.returncode)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+_EXEC_HELPER = """\
+# Same pid: exec of.py with OF_CHILD stripped. Registry starttime survives exec.
+from __future__ import annotations
+
+import os
+import sys
+
+
+def main() -> None:
+    argv = sys.argv[1:]
+    env = dict(os.environ)
+    env.pop("OF_CHILD", None)
+    os.execve(argv[0], argv, env)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+_REPARENT_HELPER = """\
+# Session-leader parent dies; child unsets OF_CHILD and runs of.py.
+from __future__ import annotations
+
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def main() -> None:
+    out_dir = Path(sys.argv[1])
+    argv = sys.argv[2:]
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    pid = os.fork()
+    if pid > 0:
+        os._exit(0)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    for _ in range(100):
+        if os.getppid() <= 1:
+            break
+        time.sleep(0.01)
+    env = dict(os.environ)
+    env.pop("OF_CHILD", None)
+    proc = subprocess.run(argv, env=env, capture_output=True, text=True)
+    (out_dir / "reparent.stdout").write_text(proc.stdout, encoding="utf-8")
+    (out_dir / "reparent.stderr").write_text(proc.stderr, encoding="utf-8")
+    (out_dir / "reparent.rc").write_text(str(proc.returncode), encoding="utf-8")
 
 
 if __name__ == "__main__":
@@ -91,6 +154,95 @@ def run_of_from_spawned_parent(
     )
 
 
+def run_of_via_exec(
+    cwd: Path,
+    *args: str,
+    parent_child_id: str = "kernel",
+    env_extra: dict | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """os.execve of.py with OF_CHILD stripped; same pid as the spawned helper."""
+    helper = cwd / "_exec_helper.py"
+    helper.write_text(_EXEC_HELPER, encoding="utf-8")
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_CHILD": parent_child_id}
+    env.pop("OF_DEBUG", None)
+    env.pop("OF_JSON", None)
+    env.update(env_extra or {})
+    return subprocess.run(
+        [
+            sys.executable,
+            str(helper),
+            sys.executable,
+            str(OF_PY),
+            *args,
+        ],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def run_of_via_reparent(
+    cwd: Path,
+    *args: str,
+    parent_child_id: str = "kernel",
+    env_extra: dict | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Double-fork so of.py's parent is init; OF_CHILD unset; session id kept."""
+    helper = cwd / "_reparent_helper.py"
+    helper.write_text(_REPARENT_HELPER, encoding="utf-8")
+    out_dir = cwd / "_reparent_out"
+    out_dir.mkdir(exist_ok=True)
+    for name in ("reparent.stdout", "reparent.stderr", "reparent.rc"):
+        path = out_dir / name
+        if path.exists():
+            path.unlink()
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_CHILD": parent_child_id}
+    env.pop("OF_DEBUG", None)
+    env.pop("OF_JSON", None)
+    env.update(env_extra or {})
+    subprocess.run(
+        [
+            sys.executable,
+            str(helper),
+            str(out_dir),
+            sys.executable,
+            str(OF_PY),
+            *args,
+        ],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    rc_path = out_dir / "reparent.rc"
+    deadline = time.monotonic() + 20.0
+    while time.monotonic() < deadline:
+        if rc_path.is_file():
+            break
+        time.sleep(0.05)
+    stdout = (
+        (out_dir / "reparent.stdout").read_text(encoding="utf-8")
+        if (out_dir / "reparent.stdout").is_file()
+        else ""
+    )
+    stderr = (
+        (out_dir / "reparent.stderr").read_text(encoding="utf-8")
+        if (out_dir / "reparent.stderr").is_file()
+        else ""
+    )
+    if not rc_path.is_file():
+        return subprocess.CompletedProcess(
+            [str(OF_PY), *args], 1, stdout, stderr or "reparent timed out"
+        )
+    try:
+        rc = int(rc_path.read_text(encoding="utf-8").strip())
+    except ValueError:
+        rc = 1
+    return subprocess.CompletedProcess([str(OF_PY), *args], rc, stdout, stderr)
+
+
 def learning_ids(stdout: str) -> list[str]:
     return re.findall(r"\blrn_[0-9a-f]{12}\b", stdout)
 
@@ -102,6 +254,7 @@ class LearnProvenance(unittest.TestCase):
         self.cache = self.tmp / "protocol-learnings.json"
         os.environ["OF_LEARNINGS"] = str(self.cache)
         self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        _isolate_spawn_registry(self, self.tmp)
         r = run_of(self.tmp, "init", "--mission", "learn mission", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -119,7 +272,8 @@ class LearnProvenance(unittest.TestCase):
         items = self._cache_items()
         self.assertEqual(len(items), 1)
         prov = items[0]["provenance"]
-        self.assertEqual(prov["source"], "leader")
+        self.assertEqual(prov["source"], "unauthenticated")
+        self.assertNotEqual(prov["source"], "leader")
         self.assertRegex(prov["repo"], r"^[0-9a-f]{12}$")
         self.assertEqual(prov["repo"], of.sha256_text(str(self.tmp.resolve()))[:12])
         self.assertIn("origin", prov)
@@ -150,7 +304,8 @@ class LearnProvenance(unittest.TestCase):
         self.assertEqual(items[0]["text"], "promote me")
         self.assertEqual(items[0]["kind"], "protocol")
         self.assertEqual(items[0]["promoted_from"], fid)
-        self.assertEqual(items[0]["provenance"]["source"], "leader")
+        self.assertEqual(items[0]["provenance"]["source"], "unauthenticated")
+        self.assertNotEqual(items[0]["provenance"]["source"], "leader")
         # a field learning of another ORDER is refused too
         other = self.tmp / ".orderfield" / "learnings" / "lrn_cccccccccccc.json"
         other.write_text(json.dumps({
@@ -214,6 +369,10 @@ class LearnProvenance(unittest.TestCase):
                  "provenance": {**good["provenance"], "source": "child"}}
         self.assertFalse(of.field.learning_accepted(child))
         self.assertTrue(of.field.learning_accepted(child, for_prompt=False))
+        unauth = {**good, "source": "unauthenticated",
+                  "provenance": {**good["provenance"], "source": "unauthenticated"}}
+        self.assertTrue(of.field.learning_accepted(unauth))
+        self.assertTrue(of.field.learning_accepted(unauth, for_prompt=False))
 
 
 class LearnChildForge(unittest.TestCase):
@@ -225,6 +384,7 @@ class LearnChildForge(unittest.TestCase):
         self.cache = self.tmp / "protocol-learnings.json"
         os.environ["OF_LEARNINGS"] = str(self.cache)
         self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        _isolate_spawn_registry(self, self.tmp)
         r = run_of(self.tmp, "init", "--mission", "learn mission", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -327,6 +487,87 @@ class LearnChildForge(unittest.TestCase):
             self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "e1.md"
         ).read_text(encoding="utf-8")
         self.assertNotIn(forged, prompt)
+
+    def test_protocol_and_promote_refuse_after_same_process_exec(self) -> None:
+        proto = run_of_via_exec(
+            self.tmp, "learn", "--protocol", "forged after execve -u OF_CHILD",
+            parent_child_id="kernel",
+        )
+        self.assertNotEqual(proto.returncode, 0, proto.stdout + proto.stderr)
+        self.assertIn("of: error: child-forge:", proto.stderr)
+        self.assertFalse(self.cache.exists())
+        field = run_of(self.tmp, "learn", "field note to promote after exec")
+        self.assertEqual(field.returncode, 0, field.stderr)
+        fid = learning_ids(field.stdout)[0]
+        promo = run_of_via_exec(
+            self.tmp, "learn", "--promote", fid,
+            parent_child_id="kernel",
+        )
+        self.assertNotEqual(promo.returncode, 0, promo.stdout + promo.stderr)
+        self.assertIn("of: error: child-forge:", promo.stderr)
+        self.assertFalse(self.cache.exists())
+        note = run_of_via_exec(
+            self.tmp, "learn", "field note stamped after exec",
+            parent_child_id="kernel",
+        )
+        self.assertEqual(note.returncode, 0, note.stdout + note.stderr)
+        bodies = [
+            json.loads(p.read_text(encoding="utf-8"))
+            for p in (self.tmp / ".orderfield" / "learnings").glob("*.json")
+        ]
+        stamped = [b for b in bodies if "stamped after exec" in str(b.get("text"))]
+        self.assertTrue(stamped)
+        self.assertNotEqual(stamped[-1]["provenance"]["source"], "leader")
+        self.assertNotEqual(stamped[-1].get("source"), "leader")
+
+    def test_protocol_and_promote_refuse_after_reparent(self) -> None:
+        proto = run_of_via_reparent(
+            self.tmp, "learn", "--protocol", "forged after reparent -u OF_CHILD",
+            parent_child_id="kernel",
+        )
+        self.assertNotEqual(proto.returncode, 0, proto.stdout + proto.stderr)
+        self.assertIn("of: error: child-forge:", proto.stderr)
+        self.assertFalse(self.cache.exists())
+        field = run_of(self.tmp, "learn", "field note to promote after reparent")
+        self.assertEqual(field.returncode, 0, field.stderr)
+        fid = learning_ids(field.stdout)[0]
+        promo = run_of_via_reparent(
+            self.tmp, "learn", "--promote", fid,
+            parent_child_id="kernel",
+        )
+        self.assertNotEqual(promo.returncode, 0, promo.stdout + promo.stderr)
+        self.assertIn("of: error: child-forge:", promo.stderr)
+        self.assertFalse(self.cache.exists())
+        note = run_of_via_reparent(
+            self.tmp, "learn", "field note stamped after reparent",
+            parent_child_id="kernel",
+        )
+        self.assertEqual(note.returncode, 0, note.stdout + note.stderr)
+        bodies = [
+            json.loads(p.read_text(encoding="utf-8"))
+            for p in (self.tmp / ".orderfield" / "learnings").glob("*.json")
+        ]
+        stamped = [b for b in bodies if "after reparent" in str(b.get("text"))]
+        self.assertTrue(stamped)
+        self.assertNotEqual(stamped[-1]["provenance"]["source"], "leader")
+        self.assertNotEqual(stamped[-1].get("source"), "leader")
+
+    def test_missing_of_child_does_not_stamp_leader(self) -> None:
+        previous = os.environ.pop("OF_CHILD", None)
+        if previous is not None:
+            self.addCleanup(os.environ.__setitem__, "OF_CHILD", previous)
+        self.assertIsNone(of.field.spawned_child_id())
+        self.assertEqual(
+            of.field.persist_learning_source(),
+            of.field.LEARNING_SOURCE_UNAUTHENTICATED,
+        )
+        self.assertNotEqual(
+            of.field.persist_learning_source(),
+            of.field.LEARNING_SOURCE_LEADER,
+        )
+        prov = of.field.learning_provenance(self.tmp, None)
+        self.assertEqual(prov["source"], "unauthenticated")
+        self.assertNotEqual(prov["source"], "leader")
 
 
 if __name__ == "__main__":

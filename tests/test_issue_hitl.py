@@ -23,6 +23,17 @@ GLOSSARY = ROOT / "docs" / "glossary.md"
 README = ROOT / "README.md"
 
 OWNED_SURFACES = (SKILL, SLAVE, AGENTS, GLOSSARY, README)
+HITL_HEADING = "## Auto-report (HITL)"
+CLASSIFIER_YES = (
+    "invalid schema",
+    "WAL incoherent",
+    "child-forge",
+)
+CLASSIFIER_NO = (
+    "child did not finish",
+    "SPEC incomplete",
+    "user is stuck",
+)
 
 
 def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -45,7 +56,7 @@ class HitlIssueFileSurface(unittest.TestCase):
 
     def test_slave_drafts_and_never_submits(self) -> None:
         slave = SLAVE.read_text(encoding="utf-8")
-        self.assertIn("## Product feedback (HITL GitHub issues)", slave)
+        self.assertIn(HITL_HEADING, slave)
         self.assertIn("never posts", slave)
         self.assertIn("ISSUE.md", slave)
         self.assertIn("issues/<slug>.md", slave)
@@ -67,7 +78,7 @@ class HitlIssueFileSurface(unittest.TestCase):
 
     def test_skill_asks_hitl_then_of_issue(self) -> None:
         skill = SKILL.read_text(encoding="utf-8")
-        self.assertIn("## Product feedback (HITL GitHub issues)", skill)
+        self.assertIn(HITL_HEADING, skill)
         self.assertIn("of issue", skill)
         self.assertIn("pedroknigge/orderfield", skill)
         self.assertIn("logged-in account", skill)
@@ -118,6 +129,26 @@ class HitlIssueFileSurface(unittest.TestCase):
             self.assertNotIn("`of issue` does not exist", body, path.name)
             self.assertNotIn("of issue` does not exist", body, path.name)
 
+    def test_owned_surfaces_are_library_autoreport_not_helpdesk(self) -> None:
+        for path in OWNED_SURFACES:
+            body = path.read_text(encoding="utf-8")
+            self.assertIn(
+                "Orderfield auto-reports defects in itself to",
+                body,
+                path.name,
+            )
+            self.assertIn("pedroknigge/orderfield", body, path.name)
+            for needle in CLASSIFIER_YES:
+                self.assertIn(needle, body, f"{path.name}: missing {needle}")
+            for needle in CLASSIFIER_NO:
+                self.assertIn(needle, body, f"{path.name}: missing {needle}")
+            self.assertNotIn("Anyone with `of` on PATH", body, path.name)
+            self.assertNotIn(
+                "product feedback from anyone with of on PATH",
+                body.lower(),
+                path.name,
+            )
+
 
 class Issue001Pair(unittest.TestCase):
     """ISSUE-001 pair: confirm creates vs refuse/edit-later/silence does not."""
@@ -160,7 +191,7 @@ class PackedPromptCarriesSlave(unittest.TestCase):
         self.assertTrue(self.field_slave.is_file())
         body = self.field_slave.read_text(encoding="utf-8")
         self.assertEqual(body, SLAVE.read_text(encoding="utf-8"))
-        self.assertIn("## Product feedback (HITL GitHub issues)", body)
+        self.assertIn(HITL_HEADING, body)
         self.assertIn("never posts", body)
         self.assertIn("ISSUE.md", body)
         self.assertIn("of issue", body)
@@ -172,12 +203,12 @@ class PackedPromptCarriesSlave(unittest.TestCase):
         self.assertIn("read this file in full", prompt.lower())
         self.assertNotIn(str(of.slave_md_path()), prompt)
         # reference-load: the prompt points at SLAVE; it does not paste the section
-        self.assertNotIn("## Product feedback (HITL GitHub issues)", prompt)
+        self.assertNotIn(HITL_HEADING, prompt)
 
     def test_inline_prompt_pastes_slave_protocol(self) -> None:
         rendered = run_of(self.tmp, "render", "--packet", self.packet_rel, "--inline")
         self.assertEqual(rendered.returncode, 0, rendered.stderr)
-        self.assertIn("## Product feedback (HITL GitHub issues)", rendered.stdout)
+        self.assertIn(HITL_HEADING, rendered.stdout)
         self.assertIn("never posts", rendered.stdout)
         self.assertIn("ISSUE.md", rendered.stdout)
         self.assertIn("Confirm creates; refuse / edit-later / silence does not", rendered.stdout)

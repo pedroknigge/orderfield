@@ -8,6 +8,23 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.1
+
+Post-0.7.0 Vibe-Proof Deep P1/P2. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved.
+
+- **LEARN-002:** spawn pid/starttime/session registry survives exec. `of learn --protocol` / `--promote` refuse after unset, replace, exec, or reparent. Missing `OF_CHILD` stamps `unauthenticated`, never `source=leader`. JSON-quoted untrusted render kept.
+- **ISSUE-002:** `of issue` uses `spawned_child_id()` (same as learn). Authority is checked before reading `--body-file`. Body files are a canonical non-symlink scratch draft; external/symlink/oversize rejected; secrets redacted. Child/exec/unset cannot create.
+- **GH-001:** `gh` auth/list/create share a 10s timeout. Non-idempotent create is not retried. Hang and nonzero fail closed.
+- **WAL-002:** after `wal/CURRENT` flips, generation files are the sole read for status/resume/render/pulse/contrast/spec-diff/handoff/spawn/validate. Live disk is cache/tamper. Tests cover `after-current`, per-file, and tombstone.
+- **JSON-002:** under `--json` / `OF_JSON`, every nonempty stderr line is exactly one JSON event. Tests reject prose.
+- **SWALLOW-001:** bounded non-secret warnings on process-kill, cleanup, and WAL enumeration `OSError`.
+- **REDACT-002:** phone, IP, bare `hf_…`, and `glpat-…` are masked.
+- **LIST-001:** `of learn --list` and `of worktree list` default-cap with `--all` and `--cursor`.
+- **LINT-001:** stdlib unused-import checker (`scripts/check_unused_imports.py`) plus CI job. No pip runtime dep.
+- **SCOPE-001:** [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md) names auditor items that are not this product. Claims uniqueness gate: `python3 docs/audit/check-claims.py`. Duplicate C-065 retired (shim is C-081).
+- **REVIEW-001:** protection config stays; independent review in merge history remains unproven.
+- Packaging: VERSION 0.7.1; skill/alias description preview `v0.7.1 — …`.
+
 ## 0.7.0
 
 Vibe-Proof v0.9.4 Deep P1 hardening. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved.

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.0. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.1. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.0`
+**Status:** Shipped · **Current release line:** `0.7.1`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.1 — Vibe-Proof Deep P1/P2 (LEARN-002 / ISSUE / WAL-002 / JSON / SCOPE)
+
+- Spawn pid/starttime registry plus unauthenticated provenance. `of issue` uses the same child detection and a bounded scratch body. CURRENT generation is the sole read after flip. JSON stderr is all events. Out-of-scope auditor items are recorded so they are not re-scored. Not a new regime.
 
 ## 0.7.0 — Vibe-Proof Deep P1 (LEARN / WAL / COST / INSTALL)
 

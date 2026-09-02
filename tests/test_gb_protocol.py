@@ -56,7 +56,7 @@ class StayOnRunSkill(unittest.TestCase):
 
     def test_skill_does_not_revert_hitl(self) -> None:
         skill = SKILL.read_text(encoding="utf-8")
-        self.assertIn("## Product feedback (HITL GitHub issues)", skill)
+        self.assertIn("## Auto-report (HITL)", skill)
         self.assertIn("of issue", skill)
         self.assertIn("pedroknigge/orderfield", skill)
         self.assertIn("You ask HITL, then `of issue`", skill)
