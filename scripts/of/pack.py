@@ -279,7 +279,7 @@ def require_registered_packet(
 ) -> dict[str, Any]:
     packet_path = safe_relative_path(
         root,
-        packet_arg,
+        physical_field_rel(root, str(packet_arg or "")),
         "--packet",
         must_exist=True,
     )

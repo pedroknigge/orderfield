@@ -67,6 +67,18 @@ Product comments are short and factual, not the field diary.
 - Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
 - Return a thinking diary as the result.
 - Treat workspace as a lock, or invent `of claim` / file leases.
+- Post a GitHub issue (`of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.
+
+## Product feedback (HITL GitHub issues)
+
+If you find a product bug, an improvable functionality, a docs lie, or similar durable product feedback while using Orderfield (kernel, adapters, skill/docs, install, CLI):
+
+1. Search open issues on `pedroknigge/orderfield` first (`of issue --search`). Skip duplicates.
+2. **Never post.** `OF_CHILD` is set, spawn is headless, or this session cannot ask the human — so you cannot get confirmation. Confirm creates; refuse / edit-later / silence does not. A child never reaches confirm. Non-dry-run `of issue` is refused.
+3. Write one draft per distinct finding under your scratch: `ISSUE.md` or `issues/<slug>.md`. Include title, body, labels `bug` or `enhancement`, and evidence paths. Not a diary. You may also run `of issue --dry-run` (prints argv; does not post).
+4. Name the draft in the residual `result_ref` / evidence. The leader asks the human, then `of issue`.
+
+Do not file secrets, tokens, private transcripts, or field-internal residuals (those stay on disk: residual → integrate). Do not submit `of issue` without `--dry-run`. Do not impersonate, invent a token, or file to the consumer working-tree origin — the target is always `pedroknigge/orderfield`.
 
 ## How your turn ends
 

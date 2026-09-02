@@ -474,6 +474,17 @@ def promote_legacy_layout(root: Path) -> Path | None:
             dump_json(legacy, data)
     dest = fields_dir(root) / fid
     if dest.exists():
+        dest_order = dest / "ORDER.json"
+        dest_data = _read_json_object(dest_order) if dest_order.is_file() else None
+        dest_id = str((dest_data or {}).get("id") or "").strip()
+        if dest_order.is_file() and dest_id == fid:
+            # Leftover top-level ORDER.json after an already-promoted sibling
+            # field. Do not merge into dest (would clobber the live field).
+            print(
+                f"stale-legacy {legacy.relative_to(root)} "
+                f"(already {dest.relative_to(root)})"
+            )
+            return None
         die(f"cannot promote legacy field: {dest} already exists")
     dest.mkdir(parents=True, exist_ok=True)
     for name in _LEGACY_FIELD_FILES:

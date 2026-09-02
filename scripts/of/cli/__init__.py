@@ -28,11 +28,13 @@ from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.ops import (
+    ISSUE_LABELS,
     cmd_checkpoint,
     cmd_detect,
     cmd_doctor,
     cmd_fields,
     cmd_gc,
+    cmd_issue,
     cmd_learn,
     cmd_migrate,
     cmd_pulse,
@@ -199,6 +201,43 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("detect", help="detect installed harnesses")
     s.set_defaults(func=cmd_detect)
+
+    s = sub.add_parser(
+        "issue",
+        help="file a HITL-confirmed GitHub issue to pedroknigge/orderfield",
+        description=(
+            "Public CLI. Always targets pedroknigge/orderfield (not git origin). "
+            "Works with no ORDER. --dry-run prints gh argv and does not post. "
+            "Omitting --dry-run submits via gh (logged-in account). "
+            "OF_CHILD cannot submit. Kernel never prompts on stdin."
+        ),
+    )
+    s.add_argument("--title", help="issue title (create)")
+    s.add_argument("--body", help="issue body (create)")
+    s.add_argument(
+        "--body-file",
+        dest="body_file",
+        help="issue body file (create)",
+    )
+    s.add_argument(
+        "--label",
+        choices=ISSUE_LABELS,
+        help="bug or enhancement (create)",
+    )
+    s.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print gh argv; do not post",
+    )
+    s.add_argument(
+        "--search",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="QUERY",
+        help="list open issues on pedroknigge/orderfield (duplicate check)",
+    )
+    s.set_defaults(func=cmd_issue)
 
     s = sub.add_parser(
         "doctor",

@@ -1,8 +1,10 @@
-"""Host ops: retain/gc/doctor/migrate/worktree, status/detect/validate, resume/pulse/checkpoint."""
+"""Host ops: retain/gc/doctor/migrate/worktree, status/detect/validate, resume/pulse/checkpoint, issue."""
 from __future__ import annotations
 
 import argparse
 import os
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -22,6 +24,7 @@ from of_adapters import (
 from of.field import (
     CHECKPOINT_MAX_CHARS,
     CHECKPOINT_MAX_LINES,
+    OF_CHILD_ENV,
     PROTOCOL_SLAVE_MD,
     PROTOCOL_WRITABLE_KEY,
     PUBLIC_SCHEMA_FILES,
@@ -30,6 +33,8 @@ from of.field import (
     _read_json_object,
     apply_field_migrations,
     apply_field_retention,
+    argv_preview,
+    child_id_from_env,
     default_worktree_path,
     die,
     field_is_file,
@@ -886,4 +891,217 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
     snapshot_session(root, "checkpoint", summary=text.strip())
     emit_event("checkpoint", ok=True)
     print("checkpoint saved")
+
+
+ISSUE_FEEDBACK_REPO = "pedroknigge/orderfield"
+ISSUE_LABELS = ("bug", "enhancement")
+
+
+def _issue_die(msg: str) -> None:
+    die(msg, kind="issue")
+
+
+def _gh_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["GH_PROMPT_DISABLED"] = "1"
+    env["GH_NO_UPDATE_NOTIFIER"] = "1"
+    return env
+
+
+def _require_gh() -> str:
+    bin_ = shutil.which("gh")
+    if not bin_:
+        _issue_die(
+            "gh is not on PATH; install GitHub CLI and run gh auth login"
+        )
+    return bin_
+
+
+def _spawn_gh(argv: list[str]) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=_gh_env(),
+        )
+    except FileNotFoundError:
+        _issue_die(
+            "gh is not on PATH; install GitHub CLI and run gh auth login"
+        )
+    raise AssertionError("unreachable")
+
+
+def _gh_err(prefix: str, proc: subprocess.CompletedProcess[str]) -> str:
+    detail = (proc.stderr or proc.stdout or "").strip()
+    line = detail.splitlines()[0] if detail else f"exit {proc.returncode}"
+    return f"{prefix}: {line}"
+
+
+def _require_gh_auth(gh_bin: str) -> None:
+    proc = _spawn_gh([gh_bin, "auth", "status"])
+    if proc.returncode != 0:
+        _issue_die(
+            _gh_err("gh is not authenticated; run gh auth login", proc)
+        )
+
+
+def _refuse_child_issue_submit() -> None:
+    cid = child_id_from_env()
+    if not cid:
+        return
+    _issue_die(
+        f"of issue submit refused while {OF_CHILD_ENV}={cid} "
+        "(leader-only after HITL)"
+    )
+
+
+def _print_gh_stdout(proc: subprocess.CompletedProcess[str]) -> None:
+    out = proc.stdout or ""
+    if out:
+        sys.stdout.write(out if out.endswith("\n") else out + "\n")
+
+
+def issue_create_argv(
+    *,
+    title: str,
+    body: str | None,
+    body_file: str | None,
+    label: str,
+    gh_bin: str = "gh",
+) -> list[str]:
+    argv = [
+        gh_bin,
+        "issue",
+        "create",
+        "--repo",
+        ISSUE_FEEDBACK_REPO,
+        "--title",
+        title,
+    ]
+    if body_file:
+        argv.extend(["--body-file", body_file])
+    else:
+        argv.extend(["--body", body or ""])
+    argv.extend(["--label", label])
+    return argv
+
+
+def issue_list_argv(*, query: str, gh_bin: str = "gh") -> list[str]:
+    argv = [
+        gh_bin,
+        "issue",
+        "list",
+        "--repo",
+        ISSUE_FEEDBACK_REPO,
+        "--state",
+        "open",
+    ]
+    if query:
+        argv.extend(["--search", query])
+    return argv
+
+
+def _issue_preview(argv: list[str], *, action: str, dry_run: bool) -> None:
+    print("dry-run argv:")
+    print(argv_preview(argv))
+    emit_event(
+        "issue",
+        action=action,
+        repo=ISSUE_FEEDBACK_REPO,
+        dry_run=dry_run,
+        ok=True,
+    )
+
+
+def _resolve_body_file(raw: str) -> str:
+    path = Path(raw).expanduser()
+    if not path.is_file():
+        _issue_die(f"--body-file not found: {raw}")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        _issue_die(f"--body-file cannot read: {exc}")
+    except UnicodeDecodeError:
+        _issue_die("--body-file is not UTF-8")
+    if not text.strip():
+        _issue_die("--body-file is empty")
+    return str(path)
+
+
+def cmd_issue(args: argparse.Namespace) -> None:
+    """Public CLI. Always pedroknigge/orderfield. No ORDER. Never prompts stdin."""
+    search = getattr(args, "search", None)
+    dry_run = bool(getattr(args, "dry_run", False))
+    if search is not None:
+        argv = issue_list_argv(query=str(search), gh_bin="gh")
+        if dry_run:
+            _issue_preview(argv, action="search", dry_run=True)
+            return
+        gh_bin = _require_gh()
+        _require_gh_auth(gh_bin)
+        argv[0] = gh_bin
+        proc = _spawn_gh(argv)
+        if proc.returncode != 0:
+            _issue_die(_gh_err("gh issue list failed", proc))
+        _print_gh_stdout(proc)
+        emit_event(
+            "issue",
+            action="search",
+            repo=ISSUE_FEEDBACK_REPO,
+            ok=True,
+        )
+        return
+
+    title = str(getattr(args, "title", None) or "").strip()
+    body_raw = getattr(args, "body", None)
+    body_file_raw = getattr(args, "body_file", None)
+    label = getattr(args, "label", None)
+    if not title or label not in ISSUE_LABELS or (
+        body_raw is None and not body_file_raw
+    ):
+        _issue_die(
+            "of issue create needs --title, --body or --body-file, "
+            "and --label bug|enhancement (or --search to list)"
+        )
+    if body_raw is not None and body_file_raw:
+        _issue_die("--body and --body-file cannot both be set")
+
+    body_file = None
+    body_text = None
+    if body_file_raw:
+        body_file = _resolve_body_file(str(body_file_raw))
+    else:
+        body_text = str(body_raw)
+        if not body_text.strip():
+            _issue_die("--body is empty")
+
+    argv = issue_create_argv(
+        title=title,
+        body=body_text,
+        body_file=body_file,
+        label=str(label),
+        gh_bin="gh",
+    )
+    if dry_run:
+        _issue_preview(argv, action="create", dry_run=True)
+        return
+
+    _refuse_child_issue_submit()
+    gh_bin = _require_gh()
+    _require_gh_auth(gh_bin)
+    argv[0] = gh_bin
+    proc = _spawn_gh(argv)
+    if proc.returncode != 0:
+        _issue_die(_gh_err("gh issue create failed", proc))
+    _print_gh_stdout(proc)
+    emit_event(
+        "issue",
+        action="create",
+        repo=ISSUE_FEEDBACK_REPO,
+        dry_run=False,
+        ok=True,
+    )
 

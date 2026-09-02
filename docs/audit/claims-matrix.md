@@ -17,7 +17,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.8` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.6.9` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
 
 ## Summary
 

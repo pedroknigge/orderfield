@@ -149,6 +149,23 @@ class SiblingFieldRoundTrip(unittest.TestCase):
         # the legacy first field never grew a waves tree either
         self.assertFalse((self.tmp / ".orderfield" / "waves").exists())
 
+    def test_render_handoff_accept_canonical_packet_path(self) -> None:
+        """#39: SKILL documents `.orderfield/waves/…`; sibling fields must
+        resolve that canonical --packet through the field home."""
+        r = self.of("pack", "--slice", "map Z", "--role", "explorer", "--child-id", "c1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        canonical = ".orderfield/waves/001/packets/c1.json"
+        self.assertFalse(
+            (self.tmp / canonical).exists(),
+            "canonical packet path must not exist as a real file",
+        )
+        rendered = self.of("render", "--packet", canonical)
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn(f".orderfield/fields/{self.fid}/SPEC.md", rendered.stdout)
+        handed = self.of("handoff", "--packet", canonical)
+        self.assertEqual(handed.returncode, 0, handed.stderr)
+        self.assertIn("child_id=c1", handed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

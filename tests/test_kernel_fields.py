@@ -76,6 +76,28 @@ class SiblingFields(unittest.TestCase):
         self.assertIn("second", listed.stdout)
         self.assertIn("fields        2", listed.stdout)
 
+    def test_new_skips_stale_legacy_order_when_id_already_promoted(self) -> None:
+        """#38: leftover top-level ORDER.json of an already-promoted id must
+        not die and must not clobber the live field."""
+        self.assertEqual(self._init("first").returncode, 0)
+        first_id = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+        r = run_of(self.tmp, "new", "--mission", "second")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        live = self.tmp / ".orderfield" / "fields" / first_id / "ORDER.json"
+        before = live.read_bytes()
+        ghost = {"v": 1, "id": first_id, "rev": 1, "mission": "ghost", "phase": "explore"}
+        (self.tmp / ".orderfield" / "ORDER.json").write_text(
+            json.dumps(ghost, indent=2) + "\n", encoding="utf-8"
+        )
+        r = run_of(self.tmp, "new", "--mission", "third")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("stale-legacy", r.stdout)
+        self.assertEqual(live.read_bytes(), before, "live field must not be clobbered")
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("fields        3", listed.stdout)
+        self.assertIn("third", listed.stdout)
+
     def test_resume_roster_when_two_open_no_session(self) -> None:
         self._init("first")
         run_of(self.tmp, "new", "--mission", "second")

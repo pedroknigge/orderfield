@@ -15,7 +15,7 @@ Orderfield’s kernel (`scripts/of.py` shim, `scripts/of/` package, `scripts/of_
 | Kind | Inventory |
 |------|-----------|
 | Runtime | CPython stdlib |
-| Optional host CLIs | `claude`, `codex`, `agent`/`cursor-agent`, `opencode`, `orca`, `grok`, `agy`, `qwen` (detected on PATH; not vendored). `git` is required only for the opt-in `of worktree` helper |
+| Optional host CLIs | `claude`, `codex`, `agent`/`cursor-agent`, `opencode`, `orca`, `grok`, `agy`, `qwen` (detected on PATH; not vendored). `git` is required only for the opt-in `of worktree` helper. `gh` is required only for `of issue` submit/search (not vendored; PATH presence is not authentication) |
 | CI | GitHub Actions (`actions/checkout`, `actions/setup-python`, `gitleaks/gitleaks-action`), each pinned to a full commit SHA with a `# vX.Y.Z` comment and bumped weekly by Dependabot (`.github/dependabot.yml`); workflow `permissions: contents: read` — not imported by the skill |
 
 Do not add a pip dependency without an explicit product decision and a changelog entry. Secret scanning is via gitleaks in CI, not a Python package.
