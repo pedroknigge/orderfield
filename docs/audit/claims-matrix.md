@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol or leftover `ops.py` copies. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-001 / WAL-001 are on main. Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.6.9` / `scripts/of.py` + `scripts/of/` + `scripts/of_adapters.py`
+**Code rev:** VERSION `0.6.9` / `031f6f7` (default branch after #41/#42/#43/#45)
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 75 |
+| OK | 76 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -34,7 +34,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | critical | 60 |
 | normal | 20 |
 
-**Truth score (advisory):** `(75*100 + 4*50) / 80 = 96.3`
+**Truth score (advisory):** `(76*100 + 4*50) / 81 = 96.3` (81 matrix rows; ID `C-065` is duplicated, both OK)
 **CI gate:** no critical Contradicted after docs patch. Local `scripts/audit-claims.sh` is not in this repo; the gate here is the matrix + `validate-skill.sh`.
 
 **Top risks (post-patch):**
@@ -42,10 +42,12 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 2. `detect` / `doctor` PATH ≠ auth/ready — documented Partial.
 3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/handoff/gc/learn/worktree. `spec` and `checkpoint` joined the lock in 0.6.7.
 4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry).
-5. `scripts/of/cli/ops.py` still defines unwired `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close`; parser dispatch uses `spec_cmd.py`.
-6. A disobedient leader can still write product files without pack (kernel does not lock product).
+5. LEARN-001 ancestor-exec-env refuse is on main via [PR #41](https://github.com/pedroknigge/orderfield/pull/41) (C-070).
+6. WAL CURRENT-only read view is on main via [PR #45](https://github.com/pedroknigge/orderfield/pull/45) (C-071).
+7. Branch protection `required_approving_review_count >= 1` is restored; independent review in merge history is unproven (PR #40 and 0.7.0 #41/#42/#43/#45 merged with empty reviews after a temporary review-requirement window) (C-080 Partial).
+8. A disobedient leader can still write product files without pack (kernel does not lock product).
 
-**Recommended next Intent:** none for docs. Optional code cleanup: delete unwired spec handlers in `ops.py`. Do not bump protocol claims.
+**Recommended next Intent:** none for docs. REVIEW-001 stays Partial until an independent review exists in merge history. Do not bump protocol claims.
 
 ## Code inventory (high level)
 
@@ -120,7 +122,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-052 | REQUIREMENTS is an index over SPEC; contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `SemanticExtract` | — | critical | OK | keep |
 | C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI stays; protocol unchanged vs 0.5.7 | architecture | package `scripts/of/` + shim entry | `scripts/of.py` / `scripts/of/` | `main` | — | critical | OK | keep; 0.6 form |
 | C-054 | A deictic go-ahead is not a lossless brief; kernel prints advisory note and still writes SPEC | SKILL / context-control / principles 17 | `looks_like_deictic_brief` / `warn_if_deictic_brief` | `scripts/of/spec.py` / `scripts/of/cli/` | `looks_like_deictic_brief` | — | normal | OK | keep advisory |
-| C-055 | CLI commands live in `scripts/of/cli/` groups; parser + dispatch in `cli/__init__.py`; public `of` unchanged | architecture / kernel feature / CHANGELOG | `from of.cli import main`; dispatch imports `cmd_spec` from `spec_cmd` | `scripts/of/cli/` / `scripts/of.py` | `main` | — | critical | Partial | dispatch is grouped; `ops.py` still defines unwired `cmd_spec`/`cmd_contrast`/`cmd_close` copies |
+| C-055 | CLI commands live in `scripts/of/cli/` groups; parser + dispatch in `cli/__init__.py`; public `of` unchanged | architecture / kernel feature / CHANGELOG | `from of.cli import main`; dispatch imports `cmd_spec` from `spec_cmd`; `ops.py` has no leftover `cmd_spec`/`cmd_contrast`/`cmd_close` | `scripts/of/cli/` / `scripts/of.py` | `main` | — | critical | OK | leftover copies gone on 0.6.9 / `17709e5` |
 | C-056 | `of learn TEXT` writes a field note (default), `--protocol` / `--promote` write protocol; provenance required on load; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep |
 | C-057 | Optional `ORDER.origin` provenance stamp; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts | SKILL / README / context-control / CHANGELOG | `origin` on order schema; `format_origin_line`; `pick_adapter` has no origin param | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `format_origin_line` | — | critical | OK | keep; 0.6.5 |
 | C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, new, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, spec, checkpoint, close | architecture / README / principles (was overclaiming spawn/handoff/gc/learn/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs; 0.6.6 added `new`; 0.6.7 added `spec`/`checkpoint` |
@@ -136,8 +138,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-067 | Spawn env is an allowlist, not parent inherit; `OF_SPAWN_ENV` extends or `inherit` opts out; child has no stdin and own process group; spawn metadata finalized on every outcome; `OF_CHILD` always set | SKILL / README / adapters / CHANGELOG | `spawn_env` / `SPAWN_ENV_*` / `OF_CHILD_ENV` | `scripts/of_adapters.py` / `scripts/of/cli/wave.py` / `tests/test_spawn_trust.py` | `spawn_env` | — | critical | OK | keep; 0.6.7; LEARN-001 sets OF_CHILD |
 | C-068 | CLI error boundary: one-line `of: error: <kind>: <message>` exit 1; `--json` emits `error` event and no prose; traceback only under `OF_DEBUG=1`; Ctrl-C exits 130 | SKILL / README / events.md / CHANGELOG | CLI `main` wrapper | `scripts/of/cli/__init__.py` / `tests/test_cli_error_boundary.py` | `main` | — | critical | OK | keep; 0.6.7 |
 | C-069 | Python floor 3.11 on every public surface; CI matrix 3.11 + 3.13 | README / CONTRIBUTING / CHANGELOG | `scripts/of.py` refuse; `tests/test_python_floor.py` | `scripts/of.py` / `.github/workflows/test.yml` | | — | critical | OK | keep; 0.6.7 |
-| C-070 | Spawn always sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`of: error: child-forge:`); `source=leader` never written for a child; protocol lines render as untrusted quotes | SKILL / README / SLAVE / adapters | `refuse_child_forge` / `child_env[OF_CHILD]` / `render_prompt` | `scripts/of/field.py` / `scripts/of/cli/wave.py` / `scripts/of/pack.py` / `tests/test_learn_provenance.py` | `LearnChildForge` | — | critical | OK | LEARN-001/002 |
-| C-071 | Multi-file field mutations stage one generation, write MANIFEST (paths+hashes), then publish; crash leaves previous generation readable; recovery is idempotent | architecture / README / SKILL / troubleshooting | `field_generation` / `recover_field_wal` | `scripts/of/field.py` / `tests/test_field_wal.py` | `FieldWalBothSides` | — | critical | OK | WAL-001 both sides |
+| C-070 | Spawn always sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`of: error: child-forge:`); `source=leader` never written for a child; protocol lines render as untrusted quotes | SKILL / README / SLAVE / adapters | `spawned_child_id` walks ancestor exec-env so `env -u OF_CHILD` / fake id still refuse. Untrusted quoting remains. Tests cover marker-present and spawned-parent unset/replace. | `scripts/of/field.py` / `scripts/of/cli/wave.py` / `scripts/of/pack.py` / `tests/test_learn_provenance.py` | `spawned_child_id` / `refuse_child_forge` | — | critical | OK | LEARN-001 [PR #41](https://github.com/pedroknigge/orderfield/pull/41) |
+| C-071 | Multi-file field mutations stage one generation, write MANIFEST (paths+hashes), then publish; crash leaves previous generation readable; recovery is idempotent | architecture / README / SKILL / troubleshooting | CURRENT pointer is the only reader-visible generation. Crash before CURRENT stays previous; after CURRENT is coherent. SPEC/phase/unpack captured. | `scripts/of/field.py` / `tests/test_field_wal.py` | `ensure_committed_field_view` / `_WalGeneration` | — | critical | OK | WAL-001 [PR #45](https://github.com/pedroknigge/orderfield/pull/45) |
 | C-072 | `of pack` does not default tokens=80000; `--tokens N` for N>0 dies pointing at reserved accounting; only `budget.seconds` is enforced | README / SKILL / packet.schema.json | `cmd_pack` tokens check; schema minimum 0 | `scripts/of/cli/wave.py` / `schemas/packet.schema.json` / `tests/test_budget_tokens.py` | `BudgetTokensReserved` | — | critical | OK | BUDGET-001 |
 | C-073 | `of collect` / `of integrate` print owned-but-unverified binding IDs; never auto-stamp `verified_contract` | SKILL / CHANGELOG / kernel feature | collect/integrate note; `cmd_spec --verified-contract` is the stamp | `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | `Loop001CollectIntegrate` | — | critical | OK | LOOP-001 |
 | C-074 | `constraints+` and `--constraints-add` skip whitespace-normalized duplicates | SKILL / CHANGELOG | `constraint_norm` | `scripts/of/regime.py` / `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | | — | critical | OK | DEDUPE-001 |
@@ -146,7 +148,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol or le
 | C-077 | `of patch --backlog-undone N` sets that row `done=false`; no ghost rows | SKILL / CHANGELOG | `--backlog-undone` | `scripts/of/cli/__init__.py` / `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | | — | critical | OK | BACKLOG-001 |
 | C-078 | `of spec --add ID` leaves the ID in SPEC.md (append dated line if missing; refresh spec_hash) | SKILL / kernel feature / CHANGELOG | `cmd_spec --add` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` / `tests/test_theater_renderdoc.py` | | — | critical | OK | SPEC-001 |
 | C-079 | SLAVE: product comments short/factual not field diary; SKILL: do not pack a whole phase; oversized slice stays advisory | SLAVE / SKILL / CHANGELOG | doctrine text; pack does not refuse ≥800 | `SLAVE.md` / `SKILL.md` / `scripts/of/cli/wave.py` | | — | critical | OK | DOCTRINE-001 |
-| C-080 | `main` requires `required_approving_review_count >= 1` and the five CI checks | CONTRIBUTING / CHANGELOG | GitHub branch protection | `CONTRIBUTING.md` | | — | critical | OK | REVIEW-001 |
+| C-080 | `main` requires `required_approving_review_count >= 1` and the five CI checks | CONTRIBUTING / CHANGELOG | Protection config is restored: count=1, dismiss stale, enforce admins, five checks, no force-push/delete. Adoption unproven: PR #40 and 0.7.0 #41/#42/#43/#45 merged with empty reviews after a temporary review-requirement window (human-authorized). | `CONTRIBUTING.md` | | — | critical | Partial | REVIEW-001 config OK; adoption unproven |
 
 ### Verdict definitions
 
@@ -171,7 +173,8 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] Patch Contradicted lock/path/location claims in supporting docs
 - [x] Add STAR to each supporting markdown doc
 - [x] Expand hub coverage + docs table
-- [ ] Optional: delete unwired `cmd_spec`/`cmd_spec_diff`/`cmd_contrast`/`cmd_close` from `scripts/of/cli/ops.py` (code, not docs)
+- [x] Duplicate `ops.py` spec handlers gone on main 0.6.9 (C-055)
+- [x] C-070 / C-071 OK on main after #41/#45; C-080 Partial (no independent review in merge history)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`
 
 ## Related
