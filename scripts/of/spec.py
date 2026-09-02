@@ -15,6 +15,10 @@ from of.field import (
     FIELD_SPEC_MD,
     die,
     dump_json,
+    dump_text,
+    field_inflight_bytes,
+    field_is_file,
+    field_read_text,
     load_json,
     load_order,
     of_dir,
@@ -25,6 +29,7 @@ from of.field import (
     spec_log_dir,
     spec_path,
     utc_now,
+    wal_staged_items,
 )
 
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
@@ -198,12 +203,27 @@ def load_user_json(path_str: str | Path, *, flag: str) -> Any:
 
 
 def read_spec_text(root: Path) -> str:
-    return read_user_text(spec_path(root), flag=FIELD_SPEC_MD)
+    path = spec_path(root)
+    inflight = field_inflight_bytes(path)
+    if inflight is not None:
+        try:
+            return inflight.decode("utf-8")
+        except UnicodeDecodeError as e:
+            die(
+                f"{FIELD_SPEC_MD}: not valid UTF-8 text "
+                f"(byte {e.start}: {e.reason}); re-save the file as UTF-8"
+            )
+    if path.is_file() and not path.is_symlink():
+        return read_user_text(path, flag=FIELD_SPEC_MD)
+    overlay = field_read_text(path)
+    if overlay is not None:
+        return overlay
+    return read_user_text(path, flag=FIELD_SPEC_MD)
 
 
 def spec_bytes_hash(root: Path) -> str | None:
     spec = spec_path(root)
-    if not spec.is_file():
+    if not field_is_file(spec):
         return None
     return sha256_text(read_spec_text(root))
 
@@ -239,7 +259,7 @@ def empty_requirements(spec_hash: str = "") -> dict[str, Any]:
 
 def load_requirements(root: Path) -> dict[str, Any]:
     path = requirements_path(root)
-    if not path.is_file():
+    if not field_is_file(path):
         return empty_requirements()
     data = load_json(path)
     if not isinstance(data, dict):
@@ -262,7 +282,7 @@ def canonical_requirements_hash(data: dict[str, Any]) -> str:
 
 def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
     spec = spec_path(root)
-    if spec.is_file():
+    if field_is_file(spec):
         require_spec_intact(root, order)
         live = spec_bytes_hash(root) or ""
         order["spec_ref"] = FIELD_SPEC_MD
@@ -271,7 +291,7 @@ def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
         if FIELD_SPEC_MD not in readable:
             readable.append(FIELD_SPEC_MD)
     req = requirements_path(root)
-    if req.is_file():
+    if field_is_file(req):
         data = load_requirements(root)
         order["requirements_ref"] = FIELD_REQUIREMENTS_JSON
         order["requirements_hash"] = canonical_requirements_hash(data)
@@ -283,34 +303,44 @@ def sync_order_spec_fields(order: dict[str, Any], root: Path) -> None:
 def write_spec(root: Path, text: str, *, revise: bool = False) -> str:
     body = text if text.endswith("\n") else text + "\n"
     path = spec_path(root)
-    if path.is_file() and not revise:
+    if field_is_file(path) and not revise:
         die(
             "SPEC.md is immutable after init; "
             "of spec --amend / --amend-file for a new request, "
             "or of spec --revise-file PATH to replace the brief"
         )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body, encoding="utf-8")
+    dump_text(path, body)
     return sha256_text(body)
+
+
+def _spec_log_max_index(root: Path) -> int:
+    n = 0
+    log = spec_log_dir(root)
+    names: set[str] = set()
+    if log.is_dir():
+        for path in log.glob("*.md"):
+            names.add(path.name)
+    for rel in wal_staged_items():
+        if str(rel).startswith("spec-log/") and str(rel).endswith(".md"):
+            names.add(str(rel).rsplit("/", 1)[-1])
+    for name in names:
+        try:
+            n = max(n, int(name.split("-", 1)[0]))
+        except ValueError:
+            continue
+    return n
 
 
 def snapshot_spec(root: Path) -> Path | None:
     """Copy current SPEC.md into spec-log before an explicit amend/revise."""
     spec = spec_path(root)
-    if not spec.is_file():
+    if not field_is_file(spec):
         return None
     body = read_spec_text(root)
     digest = sha256_text(body)
     log = spec_log_dir(root)
-    log.mkdir(parents=True, exist_ok=True)
-    n = 0
-    for path in log.glob("*.md"):
-        try:
-            n = max(n, int(path.name.split("-", 1)[0]))
-        except ValueError:
-            continue
-    dest = log / f"{n + 1:03d}-{digest[:12]}.md"
-    dest.write_text(body, encoding="utf-8")
+    dest = log / f"{_spec_log_max_index(root) + 1:03d}-{digest[:12]}.md"
+    dump_text(dest, body)
     return dest
 
 
@@ -693,10 +723,10 @@ def requirement_coverage_errors(root: Path) -> list[str]:
         for r in (data.get("requirements") or [])
         if is_active_requirement(r)
     ]
-    if not spec.is_file() and not items:
+    if not field_is_file(spec) and not items:
         return []
     errors: list[str] = []
-    if spec.is_file() and not items:
+    if field_is_file(spec) and not items:
         errors.append(
             "SPEC.md exists but no binding requirements; "
             "of spec --extract or of spec --add"
@@ -866,7 +896,7 @@ def release_requirement_owner(data: dict[str, Any], child_id: str) -> bool:
 
 
 def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bool:
-    if order_path(root).exists():
+    if field_is_file(order_path(root)):
         require_spec_intact(root, load_order(root))
     data = load_requirements(root)
     items = data.get("requirements") or []
