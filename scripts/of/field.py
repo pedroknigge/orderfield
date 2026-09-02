@@ -600,14 +600,166 @@ def die(msg: str, code: int = 1, *, kind: str | None = None) -> None:
 
 
 def child_id_from_env() -> str | None:
-    """Packet child id when this process is a spawned slave. None for the leader."""
+    """Live OF_CHILD value. Not leader authentication (see spawned_child_id)."""
     raw = (os.environ.get(OF_CHILD_ENV) or "").strip()
     return raw or None
 
 
+_MAX_SPAWN_ANCESTORS = 32
+_DARWIN_CTL_KERN = 1
+_DARWIN_KERN_PROCARGS2 = 49
+
+
+def _nul_env_map(data: bytes) -> dict[str, str]:
+    env: dict[str, str] = {}
+    for entry in data.split(b"\0"):
+        if not entry or b"=" not in entry:
+            continue
+        key, _, value = entry.partition(b"=")
+        try:
+            env[key.decode("utf-8")] = value.decode("utf-8", "replace")
+        except UnicodeDecodeError:
+            continue
+    return env
+
+
+def _linux_exec_environ(pid: int) -> dict[str, str] | None:
+    path = Path(f"/proc/{int(pid)}/environ")
+    if not path.is_file():
+        return None
+    try:
+        return _nul_env_map(path.read_bytes())
+    except OSError:
+        return None
+
+
+def _darwin_exec_environ(pid: int) -> dict[str, str] | None:
+    """KERN_PROCARGS2 env block at exec (not ps -E command-line text)."""
+    try:
+        import ctypes
+        import ctypes.util
+    except ImportError:
+        return None
+    libname = ctypes.util.find_library("c")
+    if not libname:
+        return None
+    try:
+        libc = ctypes.CDLL(libname, use_errno=True)
+    except OSError:
+        return None
+    libc.sysctl.argtypes = [
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.c_uint,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+    ]
+    libc.sysctl.restype = ctypes.c_int
+    mib = (ctypes.c_int * 3)(_DARWIN_CTL_KERN, _DARWIN_KERN_PROCARGS2, int(pid))
+    size = ctypes.c_size_t(0)
+    if libc.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0 or size.value < 4:
+        return None
+    raw = b""
+    for _ in range(3):
+        buf = ctypes.create_string_buffer(size.value + 256)
+        got = ctypes.c_size_t(len(buf))
+        if libc.sysctl(mib, 3, buf, ctypes.byref(got), None, 0) == 0:
+            raw = buf.raw[: got.value]
+            break
+        if ctypes.get_errno() != errno.ENOMEM:
+            return None
+        size = ctypes.c_size_t(max(size.value * 2, len(buf) * 2))
+    else:
+        return None
+    if len(raw) < 4:
+        return None
+    argc = int.from_bytes(raw[:4], sys.byteorder, signed=True)
+    if argc < 0 or argc > 4096:
+        return None
+    rest = raw[4:]
+    path_end = rest.find(b"\0")
+    if path_end < 0:
+        return None
+    i = path_end + 1
+    while i < len(rest) and rest[i] == 0:
+        i += 1
+    parts = rest[i:].split(b"\0")
+    if len(parts) < argc:
+        return None
+    env_blob = b"\0".join(parts[argc:])
+    return _nul_env_map(env_blob)
+
+
+def _proc_exec_environ(pid: int) -> dict[str, str] | None:
+    """Environment at exec. Live os.environ can drop OF_CHILD (env -u)."""
+    if pid <= 1:
+        return None
+    linux = _linux_exec_environ(pid)
+    if linux is not None:
+        return linux
+    if sys.platform == "darwin":
+        return _darwin_exec_environ(pid)
+    return None
+
+
+def _proc_ppid(pid: int) -> int:
+    stat = Path(f"/proc/{int(pid)}/stat")
+    if stat.is_file():
+        try:
+            text = stat.read_text(encoding="utf-8", errors="replace")
+            fields = text[text.rfind(")") + 1 :].split()
+            return int(fields[1])
+        except (OSError, IndexError, ValueError):
+            return 0
+    try:
+        proc = subprocess.run(
+            ["ps", "-p", str(int(pid)), "-o", "ppid="],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+        return int(proc.stdout.strip().split()[-1])
+    except (OSError, IndexError, ValueError, subprocess.TimeoutExpired):
+        return 0
+
+
+def _marker_from_env_map(env: dict[str, str] | None) -> str | None:
+    if not env or OF_CHILD_ENV not in env:
+        return None
+    raw = str(env.get(OF_CHILD_ENV) or "").strip()
+    return raw or "<empty>"
+
+
+def spawned_child_id() -> str | None:
+    """LEARN-001 spawned identity. Missing live OF_CHILD is not proof of leader.
+
+    Spawn execs the child with OF_CHILD set. `env -u OF_CHILD` / OF_CHILD=fake
+    cannot strip that marker from the ancestor exec-env. Inspection failure is
+    not a spawned-context signal (leader path stays usable).
+    """
+    if OF_CHILD_ENV in os.environ:
+        raw = str(os.environ.get(OF_CHILD_ENV) or "").strip()
+        return raw or "<empty>"
+    self_exec = _marker_from_env_map(_proc_exec_environ(os.getpid()))
+    if self_exec:
+        return self_exec
+    pid = os.getppid()
+    seen = {os.getpid()}
+    for _ in range(_MAX_SPAWN_ANCESTORS):
+        if pid <= 1 or pid in seen:
+            return None
+        seen.add(pid)
+        inherited = _marker_from_env_map(_proc_exec_environ(pid))
+        if inherited:
+            return inherited
+        pid = _proc_ppid(pid)
+    return None
+
+
 def refuse_child_forge(action: str) -> None:
     """LEARN-001: --protocol / --promote are leader-only. Public CLI shape."""
-    cid = child_id_from_env()
+    cid = spawned_child_id()
     if not cid:
         return
     die(
@@ -2277,8 +2429,9 @@ def learning_provenance(
 ) -> dict[str, Any]:
     """Who wrote this lesson, from which repo, under which ORDER origin.
 
-    source=leader is never written when OF_CHILD is set (LEARN-001).
-    Provenance is an audit trail, not OS-user authentication.
+    source=leader is never written for a spawned child, including after
+    env -u OF_CHILD or OF_CHILD=fake (LEARN-001). Provenance is an audit
+    trail, not OS-user authentication.
     """
     project = Path(root) if root is not None else Path.cwd()
     try:
@@ -2287,7 +2440,7 @@ def learning_provenance(
         resolved = str(project)
     origin = (order or {}).get("origin") if isinstance(order, dict) else None
     source = (
-        LEARNING_SOURCE_CHILD if child_id_from_env() else LEARNING_SOURCE_LEADER
+        LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
     )
     return {
         "source": source,
@@ -2494,7 +2647,7 @@ def save_learning(
     bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
-            if child_id_from_env() and (
+            if spawned_child_id() and (
                 item.get("source") == LEARNING_SOURCE_LEADER
                 or (isinstance(item.get("provenance"), dict)
                     and item["provenance"].get("source") == LEARNING_SOURCE_LEADER)
@@ -2522,7 +2675,7 @@ def save_learning(
         "text": cleaned,
         "created_at": utc_now(),
         "source": (
-            LEARNING_SOURCE_CHILD if child_id_from_env() else LEARNING_SOURCE_LEADER
+            LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
         ),
     }
     if kind == "field":
@@ -2551,7 +2704,7 @@ def promote_learning(
 
     Refuses ids that are not field learnings of the active ORDER: promotion is
     the explicit leader confirmation that a lesson may cross repositories.
-    OF_CHILD processes cannot promote (LEARN-001)."""
+    Spawned children cannot promote, including after env -u OF_CHILD (LEARN-001)."""
     refuse_child_forge("--promote")
     key = str(learning_id or "").strip()
     if not key:
@@ -2578,7 +2731,9 @@ def promote_learning(
         "kind": "protocol",
         "text": text,
         "created_at": utc_now(),
-        "source": LEARNING_SOURCE_LEADER,
+        "source": (
+            LEARNING_SOURCE_CHILD if spawned_child_id() else LEARNING_SOURCE_LEADER
+        ),
         "promoted_from": key,
         "provenance": learning_provenance(root, order),
     }
