@@ -228,6 +228,24 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
     modes = [bool(amend_file), bool(amend_text), bool(revise_file), bool(revise_text)]
     if sum(modes) > 1:
         die("pass only one of --amend / --amend-file / --revise / --revise-file")
+    ledger_edits = [
+        flag
+        for flag, present in (
+            ("--from-file", getattr(args, "from_file", None)),
+            ("--extract", getattr(args, "extract", False)),
+            ("--add", getattr(args, "add", None)),
+            ("--supersede", getattr(args, "supersede", None)),
+        )
+        if present
+    ]
+    if sum(modes) == 1 and ledger_edits:
+        # SPEC.md is written first; a later ledger failure would leave ORDER
+        # behind the spec hash. Two commands keep SPEC and ORDER moving together.
+        die(
+            "--amend/--revise cannot be combined with "
+            + "/".join(ledger_edits)
+            + "; amend or revise first, then edit requirements in a second command"
+        )
     ingest_source: Path | None = None
     if amend_file or amend_text:
         if amend_file:

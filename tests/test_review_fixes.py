@@ -140,3 +140,100 @@ class SiblingFieldChildBinding(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _field(tmp: Path) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+    run_of(tmp, "init", "--mission", "m", "--phase", "build")
+    run_of(tmp, "spec", "--add", "CLI-001", "--surface", "contract", "--text", "t")
+
+
+class ApprovedDesignFixes(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-design-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        _field(self.tmp)
+
+    def _pack(self, child: str, req: str | None = "CLI-001") -> str:
+        args = ["pack", "--role", "implementer", "--child-id", child, "--slice", "s", "--seconds", "2",
+                "--owns-path", f"src/{child}.py"]  # same-wave implementers need disjoint write sets
+        if req:
+            args += ["--owns-requirement", req]
+        r = run_of(self.tmp, *args)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.splitlines()[0].strip()
+
+    def test_same_packet_spawn_is_refused_while_in_flight(self) -> None:
+        pkt = self._pack("c")
+        spawns = self.tmp / ".orderfield" / "waves" / "001" / "spawns"
+        spawns.mkdir(parents=True, exist_ok=True)
+        (spawns / "c.json").write_text(json.dumps({"child_id": "c", "started_at": "t"}), encoding="utf-8")
+        agent = self.tmp / "ok.sh"; agent.write_text("#!/bin/sh\nexit 0\n"); agent.chmod(0o755)
+        r = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, env={"OF_AGENT": str(agent)})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("already has a spawn in flight", r.stderr)
+        r2 = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, "--force-spawn", env={"OF_AGENT": str(agent)})
+        self.assertEqual(r2.returncode, 0, r2.stderr)
+        self.assertEqual(json.loads((spawns / "c.json").read_text())["outcome"], "ok")
+
+    @unittest.skipUnless(os.name == "posix", "process groups")
+    def test_timeout_kills_the_whole_process_group(self) -> None:
+        pkt = self._pack("t")
+        pidfile = self.tmp / "grandchild.pid"
+        agent = self.tmp / "slow.sh"
+        agent.write_text(f"#!/bin/sh\nsleep 60 &\necho $! > {pidfile}\nwait\n")
+        agent.chmod(0o755)
+        r = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, env={"OF_AGENT": str(agent)})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("timeout", r.stderr)
+        pid = int(pidfile.read_text().strip())
+        time.sleep(0.2)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+        meta = json.loads((self.tmp / ".orderfield/waves/001/spawns/t.json").read_text())
+        self.assertEqual(meta["outcome"], "timeout")
+        self.assertIn("residual_present", meta)
+
+    def test_amend_refuses_ledger_edits_in_the_same_command(self) -> None:
+        spec = self.tmp / ".orderfield" / "SPEC.md"
+        before = spec.read_text(encoding="utf-8") if spec.is_file() else None
+        r = run_of(self.tmp, "spec", "--amend", "new ask", "--add", "X-001", "--text", "t")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot be combined", r.stderr)
+        after = spec.read_text(encoding="utf-8") if spec.is_file() else None
+        self.assertEqual(before, after)
+
+    def test_refused_pack_owns_nothing(self) -> None:
+        for i in range(4):  # add every requirement first: a spec --add stales packets
+            run_of(self.tmp, "spec", "--add", f"R-00{i}", "--text", "t")
+        for i in range(4):
+            self._pack(f"c{i}", f"R-00{i}")
+        r = run_of(self.tmp, "pack", "--role", "implementer", "--child-id", "c5", "--slice", "s",
+                   "--owns-path", "src/c5.py", "--owns-requirement", "CLI-001")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("max_children", r.stderr)
+        reqs = json.loads((self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text())
+        cli = [x for x in reqs["requirements"] if x["id"] == "CLI-001"][0]
+        self.assertEqual(cli.get("owned_by") or [], [])
+
+    def test_json_mode_stderr_is_pure_jsonl_on_refusal(self) -> None:
+        bare = Path(tempfile.mkdtemp(prefix="of-jsonl-")); self.addCleanup(shutil.rmtree, bare, True)
+        subprocess.run(["git", "init", "-q", str(bare)], check=True)
+        r = run_of(bare, "--json", "spec", "--add", "X-001", "--text", "t")
+        self.assertNotEqual(r.returncode, 0)
+        lines = [l for l in r.stderr.splitlines() if l.strip()]
+        self.assertTrue(lines)
+        for line in lines:
+            json.loads(line)
+        self.assertEqual(json.loads(lines[-1])["kind"], "refused")
+
+    def test_of_trust_is_not_forwarded_to_children(self) -> None:
+        pkt = self._pack("e")
+        agent = self.tmp / "env.sh"; agent.write_text("#!/bin/sh\nenv > env.txt\n"); agent.chmod(0o755)
+        r = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, env={"OF_AGENT": str(agent), "OF_TRUST": "yolo", "OF_DEBUG": "1"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env_text = (self.tmp / "env.txt").read_text()
+        self.assertNotIn("OF_TRUST=", env_text)
+        self.assertNotIn("OF_DEBUG=", env_text)
+        self.assertNotIn("OF_LEARNINGS=", env_text)
+        self.assertIn("OF_FIELD=", env_text)

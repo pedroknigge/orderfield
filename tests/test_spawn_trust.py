@@ -296,7 +296,7 @@ class SpawnEnvAllowlist(unittest.TestCase):
         self.assertIn("LC_ALL", claude)
         self.assertIn("XDG_CONFIG_HOME", claude)
         self.assertIn("SSL_CERT_FILE", claude)
-        self.assertIn("OF_TRUST", claude)
+        self.assertNotIn("OF_TRUST", claude)  # nested spawns re-choose trust
         self.assertIn("ANTHROPIC_API_KEY", claude)
         self.assertNotIn("XAI_API_KEY", claude)
         self.assertNotIn("AWS_SECRET_ACCESS_KEY", claude)
@@ -343,7 +343,8 @@ class SpawnEnvAllowlist(unittest.TestCase):
         _, child = self._spawn_dump({})
         self.assertIn("PATH", child)
         self.assertIn("HOME", child)
-        self.assertEqual(child.get("OF_KEEP_ME"), "yes")
+        self.assertNotIn("OF_KEEP_ME", child)  # only OF_FIELD/OF_JSON/OF_NO_UPDATE_CHECK cross
+        self.assertIn("OF_FIELD", child)
         self.assertNotIn("CANARY_SECRET", child)
 
     def test_of_spawn_env_adds_names(self) -> None:

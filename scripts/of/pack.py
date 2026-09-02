@@ -814,6 +814,11 @@ def render_prompt(
         if root is not None
         else packet["residual_path"]
     )
+    scratch_physical = (
+        physical_field_rel(root, str(packet.get("scratch_dir") or ""))
+        if root is not None
+        else packet.get("scratch_dir") or ""
+    )
     if spec_ref:
         owned = packet.get("owns_requirements") or []
         paths = packet.get("owns_paths") or []
@@ -859,6 +864,9 @@ def render_prompt(
         + "Write the residual to `"
         + str(residual_physical)
         + "`. Do not mutate `.orderfield/ORDER.json`.\n"
+        + "Your scratch directory (heartbeat `PULSE` lives here): `"
+        + str(scratch_physical)
+        + "`.\n"
     )
     if packet_has_identity(packet):
         text += (

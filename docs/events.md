@@ -36,6 +36,7 @@ When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object
 | `doctor` | After `of doctor` | `ok` |
 | `migrate` | After `of migrate` | `applied`, `ok` |
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
+| `warning` | Learnings skipped on load (no provenance / schema failure) | `ok: true`, `kind: learning_skipped`, `message` |
 | `error` | A deliberate refusal (`die`, `kind: refused`) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, or the exception class, e.g. `UnicodeDecodeError`, `OSError`, `JSONDecodeError`), `message` (one sanitized line, secrets and home paths redacted) |
 
 ## Example
@@ -62,7 +63,7 @@ and under `--json` / `OF_JSON=1` the same failure is the `error` event instead:
 {"event": "error", "kind": "UnicodeDecodeError", "message": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte", "ok": false}
 ```
 
-A deliberate refusal (`die`) still prints its redacted `of: <message>` prose line and, under `--json`, also emits the `error` event with `kind: refused`; argparse usage errors are unchanged. `KeyboardInterrupt` exits `130`. `OF_DEBUG=1` re-raises
+Under `--json` a deliberate refusal (`die`) is the `error` event with `kind: refused` and prints no prose line, so stderr stays one JSON object per line; in plain mode it is the redacted `of: <message>` line. argparse usage errors are unchanged. `KeyboardInterrupt` exits `130`. `OF_DEBUG=1` re-raises
 with the full traceback for debugging.
 
 ## Not covered

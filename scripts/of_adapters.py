@@ -155,8 +155,14 @@ SPAWN_ENV_BASE_NAMES = (
     "PATHEXT",
     "TEMP",
     "TMP",
+    # kernel: only what a child's own `of` calls need. Not OF_TRUST (nested
+    # spawns re-choose their trust), not OF_LEARNINGS / OF_DEBUG / OF_AGENT /
+    # OF_SPAWN_ENV (leader knobs; the cross-repo store path stays private).
+    "OF_FIELD",
+    "OF_JSON",
+    "OF_NO_UPDATE_CHECK",
 )
-SPAWN_ENV_BASE_PREFIXES = ("LC_", "XDG_", "SSL_CERT_", "OF_")
+SPAWN_ENV_BASE_PREFIXES = ("LC_", "XDG_", "SSL_CERT_")
 # Credential / config prefixes each harness needs to authenticate.
 SPAWN_ENV_ADAPTER_PREFIXES = {
     # Claude via Bedrock / Vertex needs AWS_* / GOOGLE_APPLICATION_CREDENTIALS:

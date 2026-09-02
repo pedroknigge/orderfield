@@ -561,16 +561,19 @@ def require_nonsymlink_kernel_root(root: Path) -> None:
 
 
 def die(msg: str, code: int = 1) -> None:
-    """Deliberate refusal: one plain stderr line, exit `code`. Under --json /
-    OF_JSON=1 the same refusal is also visible as an `error` event so a
-    machine consumer never has to parse prose."""
-    print(f"of: {redact_text(str(msg))}", file=sys.stderr)
-    emit_event(
-        "error",
-        ok=False,
-        kind="refused",
-        message=redact_text(" ".join(str(msg).split())),
-    )
+    """Deliberate refusal: one stderr line, exit `code`. Plain mode prints
+    `of: <msg>`; under --json / OF_JSON=1 the refusal is the `error` event
+    instead, so stderr stays machine-parseable."""
+    if json_events_enabled():
+        # --json: stderr stays one JSON object per line; the refusal is the event.
+        emit_event(
+            "error",
+            ok=False,
+            kind="refused",
+            message=redact_text(" ".join(str(msg).split())),
+        )
+    else:
+        print(f"of: {redact_text(str(msg))}", file=sys.stderr)
     raise SystemExit(code)
 
 
@@ -1912,12 +1915,15 @@ def _filter_learnings(items: list[Any], where: str) -> list[dict[str, Any]]:
             skipped += 1
     if skipped and not _LEARNING_SKIP_WARNED:
         _LEARNING_SKIP_WARNED = True
-        print(
-            f"of: warning: skipped {skipped} learning(s) in {where} lacking "
-            "provenance or failing schema; they never enter a prompt "
-            "(re-add with of learn / of learn --protocol)",
-            file=sys.stderr,
+        message = (
+            f"skipped {skipped} learning(s) in {where} lacking provenance or "
+            "failing schema; they never enter a prompt "
+            "(of learn --forget ID removes one; re-add with of learn / --protocol)"
         )
+        if json_events_enabled():
+            emit_event("warning", ok=True, kind="learning_skipped", message=message)
+        else:
+            print(f"of: warning: {message}", file=sys.stderr)
     return kept
 
 
@@ -1946,6 +1952,41 @@ def _save_protocol_store(items: list[dict[str, Any]]) -> None:
     path = protocol_learnings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     dump_json(path, {"v": 1, "items": items})
+
+
+PROTOCOL_STORE_LOCK_WAIT_SECONDS = 10.0
+
+
+@contextmanager
+def protocol_store_lock() -> Any:
+    """Serialize read-modify-write on the machine-wide learnings store.
+
+    The field lock is per field; two fields (or two repos) learning at once
+    would otherwise overwrite each other's `learnings.json`. flock on a
+    sibling `.lock` file; released by the OS if the owner dies."""
+    path = protocol_learnings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + ".lock")
+    handle = lock_path.open("a+", encoding="utf-8")
+    started = time.monotonic()
+    try:
+        while True:
+            try:
+                flock_acquire(handle)
+                break
+            except BlockingIOError:
+                if time.monotonic() - started >= PROTOCOL_STORE_LOCK_WAIT_SECONDS:
+                    die(
+                        f"learnings store lock wait exceeded "
+                        f"{PROTOCOL_STORE_LOCK_WAIT_SECONDS:g}s ({lock_path})"
+                    )
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            flock_release(handle)
+    finally:
+        handle.close()
 
 
 def load_field_learnings(root: Path) -> list[dict[str, Any]]:
@@ -2032,14 +2073,15 @@ def save_learning(
             item["last_confirmed_at"] = utc_now()
             require_public_schema(item, "learning.schema.json", "learning")
             if kind == "protocol":
-                items = _load_protocol_store_raw()
-                for i, existing in enumerate(items):
-                    if existing.get("id") == item.get("id"):
-                        items[i] = item
-                        break
-                else:
-                    items.insert(0, item)
-                _save_protocol_store(items)
+                with protocol_store_lock():
+                    items = _load_protocol_store_raw()
+                    for i, existing in enumerate(items):
+                        if existing.get("id") == item.get("id"):
+                            items[i] = item
+                            break
+                    else:
+                        items.insert(0, item)
+                    _save_protocol_store(items)
             if root is not None and order_path(root).is_file():
                 _write_field_learning(root, item)
             return item
@@ -2060,9 +2102,10 @@ def save_learning(
     item["provenance"] = learning_provenance(root, order)
     require_public_schema(item, "learning.schema.json", "learning")
     if kind == "protocol":
-        items = _load_protocol_store_raw()
-        items.insert(0, item)
-        _save_protocol_store(items)
+        with protocol_store_lock():
+            items = _load_protocol_store_raw()
+            items.insert(0, item)
+            _save_protocol_store(items)
     if root is not None and (kind == "field" or order_path(root).is_file()):
         _write_field_learning(root, item)
     return item
@@ -2105,9 +2148,10 @@ def promote_learning(
         "provenance": learning_provenance(root, order),
     }
     require_public_schema(item, "learning.schema.json", "learning")
-    items = _load_protocol_store_raw()
-    items.insert(0, item)
-    _save_protocol_store(items)
+    with protocol_store_lock():
+        items = _load_protocol_store_raw()
+        items.insert(0, item)
+        _save_protocol_store(items)
     _write_field_learning(root, item)
     return item
 
@@ -2144,9 +2188,10 @@ def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
         )
     target = hits[0]
     tid = str(target.get("id"))
-    _save_protocol_store(
-        [i for i in _load_protocol_store_raw() if str(i.get("id")) != tid]
-    )
+    with protocol_store_lock():
+        _save_protocol_store(
+            [i for i in _load_protocol_store_raw() if str(i.get("id")) != tid]
+        )
     if root is not None:
         path = learnings_dir(root) / f"{tid}.json"
         if path.is_file() and not path.is_symlink():

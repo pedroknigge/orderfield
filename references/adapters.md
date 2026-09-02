@@ -26,7 +26,9 @@ the log to
 and spawn metadata to
 `.orderfield/waves/NNN/spawns/<child_id>.json`.
 Spawn metadata is finalized on **every** outcome — `ok`, `nonzero_exit`,
-`timeout`, `missing_binary`, `dry_run` — with `outcome`, `ok`, `ended_at`, the
+`timeout` (the child's whole process group is killed, so no grandchild can
+write a residual afterwards), `missing_binary`, `error`, `interrupted`,
+`dry_run` — with `outcome`, `ok`, `ended_at`, the
 trust profile and env mode. Timeout and missing binary exit nonzero and, under
 `--json`, emit a `{"event":"spawn","ok":false,"outcome":...}` line. A
 started-only record is a crash, not a state.
@@ -100,7 +102,7 @@ allowlist:
   lowercase, `REQUESTS_CA_BUNDLE CURL_CA_BUNDLE NODE_EXTRA_CA_CERTS`),
   `SSH_AUTH_SOCK`, and the Windows set (`SYSTEMROOT COMSPEC USERPROFILE
   APPDATA LOCALAPPDATA PATHEXT TEMP TMP`)
-- kernel: `OF_*`
+- kernel: `OF_FIELD` (set to the ORDER id), `OF_JSON`, `OF_NO_UPDATE_CHECK` — not `OF_TRUST` (a nested `of spawn` re-chooses its trust), not `OF_LEARNINGS` / `OF_DEBUG` / `OF_AGENT` / `OF_SPAWN_ENV`
 - per adapter: `claude` `ANTHROPIC_* CLAUDE_*` (Bedrock / Vertex users add `AWS_*` / `GOOGLE_APPLICATION_CREDENTIALS` via `OF_SPAWN_ENV`); `codex` `OPENAI_* CODEX_*`;
   `cursor` `CURSOR_*`; `opencode` `OPENCODE_* ANTHROPIC_* OPENAI_* GOOGLE_*
   GEMINI_* OPENROUTER_*`; `orca` `ORCA_*`; `grok` `XAI_* GROK_*`; `agy`
