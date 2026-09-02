@@ -23,6 +23,8 @@ Post-0.7.0 Vibe-Proof Deep P1/P2. Same 0.6 line. Not a new regime. `RUNTIME_OWNE
 - **LINT-001:** stdlib unused-import checker (`scripts/check_unused_imports.py`) plus CI job. No pip runtime dep.
 - **SCOPE-001:** [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md) names auditor items that are not this product. Claims uniqueness gate: `python3 docs/audit/check-claims.py`. Duplicate C-065 retired (shim is C-081).
 - **REVIEW-001:** protection config stays; independent review in merge history remains unproven.
+- **#48:** sibling-field prompt JSON shows physical `residual_path` / `spec_ref` / `scratch_dir`; collect still finds a leftover canonical write.
+- **#49:** `done_when_closed` is part of the integration digest; `of patch --done-when-closed` then `integrate --recompute` selects `phase` instead of replaying hold.
 - Packaging: VERSION 0.7.1; skill/alias description preview `v0.7.1 — …`.
 
 ## 0.7.0

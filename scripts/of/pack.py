@@ -652,14 +652,28 @@ def register_packed_child(
     state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
 
 
+def packet_residual_file(root: Path, packet: dict[str, Any]) -> Path | None:
+    """Physical field-home residual, else a leftover canonical write (#48)."""
+    rel = packet.get("residual_path")
+    if not rel:
+        return None
+    physical = physical_artifact_path(root, str(rel), "packet residual_path")
+    if physical.is_file():
+        return physical
+    leftover = safe_relative_path(root, str(rel), "packet residual_path")
+    if leftover != physical and leftover.is_file():
+        return leftover
+    return None
+
+
 def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     child = packet.get("child_id") or "?"
     rel = packet.get("residual_path")
     if not rel:
         die(f"packet {child} missing residual_path")
     require_packet_artifact_paths(root, packet)
-    path = physical_artifact_path(root, rel, "packet residual_path")
-    if not path.is_file():
+    path = packet_residual_file(root, packet)
+    if path is None:
         die(f"missing residual at {rel} (packet residual_path)")
     return path
 
@@ -669,7 +683,7 @@ def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
     if not rel:
         return True
     require_packet_artifact_paths(root, packet)
-    return not physical_artifact_path(root, rel, "packet residual_path").is_file()
+    return packet_residual_file(root, packet) is None
 
 
 def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
@@ -799,14 +813,30 @@ def slave_contract(inline: bool = False, root: Path | None = None) -> str:
     )
 
 
-def compact_packet_for_prompt(packet: dict[str, Any]) -> dict[str, Any]:
-    """Prompt ORDER view is compact; canonical disk packet stays full."""
+def compact_packet_for_prompt(
+    packet: dict[str, Any], root: Path | None = None
+) -> dict[str, Any]:
+    """Prompt ORDER view is compact; canonical disk packet stays full.
+
+    Sibling fields: residual/spec/scratch in the *displayed* JSON are the
+    physical field-home paths the child must open. Disk packet stays canonical.
+    """
     view = dict(packet)
     embedded = packet.get("order")
     if isinstance(embedded, dict):
         view["order"] = {
             key: embedded[key] for key in PROMPT_ORDER_KEYS if key in embedded
         }
+    if root is None:
+        return view
+    for key in ("residual_path", "scratch_dir", "spec_ref"):
+        if view.get(key):
+            view[key] = physical_field_rel(root, str(view[key]))
+    nested = view.get("order")
+    if isinstance(nested, dict) and nested.get("spec_ref"):
+        nested = dict(nested)
+        nested["spec_ref"] = physical_field_rel(root, str(nested["spec_ref"]))
+        view["order"] = nested
     return view
 
 
@@ -891,7 +921,11 @@ def render_prompt(
     text = (
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
-        + json.dumps(compact_packet_for_prompt(packet), indent=2, ensure_ascii=False)
+        + json.dumps(
+            compact_packet_for_prompt(packet, root=root),
+            indent=2,
+            ensure_ascii=False,
+        )
         + "\n```\n\n"
         + PROMPT_ORDER_READ
         + f" (`{order_rel}`).\n"
@@ -945,15 +979,8 @@ def completed_children(root: Path, wave: int) -> list[dict[str, Any]]:
 
 
 def try_load_packet_residual(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
-    rel = packet.get("residual_path")
-    if not rel:
-        return None
-    text = str(rel)
-    rel_path = Path(physical_field_rel(root, text))
-    if rel_path.is_absolute() or ".." in rel_path.parts:
-        return None
-    path = root / rel_path
-    if not path.is_file():
+    path = packet_residual_file(root, packet)
+    if path is None:
         return None
     return _read_json_object(path)
 

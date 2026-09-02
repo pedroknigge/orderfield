@@ -132,8 +132,15 @@ class SiblingFieldRenderPaths(unittest.TestCase):
             f"Write the residual to `.orderfield/fields/{new_id}/waves/001/residuals/e1.json`",
             r.stdout,
         )
-        # the packet JSON embedded in the prompt stays canonical
-        self.assertIn('"residual_path": ".orderfield/waves/001/residuals/e1.json"', r.stdout)
+        # disk packet stays canonical; the prompt JSON is the physical field home (#48)
+        self.assertIn(
+            f'"residual_path": ".orderfield/fields/{new_id}/waves/001/residuals/e1.json"',
+            r.stdout,
+        )
+        self.assertNotIn(
+            '"residual_path": ".orderfield/waves/001/residuals/e1.json"',
+            r.stdout,
+        )
 
 
 class NoDuplicateCliDefs(unittest.TestCase):

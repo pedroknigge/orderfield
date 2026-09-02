@@ -945,7 +945,30 @@ class StateMachineGuards(unittest.TestCase):
         self._close()
         changed = run_of(self.tmp, "phase", "cut")
         self.assertNotEqual(changed.returncode, 0)
-        self.assertIn("report regime is hold, not phase", changed.stderr)
+        err = changed.stderr
+        self.assertTrue(
+            "report regime is hold, not phase" in err
+            or "changed after its report was integrated" in err,
+            err,
+        )
+
+    def test_recompute_after_done_when_closed_selects_phase(self) -> None:
+        """#49: patch --done-when-closed then --recompute must not replay hold."""
+        self._pack()
+        first = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(json.loads(first.stdout)["regime"], "hold")
+        self.assertIn("done_when still open", json.loads(first.stdout)["reason"])
+        self._close()
+        stale = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertNotEqual(stale.returncode, 0, stale.stdout)
+        self.assertIn("recompute", stale.stderr)
+        recomputed = run_of(self.tmp, "integrate", "--wave", "1", "--recompute")
+        self.assertEqual(recomputed.returncode, 0, recomputed.stderr)
+        report = json.loads(recomputed.stdout)
+        self.assertEqual(report["regime"], "phase")
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertEqual(changed.returncode, 0, changed.stderr)
 
     def test_phase_requires_the_legal_next_phase(self) -> None:
         self._ready_for_phase()

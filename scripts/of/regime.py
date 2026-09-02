@@ -11,9 +11,8 @@ from of.field import (
     die,
     field_is_file,
     load_json,
+    load_order,
     load_wave_report,
-    physical_artifact_path,
-    safe_relative_path,
     spec_path,
     wave_dir,
 )
@@ -29,6 +28,7 @@ from of.pack import (
     packed_children,
     packet_digest,
     packet_has_identity,
+    packet_residual_file,
     packets_all_stale,
 )
 
@@ -358,15 +358,21 @@ def integration_input_digest(
     *,
     partial: bool,
     apply: bool,
+    order: dict[str, Any] | None = None,
 ) -> str:
-    """Hash the canonical packet/residual set and reduction-affecting options."""
+    """Hash the canonical packet/residual set and reduction-affecting options.
+
+    done_when_closed is reduction-affecting: it is the difference between
+    hold (done_when still open) and phase. A later of patch --done-when-closed
+    must not replay the hold report (#49).
+    """
+    if order is None:
+        order = load_order(root)
     children: list[dict[str, Any]] = []
     for packet in sorted(packets, key=lambda item: str(item.get("child_id") or "")):
-        residual_path = physical_artifact_path(
-            root, packet.get("residual_path"), "packet residual_path"
-        )
+        residual_path = packet_residual_file(root, packet)
         residual: Any = None
-        if residual_path.is_file():
+        if residual_path is not None:
             residual = load_json(residual_path)
         children.append(
             {
@@ -380,6 +386,8 @@ def integration_input_digest(
             "wave": int(wave),
             "partial": bool(partial),
             "apply": bool(apply),
+            "done_when_closed": done_when_closed(order),
+            "done_when_closed_phases": closed_phases(order),
             "children": children,
         },
         ensure_ascii=False,
@@ -422,6 +430,7 @@ def wave_report_covers_packets(
         packets,
         partial=bool(integration.get("partial")),
         apply=bool(integration.get("apply")),
+        order=load_order(root),
     )
     return current_hash == integration.get("input_hash")
 

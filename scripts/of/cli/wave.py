@@ -163,6 +163,7 @@ from of.pack import (
     packed_children,
     packet_digest,
     packet_owns_paths,
+    packet_residual_file,
     packet_residual_missing,
     prior_wave_path_owners,
     reconcile_children_spawned,
@@ -564,7 +565,10 @@ def cmd_pack(args: argparse.Namespace) -> None:
         ok=True,
     )
     print(out_physical_rel)
-    print(f"child_id={child_id} wave={wave} residual={residual_path}")
+    print(
+        f"child_id={child_id} wave={wave} "
+        f"residual={physical_field_rel(root, residual_path)}"
+    )
 
 
 def cmd_unpack(args: argparse.Namespace) -> None:
@@ -930,12 +934,12 @@ def cmd_collect(args: argparse.Namespace) -> None:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
         try:
-            present = bool(rel) and field_artifact_path(
-                root, str(rel), "packet residual_path"
-            ).is_file()
+            path = packet_residual_file(root, pkt) if rel else None
+            present = path is not None
         except SystemExit:
             present = False  # malformed path: count as lost, do not abort the wave
-        if not present:
+            path = None
+        if not present or path is None:
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
             trust_note = ""
@@ -946,12 +950,14 @@ def cmd_collect(args: argparse.Namespace) -> None:
                     trust_note = f" spawned trust={meta.get('trust')} outcome={meta.get('outcome') or 'in-flight'}"
                     if meta.get("trust") == "conservative":
                         trust_note += "; a conservative print-mode child cannot write files"
+            looked = (
+                physical_field_rel(root, str(rel)) if rel else "(no residual_path)"
+            )
             print(
-                f"MISSING {child}: missing residual at {rel or '(no residual_path)'} "
+                f"MISSING {child}: missing residual at {looked} "
                 f"(still in flight; of unpack --child-id {child} releases it){trust_note}"
             )
             continue
-        path = field_artifact_path(root, str(rel), "packet residual_path")
         data = load_json(path)
         errs = validate_residual_for_packet(data, pkt, root)
         if errs:

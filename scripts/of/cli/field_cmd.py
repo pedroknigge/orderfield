@@ -104,6 +104,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         packets,
         partial=partial,
         apply=bool(args.apply),
+        order=order,
     )
     previous_report = existing_integration_report(root, int(wave))
     previous_integration = (
