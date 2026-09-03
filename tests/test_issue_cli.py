@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""ISSUE-006..009 / ISSUE-002 / GH-001: of issue CLI (spawned-child, body-file, gh timeout)."""
+"""ISSUE-006..009 / ISSUE-002 / ISSUE-003 / GH-001: of issue CLI.
+
+ISSUE-003: --title/--search are stripped, length-capped, and redact_text'd
+before argv construction so dry-run preview and real gh share one value.
+"""
 from __future__ import annotations
 
 import json
@@ -637,6 +641,240 @@ class IssueCli(unittest.TestCase):
         ]
         self.assertEqual(len(creates), 1, load_log(self.log))
         self.assertNotIn("https://github.com/", r.stdout)
+
+    def _ghp(self) -> str:
+        return "ghp_" + "".join(chr(ord("A") + i) for i in range(20))
+
+    def test_issue_003_title_strip_same_in_dry_run_and_submit(self) -> None:
+        title = "  wal-title-bound  "
+        expected = "wal-title-bound"
+        dry = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertIn(expected, dry.stdout)
+        submit = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1, load_log(self.log))
+        argv = creates[0]["argv"]
+        got = argv[argv.index("--title") + 1]
+        self.assertEqual(got, expected)
+        self.assertIn(got, dry.stdout)
+
+    def test_issue_003_title_secret_redacted_same_in_dry_run_and_submit(self) -> None:
+        secret = self._ghp()
+        title = f"leak {secret} in title"
+        expected = f"leak {of.REDACTED} in title"
+        dry = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertNotIn(secret, dry.stdout + dry.stderr)
+        self.assertIn(expected, dry.stdout)
+        submit = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        self.assertNotIn(secret, submit.stdout + submit.stderr)
+        self.assertNotIn(secret, self.log.read_text(encoding="utf-8"))
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1, load_log(self.log))
+        argv = creates[0]["argv"]
+        got = argv[argv.index("--title") + 1]
+        self.assertEqual(got, expected)
+        self.assertEqual(
+            got,
+            ops._normalize_issue_text(
+                title, flag="--title", max_chars=ops.ISSUE_TITLE_MAX_CHARS
+            ),
+        )
+
+    def test_issue_003_title_whole_secret_refused(self) -> None:
+        secret = self._ghp()
+        dry = self.issue(
+            "issue",
+            "--title",
+            secret,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(dry.returncode, 1, dry.stderr)
+        self.assertIn("of: error: issue:", dry.stderr)
+        self.assertIn("secret/PII-shaped", dry.stderr)
+        self.assertNotIn(secret, dry.stdout + dry.stderr)
+        self.assertEqual(load_log(self.log), [])
+        submit = self.issue(
+            "issue",
+            "--title",
+            secret,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(submit.returncode, 1, submit.stderr)
+        self.assertNotIn(secret, submit.stdout + submit.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_issue_003_title_oversize_refused(self) -> None:
+        huge = "x" * 40_000
+        dry = self.issue(
+            "issue",
+            "--title",
+            huge,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(dry.returncode, 1, dry.stderr)
+        self.assertIn("of: error: issue:", dry.stderr)
+        self.assertIn("refuse huge dumps", dry.stderr)
+        self.assertEqual(load_log(self.log), [])
+        just_over = "x" * (ops.ISSUE_TITLE_MAX_CHARS + 1)
+        over = self.issue(
+            "issue",
+            "--title",
+            just_over,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(over.returncode, 1, over.stderr)
+        self.assertIn("refuse huge dumps", over.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_issue_003_search_strip_same_in_dry_run_and_submit(self) -> None:
+        query = "  glossary-bound  "
+        expected = "glossary-bound"
+        dry = self.issue("issue", "--search", query, "--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertIn(expected, dry.stdout)
+        submit = self.issue("issue", "--search", query)
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        lists = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "list"]
+        ]
+        self.assertEqual(len(lists), 1, load_log(self.log))
+        argv = lists[0]["argv"]
+        got = argv[argv.index("--search") + 1]
+        self.assertEqual(got, expected)
+        self.assertIn(got, dry.stdout)
+
+    def test_issue_003_search_secret_redacted_same_in_dry_run_and_submit(self) -> None:
+        secret = self._ghp()
+        query = f"leak {secret} token"
+        expected = f"leak {of.REDACTED} token"
+        dry = self.issue("issue", "--search", query, "--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertNotIn(secret, dry.stdout + dry.stderr)
+        self.assertIn(expected, dry.stdout)
+        submit = self.issue("issue", "--search", query)
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        self.assertNotIn(secret, submit.stdout + submit.stderr)
+        self.assertNotIn(secret, self.log.read_text(encoding="utf-8"))
+        lists = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "list"]
+        ]
+        self.assertEqual(len(lists), 1, load_log(self.log))
+        argv = lists[0]["argv"]
+        got = argv[argv.index("--search") + 1]
+        self.assertEqual(got, expected)
+
+    def test_issue_003_search_oversize_refused(self) -> None:
+        huge = "x" * 40_000
+        dry = self.issue("issue", "--search", huge, "--dry-run")
+        self.assertEqual(dry.returncode, 1, dry.stderr)
+        self.assertIn("of: error: issue:", dry.stderr)
+        self.assertIn("refuse huge dumps", dry.stderr)
+        self.assertEqual(load_log(self.log), [])
+        submit = self.issue("issue", "--search", huge)
+        self.assertEqual(submit.returncode, 1, submit.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_issue_003_search_whole_secret_refused(self) -> None:
+        secret = self._ghp()
+        dry = self.issue("issue", "--search", secret, "--dry-run")
+        self.assertEqual(dry.returncode, 1, dry.stderr)
+        self.assertIn("secret/PII-shaped", dry.stderr)
+        self.assertNotIn(secret, dry.stdout + dry.stderr)
+        self.assertEqual(load_log(self.log), [])
+        submit = self.issue("issue", "--search", secret)
+        self.assertEqual(submit.returncode, 1, submit.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_issue_003_title_email_pii_redacted_same_in_dry_run_and_submit(self) -> None:
+        email = "alice.b@corp.example.org"
+        title = f"contact {email} today"
+        expected = f"contact {of.REDACTED} today"
+        dry = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertNotIn(email, dry.stdout + dry.stderr)
+        self.assertIn(expected, dry.stdout)
+        submit = self.issue(
+            "issue",
+            "--title",
+            title,
+            "--body",
+            "y",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(submit.returncode, 0, submit.stderr)
+        creates = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "create"]
+        ]
+        self.assertEqual(len(creates), 1)
+        argv = creates[0]["argv"]
+        self.assertEqual(argv[argv.index("--title") + 1], expected)
+        self.assertNotIn(email, self.log.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

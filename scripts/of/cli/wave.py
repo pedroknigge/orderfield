@@ -3,29 +3,20 @@ from __future__ import annotations
 
 import argparse
 import errno
-import json
 import os
 import signal
-import shutil
 import subprocess
 import sys
-import tempfile
-import time
 import uuid
 from pathlib import Path
 from typing import Any
 
 from of_adapters import (
     ADAPTER_ORDER,
-    DEFAULT_TRUST_PROFILE,
-    HARNESS_PROMISES,
     INLINE_CONTRACT_ADAPTERS,
-    KERNEL_VERIFIES,
     KNOWN_TOOLS,
     TRUST_ENV,
-    TRUST_PROFILES,
     build_spawn_argv,
-    detect_adapters,
     missing_tools,
     pick_adapter,
     resolve_trust_profile,
@@ -34,137 +25,61 @@ from of_adapters import (
 )
 
 from of.field import (
-    CHECKPOINT_MAX_CHARS,
     OF_CHILD_ENV,
     OF_FIELD_ENV,
-    CHECKPOINT_MAX_LINES,
-    FIELD_SPEC_MD,
-    MUTATING_COMMANDS,
-    PHASES,
-    PROTOCOL_SLAVE_MD,
-    PROTOCOL_WRITABLE_KEY,
-    PUBLIC_SCHEMA_FILES,
-    PULSE_STALE_MINUTES,
     ROLES,
-    _read_json_object,
-    apply_field_migrations,
-    apply_field_retention,
     argv_preview,
-    default_order,
-    default_state,
-    default_worktree_path,
     die,
     dump_json,
     dump_text,
     emit_event,
     field_lock,
-    field_rel,
     find_root,
-    fmt_age,
-    git_repo_root,
-    installed_version,
     json_events_enabled,
-    kernel_repo_root,
     load_json,
     load_order,
-    load_session,
     load_state,
-    load_worktrees,
-    maybe_notify_update,
-    newest_mtime,
-    next_legal_action,
-    of_dir,
     open_backlog,
-    order_path,
-    parse_utc,
     physical_artifact_path,
     physical_field_rel,
-    plan_field_migrations,
-    plan_field_retention,
-    print_migration_catalog,
-    print_migration_plan,
-    print_retention_plan,
-    probe_adapter_version,
-    probe_lock_capability,
-    pulse_verdict,
     redact_text,
-    remove_constraint,
-    repo_newest_mtime,
-    require_nonsymlink_kernel_root,
     require_public_schema,
-    run_git,
     safe_relative_path,
-    save_order,
     save_state,
-    save_worktrees,
-    session_path,
-    set_json_events,
     sha256_text,
-    skill_root,
     snapshot_session,
-    spec_log_dir,
     spec_path,
     utc_now,
-    validate_order,
     wave_dir,
-    worktree_path_inside_project,
-    writable_status,
-    write_phase_md,
 )
 
 from of.spec import (
-    append_amendment,
-    apply_requirement_patches,
-    archive_previous_field,
-    contrast_open,
-    contrast_rows,
-    decorate_requirement,
-    discard_disposable_ingest,
-    extract_requirements_from_spec,
-    find_requirement,
     is_active_requirement,
     load_requirements,
     mark_requirements_owned,
-    merge_extracted_requirements,
-    read_brief_file,
     release_requirement_owner,
     require_req_id,
     require_spec_intact,
-    requirement_counts,
-    requirement_is_pair,
-    requirement_source_cite,
-    requirement_surface,
     save_requirements,
-    snapshot_spec,
-    spec_bytes_hash,
-    spec_diff_lines,
-    sync_order_spec_fields,
-    warn_if_deictic_brief,
-    write_spec,
 )
 
 from of.pack import (
-    PACKET_IDENTITY_FIELDS,
     SLICE_WARN_CHARS,
     canonical_packet_rel,
     canonical_residual_rel,
     canonical_scratch_rel,
     child_is_packed,
     complete_stale_wave_recoverable,
-    completed_children,
     copy_workspace_with_owns,
     die_on_stale_packets,
     enforce_wave_child_caps,
     ensure_field_slave_md,
     extract_json_object,
-    in_flight_children,
     load_packet,
-    owned_path_presence,
     packed_children,
     packet_digest,
     packet_owns_paths,
     packet_residual_file,
-    packet_residual_missing,
     prior_wave_path_owners,
     reconcile_children_spawned,
     register_packed_child,
@@ -172,43 +87,15 @@ from of.pack import (
     require_child_id,
     require_owns_paths,
     require_packet_artifact_paths,
-    require_packet_residual,
     require_registered_packet,
     same_wave_owns_path_conflict,
     scratch_nonempty,
     spawn_is_blocked,
-    stale_packet_ids,
-    truncate_slice,
-    try_load_packet_residual,
     validate_packet,
-    validate_residual,
     validate_residual_for_packet,
 )
 
-from of.regime import (
-    RUNTIME_OWNERSHIP,
-    advance_wave,
-    apply_patches,
-    closed_phases,
-    decide_regime,
-    done_when_closed,
-    done_when_for,
-    done_when_tag,
-    existing_integration_report,
-    integration_input_digest,
-    mark_done_when_closed,
-    mission_done_when,
-    partial_apply_recovery_allowed,
-    phase_deliver_errors,
-    phase_done_when,
-    phase_transition_errors,
-    reconcile_integration_state,
-    reopen_done_when,
-    replace_done_when,
-    tag_for_phase,
-    wave_transition_errors,
-    waves_since_across,
-)
+from of.regime import done_when_for
 
 
 # Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
@@ -585,8 +472,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
         die(f"no packet for {child_id} in wave {wave}")
     packet = load_packet(pkt_path)
     require_packet_artifact_paths(root, packet, pkt_path)
-    res_rel = packet.get("residual_path")
-    if res_rel and field_artifact_path(root, res_rel, "packet residual_path").is_file():
+    if packet_residual_file(root, packet) is not None:
         die(
             f"{child_id} already wrote a residual; collect/integrate it "
             "instead of unpacking"

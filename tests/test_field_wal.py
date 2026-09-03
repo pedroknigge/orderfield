@@ -322,6 +322,82 @@ class FieldWalBothSides(unittest.TestCase):
             self.assertEqual(sha256_file(staged), digest, rel)
         return man
 
+    def _stable_committed_hashes(self, man: dict) -> dict[str, str]:
+        files = {
+            str(rel): str(digest)
+            for rel, digest in (man.get("files") or {}).items()
+        }
+        files.pop("session.json", None)
+        return files
+
+    def _assert_committed_children(
+        self,
+        children: list[str],
+        *,
+        tombstoned: list[str] | None = None,
+        stable_hashes: dict[str, str] | None = None,
+    ) -> dict:
+        """CURRENT generation files own counters/packets/prompts/tombstones.
+
+        Does not treat live == new manifest as proof: that passes after a
+        rollback. Hashes are checked on wal/<gid>/ against MANIFEST.
+        """
+        gid, man = self._committed_manifest()
+        files = man.get("files") or {}
+        deletions = [str(x) for x in (man.get("deletions") or [])]
+        self._assert_generation_hashes_to_manifest()
+        state = json.loads((self.wal / gid / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            state.get("children_spawned"),
+            len(children),
+            "committed children_spawned",
+        )
+        self.assertIn("session.json", files)
+        session = json.loads(
+            (self.wal / gid / "session.json").read_text(encoding="utf-8")
+        )
+        self.assertIsInstance(session, dict)
+        self.assertEqual(sha256_file(self.wal / gid / "session.json"), files["session.json"])
+        for child in children:
+            pkt = f"waves/001/packets/{child}.json"
+            prompt = f"waves/001/prompts/{child}.md"
+            self.assertIn(pkt, files, pkt)
+            self.assertIn(prompt, files, prompt)
+            self.assertNotIn(pkt, deletions, pkt)
+            self.assertTrue((self.wal / gid / pkt).is_file(), pkt)
+            self.assertEqual(sha256_file(self.wal / gid / pkt), files[pkt], pkt)
+            self.assertEqual(sha256_file(self.wal / gid / prompt), files[prompt], prompt)
+        for child in tombstoned or []:
+            pkt = f"waves/001/packets/{child}.json"
+            prompt = f"waves/001/prompts/{child}.md"
+            self.assertNotIn(pkt, files, pkt)
+            self.assertNotIn(prompt, files, prompt)
+            self.assertFalse((self.wal / gid / pkt).is_file(), pkt)
+            self.assertFalse((self.home / pkt).is_file(), pkt)
+        if stable_hashes is not None:
+            got = self._stable_committed_hashes(man)
+            self.assertEqual(got, stable_hashes)
+        return man
+
+    def _crash_pack_e2_after_current(self) -> dict:
+        first = self.pack("e1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        prev = json.loads((self.wal / "CURRENT.json").read_text(encoding="utf-8"))
+        crashed = self.pack("e2", "s2", OF_WAL_CRASH="after-current")
+        self.assertNotEqual(crashed.returncode, 0, crashed.stderr)
+        self.assertIn("wal-crash", crashed.stderr)
+        current = json.loads((self.wal / "CURRENT.json").read_text(encoding="utf-8"))
+        self.assertNotEqual(current["generation"], prev["generation"])
+        live_state = json.loads((self.home / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            live_state.get("children_spawned"),
+            1,
+            "after-current must not have rematerialized live state yet",
+        )
+        _gid, man = self._committed_manifest()
+        self._assert_committed_children(["e1", "e2"])
+        return man
+
     def _assert_readers_agree(
         self,
         children: list[str],
@@ -400,6 +476,7 @@ class FieldWalBothSides(unittest.TestCase):
         self.assertEqual(rec.returncode, 0, rec.stderr)
         rec2 = run_of(self.tmp, "checkpoint", "--summary", "replay after-current again")
         self.assertEqual(rec2.returncode, 0, rec2.stderr)
+        self._assert_committed_children(["e1", "e2"])
         again = json.loads((self.wal / "CURRENT.json").read_text(encoding="utf-8"))
         man = json.loads(
             (self.wal / again["generation"] / "MANIFEST.json").read_text(encoding="utf-8")
@@ -410,6 +487,70 @@ class FieldWalBothSides(unittest.TestCase):
             live = self.home / rel
             self.assertTrue(live.is_file(), rel)
             self.assertEqual(sha256_file(live), digest, rel)
+
+    def test_crash_after_current_immediate_checkpoint_keeps_e2(self) -> None:
+        """WAL-002 writer: checkpoint with no view first must not roll back e2."""
+        man = self._crash_pack_e2_after_current()
+        stable = self._stable_committed_hashes(man)
+        rec = run_of(self.tmp, "checkpoint", "--summary", "writer recover immediate")
+        self.assertEqual(rec.returncode, 0, rec.stderr)
+        self._assert_committed_children(["e1", "e2"], stable_hashes=stable)
+        gid, _man = self._committed_manifest()
+        session = json.loads(
+            (self.wal / gid / "session.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(session.get("last_cmd"), "checkpoint")
+        flying = session.get("in_flight") or []
+        self.assertIn("e1", flying)
+        self.assertIn("e2", flying)
+        rec2 = run_of(self.tmp, "checkpoint", "--summary", "writer recover again")
+        self.assertEqual(rec2.returncode, 0, rec2.stderr)
+        self._assert_committed_children(["e1", "e2"], stable_hashes=stable)
+
+    def test_crash_after_current_status_then_checkpoint_keeps_e2(self) -> None:
+        """WAL-002 writer: status (reader, no overwrite) then checkpoint keeps e2."""
+        man = self._crash_pack_e2_after_current()
+        stable = self._stable_committed_hashes(man)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("spawned     2 /", spawned_line(status.stdout))
+        live_state = json.loads((self.home / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            live_state.get("children_spawned"),
+            1,
+            "reader materialize must not overwrite live counters",
+        )
+        rec = run_of(self.tmp, "checkpoint", "--summary", "writer recover after status")
+        self.assertEqual(rec.returncode, 0, rec.stderr)
+        self._assert_committed_children(["e1", "e2"], stable_hashes=stable)
+        gid, _man = self._committed_manifest()
+        session = json.loads(
+            (self.wal / gid / "session.json").read_text(encoding="utf-8")
+        )
+        flying = session.get("in_flight") or []
+        self.assertIn("e1", flying)
+        self.assertIn("e2", flying)
+
+    def test_crash_after_current_unpack_immediate_checkpoint_keeps_tombstone(self) -> None:
+        packed = self.pack("e1")
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        crashed = run_of(
+            self.tmp,
+            "unpack",
+            "--child-id",
+            "e1",
+            env_extra={"OF_WAL_CRASH": "after-current"},
+        )
+        self.assertNotEqual(crashed.returncode, 0, crashed.stderr)
+        self.assertIn("wal-crash", crashed.stderr)
+        _gid, man = self._committed_manifest()
+        self.assertIn("waves/001/packets/e1.json", man.get("deletions") or [])
+        self.assertNotIn("waves/001/packets/e1.json", man.get("files") or {})
+        stable = self._stable_committed_hashes(man)
+        rec = run_of(self.tmp, "checkpoint", "--summary", "writer recover tombstone")
+        self.assertEqual(rec.returncode, 0, rec.stderr)
+        self._assert_committed_children([], tombstoned=["e1"], stable_hashes=stable)
+        self._assert_readers_agree([], packet=None, full=False)
 
     def test_crash_after_every_live_file_readers_agree(self) -> None:
         first = self.pack("e1")

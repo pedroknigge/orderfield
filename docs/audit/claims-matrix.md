@@ -6,24 +6,24 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 are on the 0.7.1 line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
 > **Living claims v0:** anchors + severity.
 
-**Date:** 2026-09-02
+**Date:** 2026-09-03
 **Scope:** project
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.1`
+**Code rev:** VERSION `0.7.2`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 76 |
+| OK | 78 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 62 |
+| critical | 64 |
 | normal | 19 |
 
-**Truth score (advisory):** `(76*100 + 4*50) / 81 = 96.3` (81 matrix rows; unique IDs C-001…C-081)
+**Truth score (advisory):** `(78*100 + 4*50) / 83 = 96.4` (83 matrix rows; unique IDs C-001…C-083)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -43,9 +43,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/handoff/gc/learn/worktree. `spec` and `checkpoint` joined the lock in 0.6.7.
 4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry).
 5. LEARN-002 spawn pid/starttime registry plus unauthenticated provenance is on the 0.7.1 line (C-070). Not OS-user authentication.
-6. WAL-002 CURRENT-generation read is on the 0.7.1 line (C-071). Live disk is cache/tamper.
+6. WAL-002 writer rematerialize is on the 0.7.2 line (C-071). Immediate checkpoint after `OF_WAL_CRASH=after-current` keeps `children_spawned=2` and packets e1/e2 (`tests/test_field_wal.py`).
 7. Branch protection `required_approving_review_count >= 1` is restored; independent review in merge history is unproven (PR #40 and 0.7.0 #41/#42/#43/#45 merged with empty reviews after a temporary review-requirement window) (C-080 Partial).
-8. A disobedient leader can still write product files without pack (kernel does not lock product).
+8. #48 leftover-canonical residual uses `packet_residual_file` for collect/integrate/unpack/complete-stale (C-082). `tests/test_sibling_residual.py` covers the leftover path.
+9. A disobedient leader can still write product files without pack (kernel does not lock product).
 
 **Recommended next Intent:** none for docs. REVIEW-001 stays Partial until an independent review exists in merge history. Out-of-scope auditor items: [out-of-scope.md](out-of-scope.md). Do not bump protocol claims.
 
@@ -108,8 +109,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript` | — | critical | OK | keep |
 | C-039 | Native `qwen` adapter uses Qwen-owned positional headless argv, conservative `--approval-mode default` | adapters.md / SKILL | `ADAPTER_ORDER` includes `qwen`; `TRUST_PROFILES` | `scripts/of_adapters.py` / `schemas/order.schema.json` | `build_spawn_argv` | — | critical | OK | keep |
 | C-040 | `of doctor` reports prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready | README / troubleshooting / kernel feature | `cmd_doctor` prints `auth=not-verified` | `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `cmd_doctor` | — | critical | OK | keep |
-| C-041 | Episodic retention keeps useful residuals and protocol learnings; dumps garbage/logs/history >30d | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_gc` | — | critical | OK | keep |
-| C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER | troubleshooting / SKILL | `packets_all_stale` / `complete_stale_wave_recoverable` | `scripts/of/pack.py` / `scripts/of/regime.py` | `wave_transition_errors` | — | critical | OK | keep |
+| C-041 | Episodic retention keeps useful residuals and protocol learnings; drop/dump permanently unlinks selected artifacts (operator-owned backup). WAL crash consistency is not a restorable dump | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` / `apply_field_retention` / `_safe_unlink` (`Path.unlink` / `rmtree`). Action name `dump` is unlink, not an export. | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_gc` / `_safe_unlink` | — | critical | OK | RETAIN-001 |
+| C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER | troubleshooting / SKILL | `packets_all_stale` / `wave_transition_errors`. Complete-stale collect/integrate uses `packet_residual_file` (C-082). | `scripts/of/pack.py` / `scripts/of/regime.py` | `wave_transition_errors` | — | critical | OK | keep; leftover path → C-082 |
 | C-043 | Spawn argv previews and logs redact secrets and escalated approval material | troubleshooting / kernel feature | `argv_preview` / `redact_text` | `scripts/of/field.py` / `tests/test_kernel_cli.py` | `argv_preview` | — | critical | OK | keep |
 | C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` | `scripts/of/field.py` / `scripts/of/cli/ops.py` | `cmd_migrate` | — | critical | OK | keep |
 | C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree`; spawn does not call it | `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `cmd_worktree` | — | normal | OK | keep |
@@ -138,7 +139,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-068 | CLI error boundary: one-line `of: error: <kind>: <message>` exit 1; `--json` emits `error` event and no prose; traceback only under `OF_DEBUG=1`; Ctrl-C exits 130 | SKILL / README / events.md / CHANGELOG | CLI `main` wrapper | `scripts/of/cli/__init__.py` / `tests/test_cli_error_boundary.py` | `main` | — | critical | OK | keep; 0.6.7 |
 | C-069 | Python floor 3.11 on every public surface; CI matrix 3.11 + 3.13 | README / CONTRIBUTING / CHANGELOG | `scripts/of.py` refuse; `tests/test_python_floor.py` | `scripts/of.py` / `.github/workflows/test.yml` | | — | critical | OK | keep; 0.6.7 |
 | C-070 | Spawn always sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`of: error: child-forge:`); `source=leader` never written for a child; protocol lines render as untrusted quotes | SKILL / README / SLAVE / adapters | `spawned_child_id` walks live `OF_CHILD`, spawn pid/starttime registry (survives exec), then ancestor exec-env. Missing proof stamps `unauthenticated`, never `leader`. Untrusted quoting remains. Not OS-user auth. | `scripts/of/field.py` / `scripts/of/cli/wave.py` / `scripts/of/pack.py` / `tests/test_learn_provenance.py` | `spawned_child_id` / `refuse_child_forge` / `learning_provenance` | — | critical | OK | LEARN-001 [PR #41](https://github.com/pedroknigge/orderfield/pull/41); LEARN-002 0.7.1 |
-| C-071 | Multi-file field mutations stage one generation, write MANIFEST (paths+hashes), then publish; crash leaves previous generation readable; recovery is idempotent | architecture / README / SKILL / troubleshooting / CHANGELOG | WAL-001 publish path holds (crash before CURRENT stays previous). After CURRENT, generation files are the sole read for status/resume/render/pulse/contrast/spec-diff/handoff/spawn/validate; live disk is cache/tamper (`after-current` tests). | `scripts/of/field.py` / `tests/test_field_wal.py` | `_field_view_bytes` / `ensure_committed_field_view` / `_WalGeneration` | — | critical | OK | WAL-001 [PR #45](https://github.com/pedroknigge/orderfield/pull/45); WAL-002 0.7.1 |
+| C-071 | Multi-file field mutations stage one generation, write MANIFEST (paths+hashes), then publish; crash leaves previous generation readable; recovery is idempotent | architecture / README / SKILL / troubleshooting / CHANGELOG | WAL-001 publish holds (crash before CURRENT stays previous). WAL-002 readers use CURRENT generation files; live disk is cache/tamper. Writers rematerialize CURRENT onto stale live before inherit. Immediate checkpoint and status-then-checkpoint after `OF_WAL_CRASH=after-current` keep `children_spawned=2` and packets e1/e2. Silent SPEC rewrite is still refused. Tests hash `wal/<gid>/` against MANIFEST. | `scripts/of/field.py` / `tests/test_field_wal.py` | `_field_view_bytes` / `ensure_committed_field_view` / `_refuse_live_spec_tamper` / `_WalGeneration` | — | critical | OK | WAL-001 [PR #45](https://github.com/pedroknigge/orderfield/pull/45); WAL-002 writer 0.7.2 |
 | C-072 | `of pack` does not default tokens=80000; `--tokens N` for N>0 dies pointing at reserved accounting; only `budget.seconds` is enforced | README / SKILL / packet.schema.json | `cmd_pack` tokens check; schema minimum 0 | `scripts/of/cli/wave.py` / `schemas/packet.schema.json` / `tests/test_budget_tokens.py` | `BudgetTokensReserved` | — | critical | OK | BUDGET-001 |
 | C-073 | `of collect` / `of integrate` print owned-but-unverified binding IDs; never auto-stamp `verified_contract` | SKILL / CHANGELOG / kernel feature | collect/integrate note; `cmd_spec --verified-contract` is the stamp | `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | `Loop001CollectIntegrate` | — | critical | OK | LOOP-001 |
 | C-074 | `constraints+` and `--constraints-add` skip whitespace-normalized duplicates | SKILL / CHANGELOG | `constraint_norm` | `scripts/of/regime.py` / `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | | — | critical | OK | DEDUPE-001 |
@@ -149,6 +150,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-079 | SLAVE: product comments short/factual not field diary; SKILL: do not pack a whole phase; oversized slice stays advisory | SLAVE / SKILL / CHANGELOG | doctrine text; pack does not refuse ≥800 | `SLAVE.md` / `SKILL.md` / `scripts/of/cli/wave.py` | | — | critical | OK | DOCTRINE-001 |
 | C-080 | `main` requires `required_approving_review_count >= 1` and the five CI checks | CONTRIBUTING / CHANGELOG | Protection config is restored: count=1, dismiss stale, enforce admins, five checks, no force-push/delete. Adoption unproven: PR #40 and 0.7.0 #41/#42/#43/#45 merged with empty reviews after a temporary review-requirement window (human-authorized). | `CONTRIBUTING.md` | | — | critical | Partial | REVIEW-001 config OK; adoption unproven |
 | C-081 | `scripts/of.py` is a one-function shim (`from of.cli import main`); internals are `scripts/of/` | architecture / DEPENDENCIES / CONTRIBUTING | file contents | `scripts/of.py` | `main` | — | critical | OK | was duplicate C-065; patched DEPENDENCIES + contributing debt |
+| C-082 | #48 leftover canonical residual: collect/integrate/unpack/complete-stale resolve via `packet_residual_file` (physical field-home, else leftover `.orderfield/waves/…`) | CHANGELOG / troubleshooting | `packet_residual_file` is the sole resolver. Unpack refuses leftover residual without refund. `tests/test_sibling_residual.py`. | `scripts/of/pack.py` / `scripts/of/cli/wave.py` / `tests/test_sibling_residual.py` | `packet_residual_file` / `cmd_unpack` / `complete_stale_wave_recoverable` | — | critical | OK | #48 SIBLING-001 0.7.2 |
+| C-083 | #49 `done_when_closed` is part of the integration digest; `of patch --done-when-closed` then `integrate --recompute` selects `phase` instead of replaying hold | CHANGELOG / troubleshooting | `integration_input_digest` includes `done_when_closed`; `test_recompute_after_done_when_closed_selects_phase` | `scripts/of/regime.py` / `tests/test_kernel_regime.py` | `integration_input_digest` | — | critical | OK | #49 |
 
 ### Verdict definitions
 
@@ -174,7 +177,11 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] Add STAR to each supporting markdown doc
 - [x] Expand hub coverage + docs table
 - [x] Duplicate `ops.py` spec handlers gone on main 0.6.9 (C-055)
-- [x] C-070 LEARN-002 OK on 0.7.1; C-071 WAL-002 OK on 0.7.1; C-080 Partial (no independent review in merge history)
+- [x] C-070 LEARN-002 OK on 0.7.1; C-080 Partial (no independent review in merge history)
+- [x] C-071 OK on 0.7.2: WAL-002 writer rematerialize; immediate checkpoint keeps e1/e2
+- [x] C-082 OK on 0.7.2: unpack + complete-stale use `packet_residual_file`
+- [x] C-083 OK: #49 `done_when_closed` in integration digest
+- [x] C-041 RETAIN-001: `gc` dump is permanent unlink; not a restorable dump
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`
