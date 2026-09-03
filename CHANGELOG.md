@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.3
+
+Saturation control. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.2 notes.
+
+- **SAT-001:** `of retain` / `of gc` walk every field home (`fields/<id>/` and leftover top-level). Closed siblings are visible.
+- **SAT-002 / SAT-003:** non-risky ephemeral TTL is 7 days; `spec_closed` dumps logs/spawns/prompts/scratch/archives/ingest immediately. In-flight current-wave scratch and contract files stay. Protocol learnings are never unlinked.
+- **SAT-004:** tree budget 64 MiB (override `OF_GC_BUDGET`) and per-child scratch 8 MiB. Over budget prints `audit` of open fields; does not auto-drop them.
+- **SAT-005:** `of gc --audit` / `--keep-field` / `--drop-field`. Open drop needs `--force --reason`. Kernel never prompts stdin. Legacy top-level ORDER is not removed by drop-field.
+- **SAT-006:** `gc` is in `MUTATING_COMMANDS`. Resume opportunistic safe dump uses the lock or skips (`OF_NO_GC_AUTO=1` disables). Not a daemon.
+- Packaging: VERSION 0.7.3; skill/alias description preview `v0.7.3 — …`. Next path remains Grok Bot contrast (docs, not a bot org).
+
 ## 0.7.2
 
 Vibe-Proof v0.9.5 Deep P1. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not republish as v0.7.1.

@@ -323,12 +323,43 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "gc",
-        help="apply episodic retention: keep useful, drop inapplicable, dump >30d",
+        help="apply episodic retention; audit/drop/keep sibling fields (HITL)",
+        description=(
+            "Walk every field home. Dump non-risky ephemeral after 7 days "
+            "(closed fields immediately). Over tree budget: print audit of "
+            "open ORDERs. Never auto-drops an open field. Kernel never prompts."
+        ),
     )
     s.add_argument(
         "--dry-run",
         action="store_true",
         help="print the plan without deleting (same as of retain)",
+    )
+    s.add_argument(
+        "--audit",
+        action="store_true",
+        help="print tree budget + open-field sizes; do not delete",
+    )
+    s.add_argument(
+        "--drop-field",
+        dest="drop_field",
+        metavar="ID",
+        help="unlink .orderfield/fields/<id>/ (closed, or --force --reason if open)",
+    )
+    s.add_argument(
+        "--keep-field",
+        dest="keep_field",
+        metavar="ID",
+        help="HITL keep: silence audit nag for this open field (7d or until size doubles)",
+    )
+    s.add_argument(
+        "--force",
+        action="store_true",
+        help="with --drop-field: allow dropping an open or active field",
+    )
+    s.add_argument(
+        "--reason",
+        help="required with --drop-field --force on an open field",
     )
     s.set_defaults(func=cmd_gc)
 

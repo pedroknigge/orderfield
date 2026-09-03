@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.2. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.3. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.2`
+**Status:** Shipped · **Current release line:** `0.7.3`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.3 — Saturation control (walk every home / 7-day safe TTL / HITL audit)
+
+- `of gc` walks sibling field homes. Non-risky ephemeral is 7 days; closed fields dump it immediately. Tree budget prints `audit`; `--keep-field` / `--drop-field` are HITL (no stdin prompt, no auto-drop of open ORDERs). `gc` is locked. Resume opportunistic safe dump is not a daemon. Next path: Grok Bot contrast (below) remains later. Not a new regime.
 
 ## 0.7.2 — Vibe-Proof v0.9.5 P1 (WAL writer / sibling residual / 0.7.2 identity)
 

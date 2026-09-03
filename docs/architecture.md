@@ -10,7 +10,7 @@ A cut, a resume, a different model — the shape holds. The results do not have 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.2` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.3` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -161,7 +161,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
 | `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready |
 | `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |
-| `cmd_retain` / `cmd_gc` | Episodic keep/drop/dump; useful residuals and protocol learnings kept; inapplicable field learnings dropped; logs/history >30d dumped; never copies transcripts |
+| `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--drop-field`; `gc` is locked; never copies transcripts |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
 | `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`) |

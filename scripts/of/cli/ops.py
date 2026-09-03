@@ -34,6 +34,11 @@ from of.field import (
     _read_json_object,
     apply_field_migrations,
     apply_field_retention,
+    drop_field_home,
+    maybe_safe_gc,
+    print_audit_block,
+    record_keep_field,
+    write_gc_stamp,
     argv_preview,
     default_worktree_path,
     die,
@@ -229,27 +234,54 @@ def cmd_learn(args: argparse.Namespace) -> None:
     print(f"{kind:11} {item['id']}  {item['text']}")
 
 
+def _load_order_state_or_empty(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    if not order_path(root).exists():
+        return {}, {}
+    return load_order(root), load_state(root)
+
+
 def cmd_retain(args: argparse.Namespace) -> None:
     root = find_root()
-    order = load_order(root)
-    state = load_state(root)
+    order, state = _load_order_state_or_empty(root)
     actions = plan_field_retention(root, order, state)
+    print_audit_block(root)
     print_retention_plan(actions)
 
 
 def cmd_gc(args: argparse.Namespace) -> None:
     root = find_root()
-    order = load_order(root)
-    state = load_state(root)
+    keep_id = getattr(args, "keep_field", None)
+    drop_id = getattr(args, "drop_field", None)
+    if keep_id:
+        record_keep_field(root, keep_id)
+        emit_event("gc", action="keep-field", field=keep_id, ok=True)
+        return
+    if drop_id:
+        drop_field_home(
+            root,
+            drop_id,
+            force=bool(getattr(args, "force", False)),
+            reason=str(getattr(args, "reason", None) or ""),
+            dry_run=bool(getattr(args, "dry_run", False)),
+        )
+        emit_event("gc", action="drop-field", field=drop_id, ok=True)
+        return
+    order, state = _load_order_state_or_empty(root)
     actions = plan_field_retention(root, order, state)
-    if getattr(args, "dry_run", False):
+    print_audit_block(root)
+    if getattr(args, "audit", False) or getattr(args, "dry_run", False):
         print_retention_plan(actions)
-        print("dry-run (no deletes)")
+        if getattr(args, "dry_run", False):
+            print("dry-run (no deletes)")
+        emit_event("gc", dumped=0, ok=True, audit=True)
         return
     apply_field_retention(root, order, state, actions)
-    snapshot_session(root, "gc")
+    dumped = sum(1 for a in actions if a["action"] != "keep")
+    write_gc_stamp(root, dumped)
+    if order_path(root).exists():
+        snapshot_session(root, "gc")
     print_retention_plan(actions)
-    emit_event("gc", dumped=sum(1 for a in actions if a["action"] != "keep"), ok=True)
+    emit_event("gc", dumped=dumped, ok=True)
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
@@ -557,6 +589,7 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"next        pack --owns-requirement (unowned {counts['unowned']}); "
             "do not implement in the leader tree; of contrast before close"
         )
+    print_audit_block(root)
 
 
 def cmd_detect(args: argparse.Namespace) -> None:
@@ -724,6 +757,7 @@ def cmd_fields(args: argparse.Namespace) -> None:
         emit_event("fields", count=0, ok=True)
         return
     print_field_roster(homes)
+    print_audit_block(root)
     emit_event("fields", count=len(homes), ok=True)
 
 
@@ -756,6 +790,9 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if not order_path(root).exists():
         print("no ORDER. of init --mission '...'")
         return
+    dumped = maybe_safe_gc(root)
+    if dumped:
+        print(f"gc auto      dumped={dumped}  (safe ephemeral; not a daemon)")
     order = load_order(root)
     state = load_state(root)
     wave = int(state.get("wave") or 1)
@@ -800,6 +837,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if isinstance(summary, str) and summary.strip():
         print("summary")
         print(summary.strip())
+    print_audit_block(root)
     emit_event(
         "resume",
         wave=wave,

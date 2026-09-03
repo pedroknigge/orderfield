@@ -140,12 +140,15 @@ A schema error is not a cue to hand-edit around the contract; recover the invali
 
 **Meaning:** Retention is episodic, not archaeology and not a backup. `of retain` is a read-only keep/drop/dump plan. `of gc` applies it as **permanent unlink deletion** (`Path.unlink` / `rmtree` on selected artifacts under `.orderfield/`). There is no export, archive tarball, or restorable dump. Backup is **operator-owned** (copy the field tree before `of gc` if you need it). WAL crash consistency is not a restorable dump of what `gc` unlinked.
 
-Keep still-useful current-wave / live-order residuals and **protocol** learnings (`kind=protocol`; user cache `~/.cache/orderfield/learnings.json` is not deleted). Drop inapplicable **field** learnings (wrong `order_id` or a closed phase that is not current). The plan action named `dump` means unlink garbage, logs, spawn transcripts, and wave history older than 30 days — not “write a dump file.” Protocol lessons are not unlinked at 30 days. GC never copies transcripts into the field. Write path: `of learn TEXT` (field, default) / `of learn --protocol TEXT` / `of learn --promote ID` / `of learn --forget ID` (also removes legacy items without provenance).
+Keep still-useful current-wave / live-order residuals and **protocol** learnings (`kind=protocol`; user cache `~/.cache/orderfield/learnings.json` is not deleted). Drop inapplicable **field** learnings (wrong `order_id` or a closed phase that is not current). `of retain` / `of gc` walk **every** field home (`fields/<id>/` plus leftover top-level). Non-risky ephemeral (logs, spawns, prompts, ingest, spec-log, `waves-archived-*`, completed-child scratch) uses a **7-day** TTL. A `spec_closed` field dumps that ephemeral immediately. In-flight current-wave scratch and contract files stay. The plan action named `dump` means unlink — not “write a dump file.” Protocol lessons are not unlinked. Tree size over 64 MiB (`OF_GC_BUDGET`) or a child scratch over 8 MiB prints `audit` of **open** fields; the kernel never auto-drops an open ORDER. HITL: `of gc --keep-field <id>` or `of gc --drop-field <id>` (open drop needs `--force --reason`). `gc` takes the field lock. Resume may apply a **safe** dump if the stamp is older than 7 days and the lock is free (`OF_NO_GC_AUTO=1` disables); not a daemon. Write path: `of learn TEXT` (field, default) / `of learn --protocol TEXT` / `of learn --promote ID` / `of learn --forget ID` (also removes legacy items without provenance).
 
 ```bash
-of retain           # plan only
-of gc --dry-run     # same
-of gc               # permanent unlink of selected artifacts
+of retain                 # plan + audit
+of gc --dry-run           # same, no deletes
+of gc --audit             # tree budget + open-field sizes
+of gc --keep-field ID     # HITL keep (silence nag 7d or until size doubles)
+of gc --drop-field ID     # unlink fields/<id>/ (closed, or --force --reason if open)
+of gc                     # permanent unlink of selected artifacts
 ```
 
 ## Pre-0.4.2 artifacts / `of migrate`

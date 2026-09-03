@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.2`
+**Code rev:** VERSION `0.7.3`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 78 |
+| OK | 79 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 64 |
+| critical | 65 |
 | normal | 19 |
 
-**Truth score (advisory):** `(78*100 + 4*50) / 83 = 96.4` (83 matrix rows; unique IDs C-001…C-083)
+**Truth score (advisory):** `(79*100 + 4*50) / 84 = 96.4` (84 matrix rows; unique IDs C-001…C-084)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -109,7 +109,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-038 | Literal `./install.sh --project` avoids recursive source copy and writes a resolving installed-kernel symlink | README / CHANGELOG | packaging regression | `install.sh` / `tests/test_packaging.py` | `InstallScript` | — | critical | OK | keep |
 | C-039 | Native `qwen` adapter uses Qwen-owned positional headless argv, conservative `--approval-mode default` | adapters.md / SKILL | `ADAPTER_ORDER` includes `qwen`; `TRUST_PROFILES` | `scripts/of_adapters.py` / `schemas/order.schema.json` | `build_spawn_argv` | — | critical | OK | keep |
 | C-040 | `of doctor` reports prereqs, adapter PATH/version, writable field, schemas, lock; PATH ≠ auth/ready | README / troubleshooting / kernel feature | `cmd_doctor` prints `auth=not-verified` | `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `cmd_doctor` | — | critical | OK | keep |
-| C-041 | Episodic retention keeps useful residuals and protocol learnings; drop/dump permanently unlinks selected artifacts (operator-owned backup). WAL crash consistency is not a restorable dump | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` / `apply_field_retention` / `_safe_unlink` (`Path.unlink` / `rmtree`). Action name `dump` is unlink, not an export. | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_gc` / `_safe_unlink` | — | critical | OK | RETAIN-001 |
+| C-041 | Episodic retention keeps useful residuals and protocol learnings; drop/dump permanently unlinks selected artifacts (operator-owned backup). WAL crash consistency is not a restorable dump | troubleshooting / kernel feature | `cmd_retain` / `cmd_gc` / `plan_field_retention` / `apply_field_retention` / `_safe_unlink` (`Path.unlink` / `rmtree`). Action name `dump` is unlink, not an export. Walks every field home as of 0.7.3 (C-084). | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_gc` / `_safe_unlink` | — | critical | OK | RETAIN-001 |
 | C-042 | Fully stale wave after a leader patch is recoverable with `next-wave` without hand-editing ORDER | troubleshooting / SKILL | `packets_all_stale` / `wave_transition_errors`. Complete-stale collect/integrate uses `packet_residual_file` (C-082). | `scripts/of/pack.py` / `scripts/of/regime.py` | `wave_transition_errors` | — | critical | OK | keep; leftover path → C-082 |
 | C-043 | Spawn argv previews and logs redact secrets and escalated approval material | troubleshooting / kernel feature | `argv_preview` / `redact_text` | `scripts/of/field.py` / `tests/test_kernel_cli.py` | `argv_preview` | — | critical | OK | keep |
 | C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` | `scripts/of/field.py` / `scripts/of/cli/ops.py` | `cmd_migrate` | — | critical | OK | keep |
@@ -152,6 +152,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-081 | `scripts/of.py` is a one-function shim (`from of.cli import main`); internals are `scripts/of/` | architecture / DEPENDENCIES / CONTRIBUTING | file contents | `scripts/of.py` | `main` | — | critical | OK | was duplicate C-065; patched DEPENDENCIES + contributing debt |
 | C-082 | #48 leftover canonical residual: collect/integrate/unpack/complete-stale resolve via `packet_residual_file` (physical field-home, else leftover `.orderfield/waves/…`) | CHANGELOG / troubleshooting | `packet_residual_file` is the sole resolver. Unpack refuses leftover residual without refund. `tests/test_sibling_residual.py`. | `scripts/of/pack.py` / `scripts/of/cli/wave.py` / `tests/test_sibling_residual.py` | `packet_residual_file` / `cmd_unpack` / `complete_stale_wave_recoverable` | — | critical | OK | #48 SIBLING-001 0.7.2 |
 | C-083 | #49 `done_when_closed` is part of the integration digest; `of patch --done-when-closed` then `integrate --recompute` selects `phase` instead of replaying hold | CHANGELOG / troubleshooting | `integration_input_digest` includes `done_when_closed`; `test_recompute_after_done_when_closed_selects_phase` | `scripts/of/regime.py` / `tests/test_kernel_regime.py` | `integration_input_digest` | — | critical | OK | #49 |
+| C-084 | Saturation control: gc walks every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit`/`--keep-field`/`--drop-field`; `gc` in `MUTATING_COMMANDS`; no auto-drop of open ORDERs; not a daemon | troubleshooting / README / SKILL / CHANGELOG | `plan_field_retention` iterates `list_field_homes`; `SAFE_RETENTION_DAYS`; `drop_field_home`; `print_audit_block`; `gc` in `MUTATING_COMMANDS`. Tests in `EpisodicRetention`. | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `plan_field_retention` / `cmd_gc` / `drop_field_home` | — | critical | OK | SAT-001..006 0.7.3 |
 
 ### Verdict definitions
 
@@ -182,6 +183,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-082 OK on 0.7.2: unpack + complete-stale use `packet_residual_file`
 - [x] C-083 OK: #49 `done_when_closed` in integration digest
 - [x] C-041 RETAIN-001: `gc` dump is permanent unlink; not a restorable dump
+- [x] C-084 SAT-001..006 0.7.3: walk every home, 7-day safe TTL, HITL drop/keep
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

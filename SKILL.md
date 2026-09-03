@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.2 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.3 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.2"
+  version: "0.7.3"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -29,7 +29,7 @@ The leader designs the field, packs work, and explicitly integrates or patches i
 
 This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
 
-The kernel enforces public JSON schemas, atomic per-file writes plus a field-wide WAL (stage + MANIFEST + publish) for multi-file mutations, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic per-file writes plus a field-wide WAL (stage + MANIFEST + publish) for multi-file mutations, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 ## When to use
 
@@ -209,7 +209,7 @@ python3 <skill>/scripts/of.py spec --amend "<new user request>"
 # or: of spec --amend-file .orderfield/ingest.md
 ```
 
-The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 30 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **SPEC is truth. REQUIREMENTS is an index** (`origin` + `source.spec_line_*`); contrast cites `SPEC.md:N`. `of spec --add ID` leaves the ID visible in SPEC.md: if missing, it appends a dated binding line (original brief stays) and refreshes `spec_hash`. Extract is a conservative heuristic (`LEASE-` / `AUDIT-` / `IDEMP-` / `HTTP-` / `CLI-`); misses go to `--add`. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. `phase --force` to `deliver` still runs those SPEC gates. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Verifier `done` needs nonempty evidence that names what was checked plus a nonempty `result_ref` (`"all tests passed"` is invalid). Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
+The original stays. The new request is a dated `## Amendment N` block. Requirement IDs continue (`CLI-003`, not a reset). To drop a requirement that no longer applies: `of spec --supersede REQ-001`. Full replace (rare) is `of spec --revise-file`; previous SPEC bytes go to `.orderfield/spec-log/` (episodic, dumped after 7 days). `of spec --add` / `--from-file` / `--extract` maintains binding IDs. **SPEC is truth. REQUIREMENTS is an index** (`origin` + `source.spec_line_*`); contrast cites `SPEC.md:N`. `of spec --add ID` leaves the ID visible in SPEC.md: if missing, it appends a dated binding line (original brief stays) and refreshes `spec_hash`. Extract is a conservative heuristic (`LEASE-` / `AUDIT-` / `IDEMP-` / `HTTP-` / `CLI-`); misses go to `--add`. **Pack with `--owns-requirement CLI-001`** — pack without owners is refused while IDs are unowned. A packet that owns REQ-001, REQ-027, REQ-031 and leaves idempotency unowned is the LedgerLab 0.5.0 miss. Render reference-loads SPEC.md; the slice is a cut of work, not a replacement of the brief. `of spec-diff` lists UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION. `of phase deliver` is refused while binding requirements are unowned, unverified, or failed. `phase --force` to `deliver` still runs those SPEC gates. The verifier reads SPEC, not only ORDER — otherwise a compressed field verifies a compressed product. Verifier `done` needs nonempty evidence that names what was checked plus a nonempty `result_ref` (`"all tests passed"` is invalid). Unit tests are VERIFIED_INTERNAL; a CLI/HTTP/file/exit-code requirement closes only as VERIFIED_CONTRACT (pair-shaped: `--both-sides`).
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
@@ -390,7 +390,7 @@ Use the minimum. Explorer + adversary already prove the principle.
 |---|---|
 | Canonical field | `.orderfield/ORDER.json` (legacy single field) or `.orderfield/fields/<id>/ORDER.json` |
 | Binding specification | `SPEC.md` in the field home (original + amendments). Never `PROMPT.md` at the project root. |
-| Spec history | `.orderfield/spec-log/` (previous SPEC snapshots; dumped after 30 days) |
+| Spec history | `.orderfield/spec-log/` (previous SPEC snapshots; dumped after 7 days) |
 | Wave / cap state | `.orderfield/state.json` |
 | Session snapshot | `.orderfield/session.json` (facts: wave, last_cmd, in_flight, updated_at; optional `summary` from `of checkpoint --summary`). Forbidden to slaves like `state.json`. |
 | Wave packets | `.orderfield/waves/NNN/packets/` |
