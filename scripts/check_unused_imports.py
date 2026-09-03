@@ -5,9 +5,8 @@ No pip. Scan Python files, report names bound by import and never loaded
 (including annotation loads). ``__all__`` entries and ``# noqa: F401``
 (or bare ``# noqa``) on the import statement suppress a hit.
 
-Default paths are the LINT-001 CLI modules this field cleaned. Pass extra
-paths to widen the scan. ``scripts/of/cli/ops.py`` and ``wave.py`` still
-carry split-era slabs and are out of this slice.
+Default path is the shipped runtime under ``scripts/``. Pass extra paths
+to narrow or widen the scan.
 """
 from __future__ import annotations
 
@@ -19,12 +18,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PATHS = (
-    ROOT / "scripts" / "of" / "cli" / "init_cmd.py",
-    ROOT / "scripts" / "of" / "cli" / "field_cmd.py",
-    ROOT / "scripts" / "of" / "cli" / "spec_cmd.py",
-    ROOT / "scripts" / "of" / "cli" / "__init__.py",
-)
+DEFAULT_PATHS = (ROOT / "scripts",)
 _NOQA_RE = re.compile(r"#\s*noqa\b(:\s*([A-Za-z0-9_,\s]+))?", re.I)
 
 
@@ -204,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         "paths",
         nargs="*",
         type=Path,
-        help="files or directories (default: LINT-001 CLI modules)",
+        help="files or directories (default: scripts/ shipped runtime)",
     )
     parser.add_argument(
         "--self-test",

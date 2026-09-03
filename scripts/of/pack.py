@@ -27,7 +27,6 @@ from of.field import (
     validate_public_schema,
     wal_staged_items,
     wave_dir,
-    wave_numbers,
 )
 
 from of.spec import (
@@ -600,11 +599,8 @@ def complete_stale_wave_recoverable(
     if not packets_all_stale(packets, order):
         return False
     for packet in packets:
-        rel = packet.get("residual_path")
-        if not rel:
-            return False
-        path = root / physical_field_rel(root, str(rel))
-        if not path.is_file():
+        path = packet_residual_file(root, packet)
+        if path is None:
             return False
         data = _read_json_object(path)
         if data is None:

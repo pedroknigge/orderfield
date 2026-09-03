@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.2
+
+Vibe-Proof v0.9.5 Deep P1. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not republish as v0.7.1.
+
+- **WAL-002 writer:** after `wal/CURRENT` flips, mutating commands rematerialize the selected generation onto stale live files before inherit. Immediate `checkpoint` (no view first) and `status` then `checkpoint` both keep `children_spawned=2` and packets e1/e2. Silent SPEC.md rewrite is still refused. `migrate` still reads live bytes.
+- **SIBLING-001:** `packet_residual_file()` is the sole residual presence/read/refusal/recovery resolver. `unpack` refuses a leftover canonical residual and does not refund. `complete_stale_wave_recoverable` uses the same resolver.
+- **ISSUE-003:** `--title` and `--search` are normalized and bounded before argv construction. Dry-run and real `gh` receive the same value. Secret/PII-shaped whole fields refuse; mixed tokens are redacted. HITL and argv-list spawn stay.
+- **LINT-002:** unused-import checker defaults to the full shipped `scripts/` runtime. CI job scans that default. Not an `of merge` command.
+- **CLAIMS / RETAIN:** C-071 matches writer tests; C-082 leftover unpack/stale is closed. `of gc` is permanent unlink; operator-owned backup; WAL is not a restorable dump.
+- Packaging: VERSION 0.7.2; skill/alias description preview `v0.7.2 — …`. Never rewrite v0.7.1 notes.
+
 ## 0.7.1
 
 Post-0.7.0 Vibe-Proof Deep P1/P2. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved.

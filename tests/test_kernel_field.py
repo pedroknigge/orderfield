@@ -1065,7 +1065,7 @@ class DurableConcurrentState(unittest.TestCase):
         path = self.tmp / "artifact.json"
         of.dump_json(path, {"before": True})
         before = path.read_bytes()
-        with mock.patch.object(of.os, "replace", side_effect=OSError("boom")):
+        with mock.patch.object(of.field.os, "replace", side_effect=OSError("boom")):
             with self.assertRaisesRegex(OSError, "boom"):
                 of.dump_json(path, {"after": True})
         self.assertEqual(path.read_bytes(), before)

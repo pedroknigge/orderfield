@@ -280,8 +280,8 @@ _LEGACY_FIELD_DIRS = ("waves", "work", "spec-log", "learnings")
 _active_field_home: ContextVar[Path | None] = ContextVar(
     "of_field_home", default=None
 )
-# View commands read CURRENT generation files. Writers still see live disk
-# (repair, collect tampers, in-flight unlinks).
+# View commands read CURRENT generation files. Mutating lock holders
+# rematerialize CURRENT onto live before writers inherit.
 _wal_read_current: ContextVar[bool] = ContextVar("of_wal_read_current", default=False)
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
@@ -1525,13 +1525,20 @@ def _materialize_generation(
             except OSError:
                 live_exists = False
                 same = False
+            if overwrite and live_exists and not same and str(rel) == "SPEC.md":
+                try:
+                    if live.stat().st_mtime >= staged.stat().st_mtime:
+                        continue
+                except OSError:
+                    pass
             if not same and not (live_exists and not overwrite):
                 skip = "/packets/" in str(rel).replace("\\", "/")
                 dump_bytes(live, blob, skip_dir_fsync=skip)
                 if crash_after_first and first_write:
                     first_write = False
                     _wal_crash("after-first-live")
-        _wal_crash(f"after-live:{rel}")
+            if crash_after_first:
+                _wal_crash(f"after-live:{rel}")
     for rel in man.get("deletions") or []:
         live = home / str(rel)
         try:
@@ -1539,7 +1546,8 @@ def _materialize_generation(
                 live.unlink()
         except OSError:
             pass
-        _wal_crash(f"after-tombstone:{rel}")
+        if crash_after_first:
+            _wal_crash(f"after-tombstone:{rel}")
 
 
 def _wal_gen_newer_than_current(gen_dir: Path, current_path: Path) -> bool:
@@ -1582,7 +1590,12 @@ def ensure_committed_field_view(root: Path) -> None:
         handle.close()
 
 
-def _materialize_current_only(root: Path) -> None:
+def _materialize_current_only(root: Path, *, overwrite: bool = False) -> None:
+    """Copy the already-selected CURRENT generation onto live.
+
+    Readers pass overwrite=False (fill missing, leave tampers). Writers pass
+    overwrite=True so inherit does not republish a mixed live cache.
+    """
     current = _load_wal_current(root)
     if not current:
         return
@@ -1594,13 +1607,65 @@ def _materialize_current_only(root: Path) -> None:
     if not _manifest_complete(gen_dir, man):
         return
     assert isinstance(man, dict)
-    _materialize_generation(root, gen_dir, man, overwrite=False)
+    _materialize_generation(root, gen_dir, man, overwrite=overwrite)
+
+
+def _refuse_live_spec_tamper(root: Path) -> None:
+    """See live SPEC.md before writer rematerialize undoes a silent rewrite.
+
+    Crash-stale SPEC (older mtime than CURRENT) is restored. A newer live
+    rewrite or a non-UTF-8 SPEC is a field error, not a cache to overwrite.
+    """
+    home = field_home(root)
+    spec = home / "SPEC.md"
+    current = _load_wal_current(root)
+    if not current:
+        return
+    gid = str(current.get("generation") or "")
+    if not gid:
+        return
+    gen_dir = wal_home(root) / gid
+    staged = gen_dir / "SPEC.md"
+    staged_order = gen_dir / "ORDER.json"
+    stored = ""
+    try:
+        order = json.loads(staged_order.read_text(encoding="utf-8"))
+        stored = str((order or {}).get("spec_hash") or "")
+    except (OSError, json.JSONDecodeError, TypeError):
+        return
+    if not stored:
+        return
+    if not spec.is_file() or spec.is_symlink():
+        return
+    try:
+        live_mtime = spec.stat().st_mtime
+        staged_mtime = staged.stat().st_mtime if staged.is_file() else 0.0
+    except OSError:
+        return
+    if live_mtime < staged_mtime:
+        return
+    try:
+        raw = spec.read_bytes()
+    except OSError:
+        return
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        die(
+            f"{FIELD_SPEC_MD}: not valid UTF-8 text "
+            f"(byte {exc.start}: {exc.reason}); re-save the file as UTF-8"
+        )
+    if sha256_text(text) != stored:
+        die(
+            "SPEC.md hash mismatch (silent rewrite); "
+            "of spec --revise-file PATH for an explicit revision"
+        )
 
 
 def recover_field_wal(root: Path) -> str | None:
     """Idempotent WAL recovery. Incomplete gens are dropped; complete unpublished
-    gens newer than CURRENT are published. Live files are then rematerialized
-    from CURRENT so readers never see a mixed generation."""
+    gens newer than CURRENT are published. Mutating lock holders rematerialize
+    CURRENT onto live after this returns."""
     home = wal_home(root)
     if not home.is_dir():
         return None
@@ -1909,6 +1974,13 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
         _HELD_FIELD_LOCK = path
         try:
             recover_field_wal(root)
+            # migrate plans from live bytes; CURRENT overwrite would hide them.
+            # spec --revise-file must see the live brief; pack/close still
+            # refuse a silent SPEC rewrite before inherit.
+            if command in MUTATING_COMMANDS and command != "migrate":
+                if command != "spec":
+                    _refuse_live_spec_tamper(root)
+                _materialize_current_only(root, overwrite=True)
             with field_generation(root):
                 yield
         finally:

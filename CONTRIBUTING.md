@@ -35,15 +35,16 @@ Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the s
 
 ## Branch protection
 
-`main` requires a PR, `required_approving_review_count >= 1` (one independent approving review; not a fake human CI job), and these five status checks (GitHub branch protection):
+`main` requires a PR, `required_approving_review_count >= 1` (one independent approving review; not a fake human CI job), and these status checks (GitHub branch protection):
 
 - `test (ubuntu-latest, 3.11)`
 - `test (ubuntu-latest, 3.13)`
 - `test (macos-latest, 3.11)`
 - `test (macos-latest, 3.13)`
 - `gitleaks`
+- `unused-imports` (full `scripts/` runtime; LINT-002)
 
-Do not force-push `main`. Do not drop these checks.
+Do not force-push `main`. Do not drop these checks. Adding `unused-imports` to the GitHub required list is human protection config, not an `of merge` command.
 
 **Adoption:** the protection config is real (count=1, dismiss stale reviews, enforce admins, five checks, force-push and deletion disabled). Independent review in merge history is still unproven: [PR #40](https://github.com/pedroknigge/orderfield/pull/40) and the 0.7.0 landings [#41](https://github.com/pedroknigge/orderfield/pull/41)/[#42](https://github.com/pedroknigge/orderfield/pull/42)/[#43](https://github.com/pedroknigge/orderfield/pull/43)/[#45](https://github.com/pedroknigge/orderfield/pull/45) merged with empty reviews after a temporary review-requirement window (human-authorized). REVIEW-001 is not closed as shipped.
 
@@ -60,9 +61,10 @@ No third-party coverage tool in CI — this package is **stdlib only** (no `pip`
 | LEARN-001 ancestor-exec-env refuse | shipped [PR #41](https://github.com/pedroknigge/orderfield/pull/41) | Ancestor exec-env walk. |
 | LEARN-002 spawn registry + unauthenticated source | shipped 0.7.1 | Pid/starttime registry survives exec. Missing `OF_CHILD` never stamps `source=leader`. Not OS-user auth. |
 | WAL-001 publish (stage+MANIFEST+CURRENT) | shipped [PR #45](https://github.com/pedroknigge/orderfield/pull/45) | Crash before CURRENT stays previous. |
-| WAL-002 CURRENT-only read | shipped 0.7.1 | Generation files are the sole read after CURRENT. Live disk is cache/tamper. |
+| WAL-002 CURRENT-only **read** | reader shipped 0.7.1; writer Partial | Readers (status/resume/render/…) use CURRENT; live disk is cache/tamper. Next-mutator writer recovery is **not** certified: no test that immediate checkpoint (no view first) after `after-current` preserves CURRENT children/packets. v0.9.5 reproduced writer rollback. C-071 Partial. |
 | REVIEW-001 independent review in merge history | unproven | Protection count≥1 is restored; 0.7.0 PRs merged with empty reviews after a temporary review-requirement window. Human merge practice — not `of merge` (SCOPE-REVIEW). |
-| Claims matrix unique IDs | this field | `python3 docs/audit/check-claims.py`; duplicate C-065 retired (shim is C-081). C-071 Partial. |
+| Claims matrix unique IDs | this field | `python3 docs/audit/check-claims.py`; duplicate C-065 retired (shim is C-081). C-071 Partial (reader CURRENT ≠ writer inherit). C-082 Partial (#48 unpack/complete-stale miss `packet_residual_file`). C-083 OK (#49 digest). |
+| RETAIN-001 gc unlink | this field | `of gc` permanently unlinks selected artifacts (`_safe_unlink`). Operator-owned backup. WAL crash consistency is not a restorable dump. |
 | Auditor out-of-scope (SCOPE-*) | this field | [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md). Do not re-score as kernel fails. |
 | `field.py` WAL/view/learning split (SCOPE-GODSPLIT) | later form PR | Do not mix into LEARN-002 / WAL-002 behavior PRs. |
 | npx skills version pin (SCOPE-NPX) | ecosystem residual | Skills CLI has no versioned source. Do not fake a pin. [PUBLISH.md](PUBLISH.md). |

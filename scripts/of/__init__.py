@@ -4,7 +4,6 @@ Public CLI entry remains `scripts/of.py`. Tests import this package as `of`.
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 

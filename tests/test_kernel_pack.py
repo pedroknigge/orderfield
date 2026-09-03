@@ -2,6 +2,7 @@
 """Kernel tests — pack invariants (packets, caps, collect, unpack, owns-path)."""
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -61,6 +62,28 @@ def committed_artifact(home: Path, rel: str) -> Path:
     """WAL-002: view commands read generation files, not live cache."""
     current = json.loads((home / "wal" / "CURRENT.json").read_text(encoding="utf-8"))
     return home / "wal" / str(current["generation"]) / rel
+
+
+def publish_committed(home: Path, rel: str, text: str) -> None:
+    """Keep a tamper across the next mutator (WAL-002 rematerializes CURRENT)."""
+    payload = text.encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest()
+    current_path = home / "wal" / "CURRENT.json"
+    current = json.loads(current_path.read_text(encoding="utf-8"))
+    gen = home / "wal" / str(current["generation"])
+    dest = gen / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(payload)
+    live = home / rel
+    live.parent.mkdir(parents=True, exist_ok=True)
+    live.write_bytes(payload)
+    man_path = gen / "MANIFEST.json"
+    man = json.loads(man_path.read_text(encoding="utf-8"))
+    files = man.setdefault("files", {})
+    files[rel] = digest
+    man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
+    current.setdefault("files", {})[rel] = digest
+    current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
 
 
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
@@ -453,7 +476,11 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
         packet = load_json(path)
         packet["residual_path"] = ".orderfield/waves/001/residuals/other.json"
         packet["packet_hash"] = of.packet_digest(packet)
-        path.write_text(json.dumps(packet), encoding="utf-8")
+        publish_committed(
+            self.tmp / ".orderfield",
+            "waves/001/packets/c1.json",
+            json.dumps(packet),
+        )
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertNotEqual(collected.returncode, 0)
         self.assertIn("noncanonical residual_path", collected.stderr)
@@ -463,7 +490,11 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
         packet = load_json(path)
         for key in ("packet_id", "packet_hash", "order_id"):
             packet.pop(key)
-        path.write_text(json.dumps(packet), encoding="utf-8")
+        publish_committed(
+            self.tmp / ".orderfield",
+            "waves/001/packets/c1.json",
+            json.dumps(packet),
+        )
         self.assertEqual(of.validate_packet(packet), [])
         closed = run_of(self.tmp, "patch", "--done-when-closed")
         self.assertEqual(closed.returncode, 0, closed.stderr)
@@ -681,7 +712,11 @@ class PackCapsAndBlock(unittest.TestCase):
         order_path = self.tmp / ".orderfield" / "ORDER.json"
         order = load_json(order_path)
         order["caps"]["max_children"] = 1
-        order_path.write_text(json.dumps(order, indent=2) + "\n", encoding="utf-8")
+        publish_committed(
+            self.tmp / ".orderfield",
+            "ORDER.json",
+            json.dumps(order, indent=2) + "\n",
+        )
         first = run_of(
             self.tmp, "pack", "--slice", "one", "--role", "explorer", "--child-id", "only"
         )

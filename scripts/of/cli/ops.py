@@ -30,6 +30,7 @@ from of.field import (
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
     PYTHON_FLOOR,
+    REDACTED,
     _read_json_object,
     apply_field_migrations,
     apply_field_retention,
@@ -946,6 +947,8 @@ ISSUE_LABELS = ("bug", "enhancement")
 ISSUE_GH_TIMEOUT_S = 10
 ISSUE_BODY_MAX_BYTES = 32 * 1024
 ISSUE_BODY_MAX_LINES = 400
+ISSUE_TITLE_MAX_CHARS = 256  # GitHub title ceiling; refuse 40k dumps
+ISSUE_SEARCH_MAX_CHARS = 256
 ISSUE_DRAFT_NAME = "ISSUE.md"
 
 
@@ -1116,6 +1119,43 @@ def _issue_scratch_rel_ok(rel: Path) -> bool:
     )
 
 
+def _normalize_issue_text(
+    raw: object,
+    *,
+    flag: str,
+    max_chars: int,
+    allow_empty: bool = False,
+) -> str:
+    """Strip, bound, and redact --title/--search before argv construction.
+
+    Dry-run preview and real gh spawn share this value. Oversize and
+    still-secret-shaped whole-field values are refused, not truncated.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        if allow_empty:
+            return ""
+        _issue_die(f"{flag} is empty")
+    if any(ord(ch) < 32 for ch in text):
+        _issue_die(f"{flag} must be a single line")
+    if len(text) > max_chars:
+        _issue_die(
+            f"{flag} is {len(text)} chars; refuse huge dumps "
+            f"(max {max_chars} chars)"
+        )
+    redacted = redact_text(text)
+    if redacted != text:
+        text = redacted.strip()
+        if not text:
+            if allow_empty:
+                return ""
+            _issue_die(f"{flag} is empty after redaction")
+        # Whole-field secret/PII: do not send "<redacted>" as the query/title.
+        if text == REDACTED:
+            _issue_die(f"{flag} is secret/PII-shaped; refused")
+    return text
+
+
 def _require_issue_body_size(text: str, *, flag: str) -> None:
     nlines = text.count("\n") + 1
     nbytes = len(text.encode("utf-8"))
@@ -1178,7 +1218,13 @@ def cmd_issue(args: argparse.Namespace) -> None:
     search = getattr(args, "search", None)
     dry_run = bool(getattr(args, "dry_run", False))
     if search is not None:
-        argv = issue_list_argv(query=str(search), gh_bin="gh")
+        query = _normalize_issue_text(
+            search,
+            flag="--search",
+            max_chars=ISSUE_SEARCH_MAX_CHARS,
+            allow_empty=True,
+        )
+        argv = issue_list_argv(query=query, gh_bin="gh")
         if dry_run:
             _issue_preview(argv, action="search", dry_run=True)
             return
@@ -1197,7 +1243,8 @@ def cmd_issue(args: argparse.Namespace) -> None:
         )
         return
 
-    title = str(getattr(args, "title", None) or "").strip()
+    title_raw = getattr(args, "title", None)
+    title = str(title_raw or "").strip()
     body_raw = getattr(args, "body", None)
     body_file_raw = getattr(args, "body_file", None)
     label = getattr(args, "label", None)
@@ -1213,6 +1260,10 @@ def cmd_issue(args: argparse.Namespace) -> None:
 
     if not dry_run:
         _refuse_child_issue_submit()
+
+    title = _normalize_issue_text(
+        title_raw, flag="--title", max_chars=ISSUE_TITLE_MAX_CHARS
+    )
 
     if body_file_raw:
         body_text = _load_issue_body_file(str(body_file_raw))
