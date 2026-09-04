@@ -4,7 +4,7 @@ The slow thing is the field on disk. The fast thing is the child CLI. Form docs 
 
 Architecture names who may change the plan, what the lock actually covers, and what stays reserved.
 
-Map to `scripts/of/{field,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec` and `checkpoint`; not spawn, handoff, learn, or gc.
+Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec` and `checkpoint`; not spawn, handoff, learn, or gc.
 
 A cut, a resume, a different model — the shape holds. The results do not have to change.
 
@@ -138,7 +138,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 | Symbol / area | Role |
 |---------------|------|
-| `scripts/of.py` + `scripts/of/{field,spec,pack,regime}.py` + `scripts/of/cli/` | Public CLI entry; 0.6 form split, 0.6.2 command groups (`init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`). Protocol unchanged vs 0.5.7 |
+| `scripts/of.py` + `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` | Public CLI entry; 0.6 form split, 0.6.2 command groups, SCOPE-GODSPLIT (`wal` / `learn` / `retain`; `field` re-exports). Protocol unchanged vs 0.5.7 |
 | `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |
