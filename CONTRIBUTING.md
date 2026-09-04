@@ -21,7 +21,7 @@ How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH
 
 | Surface | Own it in | Notes |
 |---------|-----------|-------|
-| Field I/O, regimes, CLI cmds | `scripts/of/` (`field`/`spec`/`pack`/`regime`/`cli/`) | Public entry `scripts/of.py`; command groups in `scripts/of/cli/`. One writer for ORDER mutations (`save_order`) |
+| Field I/O, regimes, CLI cmds | `scripts/of/` (`field`/`wal`/`learn`/`retain`/`spec`/`pack`/`regime`/`cli/`) | Public entry `scripts/of.py`; command groups in `scripts/of/cli/`. One writer for ORDER mutations (`save_order`). `field` re-exports WAL/learn/retain. |
 | Adapter tables + spawn argv | `scripts/of_adapters.py` | Keep stdlib-only; re-exported via `of` |
 | Contracts | `schemas/` | Validate with `of validate` |
 | Leader / slave doctrine | `SKILL.md`, `SLAVE.md`, `AGENTS.md` | Protocol, not a new regime |
@@ -66,7 +66,7 @@ No third-party coverage tool in CI — this package is **stdlib only** (no `pip`
 | Claims matrix unique IDs | this field | `python3 docs/audit/check-claims.py`; duplicate C-065 retired (shim is C-081). C-071 Partial (reader CURRENT ≠ writer inherit). C-082 Partial (#48 unpack/complete-stale miss `packet_residual_file`). C-083 OK (#49 digest). |
 | RETAIN-001 gc unlink | this field | `of gc` permanently unlinks selected artifacts (`_safe_unlink`). Operator-owned backup. WAL crash consistency is not a restorable dump. |
 | Auditor out-of-scope (SCOPE-*) | this field | [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md). Do not re-score as kernel fails. |
-| `field.py` WAL/view/learning split (SCOPE-GODSPLIT) | later form PR | Do not mix into LEARN-002 / WAL-002 behavior PRs. |
+| `field.py` WAL/view/learning split (SCOPE-GODSPLIT) | this form PR | `of.wal` / `of.learn` / `of.retain`; `field.py` re-exports. Not a product release. |
 | npx skills version pin (SCOPE-NPX) | ecosystem residual | Skills CLI has no versioned source. Do not fake a pin. [PUBLISH.md](PUBLISH.md). |
 | Tag signing / immutable releases (SCOPE-SIGN) | publish-process | Classic install is already tag-pinned SHA-256. Not kernel code. [PUBLISH.md](PUBLISH.md). |
 | Claims matrix refresh after each public surface | solo | Code wins over docs |
