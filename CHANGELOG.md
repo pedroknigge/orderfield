@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.4
+
+GitHub issues #54–#57. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.3 notes.
+
+- **#54 pack continuation:** a child that already owns a binding requirement may `of pack --child-id` again without a new `--owns-requirement` while other IDs stay unowned. A new child that owns nothing still dies. Exclusive owner across different children still dies. Re-passing IDs this same child already owns is not a foreign-owner refusal.
+- **#57 integrate stdout:** successful `of integrate` (including `--apply` and identical-input replay) writes one JSON object to stdout with a nonempty `regime`. Human notes (mission-not-auto-applied, owned-but-unverified) go to stderr. `--json` emits `warning.kind=mission_not_applied`.
+- **#55 spec id:** `PREFIX-001` is unchanged. Hyphenated prefixes (`DL-LOSS-001`) still die; the refusal now names that PREFIX must not contain `-`.
+- **#56 skipped-learnings warning:** unprovenanced/schema-invalid items still never enter a prompt. The `skipped N learning(s)…` warning prints once per unchanged skipped-set fingerprint; a later `of` process against the same set stays quiet. A changed set may warn again.
+- Packaging: VERSION 0.7.4; skill/alias description preview `v0.7.4 — …`. Never rewrite v0.7.3 notes.
+
 ## 0.7.3
 
 Saturation control. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.2 notes.

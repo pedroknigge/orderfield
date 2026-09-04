@@ -181,7 +181,18 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             )
         # mission patches never auto-apply
         if any("mission" in (r.get("residual") or {}).get("wants_to_change", []) for r in residuals):
-            print("note: mission proposed_patch is not auto-applied. Use of patch --mission")
+            note = (
+                "mission proposed_patch is not auto-applied. Use of patch --mission"
+            )
+            if json_events_enabled():
+                emit_event(
+                    "warning",
+                    ok=True,
+                    kind="mission_not_applied",
+                    message=note,
+                )
+            else:
+                print("note: " + note, file=sys.stderr)
     integrated_waves = {
         int(item.get("wave"))
         for item in state.get("integration_history", [])

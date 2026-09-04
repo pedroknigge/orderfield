@@ -92,6 +92,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.1 Vibe-Proof Deep P1/P2 (LEARN-002 exec registry, ISSUE body-file, WAL-002 CURRENT read, JSON-all-lines, SCOPE-001) | documented |
 | 0.7.2 Vibe-Proof v0.9.5 P1 (WAL-002 writer rematerialize, SIBLING-001 residual resolver, ISSUE-003 title/search, LINT-002) | documented |
 | 0.7.3 Saturation control (gc walks every home, 7-day safe TTL, tree budget + HITL drop/keep) | documented |
+| 0.7.4 GitHub #54–#57 (pack continuation, integrate JSON stdout, spec hyphen PREFIX, skip-warn throttle) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

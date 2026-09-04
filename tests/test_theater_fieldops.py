@@ -145,6 +145,65 @@ class Loop001CollectIntegrate(unittest.TestCase):
         self.assertIn("owned-but-unverified", collected.stdout)
 
 
+class IntegrateStdoutIsJson(unittest.TestCase):
+    """#57 — successful integrate stdout is one JSON object; human notes go to stderr."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-int-json-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "mission residual",
+            "--role",
+            "implementer",
+            "--child-id",
+            "m1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        dest = write_bound_residual(
+            self.tmp,
+            "m1",
+            patch={"mission": "do not auto-apply this"},
+        )
+        residual = load_json(dest)
+        residual["residual"]["wants_to_change"] = ["mission"]
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+    def _assert_stdout_json(self, proc: subprocess.CompletedProcess[str]) -> dict:
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        report = json.loads(proc.stdout)
+        self.assertIsInstance(report, dict)
+        self.assertTrue(str(report.get("regime") or "").strip())
+        self.assertNotIn("mission proposed_patch", proc.stdout)
+        self.assertNotIn("not auto-applied", proc.stdout)
+        self.assertNotIn("owned-but-unverified", proc.stdout)
+        return report
+
+    def test_apply_and_replay_stdout_are_json(self) -> None:
+        applied = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        report = self._assert_stdout_json(applied)
+        self.assertIn("mission proposed_patch is not auto-applied", applied.stderr)
+        self.assertIn("of patch --mission", applied.stderr)
+        replay = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        replayed = self._assert_stdout_json(replay)
+        self.assertEqual(replayed["regime"], report["regime"])
+        self.assertEqual(
+            replayed["integration"]["input_hash"],
+            report["integration"]["input_hash"],
+        )
+        as_json = run_of(self.tmp, "--json", "integrate", "--wave", "1", "--apply")
+        self._assert_stdout_json(as_json)
+        for line in as_json.stderr.splitlines():
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            self.assertIsInstance(event, dict, line)
+
+
 class Dedupe001Constraints(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-dedupe-"))

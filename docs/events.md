@@ -46,7 +46,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 
 | kind | When |
 | --- | --- |
-| `learning_skipped` | Learnings skipped on load (no provenance / schema failure) |
+| `learning_skipped` | Learnings skipped on load (no provenance / schema failure); once per unchanged skipped-set fingerprint |
 | `cost_unmeasured` | Pre-spawn cost disclaimer (`of spawn`) |
 | `slice_long` | Pack slice at/over the advisory char threshold |
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
@@ -56,6 +56,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `spawn_exit` | Child process nonzero exit (`exit` field) |
 | `process_kill` | Process-group / child kill hit `OSError` (not already-gone) |
 | `cleanup` | Scratch `rmdir` hit `OSError` other than empty/missing |
+| `mission_not_applied` | `of integrate --apply` saw a mission residual; mission is not auto-applied |
 
 ## Example
 
