@@ -1,4 +1,4 @@
-# Next path (after 0.7.3)
+# Next path (after 0.7.4)
 
 Saturation control shipped. Closed sibling fields are visible to `of gc`. Open ORDERs are never auto-deleted; over budget prints `audit` and the human runs `--keep-field` or `--drop-field`.
 

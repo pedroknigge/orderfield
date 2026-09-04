@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.3`
+**Code rev:** VERSION `0.7.4`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 79 |
+| OK | 83 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 65 |
+| critical | 69 |
 | normal | 19 |
 
-**Truth score (advisory):** `(79*100 + 4*50) / 84 = 96.4` (84 matrix rows; unique IDs C-001…C-084)
+**Truth score (advisory):** `(83*100 + 4*50) / 88 = 96.6` (88 matrix rows; unique IDs C-001…C-088)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -153,6 +153,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-082 | #48 leftover canonical residual: collect/integrate/unpack/complete-stale resolve via `packet_residual_file` (physical field-home, else leftover `.orderfield/waves/…`) | CHANGELOG / troubleshooting | `packet_residual_file` is the sole resolver. Unpack refuses leftover residual without refund. `tests/test_sibling_residual.py`. | `scripts/of/pack.py` / `scripts/of/cli/wave.py` / `tests/test_sibling_residual.py` | `packet_residual_file` / `cmd_unpack` / `complete_stale_wave_recoverable` | — | critical | OK | #48 SIBLING-001 0.7.2 |
 | C-083 | #49 `done_when_closed` is part of the integration digest; `of patch --done-when-closed` then `integrate --recompute` selects `phase` instead of replaying hold | CHANGELOG / troubleshooting | `integration_input_digest` includes `done_when_closed`; `test_recompute_after_done_when_closed_selects_phase` | `scripts/of/regime.py` / `tests/test_kernel_regime.py` | `integration_input_digest` | — | critical | OK | #49 |
 | C-084 | Saturation control: gc walks every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit`/`--keep-field`/`--drop-field`; `gc` in `MUTATING_COMMANDS`; no auto-drop of open ORDERs; not a daemon | troubleshooting / README / SKILL / CHANGELOG | `plan_field_retention` iterates `list_field_homes`; `SAFE_RETENTION_DAYS`; `drop_field_home`; `print_audit_block`; `gc` in `MUTATING_COMMANDS`. Tests in `EpisodicRetention`. | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `plan_field_retention` / `cmd_gc` / `drop_field_home` | — | critical | OK | SAT-001..006 0.7.3 |
+| C-085 | #54 pack continuation: a child that already owns a binding ID may pack again without `--owns-requirement` while other IDs stay unowned; a new child that owns nothing still dies; exclusive owner across different children still dies | SKILL / CHANGELOG / kernel feature | `already_owns` skip of unowned-pack gate; `mark_requirements_owned` same-child reclaim | `scripts/of/cli/wave.py` / `scripts/of/spec.py` / `tests/test_kernel_pack.py` | `cmd_pack` / `mark_requirements_owned` | — | critical | OK | #54 0.7.4 |
+| C-086 | #57 successful `of integrate` stdout is one JSON object with nonempty `regime`; human notes on stderr | SKILL / CHANGELOG / kernel feature / events | `cmd_integrate` prints JSON on stdout; mission note and owned-unverified on stderr; `--json` `mission_not_applied` | `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | `cmd_integrate` | — | critical | OK | #57 0.7.4 |
+| C-087 | #55 invalid requirement id keeps `PREFIX-001`; hyphenated prefixes die and the refusal names that PREFIX must not contain `-` | SKILL / CHANGELOG / kernel feature | `require_req_id` hint when `text.count("-") > 1`; `REQ_ID_RE` unchanged | `scripts/of/spec.py` / `tests/test_spec_io.py` | `require_req_id` | — | critical | OK | #55 0.7.4 |
+| C-088 | #56 skipped-learnings warning once per unchanged skipped-set fingerprint; items still never enter a prompt | SKILL / CHANGELOG / events | `_filter_learnings` skip-warn cache sidecar of `OF_LEARNINGS` | `scripts/of/field.py` / `tests/test_learn_provenance.py` | `_filter_learnings` | — | critical | OK | #56 0.7.4 |
 
 ### Verdict definitions
 
@@ -184,6 +188,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-083 OK: #49 `done_when_closed` in integration digest
 - [x] C-041 RETAIN-001: `gc` dump is permanent unlink; not a restorable dump
 - [x] C-084 SAT-001..006 0.7.3: walk every home, 7-day safe TTL, HITL drop/keep
+- [x] C-085..C-088 0.7.4: #54 pack continuation, #57 integrate JSON stdout, #55 hyphen PREFIX message, #56 skip-warn throttle
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

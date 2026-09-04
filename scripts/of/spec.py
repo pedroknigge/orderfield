@@ -250,7 +250,10 @@ def require_spec_intact(root: Path, order: dict[str, Any]) -> None:
 def require_req_id(value: str) -> str:
     text = str(value or "").strip()
     if not REQ_ID_RE.match(text):
-        die(f"invalid requirement id {value!r}; expected PREFIX-001")
+        hint = ""
+        if text.count("-") > 1:
+            hint = " (PREFIX must not contain '-')"
+        die(f"invalid requirement id {value!r}; expected PREFIX-001{hint}")
     return text
 
 

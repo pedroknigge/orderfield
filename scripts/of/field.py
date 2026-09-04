@@ -3233,6 +3233,50 @@ def _learning_schema_item(item: dict[str, Any]) -> dict[str, Any]:
 _LEARNING_SKIP_WARNED = False
 
 
+def learning_skip_warn_cache_path() -> Path:
+    override = os.environ.get("OF_LEARN_SKIP_CACHE")
+    if override:
+        return Path(override)
+    learnings = protocol_learnings_path()
+    return learnings.with_name(learnings.stem + ".skip-warn.json")
+
+
+def _skipped_learnings_fingerprint(where: str, skipped: list[Any]) -> str:
+    digests: list[str] = []
+    for item in skipped:
+        if isinstance(item, dict):
+            digests.append(sha256_text(json.dumps(item, sort_keys=True, default=str)))
+        else:
+            digests.append(sha256_text(repr(item)))
+    return sha256_text(where + "\n" + "\n".join(sorted(digests)))
+
+
+def _load_skip_warn_fingerprints() -> dict[str, str]:
+    path = learning_skip_warn_cache_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    fps = data.get("fingerprints")
+    if not isinstance(fps, dict):
+        return {}
+    out: dict[str, str] = {}
+    for key, value in fps.items():
+        text = str(value or "").strip()
+        if text:
+            out[str(key)] = text
+    return out
+
+
+def _store_skip_warn_fingerprints(fps: dict[str, str]) -> None:
+    try:
+        dump_json(learning_skip_warn_cache_path(), {"fingerprints": fps})
+    except OSError:
+        pass
+
+
 def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
     """Schema-valid and provenanced. Prompt gate never takes source=child.
 
@@ -3265,23 +3309,29 @@ def _filter_learnings(
 ) -> list[dict[str, Any]]:
     global _LEARNING_SKIP_WARNED
     kept: list[dict[str, Any]] = []
-    skipped = 0
+    skipped_items: list[Any] = []
     for item in items:
         if learning_accepted(item, for_prompt=for_prompt):
             kept.append(item)
         else:
-            skipped += 1
+            skipped_items.append(item)
+    skipped = len(skipped_items)
     if skipped and not _LEARNING_SKIP_WARNED:
+        fp = _skipped_learnings_fingerprint(where, skipped_items)
+        cached = _load_skip_warn_fingerprints()
+        if cached.get(where) != fp:
+            message = (
+                f"skipped {skipped} learning(s) in {where} lacking provenance or "
+                "failing schema; they never enter a prompt "
+                "(of learn --forget ID removes one; re-add with of learn / --protocol)"
+            )
+            if json_events_enabled():
+                emit_event("warning", ok=True, kind="learning_skipped", message=message)
+            else:
+                print(f"of: warning: {message}", file=sys.stderr)
+            cached[where] = fp
+            _store_skip_warn_fingerprints(cached)
         _LEARNING_SKIP_WARNED = True
-        message = (
-            f"skipped {skipped} learning(s) in {where} lacking provenance or "
-            "failing schema; they never enter a prompt "
-            "(of learn --forget ID removes one; re-add with of learn / --protocol)"
-        )
-        if json_events_enabled():
-            emit_event("warning", ok=True, kind="learning_skipped", message=message)
-        else:
-            print(f"of: warning: {message}", file=sys.stderr)
     return kept
 
 

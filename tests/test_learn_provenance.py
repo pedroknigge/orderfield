@@ -570,5 +570,96 @@ class LearnChildForge(unittest.TestCase):
         self.assertNotEqual(prov["source"], "leader")
 
 
+class SkippedLearningsWarningThrottle(unittest.TestCase):
+    """#56 — skip warning once per unchanged skipped set, across processes."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-learn-skip-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "protocol-learnings.json"
+        os.environ["OF_LEARNINGS"] = str(self.cache)
+        self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        r = run_of(self.tmp, "init", "--mission", "skip warn", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.cache.write_text(
+            json.dumps(
+                {
+                    "v": 1,
+                    "items": [
+                        {
+                            "id": "lrn_skipaaaaaa",
+                            "kind": "protocol",
+                            "text": "legacy without provenance one",
+                            "created_at": "2026-01-01T00:00:00Z",
+                        },
+                        {
+                            "id": "lrn_skipbbbbbb",
+                            "kind": "protocol",
+                            "text": "legacy without provenance two",
+                            "created_at": "2026-01-01T00:00:01Z",
+                        },
+                        {
+                            "id": "lrn_skipcccccc",
+                            "kind": "protocol",
+                            "text": "legacy without provenance three",
+                            "created_at": "2026-01-01T00:00:02Z",
+                        },
+                    ],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def test_second_process_does_not_reprint_unchanged_skip_warning(self) -> None:
+        first = run_of(self.tmp, "status")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        first_skips = [
+            line
+            for line in first.stderr.splitlines()
+            if "skipped" in line and "learning" in line
+        ]
+        self.assertEqual(len(first_skips), 1, first.stderr)
+        self.assertIn("3 learning(s)", first_skips[0])
+        second = run_of(self.tmp, "status")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        second_skips = [
+            line
+            for line in second.stderr.splitlines()
+            if "skipped" in line and "learning" in line
+        ]
+        self.assertEqual(second_skips, [], second.stderr)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertNotIn("legacy without provenance", listed.stdout)
+
+    def test_changed_skipped_set_may_warn_again(self) -> None:
+        first = run_of(self.tmp, "status")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertTrue(
+            any("skipped" in line and "learning" in line for line in first.stderr.splitlines()),
+            first.stderr,
+        )
+        data = json.loads(self.cache.read_text(encoding="utf-8"))
+        data["items"].append(
+            {
+                "id": "lrn_skipdddddd",
+                "kind": "protocol",
+                "text": "legacy without provenance four",
+                "created_at": "2026-01-01T00:00:03Z",
+            }
+        )
+        self.cache.write_text(json.dumps(data) + "\n", encoding="utf-8")
+        changed = run_of(self.tmp, "status")
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        changed_skips = [
+            line
+            for line in changed.stderr.splitlines()
+            if "skipped" in line and "learning" in line
+        ]
+        self.assertEqual(len(changed_skips), 1, changed.stderr)
+        self.assertIn("4 learning(s)", changed_skips[0])
+
+
 if __name__ == "__main__":
     unittest.main()

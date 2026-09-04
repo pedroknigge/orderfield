@@ -270,5 +270,43 @@ class SpecWriteOrder(unittest.TestCase):
         self.assertFalse(order.get("spec_closed", False))
 
 
+class SpecHyphenPrefixRefusal(unittest.TestCase):
+    """#55 — hyphenated prefixes stay invalid; the error names the PREFIX rule."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-spec-hyphen-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        brief = self.tmp / "brief.md"
+        brief.write_text("# Brief\n\n- exit code 0 on success\n", encoding="utf-8")
+        r = run_of(self.tmp, "init", "--mission", "m", "--source-file", str(brief))
+        self.assertEqual(r.returncode, 0, r.stderr.decode("utf-8", "replace"))
+
+    def test_from_file_hyphenated_prefix_names_the_rule(self) -> None:
+        payload = self.tmp / "reqs.json"
+        payload.write_text(
+            json.dumps(
+                {
+                    "requirements": [
+                        {
+                            "id": "DL-LOSS-001",
+                            "text": "loss family defect stays a binding id",
+                        }
+                    ]
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        r = run_of(self.tmp, "spec", "--from-file", str(payload))
+        err = r.stderr.decode("utf-8", "replace")
+        self.assertNotEqual(r.returncode, 0, err)
+        self.assertIn("DL-LOSS-001", err)
+        self.assertIn("PREFIX-001", err)
+        self.assertIn("PREFIX", err)
+        self.assertIn("must not contain", err)
+        self.assertIn("-", err)
+        self.assertNotIn("Traceback", err)
+
+
 if __name__ == "__main__":
     unittest.main()

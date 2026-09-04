@@ -360,7 +360,14 @@ def cmd_pack(args: argparse.Namespace) -> None:
         and str(r.get("status") or "unowned") == "unowned"
         and not (r.get("owned_by") or [])
     ]
-    if not owns and unowned_ids:
+    already_owns = any(
+        child_id in (r.get("owned_by") or [])
+        for r in (reqs.get("requirements") or [])
+        if is_active_requirement(r)
+    )
+    # Continuation: a child that already owns a binding ID may pack again
+    # without claiming a new one. A child that owns nothing still must.
+    if not owns and unowned_ids and not already_owns:
         die(
             "binding requirements are unowned; "
             "of pack --owns-requirement ID (repeatable). "

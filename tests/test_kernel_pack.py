@@ -1573,5 +1573,114 @@ class PathOwnership(unittest.TestCase):
         self.assertIn("consider continuing imp1", second.stderr)
 
 
+class PackContinuationOwnsRequirement(unittest.TestCase):
+    """#54 — continue a child that already owns a binding ID while others stay unowned."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pack-cont-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        initialized = run_of(
+            self.tmp, "init", "--mission", "continue owned child", "--phase", "build"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        for req_id, text in (
+            ("ALPHA-001", "alice owns this slice"),
+            ("BETA-001", "still unowned after alice packs"),
+        ):
+            added = run_of(
+                self.tmp,
+                "spec",
+                "--add",
+                req_id,
+                "--text",
+                text,
+                "--surface",
+                "contract",
+            )
+            self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "alice first wave",
+            "--role",
+            "implementer",
+            "--child-id",
+            "alice",
+            "--owns-requirement",
+            "ALPHA-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "alice")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+
+    def test_continuation_without_new_owns_while_unowned_remain(self) -> None:
+        fresh = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "new child with nothing",
+            "--role",
+            "explorer",
+            "--child-id",
+            "bob",
+        )
+        self.assertNotEqual(fresh.returncode, 0, fresh.stdout)
+        self.assertIn("unowned", fresh.stderr)
+        self.assertIn("BETA-001", fresh.stderr)
+
+        poach = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "steal alice id",
+            "--role",
+            "explorer",
+            "--child-id",
+            "carol",
+            "--owns-requirement",
+            "ALPHA-001",
+        )
+        self.assertNotEqual(poach.returncode, 0, poach.stdout)
+        self.assertIn("already owned by alice", poach.stderr)
+
+        continued = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "alice continues without a new claim",
+            "--role",
+            "implementer",
+            "--child-id",
+            "alice",
+        )
+        self.assertEqual(continued.returncode, 0, continued.stderr)
+        packet = load_json(packet_path(self.tmp, "alice", wave=2))
+        self.assertEqual(packet["child_id"], "alice")
+
+    def test_same_child_reclaim_owned_id_is_not_foreign(self) -> None:
+        again = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "alice re-passes ALPHA-001",
+            "--role",
+            "implementer",
+            "--child-id",
+            "alice",
+            "--owns-requirement",
+            "ALPHA-001",
+        )
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertNotIn("already owned", again.stderr)
+        packet = load_json(packet_path(self.tmp, "alice", wave=2))
+        self.assertEqual(packet.get("owns_requirements"), ["ALPHA-001"])
+
+
 if __name__ == "__main__":
     unittest.main()
