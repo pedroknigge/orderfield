@@ -1458,7 +1458,7 @@ class EpisodicRetention(unittest.TestCase):
         self.assertTrue(spec.is_file())
         self.assertFalse(snap.exists())
         self.assertIn("current-contract", r.stdout)
-        self.assertIn("history age>", r.stdout)
+        self.assertIn("safe age>", r.stdout)
 
     def test_gc_dumps_old_wave_history(self) -> None:
         integrated = run_of(self.tmp, "integrate", "--wave", "1")
@@ -1474,6 +1474,121 @@ class EpisodicRetention(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dump", r.stdout)
         self.assertFalse((old_wave / "residuals" / "c1.json").exists())
+
+    def test_gc_dumps_logs_after_seven_days(self) -> None:
+        logs = self.tmp / ".orderfield" / "waves" / "001" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        old_log = logs / "aged.log"
+        old_log.write_text("spawn transcript\n")
+        self._age(old_log, days=8)
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(old_log.exists())
+        self.assertIn("safe age>", r.stdout)
+
+    def test_gc_walks_closed_sibling_and_dumps_ephemeral_immediately(self) -> None:
+        sibling = run_of(
+            self.tmp, "new", "--mission", "closed sibling", "--phase", "explore"
+        )
+        self.assertEqual(sibling.returncode, 0, sibling.stderr)
+        fields = self.tmp / ".orderfield" / "fields"
+        closed_id = None
+        for child in fields.iterdir():
+            order_file = child / "ORDER.json"
+            if not order_file.is_file():
+                continue
+            data = load_json(order_file)
+            if data.get("mission") == "closed sibling":
+                closed_id = data["id"]
+                data["spec_closed"] = True
+                order_file.write_text(json.dumps(data, indent=2) + "\n")
+                log = child / "waves" / "001" / "logs" / "fresh.log"
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text("closed field log\n")
+                scratch = child / "work" / "scratch" / "old-child"
+                scratch.mkdir(parents=True, exist_ok=True)
+                (scratch / "note.md").write_text("done\n")
+                break
+        self.assertIsNotNone(closed_id)
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("closed-ephemeral", r.stdout)
+        closed_home = fields / str(closed_id)
+        self.assertFalse((closed_home / "waves" / "001" / "logs" / "fresh.log").exists())
+        self.assertFalse((closed_home / "work" / "scratch" / "old-child").exists())
+        self.assertTrue((closed_home / "ORDER.json").is_file())
+
+    def test_gc_keeps_in_flight_scratch(self) -> None:
+        residual = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        )
+        if residual.is_file():
+            residual.unlink()
+        scratch = (
+            self.tmp / ".orderfield" / "work" / "scratch" / "c1" / "WIP.md"
+        )
+        scratch.parent.mkdir(parents=True, exist_ok=True)
+        scratch.write_text("in flight\n")
+        r = run_of(self.tmp, "gc")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(scratch.is_file())
+        self.assertIn("current-wave-scratch", r.stdout)
+
+    def test_audit_over_budget_does_not_drop_open_field(self) -> None:
+        env_run = lambda *a: subprocess.run(
+            [sys.executable, str(OF_PY), *a],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_GC_BUDGET": "64"},
+        )
+        fat = self.tmp / ".orderfield" / "work" / "scratch" / "c1" / "blob.bin"
+        fat.parent.mkdir(parents=True, exist_ok=True)
+        fat.write_bytes(b"x" * 128)
+        r = env_run("gc", "--audit")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("audit", r.stdout)
+        self.assertIn("OVER", r.stdout)
+        self.assertTrue(fat.is_file())
+        dropped = env_run("gc", "--drop-field", load_json(self.tmp / ".orderfield" / "ORDER.json")["id"])
+        self.assertNotEqual(dropped.returncode, 0)
+        self.assertIn("refuses", dropped.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
+
+    def test_drop_field_unlinks_closed_sibling(self) -> None:
+        sibling = run_of(
+            self.tmp, "new", "--mission", "drop me", "--phase", "explore"
+        )
+        self.assertEqual(sibling.returncode, 0, sibling.stderr)
+        closed_id = None
+        home = None
+        for child in (self.tmp / ".orderfield" / "fields").iterdir():
+            order_file = child / "ORDER.json"
+            if not order_file.is_file():
+                continue
+            data = load_json(order_file)
+            if data.get("mission") == "drop me":
+                closed_id = data["id"]
+                data["spec_closed"] = True
+                order_file.write_text(json.dumps(data, indent=2) + "\n")
+                home = child
+                break
+        self.assertIsNotNone(closed_id)
+        r = run_of(self.tmp, "gc", "--drop-field", str(closed_id))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dropped", r.stdout)
+        self.assertFalse(home.exists())
+
+    def test_keep_field_silences_audit(self) -> None:
+        fid = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+        r = run_of(self.tmp, "gc", "--keep-field", fid)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("keep-field", r.stdout)
+        keep = load_json(self.tmp / ".orderfield" / "gc-keep.json")
+        self.assertIn(fid, keep.get("fields") or {})
+
+    def test_gc_is_mutating(self) -> None:
+        self.assertIn("gc", of.MUTATING_COMMANDS)
 
 
 class ArtifactMigrations(unittest.TestCase):
