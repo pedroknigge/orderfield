@@ -1,6 +1,6 @@
-# Next path (after 0.7.27)
+# Next path (after 0.7.28)
 
-Root stub vs nested fields is proven: a leftover `.orderfield/ORDER.json` is not a live home once `fields/<id>/` exists. `--field` of a different-id stub dies; `of migrate` archives to `ORDER.json.stub`. `recovery/root-stub-ambiguous` and `RootStubAmbiguous` hold. Orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+`of status --json` is proven: one live-wave JSON object from the same `StatusReport` document the human screen reads. `recovery/status-json` and `StatusReportJson` hold. Root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

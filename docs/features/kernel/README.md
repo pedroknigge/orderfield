@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.27. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.28. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.27` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.28` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -20,11 +20,12 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. A dead spawn host is the same disk (started-only spawn metadata + incomplete WAL leftover). Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`; `recovery/process-death-resume` / `ResumeAfterProcessDeath`.
-- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, process-death-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, packed-age-watchdog, orphan-packed-cleanup, wave-list-show, doctor-one-pass-skew, root-stub-ambiguous); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, and `RootStubAmbiguous`. `file_contains` reads JSON or text.
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, process-death-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, packed-age-watchdog, orphan-packed-cleanup, wave-list-show, doctor-one-pass-skew, root-stub-ambiguous, status-json); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, and `StatusReportJson`. `file_contains` reads JSON or text.
 - `of contrast` prints a human one-pager and one machine JSON object from the same `ContrastReport` document. `--json` `contrast` event carries the same rows / gate / blocking. Proof: `recovery/contrast-close-contract` / `recovery/contrast-close-internal` / `ContrastReportRenderer`. No new verb. No on-disk `CONTRAST.json`.
 - Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: oversized evidence/notes or multi-turn Human/Assistant transcript). Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of status` / `of resume` print `packed_age` when an in-flight child's `packed_at` is older than the same 7-day SLA. Pulse STALE stays activity evidence. Read-path only; nothing is unpacked. Proof: `recovery/packed-age-watchdog` / `PackedAgeWatchdog`.
+- `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts). Human `of status` is unchanged. `--json` / `OF_JSON=1` emits the `status` event. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`.
 - `of wave list` / `of wave show [N]` is the multi-wave roster. Live wave is `state.wave` (`*`). Walks existing `waves/NNN` plus the live number. Read-path only. No new schema. Proof: `recovery/wave-list-show` / `WaveRosterListShow`.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr

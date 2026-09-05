@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -51,6 +52,7 @@ from of.field import (
     die,
     field_is_file,
     emit_event,
+    json_events_enabled,
     forget_learning,
     format_list_continuation,
     promote_learning,
@@ -525,8 +527,209 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
         print(cont)
     print("note         opt-in helper; not a process manager")
 
+
+class StatusReport:
+    """Live-field snapshot for humans and dashboards. No second ledger."""
+
+    KIND_STATUS = "status"
+    KIND_ROSTER = "roster"
+    KIND_NO_ORDER = "no_order"
+
+    @staticmethod
+    def roster() -> dict[str, Any]:
+        return {"v": 1, "ok": False, "kind": StatusReport.KIND_ROSTER, "next": "PICK"}
+
+    @staticmethod
+    def no_order() -> dict[str, Any]:
+        return {"v": 1, "ok": False, "kind": StatusReport.KIND_NO_ORDER}
+
+    @staticmethod
+    def origin(order: dict[str, Any]) -> dict[str, str] | None:
+        raw = order.get("origin")
+        if not isinstance(raw, dict):
+            return None
+        harness = str(raw.get("harness") or "").strip()
+        if not harness:
+            return None
+        out = {"harness": harness}
+        session_id = str(raw.get("session_id") or "").strip()
+        if session_id:
+            out["session_id"] = session_id
+        return out
+
+    @staticmethod
+    def packed_age_rows(
+        flying: list[dict[str, Any]], *, now: float | None = None
+    ) -> list[dict[str, Any]]:
+        return [
+            {"child_id": cid, "age_s": int(age)}
+            for cid, age in PackedAge.overdue(flying, now=now)
+        ]
+
+    @staticmethod
+    def root_stub_kind(root: Path) -> str | None:
+        info = RootStub.inspect(root)
+        kind = str(info.get("kind") or "")
+        if kind in {RootStub.KIND_STALE, RootStub.KIND_AMBIGUOUS}:
+            return kind
+        return None
+
+    @staticmethod
+    def requirement_counts(raw: Any) -> dict[str, int]:
+        data = raw if isinstance(raw, dict) else {}
+        keys = (
+            "total",
+            "owned",
+            "verified",
+            "verified_internal",
+            "verified_contract",
+            "failed",
+            "unowned",
+            "unverified",
+            "superseded",
+        )
+        return {key: int(data.get(key) or 0) for key in keys}
+
+    @staticmethod
+    def phase_override_row(state: dict[str, Any]) -> dict[str, Any] | None:
+        overrides = state.get("phase_overrides") or []
+        if not overrides or not isinstance(overrides[-1], dict):
+            return None
+        last = overrides[-1]
+        return {
+            "from_phase": last.get("from_phase"),
+            "to_phase": last.get("to_phase"),
+            "reason": last.get("reason"),
+        }
+
+    @staticmethod
+    def document(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        packets: list[Any],
+        flying: list[dict[str, Any]],
+        session: dict[str, Any] | None = None,
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        from of.field import ActiveField
+
+        stored = str(order.get("spec_hash") or "")
+        live = spec_bytes_hash(root)
+        caps = order.get("caps") if isinstance(order.get("caps"), dict) else {}
+        return {
+            "v": 1,
+            "ok": True,
+            "kind": StatusReport.KIND_STATUS,
+            "id": order["id"],
+            "rev": int(order["rev"]),
+            "phase": order["phase"],
+            "mission": order["mission"],
+            "wave": int(state.get("wave") or 1),
+            "field": "closed" if order.get("spec_closed") else "open",
+            "spec_closed": bool(order.get("spec_closed")),
+            "done_when_closed": done_when_closed(order),
+            "active": ActiveField.read(root),
+            "harness": order.get("harness") or None,
+            "origin": StatusReport.origin(order),
+            "root_stub": StatusReport.root_stub_kind(root),
+            "spawned": int(state.get("children_spawned") or 0),
+            "max_children": int((caps or {}).get("max_children") or 0),
+            "in_flight": len(flying),
+            "in_flight_ids": [str(pkt.get("child_id") or "?") for pkt in flying],
+            "last_regime": state.get("last_regime"),
+            "spawn_blocked": bool(state.get("spawn_blocked")),
+            "signal": FieldSignal.of(order, state, packets, session, now=now),
+            "packed_age": StatusReport.packed_age_rows(flying, now=now),
+            "spec_hash": stored,
+            "spec_mismatch": bool(stored and live and live != stored),
+            "requirements": StatusReport.requirement_counts(
+                requirement_counts(load_requirements(root))
+            ),
+            "phase_override": StatusReport.phase_override_row(state),
+        }
+
+    @staticmethod
+    def live(root: Path, *, now: float | None = None) -> dict[str, Any]:
+        order = load_order(root)
+        state = load_state(root)
+        wave = int(state.get("wave") or 1)
+        packets = packed_children(root, wave)
+        flying = in_flight_children(root, wave)
+        return StatusReport.document(
+            root, order, state, packets, flying, load_session(root), now=now
+        )
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        kind = str(doc.get("kind") or StatusReport.KIND_STATUS)
+        if kind != StatusReport.KIND_STATUS:
+            out: dict[str, Any] = {
+                "v": 1,
+                "ok": bool(doc.get("ok")),
+                "kind": kind,
+            }
+            nxt = doc.get("next")
+            if nxt:
+                out["next"] = str(nxt)
+            return out
+        packed = [
+            {"age_s": int(row.get("age_s") or 0), "child_id": str(row.get("child_id") or "?")}
+            for row in (doc.get("packed_age") or [])
+            if isinstance(row, dict)
+        ]
+        return {
+            "v": 1,
+            "ok": bool(doc.get("ok")),
+            "kind": StatusReport.KIND_STATUS,
+            "id": str(doc.get("id") or ""),
+            "rev": int(doc.get("rev") or 0),
+            "phase": str(doc.get("phase") or ""),
+            "mission": str(doc.get("mission") or ""),
+            "wave": int(doc.get("wave") or 0),
+            "field": str(doc.get("field") or ""),
+            "spec_closed": bool(doc.get("spec_closed")),
+            "done_when_closed": bool(doc.get("done_when_closed")),
+            "active": doc.get("active"),
+            "harness": doc.get("harness"),
+            "origin": doc.get("origin"),
+            "root_stub": doc.get("root_stub"),
+            "spawned": int(doc.get("spawned") or 0),
+            "max_children": int(doc.get("max_children") or 0),
+            "in_flight": int(doc.get("in_flight") or 0),
+            "in_flight_ids": [str(cid) for cid in (doc.get("in_flight_ids") or [])],
+            "last_regime": doc.get("last_regime"),
+            "spawn_blocked": bool(doc.get("spawn_blocked")),
+            "signal": doc.get("signal"),
+            "packed_age": packed,
+            "spec_hash": str(doc.get("spec_hash") or ""),
+            "spec_mismatch": bool(doc.get("spec_mismatch")),
+            "requirements": StatusReport.requirement_counts(doc.get("requirements")),
+            "phase_override": doc.get("phase_override"),
+        }
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        payload = StatusReport.machine(doc)
+        payload.pop("v", None)
+        return payload
+
+    @staticmethod
+    def emit_bound(doc: dict[str, Any]) -> None:
+        print(json.dumps(StatusReport.machine(doc), sort_keys=True))
+
+    @staticmethod
+    def emit_event(root: Path | None = None, doc: dict[str, Any] | None = None) -> None:
+        if not json_events_enabled():
+            return
+        payload = StatusReport.live(root) if doc is None else doc
+        emit_event("status", **StatusReport.event_fields(payload))
+
+
 def cmd_status(args: argparse.Namespace) -> None:
     maybe_notify_update()
+    machine = bool(getattr(args, "status_json", False))
     root = find_root()
     from of.field import (
         ActiveField,
@@ -538,15 +741,30 @@ def cmd_status(args: argparse.Namespace) -> None:
 
     homes = list_field_homes(root)
     if bound_field_home() is None and len(homes) > 1:
-        print_field_roster(homes)
-        print("next          PICK --field <id> | of new")
+        doc = StatusReport.roster()
+        if machine:
+            StatusReport.emit_bound(doc)
+        else:
+            print_field_roster(homes)
+            print("next          PICK --field <id> | of new")
+        StatusReport.emit_event(doc=doc)
         raise SystemExit(ROSTER_EXIT)
     if not order_path(root).exists():
-        print("no ORDER. of init --mission '...'")
-        detect = detect_adapters()
-        print("adapters:")
-        for k, v in detect.items():
-            print(f"  {k}: {v or '-'}")
+        doc = StatusReport.no_order()
+        if machine:
+            StatusReport.emit_bound(doc)
+        else:
+            print("no ORDER. of init --mission '...'")
+            detect = detect_adapters()
+            print("adapters:")
+            for k, v in detect.items():
+                print(f"  {k}: {v or '-'}")
+        StatusReport.emit_event(doc=doc)
+        return
+    if machine:
+        doc = StatusReport.live(root)
+        StatusReport.emit_bound(doc)
+        StatusReport.emit_event(doc=doc)
         return
     order = load_order(root)
     state = load_state(root)
@@ -636,6 +854,7 @@ def cmd_status(args: argparse.Namespace) -> None:
             "do not implement in the leader tree; of contrast before close"
         )
     print_audit_block(root)
+    StatusReport.emit_event(root)
 
 
 def cmd_detect(args: argparse.Namespace) -> None:

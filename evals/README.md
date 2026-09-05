@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous, status JSON. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -51,6 +51,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/orphan-packed-cleanup` | `recovery_orphan_packed` | closed leftover pack: retain names `orphan packed`; `of gc` unlinks with `gc-stamp.json` `orphans[]`; resume auto-gc does not (`OrphanPackedCleanup`) |
 | `recovery/doctor-one-pass-skew` | `recovery_doctor_one_pass` | one `of doctor` names leftover ACTIVE stub and aged in-flight pack; skill VERSION skew already on doctor (`DoctorOnePassSkew`) |
 | `recovery/wave-list-show` | `recovery_multi_day_resume` | two-wave field: `of wave list` marks live wave 2; `of wave show` tells live from the prior integrated wave (`WaveRosterListShow`) |
+| `recovery/status-json` | `recovery_multi_day_resume` | two-wave field: `of status --json` is one object with live wave 2 / in-flight `w2`; not a wave roster (`StatusReportJson`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`.
 
@@ -67,7 +68,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, and `RootStubAmbiguous`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, and `StatusReportJson`.
 
 ```bash
 python3 -m unittest discover -s tests -v

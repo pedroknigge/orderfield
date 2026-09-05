@@ -1,0 +1,34 @@
+{
+  "id": "recovery/status-json",
+  "description": "Long-mission dashboard: of status --json is one object with live wave 2, in_flight, field open; not a wave roster",
+  "fixture": "recovery_multi_day_resume",
+  "tags": ["recovery", "long-task", "status", "json"],
+  "steps": [
+    {
+      "run": "status",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"status\"",
+        "\"wave\": 2",
+        "\"field\": \"open\"",
+        "\"in_flight\": 1",
+        "\"w2\""
+      ],
+      "stdout_not_contains": [
+        "waves         2",
+        "no ORDER",
+        "PICK --field",
+        "root        "
+      ]
+    },
+    {
+      "run": "--json",
+      "args": ["status"],
+      "exit": 0,
+      "stdout_contains": ["wave        2", "in_flight   1"],
+      "stderr_contains": ["\"event\": \"status\"", "\"wave\": 2", "\"w2\""],
+      "stdout_not_contains": ["\"kind\": \"status\""]
+    }
+  ]
+}

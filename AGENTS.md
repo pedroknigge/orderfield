@@ -115,6 +115,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.25 `of doctor` one-pass skew (ACTIVE + version + stale packs; `recovery/doctor-one-pass-skew`) | documented |
 | 0.7.26 orphan packed-child cleanup (`OrphanPacked`; `recovery/orphan-packed-cleanup`) | documented |
 | 0.7.27 root stub vs nested fields (refuse `--field` / migrate archive; `recovery/root-stub-ambiguous`) | documented |
+| 0.7.28 `of status --json` live-wave dashboard document (`StatusReport`; `recovery/status-json`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

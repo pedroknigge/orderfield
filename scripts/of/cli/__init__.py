@@ -41,6 +41,7 @@ from of.cli.ops import (
     cmd_resume,
     cmd_retain,
     cmd_status,
+    StatusReport,
     cmd_validate,
     cmd_wave,
     cmd_worktree,
@@ -159,6 +160,7 @@ __all__ = [
     "cmd_spawn",
     "cmd_spec",
     "cmd_spec_diff",
+    "StatusReport",
     "cmd_status",
     "cmd_unpack",
     "cmd_validate",
@@ -333,6 +335,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_wave)
 
     s = sub.add_parser("status", help="show field and caps")
+    s.add_argument(
+        "--json",
+        dest="status_json",
+        action="store_true",
+        help="print one live-status JSON object on stdout (dashboard path)",
+    )
     s.set_defaults(func=cmd_status)
 
     s = sub.add_parser(

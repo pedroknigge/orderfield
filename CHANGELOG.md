@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.28
+
+`of status --json` machine path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.27 notes.
+
+- **Dashboard snapshot from the live screen:** `of status --json` prints one JSON object on stdout from the same `StatusReport` document the human status screen already reads (`FieldSignal`, `PackedAge`, `RootStub`, requirement counts). Schema-stable keys for long missions: id / rev / phase / wave / field / in_flight / spawn_blocked / signal / packed_age / spec_hash / requirements. No `STATUS.json`. No second ledger. No token field. Human `of status` is unchanged. Global `--json` / `OF_JSON=1` emits the same facts on the `status` event.
+- **Eval:** `recovery/status-json` reuses the multi-day two-wave fixture and fails if the JSON hides wave 2, omits in-flight `w2`, or prints the human roster. `StatusReportJson` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.28; skill/alias description preview `v0.7.28 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.27 notes.
+
 ## 0.7.27
 
 Root stub vs nested fields: refuse or migrate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.26 notes.
