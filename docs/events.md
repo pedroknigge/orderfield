@@ -40,7 +40,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
 | `issue` | After `of issue` | `action` (`create` \| `search`), `repo` (`pedroknigge/orderfield`), `ok`; `dry_run` on create and on search preview |
 | `warning` | Non-fatal note that would be prose in plain mode | `ok: true`, `kind`, `message` (one bounded line; secrets and home paths stripped). See kinds below. |
-| `error` | A deliberate refusal (`die`, `kind: refused` or a named kind) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, `child-forge` for `of learn --protocol/--promote` under `OF_CHILD`, `issue` for `of issue` (gh missing/unauth, OF_CHILD submit, create/list failure), `reserved` for `of pack --tokens N>0`, `budget.seconds` when spawn `--timeout` disagrees with the packet wall-clock or `--seconds` is invalid, `wal-crash` test-only, or the exception class), `message` (one sanitized line, secrets and home paths redacted) |
+| `error` | A deliberate refusal (`die`, `kind: refused` or a named kind) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, `child-forge` for `of learn --protocol/--promote` under `OF_CHILD`, `issue` for `of issue` (gh missing/unauth, OF_CHILD submit, create/list failure), `reserved` for `of pack --tokens N>0`, `budget.seconds` when spawn `--timeout` disagrees with the packet wall-clock or `--seconds` is invalid, `slice.phase` when `of pack --slice` is a whole-phase slogan, `wal-crash` test-only, or the exception class), `message` (one sanitized line, secrets and home paths redacted) |
 
 `warning.kind` values:
 
@@ -48,7 +48,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | --- | --- |
 | `learning_skipped` | Learnings skipped on load (no provenance / schema failure); once per unchanged skipped-set fingerprint |
 | `cost_unmeasured` | Pre-spawn cost disclaimer (`of spawn`) |
-| `slice_long` | Pack slice at/over the advisory char threshold |
+| `slice_long` | Pack slice at/over the advisory char threshold; names split/constraints/`of unpack` fix path. Whole-phase slogans are `error` `slice.phase`, not this warning |
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |

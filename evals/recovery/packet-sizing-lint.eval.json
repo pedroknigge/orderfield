@@ -1,0 +1,74 @@
+{
+  "id": "recovery/packet-sizing-lint",
+  "description": "Whole-phase pack slogans die with a split/constraints fix path; length ≥800 stays advisory and still packs; a short honest slice packs silently",
+  "fixture": "recovery_packet_sizing",
+  "tags": ["recovery", "gate", "pack", "slice", "long-task"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "do the whole explore phase",
+        "--role",
+        "explorer",
+        "--child-id",
+        "whole"
+      ],
+      "exit": 1,
+      "stderr_contains": [
+        "slice.phase",
+        "whole-phase slice refused",
+        "of pack --slice",
+        "--owns-requirement",
+        "of patch --constraints-add"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "map pricing models, do not decide the phase",
+        "--role",
+        "explorer",
+        "--child-id",
+        "ok"
+      ],
+      "exit": 0,
+      "stderr_not_contains": [
+        "whole-phase slice refused",
+        "slice is"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/ok.json",
+          "contains": ["\"child_id\": \"ok\""]
+        }
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "--role",
+        "explorer",
+        "--child-id",
+        "long"
+      ],
+      "exit": 0,
+      "stderr_contains": [
+        "slice is 800 chars",
+        "one pack is not a whole phase",
+        "of pack --slice",
+        "of patch --constraints-add",
+        "of unpack"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/long.json",
+          "contains": ["\"child_id\": \"long\""]
+        }
+      ]
+    }
+  ]
+}

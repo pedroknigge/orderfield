@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.17`
+**Code rev:** VERSION `0.7.18`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 98 |
+| OK | 99 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 84 |
+| critical | 85 |
 | normal | 19 |
 
-**Truth score (advisory):** `(98*100 + 4*50) / 103 = 97.1` (103 matrix rows; unique IDs C-001…C-103)
+**Truth score (advisory):** `(99*100 + 4*50) / 104 = 97.1` (104 matrix rows; unique IDs C-001…C-104)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -172,6 +172,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-101 | Long packs honor `budget.seconds` as the spawn wall-clock: written value is not capped; `of spawn --timeout` must match or be omitted (no silent 900 ceiling); timeout and mismatch name `of unpack` then `of pack --seconds N`; tokens stay reserved | CHANGELOG / SKILL / packet.schema / architecture / evals | `BudgetSeconds`; `cmd_pack` / `cmd_spawn`; recovery `budget-seconds-honesty`; `BudgetSecondsHonesty` | `scripts/of/cli/wave.py` / `evals/recovery/budget-seconds-honesty.eval.json` / `tests/test_budget_tokens.py` | `BudgetSeconds` / `cmd_pack` / `cmd_spawn` | — | critical | OK | 0.7.15 |
 | C-102 | Mid-flight `of spec --amend` + `of patch` across waves: next packet carries dated SPEC (`spec_hash` / `spec_ref` + `## Amendment N —` UTC) and the patched constraint; the previous-wave packet is not rewritten | CHANGELOG / SKILL / evals / external-brief | `append_amendment`; `cmd_spec` / `cmd_patch` / `cmd_pack`; recovery `midflight-amend`; `MidFlightAmend`; `EvalFileAssert` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` / `evals/recovery/midflight-amend.eval.json` / `tests/test_kernel_spec.py` | `append_amendment` / `cmd_spec` / `cmd_pack` / `EvalFileAssert` | — | critical | OK | 0.7.16 |
 | C-103 | Collect/integrate refuse chat-dump residuals; a structured residual writes a wave report that is a reduction (`status` / `wants` / `uncertainty`), not transcript evidence | CHANGELOG / SKILL / evals / external-brief / kernel feature | `ResidualQuality`; `validate_residual`; recovery `wave-report-quality-gate`; `WaveReportQualityGate` | `scripts/of/pack.py` / `evals/recovery/wave-report-quality-gate.eval.json` / `tests/test_kernel_pack.py` | `ResidualQuality` / `validate_residual` / `WaveReportQualityGate` | — | critical | OK | 0.7.17 |
+| C-104 | Whole-phase pack slogans die at `of pack` with a split/constraints fix path; length ≥800 stays advisory (packet still written) and names `of unpack` | CHANGELOG / SKILL / evals / events / kernel feature | `SliceLint`; `cmd_pack`; recovery `packet-sizing-lint`; `SliceLintGate` | `scripts/of/pack.py` / `scripts/of/cli/wave.py` / `evals/recovery/packet-sizing-lint.eval.json` / `tests/test_kernel_pack.py` | `SliceLint` / `cmd_pack` | — | critical | OK | 0.7.18 |
 
 ### Verdict definitions
 
@@ -215,6 +216,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-101 0.7.15: budget.seconds honesty; spawn --timeout must match or omit
 - [x] C-102 0.7.16: mid-flight amend+patch; next packet carries dated amend
 - [x] C-103 0.7.17: wave-report quality gate; chat-dump residual cannot collect
+- [x] C-104 0.7.18: packet sizing lint; whole-phase slogans die; ≥800 stays advisory
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

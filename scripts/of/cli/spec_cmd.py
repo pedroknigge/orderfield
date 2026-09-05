@@ -1042,6 +1042,20 @@ def eval_setup_recovery_wave_report_quality(root: Path) -> None:
     WaveReportQualityEval.setup(root)
 
 
+@_register_eval_fixture("recovery_packet_sizing")
+def eval_setup_recovery_packet_sizing(root: Path) -> None:
+    """Empty explore field. Pack steps prove whole-phase refuse + length note."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval packet sizing lint",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+
+
 @_register_eval_fixture("recovery_pack_exclusivity")
 def eval_setup_recovery_pack_exclusivity(root: Path) -> None:
     EvalInvariantSetup.setup_pack_exclusivity(root)

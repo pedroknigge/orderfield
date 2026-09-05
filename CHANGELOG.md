@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.18
+
+Packet sizing lint. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.17 notes.
+
+- **One pack is not a whole phase:** `SliceLint` refuses exact whole-phase slogans (`do the whole explore phase`) at `of pack` (`kind=slice.phase`). The refusal names the fix: split into multiple `of pack --slice` with exclusive `--owns-requirement` / `--owns-path`; shared procedure goes in `of patch --constraints-add`. No new schema. Not a token budget.
+- **Length ≥800 stays advisory:** oversized `--slice` still packs and still charges (DOCTRINE-001). The note now names the same split/constraints/`of unpack` fix path. Leaders who `rm` packets by hand still burn `children_spawned`.
+- **Eval:** `recovery/packet-sizing-lint` fails if a whole-phase slogan packs, if the SKILL example is refused, or if an 800-char slice is refused instead of noted. `SliceLintGate` covers the slogan set.
+- Packaging: VERSION 0.7.18; skill/alias description preview `v0.7.18 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.17 notes.
+
 ## 0.7.17
 
 Wave-report quality gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.16 notes.

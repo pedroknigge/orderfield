@@ -10,6 +10,7 @@ from typing import Any
 
 from of.field import (
     FIELD_SLAVE_MD,
+    PHASES,
     PROTOCOL_WRITABLE_KEY,
     ROLE_CONTRACTS,
     _read_json_object,
@@ -35,6 +36,114 @@ from of.spec import (
 
 SLICE_WARN_CHARS = 800
 SLICE_BRIEF_CHARS = 80
+
+
+class SliceLint:
+    """Pack sizing. Length stays advisory. Whole-phase slogans die."""
+
+    WARN_CHARS = SLICE_WARN_CHARS
+    KIND = "slice.phase"
+    WARN_KIND = "slice_long"
+    SLOGANS = frozenset(
+        {
+            "do the whole phase",
+            "do the entire phase",
+            "do this whole phase",
+            "do this entire phase",
+            "the whole phase",
+            "the entire phase",
+            "this whole phase",
+            "this entire phase",
+            "complete the phase",
+            "complete this phase",
+            "complete the whole phase",
+            "complete the entire phase",
+            "implement the whole phase",
+            "implement the entire phase",
+            "implement this whole phase",
+            "implement this entire phase",
+            "run the whole phase",
+            "run the entire phase",
+            "pack the whole phase",
+            "pack the entire phase",
+            "pack a whole phase",
+            "do all of this phase",
+            "do all of the phase",
+            "one slice for the whole phase",
+            "one pack for the whole phase",
+            "one pack is the whole phase",
+            "the whole phase as one slice",
+            "the entire phase as one slice",
+        }
+    )
+
+    @staticmethod
+    def body(text: str) -> str:
+        return " ".join(str(text or "").split()).casefold().rstrip(".!?;:")
+
+    @staticmethod
+    def slogans(phase: str | None = None) -> frozenset[str]:
+        extra: set[str] = set()
+        names = [str(item) for item in PHASES]
+        if phase:
+            name = str(phase).strip().casefold()
+            if name and name not in names:
+                names.append(name)
+        for name in names:
+            extra.update(
+                {
+                    f"do the whole {name}",
+                    f"do the entire {name}",
+                    f"do the whole {name} phase",
+                    f"do the entire {name} phase",
+                    f"do all of the {name} phase",
+                    f"complete the {name} phase",
+                    f"complete the whole {name} phase",
+                    f"complete the entire {name} phase",
+                    f"implement the whole {name} phase",
+                    f"implement the entire {name} phase",
+                    f"the whole {name} phase",
+                    f"the entire {name} phase",
+                    f"pack the whole {name} phase",
+                    f"pack the entire {name} phase",
+                }
+            )
+        return SliceLint.SLOGANS | extra
+
+    @staticmethod
+    def is_whole_phase(text: str, phase: str | None = None) -> bool:
+        body = SliceLint.body(text)
+        return bool(body) and body in SliceLint.slogans(phase)
+
+    @staticmethod
+    def too_long(text: str) -> bool:
+        return len(str(text or "")) >= SliceLint.WARN_CHARS
+
+    @staticmethod
+    def refuse_whole_phase(text: str, phase: str | None = None) -> None:
+        if not SliceLint.is_whole_phase(text, phase):
+            return
+        die(
+            "whole-phase slice refused: one pack is not a whole phase; "
+            "split into multiple of pack --slice with exclusive "
+            "--owns-requirement/--owns-path; shared procedure: "
+            "of patch --constraints-add",
+            kind=SliceLint.KIND,
+        )
+
+    @staticmethod
+    def long_note(text: str) -> str | None:
+        if not SliceLint.too_long(text):
+            return None
+        return (
+            f"slice is {len(text)} chars (>= {SliceLint.WARN_CHARS}); "
+            "one pack is not a whole phase. Split into multiple of pack "
+            "--slice with exclusive --owns-requirement/--owns-path; "
+            "shared procedure: of patch --constraints-add. "
+            "The packet was still written; of unpack --child-id <id> releases it."
+        )
+
+
 PROMPT_ORDER_KEYS = ("id", "rev", "mission", "phase", "spec_ref")
 PROMPT_ORDER_READ = "read ORDER.json for constraints, backlog, workspace"
 VERIFIER_EVIDENCE_MIN = 24

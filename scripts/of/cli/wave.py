@@ -64,7 +64,7 @@ from of.spec import (
 )
 
 from of.pack import (
-    SLICE_WARN_CHARS,
+    SliceLint,
     canonical_packet_rel,
     canonical_residual_rel,
     canonical_scratch_rel,
@@ -296,14 +296,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
     if args.role not in ROLES:
         die(f"invalid role: {args.role}")
     slice_text = args.slice or ""
-    if len(slice_text) >= SLICE_WARN_CHARS:
-        slice_note = (
-            f"slice is {len(slice_text)} chars (>= {SLICE_WARN_CHARS}); "
-            "shared procedure belongs in ORDER.constraints via of patch, not in --slice. "
-            "The packet was still written; of unpack --child-id <id> releases it."
-        )
+    SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
+    slice_note = SliceLint.long_note(slice_text)
+    if slice_note:
         emit_wave_warning(
-            "slice_long",
+            SliceLint.WARN_KIND,
             slice_note,
             plain=f"of: note — {slice_note}",
         )
