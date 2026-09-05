@@ -1265,9 +1265,10 @@ class ThresholdStopSpawn(unittest.TestCase):
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
         report = json.loads(integrated.stdout)
         self.assertEqual(report["regime"], "escalate_up")
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
         state = load_json(self.tmp / ".orderfield" / "state.json")
         self.assertTrue(state.get("spawn_blocked"))
-        self.assertEqual(state.get("blocked_at_order_rev"), 1)
+        self.assertEqual(state.get("blocked_at_order_rev"), order.get("rev"))
 
         blocked_pack = run_of(
             self.tmp,
