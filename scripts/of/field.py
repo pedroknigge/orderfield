@@ -2595,62 +2595,127 @@ def redact_text(text: str) -> str:
     return out
 
 
-def redact_argv(argv: list[str]) -> list[str]:
-    """Redact secret values and approval flags in a spawn argv list."""
-    out: list[str] = []
-    redact_next: str | None = None
-    for raw in argv:
-        arg = str(raw)
+class ArgvRedact:
+    """Spawn argv preview. Secrets stay hidden. Paths keep a basename.
+
+    A long prompt body becomes `<prompt>`. A filesystem path — especially
+    the value of `--output-schema` / `-o` — is not a prompt. Deep skill
+    roots still name `residual.codex.schema.json` in dry-run stdout.
+    """
+
+    PROMPT_CHARS = 80
+    PATH_FLAGS = frozenset({"--output-schema", "-o"})
+    PATH_SUFFIXES = (".json", ".md", ".yml", ".yaml", ".toml")
+
+    @staticmethod
+    def is_path_token(arg: str) -> bool:
+        text = str(arg or "")
+        if not text or "\n" in text:
+            return False
+        if text.startswith("-") and "=" in text:
+            _key, _eq, val = text.partition("=")
+            return ArgvRedact.is_path_token(val)
+        seps = {os.sep}
+        if os.altsep:
+            seps.add(os.altsep)
+        if not any(sep in text for sep in seps) and not text.startswith("."):
+            return False
+        name = Path(text).name.lower()
+        return bool(name) and name.endswith(ArgvRedact.PATH_SUFFIXES)
+
+    @staticmethod
+    def path_preview(arg: str) -> str:
+        text = str(arg or "")
+        if text.startswith("-") and "=" in text:
+            key, _eq, val = text.partition("=")
+            return f"{key}={ArgvRedact.path_preview(val)}"
+        name = Path(text).name
+        if not name:
+            return "<prompt>" if len(text) > ArgvRedact.PROMPT_CHARS else redact_text(text)
+        if len(text) > ArgvRedact.PROMPT_CHARS:
+            return redact_text(f"…/{name}")
+        return redact_text(text)
+
+    @staticmethod
+    def apply(argv: list[str]) -> list[str]:
+        out: list[str] = []
+        redact_next: str | None = None
+        for raw in argv:
+            arg = str(raw)
+            if redact_next == "secret":
+                out.append(REDACTED)
+                redact_next = None
+                continue
+            if redact_next == "approval-mode":
+                out.append(
+                    APPROVAL_REDACTED
+                    if arg.strip().lower() in ESCALATED_APPROVAL_VALUES
+                    else arg
+                )
+                redact_next = None
+                continue
+            if redact_next == "approval":
+                out.append(APPROVAL_REDACTED)
+                redact_next = None
+                continue
+            if redact_next == "path":
+                out.append(ArgvRedact.path_preview(arg))
+                redact_next = None
+                continue
+            key, eq, val = arg.partition("=")
+            if eq:
+                if _is_secret_flag(key):
+                    out.append(f"{key}={REDACTED}")
+                    continue
+                if key in APPROVAL_VALUE_FLAGS or key.lower() == "--approval-mode":
+                    hidden = (
+                        APPROVAL_REDACTED
+                        if val.strip().lower() in ESCALATED_APPROVAL_VALUES
+                        else val
+                    )
+                    out.append(f"{key}={hidden}")
+                    continue
+                if key in ArgvRedact.PATH_FLAGS:
+                    out.append(f"{key}={ArgvRedact.path_preview(val)}")
+                    continue
+            lowered = arg.lower()
+            if lowered in APPROVAL_FLAG_NAMES or arg in APPROVAL_FLAG_NAMES:
+                out.append(APPROVAL_REDACTED)
+                continue
+            if _is_secret_flag(arg):
+                out.append(arg)
+                redact_next = "secret"
+                continue
+            if arg in APPROVAL_VALUE_FLAGS or lowered == "--approval-mode":
+                out.append(arg)
+                redact_next = "approval-mode"
+                continue
+            if arg in ArgvRedact.PATH_FLAGS:
+                out.append(arg)
+                redact_next = "path"
+                continue
+            if "\n" in arg:
+                out.append("<prompt>")
+                continue
+            if ArgvRedact.is_path_token(arg):
+                out.append(ArgvRedact.path_preview(arg))
+                continue
+            if len(arg) > ArgvRedact.PROMPT_CHARS:
+                out.append("<prompt>")
+                continue
+            out.append(redact_text(arg))
         if redact_next == "secret":
             out.append(REDACTED)
-            redact_next = None
-            continue
-        if redact_next == "approval-mode":
-            out.append(
-                APPROVAL_REDACTED
-                if arg.strip().lower() in ESCALATED_APPROVAL_VALUES
-                else arg
-            )
-            redact_next = None
-            continue
-        if redact_next == "approval":
+        elif redact_next == "approval-mode":
             out.append(APPROVAL_REDACTED)
-            redact_next = None
-            continue
-        if "\n" in arg or len(arg) > 80:
+        elif redact_next == "path":
             out.append("<prompt>")
-            continue
-        key, eq, val = arg.partition("=")
-        if eq:
-            if _is_secret_flag(key):
-                out.append(f"{key}={REDACTED}")
-                continue
-            if key in APPROVAL_VALUE_FLAGS or key.lower() == "--approval-mode":
-                hidden = (
-                    APPROVAL_REDACTED
-                    if val.strip().lower() in ESCALATED_APPROVAL_VALUES
-                    else val
-                )
-                out.append(f"{key}={hidden}")
-                continue
-        lowered = arg.lower()
-        if lowered in APPROVAL_FLAG_NAMES or arg in APPROVAL_FLAG_NAMES:
-            out.append(APPROVAL_REDACTED)
-            continue
-        if _is_secret_flag(arg):
-            out.append(arg)
-            redact_next = "secret"
-            continue
-        if arg in APPROVAL_VALUE_FLAGS or lowered == "--approval-mode":
-            out.append(arg)
-            redact_next = "approval-mode"
-            continue
-        out.append(redact_text(arg))
-    if redact_next == "secret":
-        out.append(REDACTED)
-    elif redact_next == "approval-mode":
-        out.append(APPROVAL_REDACTED)
-    return out
+        return out
+
+
+def redact_argv(argv: list[str]) -> list[str]:
+    """Redact secret values and approval flags in a spawn argv list."""
+    return ArgvRedact.apply(argv)
 
 
 def argv_preview(argv: list[str]) -> str:
