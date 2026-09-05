@@ -2208,7 +2208,9 @@ class WaveRosterListShow(unittest.TestCase):
         self.assertNotEqual(missing.returncode, 0)
         self.assertIn("no wave 9", missing.stderr)
         self.assertNotIn("wave", of.MUTATING_COMMANDS)
-        self.assertIn("wave", of.FIELD_BIND_COMMANDS)
+        from of.field import FIELD_BIND_COMMANDS
+
+        self.assertIn("wave", FIELD_BIND_COMMANDS)
 
     def test_multi_wave_marks_live_and_shows_prior(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-wave-multi-"))
