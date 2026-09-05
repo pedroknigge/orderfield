@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.16
+
+Mid-flight amend evals. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.15 notes.
+
+- **Long-task steer is proven:** mid-flight `of spec --amend` dates the new ask into SPEC.md (original stays). `of patch` rewrites constraints. Wave-1 packets go stale on the rev bump; `of next-wave` advances; the wave-2 packet carries the live `spec_hash` / `spec_ref` and the patched constraint. The wave-1 packet is not rewritten.
+- **Eval:** `recovery/midflight-amend` fails if the next packet lacks the dated amendment or the patched constraint, or if the previous packet is silently rewritten. `MidFlightAmend` checks `packet.spec_hash` equals SPEC.md bytes and the `## Amendment 1 —` UTC heading. `file_contains` reads JSON or text (`not_contains` on the same item). Not a new CLI verb. Not a new ORDER field.
+- Packaging: VERSION 0.7.16; skill/alias description preview `v0.7.16 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.15 notes.
+
 ## 0.7.15
 
 `budget.seconds` honesty for long packs. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.14 notes.

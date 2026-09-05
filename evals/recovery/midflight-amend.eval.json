@@ -1,0 +1,94 @@
+{
+  "id": "recovery/midflight-amend",
+  "description": "Mid-flight of spec --amend + of patch: next-wave packet carries dated amend and patched constraint; wave-1 packet is not rewritten",
+  "fixture": "recovery_midflight_amend",
+  "tags": ["recovery", "long-task", "amend", "patch", "pack"],
+  "steps": [
+    {
+      "run": "spec",
+      "args": [
+        "--amend",
+        "Keep the original brief. Also require a write log dated on each persist."
+      ],
+      "exit": 0,
+      "stdout_contains": ["spec amended", "rev="]
+    },
+    {
+      "run": "patch",
+      "args": [
+        "--constraints-add",
+        "next packet must carry the dated amend"
+      ],
+      "exit": 0,
+      "stdout_contains": ["next packet must carry the dated amend", "rev="]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "field         open",
+        "NEXT-WAVE",
+        "wave is closed or stale; run next-wave"
+      ],
+      "stdout_not_contains": ["field         closed", "next\n  PACK"]
+    },
+    {
+      "run": "next-wave",
+      "exit": 0,
+      "stdout_contains": ["wave=2"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "Implement app/w2.py after the dated amend",
+        "--role",
+        "implementer",
+        "--child-id",
+        "w2",
+        "--owns-path",
+        "app/w2.py",
+        "--owns-requirement",
+        "W2-001"
+      ],
+      "exit": 0,
+      "stdout_contains": ["child_id=w2 wave=2"],
+      "file_contains": [
+        {
+          "path": ".orderfield/SPEC.md",
+          "contains": [
+            "Long-task mid-flight amend",
+            "W1-001 implements the first wave",
+            "## Amendment 1 —",
+            "write log dated on each persist"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/002/packets/w2.json",
+          "contains": [
+            "\"wave\": 2",
+            "\"spec_ref\": \".orderfield/SPEC.md\"",
+            "\"reads_spec\": true",
+            "W2-001",
+            "next packet must carry the dated amend"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/002/prompts/w2.md",
+          "contains": [
+            "Binding specification",
+            ".orderfield/SPEC.md"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/001/packets/w1.json",
+          "contains": ["\"wave\": 1", "W1-001"],
+          "not_contains": [
+            "next packet must carry the dated amend",
+            "\"wave\": 2"
+          ]
+        }
+      ]
+    }
+  ]
+}

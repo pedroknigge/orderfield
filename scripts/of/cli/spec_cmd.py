@@ -21,6 +21,7 @@ from of.field import (
     field_generation,
     field_home,
     field_is_file,
+    field_read_text,
     field_lock,
     find_root,
     kernel_repo_root,
@@ -534,6 +535,20 @@ def _register_eval_fixture(name: str):
     return decorator
 
 
+class EvalFileAssert:
+    """JSON or text payload for eval file_contains. Not a second engine."""
+
+    @staticmethod
+    def payload(path: Path) -> str:
+        raw = field_read_text(path)
+        if raw is None:
+            die(f"missing {path}")
+        try:
+            return json.dumps(json.loads(raw))
+        except json.JSONDecodeError:
+            return raw
+
+
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     return subprocess.run(
@@ -925,6 +940,50 @@ def eval_setup_recovery_budget_seconds(root: Path) -> None:
     EvalInvariantSetup.require_ok(init, "init")
 
 
+class MidFlightAmendEval:
+    """Wave-1 in-flight field. Eval steps prove amend+patch land on wave 2."""
+
+    ORIGINAL = (
+        "Long-task mid-flight amend.\n"
+        "W1-001 implements the first wave.\n"
+        "W2-001 implements the second wave after the dated amend.\n"
+    )
+    AMEND = (
+        "Keep the original brief. Also require a write log dated on each persist."
+    )
+    CONSTRAINT = "next packet must carry the dated amend"
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        brief = root / "brief.md"
+        brief.write_text(MidFlightAmendEval.ORIGINAL, encoding="utf-8")
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "long-task mid-flight amend",
+            "--phase",
+            "build",
+            "--source-file",
+            str(brief),
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        for req_id, text in (
+            ("W1-001", "implements the first wave"),
+            ("W2-001", "implements the second wave after the dated amend"),
+        ):
+            added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+            EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        eval_pack_child(
+            root, "w1", "app/w1.py", "W1-001", "Implement app/w1.py"
+        )
+
+
+@_register_eval_fixture("recovery_midflight_amend")
+def eval_setup_recovery_midflight_amend(root: Path) -> None:
+    MidFlightAmendEval.setup(root)
+
+
 @_register_eval_fixture("recovery_pack_exclusivity")
 def eval_setup_recovery_pack_exclusivity(root: Path) -> None:
     EvalInvariantSetup.setup_pack_exclusivity(root)
@@ -1229,20 +1288,26 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                 rel = str(item.get("path") or "")
                 target = tmp / rel
                 try:
-                    data = load_json(target)
+                    payload = EvalFileAssert.payload(target)
                 except SystemExit:
                     return {
                         "id": eval_id,
                         "status": "failed",
                         "error": f"step {idx}: missing file {rel!r}",
                     }
-                payload = json.dumps(data)
                 for needle in item.get("contains") or []:
                     if str(needle) not in payload:
                         return {
                             "id": eval_id,
                             "status": "failed",
                             "error": f"step {idx}: {rel} missing {needle!r}",
+                        }
+                for needle in item.get("not_contains") or []:
+                    if str(needle) in payload:
+                        return {
+                            "id": eval_id,
+                            "status": "failed",
+                            "error": f"step {idx}: {rel} must not contain {needle!r}",
                         }
         return {"id": eval_id, "status": "passed", "description": spec.get("description")}
     except SystemExit as exc:

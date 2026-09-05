@@ -1,6 +1,6 @@
-# Next path (after 0.7.15)
+# Next path (after 0.7.16)
 
-`budget.seconds` is the spawn wall-clock. `recovery/budget-seconds-honesty` holds. Checkpoint handoff stay-on-run and sibling-field roster UX stay on the published line.
+Mid-flight `of spec --amend` + `of patch` is proven across waves. `recovery/midflight-amend` holds. `budget.seconds` honesty and checkpoint handoff stay-on-run stay on the published line.
 
 P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

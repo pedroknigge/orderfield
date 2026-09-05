@@ -915,5 +915,62 @@ class DeicticBrief(unittest.TestCase):
         self.assertIn("dale", spec)
 
 
+class MidFlightAmend(unittest.TestCase):
+    """Next packet after mid-flight amend+patch binds dated SPEC. of eval."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-midflight-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_midflight_amend(self.tmp)
+
+    def test_wave2_packet_binds_amended_spec_hash(self) -> None:
+        steer = of.MidFlightAmendEval
+        amended = run_of(self.tmp, "spec", "--amend", steer.AMEND)
+        self.assertEqual(amended.returncode, 0, amended.stderr)
+        patched = run_of(
+            self.tmp, "patch", "--constraints-add", steer.CONSTRAINT
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "Implement app/w2.py after the dated amend",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w2",
+            "--owns-path",
+            "app/w2.py",
+            "--owns-requirement",
+            "W2-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        spec_text = (self.tmp / ".orderfield" / "SPEC.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(steer.ORIGINAL.strip().splitlines()[0], spec_text)
+        self.assertRegex(
+            spec_text,
+            r"(?m)^## Amendment 1 — \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
+            spec_text,
+        )
+        self.assertIn(steer.AMEND, spec_text)
+        w1 = load_json(packet_path(self.tmp, "w1", 1))
+        w2 = load_json(packet_path(self.tmp, "w2", 2))
+        live = of.spec_bytes_hash(self.tmp)
+        self.assertEqual(w2.get("spec_hash"), live)
+        self.assertEqual(w2.get("spec_ref"), ".orderfield/SPEC.md")
+        self.assertEqual(w2.get("wave"), 2)
+        self.assertIn(steer.CONSTRAINT, w2.get("order", {}).get("constraints") or [])
+        self.assertNotEqual(w1.get("spec_hash"), w2.get("spec_hash"))
+        self.assertLess(int(w1.get("order_rev") or 0), int(w2.get("order_rev") or 0))
+        self.assertNotIn(
+            steer.CONSTRAINT, w1.get("order", {}).get("constraints") or []
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
