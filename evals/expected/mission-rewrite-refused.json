@@ -1,0 +1,16 @@
+{
+  "name": "mission-rewrite-refused",
+  "fixture": "recovery_mission_rewrite",
+  "mission": "keep the pricing architecture",
+  "phase": "explore",
+  "stolen_mission": "child stole the mission",
+  "stolen_phase": "deliver",
+  "stolen_constraint": "child rewrote every constraint",
+  "stolen_done_when": "child closed done-when by residual",
+  "expected_regime": "escalate_up",
+  "forbidden_regimes": ["phase", "scale_out", "scale_across"],
+  "spawn_blocked": true,
+  "spec_closed": false,
+  "constraint_must_remain": "slaves do not mutate ORDER",
+  "done_when_must_remain": "current phase criteria closed with evidence"
+}

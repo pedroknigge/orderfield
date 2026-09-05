@@ -1,0 +1,43 @@
+{
+  "id": "recovery/mission-rewrite-refused",
+  "description": "Residual rewrite of mission/phase/constraints/done-when dies; escalate_up stays; spawn blocked",
+  "fixture": "recovery_mission_rewrite",
+  "tags": ["recovery", "gate", "invariant", "mission"],
+  "steps": [
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--apply"],
+      "exit": 0,
+      "stdout_contains": ["escalate_up", "field residual"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "mission     keep the pricing architecture",
+        "phase       explore",
+        "slaves do not mutate ORDER",
+        "current phase criteria closed with evidence",
+        "spawn_blocked True",
+        "last_regime escalate_up"
+      ],
+      "stdout_not_contains": [
+        "child stole the mission",
+        "child rewrote every constraint",
+        "child closed done-when by residual"
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "claude",
+        "--packet",
+        ".orderfield/waves/001/packets/explorer_demo.json",
+        "--dry-run"
+      ],
+      "exit": 1,
+      "stderr_contains": ["spawn forbidden after escalate_up"]
+    }
+  ]
+}

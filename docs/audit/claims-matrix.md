@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.4`
+**Code rev:** VERSION `0.7.5`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 83 |
+| OK | 84 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 69 |
+| critical | 70 |
 | normal | 19 |
 
-**Truth score (advisory):** `(83*100 + 4*50) / 88 = 96.6` (88 matrix rows; unique IDs C-001…C-088)
+**Truth score (advisory):** `(84*100 + 4*50) / 89 = 96.6` (89 matrix rows; unique IDs C-001…C-089)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -157,6 +157,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-086 | #57 successful `of integrate` stdout is one JSON object with nonempty `regime`; human notes on stderr | SKILL / CHANGELOG / kernel feature / events | `cmd_integrate` prints JSON on stdout; mission note and owned-unverified on stderr; `--json` `mission_not_applied` | `scripts/of/cli/field_cmd.py` / `tests/test_theater_fieldops.py` | `cmd_integrate` | — | critical | OK | #57 0.7.4 |
 | C-087 | #55 invalid requirement id keeps `PREFIX-001`; hyphenated prefixes die and the refusal names that PREFIX must not contain `-` | SKILL / CHANGELOG / kernel feature | `require_req_id` hint when `text.count("-") > 1`; `REQ_ID_RE` unchanged | `scripts/of/spec.py` / `tests/test_spec_io.py` | `require_req_id` | — | critical | OK | #55 0.7.4 |
 | C-088 | #56 skipped-learnings warning once per unchanged skipped-set fingerprint; items still never enter a prompt | SKILL / CHANGELOG / events | `_filter_learnings` skip-warn cache sidecar of `OF_LEARNINGS` | `scripts/of/learn.py` / `scripts/of/field.py` / `tests/test_learn_provenance.py` | `_filter_learnings` | — | critical | OK | #56 0.7.4 |
+| C-089 | `of eval --strict --kernel` proves silent mission/phase/constraints/done-when rewrite dies and a public-surface slogan/internal/child stamp cannot close | CHANGELOG / evals / external-brief | recovery fixtures `mission-rewrite-refused`, `contrast-close-contract`, `slogan-evidence-refused`; `MissionRewriteRefused` file-level ORDER assert; `stderr_contains` on eval steps | `evals/recovery/` / `scripts/of/cli/spec_cmd.py` / `tests/test_kernel_cli.py` | `EvalInvariantSetup` / `run_recovery_eval_spec` / `MissionRewriteRefused` | — | critical | OK | 0.7.5 |
 
 ### Verdict definitions
 
@@ -189,6 +190,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-041 RETAIN-001: `gc` dump is permanent unlink; not a restorable dump
 - [x] C-084 SAT-001..006 0.7.3: walk every home, 7-day safe TTL, HITL drop/keep
 - [x] C-085..C-088 0.7.4: #54 pack continuation, #57 integrate JSON stdout, #55 hyphen PREFIX message, #56 skip-warn throttle
+- [x] C-089 0.7.5: invariant evals (mission rewrite / contract close / slogan) + external brief
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

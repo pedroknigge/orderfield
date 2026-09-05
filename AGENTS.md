@@ -47,6 +47,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
 | [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
 | [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
+| [docs/external-brief.md](docs/external-brief.md) | External reader brief + proof suite |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
 | [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B/C) |
@@ -93,6 +94,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.2 Vibe-Proof v0.9.5 P1 (WAL-002 writer rematerialize, SIBLING-001 residual resolver, ISSUE-003 title/search, LINT-002) | documented |
 | 0.7.3 Saturation control (gc walks every home, 7-day safe TTL, tree budget + HITL drop/keep) | documented |
 | 0.7.4 GitHub #54–#57 (pack continuation, integrate JSON stdout, spec hyphen PREFIX, skip-warn throttle) | documented |
+| 0.7.5 invariant evals + external brief (mission rewrite / contract close / slogan; Grok Bot contrast written) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

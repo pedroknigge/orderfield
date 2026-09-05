@@ -14,7 +14,7 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-from test_kernel_cli import CliFieldResidual  # noqa: E402,F401
+from test_kernel_cli import CliFieldResidual, MissionRewriteRefused  # noqa: E402,F401
 from test_kernel_field import ResumeRecoveryBrief  # noqa: E402,F401
 from test_kernel_pack import StalePackets  # noqa: E402,F401
 

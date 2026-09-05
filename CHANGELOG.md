@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.5
+
+Invariant evals + external brief. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.4 notes.
+
+- **Invariant evals:** `recovery/mission-rewrite-refused` — a residual that proposes to redefine mission, phase, constraints, or done-when cannot land those keys; `integrate --apply` keeps the leader ORDER; regime is `escalate_up`; spawn stays blocked. `recovery/contrast-close-contract` — public CLI-001 cannot close on a child-forged stamp or VERIFIED_INTERNAL; VERIFIED_CONTRACT then RESOLVED then CLOSED. `recovery/slogan-evidence-refused` — verifier slogan evidence cannot collect. Existing `contrast-close-internal` stays. `of eval --strict --kernel` fails if these regress. Eval runner also checks `stderr_contains`.
+- **Docs:** [docs/external-brief.md](docs/external-brief.md) for a serious external reader. Grok Bot contrast pick is stay-on-the-run + that written table — not a bot org. [docs/next-path.md](docs/next-path.md) points at REVIEW-001 still unproven.
+- Packaging: VERSION 0.7.5; skill/alias description preview `v0.7.5 — …`. Never rewrite v0.7.4 notes.
+
 ## 0.7.4
 
 GitHub issues #54–#57. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.3 notes.
