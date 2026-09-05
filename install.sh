@@ -6,7 +6,7 @@ set -euo pipefail
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 # INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
-DEFAULT_VERSION="0.7.5"
+DEFAULT_VERSION="0.7.6"
 KNOWN_HARNESSES=(claude codex cursor opencode grok)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"

@@ -540,6 +540,49 @@ class EvalInvariantSetup:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dump_json(dest, residual)
 
+    @staticmethod
+    def setup_pack_exclusivity(root: Path) -> None:
+        """Alice owns ALPHA-001 and slice/alice.py. BETA-001 stays unowned."""
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "eval pack exclusivity",
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        for req_id, text in (
+            ("ALPHA-001", "alice exclusive slice"),
+            ("BETA-001", "still unowned after alice packs"),
+        ):
+            added = eval_run_of(
+                root,
+                "spec",
+                "--add",
+                req_id,
+                "--text",
+                text,
+                "--surface",
+                "contract",
+            )
+            EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "alice exclusive",
+            "--role",
+            "implementer",
+            "--child-id",
+            "alice",
+            "--owns-path",
+            "slice/alice.py",
+            "--owns-requirement",
+            "ALPHA-001",
+        )
+        EvalInvariantSetup.require_ok(packed, "pack alice")
+
 
 def eval_write_done_residual(root: Path, child_id: str, wave: int = 1) -> None:
     EvalInvariantSetup.write_bound_residual(
@@ -814,6 +857,11 @@ def eval_setup_recovery_slogan_evidence(root: Path) -> None:
         evidence="all tests passed",
         result_text="transcript\n",
     )
+
+
+@_register_eval_fixture("recovery_pack_exclusivity")
+def eval_setup_recovery_pack_exclusivity(root: Path) -> None:
+    EvalInvariantSetup.setup_pack_exclusivity(root)
 
 
 def discover_recovery_eval_specs() -> list[Path]:

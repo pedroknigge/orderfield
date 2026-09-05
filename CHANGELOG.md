@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.6
+
+Threat-model honesty + pack exclusivity evals. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.5 notes.
+
+- **Threat model:** [docs/external-brief.md](docs/external-brief.md) names what a disobedient child cannot do through `of` (mission rewrite, slogan close, forged contract stamp, exclusive owners, child-forge learn/issue) and what the kernel does not stop (disobedient leader, writes outside CLI, same-user cooperative protocol, reserved cost / `of merge`). Points at [docs/audit/out-of-scope.md](docs/audit/out-of-scope.md). Reviewer re-run is unittest + `of eval --strict --kernel` + claims + validate-skill + unused-imports.
+- **Ownership evals:** `recovery/pack-exclusivity-refused` — two children cannot own the same binding ID; a new child that owns nothing is refused while IDs stay unowned; same-wave `--owns-path` overlap dies; a disjoint second owner still packs; foreign-owner refuse stays hard after that pack. Existing #54 unittests stay. `of eval --strict --kernel` fails if exclusivity regresses.
+- Packaging: VERSION 0.7.6; skill/alias description preview `v0.7.6 — …`. Never rewrite v0.7.5 notes.
+
 ## 0.7.5
 
 Invariant evals + external brief. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.4 notes.

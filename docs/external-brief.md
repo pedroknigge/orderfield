@@ -6,7 +6,7 @@ Orderfield is a disk-backed contract kernel. The harness starts and stops proces
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.5` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.6` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -27,20 +27,55 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 1. **One leader-owned ORDER write path.** A child residual may propose. `integrate --apply` may take additive `constraints+` / `done_when+` / notes after `escalate_up`. It does not redefine mission, phase, the constraint list, or done-when. Silent rewrite dies. Threshold stays.
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
 3. **Close is proof.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close` CLOSED. Child-forged `verified_contract` / `spec_closed` stamps do not land.
-4. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.
+4. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
+5. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.
 
 Short form: [PRINCIPLES.md](../PRINCIPLES.md). Contract: [references/principles.md](../references/principles.md).
 
-## Proof suite
+## Threat model
 
-These are regressions, not prose. CI runs both after unittest.
+A lab reviewer asks what a disobedient process can do. The kernel is a cooperative contract, not an OS jail and not `RUNTIME_OWNERSHIP`. Cite the proof, not the slogan.
+
+### What a disobedient child cannot do (through `of`)
+
+| Move | What dies | Proof |
+|---|---|---|
+| Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
+| Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
+| Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
+| Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
+| New child packs with no claim while IDs stay unowned | `cmd_pack` dies (`unowned`; `--owns-requirement`) | same eval; `scripts/of/cli/wave.py` `already_owns` gate |
+| Same-wave `--owns-path` overlap | `same_wave_owns_path_conflict` dies (`overlaps`) | same eval; `scripts/of/pack.py` |
+| `of learn --protocol` / `--promote` while spawn registry / `OF_CHILD` says child | `refuse_child_forge` (`kind=child-forge`) | `scripts/of/field.py`; `tests/test_learn_provenance.py` (LEARN-001 / LEARN-002) |
+| `of issue` create/submit from a child session | `_refuse_child_issue_submit` (leader-only after HITL) | `scripts/of/cli/ops.py`; `tests/test_issue_cli.py` / `tests/test_issue_hitl.py` (ISSUE-002) |
+
+A disjoint second owner still packs. That success step is in the exclusivity eval so a broken “second pack always dies” gate fails too.
+
+### What the kernel honestly does not stop
+
+These are not missing features. Do not invent kernel to close them. Record: [out-of-scope.md](audit/out-of-scope.md).
+
+- **Disobedient leader.** Product files are not locked. A leader can write the tree without `of pack`. Role obedience and metric truth stay protocol.
+- **Writes outside `of`.** Direct edits to ORDER, packets, residuals, or product paths bypass the CLI. The kernel validates what is routed through `of`.
+- **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`).
+- **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Do not add cost ceilings (`SCOPE-COST`).
+- **Publish / merge process.** No `of merge`. Independent GitHub approval is human merge practice (`SCOPE-REVIEW`). Test C is harness QA, not kernel CI (`SCOPE-TESTC`).
+
+### How a reviewer re-runs the proof
 
 ```bash
 python3 -m unittest discover -s tests -v
 python3 scripts/of.py eval --strict --kernel
+python3 docs/audit/check-claims.py
+bash scripts/validate-skill.sh
+python3 scripts/check_unused_imports.py
 ```
 
-`--strict --kernel` is recovery fixtures under `evals/recovery/` plus the unittest modules in `evals/evals.config.json`. A fail is a kernel regression.
+`--strict --kernel` is every `evals/recovery/*.eval.json` plus the unittest modules in `EVAL_UNITTEST_MODULES` (`scripts/of/cli/spec_cmd.py`). A fail is a kernel regression. Index: [evals/README.md](../evals/README.md).
+
+## Proof suite
+
+These are regressions, not prose. CI runs unittest then `of eval --strict --kernel`.
 
 | Must hold | Fixture |
 |---|---|
@@ -48,8 +83,7 @@ python3 scripts/of.py eval --strict --kernel
 | Public CLI-001: child stamp + VERIFIED_INTERNAL cannot close; VERIFIED_CONTRACT → RESOLVED → CLOSED | `recovery/contrast-close-contract` |
 | Verifier slogan evidence (`all tests passed`) cannot collect | `recovery/slogan-evidence-refused` |
 | Internal ALG-001: contrast OPEN → verify internal → RESOLVED → CLOSED | `recovery/contrast-close-internal` |
-
-Index: [evals/README.md](../evals/README.md).
+| Foreign owner / unowned new child / same-wave path overlap die; disjoint second owner packs | `recovery/pack-exclusivity-refused` |
 
 ## Deliberately reserved
 
