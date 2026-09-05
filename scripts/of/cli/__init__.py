@@ -88,6 +88,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_contrast_close_contract,
     eval_setup_recovery_done_when_lint,
     eval_setup_recovery_mission_rewrite,
+    eval_setup_recovery_multi_day_resume,
     eval_setup_recovery_multi_harness,
     eval_setup_recovery_pack_exclusivity,
     eval_setup_recovery_quarry_dirty,
@@ -155,6 +156,7 @@ __all__ = [
     "eval_setup_recovery_contrast_close_contract",
     "eval_setup_recovery_done_when_lint",
     "eval_setup_recovery_mission_rewrite",
+    "eval_setup_recovery_multi_day_resume",
     "eval_setup_recovery_multi_harness",
     "eval_setup_recovery_pack_exclusivity",
     "eval_setup_recovery_quarry_dirty",
@@ -797,7 +799,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--kernel",
         action="store_true",
-        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief)",
+        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief, DurableMultiDayResume)",
     )
     s.set_defaults(func=cmd_eval)
 

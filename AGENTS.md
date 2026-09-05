@@ -99,6 +99,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.9 corpus recovery / stale-field signal / multi-harness residual | documented |
 | 0.7.10 close/nested honesty guides + `of doctor` skill VERSION skew | documented |
 | 0.7.11 deep-install Codex `--output-schema` basename (`ArgvRedact`) | documented |
+| 0.7.12 durable multi-day resume (unique-field later session + re-init refuse) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

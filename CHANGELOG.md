@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.12
+
+Durable multi-day resume. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.11 notes.
+
+- **Live wave from disk:** `of resume` still reconstructs from `state.wave` plus packets/residuals. Stale `session.json` (wrong wave, completed children listed in-flight) does not win. Age plus in-flight packets is not `abandoned`.
+- **Later session is not foreign:** `ORDER.origin.session_id` vs `OF_SESSION_ID` sets `auto_continue no` only when several open fields exist. A unique open field auto-continues — origin is provenance, not resume authority. Sibling mismatch still prints foreign.
+- **Re-init theater dies:** `of init` without `--force` still refuses while a field exists. `recovery/multi-day-resume` plus `DurableMultiDayResume` fail if resume hides wave 2, prints `PACK`/`abandoned`/`foreign`, or `of init` succeeds.
+- Packaging: VERSION 0.7.12; skill/alias description preview `v0.7.12 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.11 notes.
+
 ## 0.7.11
 
 Deep-install argv honesty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.10 notes.

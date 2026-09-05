@@ -20,7 +20,11 @@ from test_kernel_cli import (  # noqa: E402,F401
     MissionRewriteRefused,
     MultiHarnessResidual,
 )
-from test_kernel_field import FieldAbandonedSignal, ResumeRecoveryBrief  # noqa: E402,F401
+from test_kernel_field import (  # noqa: E402,F401
+    DurableMultiDayResume,
+    FieldAbandonedSignal,
+    ResumeRecoveryBrief,
+)
 from test_kernel_pack import StalePackets  # noqa: E402,F401
 
 

@@ -35,6 +35,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/done-when-lint` | `recovery_done_when_lint` | generic done_when dies; contrast-bound criterion accepted |
 | `recovery/skip-explore-theater` | `recovery_skip_explore` | explore→build without `--force` dies; a forced skip is visible on status |
 | `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
+| `recovery/multi-day-resume` | `recovery_multi_day_resume` | aged wave-2 in-flight + stale `session.json`: resume reconstructs `HOLD`; `of init` without `--force` dies |
 | `recovery/escalate-verify-build` | `recovery_verify_build` | adversary residual verify→build is `escalate_up`; leader phase stays verify |
 | `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` keeps the basename (`ArgvRedact`; `MultiHarnessResidual`) |
 
@@ -53,7 +54,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `MultiHarnessResidual`, and `DoctorSkillVersionSkew`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `MultiHarnessResidual`, and `DoctorSkillVersionSkew`.
 
 ```bash
 python3 -m unittest discover -s tests -v

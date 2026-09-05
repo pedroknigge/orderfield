@@ -241,6 +241,32 @@ class SiblingFields(unittest.TestCase):
         )
         r = run_of(self.tmp, "resume", extra_env={"OF_SESSION_ID": "other"})
         self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("auto_continue yes", r.stdout)
+        self.assertNotIn("foreign field", r.stdout)
+
+    def test_foreign_origin_gate_stays_when_siblings_open(self) -> None:
+        run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "first",
+            "--origin",
+            "grok",
+            "--session-id",
+            "owner",
+        )
+        run_of(
+            self.tmp,
+            "new",
+            "--mission",
+            "second",
+            "--origin",
+            "grok",
+            "--session-id",
+            "other-owner",
+        )
+        r = run_of(self.tmp, "resume", extra_env={"OF_SESSION_ID": "stranger"})
+        self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("auto_continue no", r.stdout)
         self.assertIn("foreign field", r.stdout)
 

@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.11` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.12` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -52,6 +52,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Theater done-when (`current phase criteria closed with evidence`) | init / patch / `done_when+` refuse | `recovery/done-when-lint` |
 | Skip explore→build without `--force` | `of phase build` dies; a forced skip is printed on status | `recovery/skip-explore-theater` |
 | Empty waves + age look like a live deliver | status/resume print `abandoned`; field stays on disk | `recovery/stale-field-abandoned` |
+| Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Adversary residual moves verify→build | `integrate --apply` keeps verify; `escalate_up`; spawn blocked | `recovery/escalate-verify-build` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
 | New child packs with no claim while IDs stay unowned | `cmd_pack` dies (`unowned`; `--owns-requirement`) | same eval; `scripts/of/cli/wave.py` `already_owns` gate |
@@ -99,6 +100,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Generic done-when dies; a contrast-bound criterion is accepted | `recovery/done-when-lint` |
 | explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |
 | Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |
+| Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
 | Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
 

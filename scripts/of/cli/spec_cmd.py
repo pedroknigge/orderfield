@@ -17,6 +17,7 @@ from of.field import (
     die,
     dump_json,
     emit_event,
+    field_generation,
     field_home,
     field_is_file,
     field_lock,
@@ -24,7 +25,9 @@ from of.field import (
     kernel_repo_root,
     load_json,
     load_order,
+    require_public_schema,
     save_order,
+    session_path,
     sha256_text,
     snapshot_session,
     spec_path,
@@ -970,6 +973,62 @@ def eval_setup_recovery_stale_field(root: Path) -> None:
     FieldSignal.backdate_empty(root, "2018-01-01T00:00:00Z")
 
 
+@_register_eval_fixture("recovery_multi_day_resume")
+def eval_setup_recovery_multi_day_resume(root: Path) -> None:
+    """Aged wave-2 in-flight + stale session.json. Resume must reconstruct."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "multi-day live wave",
+        "--phase",
+        "build",
+        "--origin",
+        "cursor",
+        "--session-id",
+        "day1-owner",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    for req_id, text in (
+        ("DOMAIN-001", "wave-1 domain"),
+        ("STORE-001", "wave-1 store"),
+        ("W2-001", "wave-2 implementer"),
+    ):
+        added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+        EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+    eval_pack_child(
+        root, "domain", "app/domain.py", "DOMAIN-001", "Implement app/domain.py"
+    )
+    eval_pack_child(
+        root, "store", "app/store.py", "STORE-001", "Implement app/store.py"
+    )
+    (root / "app").mkdir(exist_ok=True)
+    (root / "app" / "domain.py").write_text("# domain\n", encoding="utf-8")
+    (root / "app" / "store.py").write_text("# store\n", encoding="utf-8")
+    eval_write_done_residual(root, "domain")
+    eval_write_done_residual(root, "store")
+    integrated = eval_run_of(root, "integrate", "--wave", "1")
+    EvalInvariantSetup.require_ok(integrated, "integrate wave 1")
+    nxt = eval_run_of(root, "next-wave")
+    EvalInvariantSetup.require_ok(nxt, "next-wave")
+    eval_pack_child(
+        root, "w2", "app/w2.py", "W2-001", "Implement app/w2.py on wave 2"
+    )
+    scratch = root / ".orderfield" / "work" / "scratch" / "w2"
+    scratch.mkdir(parents=True, exist_ok=True)
+    (scratch / "PULSE").write_text("still the same slice\n", encoding="utf-8")
+    FieldSignal.backdate_empty(root, "2018-01-01T00:00:00Z")
+    stale = {
+        "wave": 1,
+        "last_cmd": "pack",
+        "in_flight": ["domain", "store"],
+        "updated_at": "2018-01-01T00:00:00Z",
+    }
+    require_public_schema(stale, "session.schema.json", "session")
+    with field_generation(root):
+        dump_json(session_path(root), stale)
+
+
 @_register_eval_fixture("recovery_verify_build")
 def eval_setup_recovery_verify_build(root: Path) -> None:
     init = eval_run_of(
@@ -1141,6 +1200,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ResumeRecoveryBrief",
     "tests.test_kernel.MissionRewriteRefused",
     "tests.test_kernel.FieldAbandonedSignal",
+    "tests.test_kernel.DurableMultiDayResume",
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
 )
