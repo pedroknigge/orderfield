@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.23` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.24` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -55,6 +55,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Empty waves + age look like a live deliver | status/resume print `abandoned`; field stays on disk | `recovery/stale-field-abandoned` |
 | In-flight `packed_at` older than 7 days looks idle | status/resume print `packed_age`; child is not unpacked | `recovery/packed-age-watchdog` |
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
+| Multi-wave mission; which wave is live is unclear | `of wave list` marks `state.wave`; `of wave show` names live vs prior | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Spawn host dies mid-wave (started-only spawn meta, dead pid leftover, incomplete WAL) | `of resume` reconstructs the live wave (`HOLD`); leftovers do not invent `PACK` / `no ORDER`; `of init` without `--force` dies | `recovery/process-death-resume`; `ResumeAfterProcessDeath` |
 | Adversary residual moves verify→build | `integrate --apply` keeps verify; `escalate_up`; spawn blocked | `recovery/escalate-verify-build` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
@@ -106,6 +107,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |
 | In-flight `packed_at` older than 7d: status/resume print `packed_age`; not unpacked or closed | `recovery/packed-age-watchdog`; `PackedAgeWatchdog` |
 | Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
+| Multi-wave field: `of wave list` marks live `state.wave`; `show` tells live from the prior integrated wave | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Mid-flight `of spec --amend` + `of patch`: next packet carries dated amend + patched constraint; wave-1 packet is not rewritten | `recovery/midflight-amend`; `MidFlightAmend` |
 | Field threshold residual forbids pack/spawn until leader `of patch` + guarded `next-wave`; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten | `recovery/threshold-stop-spawn`; `ThresholdStopSpawn` |
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |

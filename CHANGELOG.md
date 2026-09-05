@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.24
+
+`of wave list` / `of wave show` for multi-wave missions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.23 notes.
+
+- **Live wave is marked:** `of wave list` walks existing `waves/NNN` plus `state.wave` and prints `*` on the live wave. `of wave show [N]` names packets, residuals, and whether that wave is live (default: live). Read-path only. No new schema. No new ORDER field. Not a second ledger. `of status` / `of resume` stay one-screen on the live wave.
+- **Eval:** `recovery/wave-list-show` reuses the multi-day two-wave fixture and fails if list hides wave 2, omits the live marker, or `show` cannot tell live from the prior integrated wave. `WaveRosterListShow` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.24; skill/alias description preview `v0.7.24 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.23 notes.
+
 ## 0.7.23
 
 Contrast report renderer. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.22 notes.

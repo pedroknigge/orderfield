@@ -24,6 +24,8 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `collect` | After `of collect` | `wave`, `ok`, `invalid`, `missing`, `total` |
 | `integrate` | After `of integrate` | `wave`, `regime`, `ok` |
 | `wave.advanced` | After `of next-wave` | `from_wave`, `to_wave`, `ok` |
+| `wave.list` | After `of wave list` | `count`, `live`, `ok` |
+| `wave.show` | After `of wave show` | `wave`, `live`, `ok` |
 | `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
 | `new` | After `of new` | `field`, `ok` |
 | `fields` | After `of fields` | `count`, `open`, `closed`, `ok` |
