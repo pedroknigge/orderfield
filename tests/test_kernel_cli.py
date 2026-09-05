@@ -1127,6 +1127,9 @@ class DoctorCommand(unittest.TestCase):
         self.assertNotIn("~/.claude/skills/orderfield", out)
         self.assertIn("field", out)
         self.assertIn("writable=", out)
+        self.assertIn("active", out)
+        self.assertIn("stub          none", out)
+        self.assertIn("packs         none", out)
         self.assertIn("schemas", out)
         self.assertIn("lock", out)
         self.assertIn("PATH is not auth or readiness", out)
@@ -1234,6 +1237,119 @@ class DoctorSkillVersionSkew(unittest.TestCase):
         self.assertNotIn("~/.claude/skills/orderfield", r.stdout)
 
 
+class DoctorOnePassSkew(unittest.TestCase):
+    """ACTIVE + version + stale packs in one of doctor. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-pass-"))
+        self.home = Path(tempfile.mkdtemp(prefix="of-doctor-pass-home-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def _doctor(self) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, "doctor", extra_env={"HOME": str(self.home)})
+
+    def test_doctor_not_in_field_bind_commands(self) -> None:
+        from of.field import FIELD_BIND_COMMANDS
+
+        self.assertNotIn("doctor", FIELD_BIND_COMMANDS)
+
+    def test_healthy_legacy_field_is_not_skew(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("active", r.stdout)
+        self.assertIn("ok", r.stdout)
+        self.assertIn("stub          none", r.stdout)
+        self.assertIn("packs         none", r.stdout)
+        self.assertNotIn("SKEW", r.stdout)
+        self.assertIn("doctor        ok", r.stdout)
+
+    def test_nested_field_without_stub_is_not_missing(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "first", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        created = run_of(self.tmp, "new", "--mission", "nested real work", "--phase", "build")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(".orderfield/fields/", r.stdout)
+        self.assertNotIn("missing (of init", r.stdout)
+        self.assertIn("stub          none", r.stdout)
+        self.assertNotIn("SKEW", r.stdout)
+
+    def test_leftover_stub_fails_doctor(self) -> None:
+        of.eval_setup_recovery_active_field_pointer(self.tmp)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("SKEW", r.stdout)
+        self.assertIn("stub", r.stdout)
+        self.assertIn(".orderfield/ORDER.json", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("missing (of init", r.stdout)
+
+    def test_dangling_active_fails_doctor(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        of.ActiveField.write(self.tmp, "ord_deadbeef")
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("ord_deadbeef", r.stdout)
+        self.assertIn("SKEW  (no home)", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+
+    def test_aged_pack_fails_doctor(self) -> None:
+        of.eval_setup_recovery_packed_age(self.tmp)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("packed_age", r.stdout)
+        self.assertIn("worker", r.stdout)
+        self.assertIn("past 7d SLA", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+
+    def test_one_pass_surfaces_stub_and_aged_pack(self) -> None:
+        of.eval_setup_recovery_doctor_one_pass(self.tmp)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("checkout", r.stdout)
+        self.assertIn("SKEW", r.stdout)
+        self.assertIn(".orderfield/ORDER.json", r.stdout)
+        self.assertIn("packed_age", r.stdout)
+        self.assertIn("worker", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("PICK --field", r.stdout)
+
+    def test_doctor_field_flag_does_not_write_active(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        created = run_of(self.tmp, "new", "--mission", "other", "--phase", "build")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        before = (self.tmp / ".orderfield" / "ACTIVE").read_bytes()
+        first = of.ActiveField.read(self.tmp)
+        from of.field import list_field_homes
+
+        homes = list_field_homes(self.tmp)
+        other = next(fid for fid, _home, _order in homes if fid != first)
+        r = run_of(
+            self.tmp,
+            "--field",
+            other,
+            "doctor",
+            extra_env={"HOME": str(self.home)},
+        )
+        self.assertIn(r.returncode, (0, 2), r.stdout + r.stderr)
+        self.assertEqual((self.tmp / ".orderfield" / "ACTIVE").read_bytes(), before)
+
+    def test_doctor_skew_helpers_are_read_path(self) -> None:
+        of.eval_setup_recovery_doctor_one_pass(self.tmp)
+        lines, skewed = of.DoctorSkew.field(self.tmp)
+        joined = "\n".join(lines)
+        self.assertTrue(skewed)
+        self.assertIn("SKEW", joined)
+        self.assertIn("packed_age", joined)
+        self.assertIn("worker", joined)
+
+
 class QwenHarnessEnum(unittest.TestCase):
     def test_order_schema_harness_enum_matches_adapter_order(self) -> None:
         enum = load_json(ORDER_SCHEMA)["properties"]["harness"]["enum"]
@@ -1288,6 +1404,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/threshold-stop-spawn", r.stdout)
         self.assertIn("PASS recovery/process-death-resume", r.stdout)
         self.assertIn("PASS recovery/packed-age-watchdog", r.stdout)
+        self.assertIn("PASS recovery/doctor-one-pass-skew", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")
@@ -1310,6 +1427,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("threshold-stop-spawn", r.stdout)
         self.assertIn("process-death-resume", r.stdout)
         self.assertIn("packed-age-watchdog", r.stdout)
+        self.assertIn("doctor-one-pass-skew", r.stdout)
 
 
 class MissionRewriteRefused(unittest.TestCase):

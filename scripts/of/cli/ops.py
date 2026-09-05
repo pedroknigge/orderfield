@@ -33,9 +33,9 @@ from of.field import (
     PYTHON_FLOOR,
     REDACTED,
     _read_json_object,
+    DoctorSkew,
     FieldSignal,
     PackedAge,
-    SkillVersionSkew,
     WaveRoster,
     apply_field_migrations,
     apply_field_retention,
@@ -59,6 +59,7 @@ from of.field import (
     fmt_age,
     git_repo_root,
     installed_version,
+    list_field_homes,
     load_json,
     list_learnings,
     load_order,
@@ -304,15 +305,15 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         failed = True
 
     print("skills")
-    skill_lines, skill_skew = SkillVersionSkew.report()
+    skill_lines, skill_skew = DoctorSkew.skills()
     for line in skill_lines:
         print(line)
     if skill_skew:
         failed = True
 
     root = find_root()
-    field = of_dir(root)
-    has_order = order_path(root).exists()
+    field = DoctorSkew.inspect_home(root) or of_dir(root)
+    has_order = (field / "ORDER.json").is_file()
     print("field")
     if has_order:
         print(f"  path          {field_rel(root, field)}  writable={writable_status(field)}")
@@ -329,9 +330,17 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         except SystemExit as exc:
             print(f"  symlink       FAIL {exc}")
             failed = True
+    elif list_field_homes(root):
+        print("  path          -  unbound  (of fields)")
+        print("  scratch       -  unbound")
     else:
         print("  path          -  missing (of init --mission '...')")
         print("  scratch       -  missing")
+    skew_lines, field_skew = DoctorSkew.field(root)
+    for line in skew_lines:
+        print(line)
+    if field_skew:
+        failed = True
 
     schema_ok = 0
     schema_fail: list[str] = []

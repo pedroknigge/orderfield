@@ -111,6 +111,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_slogan_evidence,
     eval_setup_recovery_stale_field,
     eval_setup_recovery_packed_age,
+    eval_setup_recovery_doctor_one_pass,
     eval_setup_recovery_verify_build,
     eval_write_done_residual,
     print_contrast_report,
@@ -195,6 +196,7 @@ __all__ = [
     "eval_setup_recovery_slogan_evidence",
     "eval_setup_recovery_stale_field",
     "eval_setup_recovery_packed_age",
+    "eval_setup_recovery_doctor_one_pass",
     "eval_setup_recovery_verify_build",
     "eval_write_done_residual",
     "format_agents_note",
@@ -406,10 +408,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "doctor",
-        help="local prereqs, adapter PATH/version, writable field, schemas, lock",
+        help="local prereqs, ACTIVE/version/pack skew, adapter PATH, schemas, lock",
         description=(
-            "Kernel-verifiable local checks. PATH presence is not authentication "
-            "or model readiness."
+            "Kernel-verifiable local checks in one pass: skill VERSION skew, "
+            "ACTIVE pointer/stub, stale packs, PATH (not auth or readiness)."
         ),
     )
     s.set_defaults(func=cmd_doctor)

@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). Doctor one-pass skew is on 0.7.25 (C-111). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.24`
+**Code rev:** VERSION `0.7.25`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 105 |
+| OK | 106 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,7 +31,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 91 |
+| critical | 92 |
 | normal | 19 |
 
 **Truth score (advisory):** `(105*100 + 4*50) / 110 = 97.3` (110 matrix rows; unique IDs C-001…C-110)
@@ -179,6 +179,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-108 | In-flight child's `packed_at` older than 7 days: `of status` / `of resume` print `packed_age`; field is not closed and the child is not unpacked; pulse STALE stays activity evidence; not a daemon | CHANGELOG / SKILL / evals / external-brief / glossary / kernel feature | `PackedAge`; recovery `packed-age-watchdog`; `PackedAgeWatchdog` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `evals/recovery/packed-age-watchdog.eval.json` / `tests/test_kernel_field.py` | `PackedAge` / `cmd_status` / `cmd_resume` | — | critical | OK | 0.7.22 |
 | C-109 | `of contrast` emits a human one-pager and machine JSON from one `ContrastReport` document; a blocking row omitted from the human report or a JSON drift from those facts fails the eval/unittest; no new verb; no on-disk `CONTRAST.json` | CHANGELOG / SKILL / evals / events / close-honesty / glossary / kernel feature | `ContrastReport`; recovery `contrast-close-contract` / `contrast-close-internal`; `ContrastReportRenderer` | `scripts/of/cli/spec_cmd.py` / `evals/recovery/contrast-close-contract.eval.json` / `evals/recovery/contrast-close-internal.eval.json` / `tests/test_kernel_spec.py` | `ContrastReport` / `cmd_contrast` | — | critical | OK | 0.7.23 |
 | C-110 | Multi-wave field: `of wave list` marks the live `state.wave` with `*`; `of wave show [N]` names packets/residuals and whether that wave is live; no new schema or ORDER field; status/resume stay one-screen on the live wave | CHANGELOG / SKILL / evals / events / glossary / kernel feature | `WaveRoster`; recovery `wave-list-show`; `WaveRosterListShow` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `evals/recovery/wave-list-show.eval.json` / `tests/test_kernel_field.py` | `WaveRoster` / `cmd_wave` | — | critical | OK | 0.7.24 |
+| C-111 | `of doctor` in one pass names skill VERSION skew, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`); missing skill dests stay silent; doctor does not write ACTIVE; no new schema or CLI flag | CHANGELOG / troubleshooting / kernel feature / evals | `DoctorSkew`; doctor `SKEW` / `packed_age` fails; `DoctorOnePassSkew`; recovery `doctor-one-pass-skew` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `evals/recovery/doctor-one-pass-skew.eval.json` / `tests/test_kernel_cli.py` | `DoctorSkew` / `cmd_doctor` | — | critical | OK | 0.7.25 |
 
 ### Verdict definitions
 
@@ -229,6 +230,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-108 0.7.22: in-flight packed-age watchdog; status/resume name packs past 7d SLA
 - [x] C-109 0.7.23: contrast report renderer; one-pager + machine JSON; no dual-truth
 - [x] C-110 0.7.24: `of wave list` / `of wave show`; live wave marked; no second ledger
+- [x] C-111 0.7.25: doctor one-pass skew (ACTIVE + version + stale packs)
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

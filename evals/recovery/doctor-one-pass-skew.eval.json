@@ -1,0 +1,27 @@
+{
+  "id": "recovery/doctor-one-pass-skew",
+  "description": "One of doctor pass names ACTIVE stub skew and aged in-flight packs; version skew already on doctor",
+  "fixture": "recovery_doctor_one_pass",
+  "tags": ["recovery", "doctor", "active", "packed-age"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 2,
+      "stdout_contains": [
+        "checkout",
+        "active",
+        "SKEW",
+        ".orderfield/ORDER.json",
+        "packed_age",
+        "worker",
+        "past 7d SLA",
+        "doctor        FAIL"
+      ],
+      "stdout_not_contains": [
+        "missing (of init",
+        "PICK --field",
+        "RUNTIME_OWNERSHIP"
+      ]
+    }
+  ]
+}

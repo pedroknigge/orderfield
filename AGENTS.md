@@ -112,6 +112,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.22 in-flight packed-age watchdog (`of status` / `of resume` past 7d SLA; `recovery/packed-age-watchdog`) | documented |
 | 0.7.23 contrast report renderer (`of contrast` one-pager + machine JSON; `ContrastReport`; `recovery/contrast-close-*`) | documented |
 | 0.7.24 `of wave list` / `of wave show` (live wave marked; `recovery/wave-list-show`) | documented |
+| 0.7.25 `of doctor` one-pass skew (ACTIVE + version + stale packs; `recovery/doctor-one-pass-skew`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

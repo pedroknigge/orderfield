@@ -211,8 +211,9 @@ _SPAWN_REGISTRY_MAX = 1024
 FIELD_ID_RE = re.compile(r"^ord_[0-9a-f]{8}$")
 ROSTER_EXIT = 2
 # Commands that resolve a field before running. init/new/fields manage the roster
-# themselves; detect/eval do not need a live ORDER. validate binds so field
-# artifacts are read from CURRENT, not a mixed live cache.
+# themselves; detect/eval/doctor do not need a live ORDER. Doctor is tree-wide
+# read-path (one-pass skew) and must not write ACTIVE via --field. validate
+# binds so field artifacts are read from CURRENT, not a mixed live cache.
 FIELD_BIND_COMMANDS = {
     "resume",
     "status",
@@ -238,7 +239,6 @@ FIELD_BIND_COMMANDS = {
     "gc",
     "migrate",
     "worktree",
-    "doctor",
     "wave",
 }
 _LEGACY_FIELD_FILES = (
@@ -2596,6 +2596,154 @@ class PackedAge:
         require_public_schema(pkt, "packet.schema.json", "packet")
         with field_generation(root):
             dump_json(path, pkt)
+
+
+class DoctorSkew:
+    """One-pass doctor: skill VERSION, ACTIVE pointer, stale packs.
+
+    Reuses SkillVersionSkew, ActiveField, list_field_homes, PackedAge,
+    and packet_is_stale. Read-path only. No new schema. No new CLI flag.
+
+    Version skew already lived on doctor (0.7.10). ACTIVE pointer and
+    packed-age lived on fields/status/resume. This class is the compose
+    step, not a second ledger.
+    """
+
+    @staticmethod
+    def skills(
+        home: Path | None = None, expected: str | None = None
+    ) -> tuple[list[str], bool]:
+        return SkillVersionSkew.report(home=home, expected=expected)
+
+    @staticmethod
+    def inspect_home(root: Path) -> Path | None:
+        """ACTIVE match, else unique nested/legacy home. Does not write."""
+        homes = list_field_homes(root)
+        if not homes:
+            return None
+        pointed = ActiveField.read(root)
+        if pointed:
+            for fid, home, _order in homes:
+                if fid == pointed:
+                    return home
+        of = of_dir(root)
+        nested = [home for _fid, home, _order in homes if home != of]
+        candidates = nested if nested else [home for _fid, home, _order in homes]
+        if len(candidates) == 1:
+            return candidates[0]
+        return None
+
+    @staticmethod
+    def leftover_stub(root: Path) -> Path | None:
+        of = of_dir(root)
+        stub = of / "ORDER.json"
+        homes = list_field_homes(root)
+        nested = [home for _fid, home, _order in homes if home != of]
+        if nested and stub.is_file():
+            return stub
+        return None
+
+    @staticmethod
+    def wave_packets(home: Path) -> tuple[int, list[dict[str, Any]]]:
+        state = _read_json_object(home / "state.json") or {}
+        try:
+            wave = int(state.get("wave") or 1)
+        except (TypeError, ValueError):
+            wave = 1
+        pdir = home / f"waves/{wave:03d}/packets"
+        packets: list[dict[str, Any]] = []
+        if pdir.is_dir():
+            try:
+                paths = sorted(pdir.glob("*.json"))
+            except OSError:
+                paths = []
+            for path in paths:
+                data = _read_json_object(path)
+                if isinstance(data, dict):
+                    packets.append(data)
+        return wave, packets
+
+    @staticmethod
+    def residual_missing(home: Path, packet: dict[str, Any], wave: int) -> bool:
+        rel = str(packet.get("residual_path") or "").strip()
+        cid = str(packet.get("child_id") or "").strip()
+        name = Path(rel).name if rel else (f"{cid}.json" if cid else "")
+        if not name:
+            return True
+        return not (home / f"waves/{int(wave):03d}/residuals" / name).is_file()
+
+    @staticmethod
+    def active(root: Path) -> tuple[list[str], bool]:
+        homes = list_field_homes(root)
+        pointed = ActiveField.read(root)
+        pointer_file = ActiveField.path(root)
+        ids = {fid for fid, _home, _order in homes}
+        lines: list[str] = []
+        skewed = False
+        if not homes:
+            lines.append("  active        -  (no fields)")
+        elif pointed and pointed in ids:
+            lines.append(f"  active        {pointed}  ok")
+        elif pointed:
+            lines.append(f"  active        {pointed}  SKEW  (no home)")
+            skewed = True
+        elif pointer_file.is_file():
+            lines.append("  active        -  SKEW  (invalid pointer)")
+            skewed = True
+        elif len(homes) > 1:
+            lines.append("  active        -  SKEW  (missing pointer)")
+            skewed = True
+        else:
+            lines.append(f"  active        {homes[0][0]}  ok")
+        stub = DoctorSkew.leftover_stub(root)
+        if stub is not None:
+            lines.append(f"  stub          {field_rel(root, stub)}  SKEW")
+            skewed = True
+        else:
+            lines.append("  stub          none")
+        return lines, skewed
+
+    @staticmethod
+    def packs(
+        root: Path, *, now: float | None = None
+    ) -> tuple[list[str], bool]:
+        from of.pack import packet_is_stale
+
+        homes = list_field_homes(root)
+        if not homes:
+            return ["  packs         none"], False
+        lines: list[str] = []
+        skewed = False
+        for _fid, home, order in homes:
+            wave, packets = DoctorSkew.wave_packets(home)
+            flying = [
+                pkt
+                for pkt in packets
+                if DoctorSkew.residual_missing(home, pkt, wave)
+            ]
+            overdue = PackedAge.overdue(flying, now=now)
+            if overdue:
+                line = PackedAge.format_line(overdue)
+                if line:
+                    lines.append(f"  packs         {line}")
+                    skewed = True
+            for pkt in packets:
+                if not packet_is_stale(pkt, order):
+                    continue
+                cid = str(pkt.get("child_id") or "?")
+                lines.append(f"  packs         {cid}  stale  (order_rev)")
+                skewed = True
+        if not lines:
+            return ["  packs         none"], False
+        return lines, skewed
+
+    @staticmethod
+    def field(
+        root: Path, *, now: float | None = None
+    ) -> tuple[list[str], bool]:
+        active_lines, active_skew = DoctorSkew.active(root)
+        pack_lines, pack_skew = DoctorSkew.packs(root, now=now)
+        return active_lines + pack_lines, active_skew or pack_skew
 
 
 class WaveRoster:

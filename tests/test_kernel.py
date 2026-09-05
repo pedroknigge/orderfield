@@ -16,6 +16,7 @@ if str(_TESTS_DIR) not in sys.path:
 
 from test_kernel_cli import (  # noqa: E402,F401
     CliFieldResidual,
+    DoctorOnePassSkew,
     DoctorSkillVersionSkew,
     MissionRewriteRefused,
     MultiHarnessResidual,
