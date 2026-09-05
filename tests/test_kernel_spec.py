@@ -972,5 +972,141 @@ class MidFlightAmend(unittest.TestCase):
         )
 
 
+class ContrastReportRenderer(unittest.TestCase):
+    """Human one-pager and machine JSON are one document. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-contrast-report-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "contrast report renderer",
+            "--phase",
+            "explore",
+            "--source",
+            "contrast report renderer brief",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        cli = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "CLI-001",
+            "--text",
+            "public CLI must print usage",
+        )
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        alg = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-002",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(alg.returncode, 0, alg.stderr)
+
+    def _doc(self) -> dict:
+        return of.ContrastReport.document(self.tmp, of.load_order(self.tmp))
+
+    @staticmethod
+    def _align(human: str, machine: dict) -> None:
+        blocking = [row for row in machine.get("rows") or [] if row.get("blocking")]
+        for row in blocking:
+            rid = str(row.get("id") or "")
+            verdict = str(row.get("verdict") or "")
+            if rid not in human:
+                raise AssertionError(f"human omitted blocking id {rid}")
+            if verdict not in human:
+                raise AssertionError(f"human omitted blocking verdict {verdict} ({rid})")
+        for row in machine.get("rows") or []:
+            rid = str(row.get("id") or "")
+            verdict = str(row.get("verdict") or "")
+            if rid and rid not in human:
+                raise AssertionError(f"machine row {rid} missing from human")
+            if verdict and verdict not in human:
+                raise AssertionError(f"machine verdict {verdict} missing from human")
+        gate = str(machine.get("gate") or "")
+        if gate == "CLOSE_BLOCKED":
+            if "CLOSE BLOCKED" not in human:
+                raise AssertionError("machine CLOSE_BLOCKED but human omits CLOSE BLOCKED")
+            if machine.get("ok"):
+                raise AssertionError("machine ok true while gate CLOSE_BLOCKED")
+        elif gate == "RESOLVED":
+            if "RESOLVED" not in human:
+                raise AssertionError("machine RESOLVED but human omits RESOLVED")
+        intent = str(machine.get("intent") or "")
+        if intent and intent not in human:
+            raise AssertionError("machine intent missing from human")
+        machine_ids = [str(r.get("id") or "") for r in (machine.get("rows") or [])]
+        human_blocking = []
+        for line in human.splitlines():
+            if line.startswith("blocking"):
+                rest = line.split(None, 1)[1] if len(line.split()) > 1 else "none"
+                human_blocking = [] if rest == "none" else rest.split()
+                break
+        self_blocking = list(machine.get("blocking") or [])
+        if self_blocking != human_blocking:
+            raise AssertionError(
+                f"blocking drift human={human_blocking} machine={self_blocking}"
+            )
+        if machine_ids and not all(rid in human for rid in machine_ids):
+            raise AssertionError(f"machine ids drifted from human: {machine_ids}")
+
+    def test_human_names_every_blocking_row(self) -> None:
+        doc = self._doc()
+        human = of.ContrastReport.human(doc)
+        machine = of.ContrastReport.machine(doc)
+        blocking = [row for row in machine["rows"] if row.get("blocking")]
+        self.assertTrue(blocking, machine)
+        self.assertIn("CLI-001", [row["id"] for row in blocking])
+        self.assertEqual(machine["gate"], "CLOSE_BLOCKED")
+        self._align(human, machine)
+        omitted = human.replace("CLI-001", "GONE-001")
+        with self.assertRaises(AssertionError):
+            self._align(omitted, machine)
+
+    def test_machine_json_matches_human_and_cli(self) -> None:
+        doc = self._doc()
+        human = of.ContrastReport.human(doc)
+        machine = of.ContrastReport.machine(doc)
+        self._align(human, machine)
+        proc = run_of(self.tmp, "contrast")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
+        self.assertTrue(lines)
+        cli_machine = json.loads(lines[-1])
+        self.assertEqual(cli_machine, machine)
+        one_pager = "\n".join(lines[:-1]) + "\n"
+        self._align(one_pager, cli_machine)
+        drifted = dict(machine)
+        drifted["rows"] = [
+            {**row, "verdict": "RESOLVED"} if row.get("blocking") else row
+            for row in machine["rows"]
+        ]
+        with self.assertRaises(AssertionError):
+            self._align(human, drifted)
+
+    def test_json_event_matches_stdout_machine(self) -> None:
+        proc = run_of(self.tmp, "--json", "contrast")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
+        cli_machine = json.loads(lines[-1])
+        events = [
+            json.loads(ln) for ln in proc.stderr.splitlines() if ln.strip()
+        ]
+        contrast = next(e for e in events if e.get("event") == "contrast")
+        self.assertEqual(contrast.get("gate"), cli_machine["gate"])
+        self.assertEqual(contrast.get("verdict"), cli_machine["verdict"])
+        self.assertEqual(contrast.get("ok"), cli_machine["ok"])
+        self.assertEqual(contrast.get("rows"), cli_machine["rows"])
+        self.assertEqual(contrast.get("blocking"), cli_machine["blocking"])
+        self._align("\n".join(lines[:-1]) + "\n", cli_machine)
+
+
 if __name__ == "__main__":
     unittest.main()

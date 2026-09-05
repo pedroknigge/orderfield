@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.22 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.23 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.22"
+  version: "0.7.23"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -300,7 +300,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; success sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements. Generic done_when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. One `ContrastReport` document: a human one-pager on stdout (gate, blocking IDs, rows) and one machine JSON object with the same facts. `--json` / `OF_JSON=1` emits that document on the `contrast` event. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; success sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements. Generic done_when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)
