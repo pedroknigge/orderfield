@@ -758,13 +758,21 @@ def print_resume_in_flight(
         print(f"agents_note   {note}")
 
 
-def resume_auto_continue_lines(order: dict[str, Any]) -> list[str]:
+def resume_auto_continue_lines(
+    order: dict[str, Any],
+    *,
+    open_field_count: int = 1,
+) -> list[str]:
     if order.get("spec_closed"):
         return ["no", "field closed (spec_closed); do not pack or spawn"]
     session = (os.environ.get("OF_SESSION_ID") or "").strip()
     origin = order.get("origin") if isinstance(order.get("origin"), dict) else {}
     oid = str((origin or {}).get("session_id") or "").strip()
-    if oid and session and oid != session:
+    # Origin is provenance, not resume authority. A later session of the
+    # unique open field must auto-continue (multi-day return). Foreign
+    # only when several open fields exist and this session id does not
+    # match the bound field — otherwise attach/new theater wins.
+    if oid and session and oid != session and int(open_field_count) > 1:
         return [
             "no",
             "foreign field (origin session_id mismatch); attach with --field or of new",
@@ -800,6 +808,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         ROSTER_EXIT,
         bind_active_field,
         field_home,
+        field_is_open,
         list_field_homes,
         print_field_roster,
     )
@@ -857,7 +866,10 @@ def cmd_resume(args: argparse.Namespace) -> None:
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)
-    ac_label, ac_detail = resume_auto_continue_lines(order)
+    open_n = sum(1 for _fid, _home, o in homes if field_is_open(o))
+    ac_label, ac_detail = resume_auto_continue_lines(
+        order, open_field_count=open_n
+    )
     print(f"auto_continue {ac_label} — {ac_detail}")
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")

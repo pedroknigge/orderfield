@@ -8,6 +8,7 @@
     "tests.test_kernel.ResumeRecoveryBrief",
     "tests.test_kernel.MissionRewriteRefused",
     "tests.test_kernel.FieldAbandonedSignal",
+    "tests.test_kernel.DurableMultiDayResume",
     "tests.test_kernel.MultiHarnessResidual"
   ]
 }

@@ -34,7 +34,7 @@ The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and wr
 
 `of new`, `of init`, and `--field` / `OF_FIELD` update ACTIVE. The pointer is tree-level (`.orderfield/ACTIVE`), not a field-home WAL file.
 
-If resume prints `auto_continue no` and **foreign field**, do not execute that field's `next`. Attach with `--field` or open a sibling.
+If resume prints `auto_continue no` and **foreign field**, do not execute that field's `next`. That line appears only when several open fields exist and this `OF_SESSION_ID` does not match the bound field's `ORDER.origin.session_id`. A unique open field auto-continues; origin is provenance, not resume authority. Attach with `--field` or open a sibling when it is actually foreign.
 
 ```bash
 of fields

@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.11`
+**Code rev:** VERSION `0.7.12`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 93 |
+| OK | 94 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 79 |
+| critical | 80 |
 | normal | 19 |
 
-**Truth score (advisory):** `(93*100 + 4*50) / 98 = 96.9` (98 matrix rows; unique IDs C-001…C-098)
+**Truth score (advisory):** `(94*100 + 4*50) / 99 = 97.0` (99 matrix rows; unique IDs C-001…C-099)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -88,7 +88,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | — | normal | Unverifiable | keep |
 | C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of/cli/field_cmd.py` / `scripts/of/regime.py` | `cmd_patch` | — | critical | OK | keep |
 | C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | — | normal | OK | keep doctrine |
-| C-020 | `of resume` reconstructs in-flight from disk; recovery brief; auto_continue; no auto-spawn | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `resume_auto_continue_lines` | `scripts/of/cli/ops.py` | `cmd_resume` | — | critical | OK | keep |
+| C-020 | `of resume` reconstructs in-flight from disk; recovery brief; auto_continue; no auto-spawn | SKILL / README / CHANGELOG / architecture | `cmd_resume`; `resume_auto_continue_lines` | `scripts/of/cli/ops.py` | `cmd_resume` | — | critical | OK | keep; multi-day 0.7.12 is C-099 |
 | C-021 | `of checkpoint --summary` optional one-screen leader narrative; refuse huge dumps | SKILL / README / CHANGELOG | `cmd_checkpoint`; `CHECKPOINT_MAX_CHARS` | `scripts/of/cli/ops.py` / `scripts/of/field.py` | `cmd_checkpoint` | — | normal | OK | keep |
 | C-022 | Auto snapshot `.orderfield/session.json` facts on pack/spawn/collect/integrate/patch/phase/next-wave **and** unpack/spec/close/gc/learn/migrate/checkpoint | README / architecture / SKILL / kernel feature | `snapshot_session` call sites | `scripts/of/cli/` | `snapshot_session` | — | critical | OK | patched docs to name the full set |
 | C-023 | `of status` surfaces in-flight; render/handoff continuation note when scratch nonempty | SKILL / README / adapters | `cmd_status`; `render_prompt` continuation | `scripts/of/cli/ops.py` / `scripts/of/pack.py` | `cmd_status` / `render_prompt` | — | critical | OK | keep |
@@ -167,6 +167,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-096 | Claude / Grok / Codex dry-run share one packet residual path; Codex argv names `residual.codex.schema.json`; collect accepts that residual | CHANGELOG / evals / external-brief | `build_spawn_argv`; recovery `multi-harness-residual`; `MultiHarnessResidual`; deep-root basename via `ArgvRedact` (C-098) | `scripts/of_adapters.py` / `evals/recovery/multi-harness-residual.eval.json` / `tests/test_kernel_cli.py` | `build_spawn_argv` / `MultiHarnessResidual` | — | critical | OK | 0.7.9; deep-root 0.7.11 |
 | C-097 | `of doctor` reports skill VERSION skew on existing HOME dests versus this checkout; missing dests are silent; does not invent installs | CHANGELOG / troubleshooting / kernel feature | `SkillVersionSkew`; doctor `SKEW` fails; `DoctorSkillVersionSkew` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `SkillVersionSkew` / `cmd_doctor` | — | critical | OK | 0.7.10 |
 | C-098 | Spawn argv preview keeps the last path segment of `--output-schema` / `-o` and of filesystem tokens ending in `.json` (and kin) so a skill-root path longer than 80 chars still names `residual.codex.schema.json`; long prompts stay `<prompt>`; secret flags stay redacted | CHANGELOG / evals / architecture / kernel feature | `ArgvRedact`; `redact_argv`; `MultiHarnessResidual.test_codex_dry_run_names_schema_on_deep_skill_root`; recovery `multi-harness-residual` | `scripts/of/field.py` / `tests/test_kernel_cli.py` / `evals/recovery/multi-harness-residual.eval.json` | `ArgvRedact` / `redact_argv` | — | critical | OK | 0.7.11 |
+| C-099 | Interrupted multi-day field: `of resume` reconstructs the live wave from `state.wave` + packets/residuals (stale `session.json` does not win; age + in-flight is not `abandoned`); a unique open field auto-continues when `OF_SESSION_ID` differs from `ORDER.origin.session_id`; foreign gate stays when several open fields mismatch; `of init` without `--force` dies | CHANGELOG / evals / SKILL / nested-fields / principles | `resume_auto_continue_lines(open_field_count)`; recovery `multi-day-resume`; `DurableMultiDayResume`; `test_foreign_origin_gate_single_field` / `_stays_when_siblings_open` | `scripts/of/cli/ops.py` / `evals/recovery/multi-day-resume.eval.json` / `tests/test_kernel_field.py` / `tests/test_kernel_fields.py` | `cmd_resume` / `resume_auto_continue_lines` | — | critical | OK | 0.7.12 |
 
 ### Verdict definitions
 
@@ -205,6 +206,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-094..C-096 0.7.9: stale-field abandoned signal, skip-explore theater honesty, multi-harness residual contract
 - [x] C-097 0.7.10: doctor skill VERSION skew; close-honesty + nested-fields guides
 - [x] C-098 0.7.11: ArgvRedact keeps schema basename on a deep skill root
+- [x] C-099 0.7.12: durable multi-day resume; unique-field later session; re-init refuse
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

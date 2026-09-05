@@ -39,13 +39,19 @@ WAVE_REPORT_SCHEMA = ROOT / "schemas" / "wave-report.schema.json"
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 
 
-def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def run_of(
+    cwd: Path,
+    *args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     # hermetic: the suite must never hit the network for the update notice
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     env.setdefault(
         "OF_LEARNINGS",
         str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
     )
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
@@ -2097,6 +2103,114 @@ class FieldAbandonedSignal(unittest.TestCase):
         aged = run_of(tmp, "status")
         self.assertEqual(aged.returncode, 0, aged.stderr)
         self.assertNotIn("signal      abandoned", aged.stdout)
+
+
+class DurableMultiDayResume(unittest.TestCase):
+    """Later session + stale session.json reconstruct wave 2. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-multiday-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "multi-day live wave",
+            "--phase",
+            "build",
+            "--origin",
+            "cursor",
+            "--session-id",
+            "day1-owner",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for req_id, text in (
+            ("DOMAIN-001", "wave-1 domain"),
+            ("STORE-001", "wave-1 store"),
+            ("W2-001", "wave-2 implementer"),
+        ):
+            added = run_of(self.tmp, "spec", "--add", req_id, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        for child_id, path, req_id in (
+            ("domain", "app/domain.py", "DOMAIN-001"),
+            ("store", "app/store.py", "STORE-001"),
+        ):
+            packed = run_of(
+                self.tmp,
+                "pack",
+                "--slice",
+                f"Implement {path}",
+                "--role",
+                "implementer",
+                "--child-id",
+                child_id,
+                "--owns-path",
+                path,
+                "--owns-requirement",
+                req_id,
+            )
+            self.assertEqual(packed.returncode, 0, packed.stderr)
+        (self.tmp / "app").mkdir(exist_ok=True)
+        (self.tmp / "app" / "domain.py").write_text("# domain\n", encoding="utf-8")
+        (self.tmp / "app" / "store.py").write_text("# store\n", encoding="utf-8")
+        write_bound_residual(self.tmp, "domain")
+        write_bound_residual(self.tmp, "store")
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "Implement app/w2.py on wave 2",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w2",
+            "--owns-path",
+            "app/w2.py",
+            "--owns-requirement",
+            "W2-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "w2"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("still the same slice\n", encoding="utf-8")
+        of.FieldSignal.backdate_empty(self.tmp, "2018-01-01T00:00:00Z")
+        stale = {
+            "wave": 1,
+            "last_cmd": "pack",
+            "in_flight": ["domain", "store"],
+            "updated_at": "2018-01-01T00:00:00Z",
+        }
+        of.require_public_schema(stale, "session.schema.json", "session")
+        with of.field.field_generation(self.tmp):
+            of.dump_json(of.session_path(self.tmp), stale)
+
+    def test_resume_reconstructs_wave_two_and_refuses_reinit(self) -> None:
+        resumed = run_of(
+            self.tmp, "resume", extra_env={"OF_SESSION_ID": "day3-return"}
+        )
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        out = resumed.stdout
+        self.assertIn("wave          2", out)
+        self.assertIn("auto_continue yes", out)
+        self.assertIn("  w2", out)
+        self.assertIn("    residual    MISSING", out)
+        self.assertIn("next\n  HOLD", out)
+        self.assertNotIn("signal        abandoned", out)
+        self.assertNotIn("foreign field", out)
+        self.assertNotIn("  domain", out)
+        refused = run_of(self.tmp, "init", "--mission", "re-init theater")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("field(s) exist", refused.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["mission"], "multi-day live wave")
+        self.assertFalse(order.get("spec_closed"))
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "waves" / "002" / "packets" / "w2.json").is_file()
+        )
 
 
 if __name__ == "__main__":
