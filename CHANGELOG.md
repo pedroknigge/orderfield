@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.25
+
+`of doctor` one-pass skew. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.24 notes.
+
+- **One pass names the three lies:** `of doctor` already failed skill VERSION skew (`SkillVersionSkew`, 0.7.10). It now also prints ACTIVE pointer/stub skew and stale packs (`packed_age` / `order_rev`) from the same invocation. Reuses `ActiveField`, `list_field_homes`, `PackedAge`, and `packet_is_stale`. Read-path only: doctor is not in `FIELD_BIND_COMMANDS` and `--field` does not write `.orderfield/ACTIVE`. No new schema. No new CLI flag. Not a daemon.
+- **Eval:** `recovery/doctor-one-pass-skew` fails if one `of doctor` hides the leftover root stub or the aged in-flight pack. `DoctorOnePassSkew` is on `of eval --strict --kernel`. Existing `DoctorSkillVersionSkew` / `recovery/packed-age-watchdog` / `recovery/active-field-pointer` stay.
+- Packaging: VERSION 0.7.25; skill/alias description preview `v0.7.25 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.24 notes.
+
 ## 0.7.24
 
 `of wave list` / `of wave show` for multi-wave missions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.23 notes.

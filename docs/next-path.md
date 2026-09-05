@@ -1,6 +1,6 @@
-# Next path (after 0.7.24)
+# Next path (after 0.7.25)
 
-`of wave list` / `of wave show` is proven: the live `state.wave` is marked on a multi-wave mission. `recovery/wave-list-show` and `WaveRosterListShow` hold. Contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+`of doctor` one-pass skew is proven: ACTIVE stub, skill VERSION, and stale packs surface from one invocation. `recovery/doctor-one-pass-skew` and `DoctorOnePassSkew` hold. Wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

@@ -55,7 +55,7 @@ Symptoms:
 - `of patch` against the stub leaves the live ORDER untouched
 - You “close” or reopen the wrong contract
 
-Kernel behavior (0.7.7+): `of status` / `of resume` / `of pulse` follow ACTIVE (or the nested home). `recovery/active-field-pointer` fails if they show the stub.
+Kernel behavior (0.7.7+): `of status` / `of resume` / `of pulse` follow ACTIVE (or the nested home). `recovery/active-field-pointer` fails if they show the stub. `of doctor` (0.7.25+) prints `stub … SKEW` for the leftover root ORDER in the same pass as skill VERSION and stale packs.
 
 Still a protocol hole: editing `ORDER.json` by hand, or running `of` from a cwd that is not the project root, can miss the pointer. Type `of fields`. Trust `field` on `of status`. If the printed home is `fields/<id>/`, do not treat the top-level file as authority.
 

@@ -1317,6 +1317,61 @@ def eval_setup_recovery_packed_age(root: Path) -> None:
     PackedAge.backdate_packet(root, "worker", "2018-01-01T00:00:00Z")
 
 
+@_register_eval_fixture("recovery_doctor_one_pass")
+def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
+    """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""
+    from of.field import (
+        ActiveField,
+        clear_field_home,
+        default_order,
+        dump_bytes,
+        json_payload_bytes,
+        list_field_homes,
+        set_field_home,
+    )
+
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "stub explore leftover",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    created = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "nested real work",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(created, "new")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "forgotten implementer slice",
+        "--role",
+        "implementer",
+        "--child-id",
+        "worker",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    pointed = ActiveField.read(root)
+    homes = {fid: home for fid, home, _order in list_field_homes(root)}
+    if pointed is None or pointed not in homes:
+        die("eval fixture doctor-one-pass: ACTIVE home missing after pack")
+    set_field_home(homes[pointed])
+    try:
+        PackedAge.backdate_packet(root, "worker", "2018-01-01T00:00:00Z")
+    finally:
+        clear_field_home()
+    ghost = default_order("stub explore leftover", "explore")
+    dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
+
+
 class ProcessDeathResume:
     """Spawn-host death leftovers. Resume reconstructs the live wave; no re-init."""
 
@@ -1714,6 +1769,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.DurableMultiDayResume",
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
+    "tests.test_kernel.DoctorOnePassSkew",
     "tests.test_kernel.WaveReportQualityGate",
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",
