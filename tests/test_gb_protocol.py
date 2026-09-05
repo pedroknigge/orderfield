@@ -65,6 +65,21 @@ class StayOnRunSkill(unittest.TestCase):
         self.assertIn(f'version: "{ver}"', front)
 
 
+class ResumeHandoffGuidance(unittest.TestCase):
+    """resume_next_lines returns stay-on-run guidance for HANDOFF."""
+
+    def test_handoff_guidance_names_do_not_unpack(self) -> None:
+        lines = of.resume_next_lines("handoff")
+        self.assertEqual(lines[0], "HANDOFF")
+        self.assertIn("do not unpack by default", lines[1])
+        self.assertIn("of handoff", lines[1])
+
+    def test_hold_is_unchanged(self) -> None:
+        lines = of.resume_next_lines("hold")
+        self.assertEqual(lines[0], "HOLD")
+        self.assertIn("continue existing packets", lines[1])
+
+
 class RoadmapContrast(unittest.TestCase):
     """REQ-006 / REQ-007: Grok Bot vs Orderfield vs reserved kernel; the pick."""
 

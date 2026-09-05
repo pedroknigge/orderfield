@@ -13,6 +13,7 @@ from typing import Any
 
 from of.field import (
     FIELD_SPEC_MD,
+    PULSE_STALE_MINUTES,
     FieldSignal,
     die,
     dump_json,
@@ -35,7 +36,7 @@ from of.field import (
     wave_dir,
 )
 from of.regime import done_when_closed, mark_done_when_closed
-from of.pack import PACKET_IDENTITY_FIELDS, truncate_slice
+from of.pack import PACKET_IDENTITY_FIELDS, packet_digest, truncate_slice
 from of.spec import (
     append_amendment,
     append_binding_line,
@@ -1038,6 +1039,37 @@ def eval_setup_recovery_multi_day_resume(root: Path) -> None:
     require_public_schema(stale, "session.schema.json", "session")
     with field_generation(root):
         dump_json(session_path(root), stale)
+
+
+@_register_eval_fixture("recovery_checkpoint_handoff")
+def eval_setup_recovery_checkpoint_handoff(root: Path) -> None:
+    """Multi-hour wave with STALE child. Resume must say HANDOFF, not HOLD."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "long-running build wave",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    added = eval_run_of(root, "spec", "--add", "LONG-001", "--text", "long slice")
+    EvalInvariantSetup.require_ok(added, "spec add")
+    eval_pack_child(
+        root, "longchild", "app/long.py", "LONG-001", "multi-hour implementer slice"
+    )
+    scratch = root / ".orderfield" / "work" / "scratch" / "longchild"
+    scratch.mkdir(parents=True, exist_ok=True)
+    (scratch / "PULSE").write_text("started\n", encoding="utf-8")
+    import time as _time
+    old_ts = _time.time() - (PULSE_STALE_MINUTES * 60 + 600)
+    os.utime(scratch / "PULSE", (old_ts, old_ts))
+    pkt_path = root / ".orderfield" / "waves" / "001" / "packets" / "longchild.json"
+    pkt = load_json(pkt_path)
+    pkt["packed_at"] = "2018-01-01T00:00:00Z"
+    pkt["packet_hash"] = packet_digest(pkt)
+    with field_generation(root):
+        dump_json(pkt_path, pkt)
 
 
 @_register_eval_fixture("recovery_verify_build")

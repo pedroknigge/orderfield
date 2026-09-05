@@ -1,0 +1,48 @@
+{
+  "id": "recovery/checkpoint-handoff-stay-on-run",
+  "description": "Multi-hour wave with STALE children: resume says HANDOFF not HOLD; checkpoint captures pulse verdicts",
+  "fixture": "recovery_checkpoint_handoff",
+  "tags": ["recovery", "resume", "handoff", "stay-on-run"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "wave          1",
+        "field         open",
+        "auto_continue yes",
+        "in_flight",
+        "  longchild",
+        "    residual    MISSING",
+        "    pulse       STALE",
+        "next",
+        "HANDOFF",
+        "do not unpack by default"
+      ],
+      "stdout_not_contains": [
+        "next\n  HOLD",
+        "continue existing packets; do not repack",
+        "field         closed",
+        "no ORDER"
+      ]
+    },
+    {
+      "run": "checkpoint",
+      "args": ["--summary", "multi-hour wave: child is stale; will re-handoff"],
+      "exit": 0,
+      "stdout_contains": [
+        "checkpoint saved",
+        "longchild pulse=STALE"
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "summary",
+        "multi-hour wave: child is stale; will re-handoff",
+        "HANDOFF"
+      ]
+    }
+  ]
+}

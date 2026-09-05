@@ -29,6 +29,7 @@ from of.field import (
     PROTOCOL_WRITABLE_KEY,
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
+    child_pulse_verdict,
     PYTHON_FLOOR,
     REDACTED,
     _read_json_object,
@@ -662,6 +663,10 @@ def cmd_validate(args: argparse.Namespace) -> None:
 def resume_next_lines(action: str) -> list[str]:
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
+        "handoff": (
+            "HANDOFF",
+            "stale children this wave; of handoff / of spawn on the same packet; do not unpack by default",
+        ),
         "collect": ("COLLECT", "all residuals landed; run collect"),
         "next-wave": ("NEXT-WAVE", "wave is closed or stale; run next-wave"),
         "pack": ("PACK", "no packets on this wave; pack slices"),
@@ -725,7 +730,11 @@ def format_agents_note(root: Path, flying: list[dict[str, Any]]) -> str:
 
 
 def print_resume_in_flight(
-    root: Path, flying: list[dict[str, Any]], *, now: float | None = None
+    root: Path,
+    flying: list[dict[str, Any]],
+    *,
+    now: float | None = None,
+    verdicts: dict[str, str] | None = None,
 ) -> None:
     if not flying:
         return
@@ -740,6 +749,8 @@ def print_resume_in_flight(
         print(f"    role        {role}")
         print(f"    scratch     {scratch}")
         print(f"    parked_reason {parked_reason(root, pkt)}")
+        if verdicts and cid in verdicts:
+            print(f"    pulse       {verdicts[cid]}")
         print_resume_child_owns(root, pkt)
         print(f"    slice       {truncate_slice(pkt.get('slice') or '')}")
         packed_ts = parse_utc(pkt.get("packed_at"))
@@ -852,8 +863,16 @@ def cmd_resume(args: argparse.Namespace) -> None:
     completed = completed_children(root, wave)
     integrated = field_is_file(wave_dir(wave, root) / "report.json")
     stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
+    now = time.time()
+    verdicts: dict[str, str] = {}
+    for pkt in flying:
+        cid = str(pkt.get("child_id") or "?")
+        verdicts[cid] = child_pulse_verdict(root, pkt, now)
+    all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
     nxt = next_legal_action(
-        state, flying, packets, integrated=integrated, stale=stale
+        state, flying, packets,
+        integrated=integrated, stale=stale,
+        children_stale=all_stale,
     )
     session = load_session(root)
     print(f"id            {order['id']}")
@@ -884,7 +903,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")
     print_resume_completed(root, completed)
-    print_resume_in_flight(root, flying)
+    print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
     if flying:
         print("activity      of pulse (child scratch verdict + shared repo context)")
     print("next")
@@ -1038,9 +1057,22 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
             f"refuse huge dumps (max {CHECKPOINT_MAX_CHARS} chars, "
             f"{CHECKPOINT_MAX_LINES} lines)"
         )
-    snapshot_session(root, "checkpoint", summary=text.strip())
+    state = load_state(root)
+    wave = int(state.get("wave") or 1)
+    flying = in_flight_children(root, wave)
+    verdicts: dict[str, str] | None = None
+    if flying:
+        now = time.time()
+        verdicts = {}
+        for pkt in flying:
+            cid = str(pkt.get("child_id") or "?")
+            verdicts[cid] = child_pulse_verdict(root, pkt, now)
+    snapshot_session(root, "checkpoint", summary=text.strip(), pulse_verdicts=verdicts)
     emit_event("checkpoint", ok=True)
     print("checkpoint saved")
+    if verdicts:
+        for cid, v in verdicts.items():
+            print(f"  {cid} pulse={v}")
 
 
 ISSUE_FEEDBACK_REPO = "pedroknigge/orderfield"  # product identity; never cwd origin
