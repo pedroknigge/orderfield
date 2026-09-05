@@ -21,6 +21,7 @@ from of.field import (
     field_generation,
     field_home,
     field_is_file,
+    field_read_text,
     field_lock,
     find_root,
     kernel_repo_root,
@@ -539,9 +540,9 @@ class EvalFileAssert:
 
     @staticmethod
     def payload(path: Path) -> str:
-        if not path.is_file() or path.is_symlink():
+        raw = field_read_text(path)
+        if raw is None:
             die(f"missing {path}")
-        raw = path.read_text(encoding="utf-8")
         try:
             return json.dumps(json.loads(raw))
         except json.JSONDecodeError:
