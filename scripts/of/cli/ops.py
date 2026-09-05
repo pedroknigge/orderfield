@@ -32,6 +32,7 @@ from of.field import (
     PYTHON_FLOOR,
     REDACTED,
     _read_json_object,
+    FieldSignal,
     apply_field_migrations,
     apply_field_retention,
     drop_field_home,
@@ -556,6 +557,17 @@ def cmd_status(args: argparse.Namespace) -> None:
     if n_proto or n_field:
         print(f"learnings   protocol={n_proto} field={n_field}")
     print(f"wave        {state['wave']}")
+    packets = packed_children(root, int(state.get("wave") or 1))
+    signal = FieldSignal.of(order, state, packets, load_session(root))
+    if signal:
+        print(f"signal      {signal}")
+    overrides = state.get("phase_overrides") or []
+    if overrides and isinstance(overrides[-1], dict):
+        last = overrides[-1]
+        print(
+            f"phase_override {last.get('from_phase')}→{last.get('to_phase')} "
+            f"{last.get('reason')}"
+        )
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
@@ -831,6 +843,9 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"last_cmd      {session.get('last_cmd') or '-'}")
     print(f"field         {'closed' if order.get('spec_closed') else 'open'}")
+    signal = FieldSignal.of(order, state, packets, session)
+    if signal:
+        print(f"signal        {signal}")
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)

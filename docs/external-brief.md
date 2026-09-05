@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.7` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.9` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -50,6 +50,9 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
 | Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home) | `recovery/active-field-pointer` |
 | Theater done-when (`current phase criteria closed with evidence`) | init / patch / `done_when+` refuse | `recovery/done-when-lint` |
+| Skip explore→build without `--force` | `of phase build` dies; a forced skip is printed on status | `recovery/skip-explore-theater` |
+| Empty waves + age look like a live deliver | status/resume print `abandoned`; field stays on disk | `recovery/stale-field-abandoned` |
+| Adversary residual moves verify→build | `integrate --apply` keeps verify; `escalate_up`; spawn blocked | `recovery/escalate-verify-build` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
 | New child packs with no claim while IDs stay unowned | `cmd_pack` dies (`unowned`; `--owns-requirement`) | same eval; `scripts/of/cli/wave.py` `already_owns` gate |
 | Same-wave `--owns-path` overlap | `same_wave_owns_path_conflict` dies (`overlaps`) | same eval; `scripts/of/pack.py` |
@@ -94,6 +97,10 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Close without RESOLVED dies; success is one stamp (`spec_closed` + `done_when_closed` + `CLOSE.json`) | `recovery/atomic-close-flag-lag` |
 | Root stub + nested ACTIVE: status and resume show the live field, not the stub | `recovery/active-field-pointer` |
 | Generic done-when dies; a contrast-bound criterion is accepted | `recovery/done-when-lint` |
+| explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |
+| Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |
+| Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
+| Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it | `recovery/multi-harness-residual` |
 
 ## Deliberately reserved
 

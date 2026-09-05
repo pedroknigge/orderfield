@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -33,6 +33,12 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/atomic-close-flag-lag` | `recovery_atomic_close` | close without RESOLVED dies; success sets `spec_closed` + `done_when_closed` + `CLOSE.json` |
 | `recovery/active-field-pointer` | `recovery_active_field_pointer` | root stub + nested ACTIVE: status/resume show the nested field |
 | `recovery/done-when-lint` | `recovery_done_when_lint` | generic done_when dies; contrast-bound criterion accepted |
+| `recovery/skip-explore-theater` | `recovery_skip_explore` | explore→build without `--force` dies; a forced skip is visible on status |
+| `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
+| `recovery/escalate-verify-build` | `recovery_verify_build` | adversary residual verify→build is `escalate_up`; leader phase stays verify |
+| `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it |
+
+Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`.
 
 Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --kernel` after unittest (`.github/workflows/test.yml`).
 
@@ -46,6 +52,8 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/collect-by-packet.json` | packet `residual_path` | collect/integrate fail if that path is missing; stray `residuals/*.json` are not children |
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
+
+`--kernel` also runs `FieldAbandonedSignal` and `MultiHarnessResidual`.
 
 ```bash
 python3 -m unittest discover -s tests -v

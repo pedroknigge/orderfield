@@ -10,7 +10,7 @@ A cut, a resume, a different model — the kernel is still a contract, not a jai
 
 **Date:** 2026-09-02
 **Scope:** auditor items that are **not** Orderfield
-**Code rev:** VERSION `0.7.7`
+**Code rev:** VERSION `0.7.9`
 **Rule:** do not re-open as kernel Critical/Fail/Missing while the honest surface below holds.
 
 These are not Orderfield defects. SCOPE-001 exists so a later Vibe-Proof/analysis pass cites this file instead of inventing OS jails, token ceilings, SBOM scanners, or `of merge`.

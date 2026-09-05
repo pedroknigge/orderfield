@@ -1,0 +1,20 @@
+{
+  "id": "recovery/stale-field-abandoned",
+  "description": "Empty waves plus age: status/resume show abandoned; field is not deleted or closed",
+  "fixture": "recovery_stale_field",
+  "tags": ["recovery", "status", "stale"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["signal      abandoned", "empty waves left idle"],
+      "stdout_not_contains": ["CLOSED", "delivered", "done_when_closed True"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["signal        abandoned", "field         open"],
+      "stdout_not_contains": ["field         closed"]
+    }
+  ]
+}

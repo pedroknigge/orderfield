@@ -1,0 +1,36 @@
+{
+  "id": "recovery/escalate-verify-build",
+  "description": "Adversary residual that moves verify→build is escalate_up; leader phase stays verify; spawn blocked",
+  "fixture": "recovery_verify_build",
+  "tags": ["recovery", "gate", "escalate_up", "phase"],
+  "steps": [
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--apply"],
+      "exit": 0,
+      "stdout_contains": ["escalate_up"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "phase       verify",
+        "spawn_blocked True",
+        "last_regime escalate_up"
+      ],
+      "stdout_not_contains": ["phase       build"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "claude",
+        "--packet",
+        ".orderfield/waves/001/packets/adv1.json",
+        "--dry-run"
+      ],
+      "exit": 1,
+      "stderr_contains": ["spawn forbidden after escalate_up"]
+    }
+  ]
+}

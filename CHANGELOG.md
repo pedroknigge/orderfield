@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.9
+
+Corpus-inspired recovery honesty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.8 notes.
+
+- **Stale-field signal:** An open field with no packets on the current wave and `state.updated_at` older than seven days prints `signal abandoned` on `of status` / `of resume`. Nothing is deleted or closed. `recovery/stale-field-abandoned` fails if status fakes a deliver or omits the signal.
+- **Skip-explore theater:** `of phase build` from explore still dies (`legal next phase … is cut`). A `--force --reason skip explore` override is printed on status. Generic done_when stays `recovery/done-when-lint`. `recovery/skip-explore-theater` fails if the skip is silent.
+- **Verify↔build escalate:** An adversary residual that proposes `phase=build` while the field is in verify selects `escalate_up` and blocks spawn. Leader phase stays verify. `recovery/escalate-verify-build`.
+- **Multi-harness residual:** Claude / Grok / Codex `--dry-run` share one packet `residual_path`. Codex argv names `schemas/residual.codex.schema.json`. `collect` accepts that residual. `recovery/multi-harness-residual` plus `MultiHarnessResidual`.
+- Existing close honesty stays: RESOLVED deliver + flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`. Do not weaken those evals.
+- Packaging: VERSION 0.7.9; skill/alias description preview `v0.7.9 — …`. Never rewrite v0.7.8 notes.
+
 ## 0.7.8
 
 Docs voice from #63 now on the published line. Same 0.6 / 0.7.7 protocol. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.7 notes.
