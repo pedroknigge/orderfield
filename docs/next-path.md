@@ -1,6 +1,6 @@
-# Next path (after 0.7.12)
+# Next path (after 0.7.13)
 
-Durable multi-day resume is on the published line: unique-field later session auto-continues; stale `session.json` does not hide the live wave; `recovery/multi-day-resume` refuses re-init theater.
+Sibling-field roster UX is on the published line: ACTIVE marker, open/closed counts, packed-age, and epic vs patch `choose`. `recovery/field-roster-ux` holds.
 
 P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`.
 

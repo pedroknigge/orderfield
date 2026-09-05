@@ -344,6 +344,106 @@ class SiblingFields(unittest.TestCase):
         self.assertIn("open field", r.stderr)
         self.assertIn(first, r.stderr)
 
+    def test_fields_marks_active_and_prints_choose(self) -> None:
+        self._init("first")
+        run_of(self.tmp, "new", "--mission", "second")
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("fields        2  open 2  closed 0", listed.stdout)
+        self.assertIn("*open", listed.stdout)
+        self.assertIn("choose", listed.stdout)
+        self.assertIn("unrelated epic", listed.stdout)
+        self.assertIn("of patch", listed.stdout)
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        self.assertIn(f"active        {active}", listed.stdout)
+        active_rows = [
+            ln for ln in listed.stdout.splitlines() if ln.startswith("  ord_") and "*open" in ln
+        ]
+        self.assertEqual(len(active_rows), 1, listed.stdout)
+        self.assertIn(active, active_rows[0])
+
+    def test_new_prints_epic_vs_patch_note(self) -> None:
+        self._init("first")
+        r = run_of(self.tmp, "new", "--mission", "second")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("sibling field (unrelated epic)", r.stdout)
+        self.assertIn("of patch", r.stdout)
+
+    def test_fields_open_hides_closed(self) -> None:
+        self._init("keep-open")
+        first_id = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+        run_of(self.tmp, "new", "--mission", "to-close")
+        listed = run_of(self.tmp, "fields")
+        ids = [
+            ln.split()[0]
+            for ln in listed.stdout.splitlines()
+            if ln.startswith("  ord_")
+        ]
+        self.assertEqual(len(ids), 2, listed.stdout)
+        closed_id = next(i for i in ids if i != first_id)
+        order_path = self.tmp / ".orderfield" / "fields" / closed_id / "ORDER.json"
+        data = load_json(order_path)
+        data["spec_closed"] = True
+        order_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        opened = run_of(self.tmp, "fields", "--open")
+        self.assertEqual(opened.returncode, 0, opened.stderr)
+        self.assertIn("fields        2  open 1  closed 1", opened.stdout)
+        self.assertNotIn("to-close", opened.stdout)
+        self.assertIn("keep-open", opened.stdout)
+
+    def test_resume_roster_prints_choose(self) -> None:
+        self._init("first")
+        run_of(self.tmp, "new", "--mission", "second")
+        (self.tmp / ".orderfield" / "ACTIVE").unlink()
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("choose", r.stdout)
+        self.assertIn("unrelated epic", r.stdout)
+        self.assertIn("PICK --field", r.stdout)
+
+    def test_roster_pages_and_marks_packed_age(self) -> None:
+        now = 1_700_000_000.0
+        homes = []
+        for i, (fid, mission, closed) in enumerate(
+            (
+                ("ord_aaaa0001", "alpha epic", False),
+                ("ord_bbbb0002", "beta epic", True),
+                ("ord_cccc0003", "gamma epic", False),
+            )
+        ):
+            home = self.tmp / fid
+            home.mkdir()
+            order = {
+                "id": fid,
+                "mission": mission,
+                "phase": "build" if i else "explore",
+                "spec_closed": closed,
+            }
+            (home / "ORDER.json").write_text(
+                json.dumps(order) + "\n", encoding="utf-8"
+            )
+            (home / "state.json").write_text(
+                json.dumps({"wave": 1, "updated_at": "2023-11-14T22:13:20Z"}) + "\n",
+                encoding="utf-8",
+            )
+            homes.append((fid, home, order))
+        lines = of.FieldRoster.format_lines(
+            homes,
+            active_id="ord_cccc0003",
+            show_all=False,
+            limit=2,
+            now=now,
+        )
+        text = "\n".join(lines)
+        self.assertIn("fields        3  open 2  closed 1", text)
+        self.assertIn("*open", text)
+        self.assertIn("ord_cccc0003", text)
+        self.assertIn("w1", text)
+        self.assertIn("--cursor", text)
+        self.assertIn("choose", text)
+        # Closed beta is sorted after open/ACTIVE; page of 2 should omit it.
+        self.assertNotIn("beta epic", text)
+
 
 if __name__ == "__main__":
     unittest.main()

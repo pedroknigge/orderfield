@@ -785,20 +785,30 @@ def resume_auto_continue_lines(
 
 def cmd_fields(args: argparse.Namespace) -> None:
     root = find_root()
-    from of.field import ActiveField, list_field_homes, print_field_roster
+    from of.field import FieldRoster, field_is_open, list_field_homes
 
     homes = list_field_homes(root)
     if not homes:
-        print("fields        0")
+        print("fields        0  open 0  closed 0")
         print("next          of init --mission '...'")
-        emit_event("fields", count=0, ok=True)
+        emit_event("fields", count=0, open=0, closed=0, ok=True)
         return
-    print_field_roster(homes)
-    pointed = ActiveField.read(root)
-    if pointed:
-        print(f"active        {pointed}")
+    FieldRoster.print(
+        homes,
+        root=root,
+        open_only=bool(getattr(args, "open_only", False)),
+        show_all=bool(getattr(args, "list_all", False)),
+        cursor=str(getattr(args, "list_cursor", "") or ""),
+    )
     print_audit_block(root)
-    emit_event("fields", count=len(homes), ok=True)
+    open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
+    emit_event(
+        "fields",
+        count=len(homes),
+        open=open_n,
+        closed=len(homes) - open_n,
+        ok=True,
+    )
 
 
 def cmd_resume(args: argparse.Namespace) -> None:

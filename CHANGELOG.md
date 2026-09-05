@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.13
+
+Sibling-field roster UX. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.12 notes.
+
+- **Epic vs patch on the roster:** `of new` is an unrelated epic (sibling ORDER). Same product is `of patch` / `of spec --amend`. `of fields` and the resume/status/pulse PICK roster print `choose` with that split. `of new` prints the same note. No new ORDER kind.
+- **ACTIVE + many-field roster:** `FieldRoster` marks the ACTIVE row with `*`, prints `open`/`closed` counts, phase, wave, packed-age (newest `packed_at`, else `state.updated_at`), and `abandoned` when `FieldSignal` says so. ACTIVE sorts first, then open, then closed. Default list is capped (`LIST_DEFAULT_LIMIT`); `--all` / `--cursor` continue. `--open` hides closed homes. Header stays tree totals.
+- **Eval:** `recovery/field-roster-ux` fails if three siblings lose the ACTIVE marker, open/closed counts, or the choose line. Existing `recovery/active-field-pointer` stays.
+- Packaging: VERSION 0.7.13; skill/alias description preview `v0.7.13 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.12 notes.
+
 ## 0.7.12
 
 Durable multi-day resume. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.11 notes.

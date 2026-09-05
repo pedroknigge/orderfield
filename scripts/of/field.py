@@ -63,7 +63,7 @@ ROLE_CONTRACTS = {
 }
 CHECKPOINT_MAX_CHARS = 2000
 CHECKPOINT_MAX_LINES = 24
-LIST_DEFAULT_LIMIT = 32  # of learn --list / of worktree list; --all prints the rest
+LIST_DEFAULT_LIMIT = 32  # of learn --list / of worktree list / of fields; --all prints the rest
 WARNING_MESSAGE_MAX_CHARS = 400  # SWALLOW-001: one stderr line, no secrets/home
 UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
 UPDATE_CHECK_INTERVAL_S = 24 * 3600
@@ -447,42 +447,198 @@ def origin_session_id(order: dict[str, Any]) -> str:
     return str(origin.get("session_id") or "").strip()
 
 
-def format_field_roster_lines(
-    homes: list[tuple[str, Path, dict[str, Any]]],
-) -> list[str]:
-    lines = [f"fields        {len(homes)}"]
-    for fid, home, order in homes:
-        state = "open" if field_is_open(order) else "closed"
+class FieldRoster:
+    """Sibling-field list. ACTIVE marker, open/closed, packed-age, epic vs patch.
+
+    Disk contract is unchanged: `.orderfield/fields/<id>/` + `.orderfield/ACTIVE`.
+    `of new` is an unrelated epic. Same product is `of patch` / `of spec --amend`.
+    """
+
+    CHOOSE = (
+        "of new = unrelated epic; same product = of patch | of spec --amend; "
+        "attach = --field"
+    )
+
+    @staticmethod
+    def choose_line() -> str:
+        return "choose        " + FieldRoster.CHOOSE
+
+    @staticmethod
+    def new_note() -> str:
+        return (
+            "note          sibling field (unrelated epic). "
+            "same product = of patch | of spec --amend"
+        )
+
+    @staticmethod
+    def _truncate_mission(order: dict[str, Any]) -> str:
         mission = str(order.get("mission") or "").replace("\n", " ").strip()
         if len(mission) > 60:
-            mission = mission[:57] + "..."
-        origin = origin_session_id(order)
-        origin_h = ""
+            return mission[:57] + "..."
+        return mission
+
+    @staticmethod
+    def _origin_extra(order: dict[str, Any]) -> str:
+        extra = ""
         raw = order.get("origin")
         if isinstance(raw, dict) and raw.get("harness"):
-            origin_h = str(raw.get("harness"))
-        extra = f"  {origin_h}" if origin_h else ""
+            extra = f"  {raw.get('harness')}"
+        origin = origin_session_id(order)
         if origin:
             extra += f" [{origin}]"
-        rel = home.name if home.name != ".orderfield" else "legacy"
-        lines.append(f"  {fid}  {state}  {rel}{extra}  {mission}")
-    return lines
+        return extra
+
+    @staticmethod
+    def _home_rel(home: Path) -> str:
+        return home.name if home.name != ".orderfield" else "legacy"
+
+    @staticmethod
+    def _home_facts(
+        home: Path, order: dict[str, Any], *, now: float | None = None
+    ) -> dict[str, Any]:
+        state = _read_json_object(home / "state.json") or {}
+        try:
+            wave = int(state.get("wave") or 1)
+        except (TypeError, ValueError):
+            wave = 1
+        pdir = home / f"waves/{wave:03d}/packets"
+        packed_at: float | None = None
+        packet_count = 0
+        if pdir.is_dir():
+            try:
+                packet_paths = list(pdir.glob("*.json"))
+            except OSError:
+                packet_paths = []
+            for path in packet_paths:
+                packet_count += 1
+                data = _read_json_object(path) or {}
+                ts = parse_utc(data.get("packed_at"))
+                if ts is not None and (packed_at is None or ts > packed_at):
+                    packed_at = ts
+        activity = FieldSignal.activity_ts(state)
+        age_ts = packed_at if packed_at is not None else activity
+        clock = now if now is not None else time.time()
+        age_seconds = (clock - age_ts) if age_ts is not None else None
+        signal_age = (clock - activity) if activity is not None else None
+        signal = FieldSignal.verdict(
+            spec_closed=bool(order.get("spec_closed")),
+            packet_count=packet_count,
+            age_seconds=signal_age,
+        )
+        return {
+            "wave": wave,
+            "age": fmt_age(age_seconds) if age_seconds is not None else "-",
+            "signal": signal,
+            "phase": str(order.get("phase") or "-"),
+        }
+
+    @staticmethod
+    def sort_homes(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        active_id: str | None,
+    ) -> list[tuple[str, Path, dict[str, Any]]]:
+        def key(row: tuple[str, Path, dict[str, Any]]) -> tuple[int, int, str]:
+            fid, _home, order = row
+            return (
+                0 if active_id and fid == active_id else 1,
+                0 if field_is_open(order) else 1,
+                fid,
+            )
+
+        return sorted(homes, key=key)
+
+    @staticmethod
+    def format_lines(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        *,
+        root: Path | None = None,
+        active_id: str | None = None,
+        open_only: bool = False,
+        show_all: bool = False,
+        cursor: str = "",
+        limit: int | None = None,
+        now: float | None = None,
+        choose: bool = True,
+    ) -> list[str]:
+        from of.learn import format_list_continuation, page_listed
+
+        if active_id is None:
+            active_id = ActiveField.read(root)
+        open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
+        closed_n = len(homes) - open_n
+        rows = FieldRoster.sort_homes(homes, active_id)
+        if open_only:
+            rows = [row for row in rows if field_is_open(row[2])]
+        page, next_cursor, remaining = page_listed(
+            rows,
+            show_all=show_all,
+            cursor=cursor,
+            limit=limit,
+            id_of=lambda row: str(row[0]),
+        )
+        lines = [f"fields        {len(homes)}  open {open_n}  closed {closed_n}"]
+        for fid, home, order in page:
+            facts = FieldRoster._home_facts(home, order, now=now)
+            if facts["signal"]:
+                state = str(facts["signal"])
+            elif field_is_open(order):
+                state = "open"
+            else:
+                state = "closed"
+            mark = "*" if active_id and fid == active_id else " "
+            extra = FieldRoster._origin_extra(order)
+            mission = FieldRoster._truncate_mission(order)
+            rel = FieldRoster._home_rel(home)
+            lines.append(
+                f"  {fid}  {mark}{state:<9} {facts['phase']:<8} "
+                f"w{facts['wave']}  {facts['age']:<7} {rel}{extra}  {mission}"
+            )
+        if active_id:
+            lines.append(f"active        {active_id}")
+        if choose and homes:
+            lines.append(FieldRoster.choose_line())
+        cont = format_list_continuation(next_cursor, remaining)
+        if cont:
+            lines.append(cont)
+        return lines
+
+    @staticmethod
+    def print(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        **kwargs: Any,
+    ) -> None:
+        for line in FieldRoster.format_lines(homes, **kwargs):
+            print(line)
+
+    @staticmethod
+    def die(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        detail: str,
+    ) -> None:
+        FieldRoster.print(homes)
+        print("next          PICK --field <id> | of new")
+        die(detail, code=ROSTER_EXIT)
+
+
+def format_field_roster_lines(
+    homes: list[tuple[str, Path, dict[str, Any]]],
+    **kwargs: Any,
+) -> list[str]:
+    return FieldRoster.format_lines(homes, **kwargs)
 
 
 def print_field_roster(
     homes: list[tuple[str, Path, dict[str, Any]]],
+    **kwargs: Any,
 ) -> None:
-    for line in format_field_roster_lines(homes):
-        print(line)
+    FieldRoster.print(homes, **kwargs)
 
 
 def die_field_roster(
     homes: list[tuple[str, Path, dict[str, Any]]],
     detail: str,
 ) -> None:
-    print_field_roster(homes)
-    print("next          PICK --field <id> | of new")
-    die(detail, code=ROSTER_EXIT)
+    FieldRoster.die(homes, detail)
 
 
 def bind_active_field(

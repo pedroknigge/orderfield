@@ -1,0 +1,40 @@
+{
+  "id": "recovery/field-roster-ux",
+  "description": "Three sibling fields: of fields marks ACTIVE, names open/closed, and prints epic vs patch choose; resume follows ACTIVE",
+  "fixture": "recovery_field_roster_ux",
+  "tags": ["recovery", "fields", "roster", "active"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        3  open 3  closed 0",
+        "epic alpha",
+        "epic beta",
+        "epic gamma",
+        "*open",
+        "active",
+        "choose",
+        "unrelated epic",
+        "of patch"
+      ],
+      "stdout_not_contains": ["PICK --field"]
+    },
+    {
+      "run": "fields",
+      "args": ["--open"],
+      "exit": 0,
+      "stdout_contains": [
+        "fields        3  open 3  closed 0",
+        "epic gamma",
+        "choose"
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["epic gamma", "auto_continue"],
+      "stdout_not_contains": ["PICK --field"]
+    }
+  ]
+}

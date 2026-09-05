@@ -87,6 +87,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_contrast_close,
     eval_setup_recovery_contrast_close_contract,
     eval_setup_recovery_done_when_lint,
+    eval_setup_recovery_field_roster_ux,
     eval_setup_recovery_mission_rewrite,
     eval_setup_recovery_multi_day_resume,
     eval_setup_recovery_multi_harness,
@@ -155,6 +156,7 @@ __all__ = [
     "eval_setup_recovery_contrast_close",
     "eval_setup_recovery_contrast_close_contract",
     "eval_setup_recovery_done_when_lint",
+    "eval_setup_recovery_field_roster_ux",
     "eval_setup_recovery_mission_rewrite",
     "eval_setup_recovery_multi_day_resume",
     "eval_setup_recovery_multi_harness",
@@ -253,6 +255,25 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_new)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
+    s.add_argument(
+        "--open",
+        dest="open_only",
+        action="store_true",
+        help="list only open fields (spec_closed false)",
+    )
+    exclusive = s.add_mutually_exclusive_group()
+    exclusive.add_argument(
+        "--all",
+        dest="list_all",
+        action="store_true",
+        help="print every field (default of fields is capped)",
+    )
+    exclusive.add_argument(
+        "--cursor",
+        dest="list_cursor",
+        default="",
+        help="continue a capped of fields from this id",
+    )
     s.set_defaults(func=cmd_fields)
 
     s = sub.add_parser("status", help="show field and caps")

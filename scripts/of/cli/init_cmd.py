@@ -9,6 +9,7 @@ from typing import Any
 from of.field import (
     ActiveField,
     FIELD_SPEC_MD,
+    FieldRoster,
     PHASES,
     apply_origin_stamp,
     default_order,
@@ -196,3 +197,4 @@ def cmd_new(args: argparse.Namespace) -> None:
     print(f"field         {order['id']}")
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
+    print(FieldRoster.new_note())
