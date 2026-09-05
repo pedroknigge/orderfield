@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.25` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.26` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -157,7 +157,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
 | `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/ready; missing dests silent |
 | `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |
-| `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--drop-field`; `gc` is locked; never copies transcripts |
+| `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--drop-field`; `gc` is locked; never copies transcripts. Orphan packed children (`OrphanPacked`) dump on explicit `gc` with `gc-stamp.json` `orphans[]`; resume auto-gc skips packets |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
 | `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`) |

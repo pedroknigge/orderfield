@@ -1317,6 +1317,34 @@ def eval_setup_recovery_packed_age(root: Path) -> None:
     PackedAge.backdate_packet(root, "worker", "2018-01-01T00:00:00Z")
 
 
+@_register_eval_fixture("recovery_orphan_packed")
+def eval_setup_recovery_orphan_packed(root: Path) -> None:
+    """Closed field with a leftover packed child. of gc must leave proof."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "closed field leftover pack",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "ghost implementer that never reported",
+        "--role",
+        "implementer",
+        "--child-id",
+        "ghost",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    from of.retain import OrphanPacked
+
+    OrphanPacked.mark_closed(root)
+
+
 @_register_eval_fixture("recovery_doctor_one_pass")
 def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""
@@ -1774,6 +1802,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",
     "tests.test_kernel.PackedAgeWatchdog",
+    "tests.test_kernel.OrphanPackedCleanup",
     "tests.test_kernel.ContrastReportRenderer",
     "tests.test_kernel.WaveRosterListShow",
 )

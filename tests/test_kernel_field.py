@@ -2186,6 +2186,177 @@ class PackedAgeWatchdog(unittest.TestCase):
         self.assertNotIn("past 7d SLA", status.stdout)
 
 
+class OrphanPackedCleanup(unittest.TestCase):
+    """Orphan packed-child cleanup leaves proof. of eval --kernel."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(
+            tmp, "init", "--mission", "closed field leftover pack", "--phase", "build"
+        )
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    @staticmethod
+    def _pack(tmp: Path, child_id: str = "ghost") -> None:
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "ghost implementer that never reported",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+
+    @staticmethod
+    def _close(tmp: Path) -> None:
+        of.OrphanPacked.mark_closed(tmp)
+
+    @staticmethod
+    def _packet(tmp: Path, child_id: str = "ghost") -> Path:
+        return tmp / ".orderfield" / "waves" / "001" / "packets" / f"{child_id}.json"
+
+    def test_closed_missing_residual_is_orphan_open_is_not(self) -> None:
+        pkt = {"child_id": "ghost", "order_id": "ord_live", "order_rev": 1}
+        order = {"id": "ord_live", "rev": 1}
+        self.assertEqual(
+            of.OrphanPacked.reason(
+                pkt,
+                order,
+                wave=1,
+                current_wave=1,
+                closed=True,
+                leftover=False,
+                residual_missing=True,
+            ),
+            of.OrphanPacked.REASON_CLOSED,
+        )
+        self.assertIsNone(
+            of.OrphanPacked.reason(
+                pkt,
+                order,
+                wave=1,
+                current_wave=1,
+                closed=False,
+                leftover=False,
+                residual_missing=True,
+            )
+        )
+        self.assertIsNone(
+            of.OrphanPacked.reason(
+                pkt,
+                order,
+                wave=1,
+                current_wave=1,
+                closed=True,
+                leftover=False,
+                residual_missing=False,
+            )
+        )
+        stale = {"child_id": "old", "order_id": "ord_live", "order_rev": 1}
+        bumped = {"id": "ord_live", "rev": 2}
+        self.assertEqual(
+            of.OrphanPacked.reason(
+                stale,
+                bumped,
+                wave=1,
+                current_wave=2,
+                closed=False,
+                leftover=False,
+                residual_missing=True,
+            ),
+            of.OrphanPacked.REASON_STALE_WAVE,
+        )
+        self.assertIsNone(
+            of.OrphanPacked.reason(
+                stale,
+                bumped,
+                wave=1,
+                current_wave=1,
+                closed=False,
+                leftover=False,
+                residual_missing=True,
+            )
+        )
+
+    def test_gc_dumps_closed_orphan_with_stamp_proof(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-orphan-gc-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        self._close(tmp)
+        packet = self._packet(tmp)
+        self.assertTrue(packet.is_file())
+        planned = run_of(tmp, "retain")
+        self.assertEqual(planned.returncode, 0, planned.stderr)
+        self.assertIn("orphan-packed closed-field", planned.stdout)
+        self.assertIn("orphan packed  ghost  wave=1  closed-field", planned.stdout)
+        self.assertTrue(packet.is_file(), "retain is read-only")
+        cleaned = run_of(tmp, "gc")
+        self.assertEqual(cleaned.returncode, 0, cleaned.stderr)
+        self.assertIn("orphan packed  ghost  wave=1  closed-field", cleaned.stdout)
+        self.assertFalse(packet.exists(), "explicit gc unlinks the orphan packet")
+        stamp = load_json(tmp / ".orderfield" / "gc-stamp.json")
+        orphans = stamp.get("orphans") or []
+        self.assertTrue(orphans, "gc-stamp must record the orphan")
+        self.assertEqual(orphans[0].get("child_id"), "ghost")
+        self.assertEqual(orphans[0].get("reason"), "closed-field")
+        self.assertIn("ghost", json.dumps(stamp))
+
+    def test_open_in_flight_is_not_dumped(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-orphan-live-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        packet = self._packet(tmp)
+        cleaned = run_of(tmp, "gc")
+        self.assertEqual(cleaned.returncode, 0, cleaned.stderr)
+        self.assertTrue(packet.is_file())
+        self.assertNotIn("orphan packed  ghost", cleaned.stdout)
+
+    def test_resume_auto_gc_does_not_silently_delete(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-orphan-auto-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        self._close(tmp)
+        stamp = tmp / ".orderfield" / "gc-stamp.json"
+        stamp.write_text(
+            json.dumps({"at": "2018-01-01T00:00:00Z", "dumped": 0}) + "\n",
+            encoding="utf-8",
+        )
+        packet = self._packet(tmp)
+        resumed = run_of(tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertTrue(packet.is_file(), "resume auto-gc must not unlink packets")
+        self.assertNotIn("orphan packed  ghost", resumed.stdout)
+
+    def test_stale_prior_wave_cleans_with_proof(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-orphan-stale-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        patched = run_of(
+            tmp, "patch", "--constraints-add", "steer after the leftover pack"
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        nxt = run_of(tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        packet = self._packet(tmp)
+        self.assertTrue(packet.is_file(), "skipped stale wave keeps the packet")
+        cleaned = run_of(tmp, "gc")
+        self.assertEqual(cleaned.returncode, 0, cleaned.stderr)
+        self.assertIn("orphan packed  ghost  wave=1  stale-prior-wave", cleaned.stdout)
+        self.assertFalse(packet.exists())
+        stamp = load_json(tmp / ".orderfield" / "gc-stamp.json")
+        reasons = [row.get("reason") for row in (stamp.get("orphans") or [])]
+        self.assertIn("stale-prior-wave", reasons)
+
+
 class WaveRosterListShow(unittest.TestCase):
     """of wave list/show marks the live wave. of eval --kernel."""
 
