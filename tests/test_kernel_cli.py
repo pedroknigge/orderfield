@@ -1283,6 +1283,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/skip-explore-theater", r.stdout)
         self.assertIn("PASS recovery/escalate-verify-build", r.stdout)
         self.assertIn("PASS recovery/budget-seconds-honesty", r.stdout)
+        self.assertIn("PASS recovery/wave-report-quality-gate", r.stdout)
         self.assertIn("PASS recovery/midflight-amend", r.stdout)
 
     def test_eval_list(self) -> None:
@@ -1301,6 +1302,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("skip-explore-theater", r.stdout)
         self.assertIn("escalate-verify-build", r.stdout)
         self.assertIn("budget-seconds-honesty", r.stdout)
+        self.assertIn("wave-report-quality-gate", r.stdout)
         self.assertIn("midflight-amend", r.stdout)
 
 

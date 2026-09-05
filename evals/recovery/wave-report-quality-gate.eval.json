@@ -1,0 +1,14 @@
+{
+  "id": "recovery/wave-report-quality-gate",
+  "description": "Chat-dump residual cannot collect; long missions leave a structured residual, not a transcript. Integrate of a structured residual is WaveReportQualityGate.",
+  "fixture": "recovery_wave_report_quality",
+  "tags": ["recovery", "gate", "residual", "wave-report", "long-task"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 2,
+      "stdout_contains": ["INVALID", "chat dump", "structured residual"]
+    }
+  ]
+}

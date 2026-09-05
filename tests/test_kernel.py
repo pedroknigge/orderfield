@@ -25,7 +25,7 @@ from test_kernel_field import (  # noqa: E402,F401
     FieldAbandonedSignal,
     ResumeRecoveryBrief,
 )
-from test_kernel_pack import StalePackets  # noqa: E402,F401
+from test_kernel_pack import StalePackets, WaveReportQualityGate  # noqa: E402,F401
 
 
 def load_tests(loader, tests, pattern):

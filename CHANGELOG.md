@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.17
+
+Wave-report quality gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.16 notes.
+
+- **Structured residual, not a chat dump:** `ResidualQuality` refuses `residual.evidence` / `proposed_patch.notes` that are oversized or look like a multi-turn transcript. `validate_residual` (collect, integrate, spawn extract, `of validate`) is the only hook — no new schema, no new CLI verb, no parallel report stack. The wave report stays the structured reduction (`status` / `wants` / `uncertainty`).
+- **Eval:** `recovery/wave-report-quality-gate` fails if a Human/Assistant dump collects. `WaveReportQualityGate` fails if that dump writes `report.json`, or if a structured residual's wave report contains evidence or transcript text.
+- Packaging: VERSION 0.7.17; skill/alias description preview `v0.7.17 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.16 notes.
+
 ## 0.7.16
 
 Mid-flight amend evals. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.15 notes.

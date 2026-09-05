@@ -1682,5 +1682,68 @@ class PackContinuationOwnsRequirement(unittest.TestCase):
         self.assertEqual(packet.get("owns_requirements"), ["ALPHA-001"])
 
 
+class WaveReportQualityGate(unittest.TestCase):
+    """Chat dumps cannot collect; structured residual writes a wave report."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wave-quality-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_chat_dump_residual_cannot_collect(self) -> None:
+        of.WaveReportQualityEval.setup(self.tmp)
+        r = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("chat dump", r.stdout)
+        self.assertIn("structured residual", r.stdout)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "report.json").is_file()
+        )
+
+    def test_oversized_evidence_is_a_chat_dump(self) -> None:
+        dump = "x" * (of.ResidualQuality.EVIDENCE_MAX_CHARS + 1)
+        residual = {
+            "status": "blocked",
+            "result_ref": "scratch/notes.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": dump,
+                "proposed_patch": None,
+            },
+            "metrics": {
+                "uncertainty": 0.2,
+                "divergence": 0.1,
+                "tool_failures": 0,
+                "novelty": False,
+            },
+        }
+        errs = of.ResidualQuality.errors(residual)
+        self.assertTrue(any("refuse chat dumps" in e for e in errs), errs)
+        self.assertTrue(of.validate_residual(residual))
+
+    def test_structured_residual_writes_wave_report(self) -> None:
+        of.WaveReportQualityEval.setup(self.tmp, dump=False)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertIn("OK", collected.stdout)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(
+            integrated.returncode, 0, integrated.stdout + integrated.stderr
+        )
+        report_path = self.tmp / ".orderfield" / "waves" / "001" / "report.json"
+        self.assertTrue(report_path.is_file())
+        report = load_json(report_path)
+        self.assertEqual(of.validate_wave_report(report), [])
+        rows = report.get("residuals") or []
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].get("status"), "done")
+        self.assertEqual(rows[0].get("wants"), [])
+        self.assertIn("uncertainty", rows[0])
+        self.assertNotIn("evidence", rows[0])
+        payload = json.dumps(report)
+        self.assertNotIn("Human:", payload)
+        self.assertNotIn(of.WaveReportQualityEval.DUMP_MARK, payload)
+        self.assertNotIn(of.WaveReportQualityEval.DUMP_EVIDENCE, payload)
+
+
 if __name__ == "__main__":
     unittest.main()

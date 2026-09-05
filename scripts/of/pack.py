@@ -175,6 +175,7 @@ def validate_residual(res: Any) -> list[str]:
             errs.append("metrics.tool_failures must be a non-negative integer")
     if "novelty" in metrics and not isinstance(metrics["novelty"], bool):
         errs.append("metrics.novelty must be a boolean")
+    errs.extend(ResidualQuality.errors(res))
     return errs
 
 
@@ -502,6 +503,71 @@ def prior_wave_path_owners(
 
 def collapse_evidence(text: str) -> str:
     return " ".join(str(text or "").split()).casefold()
+
+
+class ResidualQuality:
+    """Residuals are structured close-outs. Collect/integrate refuse chat dumps."""
+
+    EVIDENCE_MAX_CHARS = 4000
+    EVIDENCE_MAX_LINES = 40
+    NOTES_MAX_CHARS = 2000
+    NOTES_MAX_LINES = 24
+    TURN_RE = re.compile(
+        r"(?im)^(?:#{1,6}\s*)?(?:\*\*)?(human|user|assistant|chatgpt|system)"
+        r"(?:\*\*)?\s*:"
+    )
+
+    @staticmethod
+    def dump_errors(
+        text: str,
+        *,
+        label: str,
+        max_chars: int,
+        max_lines: int,
+    ) -> list[str]:
+        raw = str(text or "")
+        if not raw:
+            return []
+        errs: list[str] = []
+        if len(raw) > max_chars:
+            errs.append(
+                f"{label} is {len(raw)} chars; refuse chat dumps "
+                f"(max {max_chars})"
+            )
+        nlines = len(raw.splitlines())
+        if nlines > max_lines:
+            errs.append(
+                f"{label} is {nlines} lines; refuse chat dumps "
+                f"(max {max_lines})"
+            )
+        if len(ResidualQuality.TURN_RE.findall(raw)) >= 2:
+            errs.append(
+                f"{label} looks like a chat dump; write a structured residual"
+            )
+        return errs
+
+    @staticmethod
+    def errors(res: Any) -> list[str]:
+        if not isinstance(res, dict):
+            return []
+        rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+        errs = ResidualQuality.dump_errors(
+            str(rem.get("evidence") or ""),
+            label="residual.evidence",
+            max_chars=ResidualQuality.EVIDENCE_MAX_CHARS,
+            max_lines=ResidualQuality.EVIDENCE_MAX_LINES,
+        )
+        patch = rem.get("proposed_patch")
+        if isinstance(patch, dict) and patch.get("notes") is not None:
+            errs.extend(
+                ResidualQuality.dump_errors(
+                    str(patch.get("notes") or ""),
+                    label="residual.proposed_patch.notes",
+                    max_chars=ResidualQuality.NOTES_MAX_CHARS,
+                    max_lines=ResidualQuality.NOTES_MAX_LINES,
+                )
+            )
+        return errs
 
 
 def verifier_done_errors(

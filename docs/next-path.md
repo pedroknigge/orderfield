@@ -1,6 +1,6 @@
-# Next path (after 0.7.16)
+# Next path (after 0.7.17)
 
-Mid-flight `of spec --amend` + `of patch` is proven across waves. `recovery/midflight-amend` holds. `budget.seconds` honesty and checkpoint handoff stay-on-run stay on the published line.
+Wave-report quality gate is proven: chat-dump residuals cannot collect; a structured residual writes `report.json` without transcript text. `recovery/wave-report-quality-gate` holds. Mid-flight amend and `budget.seconds` honesty stay on the published line.
 
 P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 
