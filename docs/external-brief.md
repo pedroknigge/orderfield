@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.9` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.10` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -28,8 +28,8 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 
 1. **One leader-owned ORDER write path.** A child residual may propose. `integrate --apply` may take additive `constraints+` / `done_when+` / notes after `escalate_up`. It does not redefine mission, phase, the constraint list, or done-when. Silent rewrite dies. Threshold stays.
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
-3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close.
-4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen.
+3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close. Templates: [close-honesty.md](close-honesty.md).
+4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen. When to `of new` vs patch: [nested-fields.md](nested-fields.md).
 5. **Done-when has to be checkable.** Init and patch refuse generic placeholders (`current phase criteria closed with evidence`). Name contrast RESOLVED or a concrete ID.
 6. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
 7. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.

@@ -2076,6 +2076,106 @@ def installed_version() -> str | None:
         return None
 
 
+class SkillVersionSkew:
+    """Compare checkout VERSION to skill copies already on disk under HOME.
+
+    Does not create dests. Missing paths are silent. A readable mismatch is skew.
+    """
+
+    GENERIC = (".agents", "skills", "orderfield")
+    HARNESS_NAMES = ("claude", "codex", "cursor", "opencode", "grok")
+    AGY_REL = (
+        (".gemini", "config", "skills", "orderfield"),
+        (".gemini", "antigravity-cli", "skills", "orderfield"),
+    )
+    SKILL_VERSION_RE = re.compile(r'(?m)^\s*version:\s*"([^"]+)"')
+
+    @staticmethod
+    def known_relpaths() -> tuple[tuple[str, ...], ...]:
+        harness = tuple(
+            ("." + name, "skills", "orderfield")
+            for name in SkillVersionSkew.HARNESS_NAMES
+        )
+        return (SkillVersionSkew.GENERIC, *harness, *SkillVersionSkew.AGY_REL)
+
+    @staticmethod
+    def label(rel: tuple[str, ...]) -> str:
+        if rel == SkillVersionSkew.GENERIC:
+            return "agents"
+        if rel[:3] == (".gemini", "config", "skills"):
+            return "gemini"
+        if rel[:3] == (".gemini", "antigravity-cli", "skills"):
+            return "agy"
+        if rel[0].startswith(".") and rel[1:3] == ("skills", "orderfield"):
+            return rel[0][1:]
+        return rel[0].lstrip(".")
+
+    @staticmethod
+    def read_version(dest: Path) -> str | None:
+        try:
+            text = (dest / "VERSION").read_text(encoding="utf-8").strip()
+        except OSError:
+            text = ""
+        if text:
+            return text
+        try:
+            body = (dest / "SKILL.md").read_text(encoding="utf-8")
+        except OSError:
+            return None
+        match = SkillVersionSkew.SKILL_VERSION_RE.search(body)
+        if match is None:
+            return None
+        found = match.group(1).strip()
+        return found or None
+
+    @staticmethod
+    def scan(
+        home: Path | None = None, expected: str | None = None
+    ) -> list[dict[str, Any]]:
+        base = Path(home) if home is not None else Path.home()
+        want = expected if expected is not None else installed_version()
+        rows: list[dict[str, Any]] = []
+        for rel in SkillVersionSkew.known_relpaths():
+            dest = base.joinpath(*rel)
+            if not dest.is_dir():
+                continue
+            found = SkillVersionSkew.read_version(dest)
+            if found is None:
+                continue
+            rows.append(
+                {
+                    "label": SkillVersionSkew.label(rel),
+                    "path": dest,
+                    "display": "~/" + "/".join(rel),
+                    "version": found,
+                    "expected": want or "",
+                    "skew": bool(want) and found != want,
+                }
+            )
+        return rows
+
+    @staticmethod
+    def report(
+        home: Path | None = None, expected: str | None = None
+    ) -> tuple[list[str], bool]:
+        want = expected if expected is not None else installed_version()
+        shown = want or "-"
+        rows = SkillVersionSkew.scan(home=home, expected=want)
+        lines = [f"  checkout     {shown}"]
+        if not rows:
+            lines.append("  installs     none  (missing dests are silent)")
+            return lines, False
+        skewed = False
+        for row in rows:
+            mark = "SKEW" if row["skew"] else "ok"
+            if row["skew"]:
+                skewed = True
+            lines.append(
+                f"  {str(row['label']):12} {row['version']}  {mark}  {row['display']}"
+            )
+        return lines, skewed
+
+
 def update_cache_path() -> Path:
     override = os.environ.get("OF_UPDATE_CACHE")
     if override:

@@ -130,9 +130,9 @@ A schema error is not a cue to hand-edit around the contract; recover the invali
 
 **Symptom:** adapter missing, field not writable, schemas absent, or lock stuck.
 
-**Meaning:** Doctor prints kernel-verifiable local checks: Python, kernel VERSION, writable `.orderfield/` + scratch, public schemas, and whether `.orderfield/field.lock` is acquirable. Adapter lines show PATH + best-effort `--version`. **PATH is not auth and not readiness** — doctor prints `auth=not-verified` / `ready=not-verified` on purpose. Kernel verifies PATH/argv/residual; the harness promises approval/auth/ready.
+**Meaning:** Doctor prints kernel-verifiable local checks: Python, kernel VERSION, writable `.orderfield/` + scratch, public schemas, whether `.orderfield/field.lock` is acquirable, and skill VERSION skew. It scans known HOME dests that already exist (`.agents`, `.claude`, `.codex`, `.cursor`, `.opencode`, `.grok`, `.gemini/…`) and compares each readable `VERSION` / `SKILL.md` metadata to this checkout. Missing dests are silent — doctor does not invent installs. A mismatch prints `SKEW` and fails. Adapter lines show PATH + best-effort `--version`. **PATH is not auth and not readiness** — doctor prints `auth=not-verified` / `ready=not-verified` on purpose. Kernel verifies PATH/argv/residual; the harness promises approval/auth/ready.
 
-**Recover:** Install a harness CLI onto PATH if you need headless spawn. `of init` if there is no field. Do not treat a PATH hit as logged-in.
+**Recover:** Install a harness CLI onto PATH if you need headless spawn. `of init` if there is no field. Do not treat a PATH hit as logged-in. Re-run `install.sh` (or copy this checkout) into the dest that printed `SKEW`.
 
 ## Episodic retention (`of retain` / `of gc`)
 

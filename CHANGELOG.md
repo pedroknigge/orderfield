@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.10
+
+Close honesty and nested-field guides. Doctor names skill VERSION skew. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.9 notes.
+
+- **Close honesty:** [docs/close-honesty.md](docs/close-honesty.md) names the dual-truth failure (CLOSED narrative vs `done_when_closed` / missing `CLOSE.json`), and gives BLOCKED / RESOLVED / soft+reason templates. Disk is the stamp: atomic close + `CLOSE.json` (0.7.7). Existing recovery evals stay.
+- **Nested fields:** [docs/nested-fields.md](docs/nested-fields.md) says when to `of new` vs patch the bound field, how ACTIVE + status/resume resolve, and the root-stub trap. `recovery/active-field-pointer` stays.
+- **`of doctor` skill VERSION skew:** `SkillVersionSkew` scans known HOME dests that already exist (`.agents`, `.claude`, `.codex`, `.cursor`, `.opencode`, `.grok`, `.gemini/…`) and compares each readable `VERSION` / `SKILL.md` metadata to this checkout. Missing dests are silent. A mismatch prints `SKEW` and fails. `DoctorSkillVersionSkew` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.10; skill/alias description preview `v0.7.10 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.9 notes.
+
 ## 0.7.9
 
 Corpus-inspired recovery honesty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.8 notes.

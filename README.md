@@ -17,12 +17,12 @@ If one agent already fits, do not open a field. `/of` is for work that will not 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.7.9</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.10</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.9-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.10-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -74,8 +74,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.9
-release_version=0.7.9
+release_tag=v0.7.10
+release_version=0.7.10
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -213,7 +213,7 @@ CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`
 
 **When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, and lock — PATH presence is not authentication or readiness. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--drop-field`; never copy transcripts). `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, and skill VERSION skew on existing HOME installs versus this checkout — PATH presence is not authentication or readiness; missing skill dests are silent. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--drop-field`; never copy transcripts). `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
@@ -342,6 +342,8 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
+| [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close; BLOCKED / RESOLVED / soft+reason |
+| [docs/nested-fields.md](docs/nested-fields.md) | Sibling fields; ACTIVE; root-stub trap |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape; `MUTATING_COMMANDS` lock set |
 | [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
 | [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |

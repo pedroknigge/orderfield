@@ -1,6 +1,6 @@
-# Next path (after 0.7.9)
+# Next path (after 0.7.10)
 
-Empty waves tell the truth. Close is still one stamp. Done-when has to be checkable.
+Close has a spoken template. Nested fields have a map. Doctor names a stale skill copy.
 
 Public docs lead with when to use, when not to, and how to prove close. What remains is process, not another command.
 

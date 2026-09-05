@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.9. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.10. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.9` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.10` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -20,7 +20,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; open fields require executing `next` same turn; does not auto-spawn or dump logs
-- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-harness residual, verify↔build escalate); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr.
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-harness residual, verify↔build escalate); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DoctorSkillVersionSkew`.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr
@@ -41,7 +41,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Integration input digests make identical replay a no-op/state repair; changed inputs require audited `--recompute`. Successful `integrate` stdout is the JSON report; human notes go to stderr
 - Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
 - Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Pulse leaves ORDER/state/session/wave artifacts unchanged, while update-notice throttling may write its user cache
-- `of doctor` reports Python/kernel, writable field, schemas, lock, and adapter PATH/version. PATH presence is not authentication or readiness
+- `of doctor` reports Python/kernel, writable field, schemas, lock, adapter PATH/version, and skill VERSION skew on existing HOME dests versus this checkout. PATH presence is not authentication or readiness. Missing dests are silent (`SkillVersionSkew`)
 - `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). `--list` / `--forget`. Resume lists both; not SPEC
 - `of retain` (read-only) / `of gc` walk every field home. Non-risky ephemeral uses a 7-day TTL; `spec_closed` dumps it immediately. Tree budget (64 MiB, `OF_GC_BUDGET`) prints `audit` of open fields; `--keep-field` / `--drop-field` are HITL (open drop needs `--force --reason`). The plan action `dump` is **permanent unlink** (`Path.unlink` / `rmtree`), not an export. Backup is operator-owned. Protocol is never unlinked. Never copy transcripts. WAL crash consistency is not a restorable dump.
 - Spawn `argv_preview` and child logs redact secrets and escalated approval flags

@@ -14,7 +14,7 @@ Product surface: [README Compared-to](../README.md#compared-to). Leader procedur
 
 ## sibling field
 
-A second (or Nth) ORDER in the same working tree. `of new` opens one without closing the others. Product files stay at the repo root; only contract artifacts are namespaced under `fields/<id>/`. `.orderfield/ACTIVE` names the field `of status` / `of resume` bind when `--field` / `OF_FIELD` / origin session do not. A leftover top-level ORDER stub is ignored for auto-bind when nested homes exist. `of resume` with several unmatched open fields and no ACTIVE prints a roster and exits 2. Not a file locker: overlapping in-flight `--owns-path` across open siblings dies at pack.
+A second (or Nth) ORDER in the same working tree. `of new` opens one without closing the others. Product files stay at the repo root; only contract artifacts are namespaced under `fields/<id>/`. `.orderfield/ACTIVE` names the field `of status` / `of resume` bind when `--field` / `OF_FIELD` / origin session do not. A leftover top-level ORDER stub is ignored for auto-bind when nested homes exist. `of resume` with several unmatched open fields and no ACTIVE prints a roster and exits 2. Not a file locker: overlapping in-flight `--owns-path` across open siblings dies at pack. When to `of new` vs patch, ACTIVE resolve, root-stub trap: [nested-fields.md](nested-fields.md).
 
 ## spec_hash
 
@@ -42,7 +42,7 @@ In-flight: a packed child whose residual is missing. Disk is the session. `of re
 
 ## contrast
 
-The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed. `of close` stamps only when contrast is RESOLVED; success writes `spec_closed`, `done_when_closed`, and `CLOSE.json` in one WAL generation. Generic done-when placeholders (`current phase criteria closed with evidence`) are refused at init/patch.
+The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed. `of close` stamps only when contrast is RESOLVED; success writes `spec_closed`, `done_when_closed`, and `CLOSE.json` in one WAL generation. Generic done-when placeholders (`current phase criteria closed with evidence`) are refused at init/patch. Honesty templates (BLOCKED / RESOLVED / soft+reason) and the dual-truth failure: [close-honesty.md](close-honesty.md).
 
 ## VERIFIED_CONTRACT vs VERIFIED_INTERNAL
 

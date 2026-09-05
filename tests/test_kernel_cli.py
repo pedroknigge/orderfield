@@ -38,13 +38,19 @@ WAVE_REPORT_SCHEMA = ROOT / "schemas" / "wave-report.schema.json"
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 
 
-def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def run_of(
+    cwd: Path,
+    *args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     # hermetic: the suite must never hit the network for the update notice
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     env.setdefault(
         "OF_LEARNINGS",
         str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
     )
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         [sys.executable, str(OF_PY), *args],
         cwd=str(cwd),
@@ -1056,16 +1062,34 @@ class ArgvAndLogRedaction(unittest.TestCase):
 class DoctorCommand(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-"))
+        self.home = Path(tempfile.mkdtemp(prefix="of-doctor-home-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.addCleanup(shutil.rmtree, self.home, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "explore",
+            extra_env={"HOME": str(self.home)},
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    def _doctor(self) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, "doctor", extra_env={"HOME": str(self.home)})
+
     def test_doctor_reports_path_not_auth_and_kernel_checks(self) -> None:
-        r = run_of(self.tmp, "doctor")
+        r = self._doctor()
         self.assertEqual(r.returncode, 0, r.stderr)
         out = r.stdout
         self.assertIn("prereqs", out)
         self.assertIn("python", out)
+        self.assertIn("skills", out)
+        self.assertIn("checkout", out)
+        self.assertIn("installs     none  (missing dests are silent)", out)
+        self.assertNotIn("SKEW", out)
+        self.assertNotIn("~/.claude/skills/orderfield", out)
         self.assertIn("field", out)
         self.assertIn("writable=", out)
         self.assertIn("schemas", out)
@@ -1083,15 +1107,96 @@ class DoctorCommand(unittest.TestCase):
         order = self.tmp / ".orderfield" / "ORDER.json"
         state = self.tmp / ".orderfield" / "state.json"
         before = (order.read_bytes(), state.read_bytes())
-        r = run_of(self.tmp, "doctor")
+        r = self._doctor()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual((order.read_bytes(), state.read_bytes()), before)
 
     def test_doctor_does_not_wait_for_field_lock(self) -> None:
         with of.field_lock(self.tmp, "test-holder", wait_seconds=0.1):
-            r = run_of(self.tmp, "doctor")
+            r = self._doctor()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("held", r.stdout)
+
+
+class DoctorSkillVersionSkew(unittest.TestCase):
+    """Existing HOME skill copies vs checkout VERSION. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.home = Path(tempfile.mkdtemp(prefix="of-skill-home-"))
+        self.addCleanup(shutil.rmtree, self.home, True)
+        self.expected = of.installed_version() or "0.0.0"
+
+    @staticmethod
+    def _write_skill(dest: Path, version: str, *, via: str = "VERSION") -> None:
+        dest.mkdir(parents=True, exist_ok=True)
+        if via == "VERSION":
+            (dest / "VERSION").write_text(version + "\n", encoding="utf-8")
+            return
+        (dest / "SKILL.md").write_text(
+            f'---\nname: orderfield\nmetadata:\n  version: "{version}"\n---\n',
+            encoding="utf-8",
+        )
+
+    def test_known_relpaths_match_install_dests_and_do_not_invent(self) -> None:
+        rels = of.SkillVersionSkew.known_relpaths()
+        labels = [of.SkillVersionSkew.label(rel) for rel in rels]
+        self.assertEqual(
+            labels,
+            [
+                "agents",
+                "claude",
+                "codex",
+                "cursor",
+                "opencode",
+                "grok",
+                "gemini",
+                "agy",
+            ],
+        )
+        self.assertTrue(all(rel[-1] == "orderfield" for rel in rels))
+        self.assertEqual(of.SkillVersionSkew.scan(home=self.home, expected=self.expected), [])
+
+    def test_empty_dir_is_not_an_install(self) -> None:
+        dest = self.home / ".claude" / "skills" / "orderfield"
+        dest.mkdir(parents=True)
+        rows = of.SkillVersionSkew.scan(home=self.home, expected=self.expected)
+        self.assertEqual(rows, [])
+        lines, skewed = of.SkillVersionSkew.report(home=self.home, expected=self.expected)
+        self.assertFalse(skewed)
+        self.assertIn("installs     none  (missing dests are silent)", "\n".join(lines))
+        self.assertNotIn("claude", "\n".join(lines))
+
+    def test_matching_install_is_ok(self) -> None:
+        dest = self.home / ".agents" / "skills" / "orderfield"
+        self._write_skill(dest, self.expected)
+        rows = of.SkillVersionSkew.scan(home=self.home, expected=self.expected)
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0]["skew"])
+        lines, skewed = of.SkillVersionSkew.report(home=self.home, expected=self.expected)
+        self.assertFalse(skewed)
+        joined = "\n".join(lines)
+        self.assertIn("ok", joined)
+        self.assertIn("~/.agents/skills/orderfield", joined)
+        self.assertNotIn("SKEW", joined)
+
+    def test_skill_md_version_and_mismatch_fail_doctor(self) -> None:
+        dest = self.home / ".cursor" / "skills" / "orderfield"
+        self._write_skill(dest, "0.0.1", via="SKILL.md")
+        rows = of.SkillVersionSkew.scan(home=self.home, expected=self.expected)
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]["skew"])
+        self.assertEqual(rows[0]["version"], "0.0.1")
+        tmp = Path(tempfile.mkdtemp(prefix="of-doctor-skew-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        r = run_of(tmp, "doctor", extra_env={"HOME": str(self.home)})
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("SKEW", r.stdout)
+        self.assertIn("0.0.1", r.stdout)
+        self.assertIn("~/.cursor/skills/orderfield", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("~/.claude/skills/orderfield", r.stdout)
 
 
 class QwenHarnessEnum(unittest.TestCase):
