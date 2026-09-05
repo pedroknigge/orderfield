@@ -8,6 +8,13 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.8
+
+Docs voice from #63 now on the published line. Same 0.6 / 0.7.7 protocol. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.7 notes.
+
+- **Packaging honesty:** annotated tag `v0.7.7` pointed at the pre-#63 commit. Main tip still said VERSION 0.7.7 after the public voice rewrite landed, so published release assets lacked the new README / SKILL / brief voice. 0.7.8 is identity only — that voice is now the published line. Kernel behavior is unchanged.
+- Packaging: VERSION 0.7.8; skill/alias description preview `v0.7.8 — …`. Never rewrite v0.7.7 notes.
+
 ## 0.7.7
 
 Close is one fact. Status names the live field. Done-when has to be checkable. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.6 notes.
