@@ -1145,6 +1145,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("mission-rewrite-refused", r.stdout)
         self.assertIn("contrast-close-contract", r.stdout)
         self.assertIn("slogan-evidence-refused", r.stdout)
+        self.assertIn("pack-exclusivity-refused", r.stdout)
 
 
 class MissionRewriteRefused(unittest.TestCase):

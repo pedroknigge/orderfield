@@ -1,0 +1,86 @@
+{
+  "id": "recovery/pack-exclusivity-refused",
+  "description": "Exclusive ownership: foreign owner, unowned new child, and same-wave path overlap die; a disjoint second owner still packs",
+  "fixture": "recovery_pack_exclusivity",
+  "tags": ["recovery", "gate", "pack", "ownership"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "steal alice id",
+        "--role",
+        "implementer",
+        "--child-id",
+        "thief",
+        "--owns-path",
+        "slice/thief.py",
+        "--owns-requirement",
+        "ALPHA-001"
+      ],
+      "exit": 1,
+      "stderr_contains": ["already owned by alice", "exclusive owner"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "new child with nothing",
+        "--role",
+        "explorer",
+        "--child-id",
+        "blank"
+      ],
+      "exit": 1,
+      "stderr_contains": ["unowned", "BETA-001", "--owns-requirement"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "overlap alice path",
+        "--role",
+        "implementer",
+        "--child-id",
+        "overlap",
+        "--owns-path",
+        "slice/alice.py",
+        "--owns-requirement",
+        "BETA-001"
+      ],
+      "exit": 1,
+      "stderr_contains": ["overlaps", "alice"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "disjoint second owner",
+        "--role",
+        "implementer",
+        "--child-id",
+        "bob",
+        "--owns-path",
+        "slice/bob.py",
+        "--owns-requirement",
+        "BETA-001"
+      ],
+      "exit": 0
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "steal bob id",
+        "--role",
+        "explorer",
+        "--child-id",
+        "thief2",
+        "--owns-requirement",
+        "BETA-001"
+      ],
+      "exit": 1,
+      "stderr_contains": ["already owned by bob", "exclusive owner"]
+    }
+  ]
+}

@@ -36,7 +36,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | Doc | Role |
 | --- | --- |
 | [evals/README.md](../evals/README.md) | Kernel eval manifests + `of eval` |
-| [docs/external-brief.md](external-brief.md) | External reader brief + proof suite |
+| [docs/external-brief.md](external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/audit/recovery-test-a-quarry.md](audit/recovery-test-a-quarry.md) | Test A report |
 | [docs/audit/recovery-test-b-beacon.md](audit/recovery-test-b-beacon.md) | Test B report |
 

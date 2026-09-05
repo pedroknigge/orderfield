@@ -6,24 +6,24 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
 > **Living claims v0:** anchors + severity.
 
-**Date:** 2026-09-03
+**Date:** 2026-09-05
 **Scope:** project
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.5`
+**Code rev:** VERSION `0.7.6`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 84 |
+| OK | 85 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 70 |
+| critical | 71 |
 | normal | 19 |
 
-**Truth score (advisory):** `(84*100 + 4*50) / 89 = 96.6` (89 matrix rows; unique IDs C-001…C-089)
+**Truth score (advisory):** `(85*100 + 4*50) / 90 = 96.7` (90 matrix rows; unique IDs C-001…C-090)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -158,6 +158,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-087 | #55 invalid requirement id keeps `PREFIX-001`; hyphenated prefixes die and the refusal names that PREFIX must not contain `-` | SKILL / CHANGELOG / kernel feature | `require_req_id` hint when `text.count("-") > 1`; `REQ_ID_RE` unchanged | `scripts/of/spec.py` / `tests/test_spec_io.py` | `require_req_id` | — | critical | OK | #55 0.7.4 |
 | C-088 | #56 skipped-learnings warning once per unchanged skipped-set fingerprint; items still never enter a prompt | SKILL / CHANGELOG / events | `_filter_learnings` skip-warn cache sidecar of `OF_LEARNINGS` | `scripts/of/learn.py` / `scripts/of/field.py` / `tests/test_learn_provenance.py` | `_filter_learnings` | — | critical | OK | #56 0.7.4 |
 | C-089 | `of eval --strict --kernel` proves silent mission/phase/constraints/done-when rewrite dies and a public-surface slogan/internal/child stamp cannot close | CHANGELOG / evals / external-brief | recovery fixtures `mission-rewrite-refused`, `contrast-close-contract`, `slogan-evidence-refused`; `MissionRewriteRefused` file-level ORDER assert; `stderr_contains` on eval steps | `evals/recovery/` / `scripts/of/cli/spec_cmd.py` / `tests/test_kernel_cli.py` | `EvalInvariantSetup` / `run_recovery_eval_spec` / `MissionRewriteRefused` | — | critical | OK | 0.7.5 |
+| C-090 | `of eval --strict --kernel` proves pack exclusivity: two children cannot own the same binding ID; a new child that owns nothing is refused while IDs stay unowned; same-wave `--owns-path` overlap dies; a disjoint second owner still packs | CHANGELOG / evals / external-brief | recovery fixture `pack-exclusivity-refused`; `EvalInvariantSetup.setup_pack_exclusivity`; `mark_requirements_owned`; `cmd_pack` `already_owns` gate; `same_wave_owns_path_conflict` | `evals/recovery/pack-exclusivity-refused.eval.json` / `scripts/of/cli/spec_cmd.py` / `scripts/of/spec.py` / `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `EvalInvariantSetup.setup_pack_exclusivity` / `mark_requirements_owned` / `cmd_pack` / `same_wave_owns_path_conflict` | — | critical | OK | 0.7.6 |
 
 ### Verdict definitions
 
@@ -191,6 +192,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-084 SAT-001..006 0.7.3: walk every home, 7-day safe TTL, HITL drop/keep
 - [x] C-085..C-088 0.7.4: #54 pack continuation, #57 integrate JSON stdout, #55 hyphen PREFIX message, #56 skip-warn throttle
 - [x] C-089 0.7.5: invariant evals (mission rewrite / contract close / slogan) + external brief
+- [x] C-090 0.7.6: pack exclusivity eval + threat-model section (child-cannot vs kernel-does-not-stop)
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -29,6 +29,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/mission-rewrite-refused` | `recovery_mission_rewrite` | residual rewrite of mission/phase/constraints/done-when dies; `escalate_up`; spawn blocked |
 | `recovery/contrast-close-contract` | `recovery_contrast_close_contract` | public CLI-001: child stamp + VERIFIED_INTERNAL cannot close; VERIFIED_CONTRACT → RESOLVED → CLOSED |
 | `recovery/slogan-evidence-refused` | `recovery_slogan_evidence` | verifier `done` with slogan evidence (`all tests passed`) cannot collect |
+| `recovery/pack-exclusivity-refused` | `recovery_pack_exclusivity` | foreign owner / unowned new child / same-wave path overlap die; disjoint second owner packs |
 
 Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --kernel` after unittest (`.github/workflows/test.yml`).
 
