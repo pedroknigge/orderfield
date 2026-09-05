@@ -23,7 +23,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Verdict | Count |
 |---------|------:|
-| OK | 101 |
+| OK | 102 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 87 |
+| critical | 88 |
 | normal | 19 |
 
-**Truth score (advisory):** `(101*100 + 4*50) / 106 = 97.2` (106 matrix rows; unique IDs C-001…C-106)
+**Truth score (advisory):** `(102*100 + 4*50) / 107 = 97.2` (107 matrix rows; unique IDs C-001…C-107)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
