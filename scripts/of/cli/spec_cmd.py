@@ -942,6 +942,17 @@ def eval_setup_recovery_active_field_pointer(root: Path) -> None:
     dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
 
 
+@_register_eval_fixture("recovery_field_roster_ux")
+def eval_setup_recovery_field_roster_ux(root: Path) -> None:
+    """Three sibling fields: ACTIVE on the last; roster must name it."""
+    init = eval_run_of(root, "init", "--mission", "epic alpha", "--phase", "explore")
+    EvalInvariantSetup.require_ok(init, "init")
+    second = eval_run_of(root, "new", "--mission", "epic beta", "--phase", "build")
+    EvalInvariantSetup.require_ok(second, "new beta")
+    third = eval_run_of(root, "new", "--mission", "epic gamma", "--phase", "cut")
+    EvalInvariantSetup.require_ok(third, "new gamma")
+
+
 @_register_eval_fixture("recovery_done_when_lint")
 def eval_setup_recovery_done_when_lint(root: Path) -> None:
     """Empty tree; steps exercise init/patch refuse vs accept."""

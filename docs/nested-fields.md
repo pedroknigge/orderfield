@@ -19,7 +19,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `of init --force` replaces **this** field (archives old waves). It is not how you keep the current field and start another. That is `of new`.
 
-The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them.
+The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. `choose` says `of new` is an unrelated epic; the same product is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
 
 ## ACTIVE + how status / resume resolve
 
@@ -38,6 +38,8 @@ If resume prints `auto_continue no` and **foreign field**, do not execute that f
 
 ```bash
 of fields
+of fields --open
+of fields --all
 of status --field ord_…
 of resume --field ord_…
 # or: OF_FIELD=ord_… of status

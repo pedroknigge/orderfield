@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.12`
+**Code rev:** VERSION `0.7.13`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 94 |
+| OK | 95 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 80 |
+| critical | 81 |
 | normal | 19 |
 
-**Truth score (advisory):** `(94*100 + 4*50) / 99 = 97.0` (99 matrix rows; unique IDs C-001…C-099)
+**Truth score (advisory):** `(95*100 + 4*50) / 100 = 97.0` (100 matrix rows; unique IDs C-001…C-100)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -127,7 +127,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-056 | `of learn TEXT` writes a field note (default), `--protocol` / `--promote` write protocol; provenance required on load; resume lists both; child prompts ≤8 protocol lines; `gc` never drops protocol | SKILL / README / kernel feature | `cmd_learn` / `save_learning` / `protocol_learning_lines` | `scripts/of/learn.py` / `scripts/of/field.py` / `scripts/of/cli/ops.py` / `schemas/learning.schema.json` | `cmd_learn` | — | critical | OK | keep; learn module re-exported by field |
 | C-057 | Optional `ORDER.origin` provenance stamp; spawn/`pick_adapter` ignore origin; kernel does not fetch transcripts | SKILL / README / context-control / CHANGELOG | `origin` on order schema; `format_origin_line`; `pick_adapter` has no origin param | `schemas/order.schema.json` / `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_origin.py` | `cmd_init` / `format_origin_line` | — | critical | OK | keep; 0.6.5 |
 | C-058 | Field lock set is exactly `MUTATING_COMMANDS` = init, new, pack, unpack, collect, integrate, phase, patch, next-wave, migrate, spec, checkpoint, close | architecture / README / principles (was overclaiming spawn/handoff/gc/learn/worktree) | `MUTATING_COMMANDS`; single `with field_lock` in `main` | `scripts/of/field.py` / `scripts/of/cli/__init__.py` | `MUTATING_COMMANDS` | — | critical | OK | patched supporting docs; 0.6.6 added `new`; 0.6.7 added `spec`/`checkpoint` |
-| C-065 | Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight owns-path overlap dies | SKILL / README / glossary / CHANGELOG | `cmd_new` / `bind_active_field` / `cross_field_owns_path_conflict` | `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_fields.py` | `SiblingFields` | — | critical | OK | keep; 0.6.6 |
+| C-065 | Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight owns-path overlap dies | SKILL / README / glossary / CHANGELOG | `cmd_new` / `bind_active_field` / `cross_field_owns_path_conflict` | `scripts/of/field.py` / `scripts/of/cli/` / `tests/test_kernel_fields.py` | `SiblingFields` | — | critical | OK | keep; 0.6.6; roster UX 0.7.13 is C-100 |
 | C-059 | `emit_event` lives in `scripts/of/field.py`, re-exported by `of`; not in the `scripts/of.py` shim | events.md | `def emit_event` | `scripts/of/field.py` | `emit_event` | — | normal | OK | patched events.md |
 | C-060 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` live in `scripts/of/regime.py` | roadmap (was `scripts/of.py`) | module location | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | normal | OK | patched roadmap |
 | C-061 | Public schemas include `learning.schema.json` and `requirements.schema.json` besides order/state/packet/residual/session/wave-report | architecture / kernel feature | `schemas/` listing | `schemas/` | | — | normal | OK | patched inventory + coverage |
@@ -168,6 +168,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-097 | `of doctor` reports skill VERSION skew on existing HOME dests versus this checkout; missing dests are silent; does not invent installs | CHANGELOG / troubleshooting / kernel feature | `SkillVersionSkew`; doctor `SKEW` fails; `DoctorSkillVersionSkew` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `SkillVersionSkew` / `cmd_doctor` | — | critical | OK | 0.7.10 |
 | C-098 | Spawn argv preview keeps the last path segment of `--output-schema` / `-o` and of filesystem tokens ending in `.json` (and kin) so a skill-root path longer than 80 chars still names `residual.codex.schema.json`; long prompts stay `<prompt>`; secret flags stay redacted | CHANGELOG / evals / architecture / kernel feature | `ArgvRedact`; `redact_argv`; `MultiHarnessResidual.test_codex_dry_run_names_schema_on_deep_skill_root`; recovery `multi-harness-residual` | `scripts/of/field.py` / `tests/test_kernel_cli.py` / `evals/recovery/multi-harness-residual.eval.json` | `ArgvRedact` / `redact_argv` | — | critical | OK | 0.7.11 |
 | C-099 | Interrupted multi-day field: `of resume` reconstructs the live wave from `state.wave` + packets/residuals (stale `session.json` does not win; age + in-flight is not `abandoned`); a unique open field auto-continues when `OF_SESSION_ID` differs from `ORDER.origin.session_id`; foreign gate stays when several open fields mismatch; `of init` without `--force` dies | CHANGELOG / evals / SKILL / nested-fields / principles | `resume_auto_continue_lines(open_field_count)`; recovery `multi-day-resume`; `DurableMultiDayResume`; `test_foreign_origin_gate_single_field` / `_stays_when_siblings_open` | `scripts/of/cli/ops.py` / `evals/recovery/multi-day-resume.eval.json` / `tests/test_kernel_field.py` / `tests/test_kernel_fields.py` | `cmd_resume` / `resume_auto_continue_lines` | — | critical | OK | 0.7.12 |
+| C-100 | Sibling roster: `of fields` / PICK roster mark ACTIVE with `*`, print open/closed/phase/wave/packed-age, and a `choose` line (`of new` = unrelated epic; same product = `of patch` / `of spec --amend`); `--open` / `--all` / `--cursor` page many homes; no new ORDER kind | CHANGELOG / evals / nested-fields / glossary / kernel feature | `FieldRoster`; recovery `field-roster-ux`; `SiblingFields` roster tests | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `scripts/of/cli/init_cmd.py` / `evals/recovery/field-roster-ux.eval.json` / `tests/test_kernel_fields.py` | `FieldRoster` / `cmd_fields` / `cmd_new` | — | critical | OK | 0.7.13 |
 
 ### Verdict definitions
 
@@ -207,6 +208,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-097 0.7.10: doctor skill VERSION skew; close-honesty + nested-fields guides
 - [x] C-098 0.7.11: ArgvRedact keeps schema basename on a deep skill root
 - [x] C-099 0.7.12: durable multi-day resume; unique-field later session; re-init refuse
+- [x] C-100 0.7.13: sibling FieldRoster ACTIVE marker + packed-age + epic vs patch choose
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

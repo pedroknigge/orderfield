@@ -17,12 +17,12 @@ If one agent already fits, do not open a field. `/of` is for work that will not 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.7.12</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.13</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.12-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.13-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -74,8 +74,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.12
-release_version=0.7.12
+release_tag=v0.7.13
+release_version=0.7.13
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -231,7 +231,7 @@ Children propose. Only the leader writes mission. Amendments are dated and audit
 
 That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
 
-Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field. `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. Mid-flight extra ask on the same product: `of spec --amend`. The kernel does not prompt. It does not lock product files.
+Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field (an unrelated epic). Same product: `of patch` / `of spec --amend`. `of fields` marks `.orderfield/ACTIVE` with `*` and prints open/closed / phase / wave / packed-age. `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. The kernel does not prompt. It does not lock product files.
 
 ---
 
@@ -303,7 +303,7 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 |---|---|
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
 | `new` | open a sibling field in this working tree without closing the others; writes `.orderfield/ACTIVE`. First call promotes the legacy ORDER into `fields/<id>/` |
-| `fields` | list sibling fields (id, open/closed, origin, mission, ACTIVE) |
+| `fields` | list sibling fields (`*` ACTIVE, open/closed, phase, wave, packed-age, `choose`); `--open` / `--all` / `--cursor` |
 | `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Follows `.orderfield/ACTIVE` after `--field` / origin. Several unmatched open fields and no pointer: roster, exit 2. Does not auto-spawn. |
 | `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |

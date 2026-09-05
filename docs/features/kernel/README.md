@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.12. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.13. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.12` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.13` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -20,7 +20,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`.
-- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, multi-harness residual, verify↔build escalate); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume` and `DoctorSkillVersionSkew`.
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, field-roster-ux, multi-harness residual, verify↔build escalate); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume` and `DoctorSkillVersionSkew`.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr
@@ -33,7 +33,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
 - `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. Multi-file mutations stage one WAL generation + MANIFEST, then publish (`wal/CURRENT.json`). **Readers** (status/resume/render/pulse/contrast/spec-diff/handoff/spawn/validate) use CURRENT; live disk is cache/tamper. **Writers** rematerialize CURRENT onto stale live files before inherit; immediate checkpoint after `OF_WAL_CRASH=after-current` keeps committed children and packets. WAL crash consistency is not a restorable dump. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper
 - `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
-- Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD` / `.orderfield/ACTIVE`; resume roster exit 2 when unmatched and no pointer; foreign origin gate; leftover root stub ignored when nested homes exist; cross-field in-flight `--owns-path` overlap dies. Legacy `.orderfield/ORDER.json` remains valid until the first `of new` promotes it.
+- Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD` / `.orderfield/ACTIVE`; resume roster exit 2 when unmatched and no pointer; foreign origin gate; leftover root stub ignored when nested homes exist; cross-field in-flight `--owns-path` overlap dies. Legacy `.orderfield/ORDER.json` remains valid until the first `of new` promotes it. Roster (`FieldRoster`) marks ACTIVE with `*`, prints open/closed/phase/wave/packed-age, and a `choose` line (`of new` = unrelated epic; same product = `of patch` / `of spec --amend`). `--open` / `--all` / `--cursor` page many homes.
 - Atomic close: `of close` refuses unless contrast is RESOLVED; success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation. Generic done_when placeholders die at init/patch.
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
