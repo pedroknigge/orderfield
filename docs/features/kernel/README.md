@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.17. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.18. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.17` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.18` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -20,7 +20,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`.
-- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `DoctorSkillVersionSkew`, and `WaveReportQualityGate`. `file_contains` reads JSON or text.
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate, packet sizing lint); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `DoctorSkillVersionSkew`, and `WaveReportQualityGate`. `file_contains` reads JSON or text.
 - Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: oversized evidence/notes or multi-turn Human/Assistant transcript). Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
@@ -52,7 +52,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
 - Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
-- Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice; oversized-slice note stays advisory (do not refuse).
+- Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice. Whole-phase slogans die at pack (`SliceLint`, `slice.phase`) with a split/constraints fix path. Oversized-slice note stays advisory (do not refuse ≥800). Proof: `recovery/packet-sizing-lint`.
 - Optional `of --json` / `OF_JSON=1` event lines on stderr — see [docs/events.md](../../events.md)
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
 
@@ -67,4 +67,4 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 ## Tests
 
-`tests/test_kernel.py` plus `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, origin stamp, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); LEARN child-forge in `tests/test_learn_provenance.py`; WAL reader CURRENT view in `tests/test_field_wal.py` (writer next-mutator tests not present); leftover collect #48 in `tests/test_spawn_trust.py`; #49 digest in `tests/test_kernel_regime.py`; pack tokens and budget.seconds honesty in `tests/test_budget_tokens.py`; theater cut in `tests/test_theater_{fieldops,renderdoc}.py`; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`. No `tests/test_sibling_residual.py`.
+`tests/test_kernel.py` plus `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, origin stamp, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); LEARN child-forge in `tests/test_learn_provenance.py`; WAL reader CURRENT view in `tests/test_field_wal.py` (writer next-mutator tests not present); leftover collect #48 in `tests/test_spawn_trust.py`; #49 digest in `tests/test_kernel_regime.py`; pack tokens and budget.seconds honesty in `tests/test_budget_tokens.py`; packet sizing lint in `tests/test_kernel_pack.py` (`SliceLintGate`); theater cut in `tests/test_theater_{fieldops,renderdoc}.py`; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`. No `tests/test_sibling_residual.py`.

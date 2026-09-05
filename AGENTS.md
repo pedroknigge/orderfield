@@ -105,6 +105,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.15 `budget.seconds` honesty (packet wall-clock; spawn `--timeout` must match or omit; `recovery/budget-seconds-honesty`) | documented |
 | 0.7.16 mid-flight amend evals (`of spec --amend` + `of patch` across waves; next packet carries dated amend; `recovery/midflight-amend`) | documented |
 | 0.7.17 wave-report quality gate (structured residual, not chat dumps; `recovery/wave-report-quality-gate`) | documented |
+| 0.7.18 packet sizing lint (whole-phase pack slogans die; length ≥800 stays advisory; `recovery/packet-sizing-lint`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

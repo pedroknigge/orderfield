@@ -785,6 +785,64 @@ class PackCapsAndBlock(unittest.TestCase):
         self.assertEqual(short.returncode, 0, short.stderr)
         self.assertNotIn("slice is", short.stderr.lower())
 
+    def test_pack_refuses_whole_phase_slogan(self) -> None:
+        self._init()
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "do the whole explore phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "whole",
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        blob = packed.stderr.lower()
+        self.assertIn("slice.phase", blob)
+        self.assertIn("whole-phase slice refused", blob)
+        self.assertIn("of pack --slice", blob)
+        self.assertIn("--owns-requirement", blob)
+        self.assertIn("of patch --constraints-add", blob)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "whole.json").is_file()
+        )
+        ok = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map pricing models, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ok",
+        )
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        self.assertNotIn("whole-phase", ok.stderr.lower())
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "ok.json").is_file()
+        )
+
+
+class SliceLintGate(unittest.TestCase):
+    """Exact slogans die; honest slices and length-only stay outside refuse."""
+
+    def test_body_and_phase_slogans(self) -> None:
+        self.assertTrue(of.SliceLint.is_whole_phase("Do the whole explore phase."))
+        self.assertTrue(of.SliceLint.is_whole_phase("do the entire phase"))
+        self.assertTrue(of.SliceLint.is_whole_phase("one pack is the whole phase"))
+        self.assertFalse(
+            of.SliceLint.is_whole_phase("map pricing models, do not decide the phase")
+        )
+        self.assertFalse(of.SliceLint.is_whole_phase("x" * of.SLICE_WARN_CHARS))
+        self.assertTrue(of.SliceLint.too_long("x" * of.SLICE_WARN_CHARS))
+        self.assertFalse(of.SliceLint.too_long("x" * (of.SLICE_WARN_CHARS - 1)))
+        self.assertIsNone(of.SliceLint.long_note("short"))
+        note = of.SliceLint.long_note("x" * of.SLICE_WARN_CHARS)
+        assert note is not None
+        self.assertIn("of unpack", note)
+        self.assertIn("of patch --constraints-add", note)
+
 
 class CollectByPacketResidualPath(unittest.TestCase):
     def setUp(self) -> None:

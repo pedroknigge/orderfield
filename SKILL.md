@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.17 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.18 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.17"
+  version: "0.7.18"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -221,7 +221,7 @@ Do not copy the leader's thinking into the child. Shared procedure belongs in `O
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
-An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds `children_spawned`**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence). `budget.seconds` is the spawn wall-clock (default 600). `of spawn --timeout` must match that value or be omitted — it is not a second clock and not a token ceiling. A timeout names `of unpack` then `of pack --seconds N`.
+An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. The note names the fix: split into multiple `of pack --slice` with exclusive `--owns-requirement` / `--owns-path`; shared procedure goes in `of patch --constraints-add`; `of unpack --child-id <id>` releases a bad pack. A whole-phase slogan (`do the whole explore phase`) is refused (`slice.phase`) with that same fix path — one pack is not a whole phase. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds `children_spawned`**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence). `budget.seconds` is the spawn wall-clock (default 600). `of spawn --timeout` must match that value or be omitted — it is not a second clock and not a token ceiling. A timeout names `of unpack` then `of pack --seconds N`.
 
 New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
