@@ -8,6 +8,13 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.11
+
+Deep-install argv honesty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.10 notes.
+
+- **Codex schema path survives redaction:** `redact_argv` treated any argv token longer than 80 characters as `<prompt>`. A mortal classic install with a deep skill root makes `--output-schema` to `residual.codex.schema.json` exceed that, so `recovery/multi-harness-residual` and `MultiHarnessResidual` failed even though the schema file existed. `ArgvRedact` keeps the last path segment for `--output-schema` / `-o` and for filesystem tokens ending in `.json` (and kin). Long prompt bodies are still `<prompt>`. Secret flags stay `<redacted>`. `MultiHarnessResidual` re-runs Codex `--dry-run` from a skill root whose schema path is longer than 80 characters.
+- Packaging: VERSION 0.7.11; skill/alias description preview `v0.7.11 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.10 notes.
+
 ## 0.7.10
 
 Close honesty and nested-field guides. Doctor names skill VERSION skew. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.9 notes.

@@ -36,7 +36,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/skip-explore-theater` | `recovery_skip_explore` | explore→build without `--force` dies; a forced skip is visible on status |
 | `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
 | `recovery/escalate-verify-build` | `recovery_verify_build` | adversary residual verify→build is `escalate_up`; leader phase stays verify |
-| `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it |
+| `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` keeps the basename (`ArgvRedact`; `MultiHarnessResidual`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`.
 

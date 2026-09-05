@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.10` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.11` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -100,7 +100,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |
 | Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
-| Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it | `recovery/multi-harness-residual` |
+| Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
 
 ## Deliberately reserved
 

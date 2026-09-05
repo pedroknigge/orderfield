@@ -999,6 +999,41 @@ class ArgvAndLogRedaction(unittest.TestCase):
         self.assertIn("--approval-mode default", preview)
         self.assertNotIn("<approval>", preview)
 
+    def test_long_schema_path_keeps_basename(self) -> None:
+        deep = (
+            "/Users/pedro/.codex/skills/"
+            + ("orderfield-" + "x" * 40)
+            + "/schemas/residual.codex.schema.json"
+        )
+        self.assertGreater(len(deep), of.ArgvRedact.PROMPT_CHARS)
+        preview = of.argv_preview(
+            ["codex", "exec", "--output-schema", deep, "PROMPT"]
+        )
+        self.assertIn("residual.codex.schema.json", preview)
+        self.assertIn("--output-schema", preview)
+        self.assertNotIn("<prompt>", preview.split("--output-schema", 1)[1].split()[0])
+        self.assertNotIn(deep, preview)
+        eq_preview = of.argv_preview(
+            ["codex", f"--output-schema={deep}", "short"]
+        )
+        self.assertIn("residual.codex.schema.json", eq_preview)
+        self.assertIn("short", eq_preview)
+
+    def test_long_prompt_still_becomes_placeholder(self) -> None:
+        prompt = "implement the slice " + ("word " * 40)
+        self.assertGreater(len(prompt), of.ArgvRedact.PROMPT_CHARS)
+        preview = of.argv_preview(["codex", "exec", prompt])
+        self.assertIn("<prompt>", preview)
+        self.assertNotIn("implement the slice", preview)
+
+    def test_long_secret_stays_redacted(self) -> None:
+        secret = "sk-" + ("a" * 90)
+        preview = of.argv_preview(
+            ["tool", "--openai-api-key", secret, f"--api-key={secret}"]
+        )
+        self.assertNotIn(secret, preview)
+        self.assertIn("<redacted>", preview)
+
     def test_redact_text_strips_bearer_and_pem(self) -> None:
         blob = (
             "Authorization: Bearer abcdefghijklmnop\n"
@@ -1363,6 +1398,53 @@ class MultiHarnessResidual(unittest.TestCase):
                 self.assertIn("residual.codex.schema.json", spawned.stdout)
         collected = run_of(tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertTrue(dest.is_file())
+
+    def test_codex_dry_run_names_schema_on_deep_skill_root(self) -> None:
+        """Deep install path >80 chars must still name residual.codex.schema.json."""
+        pad = "x" * 80
+        holder = Path(tempfile.mkdtemp(prefix="of-deep-skill-"))
+        self.addCleanup(shutil.rmtree, holder, True)
+        deep = holder / pad / "orderfield"
+        shutil.copytree(SCRIPTS, deep / "scripts")
+        shutil.copytree(ROOT / "schemas", deep / "schemas")
+        shutil.copy(ROOT / "SLAVE.md", deep / "SLAVE.md")
+        shutil.copy(ROOT / "VERSION", deep / "VERSION")
+        schema = deep / "schemas" / "residual.codex.schema.json"
+        self.assertTrue(schema.is_file(), schema)
+        self.assertGreater(len(str(schema)), of.ArgvRedact.PROMPT_CHARS)
+
+        tmp = Path(tempfile.mkdtemp(prefix="of-deep-field-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = self._pack_and_write(tmp)
+        packet = ".orderfield/waves/001/packets/imp1.json"
+        residual_rel = ".orderfield/waves/001/residuals/imp1.json"
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+        env.setdefault(
+            "OF_LEARNINGS",
+            str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+        )
+        spawned = subprocess.run(
+            [
+                sys.executable,
+                str(deep / "scripts" / "of.py"),
+                "spawn",
+                "--adapter",
+                "codex",
+                "--packet",
+                packet,
+                "--dry-run",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertIn("adapter=codex", spawned.stdout)
+        self.assertIn(f"residual={residual_rel}", spawned.stdout)
+        self.assertIn("residual.codex.schema.json", spawned.stdout)
+        self.assertIn("--output-schema", spawned.stdout)
         self.assertTrue(dest.is_file())
 
 
