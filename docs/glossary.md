@@ -1,14 +1,10 @@
-# Glossary — Orderfield contract
+# Glossary
 
-Names fork. Then the plan dies in translation.
+Every contract word is a disk path or an `of` verb. If a word cannot be typed, it is not in this list.
 
-The contract words stay one dialect: SPEC, ORDER, packet, residual, regime, contrast.
+SPEC, ORDER, packet, residual, regime, contrast. A slice cuts work from SPEC + ORDER. It does not replace the brief.
 
-Each term is a disk path or an `of` verb. A slice cuts work from SPEC + ORDER. It does not replace the brief.
-
-A cut, a resume, a different model — the words still mean the same. The results do not have to change.
-
-Canonical terms only. Product surface: [README Compared-to](../README.md). Leader procedure: [SKILL.md](../SKILL.md). Invariants: [references/principles.md](../references/principles.md).
+Product surface: [README Compared-to](../README.md#compared-to). Leader procedure: [SKILL.md](../SKILL.md). Invariants: [references/principles.md](../references/principles.md).
 
 ## SPEC vs ORDER
 
@@ -23,6 +19,10 @@ A second (or Nth) ORDER in the same working tree. `of new` opens one without clo
 ## spec_hash
 
 SHA-256 of current SPEC bytes, stored on ORDER (`spec_ref` + `spec_hash`). `of close` and `of phase deliver` refuse a SPEC that no longer matches. Silent rewrite of the brief is a field error; new human requests go through `of spec --amend`.
+
+## packet
+
+The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/packets/`. It names identity (`packet_id`, hash, ORDER id/rev, wave, child, role), the slice, exclusive owners (`--owns-requirement`, `--owns-path`), and where the residual must land. The packet is the intended context boundary. It is not a process, not a transcript, and not a replacement of SPEC.
 
 ## residual
 
@@ -42,7 +42,7 @@ In-flight: a packed child whose residual is missing. Disk is the session. `of re
 
 ## contrast
 
-The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed; `of close` stamps only when contrast is RESOLVED.
+The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed. `of close` stamps only when contrast is RESOLVED; success writes `spec_closed`, `done_when_closed`, and `CLOSE.json` in one WAL generation. Generic done-when placeholders (`current phase criteria closed with evidence`) are refused at init/patch.
 
 ## VERIFIED_CONTRACT vs VERIFIED_INTERNAL
 
@@ -50,9 +50,9 @@ The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`)
 
 **VERIFIED_CONTRACT** closes a public surface named in SPEC (CLI, HTTP, file format, exit code). Pair-shaped requirements need both sides (`of spec --verified-contract ID --both-sides`). `of close` stays blocked while a public-surface ID is only internally verified.
 
-## slaving
+## slaving (packet bound)
 
-Adiabatic following **as contract, not moral slavery**. The child moves freely inside the packet. It does not redefine the variety (mission / phase / constraints / done_when). If the packet is not enough: `status=threshold` plus evidence. Do not wander. Protocol keys `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` stay frozen.
+The child moves freely inside the packet. It does not redefine mission, phase, constraints, or done-when. If the packet is not enough: `status=threshold` plus evidence. Do not wander. The word is a contract bound, not a moral claim. Protocol keys `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` stay frozen.
 
 ## protocol learning vs field learning
 

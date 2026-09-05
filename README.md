@@ -8,13 +8,13 @@
           the plan survives the session. close is proof.
 ```
 
-The model is fast. The chat is faster. A brief that lives only in the thread dies with the room.
+Chat is cheap. A brief that lives only in the thread dies with the room.
 
-Orderfield is a **contract kernel** for software that will not fit one agent. The ORDER lives on disk. Children get bounded packets with exclusive owners. They cannot redefine the mission, the phase, the constraints, or done-when. `of contrast` refuses close until the public surface is proven.
+**Orderfield is a contract kernel.** The plan lives on disk. Children get bounded packets with exclusive owners. They cannot rewrite the mission, the phase, the constraints, or done-when. `of contrast` refuses close until the public surface is proven — not “the tests passed.”
 
-The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The kernel is what remains when the session is compacted, the model changes, or you switch harness. Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip.
+If one agent already fits, do not open a field. `/of` is for work that will not survive a compacted chat.
 
-One brief. Exclusive owners. A close that is proof.
+Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
   <strong>v0.7.7</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
@@ -28,18 +28,10 @@ One brief. Exclusive owners. A close that is proof.
 
 # The plan does not start over
 
-## What it does
-
-One ORDER on disk. Bounded packets with exclusive owners. Structured residuals. A closed regime after each wave. The harness starts and stops processes; the contract survives when the harness changes, the chat is compacted, or the model is swapped.
-
-Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.” Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin.
-
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). External brief: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [below](#compared-to).
-
 ## When to reach for it
 
 - The user invokes `/orderfield` or `/of`.
-- An existing `.orderfield/ORDER.json` must be resumed (continue in-flight; do not re-init).
+- `.orderfield/ORDER.json` already exists — resume it; do not re-init.
 - A software mission that will not fit one context: exclusive owners, a SPEC that survives compaction, contrast before close.
 - Multiple slices or writers need explicit ownership, or a public claim an adversary could catch as a lie.
 
@@ -58,24 +50,14 @@ Contract vocabulary: [docs/glossary.md](docs/glossary.md). External brief: [docs
 
 - The plan survives a cut, a resume, a different model. The results do not have to change.
 - Children cannot rewrite the mission.
-- Close is proof: `of contrast` RESOLVED, public surface verified.
+- Close is proof: `of contrast` RESOLVED, then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together.
 - Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
 - The landing is better than a cheap sprint at the public surface, even if it is not first.
 - Mid-flight you amend SPEC or a child reports threshold, and the next packet already carries the new field.
 
-## The field moves while the wave flies
+Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [below](#compared-to).
 
-The plan is not a snapshot you defend. It is a slow object that absorbs three kinds of change without losing its shape:
-
-- **You intervene mid-flight.** `of spec --amend` dates your new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet the leader cuts already carries the new field.
-- **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
-- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
-
-Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
-
-That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
-
-Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field. `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. Mid-flight extra ask on the same product: `of spec --amend`. The kernel does not prompt. It does not lock product files.
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.”
 
 ---
 
@@ -237,21 +219,43 @@ Default spawn policy is **same harness** (current session adapter). Multi-harnes
 
 ---
 
-## Contract and runtime boundary
+## Mid-flight, the plan can change without dying
 
-The model is inspired by Haken's slaving principle: a slow field constrains fresh-context children. *Analogy, not a science claim.* Named adapters and generic mode transport the same disk protocol.
+The plan is not a snapshot you defend. It absorbs three kinds of change and keeps its shape:
 
-| Physics | Here |
-|---|---|
-| Order parameter | `.orderfield/ORDER.json` — versioned; leader-owned by contract |
-| Slaving function | the packet — the intended child context boundary |
-| Instability | residual `status=threshold` plus child-authored, type-checked signals |
-| Circular causality | leader runs `integrate --apply` or `of patch`; the next wave receives the result |
-| Reduction of degrees of freedom | leaders consume residuals when they follow the protocol |
+- **You intervene.** `of spec --amend` dates the new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet already carries the new field.
+- **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
+- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
+
+Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
+
+That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
+
+Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field. `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. Mid-flight extra ask on the same product: `of spec --amend`. The kernel does not prompt. It does not lock product files.
+
+---
+
+## What the kernel enforces — and what it does not
+
+Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim.
 
 The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 Accounting is reserved, not implemented: `budget.seconds` is the only enforced field (the spawned-process timeout); `budget.tokens` and `thresholds.local_budget_pct` are reserved — `of pack` writes `tokens=0` and `--tokens N` for N>0 dies; never measured or enforced — there is no token telemetry and no surface should imply otherwise — `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
+
+Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.
+
+```
+  escalate_up   patch the field, then next-wave
+  scale_out     same role, more copies
+  scale_across  reserved; report compatibility only
+  scale_up      reserved; no runtime accounting selects it
+  hold          wait (closed wave with done_when open — of phase stays explicit)
+  phase         only when done_when is closed. still `of phase`
+  human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done
+```
+
+The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s tests -v`
 
 Not [FredinaLuokose/orderfield](https://github.com/FredinaLuokose/orderfield). Unrelated 10 KB dump — this is `pedroknigge/orderfield`.
 
@@ -280,22 +284,6 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 
 ---
 
-## Why this is not Orca with extra steps
-
-Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.
-
-```
-  escalate_up   patch the field. re-enslave.
-  scale_out     same role, more copies.
-  scale_across  reserved in 0.5.0; retained for report compatibility only.
-  scale_up      reserved; no runtime accounting selects it.
-  hold          wait (closed wave with done_when open, or done_when_closed applied this wave — of phase is still explicit).
-  phase         only when done_when is closed. still `of phase`.
-  human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done.
-```
-
-The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s tests -v`
-
 ## Compared-to
 
 | | Orchestrates | Orderfield is instead |
@@ -314,9 +302,9 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | Command | Purpose |
 |---|---|
 | `init` | create `.orderfield/ORDER.json`; `--source` / `--source-file` copies the brief to `SPEC.md` (never `PROMPT.md` at the project root). A go-ahead (`dale` / `do it`) prints an advisory note; SPEC is still written |
-| `new` | open a sibling field in this working tree without closing the others. First call promotes the legacy ORDER into `fields/<id>/` |
-| `fields` | list sibling fields (id, open/closed, origin, mission) |
-| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Several unmatched open fields: roster, exit 2. `--field` / `OF_FIELD`. Does not auto-spawn. |
+| `new` | open a sibling field in this working tree without closing the others; writes `.orderfield/ACTIVE`. First call promotes the legacy ORDER into `fields/<id>/` |
+| `fields` | list sibling fields (id, open/closed, origin, mission, ACTIVE) |
+| `resume` | one-screen continuation brief from disk; `completed` / `in_flight` / `parked` + `agents_note`. Follows `.orderfield/ACTIVE` after `--field` / origin. Several unmatched open fields and no pointer: roster, exit 2. Does not auto-spawn. |
 | `pulse` | read-only child activity heuristic (packet/scratch mtimes; shared-repo mtime is wave context). Exit 2 on STALE. Does not mutate ORDER |
 | `checkpoint` | optional `--summary` leader narrative (one screen; refuse huge dumps) |
 | `learn` | bare text = this-mission **field** note (default); `--protocol` = durable cross-project lesson; `--promote <id>` copies field → protocol. `--list` / `--forget`. Every item carries provenance; unprovenanced or invalid items are skipped on load with one warning. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
@@ -340,7 +328,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
-| `close` | stamp SPEC closed; refused until contrast is RESOLVED (slice done ≠ closed) |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED. Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
 | `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm; never consumer origin. Report ONLY invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT report child did not finish, SPEC incomplete, product tests red, consumer build, “user is stuck” (`--dry-run` prints argv; omit to submit). Works with no ORDER. Children cannot submit |
 
@@ -353,6 +341,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [SKILL.md](SKILL.md) | Leader procedure (`/orderfield`, `/of`) |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
 | [SLAVE.md](SLAVE.md) | Child contract |
+| [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape; `MUTATING_COMMANDS` lock set |
 | [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
 | [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |

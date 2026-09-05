@@ -1,8 +1,10 @@
 # External brief
 
-A serious reader gets one sitting. Not a pitch. Not a second product.
+You already have a coding CLI. It is fast, forgetful, and happy to declare victory.
 
-Orderfield is a disk-backed contract kernel. The harness starts and stops processes. ORDER, packets, residuals, and close live on disk. A cut, a resume, a different model — the plan holds.
+Orderfield is the disk-backed contract that CLI cannot be. One leader-owned ORDER. Bounded packets with exclusive owners. Structured residuals. Close is `of contrast` RESOLVED, then `of close` — not “the tests passed.”
+
+A cut, a resume, a different model: the plan holds. Children cannot rewrite the mission.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
@@ -10,9 +12,9 @@ Orderfield is a disk-backed contract kernel. The harness starts and stops proces
 
 ## What it is
 
-One leader-owned ORDER. Bounded packets with exclusive owners. Structured residuals. A closed regime after each wave. Close is `of contrast` RESOLVED, then `of close` — not “the tests passed.”
-
 The skill (`/orderfield`, `/of`) is how a coding CLI invokes it. The kernel is what remains when the session is compacted or the model changes. Python 3.11+ stdlib. No pip.
+
+Use it when the work will not fit one context: exclusive owners, a SPEC that survives compaction, a public surface an adversary could catch as a lie. If one agent already fits, do not open a field.
 
 ## What it refuses to be
 
