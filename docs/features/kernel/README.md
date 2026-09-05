@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.19. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.20. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.19` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.20` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -19,8 +19,8 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 ## Notable behaviors (code-backed)
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
-- Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`.
-- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `DoctorSkillVersionSkew`, `WaveReportQualityGate`, and `ThresholdStopSpawn`. `file_contains` reads JSON or text.
+- Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. A dead spawn host is the same disk (started-only spawn metadata + incomplete WAL leftover). Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`; `recovery/process-death-resume` / `ResumeAfterProcessDeath`.
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, process-death-resume, field-roster-ux, multi-harness residual, verify↔build escalate, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `DoctorSkillVersionSkew`, `WaveReportQualityGate`, and `ThresholdStopSpawn`. `file_contains` reads JSON or text.
 - Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: oversized evidence/notes or multi-turn Human/Assistant transcript). Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)

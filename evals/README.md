@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, doctor skill-version skew. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, wave-report quality gate, packet sizing lint, threshold stop-spawn, process-death resume, doctor skill-version skew. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -45,6 +45,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/wave-report-quality-gate` | `recovery_wave_report_quality` | chat-dump residual cannot collect; structured residual writes a wave report without transcript text (`WaveReportQualityGate`) |
 | `recovery/packet-sizing-lint` | `recovery_packet_sizing` | whole-phase pack slogan dies with split/constraints fix path; SKILL example packs; ≥800-char slice warns and still packs |
 | `recovery/threshold-stop-spawn` | `recovery_threshold_stop_spawn` | field threshold residual forbids pack/spawn until leader `of patch` + guarded `next-wave`; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten (`ThresholdStopSpawn`) |
+| `recovery/process-death-resume` | `recovery_process_death` | spawn-host death leftovers: resume reconstructs the live wave (`HOLD`); incomplete WAL / started-only spawn meta / dead pid do not invent `PACK` or `no ORDER`; `of init` without `--force` dies (`ResumeAfterProcessDeath`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`.
 
@@ -61,7 +62,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `WaveReportQualityGate`, and `ThresholdStopSpawn`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `WaveReportQualityGate`, and `ThresholdStopSpawn`.
 
 ```bash
 python3 -m unittest discover -s tests -v

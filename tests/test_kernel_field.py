@@ -2350,5 +2350,51 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         self.assertEqual(verdict, "ALIVE")
 
 
+class ResumeAfterProcessDeath(unittest.TestCase):
+    """Spawn-host death leftovers: resume reconstructs wave 1. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-procdeath-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.ProcessDeathResume.setup(self.tmp)
+
+    def test_resume_reconstructs_live_wave_and_refuses_reinit(self) -> None:
+        death = of.ProcessDeathResume
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        out = resumed.stdout
+        self.assertIn("wave          1", out)
+        self.assertIn("auto_continue yes", out)
+        self.assertIn("last_cmd      spawn", out)
+        self.assertIn(f"  {death.CHILD}", out)
+        self.assertIn("    residual    MISSING", out)
+        self.assertIn("next\n  HOLD", out)
+        self.assertNotIn("signal        abandoned", out)
+        self.assertNotIn("foreign field", out)
+        self.assertNotIn("no ORDER", out)
+        self.assertNotIn("next\n  PACK", out)
+        refused = run_of(self.tmp, "init", "--mission", "re-init theater")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("field(s) exist", refused.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["mission"], death.MISSION)
+        self.assertFalse(order.get("spec_closed"))
+        self.assertTrue((self.tmp / death.packet_rel()).is_file())
+
+    def test_crash_leftovers_do_not_win_or_vanish_on_resume(self) -> None:
+        death = of.ProcessDeathResume
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertTrue(death.junk_wal_path(self.tmp).is_dir())
+        meta = load_json(death.spawn_meta_path(self.tmp))
+        self.assertEqual(meta.get("child_id"), death.CHILD)
+        self.assertNotIn("outcome", meta)
+        registry = load_json(death.registry_path(self.tmp))
+        self.assertEqual(registry["items"][0]["pid"], death.DEAD_PID)
+        session = load_json(committed_artifact(self.tmp / ".orderfield", "session.json"))
+        self.assertEqual(session.get("last_cmd"), "spawn")
+        self.assertEqual(session.get("in_flight"), [death.CHILD])
+
+
 if __name__ == "__main__":
     unittest.main()

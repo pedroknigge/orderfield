@@ -1176,6 +1176,136 @@ def eval_setup_recovery_stale_field(root: Path) -> None:
     FieldSignal.backdate_empty(root, "2018-01-01T00:00:00Z")
 
 
+class ProcessDeathResume:
+    """Spawn-host death leftovers. Resume reconstructs the live wave; no re-init."""
+
+    CHILD = "worker"
+    MISSION = "process-death live wave"
+    REQ = "DEATH-001"
+    DEAD_PID = 999999
+    JUNK_GEN = "deadbeef"
+
+    @staticmethod
+    def packet_rel() -> str:
+        return f".orderfield/waves/001/packets/{ProcessDeathResume.CHILD}.json"
+
+    @staticmethod
+    def spawn_meta_path(root: Path) -> Path:
+        return (
+            root
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "spawns"
+            / f"{ProcessDeathResume.CHILD}.json"
+        )
+
+    @staticmethod
+    def junk_wal_path(root: Path) -> Path:
+        return field_home(root) / "wal" / ProcessDeathResume.JUNK_GEN
+
+    @staticmethod
+    def registry_path(root: Path) -> Path:
+        return (
+            root
+            / ".orderfield"
+            / "work"
+            / "scratch"
+            / "spawn-registry.json"
+        )
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            ProcessDeathResume.MISSION,
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        added = eval_run_of(
+            root,
+            "spec",
+            "--add",
+            ProcessDeathResume.REQ,
+            "--text",
+            "implement after the spawn host dies",
+        )
+        EvalInvariantSetup.require_ok(added, "spec add")
+        eval_pack_child(
+            root,
+            ProcessDeathResume.CHILD,
+            "app/worker.py",
+            ProcessDeathResume.REQ,
+            "Implement app/worker.py on the live wave",
+        )
+        scratch = root / ".orderfield" / "work" / "scratch" / ProcessDeathResume.CHILD
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("spawn host was writing this\n", encoding="utf-8")
+        ProcessDeathResume.mark_session_spawn(root)
+        ProcessDeathResume.plant_started_only_spawn(root)
+        ProcessDeathResume.plant_incomplete_wal(root)
+        ProcessDeathResume.plant_dead_registry(root)
+
+    @staticmethod
+    def mark_session_spawn(root: Path) -> None:
+        """Commit last_cmd=spawn so resume reads CURRENT, not a live cache."""
+        data = {
+            "wave": 1,
+            "last_cmd": "spawn",
+            "in_flight": [ProcessDeathResume.CHILD],
+            "updated_at": utc_now(),
+        }
+        require_public_schema(data, "session.schema.json", "session")
+        with field_generation(root):
+            dump_json(session_path(root), data)
+
+    @staticmethod
+    def plant_started_only_spawn(root: Path) -> None:
+        """Live spawn meta without outcome — host died after start, before finalize."""
+        meta = {
+            "child_id": ProcessDeathResume.CHILD,
+            "adapter": "generic",
+            "wave": 1,
+            "started_at": utc_now(),
+        }
+        dest = ProcessDeathResume.spawn_meta_path(root)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(dest, meta)
+
+    @staticmethod
+    def plant_incomplete_wal(root: Path) -> None:
+        """Unpublished crash leftover. Resume must keep CURRENT, not this gen."""
+        junk = ProcessDeathResume.junk_wal_path(root)
+        junk.mkdir(parents=True, exist_ok=True)
+        (junk / "state.json").write_text("{}\n", encoding="utf-8")
+
+    @staticmethod
+    def plant_dead_registry(root: Path) -> None:
+        """Dead pid leftover. Resume reconstructs from packets, not PIDs."""
+        dest = ProcessDeathResume.registry_path(root)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(
+            dest,
+            {
+                "items": [
+                    {
+                        "pid": ProcessDeathResume.DEAD_PID,
+                        "starttime": "1",
+                        "child_id": ProcessDeathResume.CHILD,
+                    }
+                ]
+            },
+        )
+
+
+@_register_eval_fixture("recovery_process_death")
+def eval_setup_recovery_process_death(root: Path) -> None:
+    ProcessDeathResume.setup(root)
+
+
 @_register_eval_fixture("recovery_multi_day_resume")
 def eval_setup_recovery_multi_day_resume(root: Path) -> None:
     """Aged wave-2 in-flight + stale session.json. Resume must reconstruct."""
@@ -1445,6 +1575,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.DoctorSkillVersionSkew",
     "tests.test_kernel.WaveReportQualityGate",
     "tests.test_kernel.ThresholdStopSpawn",
+    "tests.test_kernel.ResumeAfterProcessDeath",
 )
 
 
