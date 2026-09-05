@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.7. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.8. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.7`
+**Status:** Shipped · **Current release line:** `0.7.8`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.8 — docs voice on the published line
+
+- Packaging identity only. The #63 public voice is now the published line. Same 0.6 / 0.7.7 protocol. Not a new regime.
 
 ## 0.7.7 — atomic close / ACTIVE / done_when lint
 
