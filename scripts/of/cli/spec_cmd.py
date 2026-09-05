@@ -1142,6 +1142,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.MissionRewriteRefused",
     "tests.test_kernel.FieldAbandonedSignal",
     "tests.test_kernel.MultiHarnessResidual",
+    "tests.test_kernel.DoctorSkillVersionSkew",
 )
 
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.9. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.10. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.9`
+**Status:** Shipped · **Current release line:** `0.7.10`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.10 — close/nested honesty + doctor skill VERSION skew
+
+- Guides for dual-truth close and nested fields. `of doctor` reports skill VERSION skew on existing HOME dests; missing dests are silent. Not a new regime.
 
 ## 0.7.9 — corpus recovery / stale-field / multi-harness residual
 
@@ -83,7 +87,7 @@ An external reader should use this table plus [external-brief.md](external-brief
 
 **Stay-on-the-run** is the chosen loop. Pulse `STALE` means the packet is still the work: `of handoff` or `of spawn` on that same packet this turn. Do not unpack by default. Do not pack a sibling. Do not wait forever. `of pulse --watch` refreshes until Ctrl+C; it is not a daemon and not a 5-minute kernel poll. A truly dead child is an explicit `of unpack`. The kernel never kills or auto-merges.
 
-**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. 0.7.5 shipped the written contrast and the invariant evals that prove silent rewrite and slogan-close die. 0.7.6 adds the threat-model section and pack-exclusivity evals. 0.7.7 adds atomic close, ACTIVE, and done_when lint. 0.7.8 is the published-voice packaging line. 0.7.9 adds abandoned-field honesty and multi-harness residual proof. Not a bot-org release.
+**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. 0.7.5 shipped the written contrast and the invariant evals that prove silent rewrite and slogan-close die. 0.7.6 adds the threat-model section and pack-exclusivity evals. 0.7.7 adds atomic close, ACTIVE, and done_when lint. 0.7.8 is the published-voice packaging line. 0.7.9 adds abandoned-field honesty and multi-harness residual proof. 0.7.10 adds close/nested honesty guides and doctor skill VERSION skew. Not a bot-org release.
 
 ## 0.6.7 — vibe-proof hardening
 
@@ -147,7 +151,7 @@ An external reader should use this table plus [external-brief.md](external-brief
 
 - Qwen Code adapter: detect any Qwen CLI, use Qwen-owned headless argv, deliver a schema-valid residual, and default to safe non-escalated trust. Local/Ollama is a supported path, not a hardcoded default. Qwen support does not inherit another adapter's flags or approval model.
 - Explicit trust profiles for adapter execution, with conservative defaults and a visible `OF_TRUST` override. Kernel verifies PATH/argv/residual; the harness promises approval, auth, and readiness.
-- `of doctor` for local prerequisites, adapter command availability/version, writable field paths, schema availability, and lock capability. PATH presence remains distinct from authentication/readiness.
+- `of doctor` for local prerequisites, adapter command availability/version, writable field paths, schema availability, lock capability, and skill VERSION skew on existing HOME dests. PATH presence remains distinct from authentication/readiness. Missing dests are silent.
 
 ### Compatibility and recovery
 

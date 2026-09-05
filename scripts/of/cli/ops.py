@@ -33,6 +33,7 @@ from of.field import (
     REDACTED,
     _read_json_object,
     FieldSignal,
+    SkillVersionSkew,
     apply_field_migrations,
     apply_field_retention,
     drop_field_home,
@@ -297,6 +298,13 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     ver = installed_version() or "-"
     print(f"  kernel        {ver}  {'ok' if ver != '-' else 'FAIL'}")
     if ver == "-":
+        failed = True
+
+    print("skills")
+    skill_lines, skill_skew = SkillVersionSkew.report()
+    for line in skill_lines:
+        print(line)
+    if skill_skew:
         failed = True
 
     root = find_root()

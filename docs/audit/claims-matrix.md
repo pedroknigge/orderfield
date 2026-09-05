@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.9`
+**Code rev:** VERSION `0.7.10`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 91 |
+| OK | 92 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 77 |
+| critical | 78 |
 | normal | 19 |
 
-**Truth score (advisory):** `(91*100 + 4*50) / 96 = 96.9` (96 matrix rows; unique IDs C-001…C-096)
+**Truth score (advisory):** `(92*100 + 4*50) / 97 = 96.9` (97 matrix rows; unique IDs C-001…C-097)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -165,6 +165,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-094 | Open field, empty current wave, age ≥ 7 days: `of status` / `of resume` print `signal abandoned`; field is not deleted or closed | CHANGELOG / evals / external-brief | `FieldSignal`; recovery `stale-field-abandoned` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `evals/recovery/stale-field-abandoned.eval.json` / `tests/test_kernel_field.py` | `FieldSignal` | — | critical | OK | 0.7.9 |
 | C-095 | explore→build without `--force` dies; a forced skip-explore override is visible on status | CHANGELOG / evals / external-brief | `phase_transition_errors`; status prints last `phase_overrides` row; recovery `skip-explore-theater` | `scripts/of/regime.py` / `scripts/of/cli/ops.py` / `evals/recovery/skip-explore-theater.eval.json` | `cmd_status` / `phase_transition_errors` | — | critical | OK | 0.7.9 |
 | C-096 | Claude / Grok / Codex dry-run share one packet residual path; Codex argv names `residual.codex.schema.json`; collect accepts that residual | CHANGELOG / evals / external-brief | `build_spawn_argv`; recovery `multi-harness-residual`; `MultiHarnessResidual` | `scripts/of_adapters.py` / `evals/recovery/multi-harness-residual.eval.json` / `tests/test_kernel_cli.py` | `build_spawn_argv` / `MultiHarnessResidual` | — | critical | OK | 0.7.9 |
+| C-097 | `of doctor` reports skill VERSION skew on existing HOME dests versus this checkout; missing dests are silent; does not invent installs | CHANGELOG / troubleshooting / kernel feature | `SkillVersionSkew`; doctor `SKEW` fails; `DoctorSkillVersionSkew` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `tests/test_kernel_cli.py` | `SkillVersionSkew` / `cmd_doctor` | — | critical | OK | 0.7.10 |
 
 ### Verdict definitions
 
@@ -201,6 +202,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-090 0.7.6: pack exclusivity eval + threat-model section (child-cannot vs kernel-does-not-stop)
 - [x] C-091..C-093 0.7.7: atomic close, ACTIVE pointer, done_when lint
 - [x] C-094..C-096 0.7.9: stale-field abandoned signal, skip-explore theater honesty, multi-harness residual contract
+- [x] C-097 0.7.10: doctor skill VERSION skew; close-honesty + nested-fields guides
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

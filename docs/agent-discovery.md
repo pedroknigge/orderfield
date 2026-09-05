@@ -44,4 +44,4 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 
 Current release line: [`VERSION`](../VERSION) · Changelog: [CHANGELOG.md](../CHANGELOG.md)
 
-Installed skill metadata should match the kernel version on PATH (`of doctor`).
+Installed skill metadata should match this checkout (`of doctor` prints `SKEW` when an existing HOME dest disagrees). Close templates: [close-honesty.md](close-honesty.md). Nested fields: [nested-fields.md](nested-fields.md).
