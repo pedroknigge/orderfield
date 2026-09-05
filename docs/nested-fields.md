@@ -4,7 +4,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `.orderfield/ACTIVE` is the pointer. Status and resume follow it. A leftover root `ORDER.json` is a stub, not the live field.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer`
+> Hub: [AGENTS.md](../AGENTS.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer` · `recovery/root-stub-ambiguous`
 
 ## When to `of new`
 
@@ -57,9 +57,11 @@ Symptoms:
 
 Kernel behavior (0.7.7+): `of status` / `of resume` / `of pulse` follow ACTIVE (or the nested home). `recovery/active-field-pointer` fails if they show the stub. `of doctor` (0.7.25+) prints `stub … SKEW` for the leftover root ORDER in the same pass as skill VERSION and stale packs.
 
-Still a protocol hole: editing `ORDER.json` by hand, or running `of` from a cwd that is not the project root, can miss the pointer. Type `of fields`. Trust `field` on `of status`. If the printed home is `fields/<id>/`, do not treat the top-level file as authority.
+0.7.27 closes the leftover as a live home. `RootStub` classifies `.orderfield/ORDER.json` once `fields/<id>/` exists (`stale` same id, `ambiguous` different id). `list_field_homes` omits it. Status / resume / fields print `root_stub … (of migrate)`. `--field` / `OF_FIELD` of a different-id stub dies (`of: error: root-stub:`). `of new` does not promote that leftover into a sibling. `of migrate` archives to `.orderfield/ORDER.json.stub` (never a silent delete). `find_root` refuses a closer leftover `.orderfield` inside a parent field tree. Proof: `recovery/root-stub-ambiguous`.
 
-`of gc --drop-field <id>` removes a nested home. It does not delete a leftover top-level ORDER. Drop is HITL (`--force --reason` if the field is open).
+Type `of fields`. Trust `home` on `of resume` / `path` on `of doctor`. If the printed home is `fields/<id>/`, do not treat the top-level file as authority.
+
+`of gc --drop-field <id>` removes a nested home. It does not delete a leftover top-level ORDER (use `of migrate`). Drop is HITL (`--force --reason` if the field is open).
 
 ## Same tree, exclusive owners
 

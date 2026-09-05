@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.27
+
+Root stub vs nested fields: refuse or migrate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.26 notes.
+
+- **Ambiguous roots have a path:** A leftover `.orderfield/ORDER.json` next to `fields/<id>/` is not a live field (`RootStub`). `list_field_homes` omits it. `--field` of a different-id stub dies (`of: error: root-stub:`). `of new` does not promote it into a fake sibling. `of migrate` archives to `ORDER.json.stub` (never a silent delete). Status / resume / fields print `root_stub`. Doctor still fails `stub SKEW` and now names `of migrate`. `find_root` refuses a closer leftover inside a parent field tree.
+- **Eval:** `recovery/root-stub-ambiguous` fails if fields lists the stub, `--field` writes it, or migrate deletes the nested ORDER. `RootStubAmbiguous` is on `of eval --strict --kernel`. Existing `recovery/active-field-pointer` / `recovery/doctor-one-pass-skew` stay.
+- Packaging: VERSION 0.7.27; skill/alias description preview `v0.7.27 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.26 notes.
+
 ## 0.7.26
 
 Orphan packed-child cleanup. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.25 notes.

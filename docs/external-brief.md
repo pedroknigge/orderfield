@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.26` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.27` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -48,7 +48,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
 | Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
-| Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home) | `recovery/active-field-pointer` |
+| Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home); `--field` stub dies; `of migrate` archives | `recovery/active-field-pointer`; `recovery/root-stub-ambiguous` |
 | Many open siblings; `of new` vs `of patch` is unclear | `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
 | Theater done-when (`current phase criteria closed with evidence`, `done.`, `all done`) or empty active set close | init / patch / `done_when+` refuse; `--done-when-closed` / `of close` / apply `done_when_closed` refuse empty theater | `recovery/done-when-lint` |
 | Skip explore→build without `--force` | `of phase build` dies; a forced skip is printed on status | `recovery/skip-explore-theater` |
@@ -103,6 +103,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Foreign owner / unowned new child / same-wave path overlap die; disjoint second owner packs | `recovery/pack-exclusivity-refused` |
 | Close without RESOLVED dies; success is one stamp (`spec_closed` + `done_when_closed` + `CLOSE.json`) | `recovery/atomic-close-flag-lag` |
 | Root stub + nested ACTIVE: status and resume show the live field, not the stub | `recovery/active-field-pointer` |
+| Different-id leftover root ORDER: fields omits it; `--field` dies; `of migrate` archives | `recovery/root-stub-ambiguous`; `RootStubAmbiguous` |
 | Three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
 | Generic/empty done-when dies; a contrast-bound criterion is accepted and can close | `recovery/done-when-lint` |
 | explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |

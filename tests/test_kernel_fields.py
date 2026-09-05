@@ -139,6 +139,8 @@ class SiblingFields(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("nested real work", r.stdout)
         self.assertNotIn("stub explore leftover", r.stdout)
+        self.assertIn("root_stub", r.stdout)
+        self.assertIn("of migrate", r.stdout)
 
     def test_origin_session_beats_active_pointer(self) -> None:
         run_of(
@@ -443,6 +445,121 @@ class SiblingFields(unittest.TestCase):
         self.assertIn("choose", text)
         # Closed beta is sorted after open/ACTIVE; page of 2 should omit it.
         self.assertNotIn("beta epic", text)
+
+
+class RootStubAmbiguous(unittest.TestCase):
+    """Leftover root ORDER vs nested fields. of eval --kernel."""
+
+    STUB_ID = "ord_deadbeef"
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-root-stub-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _nested_plus_stub(self, *, stub_id: str = STUB_ID) -> None:
+        init = run_of(self.tmp, "init", "--mission", "first")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        created = run_of(self.tmp, "new", "--mission", "nested real work")
+        self.assertEqual(created.returncode, 0, created.stderr + created.stdout)
+        ghost = of.default_order("stub explore leftover", "explore")
+        ghost["id"] = stub_id
+        (self.tmp / ".orderfield" / "ORDER.json").write_text(
+            json.dumps(ghost, indent=2) + "\n", encoding="utf-8"
+        )
+
+    def test_fields_names_stub_and_does_not_list_it(self) -> None:
+        self._nested_plus_stub()
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("fields        2", listed.stdout)
+        self.assertIn("root_stub", listed.stdout)
+        self.assertIn("ambiguous", listed.stdout)
+        self.assertIn("of migrate", listed.stdout)
+        self.assertNotIn(self.STUB_ID, listed.stdout)
+        self.assertNotIn("stub explore leftover", listed.stdout)
+
+    def test_patch_field_stub_id_refuses(self) -> None:
+        self._nested_plus_stub()
+        r = run_of(
+            self.tmp,
+            "--field",
+            self.STUB_ID,
+            "patch",
+            "--constraints-add",
+            "must not land on the stub",
+        )
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("root stub", r.stderr)
+        self.assertIn("of migrate", r.stderr)
+        ghost = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertNotIn("must not land on the stub", ghost.get("constraints") or [])
+
+    def test_patch_writes_nested_not_stub(self) -> None:
+        self._nested_plus_stub()
+        r = run_of(
+            self.tmp,
+            "patch",
+            "--constraints-add",
+            "nested stays live",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        stub = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertNotIn("nested stays live", stub.get("constraints") or [])
+        homes = of.RootStub.nested_homes(self.tmp)
+        self.assertEqual(len(homes), 2)
+        live = next(
+            order for _fid, home, order in homes
+            if "nested real work" in str(order.get("mission"))
+        )
+        self.assertIn("nested stays live", live.get("constraints") or [])
+
+    def test_migrate_archives_stub_without_deleting_nested(self) -> None:
+        self._nested_plus_stub()
+        before = [
+            (home / "ORDER.json").read_bytes()
+            for _fid, home, _order in of.RootStub.nested_homes(self.tmp)
+        ]
+        r = run_of(self.tmp, "migrate")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("root-stub-archive", r.stdout)
+        self.assertFalse((self.tmp / ".orderfield" / "ORDER.json").exists())
+        archived = self.tmp / ".orderfield" / "ORDER.json.stub"
+        self.assertTrue(archived.is_file(), r.stdout)
+        self.assertIn("stub explore leftover", archived.read_text(encoding="utf-8"))
+        after = [
+            (home / "ORDER.json").read_bytes()
+            for _fid, home, _order in of.RootStub.nested_homes(self.tmp)
+        ]
+        self.assertEqual(after, before)
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertNotIn("root_stub", listed.stdout)
+
+    def test_new_does_not_promote_ambiguous_stub(self) -> None:
+        self._nested_plus_stub()
+        r = run_of(self.tmp, "new", "--mission", "third epic")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "fields" / self.STUB_ID).exists(),
+            "ambiguous leftover must not become a sibling",
+        )
+        listed = run_of(self.tmp, "fields")
+        self.assertIn("fields        3", listed.stdout)
+        self.assertIn("third epic", listed.stdout)
+        self.assertNotIn(self.STUB_ID, listed.stdout)
+
+    def test_find_root_refuses_cwd_stub_inside_parent_field(self) -> None:
+        self._nested_plus_stub()
+        inner = self.tmp / "subdir"
+        inner.mkdir()
+        (inner / ".orderfield").mkdir()
+        ghost = of.default_order("inner leftover", "explore")
+        (inner / ".orderfield" / "ORDER.json").write_text(
+            json.dumps(ghost, indent=2) + "\n", encoding="utf-8"
+        )
+        with self.assertRaises(SystemExit):
+            of.find_root(inner)
 
 
 if __name__ == "__main__":

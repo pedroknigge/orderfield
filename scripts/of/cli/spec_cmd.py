@@ -1249,6 +1249,34 @@ def eval_setup_recovery_active_field_pointer(root: Path) -> None:
     dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
 
 
+@_register_eval_fixture("recovery_root_stub_ambiguous")
+def eval_setup_recovery_root_stub_ambiguous(root: Path) -> None:
+    """Nested ACTIVE plus a different-id leftover root ORDER (ord_deadbeef)."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "first",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    created = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "nested real work",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(created, "new")
+    from of.field import default_order, dump_bytes, json_payload_bytes
+
+    ghost = default_order("stub explore leftover", "explore")
+    ghost["id"] = "ord_deadbeef"
+    dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
+
+
 @_register_eval_fixture("recovery_field_roster_ux")
 def eval_setup_recovery_field_roster_ux(root: Path) -> None:
     """Three sibling fields: ACTIVE on the last; roster must name it."""
@@ -1805,6 +1833,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.OrphanPackedCleanup",
     "tests.test_kernel.ContrastReportRenderer",
     "tests.test_kernel.WaveRosterListShow",
+    "tests.test_kernel.RootStubAmbiguous",
 )
 
 

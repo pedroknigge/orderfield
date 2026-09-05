@@ -30,6 +30,7 @@ from test_kernel_field import (  # noqa: E402,F401
     ResumeRecoveryBrief,
     WaveRosterListShow,
 )
+from test_kernel_fields import RootStubAmbiguous  # noqa: E402,F401
 from test_kernel_pack import StalePackets, WaveReportQualityGate  # noqa: E402,F401
 from test_kernel_spec import ContrastReportRenderer  # noqa: E402,F401
 
