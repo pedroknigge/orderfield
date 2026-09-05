@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.14 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.15 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.14"
+  version: "0.7.15"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -221,7 +221,7 @@ Do not copy the leader's thinking into the child. Shared procedure belongs in `O
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
-An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds the child budget**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence).
+An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds `children_spawned`**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence). `budget.seconds` is the spawn wall-clock (default 600). `of spawn --timeout` must match that value or be omitted — it is not a second clock and not a token ceiling. A timeout names `of unpack` then `of pack --seconds N`.
 
 New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
@@ -284,7 +284,7 @@ Integration hashes the canonical packet/residual set plus reduction options. Rep
 
 `integrate` chooses the regime. You write the next wave *inside that menu*. Do not invent a new regime.
 
-Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Packet `budget.tokens`, `thresholds.local_budget_pct`, and inherited depth stay reserved — `of pack` writes `tokens=0` and `--tokens N` for N>0 dies; never measured or enforced; only `budget.seconds` is enforced, as the spawn timeout. The kernel does not invent telemetry.
+Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. `scale_across` and `scale_up` are reserved compatibility values and are not selected by runtime logic. Packet `budget.tokens`, `thresholds.local_budget_pct`, and inherited depth stay reserved — `of pack` writes `tokens=0` and `--tokens N` for N>0 dies; never measured or enforced; only `budget.seconds` is enforced, as the spawn wall-clock. `of spawn --timeout` must match packet seconds or be omitted. The kernel does not invent telemetry.
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
@@ -365,7 +365,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
-- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process timeout, and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
+- Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process wall-clock (`of spawn --timeout` must match or be omitted), and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when a field already exists. `of resume` first. Unrelated second mission in the same tree is `of new`, not `--force`.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.

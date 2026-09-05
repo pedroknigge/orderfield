@@ -1282,6 +1282,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/multi-harness-residual", r.stdout)
         self.assertIn("PASS recovery/skip-explore-theater", r.stdout)
         self.assertIn("PASS recovery/escalate-verify-build", r.stdout)
+        self.assertIn("PASS recovery/budget-seconds-honesty", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")
@@ -1298,6 +1299,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("multi-harness-residual", r.stdout)
         self.assertIn("skip-explore-theater", r.stdout)
         self.assertIn("escalate-verify-build", r.stdout)
+        self.assertIn("budget-seconds-honesty", r.stdout)
 
 
 class MissionRewriteRefused(unittest.TestCase):

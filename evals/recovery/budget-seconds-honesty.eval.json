@@ -1,0 +1,77 @@
+{
+  "id": "recovery/budget-seconds-honesty",
+  "description": "Long pack writes budget.seconds as the wall-clock; spawn --timeout that disagrees is refused with a fix path; matching or omitted timeout honors the packet. Not a token ceiling.",
+  "fixture": "recovery_budget_seconds",
+  "tags": ["recovery", "gate", "pack", "budget", "seconds"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "long-running implementer wave",
+        "--role",
+        "explorer",
+        "--child-id",
+        "long1",
+        "--seconds",
+        "7200"
+      ],
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/long1.json",
+          "contains": ["\"seconds\": 7200", "\"tokens\": 0"]
+        }
+      ],
+      "stderr_not_contains": ["80000", "token budget"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "generic",
+        "--packet",
+        ".orderfield/waves/001/packets/long1.json",
+        "--timeout",
+        "900",
+        "--dry-run"
+      ],
+      "exit": 1,
+      "stderr_contains": [
+        "budget.seconds",
+        "7200",
+        "--timeout 900",
+        "of unpack",
+        "--seconds"
+      ],
+      "stderr_not_contains": ["80000", "token budget", "of: cost:"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "generic",
+        "--packet",
+        ".orderfield/waves/001/packets/long1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": ["dry-run argv"],
+      "stderr_not_contains": ["budget.seconds is 7200s", "--timeout 900"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "generic",
+        "--packet",
+        ".orderfield/waves/001/packets/long1.json",
+        "--timeout",
+        "7200",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": ["dry-run argv"]
+    }
+  ]
+}

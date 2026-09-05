@@ -110,7 +110,8 @@ Another mutating `of` process holds `.orderfield/field.lock`. The error includes
 
 | Need | Command |
 |------|---------|
-| Release packed child, refund budget | `of unpack --child-id <id>` (`--force` if scratch nonempty) |
+| Release packed child, refund `children_spawned` | `of unpack --child-id <id>` (`--force` if scratch nonempty) |
+| Spawn died at packet wall-clock | `of unpack --child-id <id>` then `of pack --seconds N` (raise `budget.seconds`; `--timeout` must match or be omitted) |
 | Reopen closed done_when for current phase | `of patch --reopen` |
 | New mission must not inherit closure | `of patch --mission "…"` (auto-reopens) |
 

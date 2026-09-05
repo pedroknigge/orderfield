@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.14. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.15. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.14` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.15` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -57,7 +57,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 ## Contract boundaries
 
-- `budget.seconds` is enforced as spawn timeout.
+- `budget.seconds` is enforced as spawn wall-clock. `of spawn --timeout` must match the packet or be omitted. Not a token ceiling.
 - `budget.tokens` and `thresholds.local_budget_pct` are reserved, not measured. `of pack` writes `tokens=0`; `--tokens N` for N>0 dies.
 - `caps.max_depth` gates permission to set `allow_nested`; inherited depth is not accounted.
 - `scale_up` / `scale_across` remain reserved regime enums and are not selected by current decision logic.
@@ -66,4 +66,4 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 ## Tests
 
-`tests/test_kernel.py` plus `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, origin stamp, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); LEARN child-forge in `tests/test_learn_provenance.py`; WAL reader CURRENT view in `tests/test_field_wal.py` (writer next-mutator tests not present); leftover collect #48 in `tests/test_spawn_trust.py`; #49 digest in `tests/test_kernel_regime.py`; pack tokens in `tests/test_budget_tokens.py`; theater cut in `tests/test_theater_{fieldops,renderdoc}.py`; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`. No `tests/test_sibling_residual.py`.
+`tests/test_kernel.py` plus `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py` — schema parity, concurrency/atomicity, packet identity/path safety, transition guards, integration replay, session-cut, reversible field, timeout/invalid ORDER, JSON events, doctor/gc, migrations, worktree helper, reserved runtime, origin stamp, and SpecFidelity (SPEC ingest, owns-requirement, contrast/close); LEARN child-forge in `tests/test_learn_provenance.py`; WAL reader CURRENT view in `tests/test_field_wal.py` (writer next-mutator tests not present); leftover collect #48 in `tests/test_spawn_trust.py`; #49 digest in `tests/test_kernel_regime.py`; pack tokens and budget.seconds honesty in `tests/test_budget_tokens.py`; theater cut in `tests/test_theater_{fieldops,renderdoc}.py`; see unittest discover. Packaging regressions, including literal `./install.sh --project`, live in `tests/test_packaging.py`. No `tests/test_sibling_residual.py`.

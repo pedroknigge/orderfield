@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.15
+
+`budget.seconds` honesty for long packs. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.14 notes.
+
+- **Packet wall-clock is the only clock:** `of pack --seconds` writes `budget.seconds` (default 600). `of spawn` kills the child process group at that wall-clock. `of spawn --timeout` must match the packet or be omitted — the old default 900 is gone so a long `--seconds 7200` pack is not silently capped, and `spawn --timeout 7200` on a 600s packet is refused instead of ignored.
+- **Fix path on refuse and timeout:** mismatch and live timeout name `of unpack --child-id` then `of pack --seconds N`. Not a token ceiling. `budget.tokens` stays reserved (`tokens=0`; `--tokens N>0` dies).
+- **Eval:** `recovery/budget-seconds-honesty` fails if a 7200s pack is capped, if `--timeout 900` is silently ignored, or if matching/omitted timeout does not honor the packet.
+- Packaging: VERSION 0.7.15; skill/alias description preview `v0.7.15 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.14 notes.
+
 ## 0.7.14
 
 Checkpoint handoff stay-on-run. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.13 notes.

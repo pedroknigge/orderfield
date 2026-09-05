@@ -56,6 +56,7 @@ from of.cli.ops import (
     resume_next_lines,
 )
 from of.cli.wave import (
+    BudgetSeconds,
     cmd_collect,
     cmd_handoff,
     cmd_pack,
@@ -84,6 +85,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_active_field_pointer,
     eval_setup_recovery_atomic_close,
     eval_setup_recovery_beacon_amnesia,
+    eval_setup_recovery_budget_seconds,
     eval_setup_recovery_contrast_close,
     eval_setup_recovery_contrast_close_contract,
     eval_setup_recovery_done_when_lint,
@@ -107,6 +109,7 @@ from of.cli.spec_cmd import (
 # ImportErrors the package. Names here count as used for F401.
 __all__ = [
     "ADAPTER_ORDER",
+    "BudgetSeconds",
     "ERROR_MESSAGE_MAX_CHARS",
     "EVAL_FIXTURES",
     "EVAL_UNITTEST_MODULES",
@@ -154,6 +157,7 @@ __all__ = [
     "eval_setup_recovery_active_field_pointer",
     "eval_setup_recovery_atomic_close",
     "eval_setup_recovery_beacon_amnesia",
+    "eval_setup_recovery_budget_seconds",
     "eval_setup_recovery_contrast_close",
     "eval_setup_recovery_contrast_close_contract",
     "eval_setup_recovery_done_when_lint",
@@ -516,7 +520,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0,
         help="reserved; must be 0. N>0 is refused (no token telemetry)",
     )
-    s.add_argument("--seconds", type=int, default=600)
+    s.add_argument(
+        "--seconds",
+        type=int,
+        default=BudgetSeconds.PACK_DEFAULT,
+        help="wall-clock spawn kill in seconds (not tokens; default 600)",
+    )
     s.add_argument(
         "--owns-requirement",
         dest="owns_requirement",
@@ -538,7 +547,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "unpack",
-        help="release a packed child that never reported; refunds the child budget",
+        help="release a packed child that never reported; refunds children_spawned",
     )
     s.add_argument("--child-id", required=True)
     s.add_argument("--wave", type=int)
@@ -580,7 +589,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="acknowledge and bypass a requires_tool capability mismatch",
     )
-    s.add_argument("--timeout", type=int, default=900)
+    s.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="must match packet budget.seconds or be omitted (packet is the clock)",
+    )
     s.set_defaults(func=cmd_spawn)
 
     s = sub.add_parser("collect", help="validate residuals for a wave")
