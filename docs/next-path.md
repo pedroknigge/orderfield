@@ -1,6 +1,6 @@
-# Next path (after 0.7.20)
+# Next path (after 0.7.21)
 
-Resume after process death is proven: `of resume` reconstructs the live wave from disk when the spawn host is gone. `recovery/process-death-resume` holds. Threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+Generic done_when lint is stronger: punctuation and empty-close platitudes die at init/patch, and an empty or theater active set cannot stamp `done_when_closed`. `recovery/done-when-lint` holds. Resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

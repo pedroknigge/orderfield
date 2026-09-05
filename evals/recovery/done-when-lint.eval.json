@@ -1,6 +1,6 @@
 {
   "id": "recovery/done-when-lint",
-  "description": "Generic done_when placeholders die; contrast-bound criteria are accepted",
+  "description": "Generic/empty done_when theater dies; contrast-bound criteria are accepted and can close",
   "fixture": "recovery_done_when_lint",
   "tags": ["recovery", "gate", "done_when"],
   "steps": [
@@ -13,6 +13,45 @@
         "explore",
         "--done-when",
         "current phase criteria closed with evidence"
+      ],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused"]
+    },
+    {
+      "run": "init",
+      "args": [
+        "--mission",
+        "lint punctuation",
+        "--phase",
+        "explore",
+        "--done-when",
+        "done."
+      ],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused"]
+    },
+    {
+      "run": "init",
+      "args": [
+        "--mission",
+        "lint platitude",
+        "--phase",
+        "explore",
+        "--done-when",
+        "all done"
+      ],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused"]
+    },
+    {
+      "run": "init",
+      "args": [
+        "--mission",
+        "lint looks good",
+        "--phase",
+        "explore",
+        "--done-when",
+        "looks good"
       ],
       "exit": 1,
       "stderr_contains": ["generic done_when refused"]
@@ -45,6 +84,30 @@
       "exit": 0,
       "stdout_contains": ["of contrast RESOLVED then of close"],
       "stdout_not_contains": ["current phase criteria closed with evidence"]
+    },
+    {
+      "run": "patch",
+      "args": ["--done-when-closed"],
+      "exit": 0
+    },
+    {
+      "run": "init",
+      "args": [
+        "--force",
+        "--mission",
+        "empty theater close",
+        "--phase",
+        "explore",
+        "--done-when",
+        "build: of contrast RESOLVED for CLI-001"
+      ],
+      "exit": 0
+    },
+    {
+      "run": "patch",
+      "args": ["--done-when-closed"],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused", "empty"]
     }
   ]
 }

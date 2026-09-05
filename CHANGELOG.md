@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.21
+
+Generic done_when lint stronger. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.20 notes.
+
+- **Empty theater closes die:** `DoneWhenLint` still refuses generic placeholders at `of init`, `of patch`, and `integrate --apply` `done_when+`. Body matching now strips trailing `.!?;:` (so `done.` dies). The platitude set covers empty-close slogans (`all done`, `looks good`, `ready to close`). `DoneWhenLint.refuse_close` refuses an empty or generic active set (`done_when_for`) at `of patch --done-when-closed`, `integrate --apply` `done_when_closed`, and `of close`. Contrast-bound default still closes. No new schema. No new CLI verb.
+- **Eval:** `recovery/done-when-lint` fails if punctuation/platitude lands, if a contrast-bound criterion cannot close, or if a foreign-phase-only list stamps `done_when_closed`. `DoneWhenLintRefuse` covers the same holes.
+- Packaging: VERSION 0.7.21; skill/alias description preview `v0.7.21 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.20 notes.
+
 ## 0.7.20
 
 Resume after process death. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.19 notes.
