@@ -103,6 +103,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.13 sibling-field roster UX (ACTIVE marker, packed-age, epic vs patch choose) | documented |
 | 0.7.14 checkpoint handoff stay-on-run (resume HANDOFF for STALE children, checkpoint pulse verdicts, `recovery/checkpoint-handoff-stay-on-run`) | documented |
 | 0.7.15 `budget.seconds` honesty (packet wall-clock; spawn `--timeout` must match or omit; `recovery/budget-seconds-honesty`) | documented |
+| 0.7.16 mid-flight amend evals (`of spec --amend` + `of patch` across waves; next packet carries dated amend; `recovery/midflight-amend`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
