@@ -36,7 +36,7 @@ from of.field import (
     utc_now,
     wave_dir,
 )
-from of.regime import done_when_closed, mark_done_when_closed
+from of.regime import DoneWhenLint, done_when_closed, mark_done_when_closed
 from of.pack import PACKET_IDENTITY_FIELDS, packet_digest, truncate_slice
 from of.spec import (
     append_amendment,
@@ -485,6 +485,7 @@ class CloseProof:
 
     @staticmethod
     def stamp(root: Path, order: dict[str, Any]) -> None:
+        DoneWhenLint.refuse_close(order)
         mark_done_when_closed(order)
         order["spec_closed"] = True
         order["rev"] = int(order["rev"]) + 1

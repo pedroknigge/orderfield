@@ -99,4 +99,4 @@ of eval recovery/atomic-close-flag-lag --strict
 of eval recovery/contrast-close-contract --strict
 ```
 
-Generic done-when (`current phase criteria closed with evidence`) dies at init/patch. That theater is `recovery/done-when-lint`.
+Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`.

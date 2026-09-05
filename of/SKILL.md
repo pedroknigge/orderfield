@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.7.20 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.21 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.20"
+  version: "0.7.21"
   alias-of: orderfield
 ---
 

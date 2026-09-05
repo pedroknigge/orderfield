@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.20` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.21` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -30,7 +30,7 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
 3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close. Templates: [close-honesty.md](close-honesty.md).
 4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen. When to `of new` vs patch: [nested-fields.md](nested-fields.md).
-5. **Done-when has to be checkable.** Init and patch refuse generic placeholders (`current phase criteria closed with evidence`). Name contrast RESOLVED or a concrete ID.
+5. **Done-when has to be checkable.** Init and patch refuse generic placeholders (`current phase criteria closed with evidence`, `done.`, `all done`). Empty or theater active sets cannot stamp `done_when_closed`. Name contrast RESOLVED or a concrete ID.
 6. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
 7. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.
 
@@ -50,7 +50,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
 | Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home) | `recovery/active-field-pointer` |
 | Many open siblings; `of new` vs `of patch` is unclear | `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
-| Theater done-when (`current phase criteria closed with evidence`) | init / patch / `done_when+` refuse | `recovery/done-when-lint` |
+| Theater done-when (`current phase criteria closed with evidence`, `done.`, `all done`) or empty active set close | init / patch / `done_when+` refuse; `--done-when-closed` / `of close` / apply `done_when_closed` refuse empty theater | `recovery/done-when-lint` |
 | Skip explore→build without `--force` | `of phase build` dies; a forced skip is printed on status | `recovery/skip-explore-theater` |
 | Empty waves + age look like a live deliver | status/resume print `abandoned`; field stays on disk | `recovery/stale-field-abandoned` |
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
@@ -100,7 +100,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Close without RESOLVED dies; success is one stamp (`spec_closed` + `done_when_closed` + `CLOSE.json`) | `recovery/atomic-close-flag-lag` |
 | Root stub + nested ACTIVE: status and resume show the live field, not the stub | `recovery/active-field-pointer` |
 | Three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
-| Generic done-when dies; a contrast-bound criterion is accepted | `recovery/done-when-lint` |
+| Generic/empty done-when dies; a contrast-bound criterion is accepted and can close | `recovery/done-when-lint` |
 | explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |
 | Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |
 | Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |

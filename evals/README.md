@@ -33,7 +33,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/atomic-close-flag-lag` | `recovery_atomic_close` | close without RESOLVED dies; success sets `spec_closed` + `done_when_closed` + `CLOSE.json` |
 | `recovery/active-field-pointer` | `recovery_active_field_pointer` | root stub + nested ACTIVE: status/resume show the nested field |
 | `recovery/field-roster-ux` | `recovery_field_roster_ux` | three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose`; resume follows ACTIVE |
-| `recovery/done-when-lint` | `recovery_done_when_lint` | generic done_when dies; contrast-bound criterion accepted |
+| `recovery/done-when-lint` | `recovery_done_when_lint` | generic/empty done_when dies; contrast-bound criterion accepted and can close |
 | `recovery/skip-explore-theater` | `recovery_skip_explore` | explore→build without `--force` dies; a forced skip is visible on status |
 | `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
 | `recovery/multi-day-resume` | `recovery_multi_day_resume` | aged wave-2 in-flight + stale `session.json`: resume reconstructs `HOLD`; `of init` without `--force` dies |

@@ -80,6 +80,7 @@ class DoneWhenLint:
             "all tests passed",
             "tests passed",
             "the tests passed",
+            "tests pass",
             "done",
             "complete",
             "closed",
@@ -89,6 +90,30 @@ class DoneWhenLint:
             "phase done",
             "this phase is done",
             "current phase is done",
+            "looks good",
+            "ok",
+            "passed",
+            "n/a",
+            "na",
+            "verified",
+            "all done",
+            "lgtm",
+            "ship it",
+            "ready to close",
+            "mission complete",
+            "work complete",
+            "work is done",
+            "we're done",
+            "we are done",
+            "good enough",
+            "criteria met",
+            "all criteria met",
+            "requirements met",
+            "all requirements met",
+            "tbd",
+            "wip",
+            "finished",
+            "all finished",
         }
     )
 
@@ -99,7 +124,7 @@ class DoneWhenLint:
         if tag:
             _head, _sep, rest = text.partition(":")
             text = rest.strip()
-        return text.lower()
+        return text.casefold().rstrip(".!?;:")
 
     @staticmethod
     def is_generic(criterion: str) -> bool:
@@ -115,6 +140,18 @@ class DoneWhenLint:
                     f"{raw!r} is not falsifiable; name contrast RESOLVED "
                     "or a concrete requirement id (CLI-001)"
                 )
+
+    @staticmethod
+    def refuse_close(order: dict[str, Any], phase: str | None = None) -> None:
+        """Empty or theater active set cannot stamp done_when_closed."""
+        rows = done_when_for(order, phase)
+        if not rows:
+            die(
+                "generic done_when refused: "
+                "empty done_when cannot close; name contrast RESOLVED "
+                "or a concrete requirement id (CLI-001)"
+            )
+        DoneWhenLint.refuse(rows)
 
 
 def done_when_tag(criterion: str) -> str | None:
@@ -386,6 +423,7 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
                 order["notes"] = (prev + "\n" + incoming).strip() if prev else incoming
                 changed = True
         if patch.get("done_when_closed") is True:
+            DoneWhenLint.refuse_close(order)
             if mark_done_when_closed(order):
                 changed = True
     if changed:

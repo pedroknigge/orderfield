@@ -1250,6 +1250,52 @@ class DoneWhenLintRefuse(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("generic done_when refused", r.stderr)
 
+    def test_punctuation_and_platitude_die(self) -> None:
+        self.assertTrue(of.DoneWhenLint.is_generic("done."))
+        self.assertTrue(of.DoneWhenLint.is_generic("All done!"))
+        self.assertTrue(of.DoneWhenLint.is_generic("looks good"))
+        self.assertTrue(of.DoneWhenLint.is_generic("build: ready to close"))
+        self.assertFalse(of.DoneWhenLint.is_generic(of.DoneWhenLint.DEFAULT))
+        self.assertFalse(
+            of.DoneWhenLint.is_generic("of contrast RESOLVED for CLI-001")
+        )
+        punct = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--done-when",
+            "done.",
+        )
+        self.assertNotEqual(punct.returncode, 0)
+        self.assertIn("generic done_when refused", punct.stderr)
+
+    def test_empty_active_set_cannot_close(self) -> None:
+        planted = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "explore",
+            "--done-when",
+            "build: of contrast RESOLVED for CLI-001",
+        )
+        self.assertEqual(planted.returncode, 0, planted.stderr)
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertNotEqual(closed.returncode, 0)
+        self.assertIn("generic done_when refused", closed.stderr)
+        self.assertIn("empty", closed.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(order.get("done_when_closed"))
+
+    def test_contrast_bound_can_close(self) -> None:
+        run_of(self.tmp, "init", "--mission", "m")
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(closed.returncode, 0, closed.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(order.get("done_when_closed"))
+
 
 class ThresholdStopSpawn(unittest.TestCase):
     """Field threshold blocks pack/spawn until patch+next-wave. of eval --kernel."""
