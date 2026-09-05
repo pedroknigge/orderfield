@@ -27,6 +27,10 @@
       }
     },
     "updated_at": { "type": "string", "minLength": 1 },
-    "summary": { "type": "string" }
+    "summary": { "type": "string" },
+    "pulse_verdicts": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "enum": ["ALIVE", "QUIET", "STALE"] }
+    }
   }
 }

@@ -1,4 +1,4 @@
-# Next path (after 0.7.13)
+# Next path (after 0.7.14)
 
 Sibling-field roster UX is on the published line: ACTIVE marker, open/closed counts, packed-age, and epic vs patch `choose`. `recovery/field-roster-ux` holds.
 

@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.14
+
+Checkpoint handoff stay-on-run. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.13 notes.
+
+- **Stay-on-run resume:** `of resume` computes pulse verdicts for in-flight children. When all in-flight children are STALE, `next` prints `HANDOFF` (re-handoff / re-spawn on the same packet) instead of `HOLD`. Guidance: "do not unpack by default." Not a daemon. Not a process supervisor. `RUNTIME_OWNERSHIP` untouched.
+- **Pulse in resume:** each in-flight child in the resume output carries a `pulse ALIVE|QUIET|STALE` line, connecting pulse evidence to the resume path without running `of pulse` separately.
+- **Checkpoint pulse verdicts:** `of checkpoint --summary` captures pulse verdicts for in-flight children in `session.json` (`pulse_verdicts`). The next session's `of resume` sees the stale/alive state as stored at checkpoint time.
+- **Eval:** `recovery/checkpoint-handoff-stay-on-run` fails if a multi-hour wave with STALE children says HOLD instead of HANDOFF, or if checkpoint does not capture pulse verdicts. Existing `recovery/multi-day-resume` stays.
+- Packaging: VERSION 0.7.14; skill/alias description preview `v0.7.14 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.13 notes.
+
 ## 0.7.13
 
 Sibling-field roster UX. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.12 notes.

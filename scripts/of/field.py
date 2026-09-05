@@ -2569,6 +2569,7 @@ def snapshot_session(
     root: Path,
     last_cmd: str,
     summary: str | None = None,
+    pulse_verdicts: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Facts only: wave, last_cmd, in_flight, updated_at. Preserve checkpoint summary."""
     from of.pack import in_flight_children, truncate_slice
@@ -2596,9 +2597,32 @@ def snapshot_session(
     kept = summary if summary is not None else prev.get("summary")
     if isinstance(kept, str) and kept.strip():
         data["summary"] = kept.strip()
+    verdicts = pulse_verdicts if pulse_verdicts is not None else prev.get("pulse_verdicts")
+    if isinstance(verdicts, dict) and verdicts:
+        data["pulse_verdicts"] = verdicts
     require_public_schema(data, "session.schema.json", "session")
     dump_json(session_path(root), data)
     return data
+
+
+def child_pulse_verdict(
+    root: Path,
+    packet: dict[str, Any],
+    now: float,
+    stale_minutes: float = PULSE_STALE_MINUTES,
+) -> str:
+    """Pulse verdict for one in-flight child from packed_at + scratch mtime."""
+    packed_ts = parse_utc(packet.get("packed_at"))
+    if packed_ts is None:
+        packed_ts = now
+    signals: list[float] = [packed_ts]
+    scratch_rel = packet.get("scratch_dir")
+    if scratch_rel:
+        scratch = newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
+        if scratch:
+            signals.append(scratch[0])
+    freshest = max(signals)
+    return pulse_verdict(now - freshest, stale_minutes)
 
 
 def next_legal_action(
@@ -2608,18 +2632,17 @@ def next_legal_action(
     *,
     integrated: bool = False,
     stale: bool = False,
+    children_stale: bool = False,
 ) -> str:
     if state.get("spawn_blocked"):
         return "patch then next-wave"
-    # A wave whose packets all belong to another field is dead even if some
-    # never reported: holding for a foreign residual waits forever.
     if packets and stale:
         return "next-wave"
     if flying:
+        if children_stale:
+            return "handoff"
         return "hold"
     if packets:
-        # Already reduced (report.json on disk): collect would re-walk a
-        # closed wave.
         if integrated:
             return "next-wave"
         return "collect"

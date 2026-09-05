@@ -2213,5 +2213,142 @@ class DurableMultiDayResume(unittest.TestCase):
         )
 
 
+class CheckpointHandoffStayOnRun(unittest.TestCase):
+    """Stay-on-run: STALE children get HANDOFF not HOLD. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-handoff-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init_with_stale_child(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "long-running build",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(self.tmp, "spec", "--add", "LONG-001", "--text", "long slice")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "multi-hour implementer",
+            "--role",
+            "implementer",
+            "--child-id",
+            "worker",
+            "--owns-path",
+            "app/worker.py",
+            "--owns-requirement",
+            "LONG-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("started\n", encoding="utf-8")
+        old_ts = time.time() - (of.PULSE_STALE_MINUTES * 60 + 600)
+        os.utime(scratch / "PULSE", (old_ts, old_ts))
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json"
+        )
+        pkt = load_json(pkt_path)
+        pkt["packed_at"] = "2018-01-01T00:00:00Z"
+        pkt["packet_hash"] = of.packet_digest(pkt)
+        with of.field.field_generation(self.tmp):
+            of.dump_json(pkt_path, pkt)
+
+    def test_resume_says_handoff_when_children_stale(self) -> None:
+        self._init_with_stale_child()
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        out = resumed.stdout
+        self.assertIn("next\n  HANDOFF", out)
+        self.assertIn("do not unpack by default", out)
+        self.assertNotIn("next\n  HOLD", out)
+        self.assertIn("pulse       STALE", out)
+
+    def test_resume_says_hold_when_children_alive(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "fresh build",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "quick implementer",
+            "--role",
+            "explorer",
+            "--child-id",
+            "fresh",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        out = resumed.stdout
+        self.assertIn("next\n  HOLD", out)
+        self.assertNotIn("HANDOFF", out)
+
+    def test_checkpoint_captures_pulse_verdicts(self) -> None:
+        self._init_with_stale_child()
+        cp = run_of(
+            self.tmp, "checkpoint", "--summary", "multi-hour wave checkpoint"
+        )
+        self.assertEqual(cp.returncode, 0, cp.stderr)
+        self.assertIn("checkpoint saved", cp.stdout)
+        self.assertIn("worker pulse=STALE", cp.stdout)
+        sess = load_json(self.tmp / ".orderfield" / "session.json")
+        self.assertIn("pulse_verdicts", sess)
+        self.assertEqual(sess["pulse_verdicts"]["worker"], "STALE")
+
+    def test_next_legal_action_handoff(self) -> None:
+        state = {"wave": 1, "children_spawned": 1, "spawn_blocked": False}
+        flying = [{"child_id": "c1"}]
+        packets = [{"child_id": "c1"}]
+        self.assertEqual(
+            of.next_legal_action(state, flying, packets, children_stale=True),
+            "handoff",
+        )
+        self.assertEqual(
+            of.next_legal_action(state, flying, packets, children_stale=False),
+            "hold",
+        )
+
+    def test_child_pulse_verdict_stale(self) -> None:
+        self._init_with_stale_child()
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json"
+        )
+        pkt = load_json(pkt_path)
+        verdict = of.child_pulse_verdict(self.tmp, pkt, time.time())
+        self.assertEqual(verdict, "STALE")
+
+    def test_child_pulse_verdict_alive_for_fresh_child(self) -> None:
+        r = run_of(
+            self.tmp, "init", "--mission", "m", "--phase", "build"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "fresh",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "fresh.json"
+        )
+        pkt = load_json(pkt_path)
+        verdict = of.child_pulse_verdict(self.tmp, pkt, time.time())
+        self.assertEqual(verdict, "ALIVE")
+
+
 if __name__ == "__main__":
     unittest.main()
