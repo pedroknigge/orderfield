@@ -1,0 +1,48 @@
+{
+  "id": "recovery/orphan-packed-cleanup",
+  "description": "Closed-field leftover packed child: retain names it; gc unlinks with stamp proof, never silent delete",
+  "fixture": "recovery_orphan_packed",
+  "tags": ["recovery", "gc", "orphan", "packed"],
+  "steps": [
+    {
+      "run": "retain",
+      "exit": 0,
+      "stdout_contains": [
+        "orphan-packed",
+        "closed-field",
+        "ghost.json",
+        "orphan packed",
+        "ghost",
+        "wave=1"
+      ],
+      "stdout_not_contains": [
+        "silent"
+      ]
+    },
+    {
+      "run": "gc",
+      "exit": 0,
+      "stdout_contains": [
+        "orphan-packed closed-field",
+        "orphan packed  ghost  wave=1  closed-field"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/gc-stamp.json",
+          "contains": [
+            "ghost",
+            "closed-field",
+            "orphan"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "retain",
+      "exit": 0,
+      "stdout_not_contains": [
+        "orphan packed  ghost"
+      ]
+    }
+  ]
+}

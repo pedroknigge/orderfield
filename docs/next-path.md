@@ -1,6 +1,6 @@
-# Next path (after 0.7.25)
+# Next path (after 0.7.26)
 
-`of doctor` one-pass skew is proven: ACTIVE stub, skill VERSION, and stale packs surface from one invocation. `recovery/doctor-one-pass-skew` and `DoctorOnePassSkew` hold. Wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+Orphan packed-child cleanup is proven: closed leftover packs are named by `of retain` and unlinked only by explicit `of gc` with `gc-stamp.json` `orphans[]`. `recovery/orphan-packed-cleanup` and `OrphanPackedCleanup` hold. Doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

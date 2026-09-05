@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.26
+
+Orphan packed-child cleanup. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.25 notes.
+
+- **Orphan packs leave proof:** `of retain` / `of gc` classify leftover packed children (`OrphanPacked`: closed field, leftover top-level home, inapplicable `order_id`, or stale prior wave) and unlink them only on explicit `of gc`. The plan prints `orphan packed  <id>  wave=N  <reason>`. `gc-stamp.json` accumulates an `orphans[]` receipt. Resume opportunistic gc never unlinks packets. Open current-wave in-flight stays `PackedAge` — not this. No new CLI verb. No new ORDER field. Not a daemon.
+- **Eval:** `recovery/orphan-packed-cleanup` fails if retain hides the closed leftover, if `of gc` is silent, or if `gc-stamp.json` omits the child. `OrphanPackedCleanup` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.26; skill/alias description preview `v0.7.26 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.25 notes.
+
 ## 0.7.25
 
 `of doctor` one-pass skew. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.24 notes.

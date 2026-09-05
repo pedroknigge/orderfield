@@ -35,6 +35,7 @@ from of.field import (
     _read_json_object,
     DoctorSkew,
     FieldSignal,
+    OrphanPacked,
     PackedAge,
     WaveRoster,
     apply_field_migrations,
@@ -283,11 +284,12 @@ def cmd_gc(args: argparse.Namespace) -> None:
         return
     apply_field_retention(root, order, state, actions)
     dumped = sum(1 for a in actions if a["action"] != "keep")
-    write_gc_stamp(root, dumped)
+    orphans = OrphanPacked.rows_from_actions(actions)
+    write_gc_stamp(root, dumped, orphans=orphans)
     if order_path(root).exists():
         snapshot_session(root, "gc")
     print_retention_plan(actions)
-    emit_event("gc", dumped=dumped, ok=True)
+    emit_event("gc", dumped=dumped, orphans=len(orphans), ok=True)
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:

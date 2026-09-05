@@ -3455,6 +3455,7 @@ from of.retain import (  # noqa: E402,F401
     SCRATCH_CHILD_BUDGET_BYTES,
     TREE_BUDGET_BYTES,
     FieldRetain,
+    OrphanPacked,
     _ephemeral_dump_reason,
     _home_residual_child_ids,
     _home_wave_child_ids,

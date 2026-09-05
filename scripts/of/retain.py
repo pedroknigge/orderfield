@@ -223,11 +223,21 @@ def save_gc_keep(root: Path, fields: dict[str, Any]) -> None:
     )
 
 
-def write_gc_stamp(root: Path, dumped: int) -> None:
-    dump_json(
-        gc_stamp_path(root),
-        {"at": utc_now(), "dumped": int(dumped)},
-    )
+def write_gc_stamp(
+    root: Path,
+    dumped: int,
+    orphans: list[dict[str, Any]] | None = None,
+) -> None:
+    prev = _read_json_object(gc_stamp_path(root)) or {}
+    kept: list[Any] = []
+    if isinstance(prev, dict) and isinstance(prev.get("orphans"), list):
+        kept = list(prev["orphans"])
+    if orphans:
+        kept.extend(orphans)
+    payload: dict[str, Any] = {"at": utc_now(), "dumped": int(dumped)}
+    if kept:
+        payload["orphans"] = kept
+    dump_json(gc_stamp_path(root), payload)
 
 
 def keep_field_is_fresh(
@@ -367,6 +377,136 @@ def _plan_home_learnings(
     return actions
 
 
+def _orphan_residual_missing(
+    root: Path,
+    home: Path,
+    packet: dict[str, Any],
+    path: Path,
+    wave: int,
+) -> bool:
+    """Residual presence without loading pack.py (retain↔pack cycle)."""
+    cid = str(packet.get("child_id") or path.stem)
+    named = home / "waves" / f"{int(wave):03d}" / "residuals" / f"{cid}.json"
+    if named.is_file() and not named.is_symlink():
+        return False
+    rel = str(packet.get("residual_path") or "").strip()
+    if not rel:
+        return True
+    candidate = root / rel.replace("\\", "/")
+    try:
+        if candidate.is_file() and not candidate.is_symlink():
+            return False
+    except OSError:
+        return True
+    return True
+
+
+class OrphanPacked:
+    """Packed child that is no longer live in-flight. Cleanup via of gc.
+
+    Current-wave in-flight on an open matching ORDER is PackedAge, not this.
+    Mid-flight stale on the live wave waits for next-wave. Proof is
+    gc-stamp.json orphans[] plus the stdout needle — never a silent unlink.
+    Resume auto-gc skips packet dumps (blocks_auto).
+    """
+
+    LABEL = "orphan-packed"
+    PRINT_LABEL = "orphan packed"
+    REASON_CLOSED = "closed-field"
+    REASON_LEFTOVER = "leftover-home"
+    REASON_ORDER = "inapplicable-order"
+    REASON_STALE_WAVE = "stale-prior-wave"
+    REASON_UNREADABLE = "unreadable"
+
+    @staticmethod
+    def reason(
+        packet: dict[str, Any] | None,
+        order: dict[str, Any],
+        *,
+        wave: int,
+        current_wave: int,
+        closed: bool,
+        leftover: bool,
+        residual_missing: bool,
+    ) -> str | None:
+        if not residual_missing:
+            return None
+        if leftover:
+            return OrphanPacked.REASON_LEFTOVER
+        if closed:
+            return OrphanPacked.REASON_CLOSED
+        if packet is None:
+            if int(wave) != int(current_wave):
+                return OrphanPacked.REASON_UNREADABLE
+            return None
+        oid = packet.get("order_id")
+        if oid and oid != order.get("id"):
+            return OrphanPacked.REASON_ORDER
+        if int(wave) != int(current_wave):
+            from of.pack import packet_is_stale
+
+            if packet_is_stale(packet, order):
+                return OrphanPacked.REASON_STALE_WAVE
+        return None
+
+    @staticmethod
+    def blocks_auto(action: dict[str, str]) -> bool:
+        """Resume opportunistic gc never unlinks packets or orphan rows."""
+        if action.get("action") == "keep":
+            return False
+        reason = str(action.get("reason") or "")
+        if reason.startswith(OrphanPacked.LABEL):
+            return True
+        path = str(action.get("path") or "").replace("\\", "/")
+        return "/packets/" in path and path.endswith(".json")
+
+    @staticmethod
+    def rows_from_actions(actions: list[dict[str, str]]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for item in actions:
+            if item.get("action") == "keep":
+                continue
+            reason = str(item.get("reason") or "")
+            if not reason.startswith(OrphanPacked.LABEL):
+                continue
+            path = str(item.get("path") or "").replace("\\", "/")
+            if "/packets/" not in path or not path.endswith(".json"):
+                continue
+            detail = reason[len(OrphanPacked.LABEL) :].strip() or OrphanPacked.LABEL
+            stem = path.rsplit("/", 1)[-1].removesuffix(".json")
+            wave = 0
+            parts = path.split("/")
+            if "waves" in parts:
+                try:
+                    wave = int(parts[parts.index("waves") + 1])
+                except (ValueError, IndexError):
+                    wave = 0
+            rows.append(
+                {
+                    "child_id": stem,
+                    "wave": wave,
+                    "reason": detail,
+                    "path": path,
+                    "at": utc_now(),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def format_line(row: dict[str, Any]) -> str:
+        return (
+            f"{OrphanPacked.PRINT_LABEL.ljust(13)}"
+            f"{row.get('child_id') or '?'}  "
+            f"wave={row.get('wave') or '?'}  "
+            f"{row.get('reason') or OrphanPacked.LABEL}"
+        )
+
+    @staticmethod
+    def emit(rows: list[dict[str, Any]]) -> None:
+        for row in rows:
+            print(OrphanPacked.format_line(row))
+
+
 def _plan_home_waves(
     root: Path,
     home: Path,
@@ -374,6 +514,7 @@ def _plan_home_waves(
     current_wave: int,
     *,
     closed: bool,
+    leftover: bool = False,
 ) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     waves = home / "waves"
@@ -417,6 +558,32 @@ def _plan_home_waves(
                     actions.append(_retention_action("drop", rel, why))
                 else:
                     actions.append(_retention_action("dump", rel, why))
+        packets_dir = wdir / "packets"
+        if packets_dir.is_dir() and not packets_dir.is_symlink():
+            for path in sorted(packets_dir.glob("*.json")):
+                if path.is_symlink() or not path.is_file():
+                    continue
+                rel = field_rel(root, path)
+                data = _read_json_object(path)
+                missing = _orphan_residual_missing(
+                    root, home, data or {}, path, wave_n
+                )
+                why = OrphanPacked.reason(
+                    data,
+                    order,
+                    wave=wave_n,
+                    current_wave=current_wave,
+                    closed=closed,
+                    leftover=leftover,
+                    residual_missing=missing,
+                )
+                if why:
+                    actions.append(
+                        _retention_action(
+                            "dump", rel, f"{OrphanPacked.LABEL} {why}"
+                        )
+                    )
+        already = {a["path"] for a in actions if a["action"] != "keep"}
         if not is_current and artifact_older_than_retention(wdir):
             useful_left = any(
                 a["action"] == "keep"
@@ -430,10 +597,13 @@ def _plan_home_waves(
                         continue
                     for path in sorted(edir.rglob("*")):
                         if path.is_file() and not path.is_symlink():
+                            rel = field_rel(root, path)
+                            if rel in already:
+                                continue
                             actions.append(
                                 _retention_action(
                                     "dump",
-                                    field_rel(root, path),
+                                    rel,
                                     f"history age>{RETENTION_DAYS}d",
                                 )
                             )
@@ -594,7 +764,9 @@ def _plan_top_level_leftovers(
     dummy_state: dict[str, Any] = {"wave": 0}
     # Treat leftover top-level as closed so ephemeral dumps immediately.
     actions.extend(
-        _plan_home_waves(root, field, dummy_order, 0, closed=True)
+        _plan_home_waves(
+            root, field, dummy_order, 0, closed=True, leftover=True
+        )
     )
     actions.extend(
         _plan_home_contract_and_scratch(
@@ -747,6 +919,7 @@ def print_retention_plan(actions: list[dict[str, str]]) -> None:
         f"ttl_safe={SAFE_RETENTION_DAYS}d ttl_contract={RETENTION_DAYS}d "
         f"(never copies transcripts)"
     )
+    OrphanPacked.emit(OrphanPacked.rows_from_actions(actions))
 
 
 def record_keep_field(root: Path, field_id: str) -> None:
@@ -835,7 +1008,11 @@ def maybe_safe_gc(root: Path) -> int | None:
         with field_lock(root, "gc", wait_seconds=0):
             order = load_order(root)
             state = load_state(root)
-            actions = plan_field_retention(root, order, state)
+            actions = [
+                a
+                for a in plan_field_retention(root, order, state)
+                if not OrphanPacked.blocks_auto(a)
+            ]
             apply_field_retention(root, order, state, actions)
             dumped = sum(1 for a in actions if a["action"] != "keep")
             write_gc_stamp(root, dumped)
@@ -854,3 +1031,4 @@ class FieldRetain:
     drop_home = staticmethod(drop_field_home)
     maybe_safe = staticmethod(maybe_safe_gc)
     keep_field = staticmethod(record_keep_field)
+    orphan = OrphanPacked
