@@ -2105,6 +2105,87 @@ class FieldAbandonedSignal(unittest.TestCase):
         self.assertNotIn("signal      abandoned", aged.stdout)
 
 
+class PackedAgeWatchdog(unittest.TestCase):
+    """In-flight packed_at older than 7d SLA. of eval --kernel. Not a daemon."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(
+            tmp, "init", "--mission", "aged packed child", "--phase", "build"
+        )
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    @staticmethod
+    def _pack(tmp: Path, child_id: str = "worker") -> None:
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "forgotten implementer slice",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+
+    def test_overdue_is_packed_at_wall_clock(self) -> None:
+        now = of.parse_utc("2018-01-08T00:00:00Z")
+        assert now is not None
+        pkt = {"child_id": "worker", "packed_at": "2018-01-01T00:00:00Z"}
+        self.assertEqual(
+            of.PackedAge.overdue([pkt], now=now),
+            [("worker", of.PackedAge.SLA_SECONDS)],
+        )
+        short = of.parse_utc("2018-01-07T23:59:59Z")
+        assert short is not None
+        self.assertEqual(of.PackedAge.overdue([pkt], now=short), [])
+        self.assertEqual(of.PackedAge.overdue([{"child_id": "x"}], now=now), [])
+        line = of.PackedAge.format_line([("worker", of.PackedAge.SLA_SECONDS)])
+        self.assertIsNotNone(line)
+        assert line is not None
+        self.assertIn("packed_age  worker", line)
+        self.assertIn("past 7d SLA", line)
+        self.assertIsNone(of.PackedAge.format_line([]))
+
+    def test_status_names_overdue_without_unpacking(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-packed-age-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        of.PackedAge.backdate_packet(tmp, "worker", "2018-01-01T00:00:00Z")
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   1", status.stdout)
+        self.assertIn("packed_age  worker", status.stdout)
+        self.assertIn("past 7d SLA", status.stdout)
+        self.assertNotIn("signal      abandoned", status.stdout)
+        self.assertNotIn("done_when_closed True", status.stdout)
+        order = load_json(tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(order.get("spec_closed"))
+        self.assertTrue(
+            (tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json").is_file()
+        )
+        resumed = run_of(tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("packed_age", resumed.stdout)
+        self.assertIn("past 7d SLA", resumed.stdout)
+        self.assertIn("field         open", resumed.stdout)
+
+    def test_fresh_pack_is_not_overdue(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-packed-fresh-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   1", status.stdout)
+        self.assertNotIn("packed_age", status.stdout)
+        self.assertNotIn("past 7d SLA", status.stdout)
+
+
 class DurableMultiDayResume(unittest.TestCase):
     """Later session + stale session.json reconstruct wave 2. of eval --kernel."""
 

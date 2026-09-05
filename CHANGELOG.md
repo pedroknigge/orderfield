@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.22
+
+In-flight packed-age watchdog. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.21 notes.
+
+- **Status names old packs:** `of status` / `of resume` print `packed_age` when an in-flight child's `packed_at` is older than the 7-day SLA (same window as `FieldSignal` / SAT-002). Pulse STALE stays activity evidence. Read-path only: nothing is unpacked, spawned, or watched. No new schema. No new CLI verb. Not a daemon.
+- **Eval:** `recovery/packed-age-watchdog` fails if an aged in-flight child is omitted, if the field is closed or abandoned, or if a fresh pack is flagged. `PackedAgeWatchdog` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.22; skill/alias description preview `v0.7.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.21 notes.
+
 ## 0.7.21
 
 Generic done_when lint stronger. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.20 notes.

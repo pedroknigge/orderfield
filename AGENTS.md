@@ -109,6 +109,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.19 threshold stop-spawn loop (field residual → `spawn_blocked` → patch + next-wave; `recovery/threshold-stop-spawn`) | documented |
 | 0.7.20 resume after process death (live wave from disk; no re-init theater; `recovery/process-death-resume`) | documented |
 | 0.7.21 generic done_when lint stronger (punctuation/platitude + empty theater close; `recovery/done-when-lint`) | documented |
+| 0.7.22 in-flight packed-age watchdog (`of status` / `of resume` past 7d SLA; `recovery/packed-age-watchdog`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

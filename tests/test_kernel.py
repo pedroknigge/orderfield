@@ -23,6 +23,7 @@ from test_kernel_cli import (  # noqa: E402,F401
 from test_kernel_field import (  # noqa: E402,F401
     DurableMultiDayResume,
     FieldAbandonedSignal,
+    PackedAgeWatchdog,
     ResumeAfterProcessDeath,
     ResumeRecoveryBrief,
 )
