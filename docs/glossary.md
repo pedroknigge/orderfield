@@ -26,7 +26,7 @@ The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/pac
 
 ## residual
 
-The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `metrics`), not a diary and not a transcript. Residuals echo packet identity (`packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, `role`). `status=done` names an existing project-relative `result_ref`. The leader consumes residuals, not child logs.
+The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `metrics`), not a diary and not a transcript. Residuals echo packet identity (`packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, `role`). `status=done` names an existing project-relative `result_ref`. The leader consumes residuals, not child logs. Collect/integrate refuse a chat dump in `evidence` or `proposed_patch.notes` (`ResidualQuality`; `recovery/wave-report-quality-gate`). The wave report is the structured reduction.
 
 ## regime
 

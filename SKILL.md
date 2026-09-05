@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.16 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.17 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.16"
+  version: "0.7.17"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -278,6 +278,8 @@ Collect and integrate refuse mixed leftover stale packets (they do not silently 
 
 `collect` and `integrate` print `owned-but-unverified <ID>…` when a binding requirement is owned but not yet `verified_*`. They never auto-stamp `verified_contract` — that remains `of spec --verified-contract`. Successful `of integrate` stdout is the JSON report (`regime` set); human notes (mission-not-auto-applied, owned-but-unverified) go to stderr.
 
+Collect and integrate refuse a chat dump stuffed into `residual.evidence` or `proposed_patch.notes` (oversized, or a multi-turn Human/Assistant transcript). The child writes a structured residual; the wave report is the reduction (`status` / `wants` / `uncertainty`), not the transcript. `recovery/wave-report-quality-gate`.
+
 One dead child does not freeze the wave: `collect` prints `MISSING <child_id>` per absent residual, keeps walking, and exits 2 when anything is missing or invalid. To reduce what did land while a straggler keeps flying, use `of integrate --wave N --partial` — skipped children are listed in the report as `skipped_in_flight` and stay in flight. Without `--partial`, integrate still refuses an incomplete wave. A child that will never report is released with `of unpack`.
 
 Integration hashes the canonical packet/residual set plus reduction options. Replaying identical inputs is a no-op that also repairs report-derived state after interruption. Changed inputs require explicit `--recompute`, which preserves an auditable integration record. Phase and wave movement require complete, current-digest integration with no in-flight children; phase movement is sequential and closed, and `phase --force --reason …` is the audited break-glass path.
@@ -372,7 +374,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat `ORDER.origin` as spawn authority or as `session.json`. Do not fetch or dump harness transcripts; origin is a pointer. Fetch stays in harness-specific resume skills.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
 - Do not ingest a deictic go-ahead as SPEC. Expand the prior request, or resume and execute `next`.
-- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid.
+- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid. A chat-dump residual cannot collect.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
 - Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates; refuse / edit-later / silence does not.
 - Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue` (omit `--dry-run`) to `pedroknigge/orderfield`.

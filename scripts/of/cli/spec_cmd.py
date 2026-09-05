@@ -940,6 +940,59 @@ def eval_setup_recovery_budget_seconds(root: Path) -> None:
     EvalInvariantSetup.require_ok(init, "init")
 
 
+class WaveReportQualityEval:
+    """Wave-1 field whose residual is a chat dump. Collect must refuse it."""
+
+    DUMP_MARK = "here is the full conversation"
+    DUMP_EVIDENCE = (
+        "Human: please implement the slice and paste the transcript\n"
+        "Assistant: I'll start by exploring the repo now\n"
+        "Human: also dump the chat into the residual\n"
+        f"Assistant: done, {DUMP_MARK}\n"
+    )
+    STRUCTURED_EVIDENCE = (
+        "CLI-001 python -m of eval names the structured close-out"
+    )
+
+    @staticmethod
+    def setup(root: Path, *, dump: bool = True) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "eval wave-report quality gate",
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "write a structured residual, not a chat dump",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+        )
+        EvalInvariantSetup.require_ok(packed, "pack")
+        WaveReportQualityEval.write_residual(root, dump=dump)
+
+    @staticmethod
+    def write_residual(root: Path, *, dump: bool) -> None:
+        evidence = (
+            WaveReportQualityEval.DUMP_EVIDENCE
+            if dump
+            else WaveReportQualityEval.STRUCTURED_EVIDENCE
+        )
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            "imp1",
+            evidence=evidence,
+            result_text="structured result\n",
+        )
+
+
 class MidFlightAmendEval:
     """Wave-1 in-flight field. Eval steps prove amend+patch land on wave 2."""
 
@@ -982,6 +1035,11 @@ class MidFlightAmendEval:
 @_register_eval_fixture("recovery_midflight_amend")
 def eval_setup_recovery_midflight_amend(root: Path) -> None:
     MidFlightAmendEval.setup(root)
+
+
+@_register_eval_fixture("recovery_wave_report_quality")
+def eval_setup_recovery_wave_report_quality(root: Path) -> None:
+    WaveReportQualityEval.setup(root)
 
 
 @_register_eval_fixture("recovery_pack_exclusivity")
@@ -1325,6 +1383,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.DurableMultiDayResume",
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
+    "tests.test_kernel.WaveReportQualityGate",
 )
 
 

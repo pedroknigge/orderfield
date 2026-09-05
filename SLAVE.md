@@ -57,7 +57,7 @@ Product comments are short and factual, not the field diary.
 - Change mission, phase, or constraints.
 - Spawn grandchildren unless the packet has `allow_nested: true`.
 - Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
-- Return a thinking diary as the result.
+- Return a thinking diary as the result. Do not paste a chat transcript into `residual.evidence` or `proposed_patch.notes`.
 - Treat workspace as a lock, or invent `of claim` / file leases.
 - Post a GitHub issue (`of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.
 
