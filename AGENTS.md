@@ -107,6 +107,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.17 wave-report quality gate (structured residual, not chat dumps; `recovery/wave-report-quality-gate`) | documented |
 | 0.7.18 packet sizing lint (whole-phase pack slogans die; length ≥800 stays advisory; `recovery/packet-sizing-lint`) | documented |
 | 0.7.19 threshold stop-spawn loop (field residual → `spawn_blocked` → patch + next-wave; `recovery/threshold-stop-spawn`) | documented |
+| 0.7.20 resume after process death (live wave from disk; no re-init theater; `recovery/process-death-resume`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

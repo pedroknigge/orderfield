@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.20
+
+Resume after process death. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.19 notes.
+
+- **Live wave survives host death:** `of resume` reconstructs from `state.wave` plus packets/residuals via the WAL CURRENT view after the spawn host is gone. Started-only spawn metadata, a dead pid leftover, and an incomplete WAL generation do not hide the packed child and do not invent `PACK` or `no ORDER`. No new schema. No new CLI verb. No process supervisor.
+- **Re-init theater dies:** `of init` without `--force` still refuses while the field exists. `recovery/process-death-resume` plus `ResumeAfterProcessDeath` fail if resume hides wave 1, prints `PACK`/`abandoned`/`no ORDER`, or `of init` succeeds. Existing `recovery/multi-day-resume` stays.
+- Packaging: VERSION 0.7.20; skill/alias description preview `v0.7.20 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.19 notes.
+
 ## 0.7.19
 
 Threshold stop-spawn loop proven end-to-end. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.18 notes.

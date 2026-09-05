@@ -95,6 +95,8 @@ from of.cli.spec_cmd import (
     MidFlightAmendEval,
     eval_setup_recovery_threshold_stop_spawn,
     ThresholdStopSpawnEval,
+    ProcessDeathResume,
+    eval_setup_recovery_process_death,
     eval_setup_recovery_wave_report_quality,
     WaveReportQualityEval,
     eval_setup_recovery_packet_sizing,
@@ -174,6 +176,8 @@ __all__ = [
     "MidFlightAmendEval",
     "eval_setup_recovery_threshold_stop_spawn",
     "ThresholdStopSpawnEval",
+    "ProcessDeathResume",
+    "eval_setup_recovery_process_death",
     "eval_setup_recovery_wave_report_quality",
     "eval_setup_recovery_packet_sizing",
     "WaveReportQualityEval",
@@ -850,7 +854,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--kernel",
         action="store_true",
-        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief, DurableMultiDayResume)",
+        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief, DurableMultiDayResume, ResumeAfterProcessDeath)",
     )
     s.set_defaults(func=cmd_eval)
 

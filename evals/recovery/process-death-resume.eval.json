@@ -1,0 +1,60 @@
+{
+  "id": "recovery/process-death-resume",
+  "description": "Spawn-host death leftovers: resume reconstructs the live wave from disk; of init without --force dies",
+  "fixture": "recovery_process_death",
+  "tags": ["recovery", "resume", "long-task", "process-death", "gate"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "wave          1",
+        "field         open",
+        "auto_continue yes",
+        "last_cmd      spawn",
+        "in_flight",
+        "  worker",
+        "    residual    MISSING",
+        "parked_reason scratch_active",
+        "next",
+        "HOLD",
+        "continue existing packets; do not repack"
+      ],
+      "stdout_not_contains": [
+        "field         closed",
+        "signal        abandoned",
+        "no ORDER",
+        "next\n  PACK",
+        "auto_continue no",
+        "foreign field"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/worker.json",
+          "contains": ["\"wave\": 1", "\"child_id\": \"worker\""]
+        },
+        {
+          "path": ".orderfield/wal/deadbeef/state.json",
+          "contains": ["{}"]
+        },
+        {
+          "path": ".orderfield/waves/001/spawns/worker.json",
+          "contains": ["\"child_id\": \"worker\"", "\"started_at\""],
+          "not_contains": ["\"outcome\""]
+        }
+      ]
+    },
+    {
+      "run": "init",
+      "args": ["--mission", "re-init theater"],
+      "exit": 1,
+      "stderr_contains": ["field(s) exist"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["wave        1", "process-death live wave"],
+      "stdout_not_contains": ["signal      abandoned", "no ORDER"]
+    }
+  ]
+}
