@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.19
+
+Threshold stop-spawn loop proven end-to-end. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.18 notes.
+
+- **Long-task threshold is a stop, not a swarm:** a field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) still selects `escalate_up` and sets `spawn_blocked`. Pack and spawn stay refused in that wave until the leader `of patch` bumps `ORDER.rev` past `blocked_at_order_rev` and guarded `of next-wave` runs. No new schema. No new CLI verb. No new ORDER field.
+- **Eval:** `recovery/threshold-stop-spawn` fails if pack or spawn continues after the threshold without patch+next-wave, if `next-wave` skips the patch, or if the wave-2 packet lacks the patched constraint / the wave-1 packet is rewritten. `ThresholdStopSpawn` is on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.19; skill/alias description preview `v0.7.19 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.18 notes.
+
 ## 0.7.18
 
 Packet sizing lint. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.17 notes.

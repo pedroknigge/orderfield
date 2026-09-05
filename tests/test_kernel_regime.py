@@ -1251,5 +1251,91 @@ class DoneWhenLintRefuse(unittest.TestCase):
         self.assertIn("generic done_when refused", r.stderr)
 
 
+class ThresholdStopSpawn(unittest.TestCase):
+    """Field threshold blocks pack/spawn until patch+next-wave. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-threshold-loop-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_threshold_stop_spawn(self.tmp)
+
+    def test_threshold_forbids_pack_spawn_until_patch_and_next_wave(self) -> None:
+        loop = of.ThresholdStopSpawnEval
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report["regime"], "escalate_up")
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertTrue(state.get("spawn_blocked"))
+        self.assertEqual(state.get("blocked_at_order_rev"), order.get("rev"))
+
+        blocked_pack = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "another child after threshold",
+            "--role",
+            "implementer",
+            "--child-id",
+            "after_block",
+            "--owns-path",
+            "app/blocked.py",
+            "--owns-requirement",
+            "W2-001",
+        )
+        self.assertNotEqual(blocked_pack.returncode, 0, blocked_pack.stdout)
+        self.assertIn("spawn forbidden after escalate_up", blocked_pack.stderr)
+
+        blocked_spawn = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "claude",
+            "--packet",
+            ".orderfield/waves/001/packets/w1.json",
+            "--dry-run",
+        )
+        self.assertNotEqual(blocked_spawn.returncode, 0, blocked_spawn.stdout)
+        self.assertIn("spawn forbidden after escalate_up", blocked_spawn.stderr)
+
+        skipped = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(skipped.returncode, 0, skipped.stdout)
+        self.assertIn("must exceed blocked_at_order_rev", skipped.stderr)
+        self.assertEqual(load_json(self.tmp / ".orderfield" / "state.json")["wave"], 1)
+
+        patched = run_of(self.tmp, "patch", "--constraints-add", loop.CONSTRAINT)
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "Implement app/w2.py after the patched constraint",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w2",
+            "--owns-path",
+            "app/w2.py",
+            "--owns-requirement",
+            "W2-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        w1 = load_json(packet_path(self.tmp, "w1", 1))
+        w2 = load_json(packet_path(self.tmp, "w2", 2))
+        self.assertEqual(w2.get("wave"), 2)
+        self.assertIn(loop.CONSTRAINT, w2.get("order", {}).get("constraints") or [])
+        self.assertNotIn(loop.CONSTRAINT, w1.get("order", {}).get("constraints") or [])
+        self.assertEqual(w1.get("wave"), 1)
+        self.assertLess(int(w1.get("order_rev") or 0), int(w2.get("order_rev") or 0))
+        state_after = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertFalse(state_after.get("spawn_blocked"))
+        self.assertIsNone(state_after.get("blocked_at_order_rev"))
+
+
 if __name__ == "__main__":
     unittest.main()

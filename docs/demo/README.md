@@ -37,7 +37,7 @@ The explorer does not patch the field. It writes a residual and stops:
 }
 ```
 
-Threshold does not mutate ORDER. `integrate` sees a field key and chooses `escalate_up`. Spawn in that wave is forbidden until the leader patches.
+Threshold does not mutate ORDER. `integrate` sees a field key and chooses `escalate_up`. Spawn in that wave is forbidden until the leader patches. Proof: `recovery/threshold-stop-spawn`.
 
 ## The plan changes without swallowing transcripts
 
