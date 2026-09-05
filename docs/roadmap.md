@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.8. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.9. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.8`
+**Status:** Shipped · **Current release line:** `0.7.9`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.9 — corpus recovery / stale-field / multi-harness residual
+
+- Empty waves + age print `abandoned` on status/resume. Skip-explore without `--force` dies; a forced skip is visible. Verify→build adversary residual is `escalate_up`. Claude/Grok/Codex share one residual contract. Close honesty evals from 0.7.7 stay. Not a new regime.
 
 ## 0.7.8 — docs voice on the published line
 
@@ -79,7 +83,7 @@ An external reader should use this table plus [external-brief.md](external-brief
 
 **Stay-on-the-run** is the chosen loop. Pulse `STALE` means the packet is still the work: `of handoff` or `of spawn` on that same packet this turn. Do not unpack by default. Do not pack a sibling. Do not wait forever. `of pulse --watch` refreshes until Ctrl+C; it is not a daemon and not a 5-minute kernel poll. A truly dead child is an explicit `of unpack`. The kernel never kills or auto-merges.
 
-**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. 0.7.5 shipped the written contrast and the invariant evals that prove silent rewrite and slogan-close die. 0.7.6 adds the threat-model section and pack-exclusivity evals. 0.7.7 adds atomic close, ACTIVE, and done_when lint. Not a bot-org release.
+**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. 0.7.5 shipped the written contrast and the invariant evals that prove silent rewrite and slogan-close die. 0.7.6 adds the threat-model section and pack-exclusivity evals. 0.7.7 adds atomic close, ACTIVE, and done_when lint. 0.7.8 is the published-voice packaging line. 0.7.9 adds abandoned-field honesty and multi-harness residual proof. Not a bot-org release.
 
 ## 0.6.7 — vibe-proof hardening
 

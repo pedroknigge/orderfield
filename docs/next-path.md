@@ -1,6 +1,6 @@
-# Next path (after 0.7.8)
+# Next path (after 0.7.9)
 
-Close is one stamp. Status names the live field. Done-when has to be checkable.
+Empty waves tell the truth. Close is still one stamp. Done-when has to be checkable.
 
 Public docs lead with when to use, when not to, and how to prove close. What remains is process, not another command.
 

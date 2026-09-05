@@ -2194,6 +2194,73 @@ def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES
     return "STALE"
 
 
+class FieldSignal:
+    """Read-path honesty: empty waves + age is abandoned, not a fake deliver.
+
+    Does not delete, unpack, or close. Same 7-day window as SAT-002 safe TTL.
+    """
+
+    LABEL = "abandoned"
+    ABANDONED_SECONDS = 7 * 24 * 3600
+
+    @staticmethod
+    def activity_ts(
+        state: dict[str, Any], session: dict[str, Any] | None = None
+    ) -> float | None:
+        stamps: list[float] = []
+        for blob in (state, session or {}):
+            ts = parse_utc(blob.get("updated_at"))
+            if ts is not None:
+                stamps.append(ts)
+        return max(stamps) if stamps else None
+
+    @staticmethod
+    def verdict(
+        *,
+        spec_closed: bool,
+        packet_count: int,
+        age_seconds: float | None,
+    ) -> str | None:
+        if spec_closed:
+            return None
+        if packet_count > 0:
+            return None
+        if age_seconds is None or age_seconds < FieldSignal.ABANDONED_SECONDS:
+            return None
+        return FieldSignal.LABEL
+
+    @staticmethod
+    def of(
+        order: dict[str, Any],
+        state: dict[str, Any],
+        packets: list[Any],
+        session: dict[str, Any] | None = None,
+        now: float | None = None,
+    ) -> str | None:
+        ts = FieldSignal.activity_ts(state, session)
+        if ts is None:
+            return None
+        age = (now if now is not None else time.time()) - ts
+        return FieldSignal.verdict(
+            spec_closed=bool(order.get("spec_closed")),
+            packet_count=len(packets),
+            age_seconds=age,
+        )
+
+    @staticmethod
+    def backdate_empty(root: Path, when: str) -> None:
+        """Persist an old state.updated_at through WAL. Eval/unittest helper."""
+        state = load_state(root)
+        state["updated_at"] = when
+        require_public_schema(state, "state.schema.json", "state")
+        with field_generation(root):
+            dump_json(state_path(root), state)
+            session = load_session(root)
+            if session:
+                session["updated_at"] = when
+                dump_json(session_path(root), session)
+
+
 def fmt_age(seconds: float) -> str:
     s = max(0, int(seconds))
     if s < 60:

@@ -13,6 +13,7 @@ from typing import Any
 
 from of.field import (
     FIELD_SPEC_MD,
+    FieldSignal,
     die,
     dump_json,
     emit_event,
@@ -949,6 +950,91 @@ def eval_setup_recovery_atomic_close(root: Path) -> None:
     eval_setup_recovery_contrast_close(root)
 
 
+@_register_eval_fixture("recovery_skip_explore")
+def eval_setup_recovery_skip_explore(root: Path) -> None:
+    """Empty tree; steps exercise explore→build refuse and force-override honesty."""
+    return
+
+
+@_register_eval_fixture("recovery_stale_field")
+def eval_setup_recovery_stale_field(root: Path) -> None:
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "empty waves left idle",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    FieldSignal.backdate_empty(root, "2018-01-01T00:00:00Z")
+
+
+@_register_eval_fixture("recovery_verify_build")
+def eval_setup_recovery_verify_build(root: Path) -> None:
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "keep verify; do not regress to build",
+        "--phase",
+        "verify",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "adversary: try to move the field back to build",
+        "--role",
+        "adversary",
+        "--child-id",
+        "adv1",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "adv1",
+        status="threshold",
+        wants=["phase"],
+        evidence=(
+            "threshold: adversary residual proposes phase=build while the "
+            "field is in verify"
+        ),
+        patch={"phase": "build"},
+    )
+
+
+@_register_eval_fixture("recovery_multi_harness")
+def eval_setup_recovery_multi_harness(root: Path) -> None:
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "same residual under two adapters",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "implement the shared residual contract",
+        "--role",
+        "implementer",
+        "--child-id",
+        "imp1",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "imp1",
+        evidence="done residual is adapter-neutral",
+        result_text="shared residual\n",
+    )
+
+
 def discover_recovery_eval_specs() -> list[Path]:
     base = kernel_repo_root() / "evals" / "recovery"
     if not base.is_dir():
@@ -1054,6 +1140,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.StalePackets",
     "tests.test_kernel.ResumeRecoveryBrief",
     "tests.test_kernel.MissionRewriteRefused",
+    "tests.test_kernel.FieldAbandonedSignal",
+    "tests.test_kernel.MultiHarnessResidual",
 )
 
 

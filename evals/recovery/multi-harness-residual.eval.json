@@ -1,0 +1,69 @@
+{
+  "id": "recovery/multi-harness-residual",
+  "description": "Claude/Grok/Codex dry-run share one residual path; Codex argv names residual.codex; collect accepts the same residual",
+  "fixture": "recovery_multi_harness",
+  "tags": ["recovery", "adapters", "residual"],
+  "steps": [
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "claude",
+        "--packet",
+        ".orderfield/waves/001/packets/imp1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "adapter=claude",
+        "residual=.orderfield/waves/001/residuals/imp1.json"
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "grok",
+        "--packet",
+        ".orderfield/waves/001/packets/imp1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "adapter=grok",
+        "residual=.orderfield/waves/001/residuals/imp1.json"
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "codex",
+        "--packet",
+        ".orderfield/waves/001/packets/imp1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "adapter=codex",
+        "residual=.orderfield/waves/001/residuals/imp1.json",
+        "residual.codex.schema.json"
+      ]
+    },
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0
+    },
+    {
+      "run": "validate",
+      "args": [
+        "--kind",
+        "residual",
+        ".orderfield/waves/001/residuals/imp1.json"
+      ],
+      "exit": 0,
+      "stdout_contains": ["OK residual"]
+    }
+  ]
+}

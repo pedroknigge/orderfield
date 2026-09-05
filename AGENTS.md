@@ -93,6 +93,8 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.5 invariant evals + external brief (mission rewrite / contract close / slogan; Grok Bot contrast written) | documented |
 | 0.7.6 threat-model honesty + pack exclusivity evals (`pack-exclusivity-refused`; child-cannot vs kernel-does-not-stop) | documented |
 | 0.7.7 atomic close / ACTIVE pointer / done_when lint | documented |
+| 0.7.8 docs voice on the published line | documented |
+| 0.7.9 corpus recovery / stale-field signal / multi-harness residual | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

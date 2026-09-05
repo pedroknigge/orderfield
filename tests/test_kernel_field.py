@@ -2024,5 +2024,80 @@ class ProtocolLearnings(unittest.TestCase):
         self.assertNotIn("planted by a slave", rendered.stdout)
 
 
+class FieldAbandonedSignal(unittest.TestCase):
+    """Empty waves + age is abandoned. of eval --kernel. Not a delete."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(tmp, "init", "--mission", "idle empty waves", "--phase", "explore")
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    def test_verdict_requires_empty_waves_and_age(self) -> None:
+        self.assertIsNone(
+            of.FieldSignal.verdict(
+                spec_closed=False, packet_count=0, age_seconds=60
+            )
+        )
+        self.assertIsNone(
+            of.FieldSignal.verdict(
+                spec_closed=False,
+                packet_count=1,
+                age_seconds=of.FieldSignal.ABANDONED_SECONDS + 1,
+            )
+        )
+        self.assertIsNone(
+            of.FieldSignal.verdict(
+                spec_closed=True,
+                packet_count=0,
+                age_seconds=of.FieldSignal.ABANDONED_SECONDS + 1,
+            )
+        )
+        self.assertEqual(
+            of.FieldSignal.verdict(
+                spec_closed=False,
+                packet_count=0,
+                age_seconds=of.FieldSignal.ABANDONED_SECONDS,
+            ),
+            "abandoned",
+        )
+
+    def test_status_names_abandoned_without_closing(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-abandoned-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        of.FieldSignal.backdate_empty(tmp, "2018-01-01T00:00:00Z")
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("signal      abandoned", status.stdout)
+        self.assertNotIn("done_when_closed True", status.stdout)
+        order = load_json(tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(order.get("spec_closed"))
+        self.assertTrue((tmp / ".orderfield" / "ORDER.json").is_file())
+
+    def test_fresh_or_packed_field_is_not_abandoned(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-not-abandoned-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        fresh = run_of(tmp, "status")
+        self.assertEqual(fresh.returncode, 0, fresh.stderr)
+        self.assertNotIn("signal      abandoned", fresh.stdout)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "map the empty field",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        of.FieldSignal.backdate_empty(tmp, "2018-01-01T00:00:00Z")
+        aged = run_of(tmp, "status")
+        self.assertEqual(aged.returncode, 0, aged.stderr)
+        self.assertNotIn("signal      abandoned", aged.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

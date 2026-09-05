@@ -1,0 +1,30 @@
+{
+  "id": "recovery/skip-explore-theater",
+  "description": "explore→build without --force is refused; a forced skip stays visible on status (not hidden theater)",
+  "fixture": "recovery_skip_explore",
+  "tags": ["recovery", "gate", "phase", "theater"],
+  "steps": [
+    {
+      "run": "init",
+      "args": ["--mission", "skip explore theater", "--phase", "explore"],
+      "exit": 0
+    },
+    {
+      "run": "phase",
+      "args": ["build"],
+      "exit": 1,
+      "stderr_contains": ["legal next phase from explore is cut"]
+    },
+    {
+      "run": "phase",
+      "args": ["build", "--force", "--reason", "skip explore"],
+      "exit": 0
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["phase_override explore→build skip explore"],
+      "stdout_not_contains": ["signal      abandoned"]
+    }
+  ]
+}

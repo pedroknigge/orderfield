@@ -1136,6 +1136,10 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/mission-rewrite-refused", r.stdout)
         self.assertIn("PASS recovery/contrast-close-contract", r.stdout)
         self.assertIn("PASS recovery/slogan-evidence-refused", r.stdout)
+        self.assertIn("PASS recovery/stale-field-abandoned", r.stdout)
+        self.assertIn("PASS recovery/multi-harness-residual", r.stdout)
+        self.assertIn("PASS recovery/skip-explore-theater", r.stdout)
+        self.assertIn("PASS recovery/escalate-verify-build", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")
@@ -1146,6 +1150,10 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("contrast-close-contract", r.stdout)
         self.assertIn("slogan-evidence-refused", r.stdout)
         self.assertIn("pack-exclusivity-refused", r.stdout)
+        self.assertIn("stale-field-abandoned", r.stdout)
+        self.assertIn("multi-harness-residual", r.stdout)
+        self.assertIn("skip-explore-theater", r.stdout)
+        self.assertIn("escalate-verify-build", r.stdout)
 
 
 class MissionRewriteRefused(unittest.TestCase):
@@ -1195,6 +1203,62 @@ class MissionRewriteRefused(unittest.TestCase):
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
         self.assertIn("escalate_up", spawned.stderr)
+
+
+class MultiHarnessResidual(unittest.TestCase):
+    """Claude/Grok/Codex share one residual contract. of eval --kernel."""
+
+    @staticmethod
+    def _pack_and_write(tmp: Path) -> Path:
+        init = run_of(
+            tmp, "init", "--mission", "shared residual contract", "--phase", "build"
+        )
+        if init.returncode != 0:
+            raise AssertionError(init.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "implement shared residual",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+        of.eval_write_done_residual(tmp, "imp1")
+        return tmp / ".orderfield" / "waves" / "001" / "residuals" / "imp1.json"
+
+    def test_canonical_and_codex_schemas_accept_the_same_residual(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-multi-res-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = self._pack_and_write(tmp)
+        residual = load_json(dest)
+        self.assertEqual(of.validate_residual(residual), [])
+        schema = load_json(RESIDUAL_SCHEMA)
+        codex = load_json(CODEX_RESIDUAL_SCHEMA)
+        assert_draft_2020_12_valid(self, schema, residual)
+        assert_draft_2020_12_valid(self, codex, residual)
+
+    def test_dry_run_argv_and_collect_share_one_residual_path(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-multi-pack-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = self._pack_and_write(tmp)
+        packet = ".orderfield/waves/001/packets/imp1.json"
+        residual_rel = ".orderfield/waves/001/residuals/imp1.json"
+        for adapter in ("claude", "grok", "codex"):
+            spawned = run_of(
+                tmp, "spawn", "--adapter", adapter, "--packet", packet, "--dry-run"
+            )
+            self.assertEqual(spawned.returncode, 0, spawned.stderr)
+            self.assertIn(f"adapter={adapter}", spawned.stdout)
+            self.assertIn(f"residual={residual_rel}", spawned.stdout)
+            if adapter == "codex":
+                self.assertIn("residual.codex.schema.json", spawned.stdout)
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertTrue(dest.is_file())
 
 
 if __name__ == "__main__":

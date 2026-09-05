@@ -6,6 +6,8 @@
     "tests.test_kernel.CliFieldResidual",
     "tests.test_kernel.StalePackets",
     "tests.test_kernel.ResumeRecoveryBrief",
-    "tests.test_kernel.MissionRewriteRefused"
+    "tests.test_kernel.MissionRewriteRefused",
+    "tests.test_kernel.FieldAbandonedSignal",
+    "tests.test_kernel.MultiHarnessResidual"
   ]
 }
