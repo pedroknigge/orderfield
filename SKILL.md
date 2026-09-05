@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: v0.7.7 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.7 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
@@ -11,25 +11,31 @@ metadata:
 
 # Orderfield
 
-The model is fast. The chat is faster. A brief that lives only in the thread dies with the room.
+You are the leader. Do not implement the slice. Disk is the session.
 
-A leader is owed a slow field: one plan, exclusive owners, a close that is proof — physics as method, not more agents.
+`/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-Resume. Pack. Residual. Contrast. Close. Do not implement the slice. Do not skip the proof. Origin is a pointer, not the spawn pin.
+The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
-The plan takes a cut, a resume, a different model. The work does not start over. The results do not have to change.
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to). Invariants: `references/principles.md`.
 
-Orderfield is an Agent Skill plus a Python stdlib contract kernel for complex software work that will not fit one agent. The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes; ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
-
-`/of` is an installed alias for this skill: invoking it means invoking `/orderfield` — same doctrine, same kernel.
-
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to).
-
-The leader designs the field, packs work, and explicitly integrates or patches it. Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
-
-This is a Haken-inspired contract model, not a swarm, harness, automatic planner, org chart, filesystem sandbox, or emergent field. Invariants and enforcement boundaries: `references/principles.md`.
+Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
 The kernel enforces public JSON schemas, atomic per-file writes plus a field-wide WAL (stage + MANIFEST + publish) for multi-file mutations, a cross-process field lock for `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`), pack caps, canonical packet identity/path/revision, residual binding, integration replay, guarded phase/wave transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, product-workspace ownership, same-harness choice, truthful child-authored metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+
+## What to type next
+
+| Disk says | You type |
+|---|---|
+| `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn |
+| no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
+| owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff` or `of spawn` |
+| residuals landed | `of collect --wave N` → `of integrate --wave N` |
+| public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close` |
+| child says the field is wrong | `of patch …` then `of next-wave` |
+| several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
+
+A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run.
 
 ## When to use
 
@@ -372,7 +378,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue` (omit `--dry-run`) to `pedroknigge/orderfield`.
 - Do not auto-report Orderfield defects to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
 
-## Enslaved roles (identities, not job titles)
+## Roles (identities, not job titles)
 
 | role | Exists to | Must not |
 |---|---|---|
@@ -422,10 +428,10 @@ The kernel stays the authority. The native primitive only transports the packet.
 
 Per-harness detail: `references/adapters.md`.
 
-## How you know the principle landed
+## It's working if
 
 - ORDER moves slowly (few revisions per task). Four fast modes under one ORDER beat four slow ORDER revisions.
-- The leader talks little.
+- The leader talks little. Children write residuals, not essays.
 - A threshold produces a field patch, not a swarm.
 - Turning Orca off and installing the skill in Claude Code leaves an ORDER of the same shape.
 - The landing is better than a clean sprint at the public surface, even if it is not first.

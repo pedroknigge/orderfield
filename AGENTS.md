@@ -1,17 +1,13 @@
 # Orderfield — rules for any harness
 
-The chat is fast. The field has to be slow. An incoming agent may already be standing on a plan.
+This hub is resume-first. One leader. Children cannot rewrite the mission. Coverage matches code.
 
-This hub is not a second product. It is resume-first: one leader, children who cannot rewrite the mission, coverage that matches code.
-
-Read the index. Run `of resume` on an open field. Do not invent a parallel contract.
-
-A cut, a resume, a different model — the plan holds. The results do not have to change.
+If `.orderfield/ORDER.json` exists, run `of resume` and do the printed `next`. Do not invent a parallel contract.
 
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 
 0. **Open field auto-continues.** If `.orderfield/ORDER.json` exists and `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken.
-1. If `.orderfield/ORDER.json` exists, `of resume` first (continue in-flight from disk; do not re-init). Then read ORDER.
+1. If `.orderfield/ORDER.json` exists, `of resume` first (continue in-flight; do not re-init). Then read ORDER.
 2. If you are the leader, do not implement the slice. Pack and delegate.
 3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
 4. Every child close-out is a valid residual JSON, not loose prose.

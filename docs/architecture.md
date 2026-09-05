@@ -1,12 +1,8 @@
 # Architecture — Orderfield kernel
 
-The slow thing is the field on disk. The fast thing is the child CLI. Form docs do not invent a regime.
-
-Architecture names who may change the plan, what the lock actually covers, and what stays reserved.
+The field lives on disk. Children are coding CLIs. This page names who may change the plan, what the lock covers, and what stays reserved. Form docs do not invent a regime.
 
 Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec` and `checkpoint`; not spawn, handoff, learn, or gc.
-
-A cut, a resume, a different model — the shape holds. The results do not have to change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
