@@ -59,7 +59,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `MultiHarnessResidual`, and `DoctorSkillVersionSkew`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, and `WaveReportQualityGate`.
 
 ```bash
 python3 -m unittest discover -s tests -v
