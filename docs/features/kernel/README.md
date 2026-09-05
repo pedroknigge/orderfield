@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.4. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.5. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.4` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -20,7 +20,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - Session-cut: `of resume` reconstructs in-flight from disk; prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; open fields require executing `next` same turn; does not auto-spawn or dump logs
-- `of eval` runs recovery fixtures under `evals/recovery/`; `--strict`, `--kernel`, `--list`
+- `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, slogan-evidence); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr
 - `of status` surfaces in-flight; render/handoff compact the prompt ORDER view (id/rev/mission/phase/spec_ref + read ORDER.json for constraints/backlog/workspace; disk packet stays full) and add a continuation note when scratch nonempty

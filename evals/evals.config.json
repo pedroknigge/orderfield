@@ -2,9 +2,10 @@
   "description": "Orderfield eval defaults",
   "strict_default": false,
   "recovery_dir": "evals/recovery",
-  "kernel_unittest_modules": [
+    "kernel_unittest_modules": [
     "tests.test_kernel.CliFieldResidual",
     "tests.test_kernel.StalePackets",
-    "tests.test_kernel.ResumeRecoveryBrief"
+    "tests.test_kernel.ResumeRecoveryBrief",
+    "tests.test_kernel.MissionRewriteRefused"
   ]
 }

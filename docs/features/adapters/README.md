@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.4` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.5` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 

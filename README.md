@@ -17,12 +17,12 @@ The skill (`/orderfield`, `/of`) is how you invoke it inside a coding CLI. The k
 One brief. Exclusive owners. A close that is proof.
 
 <p align="center">
-  <strong>v0.7.4</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.5</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.4-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.5-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -34,7 +34,7 @@ One ORDER on disk. Bounded packets with exclusive owners. Structured residuals. 
 
 Children cannot redefine the mission, phase, constraints, or done-when. When a child reports the field is insufficient, spawn in that wave stops until the leader patches ORDER. Evidence can change the plan without swallowing transcripts. Close is `of contrast` RESOLVED — not “the tests passed.” Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin.
 
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, Agent Teams, LangGraph): [below](#compared-to).
+Contract vocabulary: [docs/glossary.md](docs/glossary.md). External brief: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [below](#compared-to).
 
 ## When to reach for it
 
@@ -92,8 +92,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.4
-release_version=0.7.4
+release_tag=v0.7.5
+release_version=0.7.5
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -305,6 +305,7 @@ The kernel owns that menu. Tests prove it: `python3 -m unittest discover -s test
 | **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
 | **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory. Orchestrates model calls. | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
 | **Dual-harness skills** (e.g. [claude-codex-orchestration](https://github.com/dy9759/claude-codex-orchestration)) | Which runtime does the work (Claude as brain, Codex as body, or symmetric dispatch). | Who may change the plan. Multi-harness only if the user asks. Packet, residual, and contrast are the authority — not a dual-runtime router. |
+| **Grok Bot** | Persistent domain bots, shared Notion, auto-merge, 5-minute P0 poll. | Stay-on-the-run + written contrast. Not a bot org. [external-brief.md](docs/external-brief.md) · [roadmap contrast](docs/roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org). |
 
 ---
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.4. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.5. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,14 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.4`
+**Status:** Shipped · **Current release line:** `0.7.5`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.5 — invariant evals + external brief (Grok Bot contrast written)
+
+- Recovery fixtures prove silent mission rewrite dies and a public-surface slogan/internal/child stamp cannot close. Not a new regime.
+- Written Grok Bot contrast (below) plus [external-brief.md](external-brief.md). Stay-on-the-run + that contrast. Not a bot org.
 
 ## 0.7.4 — GitHub issues #54–#57 (pack continuation / integrate JSON stdout / spec hyphen message / skip-warn throttle)
 
@@ -47,6 +52,8 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 Grok Bot is an engineering org of persistent domain bots that manage cloud agents, share Notion, auto-merge, and poll P0 every 5 minutes. Orderfield is a disk-backed contract kernel. The two are not the same product. Managing 200 cloud agents is `RUNTIME_OWNERSHIP` in `scripts/of/regime.py` — reserved, not this path.
 
+An external reader should use this table plus [external-brief.md](external-brief.md). The pick is protocol, not a clone.
+
 | Grok Bot pattern | Orderfield surface | Reserved kernel |
 |---|---|---|
 | Domain-owned persistent bots | `of pack --owns-path` / `--owns-requirement`; explorer/implementer/adversary/verifier/synthesizer | not a bot org chart |
@@ -58,7 +65,9 @@ Grok Bot is an engineering org of persistent domain bots that manage cloud agent
 | P0 transcript every 5 min | tighter `--stale-min` / `budget.seconds` on a named packet | no 5-minute kernel loop |
 | Auto-merge if confident | `of contrast` then human; merge stays GitHub | no `of merge` |
 
-**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. VERSION is not bumped here (SHIP-001 is leader after contrast).
+**Stay-on-the-run** is the chosen loop. Pulse `STALE` means the packet is still the work: `of handoff` or `of spawn` on that same packet this turn. Do not unpack by default. Do not pack a sibling. Do not wait forever. `of pulse --watch` refreshes until Ctrl+C; it is not a daemon and not a 5-minute kernel poll. A truly dead child is an explicit `of unpack`. The kernel never kills or auto-merges.
+
+**Pick:** stay-on-the-run + written contrast. Pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); do not unpack by default; do not wait forever; not a daemon. No bot org, no Notion, no cloud-agent manager, no auto-merge command, no process supervisor. `RUNTIME_OWNERSHIP` stays reserved. 0.7.5 ships the written contrast and the invariant evals that prove silent rewrite and slogan-close die. Not a bot-org release.
 
 ## 0.6.7 — vibe-proof hardening
 

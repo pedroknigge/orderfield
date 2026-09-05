@@ -25,6 +25,7 @@ DONE = ROOT / "assets" / "fixtures" / "residual.done.json"
 EVAL_FIELD = ROOT / "evals" / "expected" / "field-residual.json"
 EVAL_DONE = ROOT / "evals" / "expected" / "done-not-phase.json"
 EVAL_CLOSED = ROOT / "evals" / "expected" / "done-when-closed-apply.json"
+EVAL_REWRITE = ROOT / "evals" / "expected" / "mission-rewrite-refused.json"
 EVAL_COLLECT = ROOT / "evals" / "expected" / "collect-by-packet.json"
 EVAL_STALE = ROOT / "evals" / "expected" / "stale-packets.json"
 RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.schema.json"
@@ -1132,12 +1133,67 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/quarry-dirty-wave", r.stdout)
         self.assertIn("PASS recovery/beacon-amnesia", r.stdout)
         self.assertIn("PASS recovery/contrast-close-internal", r.stdout)
+        self.assertIn("PASS recovery/mission-rewrite-refused", r.stdout)
+        self.assertIn("PASS recovery/contrast-close-contract", r.stdout)
+        self.assertIn("PASS recovery/slogan-evidence-refused", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("quarry-dirty-wave", r.stdout)
         self.assertIn("beacon-amnesia", r.stdout)
+        self.assertIn("mission-rewrite-refused", r.stdout)
+        self.assertIn("contrast-close-contract", r.stdout)
+        self.assertIn("slogan-evidence-refused", r.stdout)
+
+
+class MissionRewriteRefused(unittest.TestCase):
+    """File-level: integrate --apply cannot redefine ORDER. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-rewrite-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.expected = load_json(EVAL_REWRITE)
+        of.eval_setup_recovery_mission_rewrite(self.tmp)
+
+    def test_apply_keeps_leader_owned_field(self) -> None:
+        before = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        applied = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        report = json.loads(applied.stdout)
+        self.assertEqual(report["regime"], self.expected["expected_regime"])
+        self.assertNotIn(report["regime"], self.expected["forbidden_regimes"])
+        after = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(after["mission"], self.expected["mission"])
+        self.assertEqual(after["phase"], self.expected["phase"])
+        self.assertEqual(after["mission"], before["mission"])
+        self.assertEqual(after["phase"], before["phase"])
+        self.assertEqual(after["constraints"], before["constraints"])
+        self.assertEqual(after["done_when"], before["done_when"])
+        self.assertIn(self.expected["constraint_must_remain"], after["constraints"])
+        self.assertIn(self.expected["done_when_must_remain"], after["done_when"])
+        self.assertFalse(after.get("spec_closed"))
+        for stolen in (
+            self.expected["stolen_mission"],
+            self.expected["stolen_phase"],
+            self.expected["stolen_constraint"],
+            self.expected["stolen_done_when"],
+        ):
+            blob = json.dumps(after)
+            self.assertNotIn(stolen, blob)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertTrue(state.get("spawn_blocked"))
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "claude",
+            "--packet",
+            ".orderfield/waves/001/packets/explorer_demo.json",
+            "--dry-run",
+        )
+        self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        self.assertIn("escalate_up", spawned.stderr)
 
 
 if __name__ == "__main__":

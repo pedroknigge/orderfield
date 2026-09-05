@@ -1,0 +1,58 @@
+{
+  "id": "recovery/contrast-close-contract",
+  "description": "Public-surface CLI-001: slogan/internal/child stamp cannot close; VERIFIED_CONTRACT then RESOLVED then CLOSED",
+  "fixture": "recovery_contrast_close_contract",
+  "tags": ["recovery", "gate", "contrast", "contract"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0
+    },
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--apply"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 2,
+      "stdout_contains": ["CLOSE BLOCKED", "DELIVERED", "CLI-001"]
+    },
+    {
+      "run": "close",
+      "exit": 1,
+      "stderr_contains": ["of close refused"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "CLI-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 2,
+      "stdout_contains": ["CLOSE BLOCKED", "VERIFIED_INTERNAL", "CLI-001"]
+    },
+    {
+      "run": "close",
+      "exit": 1,
+      "stderr_contains": ["of close refused", "VERIFIED_INTERNAL"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-contract", "CLI-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": ["RESOLVED", "VERIFIED_CONTRACT"]
+    },
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED"]
+    }
+  ]
+}

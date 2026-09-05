@@ -1,0 +1,14 @@
+{
+  "id": "recovery/slogan-evidence-refused",
+  "description": "Verifier done with slogan evidence cannot collect; platitude is not proof",
+  "fixture": "recovery_slogan_evidence",
+  "tags": ["recovery", "gate", "contrast", "slogan"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 2,
+      "stdout_contains": ["platitude"]
+    }
+  ]
+}

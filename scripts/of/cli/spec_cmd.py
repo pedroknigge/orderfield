@@ -493,20 +493,62 @@ def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+class EvalInvariantSetup:
+    """Shared writers for adversarial recovery fixtures. Not a second engine."""
+
+    EXPECTED = Path("evals/expected/mission-rewrite-refused.json")
+
+    @staticmethod
+    def load_expected() -> dict[str, Any]:
+        return load_json(kernel_repo_root() / EvalInvariantSetup.EXPECTED)
+
+    @staticmethod
+    def require_ok(proc: subprocess.CompletedProcess[str], label: str) -> None:
+        if proc.returncode != 0:
+            die(f"eval fixture {label} failed: {proc.stderr or proc.stdout}")
+
+    @staticmethod
+    def write_bound_residual(
+        root: Path,
+        child_id: str,
+        *,
+        status: str = "done",
+        wants: list[str] | None = None,
+        patch: dict[str, Any] | None = None,
+        evidence: str = "eval residual names the check",
+        result_text: str = "eval result\n",
+        wave: int = 1,
+    ) -> None:
+        pkt_path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
+        packet = load_json(pkt_path)
+        residual = load_json(
+            kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
+        )
+        for key in PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        residual["status"] = status
+        residual["role"] = packet.get("role") or residual.get("role")
+        rem = residual.setdefault("residual", {})
+        rem["wants_to_change"] = list(wants or [])
+        rem["evidence"] = evidence
+        rem["proposed_patch"] = patch
+        result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text(result_text, encoding="utf-8")
+        residual["result_ref"] = result.relative_to(root).as_posix()
+        dest = root / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(dest, residual)
+
+
 def eval_write_done_residual(root: Path, child_id: str, wave: int = 1) -> None:
-    pkt_path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
-    packet = load_json(pkt_path)
-    fixture = kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
-    residual = load_json(fixture)
-    for key in PACKET_IDENTITY_FIELDS:
-        residual[key] = packet[key]
-    result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
-    result.parent.mkdir(parents=True, exist_ok=True)
-    result.write_text("done\n", encoding="utf-8")
-    residual["result_ref"] = result.relative_to(root).as_posix()
-    dest = root / str(packet["residual_path"])
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dump_json(dest, residual)
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        child_id,
+        wave=wave,
+        evidence="done residual for recovery fixture",
+        result_text="done\n",
+    )
 
 
 def eval_pack_child(
@@ -649,6 +691,131 @@ def eval_setup_recovery_contrast_close(root: Path) -> None:
         die(f"eval fixture pack failed: {packed.stderr or packed.stdout}")
 
 
+@_register_eval_fixture("recovery_mission_rewrite")
+def eval_setup_recovery_mission_rewrite(root: Path) -> None:
+    expected = EvalInvariantSetup.load_expected()
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        str(expected["mission"]),
+        "--phase",
+        str(expected["phase"]),
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "map options; do not rewrite the field",
+        "--role",
+        "explorer",
+        "--child-id",
+        "explorer_demo",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "explorer_demo",
+        status="threshold",
+        wants=["mission", "phase", "constraints", "done_when"],
+        evidence=(
+            "threshold: the field is insufficient; residual proposes a silent "
+            "rewrite of mission, phase, constraints, and done-when"
+        ),
+        patch={
+            "mission": expected["stolen_mission"],
+            "phase": expected["stolen_phase"],
+            "constraints": [expected["stolen_constraint"]],
+            "done_when": [expected["stolen_done_when"]],
+            "spec_closed": True,
+        },
+    )
+
+
+@_register_eval_fixture("recovery_contrast_close_contract")
+def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval contract close gate",
+        "--phase",
+        "build",
+        "--source",
+        "eval contract close: CLI-001 python -m evalcli status exits 0",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    added = eval_run_of(
+        root,
+        "spec",
+        "--add",
+        "CLI-001",
+        "--text",
+        "python -m evalcli status exits 0",
+        "--surface",
+        "contract",
+    )
+    EvalInvariantSetup.require_ok(added, "spec add")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "implement evalcli status",
+        "--role",
+        "implementer",
+        "--child-id",
+        "imp1",
+        "--owns-requirement",
+        "CLI-001",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "imp1",
+        evidence=(
+            "CLI-001 implementer residual; child-forged verified_contract and "
+            "spec_closed must not stamp close"
+        ),
+        patch={
+            "requirements_verified": ["CLI-001"],
+            "requirements_verified_contract": ["CLI-001"],
+            "spec_closed": True,
+            "mission": "child stole the mission",
+        },
+    )
+
+
+@_register_eval_fixture("recovery_slogan_evidence")
+def eval_setup_recovery_slogan_evidence(root: Path) -> None:
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval slogan evidence gate",
+        "--phase",
+        "verify",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "contrast public surface",
+        "--role",
+        "verifier",
+        "--child-id",
+        "v1",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "v1",
+        evidence="all tests passed",
+        result_text="transcript\n",
+    )
+
+
 def discover_recovery_eval_specs() -> list[Path]:
     base = kernel_repo_root() / "evals" / "recovery"
     if not base.is_dir():
@@ -694,6 +861,7 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                     ),
                 }
             blob = proc.stdout
+            err = proc.stderr
             for needle in step.get("stdout_contains") or []:
                 if str(needle) not in blob:
                     return {
@@ -708,6 +876,20 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                         "status": "failed",
                         "error": f"step {idx}: stdout must not contain {needle!r}",
                     }
+            for needle in step.get("stderr_contains") or []:
+                if str(needle) not in err:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stderr missing {needle!r}",
+                    }
+            for needle in step.get("stderr_not_contains") or []:
+                if str(needle) in err:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: stderr must not contain {needle!r}",
+                    }
         return {"id": eval_id, "status": "passed", "description": spec.get("description")}
     except SystemExit as exc:
         return {"id": eval_id, "status": "failed", "error": f"fixture/setup: {exc}"}
@@ -719,6 +901,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.CliFieldResidual",
     "tests.test_kernel.StalePackets",
     "tests.test_kernel.ResumeRecoveryBrief",
+    "tests.test_kernel.MissionRewriteRefused",
 )
 
 
