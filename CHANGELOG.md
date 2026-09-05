@@ -10,11 +10,11 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## 0.7.7
 
-P0 kernel invariants from a Mac corpus audit. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.6 notes.
+Close is one fact. Status names the live field. Done-when has to be checkable. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.6 notes.
 
-- **Atomic close:** `of close` still refuses while contrast is not RESOLVED. On success it sets `spec_closed` and `done_when_closed`, and writes `.orderfield/CLOSE.json` (verdict RESOLVED) in the same WAL generation. No `--soft`. No flag-lag. `recovery/atomic-close-flag-lag` fails if those diverge. Existing contrast-close / slogan evals stay and now also check the proof.
-- **ACTIVE pointer:** `.orderfield/ACTIVE` names the nested field `of status` / `of resume` / `of pulse` bind first (after `--field` / `OF_FIELD` / origin session). `of new` / `of init` / explicit field selection write it. A leftover top-level ORDER stub is ignored for auto-bind when `fields/<id>/` homes exist. `recovery/active-field-pointer` fails if status/resume show the stub.
-- **done_when lint:** `of init` / `of patch` / `integrate --apply` `done_when+` refuse generic placeholders (`current phase criteria closed with evidence` and kin). Default criterion is `of contrast RESOLVED then of close`. `recovery/done-when-lint` fails if the generic lands or a contrast-bound criterion is refused.
+- **Atomic close:** `of close` still refuses until contrast is RESOLVED. There is no `--soft`. A successful close writes `spec_closed`, `done_when_closed`, and `.orderfield/CLOSE.json` together in one WAL generation — so a session cannot claim CLOSED+RESOLVED while done-when is still open. `recovery/atomic-close-flag-lag` fails if those diverge. Existing contrast-close and slogan evals stay, and now also check the proof file.
+- **ACTIVE pointer:** When the real work lives under `.orderfield/fields/<id>/`, `of status` / `of resume` / `of pulse` say so. `.orderfield/ACTIVE` is the pointer (`of new`, `of init`, and `--field` / `OF_FIELD` update it). A leftover root ORDER stub does not steal the screen. `recovery/active-field-pointer` fails if status or resume show the stub.
+- **done_when lint:** “current phase criteria closed with evidence” is theater. `of init`, `of patch`, and `integrate --apply` `done_when+` refuse that class of placeholder. The default is `of contrast RESOLVED then of close`. `recovery/done-when-lint` fails if the generic lands or a contrast-bound criterion is refused.
 - Packaging: VERSION 0.7.7; skill/alias description preview `v0.7.7 — …`. Never rewrite v0.7.6 notes.
 
 ## 0.7.6

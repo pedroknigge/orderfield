@@ -26,9 +26,11 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 
 1. **One leader-owned ORDER write path.** A child residual may propose. `integrate --apply` may take additive `constraints+` / `done_when+` / notes after `escalate_up`. It does not redefine mission, phase, the constraint list, or done-when. Silent rewrite dies. Threshold stays.
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
-3. **Close is proof.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close` CLOSED. Successful close sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. Child-forged `verified_contract` / `spec_closed` stamps do not land. Generic done_when placeholders die at init/patch. `.orderfield/ACTIVE` is the nested-field pointer so status/resume do not read a leftover root stub.
-4. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
-5. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.
+3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close.
+4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen.
+5. **Done-when has to be checkable.** Init and patch refuse generic placeholders (`current phase criteria closed with evidence`). Name contrast RESOLVED or a concrete ID.
+6. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
+7. **The harness transports.** The kernel chooses regimes for work routed through `of`. Direct writes outside the CLI remain protocol, not a jail.
 
 Short form: [PRINCIPLES.md](../PRINCIPLES.md). Contract: [references/principles.md](../references/principles.md).
 
@@ -43,9 +45,9 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
 | Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
 | Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
-| Close without RESOLVED, or CLOSED without `done_when_closed` / `CLOSE.json` | `of close` refused, or one WAL stamp sets flags + proof together | `recovery/atomic-close-flag-lag` |
-| Root ORDER stub while work lives under `fields/<id>/` | `of status` / `of resume` bind `.orderfield/ACTIVE` (or the nested home) | `recovery/active-field-pointer` |
-| Generic `done_when` (`current phase criteria closed with evidence`) | init / patch / `done_when+` refuse | `recovery/done-when-lint` |
+| Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
+| Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home) | `recovery/active-field-pointer` |
+| Theater done-when (`current phase criteria closed with evidence`) | init / patch / `done_when+` refuse | `recovery/done-when-lint` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
 | New child packs with no claim while IDs stay unowned | `cmd_pack` dies (`unowned`; `--owns-requirement`) | same eval; `scripts/of/cli/wave.py` `already_owns` gate |
 | Same-wave `--owns-path` overlap | `same_wave_owns_path_conflict` dies (`overlaps`) | same eval; `scripts/of/pack.py` |
@@ -87,9 +89,9 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Verifier slogan evidence (`all tests passed`) cannot collect | `recovery/slogan-evidence-refused` |
 | Internal ALG-001: contrast OPEN → verify internal → RESOLVED → CLOSED | `recovery/contrast-close-internal` |
 | Foreign owner / unowned new child / same-wave path overlap die; disjoint second owner packs | `recovery/pack-exclusivity-refused` |
-| Close without RESOLVED dies; success is `spec_closed` + `done_when_closed` + `CLOSE.json` | `recovery/atomic-close-flag-lag` |
-| Root stub + nested ACTIVE: status/resume show the nested field | `recovery/active-field-pointer` |
-| Generic done_when dies; contrast-bound criterion accepted | `recovery/done-when-lint` |
+| Close without RESOLVED dies; success is one stamp (`spec_closed` + `done_when_closed` + `CLOSE.json`) | `recovery/atomic-close-flag-lag` |
+| Root stub + nested ACTIVE: status and resume show the live field, not the stub | `recovery/active-field-pointer` |
+| Generic done-when dies; a contrast-bound criterion is accepted | `recovery/done-when-lint` |
 
 ## Deliberately reserved
 

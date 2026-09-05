@@ -16,7 +16,7 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 ## 0.7.7 — atomic close / ACTIVE / done_when lint
 
-- Close is one WAL stamp: RESOLVED + `spec_closed` + `done_when_closed` + `CLOSE.json`. `.orderfield/ACTIVE` wins over a leftover root stub. Generic done_when placeholders die. Not a new regime.
+- Close is one fact on disk. Status names the live field. Done-when has to be checkable. Not a new regime.
 
 ## 0.7.6 — threat-model honesty + pack exclusivity evals
 
