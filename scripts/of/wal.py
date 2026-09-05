@@ -51,6 +51,7 @@ _WAL_SNAPSHOT_NAMES = frozenset(
         "REQUIREMENTS.json",
         "PHASE.md",
         "SLAVE.md",
+        "CLOSE.json",
     }
 )
 _wal_read_current: ContextVar[bool] = ContextVar("of_wal_read_current", default=False)

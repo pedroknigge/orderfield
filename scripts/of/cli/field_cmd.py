@@ -45,6 +45,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 from of.regime import (
+    DoneWhenLint,
     advance_wave,
     apply_patches,
     closed_phases,
@@ -428,6 +429,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 "--done-when writes the current phase ("
                 f"{ph}); got a criterion tagged for another phase: {foreign[0]}"
             )
+        DoneWhenLint.refuse(tagged)
         if replace_done_when(order, tagged, lambda c: done_when_tag(c) != ph):
             changed = True
             # replaced criteria cannot arrive pre-closed
@@ -439,9 +441,11 @@ def cmd_patch(args: argparse.Namespace) -> None:
                     "--done-when-mission writes the untagged mission list; "
                     f"use --done-when for phase criteria: {c}"
                 )
+        mission_rows = [str(c).strip() for c in args.done_when_mission]
+        DoneWhenLint.refuse(mission_rows)
         if replace_done_when(
             order,
-            [str(c).strip() for c in args.done_when_mission],
+            mission_rows,
             lambda c: done_when_tag(c) is not None,
         ):
             changed = True

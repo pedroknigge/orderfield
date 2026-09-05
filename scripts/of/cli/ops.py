@@ -504,14 +504,20 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
 def cmd_status(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
-    from of.field import ROSTER_EXIT, list_field_homes, print_field_roster
+    from of.field import (
+        ActiveField,
+        ROSTER_EXIT,
+        bound_field_home,
+        list_field_homes,
+        print_field_roster,
+    )
 
+    homes = list_field_homes(root)
+    if bound_field_home() is None and len(homes) > 1:
+        print_field_roster(homes)
+        print("next          PICK --field <id> | of new")
+        raise SystemExit(ROSTER_EXIT)
     if not order_path(root).exists():
-        homes = list_field_homes(root)
-        if len(homes) > 1:
-            print_field_roster(homes)
-            print("next          PICK --field <id> | of new")
-            raise SystemExit(ROSTER_EXIT)
         print("no ORDER. of init --mission '...'")
         detect = detect_adapters()
         print("adapters:")
@@ -522,6 +528,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     state = load_state(root)
     print(f"root        {root}")
     print(f"id          {order['id']}")
+    pointed = ActiveField.read(root)
+    if pointed:
+        print(f"active      {pointed}")
     print(f"rev         {order['rev']}")
     print(f"phase       {order['phase']}")
     print(f"mission     {order['mission']}")
@@ -748,7 +757,7 @@ def resume_auto_continue_lines(order: dict[str, Any]) -> list[str]:
 
 def cmd_fields(args: argparse.Namespace) -> None:
     root = find_root()
-    from of.field import list_field_homes, print_field_roster
+    from of.field import ActiveField, list_field_homes, print_field_roster
 
     homes = list_field_homes(root)
     if not homes:
@@ -757,6 +766,9 @@ def cmd_fields(args: argparse.Namespace) -> None:
         emit_event("fields", count=0, ok=True)
         return
     print_field_roster(homes)
+    pointed = ActiveField.read(root)
+    if pointed:
+        print(f"active        {pointed}")
     print_audit_block(root)
     emit_event("fields", count=len(homes), ok=True)
 
@@ -934,14 +946,19 @@ def pulse_once(
 def cmd_pulse(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
-    from of.field import ROSTER_EXIT, list_field_homes, print_field_roster
+    from of.field import (
+        ROSTER_EXIT,
+        bound_field_home,
+        list_field_homes,
+        print_field_roster,
+    )
 
+    homes = list_field_homes(root)
+    if bound_field_home() is None and len(homes) > 1:
+        print_field_roster(homes)
+        print("next          PICK --field <id> | of new")
+        raise SystemExit(ROSTER_EXIT)
     if not order_path(root).exists():
-        homes = list_field_homes(root)
-        if len(homes) > 1:
-            print_field_roster(homes)
-            print("next          PICK --field <id> | of new")
-            raise SystemExit(ROSTER_EXIT)
         print("no ORDER. of init --mission '...'")
         return
     stale_minutes = float(getattr(args, "stale_min", None) or PULSE_STALE_MINUTES)

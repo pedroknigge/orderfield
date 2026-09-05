@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.7
+
+P0 kernel invariants from a Mac corpus audit. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.6 notes.
+
+- **Atomic close:** `of close` still refuses while contrast is not RESOLVED. On success it sets `spec_closed` and `done_when_closed`, and writes `.orderfield/CLOSE.json` (verdict RESOLVED) in the same WAL generation. No `--soft`. No flag-lag. `recovery/atomic-close-flag-lag` fails if those diverge. Existing contrast-close / slogan evals stay and now also check the proof.
+- **ACTIVE pointer:** `.orderfield/ACTIVE` names the nested field `of status` / `of resume` / `of pulse` bind first (after `--field` / `OF_FIELD` / origin session). `of new` / `of init` / explicit field selection write it. A leftover top-level ORDER stub is ignored for auto-bind when `fields/<id>/` homes exist. `recovery/active-field-pointer` fails if status/resume show the stub.
+- **done_when lint:** `of init` / `of patch` / `integrate --apply` `done_when+` refuse generic placeholders (`current phase criteria closed with evidence` and kin). Default criterion is `of contrast RESOLVED then of close`. `recovery/done-when-lint` fails if the generic lands or a contrast-bound criterion is refused.
+- Packaging: VERSION 0.7.7; skill/alias description preview `v0.7.7 — …`. Never rewrite v0.7.6 notes.
+
 ## 0.7.6
 
 Threat-model honesty + pack exclusivity evals. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.5 notes.

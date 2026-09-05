@@ -1208,5 +1208,48 @@ class StateMachineGuards(unittest.TestCase):
         self.assertEqual(both.returncode, 0, both.stderr)
 
 
+class DoneWhenLintRefuse(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-dwlint-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_generic_init_dies_specific_lands(self) -> None:
+        refused = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--done-when",
+            "current phase criteria closed with evidence",
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("generic done_when refused", refused.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "ORDER.json").exists())
+        ok = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--done-when",
+            "of contrast RESOLVED for CLI-001",
+        )
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(
+            order["done_when"], ["of contrast RESOLVED for CLI-001"]
+        )
+
+    def test_generic_phase_prefix_still_dies(self) -> None:
+        run_of(self.tmp, "init", "--mission", "m", "--phase", "build")
+        r = run_of(
+            self.tmp,
+            "patch",
+            "--done-when",
+            "current phase criteria closed with evidence",
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("generic done_when refused", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

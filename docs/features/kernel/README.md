@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.6. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.7. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.6` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.7` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -24,7 +24,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
 - Auto snapshot `.orderfield/session.json` facts (`wave`, `last_cmd`, `in_flight`, `updated_at`) on pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint; forbidden to slaves like `state.json`; corrupt session warns on stderr
 - `of status` surfaces in-flight; render/handoff compact the prompt ORDER view (id/rev/mission/phase/spec_ref + read ORDER.json for constraints/backlog/workspace; disk packet stays full) and add a continuation note when scratch nonempty
-- Mission vs phase `done_when`: `--done-when` (current phase) / `--done-when-mission` (untagged mission list); `mission_done_when` / `phase_done_when` / `done_when_for`
+- Mission vs phase `done_when`: `--done-when` (current phase) / `--done-when-mission` (untagged mission list); `mission_done_when` / `phase_done_when` / `done_when_for`. Generic placeholders die (`DoneWhenLint`).
 - Phase-scoped close via phase prefixes + `done_when_closed_phases` (Option B; legacy bool); `--reopen`
 - Reversible field: `of unpack` refunds budget; `collect` survives MISSING; `integrate --partial`; `--constraints-rm`
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
@@ -32,7 +32,8 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
 - `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. Multi-file mutations stage one WAL generation + MANIFEST, then publish (`wal/CURRENT.json`). **Readers** (status/resume/render/pulse/contrast/spec-diff/handoff/spawn/validate) use CURRENT; live disk is cache/tamper. **Writers** rematerialize CURRENT onto stale live files before inherit; immediate checkpoint after `OF_WAL_CRASH=after-current` keeps committed children and packets. WAL crash consistency is not a restorable dump. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper
 - `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
-- Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD`; resume roster exit 2; foreign origin gate; cross-field in-flight `--owns-path` overlap dies. Legacy `.orderfield/ORDER.json` remains valid until the first `of new` promotes it.
+- Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD` / `.orderfield/ACTIVE`; resume roster exit 2 when unmatched and no pointer; foreign origin gate; leftover root stub ignored when nested homes exist; cross-field in-flight `--owns-path` overlap dies. Legacy `.orderfield/ORDER.json` remains valid until the first `of new` promotes it.
+- Atomic close: `of close` refuses unless contrast is RESOLVED; success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation. Generic done_when placeholders die at init/patch.
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
 - Workspace residuals select `escalate_up`

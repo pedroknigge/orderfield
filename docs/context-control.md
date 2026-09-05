@@ -16,7 +16,7 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 | --- | --- | --- |
 | Stable human brief + amendments | field-home `SPEC.md` + `spec_hash` | Lossless contract; packets reference-load via `--ref` |
 | Mission / phase / caps | field-home `ORDER.json` (legacy `.orderfield/ORDER.json` or `fields/<id>/`) | Leader-only writes via `of patch` / integrate safe keys |
-| Second mission, same tree | `of new` → `.orderfield/fields/<id>/` | Roster on resume if unmatched; `--field` / `OF_FIELD`; not a product subfolder |
+| Second mission, same tree | `of new` → `.orderfield/fields/<id>/` + `.orderfield/ACTIVE` | Resume/status follow ACTIVE; roster if unmatched and no pointer; `--field` / `OF_FIELD`; not a product subfolder |
 | Binding requirement IDs | `.orderfield/REQUIREMENTS.json` | Index over SPEC; contrast cites `SPEC.md:N` |
 | Optional procedure | Harness skill (same identity) | Skill beats child — do not spawn |
 | Ac bounded slice | Packet (`of pack`) | Slaving function: fresh context, no parent history |

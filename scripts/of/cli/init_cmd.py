@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from of.field import (
+    ActiveField,
     FIELD_SPEC_MD,
     PHASES,
     apply_origin_stamp,
@@ -24,6 +25,7 @@ from of.field import (
     session_path,
     write_phase_md,
 )
+from of.regime import DoneWhenLint
 from of.pack import ensure_field_slave_md
 from of.spec import (
     archive_previous_field,
@@ -75,6 +77,7 @@ def _stamp_and_write_new_field(
         order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
+    DoneWhenLint.refuse(list(order.get("done_when") or []))
     origin_harness, origin_session = resolve_init_origin(
         getattr(args, "origin", None),
         getattr(args, "session_id", None),
@@ -117,6 +120,7 @@ def _stamp_and_write_new_field(
     save_state(default_state(), root)
     write_phase_md(root, order)
     ensure_field_slave_md(root)
+    ActiveField.write(root, str(order["id"]))
     sess = session_path(root)
     if sess.is_file():
         sess.unlink()

@@ -12,5 +12,5 @@
   "spawn_blocked": true,
   "spec_closed": false,
   "constraint_must_remain": "slaves do not mutate ORDER",
-  "done_when_must_remain": "current phase criteria closed with evidence"
+  "done_when_must_remain": "of contrast RESOLVED then of close"
 }

@@ -29,7 +29,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `fields` | After `of fields` | `count`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
 | `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok` |
-| `close` | After `of close` | `rev`, `spec_hash`, `ok` |
+| `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok` |
 | `unpack` | After `of unpack` | `child_id`, `wave`, `ok` |
 | `phase_override` | After audited `of phase --force` | override record fields |
 | `pulse` | Each in-flight child in `of pulse` | `child_id`, `verdict`, `age_s`, `wave` |
