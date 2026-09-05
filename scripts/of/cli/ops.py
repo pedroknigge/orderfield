@@ -35,6 +35,7 @@ from of.field import (
     _read_json_object,
     DoctorSkew,
     FieldSignal,
+    RootStub,
     OrphanPacked,
     PackedAge,
     WaveRoster,
@@ -554,6 +555,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     pointed = ActiveField.read(root)
     if pointed:
         print(f"active      {pointed}")
+    RootStub.emit(root, key_width=12)
     print(f"rev         {order['rev']}")
     print(f"phase       {order['phase']}")
     print(f"mission     {order['mission']}")
@@ -899,6 +901,7 @@ def cmd_fields(args: argparse.Namespace) -> None:
         show_all=bool(getattr(args, "list_all", False)),
         cursor=str(getattr(args, "list_cursor", "") or ""),
     )
+    RootStub.emit(root)
     print_audit_block(root)
     open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
     emit_event(
@@ -969,6 +972,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     except ValueError:
         home_rel = field_home(root)
     print(f"home          {home_rel}")
+    RootStub.emit(root)
     print(f"rev           {order['rev']}")
     print(f"phase         {order['phase']}")
     print(f"mission       {order['mission']}")

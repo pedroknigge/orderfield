@@ -1,0 +1,49 @@
+{
+  "id": "recovery/root-stub-ambiguous",
+  "description": "Different-id leftover root ORDER: fields/status name root_stub; --field stub dies; of migrate archives; nested stays authority",
+  "fixture": "recovery_root_stub_ambiguous",
+  "tags": ["recovery", "fields", "root-stub", "migrate"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["nested real work", "root_stub", "of migrate"],
+      "stdout_not_contains": ["stub explore leftover"]
+    },
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": ["fields        2", "root_stub", "ambiguous", "of migrate"],
+      "stdout_not_contains": ["ord_deadbeef", "stub explore leftover"]
+    },
+    {
+      "run": ["--field", "ord_deadbeef", "patch"],
+      "args": ["--constraints-add", "must not land on the stub"],
+      "exit": 1,
+      "stderr_contains": ["root stub", "ord_deadbeef", "of migrate"]
+    },
+    {
+      "run": "patch",
+      "args": ["--constraints-add", "nested stays live"],
+      "exit": 0,
+      "stdout_contains": ["nested stays live"]
+    },
+    {
+      "run": "migrate",
+      "exit": 0,
+      "stdout_contains": ["root-stub-archive"],
+      "file_contains": [
+        {
+          "path": ".orderfield/ORDER.json.stub",
+          "contains": ["ord_deadbeef", "stub explore leftover"]
+        }
+      ]
+    },
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": ["fields        2", "nested real work"],
+      "stdout_not_contains": ["root_stub", "ord_deadbeef"]
+    }
+  ]
+}

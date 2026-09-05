@@ -301,6 +301,16 @@ MIGRATION_CATALOG = (
             "never rename SLAVE.md"
         ),
     },
+    {
+        "id": "root-stub-archive",
+        "from": "leftover-root",
+        "to": "0.7.27",
+        "kind": "root-stub",
+        "description": (
+            "Archive leftover .orderfield/ORDER.json once fields/<id>/ "
+            "exists; never silent delete"
+        ),
+    },
 )
 _HELD_FIELD_LOCK: Path | None = None
 
@@ -317,20 +327,36 @@ def kernel_repo_root() -> Path:
     return skill_root()
 
 
+def _field_tree_at(path: Path) -> bool:
+    """True when this directory holds a legacy ORDER or a nested field home."""
+    of = path / ".orderfield"
+    if (of / "ORDER.json").is_file():
+        return True
+    fields = of / "fields"
+    if not fields.is_dir():
+        return False
+    try:
+        children = fields.iterdir()
+    except OSError:
+        return False
+    return any(
+        child.is_dir() and (child / "ORDER.json").is_file() for child in children
+    )
+
+
 def find_root(start: Path | None = None) -> Path:
     cur = (start or Path.cwd()).resolve()
     for p in [cur, *cur.parents]:
-        of = p / ".orderfield"
-        if (of / "ORDER.json").exists():
+        if _field_tree_at(p):
+            parent = next((q for q in p.parents if _field_tree_at(q)), None)
+            if parent is not None:
+                die(
+                    f"ambiguous root: {p / '.orderfield'} is inside "
+                    f"{parent / '.orderfield'}; cd to the project root "
+                    "or of migrate",
+                    kind="root-stub",
+                )
             return p
-        fields = of / "fields"
-        if fields.is_dir():
-            try:
-                for child in fields.iterdir():
-                    if child.is_dir() and (child / "ORDER.json").is_file():
-                        return p
-            except OSError:
-                pass
         if (p / ".git").exists():
             return p
     return cur
@@ -370,6 +396,151 @@ class ActiveField:
         dump_bytes(ActiveField.path(root), (fid + "\n").encode("utf-8"))
 
 
+class RootStub:
+    """Leftover `.orderfield/ORDER.json` once `fields/<id>/` exists.
+
+    Legacy single-field layout (no nested homes) stays valid. A leftover
+    root ORDER next to nested homes is not a live field: auto-bind ignores
+    it, `--field` of its id dies, `of migrate` archives it. Never a silent
+    delete. Doctor already names this as `stub SKEW` (0.7.25).
+    """
+
+    FILENAME = "ORDER.json"
+    ARCHIVE_SUFFIX = ".stub"
+    LABEL = "root_stub"
+    KIND_ABSENT = "absent"
+    KIND_LEGACY = "legacy"
+    KIND_STALE = "stale"
+    KIND_AMBIGUOUS = "ambiguous"
+    MIGRATE_HINT = "of migrate"
+
+    @staticmethod
+    def path(root: Path | None = None) -> Path:
+        return of_dir(root) / RootStub.FILENAME
+
+    @staticmethod
+    def tree_at(path: Path) -> bool:
+        return _field_tree_at(path)
+
+    @staticmethod
+    def nested_homes(
+        root: Path | None = None,
+    ) -> list[tuple[str, Path, dict[str, Any]]]:
+        root = root or find_root()
+        fields = fields_dir(root)
+        out: list[tuple[str, Path, dict[str, Any]]] = []
+        if not fields.is_dir():
+            return out
+        try:
+            children = sorted(fields.iterdir(), key=lambda p: p.name)
+        except OSError:
+            return out
+        for child in children:
+            if child.is_symlink() or not child.is_dir():
+                continue
+            order_file = child / "ORDER.json"
+            if not order_file.is_file():
+                continue
+            data = _read_json_object(order_file) or {}
+            fid = str(data.get("id") or child.name)
+            out.append((fid, child, data))
+        return out
+
+    @staticmethod
+    def inspect(root: Path | None = None) -> dict[str, Any]:
+        root = root or find_root()
+        stub = RootStub.path(root)
+        nested = RootStub.nested_homes(root)
+        if not stub.is_file():
+            return {"kind": RootStub.KIND_ABSENT, "path": stub, "field_id": None}
+        data = _read_json_object(stub) or {}
+        fid = str(data.get("id") or "").strip() or None
+        if not nested:
+            return {"kind": RootStub.KIND_LEGACY, "path": stub, "field_id": fid}
+        nested_ids = {nid for nid, _home, _order in nested}
+        if fid and fid in nested_ids:
+            return {"kind": RootStub.KIND_STALE, "path": stub, "field_id": fid}
+        return {"kind": RootStub.KIND_AMBIGUOUS, "path": stub, "field_id": fid}
+
+    @staticmethod
+    def leftover_path(root: Path | None = None) -> Path | None:
+        info = RootStub.inspect(root)
+        if info["kind"] in {RootStub.KIND_STALE, RootStub.KIND_AMBIGUOUS}:
+            return info["path"]
+        return None
+
+    @staticmethod
+    def format_line(root: Path | None = None, *, key_width: int = 12) -> str | None:
+        info = RootStub.inspect(root)
+        if info["kind"] not in {RootStub.KIND_STALE, RootStub.KIND_AMBIGUOUS}:
+            return None
+        rel = field_rel(root or find_root(), info["path"])
+        return (
+            f"{RootStub.LABEL.ljust(key_width)}{info['kind']:<10} {rel}  "
+            f"({RootStub.MIGRATE_HINT})"
+        )
+
+    @staticmethod
+    def emit(root: Path | None = None, *, key_width: int = 12) -> None:
+        line = RootStub.format_line(root, key_width=key_width)
+        if line:
+            print(line)
+
+    @staticmethod
+    def refuse_field(root: Path, field_id: str) -> None:
+        """Refuse `--field` / OF_FIELD when it names a leftover stub id.
+
+        A stale same-id leftover shares the nested field's id — bind the
+        nested home. Only a different-id leftover is not a live field.
+        """
+        info = RootStub.inspect(root)
+        if (
+            info["kind"] == RootStub.KIND_AMBIGUOUS
+            and info.get("field_id")
+            and info["field_id"] == field_id
+        ):
+            die(
+                f"root stub {field_id} is not a live field; {RootStub.MIGRATE_HINT}",
+                kind="root-stub",
+            )
+
+    @staticmethod
+    def archive_dest(root: Path) -> Path:
+        dest = of_dir(root) / (RootStub.FILENAME + RootStub.ARCHIVE_SUFFIX)
+        if not dest.exists():
+            return dest
+        stamp = utc_now().replace(":", "").replace("-", "")
+        return dest.with_name(dest.name + "." + stamp)
+
+    @staticmethod
+    def plan(root: Path) -> dict[str, Any] | None:
+        info = RootStub.inspect(root)
+        if info["kind"] not in {RootStub.KIND_STALE, RootStub.KIND_AMBIGUOUS}:
+            return None
+        dest = RootStub.archive_dest(root)
+        return {
+            "id": "root-stub-archive",
+            "kind": "root-stub",
+            "path": info["path"],
+            "dest": dest,
+            "data": {},
+            "notes": [
+                f"archive leftover root ORDER.json to {field_rel(root, dest)}; "
+                "nested fields stay authority (not a silent delete)"
+            ],
+        }
+
+    @staticmethod
+    def apply(action: dict[str, Any]) -> None:
+        src = Path(action["path"])
+        dest = Path(action["dest"])
+        if dest.exists():
+            stamp = utc_now().replace(":", "").replace("-", "")
+            dest = dest.with_name(dest.name + "." + stamp)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(dest))
+
+
 def bound_field_home() -> Path | None:
     """Context-bound field home, or None when bind did not select one."""
     return _active_field_home.get()
@@ -407,27 +578,18 @@ def require_field_id(text: str) -> str:
 
 
 def list_field_homes(root: Path | None = None) -> list[tuple[str, Path, dict[str, Any]]]:
-    """Return (id, home, order-dict) for every live field. Legacy ORDER.json counts."""
+    """Return (id, home, order-dict) for every live field.
+
+    Nested `fields/<id>/` homes win. A leftover top-level ORDER.json is
+    not a live field once nested homes exist (`RootStub`). Legacy
+    `.orderfield/ORDER.json` still counts when it is the only home.
+    """
     root = root or find_root()
     of = of_dir(root)
-    out: list[tuple[str, Path, dict[str, Any]]] = []
-    seen: set[str] = set()
-    fields = of / "fields"
-    if fields.is_dir():
-        try:
-            children = sorted(fields.iterdir(), key=lambda p: p.name)
-        except OSError:
-            children = []
-        for child in children:
-            if child.is_symlink() or not child.is_dir():
-                continue
-            order_file = child / "ORDER.json"
-            if not order_file.is_file():
-                continue
-            data = _read_json_object(order_file) or {}
-            fid = str(data.get("id") or child.name)
-            out.append((fid, child, data))
-            seen.add(fid)
+    out = list(RootStub.nested_homes(root))
+    seen = {fid for fid, _home, _order in out}
+    if out:
+        return out
     legacy = of / "ORDER.json"
     if legacy.is_file():
         data = _read_json_object(legacy) or {}
@@ -657,6 +819,7 @@ def bind_active_field(
     explicit = (field_id or os.environ.get(OF_FIELD_ENV) or "").strip() or None
     homes = list_field_homes(root)
     if explicit:
+        RootStub.refuse_field(root, explicit)
         for fid, home, _order in homes:
             if fid == explicit:
                 if home.is_symlink():
@@ -717,7 +880,7 @@ def promote_legacy_layout(root: Path) -> Path | None:
             data["id"] = fid
             dump_json(legacy, data)
     dest = fields_dir(root) / fid
-    if dest.exists():
+    if RootStub.nested_homes(root):
         dest_order = dest / "ORDER.json"
         dest_data = _read_json_object(dest_order) if dest_order.is_file() else None
         dest_id = str((dest_data or {}).get("id") or "").strip()
@@ -729,6 +892,11 @@ def promote_legacy_layout(root: Path) -> Path | None:
                 f"(already {dest.relative_to(root)})"
             )
             return None
+        line = RootStub.format_line(root)
+        if line:
+            print(line)
+        return None
+    if dest.exists():
         die(f"cannot promote legacy field: {dest} already exists")
     dest.mkdir(parents=True, exist_ok=True)
     for name in _LEGACY_FIELD_FILES:
@@ -1962,6 +2130,9 @@ def print_migration_catalog() -> None:
 def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
     """Collect versioned rewrite plans. Does not write."""
     actions: list[dict[str, Any]] = []
+    stub_action = RootStub.plan(root)
+    if stub_action:
+        actions.append(stub_action)
     order_file = order_path(root)
     raw_order = _read_json_object(order_file)
     if isinstance(raw_order, dict):
@@ -2074,6 +2245,9 @@ def apply_field_migrations(actions: list[dict[str, Any]]) -> None:
         if item.get("write", True) is False:
             continue
         kind = item["kind"]
+        if kind == "root-stub":
+            RootStub.apply(item)
+            continue
         data = item["data"]
         if kind == "order":
             require_public_schema(data, "order.schema.json", "ORDER")
@@ -2635,13 +2809,7 @@ class DoctorSkew:
 
     @staticmethod
     def leftover_stub(root: Path) -> Path | None:
-        of = of_dir(root)
-        stub = of / "ORDER.json"
-        homes = list_field_homes(root)
-        nested = [home for _fid, home, _order in homes if home != of]
-        if nested and stub.is_file():
-            return stub
-        return None
+        return RootStub.leftover_path(root)
 
     @staticmethod
     def wave_packets(home: Path) -> tuple[int, list[dict[str, Any]]]:
@@ -2697,7 +2865,10 @@ class DoctorSkew:
             lines.append(f"  active        {homes[0][0]}  ok")
         stub = DoctorSkew.leftover_stub(root)
         if stub is not None:
-            lines.append(f"  stub          {field_rel(root, stub)}  SKEW")
+            lines.append(
+                f"  stub          {field_rel(root, stub)}  SKEW  "
+                f"({RootStub.MIGRATE_HINT})"
+            )
             skewed = True
         else:
             lines.append("  stub          none")
