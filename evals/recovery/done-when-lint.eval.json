@@ -1,0 +1,50 @@
+{
+  "id": "recovery/done-when-lint",
+  "description": "Generic done_when placeholders die; contrast-bound criteria are accepted",
+  "fixture": "recovery_done_when_lint",
+  "tags": ["recovery", "gate", "done_when"],
+  "steps": [
+    {
+      "run": "init",
+      "args": [
+        "--mission",
+        "lint generic",
+        "--phase",
+        "explore",
+        "--done-when",
+        "current phase criteria closed with evidence"
+      ],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused"]
+    },
+    {
+      "run": "init",
+      "args": [
+        "--mission",
+        "lint specific",
+        "--phase",
+        "build",
+        "--done-when",
+        "of contrast RESOLVED for CLI-001"
+      ],
+      "exit": 0
+    },
+    {
+      "run": "patch",
+      "args": ["--done-when", "current phase criteria closed with evidence"],
+      "exit": 1,
+      "stderr_contains": ["generic done_when refused"]
+    },
+    {
+      "run": "patch",
+      "args": ["--done-when", "of contrast RESOLVED then of close"],
+      "exit": 0
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["of contrast RESOLVED then of close"],
+      "stdout_not_contains": ["current phase criteria closed with evidence"]
+    }
+  ]
+}

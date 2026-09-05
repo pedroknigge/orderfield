@@ -62,6 +62,61 @@ RUNTIME_ENFORCED = {
 
 
 
+class DoneWhenLint:
+    """Refuse generic/non-falsifiable done_when placeholders. Not a planner."""
+
+    DEFAULT = "of contrast RESOLVED then of close"
+    GENERIC = frozenset(
+        {
+            "current phase criteria closed with evidence",
+            "current phase criteria closed",
+            "phase criteria closed with evidence",
+            "criteria closed with evidence",
+            "closed with evidence",
+            "current phase closed with evidence",
+            "current phase closed",
+            "phase criteria closed",
+            "criteria closed",
+            "all tests passed",
+            "tests passed",
+            "the tests passed",
+            "done",
+            "complete",
+            "closed",
+            "with evidence",
+            "evidence",
+            "phase complete",
+            "phase done",
+            "this phase is done",
+            "current phase is done",
+        }
+    )
+
+    @staticmethod
+    def body(criterion: str) -> str:
+        text = " ".join(str(criterion).strip().split())
+        tag = done_when_tag(text)
+        if tag:
+            _head, _sep, rest = text.partition(":")
+            text = rest.strip()
+        return text.lower()
+
+    @staticmethod
+    def is_generic(criterion: str) -> bool:
+        body = DoneWhenLint.body(criterion)
+        return not body or body in DoneWhenLint.GENERIC
+
+    @staticmethod
+    def refuse(criteria: list[str] | None) -> None:
+        for raw in criteria or []:
+            if DoneWhenLint.is_generic(raw):
+                die(
+                    "generic done_when refused: "
+                    f"{raw!r} is not falsifiable; name contrast RESOLVED "
+                    "or a concrete requirement id (CLI-001)"
+                )
+
+
 def done_when_tag(criterion: str) -> str | None:
     """Return the phase a criterion is scoped to, or None when it is global."""
     head, sep, _rest = str(criterion).partition(":")
@@ -317,6 +372,7 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
                     existing.add(key)
                     changed = True
         if "done_when+" in patch and isinstance(patch["done_when+"], list):
+            DoneWhenLint.refuse(list(patch["done_when+"]))
             for c in patch["done_when+"]:
                 if c not in order["done_when"]:
                     order["done_when"].append(c)

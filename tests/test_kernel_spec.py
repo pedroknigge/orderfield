@@ -371,6 +371,11 @@ class SpecFidelity(unittest.TestCase):
         self.assertIn("CLOSED", stamped.stdout)
         order = load_json(self.tmp / ".orderfield" / "ORDER.json")
         self.assertTrue(order.get("spec_closed"))
+        self.assertTrue(order.get("done_when_closed"))
+        proof = load_json(self.tmp / ".orderfield" / "CLOSE.json")
+        self.assertEqual(proof.get("verdict"), "RESOLVED")
+        self.assertTrue(proof.get("done_when_closed"))
+        self.assertEqual(proof.get("rev"), order["rev"])
 
     def test_status_prints_requirement_counts(self) -> None:
         r = run_of(

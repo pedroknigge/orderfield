@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -15,6 +16,8 @@ from of.field import (
     die,
     dump_json,
     emit_event,
+    field_home,
+    field_is_file,
     field_lock,
     find_root,
     kernel_repo_root,
@@ -24,8 +27,10 @@ from of.field import (
     sha256_text,
     snapshot_session,
     spec_path,
+    utc_now,
     wave_dir,
 )
+from of.regime import done_when_closed, mark_done_when_closed
 from of.pack import PACKET_IDENTITY_FIELDS, truncate_slice
 from of.spec import (
     append_amendment,
@@ -443,6 +448,44 @@ def cmd_contrast(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+class CloseProof:
+    """Durable close artifact. Written in the same WAL generation as ORDER."""
+
+    FILENAME = "CLOSE.json"
+
+    @staticmethod
+    def path(root: Path) -> Path:
+        return field_home(root) / CloseProof.FILENAME
+
+    @staticmethod
+    def document(order: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "v": 1,
+            "verdict": "RESOLVED",
+            "spec_closed": True,
+            "done_when_closed": True,
+            "spec_hash": str(order.get("spec_hash") or ""),
+            "order_id": str(order.get("id") or ""),
+            "rev": int(order.get("rev") or 0),
+            "phase": str(order.get("phase") or ""),
+            "closed_at": utc_now(),
+        }
+
+    @staticmethod
+    def complete(root: Path, order: dict[str, Any]) -> bool:
+        return bool(order.get("spec_closed")) and done_when_closed(order) and field_is_file(
+            CloseProof.path(root)
+        )
+
+    @staticmethod
+    def stamp(root: Path, order: dict[str, Any]) -> None:
+        mark_done_when_closed(order)
+        order["spec_closed"] = True
+        order["rev"] = int(order["rev"]) + 1
+        save_order(order, root)
+        dump_json(CloseProof.path(root), CloseProof.document(order))
+
+
 def cmd_close(args: argparse.Namespace) -> None:
     """Stamp SPEC closed. Refused while contrast is OPEN. Slice done ≠ SPEC closed."""
     root = find_root()
@@ -456,20 +499,24 @@ def cmd_close(args: argparse.Namespace) -> None:
     if not spec_path(root).is_file():
         print("close       skipped (no SPEC)")
         return
-    if order.get("spec_closed"):
+    if CloseProof.complete(root, order):
         print("close       already spec_closed")
         return
-    order["spec_closed"] = True
-    order["rev"] = int(order["rev"]) + 1
-    save_order(order, root)
+    repaired = bool(order.get("spec_closed"))
+    CloseProof.stamp(root, order)
     snapshot_session(root, "close")
     emit_event(
         "close",
         rev=int(order["rev"]),
         spec_hash=str(order.get("spec_hash") or "")[:12],
+        done_when_closed=True,
         ok=True,
     )
-    print(f"CLOSED      spec_hash={str(order.get('spec_hash') or '')[:12]}…  rev={order['rev']}")
+    label = "REPAIRED" if repaired else "CLOSED"
+    print(
+        f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
+        f"rev={order['rev']}  proof={CloseProof.FILENAME}"
+    )
 
 
 EVAL_FIXTURES: dict[str, Any] = {}
@@ -864,6 +911,44 @@ def eval_setup_recovery_pack_exclusivity(root: Path) -> None:
     EvalInvariantSetup.setup_pack_exclusivity(root)
 
 
+@_register_eval_fixture("recovery_active_field_pointer")
+def eval_setup_recovery_active_field_pointer(root: Path) -> None:
+    """Root explore stub plus a nested field that ACTIVE must win."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "stub explore leftover",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    created = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "nested real work",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(created, "new")
+    from of.field import default_order, dump_bytes, json_payload_bytes
+
+    ghost = default_order("stub explore leftover", "explore")
+    dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
+
+
+@_register_eval_fixture("recovery_done_when_lint")
+def eval_setup_recovery_done_when_lint(root: Path) -> None:
+    """Empty tree; steps exercise init/patch refuse vs accept."""
+    return
+
+
+@_register_eval_fixture("recovery_atomic_close")
+def eval_setup_recovery_atomic_close(root: Path) -> None:
+    eval_setup_recovery_contrast_close(root)
+
+
 def discover_recovery_eval_specs() -> list[Path]:
     base = kernel_repo_root() / "evals" / "recovery"
     if not base.is_dir():
@@ -938,6 +1023,25 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                         "status": "failed",
                         "error": f"step {idx}: stderr must not contain {needle!r}",
                     }
+            for item in step.get("file_contains") or []:
+                rel = str(item.get("path") or "")
+                target = tmp / rel
+                try:
+                    data = load_json(target)
+                except SystemExit:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: missing file {rel!r}",
+                    }
+                payload = json.dumps(data)
+                for needle in item.get("contains") or []:
+                    if str(needle) not in payload:
+                        return {
+                            "id": eval_id,
+                            "status": "failed",
+                            "error": f"step {idx}: {rel} missing {needle!r}",
+                        }
         return {"id": eval_id, "status": "passed", "description": spec.get("description")}
     except SystemExit as exc:
         return {"id": eval_id, "status": "failed", "error": f"fixture/setup: {exc}"}

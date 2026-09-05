@@ -98,22 +98,74 @@ class SiblingFields(unittest.TestCase):
         self.assertIn("fields        3", listed.stdout)
         self.assertIn("third", listed.stdout)
 
-    def test_resume_roster_when_two_open_no_session(self) -> None:
+    def test_resume_follows_active_after_new(self) -> None:
         self._init("first")
         run_of(self.tmp, "new", "--mission", "second")
+        r = run_of(self.tmp, "resume")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("second", r.stdout)
+        self.assertNotIn("PICK --field", r.stdout)
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        self.assertTrue(active.startswith("ord_"), active)
+        self.assertIn(active, r.stdout)
+
+    def test_resume_roster_when_active_missing(self) -> None:
+        self._init("first")
+        run_of(self.tmp, "new", "--mission", "second")
+        (self.tmp / ".orderfield" / "ACTIVE").unlink()
         r = run_of(self.tmp, "resume")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("fields        2", r.stdout)
         self.assertIn("PICK --field", r.stdout)
         self.assertIn("auto_continue no", r.stdout)
 
-    def test_pulse_roster_when_two_open_no_session(self) -> None:
+    def test_pulse_follows_active_after_new(self) -> None:
         self._init("first")
         run_of(self.tmp, "new", "--mission", "second")
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
         r = run_of(self.tmp, "pulse")
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertIn("fields        2", r.stdout)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(active, r.stdout)
         self.assertNotIn("no ORDER", r.stdout)
+
+    def test_status_prefers_nested_over_legacy_stub(self) -> None:
+        self._init("first")
+        run_of(self.tmp, "new", "--mission", "nested real work")
+        ghost = of.default_order("stub explore leftover", "explore")
+        (self.tmp / ".orderfield" / "ORDER.json").write_text(
+            json.dumps(ghost, indent=2) + "\n", encoding="utf-8"
+        )
+        r = run_of(self.tmp, "status")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("nested real work", r.stdout)
+        self.assertNotIn("stub explore leftover", r.stdout)
+
+    def test_origin_session_beats_active_pointer(self) -> None:
+        run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "first",
+            "--origin",
+            "grok",
+            "--session-id",
+            "sess_a",
+        )
+        run_of(
+            self.tmp,
+            "new",
+            "--mission",
+            "second",
+            "--origin",
+            "grok",
+            "--session-id",
+            "sess_b",
+        )
+        r = run_of(self.tmp, "resume", extra_env={"OF_SESSION_ID": "sess_a"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("first", r.stdout)
+        self.assertIn("sess_a", r.stdout)
+        self.assertNotIn("PICK --field", r.stdout)
 
     def test_resume_selects_origin_session(self) -> None:
         run_of(

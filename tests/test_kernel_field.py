@@ -1574,7 +1574,15 @@ class EpisodicRetention(unittest.TestCase):
                 home = child
                 break
         self.assertIsNotNone(closed_id)
-        r = run_of(self.tmp, "gc", "--drop-field", str(closed_id))
+        other = None
+        for child in (self.tmp / ".orderfield" / "fields").iterdir():
+            order_file = child / "ORDER.json"
+            if not order_file.is_file() or child == home:
+                continue
+            other = load_json(order_file).get("id")
+            break
+        self.assertIsNotNone(other)
+        r = run_of(self.tmp, "--field", str(other), "gc", "--drop-field", str(closed_id))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dropped", r.stdout)
         self.assertFalse(home.exists())

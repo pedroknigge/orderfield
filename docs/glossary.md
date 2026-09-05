@@ -18,7 +18,7 @@ Canonical terms only. Product surface: [README Compared-to](../README.md). Leade
 
 ## sibling field
 
-A second (or Nth) ORDER in the same working tree. `of new` opens one without closing the others. Product files stay at the repo root; only contract artifacts are namespaced under `fields/<id>/`. `of resume` with several unmatched open fields prints a roster and exits 2. `--field` / `OF_FIELD` / matching `ORDER.origin.session_id` selects one. Not a file locker: overlapping in-flight `--owns-path` across open siblings dies at pack.
+A second (or Nth) ORDER in the same working tree. `of new` opens one without closing the others. Product files stay at the repo root; only contract artifacts are namespaced under `fields/<id>/`. `.orderfield/ACTIVE` names the field `of status` / `of resume` bind when `--field` / `OF_FIELD` / origin session do not. A leftover top-level ORDER stub is ignored for auto-bind when nested homes exist. `of resume` with several unmatched open fields and no ACTIVE prints a roster and exits 2. Not a file locker: overlapping in-flight `--owns-path` across open siblings dies at pack.
 
 ## spec_hash
 

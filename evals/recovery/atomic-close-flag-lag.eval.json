@@ -1,0 +1,61 @@
+{
+  "id": "recovery/atomic-close-flag-lag",
+  "description": "of close refuses without RESOLVED; success sets spec_closed + done_when_closed + CLOSE.json in one stamp. Flag-lag and slogan soft-close die.",
+  "fixture": "recovery_atomic_close",
+  "tags": ["recovery", "gate", "close", "wal"],
+  "steps": [
+    {
+      "run": "contrast",
+      "exit": 2,
+      "stdout_contains": ["CLOSE BLOCKED"]
+    },
+    {
+      "run": "close",
+      "exit": 1,
+      "stderr_contains": ["of close refused"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "ALG-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": ["RESOLVED"]
+    },
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED", "CLOSE.json"],
+      "file_contains": [
+        {
+          "path": ".orderfield/CLOSE.json",
+          "contains": [
+            "\"verdict\": \"RESOLVED\"",
+            "\"spec_closed\": true",
+            "\"done_when_closed\": true"
+          ]
+        },
+        {
+          "path": ".orderfield/ORDER.json",
+          "contains": [
+            "\"spec_closed\": true",
+            "\"done_when_closed\": true"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["done_when_closed True"],
+      "stdout_not_contains": ["done_when_closed False"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["field         closed"]
+    }
+  ]
+}

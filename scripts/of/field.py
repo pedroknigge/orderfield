@@ -343,6 +343,37 @@ def fields_dir(root: Path | None = None) -> Path:
     return of_dir(root) / "fields"
 
 
+class ActiveField:
+    """Tree-level pointer at `.orderfield/ACTIVE`. Not a field-home WAL file."""
+
+    FILENAME = "ACTIVE"
+
+    @staticmethod
+    def path(root: Path | None = None) -> Path:
+        return of_dir(root) / ActiveField.FILENAME
+
+    @staticmethod
+    def read(root: Path | None = None) -> str | None:
+        path = ActiveField.path(root)
+        try:
+            text = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        if not FIELD_ID_RE.match(text):
+            return None
+        return text
+
+    @staticmethod
+    def write(root: Path, field_id: str) -> None:
+        fid = require_field_id(field_id)
+        dump_bytes(ActiveField.path(root), (fid + "\n").encode("utf-8"))
+
+
+def bound_field_home() -> Path | None:
+    """Context-bound field home, or None when bind did not select one."""
+    return _active_field_home.get()
+
+
 def field_home(root: Path | None = None) -> Path:
     """Active field directory: legacy `.orderfield/` or `.orderfield/fields/<id>/`."""
     override = _active_field_home.get()
@@ -460,7 +491,12 @@ def bind_active_field(
     *,
     cmd: str = "",
 ) -> Path | None:
-    """Resolve the field this process operates on. None = caller prints a roster."""
+    """Resolve the field this process operates on. None = caller prints a roster.
+
+    Order: explicit `--field` / OF_FIELD, origin session, `.orderfield/ACTIVE`,
+    then unique home. A leftover top-level ORDER stub is ignored for auto-bind
+    when `fields/<id>/` homes exist.
+    """
     explicit = (field_id or os.environ.get(OF_FIELD_ENV) or "").strip() or None
     homes = list_field_homes(root)
     if explicit:
@@ -468,22 +504,33 @@ def bind_active_field(
             if fid == explicit:
                 if home.is_symlink():
                     die(f"unsafe field root {home}: kernel artifact root is a symlink")
+                ActiveField.write(root, fid)
                 return _activate_field_home(root, home, cmd)
         die(f"unknown field {explicit}")
     if not homes:
         return None
-    if len(homes) == 1:
-        return _activate_field_home(root, homes[0][1], cmd)
     session = (os.environ.get("OF_SESSION_ID") or "").strip()
     origin_hits: list[tuple[str, Path, dict[str, Any]]] = []
-    open_homes: list[tuple[str, Path, dict[str, Any]]] = []
     for fid, home, order in homes:
-        if field_is_open(order):
-            open_homes.append((fid, home, order))
-            if session and origin_session_id(order) == session:
-                origin_hits.append((fid, home, order))
+        if session and field_is_open(order) and origin_session_id(order) == session:
+            origin_hits.append((fid, home, order))
     if len(origin_hits) == 1:
         return _activate_field_home(root, origin_hits[0][1], cmd)
+    pointed = ActiveField.read(root)
+    if pointed:
+        for fid, home, _order in homes:
+            if fid == pointed:
+                if home.is_symlink():
+                    die(f"unsafe field root {home}: kernel artifact root is a symlink")
+                return _activate_field_home(root, home, cmd)
+    of = of_dir(root)
+    nested = [(fid, home, order) for fid, home, order in homes if home != of]
+    candidates = nested if nested else homes
+    if len(candidates) == 1:
+        return _activate_field_home(root, candidates[0][1], cmd)
+    open_homes = [
+        (fid, home, order) for fid, home, order in candidates if field_is_open(order)
+    ]
     if len(open_homes) == 1:
         return _activate_field_home(root, open_homes[0][1], cmd)
     if cmd in {"resume", "status", "pulse", "fields", "gc", "retain"}:
@@ -1433,13 +1480,15 @@ def require_public_schema(data: Any, filename: str, label: str) -> None:
 
 
 def default_order(mission: str, phase: str) -> dict[str, Any]:
+    from of.regime import DoneWhenLint
+
     return {
         "v": 1,
         "id": f"ord_{uuid.uuid4().hex[:8]}",
         "rev": 1,
         "mission": mission,
         "phase": phase,
-        "done_when": ["current phase criteria closed with evidence"],
+        "done_when": [DoneWhenLint.DEFAULT],
         "constraints": ["slaves do not mutate ORDER", "one phase at a time"],
         "workspace": {
             "readable": [

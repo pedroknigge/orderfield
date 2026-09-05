@@ -1,0 +1,20 @@
+{
+  "id": "recovery/active-field-pointer",
+  "description": "Root ORDER stub (explore) plus nested active field: status/resume reflect the nested field, not the stub",
+  "fixture": "recovery_active_field_pointer",
+  "tags": ["recovery", "fields", "active"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["nested real work"],
+      "stdout_not_contains": ["stub explore leftover"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["nested real work", "auto_continue"],
+      "stdout_not_contains": ["stub explore leftover", "PICK --field"]
+    }
+  ]
+}

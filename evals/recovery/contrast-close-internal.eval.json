@@ -22,7 +22,18 @@
     {
       "run": "close",
       "exit": 0,
-      "stdout_contains": ["CLOSED"]
+      "stdout_contains": ["CLOSED"],
+      "file_contains": [
+        {
+          "path": ".orderfield/CLOSE.json",
+          "contains": ["\"verdict\": \"RESOLVED\"", "\"done_when_closed\": true"]
+        }
+      ]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["done_when_closed True"]
     }
   ]
 }

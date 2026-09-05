@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.6 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.7 — Contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a disk-backed plan. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.6"
+  version: "0.7.7"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -95,7 +95,7 @@ python3 <skill>/scripts/of.py resume
 
 If a field exists, **start here**. Reconstruct in-flight from packets / residuals / state plus an optional checkpoint summary. Do **not** `of init` when a field is already open. Do **not** re-pack a child that already has a packet and no residual. Resume is **one screen**; it does not auto-spawn, dump logs, or add a regime. It prints **`field`** (`open` | `closed`) and **`auto_continue`** (`yes` → execute `next` this turn; `no` → field closed, foreign origin, or a roster). When `ORDER.origin` is present it prints one line `origin        <harness> [<session_id>]`; omit that line when the key is missing. Origin is provenance (which harness session opened the field), not resume authority and not a transcript.
 
-**Sibling fields.** One working tree may hold several fields (`.orderfield/fields/<id>/`). `of new` opens a sibling without killing the others. `of fields` lists them. Pass `--field <id>` or `OF_FIELD`. The kernel never prompts on stdin. If resume prints `PICK --field` (exit 2), **ask the user** which field to attach or whether to `of new`. If `auto_continue no` says **foreign field**, do **not** execute that field's `next` — attach with `--field` or open a sibling. Same brief, other agent → attach. Unrelated brief → `of new`. Mid-flight extra ask on the **same** product → `of spec --amend`, not `of new`.
+**Sibling fields.** One working tree may hold several fields (`.orderfield/fields/<id>/`). `of new` opens a sibling without killing the others and writes `.orderfield/ACTIVE`. `of fields` lists them. Pass `--field <id>` or `OF_FIELD` (that updates ACTIVE). Status/resume follow ACTIVE after origin match; a leftover top-level ORDER stub is ignored when nested homes exist. The kernel never prompts on stdin. If resume prints `PICK --field` (exit 2), **ask the user** which field to attach or whether to `of new`. If `auto_continue no` says **foreign field**, do **not** execute that field's `next` — attach with `--field` or open a sibling. Same brief, other agent → attach. Unrelated brief → `of new`. Mid-flight extra ask on the **same** product → `of spec --amend`, not `of new`.
 
 The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
 
@@ -292,7 +292,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. Stamp with `of close` only when contrast is RESOLVED; success sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements. Generic done_when placeholders (`current phase criteria closed with evidence`) are refused at init/patch.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)
