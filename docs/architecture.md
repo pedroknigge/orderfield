@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.23` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.24` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -170,7 +170,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 ## Durability and concurrency boundary (0.4.2)
 
-`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory. Mutations that publish more than one field artifact (ORDER, state, session, REQUIREMENTS, packet, prompt, SPEC, phase Markdown, unpack tombstones) additionally stage one generation under `wal/<id>/`, write a MANIFEST (paths+hashes), then flip `wal/CURRENT.json` as the only reader-visible generation. Ordinary CLI readers (`status` / `resume` / `render`) recover through CURRENT. A crash before the pointer flip leaves the previous generation; a crash after it is coherent. Landed in [PR #45](https://github.com/pedroknigge/orderfield/pull/45) (WAL-001). Public JSON schemas stay the store.
+`MUTATING_COMMANDS` in `scripts/of/field.py` is the lock set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json` (the authority ledger); `checkpoint` because it rewrites `session.json`. `of.cli.main` takes one advisory OS file lock for those commands before calling the handler. JSON writes (`dump_json`) fsync a sibling temporary file, atomically replace the destination, then fsync the directory. Mutations that publish more than one field artifact (ORDER, state, session, REQUIREMENTS, packet, prompt, SPEC, phase Markdown, unpack tombstones) additionally stage one generation under `wal/<id>/`, write a MANIFEST (paths+hashes), then flip `wal/CURRENT.json` as the only reader-visible generation. Ordinary CLI readers (`status` / `resume` / `render` / `wave`) recover through CURRENT. A crash before the pointer flip leaves the previous generation; a crash after it is coherent. Landed in [PR #45](https://github.com/pedroknigge/orderfield/pull/45) (WAL-001). Public JSON schemas stay the store.
 
 Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `gc`, `learn`, `worktree` — do not enter the lock wrapper. They still use atomic JSON replacement where they write JSON. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 

@@ -2186,6 +2186,108 @@ class PackedAgeWatchdog(unittest.TestCase):
         self.assertNotIn("past 7d SLA", status.stdout)
 
 
+class WaveRosterListShow(unittest.TestCase):
+    """of wave list/show marks the live wave. of eval --kernel."""
+
+    def test_empty_init_lists_live_wave_one(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-wave-empty-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "empty live wave")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        listed = run_of(tmp, "wave", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("waves         1  live 1", listed.stdout)
+        self.assertIn("* empty", listed.stdout)
+        self.assertIn("live          1", listed.stdout)
+        shown = run_of(tmp, "wave", "show")
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertIn("wave          1", shown.stdout)
+        self.assertIn("live          yes", shown.stdout)
+        self.assertIn("status        empty", shown.stdout)
+        missing = run_of(tmp, "wave", "show", "9")
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("no wave 9", missing.stderr)
+        self.assertNotIn("wave", of.MUTATING_COMMANDS)
+        from of.field import FIELD_BIND_COMMANDS
+
+        self.assertIn("wave", FIELD_BIND_COMMANDS)
+
+    def test_multi_wave_marks_live_and_shows_prior(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-wave-multi-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(
+            tmp, "init", "--mission", "multi-wave roster", "--phase", "build"
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        for req_id, text in (
+            ("W1-001", "wave-1 implementer"),
+            ("W2-001", "wave-2 implementer"),
+        ):
+            added = run_of(tmp, "spec", "--add", req_id, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "Implement app/w1.py",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w1",
+            "--owns-path",
+            "app/w1.py",
+            "--owns-requirement",
+            "W1-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        (tmp / "app").mkdir(exist_ok=True)
+        (tmp / "app" / "w1.py").write_text("# w1\n", encoding="utf-8")
+        write_bound_residual(tmp, "w1")
+        integrated = run_of(tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        packed2 = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "Implement app/w2.py",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w2",
+            "--owns-path",
+            "app/w2.py",
+            "--owns-requirement",
+            "W2-001",
+        )
+        self.assertEqual(packed2.returncode, 0, packed2.stderr)
+        listed = run_of(tmp, "wave", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("waves         2  live 2", listed.stdout)
+        self.assertIn("integrated", listed.stdout)
+        self.assertIn("* in-flight", listed.stdout)
+        self.assertIn("live          2", listed.stdout)
+        self.assertNotIn("live          1", listed.stdout)
+        prior = run_of(tmp, "wave", "show", "1")
+        self.assertEqual(prior.returncode, 0, prior.stderr)
+        self.assertIn("wave          1", prior.stdout)
+        self.assertIn("live          no", prior.stdout)
+        self.assertIn("integrated    yes", prior.stdout)
+        self.assertIn("w1", prior.stdout)
+        live = run_of(tmp, "wave", "show")
+        self.assertEqual(live.returncode, 0, live.stderr)
+        self.assertIn("wave          2", live.stdout)
+        self.assertIn("live          yes", live.stdout)
+        self.assertIn("w2", live.stdout)
+        self.assertIn("in-flight", live.stdout)
+        # status/resume stay one-screen: they name the live wave, not the roster
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("wave        2", status.stdout)
+        self.assertNotIn("waves         2", status.stdout)
+
+
 class DurableMultiDayResume(unittest.TestCase):
     """Later session + stale session.json reconstruct wave 2. of eval --kernel."""
 

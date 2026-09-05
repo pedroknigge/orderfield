@@ -20,6 +20,10 @@ A second (or Nth) ORDER in the same working tree. `of new` opens one without clo
 
 SHA-256 of current SPEC bytes, stored on ORDER (`spec_ref` + `spec_hash`). `of close` and `of phase deliver` refuse a SPEC that no longer matches. Silent rewrite of the brief is a field error; new human requests go through `of spec --amend`.
 
+## wave
+
+One parallel pack of children under `.orderfield/waves/NNN/`. Live wave is `state.wave`. `of wave list` walks existing wave dirs plus the live number and marks live with `*`. `of wave show [N]` names packets, residuals, and whether that wave is live. Status and resume stay one-screen on the live wave. Not a second ledger and not process health (`of pulse`). Proof: `recovery/wave-list-show`.
+
 ## packet
 
 The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/packets/`. It names identity (`packet_id`, hash, ORDER id/rev, wave, child, role), the slice, exclusive owners (`--owns-requirement`, `--owns-path`), and where the residual must land. The packet is the intended context boundary. It is not a process, not a transcript, and not a replacement of SPEC.

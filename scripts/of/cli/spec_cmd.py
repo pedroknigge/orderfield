@@ -1719,6 +1719,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ResumeAfterProcessDeath",
     "tests.test_kernel.PackedAgeWatchdog",
     "tests.test_kernel.ContrastReportRenderer",
+    "tests.test_kernel.WaveRosterListShow",
 )
 
 

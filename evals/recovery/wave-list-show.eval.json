@@ -1,0 +1,59 @@
+{
+  "id": "recovery/wave-list-show",
+  "description": "Multi-wave field: of wave list marks live wave 2; show names live vs prior integrated wave",
+  "fixture": "recovery_multi_day_resume",
+  "tags": ["recovery", "long-task", "wave", "roster"],
+  "steps": [
+    {
+      "run": "wave",
+      "args": ["list"],
+      "exit": 0,
+      "stdout_contains": [
+        "waves         2  live 2",
+        "integrated",
+        "* in-flight",
+        "live          2"
+      ],
+      "stdout_not_contains": [
+        "live          1",
+        "PICK --field"
+      ]
+    },
+    {
+      "run": "wave",
+      "args": ["show"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          2",
+        "live          yes",
+        "w2",
+        "in-flight"
+      ],
+      "stdout_not_contains": [
+        "live          no",
+        "wave          1"
+      ]
+    },
+    {
+      "run": "wave",
+      "args": ["show", "1"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          1",
+        "live          no",
+        "integrated    yes"
+      ],
+      "stdout_not_contains": ["live          yes"]
+    },
+    {
+      "run": "wave",
+      "args": ["show", "2"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          2",
+        "live          yes",
+        "w2"
+      ]
+    }
+  ]
+}

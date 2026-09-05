@@ -239,6 +239,7 @@ FIELD_BIND_COMMANDS = {
     "migrate",
     "worktree",
     "doctor",
+    "wave",
 }
 _LEGACY_FIELD_FILES = (
     "ORDER.json",
@@ -2595,6 +2596,143 @@ class PackedAge:
         require_public_schema(pkt, "packet.schema.json", "packet")
         with field_generation(root):
             dump_json(path, pkt)
+
+
+class WaveRoster:
+    """Read-path multi-wave roster. Live wave is state.wave.
+
+    Reuses `.orderfield/waves/NNN/{packets,residuals,report.json}`.
+    No second ledger, no new ORDER field, no new schema.
+    `of status` / `of resume` stay one-screen on the live wave.
+    `of fields` is sibling fields, not waves. `of pulse` is activity.
+    """
+
+    @staticmethod
+    def live_wave(state: dict[str, Any]) -> int:
+        try:
+            return int(state.get("wave") or 1)
+        except (TypeError, ValueError):
+            return 1
+
+    @staticmethod
+    def numbers(root: Path, state: dict[str, Any]) -> list[int]:
+        nums = set(wave_numbers(root))
+        nums.add(WaveRoster.live_wave(state))
+        return sorted(n for n in nums if n > 0)
+
+    @staticmethod
+    def facts(root: Path, wave: int, live: int) -> dict[str, Any]:
+        wdir = wave_dir(int(wave), root)
+        children: list[dict[str, Any]] = []
+        pdir = wdir / "packets"
+        if pdir.is_dir():
+            try:
+                paths = sorted(pdir.glob("*.json"))
+            except OSError:
+                paths = []
+            for path in paths:
+                data = _read_json_object(path) or {}
+                cid = str(data.get("child_id") or path.stem)
+                residual = _read_json_object(wdir / "residuals" / f"{path.stem}.json")
+                if residual is None:
+                    child_status = "in-flight"
+                    residual_status = None
+                else:
+                    child_status = "done"
+                    residual_status = residual.get("status")
+                children.append(
+                    {
+                        "child_id": cid,
+                        "role": str(data.get("role") or "-"),
+                        "status": child_status,
+                        "residual_status": residual_status,
+                    }
+                )
+        report = None
+        report_path = wdir / "report.json"
+        if report_path.is_file():
+            report = _read_json_object(report_path)
+        in_flight_n = sum(1 for child in children if child["status"] == "in-flight")
+        residual_n = sum(1 for child in children if child["status"] == "done")
+        if report is not None:
+            status = "integrated"
+        elif in_flight_n:
+            status = "in-flight"
+        elif children:
+            status = "complete"
+        else:
+            status = "empty"
+        regime = None
+        if isinstance(report, dict) and report.get("regime"):
+            regime = str(report.get("regime"))
+        return {
+            "wave": int(wave),
+            "live": int(wave) == int(live),
+            "status": status,
+            "packets": len(children),
+            "residuals": residual_n,
+            "in_flight": in_flight_n,
+            "integrated": report is not None,
+            "regime": regime,
+            "children": children,
+        }
+
+    @staticmethod
+    def format_list(root: Path, state: dict[str, Any]) -> list[str]:
+        live = WaveRoster.live_wave(state)
+        nums = WaveRoster.numbers(root, state)
+        lines = [f"waves         {len(nums)}  live {live}"]
+        for n in nums:
+            facts = WaveRoster.facts(root, n, live)
+            mark = "*" if facts["live"] else " "
+            lines.append(
+                f"  {n:<3} {mark} {facts['status']:<11} "
+                f"packets {facts['packets']}  residuals {facts['residuals']}  "
+                f"in_flight {facts['in_flight']}"
+            )
+        lines.append(f"live          {live}")
+        return lines
+
+    @staticmethod
+    def format_show(
+        root: Path, state: dict[str, Any], wave: int
+    ) -> list[str]:
+        live = WaveRoster.live_wave(state)
+        facts = WaveRoster.facts(root, int(wave), live)
+        lines = [
+            f"wave          {facts['wave']}",
+            f"live          {'yes' if facts['live'] else 'no'}",
+            f"status        {facts['status']}",
+            f"packets       {facts['packets']}",
+            f"residuals     {facts['residuals']}",
+            f"in_flight     {facts['in_flight']}",
+            f"integrated    {'yes' if facts['integrated'] else 'no'}",
+        ]
+        if facts["regime"]:
+            lines.append(f"regime        {facts['regime']}")
+        if facts["children"]:
+            lines.append("children")
+            for child in facts["children"]:
+                extra = ""
+                if child.get("residual_status"):
+                    extra = f"  residual={child['residual_status']}"
+                lines.append(
+                    f"  {child['child_id']:<12} {child['role']:<13} "
+                    f"{child['status']}{extra}"
+                )
+        else:
+            lines.append("children      (none)")
+        return lines
+
+    @staticmethod
+    def print_list(root: Path, state: dict[str, Any]) -> None:
+        for line in WaveRoster.format_list(root, state):
+            print(line)
+
+    @staticmethod
+    def print_show(root: Path, state: dict[str, Any], wave: int) -> None:
+        for line in WaveRoster.format_show(root, state, wave):
+            print(line)
 
 
 def fmt_age(seconds: float) -> str:

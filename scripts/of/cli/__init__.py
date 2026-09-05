@@ -42,6 +42,7 @@ from of.cli.ops import (
     cmd_retain,
     cmd_status,
     cmd_validate,
+    cmd_wave,
     cmd_worktree,
     cmd_worktree_add,
     cmd_worktree_list,
@@ -159,6 +160,7 @@ __all__ = [
     "cmd_status",
     "cmd_unpack",
     "cmd_validate",
+    "cmd_wave",
     "cmd_worktree",
     "cmd_worktree_add",
     "cmd_worktree_list",
@@ -303,6 +305,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="continue a capped of fields from this id",
     )
     s.set_defaults(func=cmd_fields)
+
+    s = sub.add_parser(
+        "wave",
+        help="list or show waves; * marks the live state.wave",
+        description=(
+            "Read-only multi-wave roster. Live wave is state.wave. "
+            "No second ledger. status/resume stay one-screen on the live wave."
+        ),
+    )
+    wave_sub = s.add_subparsers(dest="wave_cmd", required=True)
+    wave_sub.add_parser("list", help="roster of wave dirs; * is live")
+    wshow = wave_sub.add_parser(
+        "show",
+        help="one wave: packets, residuals, live? (default: live wave)",
+    )
+    wshow.add_argument(
+        "wave_n",
+        nargs="?",
+        type=int,
+        help="wave number (default: live state.wave)",
+    )
+    s.set_defaults(func=cmd_wave)
 
     s = sub.add_parser("status", help="show field and caps")
     s.set_defaults(func=cmd_status)

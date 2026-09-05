@@ -1,6 +1,6 @@
-# Next path (after 0.7.23)
+# Next path (after 0.7.24)
 
-Contrast one-pager + machine JSON is proven: `of contrast` emits both from one `ContrastReport` document. `recovery/contrast-close-contract` / `recovery/contrast-close-internal` and `ContrastReportRenderer` hold. Packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+`of wave list` / `of wave show` is proven: the live `state.wave` is marked on a multi-wave mission. `recovery/wave-list-show` and `WaveRosterListShow` hold. Contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

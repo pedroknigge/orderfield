@@ -36,6 +36,7 @@ from of.field import (
     FieldSignal,
     PackedAge,
     SkillVersionSkew,
+    WaveRoster,
     apply_field_migrations,
     apply_field_retention,
     drop_field_home,
@@ -794,6 +795,80 @@ def resume_auto_continue_lines(
         "yes",
         "execute printed next this turn; interleaved chats/compaction are not pause",
     ]
+
+
+def _wave_bound_root() -> Path | None:
+    """Bind like status. None means no-ORDER or roster already printed."""
+    from of.field import (
+        ROSTER_EXIT,
+        bound_field_home,
+        list_field_homes,
+        print_field_roster,
+    )
+
+    root = find_root()
+    homes = list_field_homes(root)
+    if bound_field_home() is None and len(homes) > 1:
+        print_field_roster(homes)
+        print("next          PICK --field <id> | of new")
+        raise SystemExit(ROSTER_EXIT)
+    if not order_path(root).exists():
+        print("no ORDER. of init --mission '...'")
+        return None
+    return root
+
+
+def cmd_wave(args: argparse.Namespace) -> None:
+    """Read-only wave roster. Does not mutate ORDER, state, or wave artifacts."""
+    action = getattr(args, "wave_cmd", None)
+    if action == "list":
+        cmd_wave_list(args)
+    elif action == "show":
+        cmd_wave_show(args)
+    else:
+        die("of wave requires list|show")
+
+
+def cmd_wave_list(args: argparse.Namespace) -> None:
+    root = _wave_bound_root()
+    if root is None:
+        return
+    state = load_state(root)
+    WaveRoster.print_list(root, state)
+    print_audit_block(root)
+    emit_event(
+        "wave.list",
+        count=len(WaveRoster.numbers(root, state)),
+        live=WaveRoster.live_wave(state),
+        ok=True,
+    )
+
+
+def cmd_wave_show(args: argparse.Namespace) -> None:
+    root = _wave_bound_root()
+    if root is None:
+        return
+    state = load_state(root)
+    live = WaveRoster.live_wave(state)
+    wave = getattr(args, "wave_n", None)
+    if wave is None:
+        wave = live
+    else:
+        try:
+            wave = int(wave)
+        except (TypeError, ValueError):
+            die("of wave show N needs a positive integer; of wave list")
+    known = WaveRoster.numbers(root, state)
+    if wave not in known:
+        die(f"no wave {wave}; of wave list")
+    WaveRoster.print_show(root, state, wave)
+    print_audit_block(root)
+    emit_event(
+        "wave.show",
+        wave=int(wave),
+        live=int(wave) == int(live),
+        ok=True,
+    )
 
 
 def cmd_fields(args: argparse.Namespace) -> None:
