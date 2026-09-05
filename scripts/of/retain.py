@@ -495,7 +495,7 @@ class OrphanPacked:
     @staticmethod
     def format_line(row: dict[str, Any]) -> str:
         return (
-            f"{OrphanPacked.PRINT_LABEL.ljust(13)}"
+            f"{OrphanPacked.PRINT_LABEL}  "
             f"{row.get('child_id') or '?'}  "
             f"wave={row.get('wave') or '?'}  "
             f"{row.get('reason') or OrphanPacked.LABEL}"
@@ -505,6 +505,17 @@ class OrphanPacked:
     def emit(rows: list[dict[str, Any]]) -> None:
         for row in rows:
             print(OrphanPacked.format_line(row))
+
+    @staticmethod
+    def mark_closed(root: Path) -> None:
+        """Persist spec_closed through WAL. Eval/unittest helper."""
+        from of.field import field_generation, order_path, require_public_schema
+
+        order = load_order(root)
+        order["spec_closed"] = True
+        require_public_schema(order, "order.schema.json", "ORDER")
+        with field_generation(root):
+            dump_json(order_path(root), order)
 
 
 def _plan_home_waves(

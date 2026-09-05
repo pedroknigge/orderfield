@@ -1340,10 +1340,9 @@ def eval_setup_recovery_orphan_packed(root: Path) -> None:
         "ghost",
     )
     EvalInvariantSetup.require_ok(packed, "pack")
-    order_file = root / ".orderfield" / "ORDER.json"
-    data = load_json(order_file)
-    data["spec_closed"] = True
-    order_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    from of.retain import OrphanPacked
+
+    OrphanPacked.mark_closed(root)
 
 
 @_register_eval_fixture("recovery_doctor_one_pass")

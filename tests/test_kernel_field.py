@@ -2214,10 +2214,7 @@ class OrphanPackedCleanup(unittest.TestCase):
 
     @staticmethod
     def _close(tmp: Path) -> None:
-        order_file = tmp / ".orderfield" / "ORDER.json"
-        data = load_json(order_file)
-        data["spec_closed"] = True
-        order_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        of.OrphanPacked.mark_closed(tmp)
 
     @staticmethod
     def _packet(tmp: Path, child_id: str = "ghost") -> Path:
