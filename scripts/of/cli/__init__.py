@@ -82,6 +82,7 @@ from of.cli.spec_cmd import (
     eval_pack_child,
     eval_run_of,
     CloseProof,
+    ContrastReport,
     eval_setup_recovery_active_field_pointer,
     eval_setup_recovery_atomic_close,
     eval_setup_recovery_beacon_amnesia,
@@ -124,6 +125,7 @@ __all__ = [
     "EVAL_FIXTURES",
     "EVAL_UNITTEST_MODULES",
     "CloseProof",
+    "ContrastReport",
     "ISSUE_LABELS",
     "KNOWN_TOOLS",
     "build_parser",
@@ -824,7 +826,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "contrast",
-        help="review gate: SPEC vs delivered coverage; exit 2 while CLOSE BLOCKED",
+        help="review gate: one-pager + JSON; exit 2 while CLOSE BLOCKED",
     )
     s.set_defaults(func=cmd_contrast)
 

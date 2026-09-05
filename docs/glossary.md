@@ -42,7 +42,7 @@ In-flight: a packed child whose residual is missing. Disk is the session. `of re
 
 ## contrast
 
-The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed. `of close` stamps only when contrast is RESOLVED; success writes `spec_closed`, `done_when_closed`, and `CLOSE.json` in one WAL generation. Generic done-when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. Honesty templates (BLOCKED / RESOLVED / soft+reason) and the dual-truth failure: [close-honesty.md](close-honesty.md).
+The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`). One document, two audiences: a human one-pager and machine JSON (`ContrastReport`). `--json` / `OF_JSON=1` repeats those facts on the `contrast` event. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 is **CLOSE BLOCKED**. Slice `done` is not SPEC closed. `of close` stamps only when contrast is RESOLVED; success writes `spec_closed`, `done_when_closed`, and `CLOSE.json` in one WAL generation. Generic done-when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. Honesty templates (BLOCKED / RESOLVED / soft+reason) and the dual-truth failure: [close-honesty.md](close-honesty.md).
 
 ## VERIFIED_CONTRACT vs VERIFIED_INTERNAL
 

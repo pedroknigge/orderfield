@@ -7,7 +7,15 @@
     {
       "run": "contrast",
       "exit": 2,
-      "stdout_contains": ["CLOSE BLOCKED", "DELIVERED"]
+      "stdout_contains": [
+        "CLOSE BLOCKED",
+        "DELIVERED",
+        "ALG-001",
+        "\"id\": \"ALG-001\"",
+        "\"verdict\": \"DELIVERED\"",
+        "\"gate\": \"CLOSE_BLOCKED\"",
+        "\"blocking\": true"
+      ]
     },
     {
       "run": "spec",
@@ -17,7 +25,12 @@
     {
       "run": "contrast",
       "exit": 0,
-      "stdout_contains": ["RESOLVED", "VERIFIED_INTERNAL"]
+      "stdout_contains": [
+        "RESOLVED",
+        "VERIFIED_INTERNAL",
+        "\"gate\": \"RESOLVED\"",
+        "\"verdict\": \"VERIFIED_INTERNAL\""
+      ]
     },
     {
       "run": "close",

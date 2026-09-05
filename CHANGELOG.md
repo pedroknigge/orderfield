@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.23
+
+Contrast report renderer. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.22 notes.
+
+- **Dual-audience close gate:** `of contrast` prints a human one-pager (gate, blocking IDs, Intent vs Delivered rows) and one machine JSON object from the same `ContrastReport` document. `--json` / `OF_JSON=1` `contrast` event carries the same rows / gate / blocking. No new verb. No `CONTRAST.json`. Not a second ledger.
+- **Eval:** `recovery/contrast-close-contract` and `recovery/contrast-close-internal` fail if the human report or machine JSON omits a blocking row. `ContrastReportRenderer` fails if the one-pager drops a blocker or the JSON drifts from the human facts. On `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.23; skill/alias description preview `v0.7.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.22 notes.
+
 ## 0.7.22
 
 In-flight packed-age watchdog. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.21 notes.

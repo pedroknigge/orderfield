@@ -28,7 +28,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `new` | After `of new` | `field`, `ok` |
 | `fields` | After `of fields` | `count`, `open`, `closed`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
-| `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok` |
+| `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON |
 | `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok` |
 | `unpack` | After `of unpack` | `child_id`, `wave`, `ok` |
 | `phase_override` | After audited `of phase --force` | override record fields |

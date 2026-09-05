@@ -21,7 +21,7 @@ If those two columns disagree, the session is lying. Re-run `of contrast`. Read 
 
 ## What the disk is
 
-- **Contrast** prints `CLOSE BLOCKED` (exit 2) or `RESOLVED` (exit 0). Slice `done` is not SPEC closed.
+- **Contrast** prints a human one-pager (`CLOSE BLOCKED` exit 2, or `RESOLVED` exit 0) and one machine JSON object from the same `ContrastReport` document. `--json` / `OF_JSON=1` repeats those facts on the `contrast` event. Slice `done` is not SPEC closed.
 - **`of close`** refuses while the loop is open. Success writes `ORDER.spec_closed`, `ORDER.done_when_closed`, and `CLOSE.json` together (`CloseProof.stamp`).
 - **`CLOSE.json`** is the durable proof: `verdict=RESOLVED`, both flags true, `spec_hash`, `order_id`, `rev`. Same WAL generation as ORDER. A repaired field that already had `spec_closed` still gets the proof (`REPAIRED`).
 

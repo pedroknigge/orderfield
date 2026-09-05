@@ -42,7 +42,6 @@ from of.pack import PACKET_IDENTITY_FIELDS, packet_digest, truncate_slice
 from of.spec import (
     append_amendment,
     append_binding_line,
-    contrast_open,
     contrast_rows,
     decorate_requirement,
     discard_disposable_ingest,
@@ -55,7 +54,9 @@ from of.spec import (
     read_spec_text,
     require_req_id,
     require_spec_intact,
+    requirement_close_ok,
     requirement_counts,
+    requirement_coverage_errors,
     requirement_is_pair,
     requirement_source_cite,
     requirement_surface,
@@ -393,51 +394,166 @@ def cmd_spec_diff(args: argparse.Namespace) -> None:
     raise SystemExit(2)
 
 
-def print_contrast_report(root: Path, order: dict[str, Any]) -> bool:
-    """Print Intent vs Delivered. Return True if the SPEC loop is still open."""
-    spec = spec_path(root)
-    data = load_requirements(root)
-    counts = requirement_counts(data)
-    rows = contrast_rows(root)
-    by_id = {
-        str(item.get("id")): item
-        for item in (data.get("requirements") or [])
-        if isinstance(item, dict)
-    }
-    print("Intent vs Delivered")
-    print()
-    if spec.is_file():
-        digest = sha256_text(read_spec_text(root))
-        print(f"spec        {FIELD_SPEC_MD}  hash={digest[:12]}…")
-    else:
-        print("spec        missing — of init --source-file (verbatim brief)")
-    print(f"intent      {truncate_slice(order.get('mission') or '', 80)}")
-    print()
-    if rows:
-        for verdict, rid, text in rows:
-            cite = requirement_source_cite(by_id.get(rid) or {})
-            extra = f"{cite} " if cite else ""
-            print(f"{verdict:20} {rid:12} {extra}{text[:80]}")
-        print()
-    print(
-        f"coverage: {counts['owned']}/{counts['total']} assigned  "
-        f"verified_contract: {counts['verified_contract']}/{counts['total']}  "
-        f"verified_internal: {counts['verified_internal']}/{counts['total']}"
+class ContrastReport:
+    """One contrast document; human one-pager + machine JSON. No second ledger."""
+
+    NEXT_BLOCKED = (
+        "pack gaps, or of spec --verified-contract ID [--both-sides] "
+        "after exercising the public surface (not only unit tests)"
     )
-    open_loop = contrast_open(root)
-    if not spec.is_file() and counts["total"] == 0:
-        print("CLOSE SKIP (no SPEC; legacy field)")
-        return False
-    if open_loop:
-        print("CLOSE BLOCKED")
-        print(
-            "next: pack gaps, or of spec --verified-contract ID [--both-sides] "
-            "after exercising the public surface (not only unit tests)"
+    NEXT_RESOLVED = "done belongs to the slice; closed belongs to the SPEC (of close)"
+    SKIP_LINE = "CLOSE SKIP (no SPEC; legacy field)"
+
+    @staticmethod
+    def document(root: Path, order: dict[str, Any]) -> dict[str, Any]:
+        spec = spec_path(root)
+        data = load_requirements(root)
+        counts = requirement_counts(data)
+        by_id = {
+            str(item.get("id")): item
+            for item in (data.get("requirements") or [])
+            if isinstance(item, dict)
+        }
+        rows: list[dict[str, Any]] = []
+        for verdict, rid, text in contrast_rows(root):
+            item = by_id.get(rid) or {}
+            rows.append(
+                {
+                    "id": rid,
+                    "verdict": verdict,
+                    "cite": requirement_source_cite(item),
+                    "text": text[:80],
+                    "blocking": not requirement_close_ok(item),
+                }
+            )
+        errors = requirement_coverage_errors(root)
+        spec_ok = spec.is_file()
+        digest = sha256_text(read_spec_text(root)) if spec_ok else ""
+        if not spec_ok and counts["total"] == 0:
+            gate = "CLOSE_SKIP"
+            verdict = "RESOLVED"
+            ok = True
+            nxt = ""
+        elif errors:
+            gate = "CLOSE_BLOCKED"
+            verdict = "OPEN"
+            ok = False
+            nxt = ContrastReport.NEXT_BLOCKED
+        else:
+            gate = "RESOLVED"
+            verdict = "RESOLVED"
+            ok = True
+            nxt = ContrastReport.NEXT_RESOLVED
+        return {
+            "spec": FIELD_SPEC_MD if spec_ok else "",
+            "spec_hash": digest,
+            "intent": truncate_slice(order.get("mission") or "", 80),
+            "gate": gate,
+            "verdict": verdict,
+            "ok": ok,
+            "coverage": counts,
+            "rows": rows,
+            "errors": errors,
+            "next": nxt,
+        }
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        rows = list(doc.get("rows") or [])
+        return {
+            "v": 1,
+            "blocking": [str(r.get("id") or "") for r in rows if r.get("blocking")],
+            "coverage": doc.get("coverage") or {},
+            "errors": list(doc.get("errors") or []),
+            "gate": str(doc.get("gate") or ""),
+            "intent": str(doc.get("intent") or ""),
+            "next": str(doc.get("next") or ""),
+            "ok": bool(doc.get("ok")),
+            "rows": rows,
+            "spec": str(doc.get("spec") or ""),
+            "spec_hash": str(doc.get("spec_hash") or ""),
+            "verdict": str(doc.get("verdict") or ""),
+        }
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        payload = ContrastReport.machine(doc)
+        payload.pop("v", None)
+        return payload
+
+    @staticmethod
+    def human(doc: dict[str, Any]) -> str:
+        lines = ["Intent vs Delivered", ""]
+        digest = str(doc.get("spec_hash") or "")
+        spec = str(doc.get("spec") or "")
+        if spec:
+            lines.append(f"spec        {spec}  hash={digest[:12]}…")
+        else:
+            lines.append("spec        missing — of init --source-file (verbatim brief)")
+        lines.append(f"intent      {doc.get('intent') or ''}")
+        gate = str(doc.get("gate") or "")
+        gate_label = {
+            "CLOSE_BLOCKED": "CLOSE BLOCKED",
+            "CLOSE_SKIP": "CLOSE SKIP",
+            "RESOLVED": "RESOLVED",
+        }.get(gate, gate)
+        lines.append(f"gate        {gate_label}")
+        blocking = [
+            str(r.get("id") or "")
+            for r in (doc.get("rows") or [])
+            if r.get("blocking")
+        ]
+        lines.append(f"blocking    {' '.join(blocking) if blocking else 'none'}")
+        lines.append("")
+        rows = list(doc.get("rows") or [])
+        if rows:
+            for row in rows:
+                cite = str(row.get("cite") or "")
+                extra = f"{cite} " if cite else ""
+                rid = str(row.get("id") or "")
+                verdict = str(row.get("verdict") or "")
+                text = str(row.get("text") or "")
+                lines.append(f"{verdict:20} {rid:12} {extra}{text}")
+            lines.append("")
+        counts = doc.get("coverage") or {}
+        lines.append(
+            f"coverage: {counts.get('owned', 0)}/{counts.get('total', 0)} assigned  "
+            f"verified_contract: {counts.get('verified_contract', 0)}/{counts.get('total', 0)}  "
+            f"verified_internal: {counts.get('verified_internal', 0)}/{counts.get('total', 0)}"
         )
-        return True
-    print("RESOLVED")
-    print("done belongs to the slice; closed belongs to the SPEC (of close)")
-    return False
+        if gate == "CLOSE_SKIP":
+            lines.append(ContrastReport.SKIP_LINE)
+        elif gate == "CLOSE_BLOCKED":
+            lines.append("CLOSE BLOCKED")
+            nxt = str(doc.get("next") or "")
+            if nxt:
+                lines.append(f"next: {nxt}")
+            for err in doc.get("errors") or []:
+                lines.append(f"error       {err}")
+        else:
+            lines.append("RESOLVED")
+            nxt = str(doc.get("next") or "")
+            if nxt:
+                lines.append(nxt)
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def open(doc: dict[str, Any]) -> bool:
+        return str(doc.get("gate") or "") == "CLOSE_BLOCKED"
+
+    @staticmethod
+    def emit(doc: dict[str, Any], *, machine: bool = False) -> bool:
+        print(ContrastReport.human(doc), end="")
+        if machine:
+            print(json.dumps(ContrastReport.machine(doc), sort_keys=True))
+        return ContrastReport.open(doc)
+
+
+def print_contrast_report(
+    root: Path, order: dict[str, Any], *, machine: bool = False
+) -> bool:
+    """Print Intent vs Delivered. Return True if the SPEC loop is still open."""
+    return ContrastReport.emit(ContrastReport.document(root, order), machine=machine)
 
 
 def cmd_contrast(args: argparse.Namespace) -> None:
@@ -445,12 +561,9 @@ def cmd_contrast(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)
-    blocked = print_contrast_report(root, order)
-    emit_event(
-        "contrast",
-        verdict="OPEN" if blocked else "RESOLVED",
-        ok=not blocked,
-    )
+    doc = ContrastReport.document(root, order)
+    blocked = ContrastReport.emit(doc, machine=True)
+    emit_event("contrast", **ContrastReport.event_fields(doc))
     if blocked:
         raise SystemExit(2)
 
@@ -1605,6 +1718,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",
     "tests.test_kernel.PackedAgeWatchdog",
+    "tests.test_kernel.ContrastReportRenderer",
 )
 
 

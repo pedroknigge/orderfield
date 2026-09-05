@@ -17,7 +17,15 @@
     {
       "run": "contrast",
       "exit": 2,
-      "stdout_contains": ["CLOSE BLOCKED", "DELIVERED", "CLI-001"]
+      "stdout_contains": [
+        "CLOSE BLOCKED",
+        "DELIVERED",
+        "CLI-001",
+        "\"id\": \"CLI-001\"",
+        "\"verdict\": \"DELIVERED\"",
+        "\"gate\": \"CLOSE_BLOCKED\"",
+        "\"blocking\": true"
+      ]
     },
     {
       "run": "close",
@@ -32,7 +40,25 @@
     {
       "run": "contrast",
       "exit": 2,
-      "stdout_contains": ["CLOSE BLOCKED", "VERIFIED_INTERNAL", "CLI-001"]
+      "stdout_contains": [
+        "CLOSE BLOCKED",
+        "VERIFIED_INTERNAL",
+        "CLI-001",
+        "\"id\": \"CLI-001\"",
+        "\"verdict\": \"VERIFIED_INTERNAL\"",
+        "\"gate\": \"CLOSE_BLOCKED\""
+      ]
+    },
+    {
+      "run": ["--json", "contrast"],
+      "exit": 2,
+      "stdout_contains": ["CLOSE BLOCKED", "CLI-001", "VERIFIED_INTERNAL"],
+      "stderr_contains": [
+        "\"event\": \"contrast\"",
+        "\"id\": \"CLI-001\"",
+        "\"verdict\": \"VERIFIED_INTERNAL\"",
+        "\"gate\": \"CLOSE_BLOCKED\""
+      ]
     },
     {
       "run": "close",
@@ -47,7 +73,12 @@
     {
       "run": "contrast",
       "exit": 0,
-      "stdout_contains": ["RESOLVED", "VERIFIED_CONTRACT"]
+      "stdout_contains": [
+        "RESOLVED",
+        "VERIFIED_CONTRACT",
+        "\"gate\": \"RESOLVED\"",
+        "\"verdict\": \"VERIFIED_CONTRACT\""
+      ]
     },
     {
       "run": "close",
