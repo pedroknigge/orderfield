@@ -17,7 +17,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.7`
+**Code rev:** VERSION `0.7.8`
 
 ## Summary
 

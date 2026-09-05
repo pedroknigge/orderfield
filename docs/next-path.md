@@ -1,4 +1,4 @@
-# Next path (after 0.7.7)
+# Next path (after 0.7.8)
 
 Close is one stamp. Status names the live field. Done-when has to be checkable.
 
