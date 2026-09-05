@@ -28,6 +28,7 @@ from test_kernel_field import (  # noqa: E402,F401
     PackedAgeWatchdog,
     ResumeAfterProcessDeath,
     ResumeRecoveryBrief,
+    StatusReportJson,
     WaveRosterListShow,
 )
 from test_kernel_fields import RootStubAmbiguous  # noqa: E402,F401

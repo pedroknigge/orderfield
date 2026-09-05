@@ -1834,6 +1834,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ContrastReportRenderer",
     "tests.test_kernel.WaveRosterListShow",
     "tests.test_kernel.RootStubAmbiguous",
+    "tests.test_kernel.StatusReportJson",
 )
 
 

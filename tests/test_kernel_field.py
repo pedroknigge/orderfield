@@ -2459,6 +2459,130 @@ class WaveRosterListShow(unittest.TestCase):
         self.assertNotIn("waves         2", status.stdout)
 
 
+class StatusReportJson(unittest.TestCase):
+    """of status --json is one live-wave document. of eval --kernel."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "status json dashboard",
+            "--phase",
+            "build",
+            "--origin",
+            "cursor",
+            "--session-id",
+            "dash-1",
+        )
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    @staticmethod
+    def _pack(tmp: Path, child_id: str = "worker") -> None:
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "dashboard implementer slice",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+
+    @staticmethod
+    def _load(stdout: str) -> dict:
+        lines = [ln for ln in stdout.splitlines() if ln.strip()]
+        if len(lines) != 1:
+            raise AssertionError(f"expected one JSON object, got {lines!r}")
+        return json.loads(lines[0])
+
+    def test_no_order_is_parseable(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-status-json-empty-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run_of(tmp, "status", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        doc = self._load(proc.stdout)
+        self.assertEqual(doc["kind"], "no_order")
+        self.assertFalse(doc["ok"])
+        self.assertNotIn("runtime", doc)
+        self.assertNotIn("tokens", doc)
+
+    def test_live_wave_document_matches_helpers(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-status-json-live-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        human = run_of(tmp, "status")
+        self.assertEqual(human.returncode, 0, human.stderr)
+        self.assertIn("in_flight   1", human.stdout)
+        self.assertNotIn("{", human.stdout)
+        proc = run_of(tmp, "status", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        cli = self._load(proc.stdout)
+        self.assertEqual(cli["kind"], "status")
+        self.assertTrue(cli["ok"])
+        self.assertEqual(cli["wave"], 1)
+        self.assertEqual(cli["field"], "open")
+        self.assertEqual(cli["in_flight"], 1)
+        self.assertEqual(cli["in_flight_ids"], ["worker"])
+        self.assertFalse(cli["spawn_blocked"])
+        self.assertEqual(cli["packed_age"], [])
+        self.assertIsNone(cli["signal"])
+        self.assertEqual(cli["origin"], {"harness": "cursor", "session_id": "dash-1"})
+        self.assertNotIn("runtime", cli)
+        self.assertNotIn("tokens", cli)
+        self.assertNotIn("waves", cli)
+        live = of.StatusReport.live(tmp)
+        self.assertEqual(of.StatusReport.machine(live), cli)
+        self.assertIn("in_flight   1", human.stdout)
+        self.assertIn(cli["id"], human.stdout)
+
+    def test_packed_age_uses_same_helper(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-status-json-age-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        of.PackedAge.backdate_packet(tmp, "worker", "2018-01-01T00:00:00Z")
+        proc = run_of(tmp, "status", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        cli = self._load(proc.stdout)
+        self.assertEqual(cli["field"], "open")
+        self.assertEqual(len(cli["packed_age"]), 1)
+        self.assertEqual(cli["packed_age"][0]["child_id"], "worker")
+        self.assertGreaterEqual(cli["packed_age"][0]["age_s"], of.PackedAge.SLA_SECONDS)
+        human = run_of(tmp, "status")
+        self.assertIn("packed_age  worker", human.stdout)
+
+    def test_global_json_event_matches_document(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-status-json-event-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        proc = run_of(tmp, "--json", "status")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("in_flight   1", proc.stdout)
+        events = [json.loads(ln) for ln in proc.stderr.splitlines() if ln.strip()]
+        status = next(e for e in events if e.get("event") == "status")
+        live = of.StatusReport.event_fields(of.StatusReport.live(tmp))
+        for key in ("id", "wave", "field", "in_flight", "ok", "kind"):
+            self.assertEqual(status.get(key), live.get(key), key)
+        both = run_of(tmp, "--json", "status", "--json")
+        self.assertEqual(both.returncode, 0, both.stderr)
+        cli = self._load(both.stdout)
+        ev = next(
+            json.loads(ln)
+            for ln in both.stderr.splitlines()
+            if ln.strip() and json.loads(ln).get("event") == "status"
+        )
+        self.assertEqual(ev.get("wave"), cli["wave"])
+        self.assertEqual(ev.get("in_flight_ids"), cli["in_flight_ids"])
+
+
 class DurableMultiDayResume(unittest.TestCase):
     """Later session + stale session.json reconstruct wave 2. of eval --kernel."""
 

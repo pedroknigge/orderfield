@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.27` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.28` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -58,6 +58,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Skill copy, ACTIVE pointer, or stale packs disagree with this checkout / live field | `of doctor` names VERSION / ACTIVE / `packed_age` in one pass | `recovery/doctor-one-pass-skew` |
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave mission; which wave is live is unclear | `of wave list` marks `state.wave`; `of wave show` names live vs prior | `recovery/wave-list-show`; `WaveRosterListShow` |
+| Long-mission dashboard needs machine status | `of status --json` is one live-wave object from `StatusReport` | `recovery/status-json`; `StatusReportJson` |
 | Spawn host dies mid-wave (started-only spawn meta, dead pid leftover, incomplete WAL) | `of resume` reconstructs the live wave (`HOLD`); leftovers do not invent `PACK` / `no ORDER`; `of init` without `--force` dies | `recovery/process-death-resume`; `ResumeAfterProcessDeath` |
 | Adversary residual moves verify→build | `integrate --apply` keeps verify; `escalate_up`; spawn blocked | `recovery/escalate-verify-build` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
@@ -113,6 +114,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | One `of doctor` names leftover ACTIVE stub and aged in-flight pack; skill VERSION skew already on doctor | `recovery/doctor-one-pass-skew`; `DoctorOnePassSkew` |
 | Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave field: `of wave list` marks live `state.wave`; `show` tells live from the prior integrated wave | `recovery/wave-list-show`; `WaveRosterListShow` |
+| Long-mission dashboard: `of status --json` names live wave 2 and in-flight `w2`; not a wave roster | `recovery/status-json`; `StatusReportJson` |
 | Mid-flight `of spec --amend` + `of patch`: next packet carries dated amend + patched constraint; wave-1 packet is not rewritten | `recovery/midflight-amend`; `MidFlightAmend` |
 | Field threshold residual forbids pack/spawn until leader `of patch` + guarded `next-wave`; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten | `recovery/threshold-stop-spawn`; `ThresholdStopSpawn` |
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |
