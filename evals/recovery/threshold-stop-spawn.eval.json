@@ -1,0 +1,101 @@
+{
+  "id": "recovery/threshold-stop-spawn",
+  "description": "Field threshold residual forbids pack/spawn until leader of patch + guarded next-wave; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten",
+  "fixture": "recovery_threshold_stop_spawn",
+  "tags": ["recovery", "long-task", "threshold", "escalate_up", "spawn_blocked", "patch", "next-wave"],
+  "steps": [
+    {
+      "run": "integrate",
+      "args": ["--wave", "1"],
+      "exit": 0,
+      "stdout_contains": ["escalate_up", "field residual"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["spawn_blocked True", "last_regime escalate_up"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "another child after threshold",
+        "--role",
+        "implementer",
+        "--child-id",
+        "after_block",
+        "--owns-path",
+        "app/blocked.py",
+        "--owns-requirement",
+        "W2-001"
+      ],
+      "exit": 1,
+      "stderr_contains": ["spawn forbidden after escalate_up"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "claude",
+        "--packet",
+        ".orderfield/waves/001/packets/w1.json",
+        "--dry-run"
+      ],
+      "exit": 1,
+      "stderr_contains": ["spawn forbidden after escalate_up"]
+    },
+    {
+      "run": "next-wave",
+      "exit": 1,
+      "stderr_contains": ["must exceed blocked_at_order_rev"]
+    },
+    {
+      "run": "patch",
+      "args": [
+        "--constraints-add",
+        "must cover invoicing constraints for the target country"
+      ],
+      "exit": 0,
+      "stdout_contains": ["must cover invoicing constraints for the target country", "rev="]
+    },
+    {
+      "run": "next-wave",
+      "exit": 0,
+      "stdout_contains": ["wave=2"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "Implement app/w2.py after the patched constraint",
+        "--role",
+        "implementer",
+        "--child-id",
+        "w2",
+        "--owns-path",
+        "app/w2.py",
+        "--owns-requirement",
+        "W2-001"
+      ],
+      "exit": 0,
+      "stdout_contains": ["child_id=w2 wave=2"],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/002/packets/w2.json",
+          "contains": [
+            "\"wave\": 2",
+            "must cover invoicing constraints for the target country"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/001/packets/w1.json",
+          "contains": ["\"wave\": 1", "W1-001"],
+          "not_contains": [
+            "must cover invoicing constraints for the target country",
+            "\"wave\": 2"
+          ]
+        }
+      ]
+    }
+  ]
+}

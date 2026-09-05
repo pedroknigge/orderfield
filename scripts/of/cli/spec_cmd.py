@@ -1037,6 +1037,52 @@ def eval_setup_recovery_midflight_amend(root: Path) -> None:
     MidFlightAmendEval.setup(root)
 
 
+class ThresholdStopSpawnEval:
+    """Wave-1 field with a constraints threshold. Eval steps prove the stop-spawn loop."""
+
+    CONSTRAINT = "must cover invoicing constraints for the target country"
+    EVIDENCE = "Target country requires invoicing fields ORDER never named."
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "long-task threshold stop-spawn",
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        for req_id, text in (
+            ("W1-001", "implements the first wave"),
+            ("W2-001", "implements the second wave after the leader patch"),
+        ):
+            added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+            EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        eval_pack_child(
+            root, "w1", "app/w1.py", "W1-001", "Implement app/w1.py"
+        )
+        ThresholdStopSpawnEval.write_threshold(root)
+
+    @staticmethod
+    def write_threshold(root: Path) -> None:
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            "w1",
+            status="threshold",
+            wants=["constraints"],
+            evidence=ThresholdStopSpawnEval.EVIDENCE,
+            patch={"constraints+": [ThresholdStopSpawnEval.CONSTRAINT]},
+            result_text="threshold: field is insufficient\n",
+        )
+
+
+@_register_eval_fixture("recovery_threshold_stop_spawn")
+def eval_setup_recovery_threshold_stop_spawn(root: Path) -> None:
+    ThresholdStopSpawnEval.setup(root)
+
+
 @_register_eval_fixture("recovery_wave_report_quality")
 def eval_setup_recovery_wave_report_quality(root: Path) -> None:
     WaveReportQualityEval.setup(root)
@@ -1398,6 +1444,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
     "tests.test_kernel.WaveReportQualityGate",
+    "tests.test_kernel.ThresholdStopSpawn",
 )
 
 

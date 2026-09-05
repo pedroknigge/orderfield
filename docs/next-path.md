@@ -1,6 +1,6 @@
-# Next path (after 0.7.18)
+# Next path (after 0.7.19)
 
-Packet sizing lint is proven: a whole-phase slogan cannot pack; an 800-char slice still packs with a split/constraints/`of unpack` note. `recovery/packet-sizing-lint` holds. Wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+Threshold stop-spawn is proven: a field residual forbids pack/spawn until leader `of patch` + guarded `of next-wave`. `recovery/threshold-stop-spawn` holds. Packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 
