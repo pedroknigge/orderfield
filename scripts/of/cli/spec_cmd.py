@@ -15,6 +15,7 @@ from of.field import (
     FIELD_SPEC_MD,
     PULSE_STALE_MINUTES,
     FieldSignal,
+    PackedAge,
     die,
     dump_json,
     emit_event,
@@ -1177,6 +1178,32 @@ def eval_setup_recovery_stale_field(root: Path) -> None:
     FieldSignal.backdate_empty(root, "2018-01-01T00:00:00Z")
 
 
+@_register_eval_fixture("recovery_packed_age")
+def eval_setup_recovery_packed_age(root: Path) -> None:
+    """In-flight child older than 7d SLA. Status/resume name it; no unpack."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "aged packed child still in flight",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "forgotten implementer slice",
+        "--role",
+        "implementer",
+        "--child-id",
+        "worker",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    PackedAge.backdate_packet(root, "worker", "2018-01-01T00:00:00Z")
+
+
 class ProcessDeathResume:
     """Spawn-host death leftovers. Resume reconstructs the live wave; no re-init."""
 
@@ -1577,6 +1604,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.WaveReportQualityGate",
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",
+    "tests.test_kernel.PackedAgeWatchdog",
 )
 
 

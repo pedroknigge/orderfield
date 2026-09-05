@@ -38,7 +38,7 @@ The field is insufficient. A residual that names `mission` / `phase` / `constrai
 
 ## parked
 
-In-flight: a packed child whose residual is missing. Disk is the session. `of resume` lists parked children (`parked_reason`, scratch, owners, `agents_note`) and prints `next`. Authority is `state.wave` plus packets/residuals — stale `session.json` does not win. Nonempty scratch + missing residual means continue the same slice, do not restart, do not re-init. A later session of the unique open field auto-continues (`recovery/multi-day-resume`). A dead spawn host is the same disk (`recovery/process-death-resume`).
+In-flight: a packed child whose residual is missing. Disk is the session. `of resume` lists parked children (`parked_reason`, scratch, owners, `agents_note`) and prints `next`. `of status` / `of resume` print `packed_age` when `packed_at` is older than seven days (same window as abandoned; not a daemon). Authority is `state.wave` plus packets/residuals — stale `session.json` does not win. Nonempty scratch + missing residual means continue the same slice, do not restart, do not re-init. A later session of the unique open field auto-continues (`recovery/multi-day-resume`). A dead spawn host is the same disk (`recovery/process-death-resume`).
 
 ## contrast
 

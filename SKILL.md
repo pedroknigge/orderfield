@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.21 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.22 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.21"
+  version: "0.7.22"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -103,7 +103,7 @@ If a field exists, **start here**. Reconstruct in-flight from packets / residual
 
 **Sibling fields.** One working tree may hold several fields (`.orderfield/fields/<id>/`). `of new` opens a sibling without killing the others and writes `.orderfield/ACTIVE` — that is an unrelated epic. Same mission, new constraints / done-when / phase is `of patch` on the bound field. `of fields` lists them (`*` = ACTIVE; open/closed; phase/wave/packed-age; `choose`). `--open` / `--all` / `--cursor` page many homes. Pass `--field <id>` or `OF_FIELD` (that updates ACTIVE). Status/resume follow ACTIVE after origin match; a leftover top-level ORDER stub is ignored when nested homes exist. The kernel never prompts on stdin. If resume prints `PICK --field` (exit 2), **ask the user** which field to attach or whether to `of new`. If `auto_continue no` says **foreign field**, do **not** execute that field's `next` — attach with `--field` or open a sibling. A later session of the **unique** open field is not foreign. Same brief, other agent → attach. Unrelated brief → `of new`. Mid-flight extra ask on the **same** product → `of spec --amend`, not `of new`. Map: [docs/nested-fields.md](docs/nested-fields.md). Close templates: [docs/close-honesty.md](docs/close-honesty.md).
 
-The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
+The brief lists **`completed`** children (residual present: status, `result_ref`, `owns_requirements`, owned-path presence) and **`in_flight`** / **`parked`** children (residual MISSING: `parked_reason`, scratch, owners, owned-path `present`/`missing`, slice, packed age, `agents_note`). `of status` / `of resume` also print `packed_age` when an in-flight `packed_at` is older than the 7-day SLA — a signal, not a daemon. Authority is packets + residuals + disk — not chat memory and not stale `session.json` alone.
 
 Follow the printed **`next`** action with guidance (`HOLD` → continue existing packets; do not repack | `COLLECT` | `NEXT-WAVE` | `PACK` | `PATCH THEN NEXT-WAVE`). When `auto_continue yes`, **do it now** — same turn, no user prompt. `next=HOLD` with in-flight children means **continue those packets** (`of handoff` or `of spawn` on the existing packet, continuation note if scratch is nonempty) — not pack a second child, and not wait forever. `next=NEXT-WAVE` means the wave is over: it was already integrated (`report.json` on disk) or every packet belongs to a dead field — collect would re-walk a closed wave.
 

@@ -34,6 +34,7 @@ from of.field import (
     REDACTED,
     _read_json_object,
     FieldSignal,
+    PackedAge,
     SkillVersionSkew,
     apply_field_migrations,
     apply_field_retention,
@@ -580,6 +581,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
+    PackedAge.emit(flying)
     if flying:
         print("activity    of pulse (child scratch verdict + shared repo context)")
     print(f"last_regime {state.get('last_regime')}")
@@ -902,6 +904,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"auto_continue {ac_label} — {ac_detail}")
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")
+    PackedAge.emit(flying, now=now, key_width=14)
     print_resume_completed(root, completed)
     print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
     if flying:

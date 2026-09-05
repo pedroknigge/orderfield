@@ -2517,6 +2517,86 @@ class FieldSignal:
                 dump_json(session_path(root), session)
 
 
+class PackedAge:
+    """Read-path: in-flight children whose packed_at is older than the SLA.
+
+    Same 7-day window as FieldSignal / SAT-002. Pulse STALE stays activity
+    evidence; this is wall-clock since packed_at. Does not unpack, spawn,
+    watch, or write.
+    """
+
+    LABEL = "packed_age"
+    SLA_SECONDS = FieldSignal.ABANDONED_SECONDS
+    SLA_LABEL = f"{FieldSignal.ABANDONED_SECONDS // 86400}d"
+
+    @staticmethod
+    def age_seconds(packet: dict[str, Any], now: float) -> float | None:
+        ts = parse_utc(packet.get("packed_at"))
+        if ts is None:
+            return None
+        return now - ts
+
+    @staticmethod
+    def overdue(
+        packets: list[dict[str, Any]],
+        *,
+        now: float | None = None,
+        sla_seconds: float | None = None,
+    ) -> list[tuple[str, float]]:
+        clock = now if now is not None else time.time()
+        sla = PackedAge.SLA_SECONDS if sla_seconds is None else sla_seconds
+        out: list[tuple[str, float]] = []
+        for pkt in packets:
+            age = PackedAge.age_seconds(pkt, clock)
+            if age is None or age < sla:
+                continue
+            out.append((str(pkt.get("child_id") or "?"), age))
+        return out
+
+    @staticmethod
+    def format_line(
+        overdue: list[tuple[str, float]],
+        *,
+        key_width: int = 12,
+    ) -> str | None:
+        if not overdue:
+            return None
+        parts = "; ".join(f"{cid} {fmt_age(age)}" for cid, age in overdue)
+        return f"{PackedAge.LABEL.ljust(key_width)}{parts}  (past {PackedAge.SLA_LABEL} SLA)"
+
+    @staticmethod
+    def emit(
+        packets: list[dict[str, Any]],
+        *,
+        now: float | None = None,
+        key_width: int = 12,
+    ) -> None:
+        line = PackedAge.format_line(
+            PackedAge.overdue(packets, now=now), key_width=key_width
+        )
+        if line:
+            print(line)
+
+    @staticmethod
+    def backdate_packet(root: Path, child_id: str, when: str) -> None:
+        """Rewrite packed_at through WAL. Eval/unittest helper."""
+        from of.pack import packet_digest
+
+        state = load_state(root)
+        wave = int(state.get("wave") or 1)
+        path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
+        if not field_is_file(path):
+            die(f"no packet for {child_id}")
+        pkt = load_json(path)
+        if not isinstance(pkt, dict):
+            die(f"invalid packet {path}")
+        pkt["packed_at"] = when
+        pkt["packet_hash"] = packet_digest(pkt)
+        require_public_schema(pkt, "packet.schema.json", "packet")
+        with field_generation(root):
+            dump_json(path, pkt)
+
+
 def fmt_age(seconds: float) -> str:
     s = max(0, int(seconds))
     if s < 60:

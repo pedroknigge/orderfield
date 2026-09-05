@@ -1,0 +1,39 @@
+{
+  "id": "recovery/packed-age-watchdog",
+  "description": "In-flight packed_at older than 7d SLA: status/resume name packed_age; child is not unpacked or closed",
+  "fixture": "recovery_packed_age",
+  "tags": ["recovery", "status", "packed-age"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   1",
+        "packed_age  worker",
+        "past 7d SLA"
+      ],
+      "stdout_not_contains": [
+        "CLOSED",
+        "delivered",
+        "done_when_closed True",
+        "signal      abandoned"
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight     1",
+        "packed_age",
+        "worker",
+        "past 7d SLA",
+        "field         open"
+      ],
+      "stdout_not_contains": [
+        "field         closed",
+        "no ORDER",
+        "signal        abandoned"
+      ]
+    }
+  ]
+}
