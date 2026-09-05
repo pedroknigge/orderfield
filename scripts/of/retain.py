@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from of.field import (
+    ActiveField,
     FieldLockBusy,
     _read_json_object,
     die,
@@ -804,6 +805,14 @@ def drop_field_home(
         print(f"dry-run drop {rel}")
         return rel
     _safe_unlink(home.resolve())
+    if ActiveField.read(root) == fid:
+        try:
+            ActiveField.path(root).unlink()
+        except OSError:
+            pass
+        remain = list_field_homes(root)
+        if len(remain) == 1:
+            ActiveField.write(root, remain[0][0])
     keeps = load_gc_keep(root)
     if fid in keeps:
         keeps.pop(fid, None)

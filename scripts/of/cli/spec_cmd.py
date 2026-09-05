@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -1026,13 +1027,14 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                 rel = str(item.get("path") or "")
                 target = tmp / rel
                 try:
-                    payload = target.read_text(encoding="utf-8")
-                except OSError:
+                    data = load_json(target)
+                except SystemExit:
                     return {
                         "id": eval_id,
                         "status": "failed",
                         "error": f"step {idx}: missing file {rel!r}",
                     }
+                payload = json.dumps(data)
                 for needle in item.get("contains") or []:
                     if str(needle) not in payload:
                         return {

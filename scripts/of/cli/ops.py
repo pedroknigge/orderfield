@@ -825,6 +825,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"home          {home_rel}")
     print(f"rev           {order['rev']}")
     print(f"phase         {order['phase']}")
+    print(f"mission       {order['mission']}")
     print(f"wave          {wave}")
     print(f"last_regime   {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")

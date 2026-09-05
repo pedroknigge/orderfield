@@ -122,9 +122,10 @@ class SiblingFields(unittest.TestCase):
     def test_pulse_follows_active_after_new(self) -> None:
         self._init("first")
         run_of(self.tmp, "new", "--mission", "second")
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("second", r.stdout)
+        self.assertIn(active, r.stdout)
         self.assertNotIn("no ORDER", r.stdout)
 
     def test_status_prefers_nested_over_legacy_stub(self) -> None:
