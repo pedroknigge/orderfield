@@ -233,6 +233,145 @@ class BudgetTokensReserved(unittest.TestCase):
         self.assertTrue(any(e.get("event") == "spawn" for e in events), r.stderr)
 
 
+class BudgetSecondsHonesty(unittest.TestCase):
+    """Long packs honor packet budget.seconds. Not a token ceiling."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-seconds-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "seconds mission", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str, *extra: str) -> str:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "long-running slice",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+            *extra,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return packed.stdout.splitlines()[0].strip()
+
+    def test_long_pack_writes_seconds_uncapped(self) -> None:
+        self._pack("long1", "--seconds", "7200")
+        packet = json.loads(
+            (self.tmp / ".orderfield/waves/001/packets/long1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(packet["budget"]["seconds"], 7200)
+        self.assertEqual(packet["budget"]["tokens"], 0)
+        self.assertNotEqual(packet["budget"]["seconds"], 900)
+
+    def test_spawn_timeout_mismatch_refuses_with_fix_path(self) -> None:
+        pkt = self._pack("long2", "--seconds", "7200")
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            "--timeout",
+            "900",
+            "--dry-run",
+        )
+        self.assertNotEqual(r.returncode, 0)
+        err = r.stderr
+        self.assertIn("budget.seconds", err)
+        self.assertIn("7200", err)
+        self.assertIn("--timeout 900", err)
+        self.assertIn("of unpack", err)
+        self.assertIn("--seconds", err)
+        self.assertIn("budget.seconds", err)
+        self.assertNotIn("80000", err)
+        self.assertNotIn("of: cost:", err)
+
+    def test_spawn_omitted_and_matching_timeout_honor_packet(self) -> None:
+        pkt = self._pack("long3", "--seconds", "7200")
+        omitted = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            "--dry-run",
+        )
+        self.assertEqual(omitted.returncode, 0, omitted.stderr)
+        matched = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            "--timeout",
+            "7200",
+            "--dry-run",
+        )
+        self.assertEqual(matched.returncode, 0, matched.stderr)
+
+    def test_resolve_spawn_is_packet_clock(self) -> None:
+        packet = {"child_id": "c1", "budget": {"tokens": 0, "seconds": 7200}}
+        self.assertEqual(wave_cli.BudgetSeconds.resolve_spawn(packet, None), 7200)
+        self.assertEqual(wave_cli.BudgetSeconds.resolve_spawn(packet, 7200), 7200)
+        with self.assertRaises(SystemExit) as raised:
+            wave_cli.BudgetSeconds.resolve_spawn(packet, 900)
+        self.assertEqual(raised.exception.code, 1)
+
+    def test_pack_seconds_zero_refuses_before_schema(self) -> None:
+        r = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "s",
+            "--role",
+            "explorer",
+            "--child-id",
+            "z0",
+            "--seconds",
+            "0",
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("budget.seconds", r.stderr)
+        self.assertFalse(
+            (self.tmp / ".orderfield/waves/001/packets/z0.json").exists()
+        )
+
+    @unittest.skipUnless(os.name == "posix", "process groups")
+    def test_live_spawn_kills_at_packet_seconds_with_fix_path(self) -> None:
+        pkt = self._pack("kill1", "--seconds", "1")
+        agent = self.tmp / "slow.sh"
+        agent.write_text("#!/bin/sh\nsleep 30\n", encoding="utf-8")
+        agent.chmod(0o755)
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            pkt,
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("timeout child_id=kill1 after 1s", r.stderr)
+        self.assertIn("of unpack", r.stderr)
+        self.assertIn("of pack --seconds", r.stderr)
+        meta = json.loads(
+            (self.tmp / ".orderfield/waves/001/spawns/kill1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(meta["outcome"], "timeout")
+        self.assertEqual(meta["timeout_s"], 1)
+
+
 class JsonStderrContract(unittest.TestCase):
     """JSON-002: --json / OF_JSON stderr is all events; tests reject prose."""
 

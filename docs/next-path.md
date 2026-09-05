@@ -1,8 +1,8 @@
-# Next path (after 0.7.14)
+# Next path (after 0.7.15)
 
-Sibling-field roster UX is on the published line: ACTIVE marker, open/closed counts, packed-age, and epic vs patch `choose`. `recovery/field-roster-ux` holds.
+`budget.seconds` is the spawn wall-clock. `recovery/budget-seconds-honesty` holds. Checkpoint handoff stay-on-run and sibling-field roster UX stay on the published line.
 
-P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`.
+P3 polish (contrast one-pager / in-flight packed-age watchdog / closed-field archive) is still later. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 
 Still later (not this release): Grok Bot contrast stays written — stay-on-the-run + that table. Do not clone a bot org. `RUNTIME_OWNERSHIP` stays reserved. Brief: [external-brief.md](external-brief.md) · Contrast: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org).
 

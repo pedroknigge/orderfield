@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.14`
+**Code rev:** VERSION `0.7.15`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 95 |
+| OK | 96 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 81 |
+| critical | 82 |
 | normal | 19 |
 
-**Truth score (advisory):** `(95*100 + 4*50) / 100 = 97.0` (100 matrix rows; unique IDs C-001…C-100)
+**Truth score (advisory):** `(96*100 + 4*50) / 101 = 97.0` (101 matrix rows; unique IDs C-001…C-101)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -169,6 +169,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-098 | Spawn argv preview keeps the last path segment of `--output-schema` / `-o` and of filesystem tokens ending in `.json` (and kin) so a skill-root path longer than 80 chars still names `residual.codex.schema.json`; long prompts stay `<prompt>`; secret flags stay redacted | CHANGELOG / evals / architecture / kernel feature | `ArgvRedact`; `redact_argv`; `MultiHarnessResidual.test_codex_dry_run_names_schema_on_deep_skill_root`; recovery `multi-harness-residual` | `scripts/of/field.py` / `tests/test_kernel_cli.py` / `evals/recovery/multi-harness-residual.eval.json` | `ArgvRedact` / `redact_argv` | — | critical | OK | 0.7.11 |
 | C-099 | Interrupted multi-day field: `of resume` reconstructs the live wave from `state.wave` + packets/residuals (stale `session.json` does not win; age + in-flight is not `abandoned`); a unique open field auto-continues when `OF_SESSION_ID` differs from `ORDER.origin.session_id`; foreign gate stays when several open fields mismatch; `of init` without `--force` dies | CHANGELOG / evals / SKILL / nested-fields / principles | `resume_auto_continue_lines(open_field_count)`; recovery `multi-day-resume`; `DurableMultiDayResume`; `test_foreign_origin_gate_single_field` / `_stays_when_siblings_open` | `scripts/of/cli/ops.py` / `evals/recovery/multi-day-resume.eval.json` / `tests/test_kernel_field.py` / `tests/test_kernel_fields.py` | `cmd_resume` / `resume_auto_continue_lines` | — | critical | OK | 0.7.12 |
 | C-100 | Sibling roster: `of fields` / PICK roster mark ACTIVE with `*`, print open/closed/phase/wave/packed-age, and a `choose` line (`of new` = unrelated epic; same product = `of patch` / `of spec --amend`); `--open` / `--all` / `--cursor` page many homes; no new ORDER kind | CHANGELOG / evals / nested-fields / glossary / kernel feature | `FieldRoster`; recovery `field-roster-ux`; `SiblingFields` roster tests | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `scripts/of/cli/init_cmd.py` / `evals/recovery/field-roster-ux.eval.json` / `tests/test_kernel_fields.py` | `FieldRoster` / `cmd_fields` / `cmd_new` | — | critical | OK | 0.7.13 |
+| C-101 | Long packs honor `budget.seconds` as the spawn wall-clock: written value is not capped; `of spawn --timeout` must match or be omitted (no silent 900 ceiling); timeout and mismatch name `of unpack` then `of pack --seconds N`; tokens stay reserved | CHANGELOG / SKILL / packet.schema / architecture / evals | `BudgetSeconds`; `cmd_pack` / `cmd_spawn`; recovery `budget-seconds-honesty`; `BudgetSecondsHonesty` | `scripts/of/cli/wave.py` / `evals/recovery/budget-seconds-honesty.eval.json` / `tests/test_budget_tokens.py` | `BudgetSeconds` / `cmd_pack` / `cmd_spawn` | — | critical | OK | 0.7.15 |
 
 ### Verdict definitions
 
@@ -209,6 +210,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-098 0.7.11: ArgvRedact keeps schema basename on a deep skill root
 - [x] C-099 0.7.12: durable multi-day resume; unique-field later session; re-init refuse
 - [x] C-100 0.7.13: sibling FieldRoster ACTIVE marker + packed-age + epic vs patch choose
+- [x] C-101 0.7.15: budget.seconds honesty; spawn --timeout must match or omit
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

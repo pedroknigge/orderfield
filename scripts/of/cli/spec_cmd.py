@@ -911,6 +911,20 @@ def eval_setup_recovery_slogan_evidence(root: Path) -> None:
     )
 
 
+@_register_eval_fixture("recovery_budget_seconds")
+def eval_setup_recovery_budget_seconds(root: Path) -> None:
+    """Empty explore field. Pack/spawn steps prove budget.seconds honesty."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval budget seconds honesty",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+
+
 @_register_eval_fixture("recovery_pack_exclusivity")
 def eval_setup_recovery_pack_exclusivity(root: Path) -> None:
     EvalInvariantSetup.setup_pack_exclusivity(root)

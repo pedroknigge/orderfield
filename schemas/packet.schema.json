@@ -112,7 +112,7 @@
         "seconds": {
           "type": "integer",
           "minimum": 1,
-          "description": "Enforced: wall-clock timeout for the spawned child process."
+          "description": "Enforced: wall-clock timeout for the spawned child process. of spawn --timeout must match this value or be omitted. Not a token ceiling and not a second clock."
         }
       }
     }

@@ -119,6 +119,61 @@ WARNING_MESSAGE_MAX_CHARS = 400
 _EXPECTED_SCRATCH_RMDIR = (errno.ENOTEMPTY, errno.ENOENT, errno.ENOTDIR)
 
 
+class BudgetSeconds:
+    """Packet wall-clock only. Not tokens. Not a second spawn clock."""
+
+    KIND = "budget.seconds"
+    PACK_DEFAULT = 600
+
+    @staticmethod
+    def require(seconds: Any, *, where: str) -> int:
+        try:
+            value = int(seconds)
+        except (TypeError, ValueError):
+            die(
+                f"{where} must be a positive integer wall-clock "
+                f"(got {seconds!r}); of pack --seconds N",
+                kind=BudgetSeconds.KIND,
+            )
+        if value < 1:
+            die(
+                f"{where} must be >= 1 wall-clock seconds (got {value}); "
+                "of pack --seconds N",
+                kind=BudgetSeconds.KIND,
+            )
+        return value
+
+    @staticmethod
+    def from_packet(packet: dict[str, Any]) -> int:
+        budget = packet.get("budget") if isinstance(packet.get("budget"), dict) else {}
+        return BudgetSeconds.require(budget.get("seconds"), where="packet budget.seconds")
+
+    @staticmethod
+    def resolve_spawn(packet: dict[str, Any], timeout_arg: Any) -> int:
+        """Honor packet.budget.seconds. --timeout must match or be omitted."""
+        seconds = BudgetSeconds.from_packet(packet)
+        if timeout_arg is None:
+            return seconds
+        timeout = BudgetSeconds.require(timeout_arg, where="of spawn --timeout")
+        if timeout != seconds:
+            child = packet.get("child_id") or "?"
+            die(
+                f"budget.seconds is {seconds}s (packet wall-clock) but "
+                f"--timeout {timeout} disagrees; omit --timeout, or of unpack "
+                f"--child-id {child} then of pack --seconds {timeout}",
+                kind=BudgetSeconds.KIND,
+            )
+        return seconds
+
+    @staticmethod
+    def timeout_fail_message(child_id: str, timeout_s: int, log_path: Path) -> str:
+        return (
+            f"timeout child_id={child_id} after {timeout_s}s log={log_path}. "
+            f"budget.seconds is the spawn wall-clock; of unpack "
+            f"--child-id {child_id} then of pack --seconds N to raise it"
+        )
+
+
 def refuse_nonzero_tokens(tokens: int) -> None:
     if int(tokens) != 0:
         die(TOKENS_RESERVED_MSG, kind="reserved")
@@ -260,6 +315,9 @@ def cmd_pack(args: argparse.Namespace) -> None:
         )
     tokens = int(getattr(args, "tokens", 0) or 0)
     refuse_nonzero_tokens(tokens)
+    seconds = BudgetSeconds.require(
+        getattr(args, "seconds", None), where="of pack --seconds"
+    )
     if args.allow_nested and int(order["caps"].get("max_depth", 1)) < 2:
         die("allow_nested exceeds ORDER caps.max_depth")
     wave = args.wave or state["wave"]
@@ -391,7 +449,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "requires_tool": requires_tool,
         "budget": {
             "tokens": 0,
-            "seconds": args.seconds,
+            "seconds": seconds,
         },
     }
     if order.get("spec_ref"):
@@ -627,6 +685,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             "or use --force-tool to acknowledge the capability override"
         )
     refuse_nonzero_tokens(int((packet.get("budget") or {}).get("tokens") or 0))
+    timeout_s = BudgetSeconds.resolve_spawn(packet, getattr(args, "timeout", None))
     print_cost_disclaimer()
     ensure_field_slave_md(root)
     prompt = render_prompt(
@@ -732,7 +791,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
         die(message)
 
-    timeout_s = packet.get("budget", {}).get("seconds") or args.timeout
     # The child gets the field binding explicitly: bind_active_field only
     # reads OF_FIELD, so a sibling-field child running `of spec ...` would
     # otherwise hit the roster and exit 2.
@@ -748,7 +806,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         write_log(exc.stdout, exc.stderr)
         fail(
             "timeout",
-            f"timeout child_id={child_id} after {timeout_s}s log={log_path}",
+            BudgetSeconds.timeout_fail_message(child_id, int(timeout_s), log_path),
             timeout_s=timeout_s,
             residual_present=residual_abs.exists(),
         )
