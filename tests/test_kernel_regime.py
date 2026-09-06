@@ -443,18 +443,68 @@ class ResidualSchemaContracts(unittest.TestCase):
                 assert_draft_2020_12_valid(self, schema, residual)
                 self.assertEqual(of.validate_residual(residual), [])
 
+    def test_optional_document_v_is_ignored(self) -> None:
+        schema = load_json(RESIDUAL_SCHEMA)
+        residual = load_json(DONE)
+        self.assertNotIn("v", residual)
+        self.assertEqual(of.validate_residual(residual), [])
+        with_v = json.loads(json.dumps(residual))
+        with_v["v"] = 1
+        self.assertEqual(of.validate_residual(with_v), [])
+        assert_draft_2020_12_valid(self, schema, with_v)
+        extra = json.loads(json.dumps(with_v))
+        extra["unexpected"] = True
+        errs = of.validate_residual(extra)
+        self.assertTrue(errs)
+        self.assertTrue(any("unexpected properties" in err for err in errs), errs)
+
+    def test_collect_accepts_residual_with_document_v(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-res-v-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "accept optional residual v",
+            "--role",
+            "explorer",
+            "--child-id",
+            "vchild",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        dest = write_bound_residual(tmp, "vchild")
+        residual = load_json(dest)
+        residual["v"] = 1
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        output = collected.stdout + collected.stderr
+        self.assertNotIn("unexpected properties", output)
+        self.assertNotIn("INVALID", output)
+
     def test_codex_schema_preserves_nullable_optional_values(self) -> None:
         schema = load_json(CODEX_RESIDUAL_SCHEMA)
         done = load_json(DONE)
         for key in of.PACKET_IDENTITY_FIELDS:
             done[key] = None
         done["usage"] = None
+        done["v"] = None
         assert_draft_2020_12_valid(self, schema, done)
 
         threshold = load_json(THRESHOLD)
         for key in of.PACKET_IDENTITY_FIELDS:
             threshold[key] = None
         threshold["usage"] = None
+        threshold["v"] = None
         threshold["residual"]["proposed_patch"].update(
             {
                 "done_when+": None,

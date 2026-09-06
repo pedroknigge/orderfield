@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.55
+
+Residual schema accepts optional top-level `v`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.54 notes.
+
+- **Silent compatibility:** `schemas/residual.schema.json` lists optional top-level `v` (integer). Kernel `--json` reports already emit `"v": 1`; children that mirror that document are no longer `INVALID … unexpected properties: ['v']`. The kernel does not read residual `v`. Residuals without `v` stay valid. Other unexpected keys still fail. Codex `residual.codex.schema.json` stays the strict derivative.
+- **Child contract:** `SLAVE.md` names optional `v` as ignored. No new collect procedure. Reports still emit `v`.
+- **Proof:** `ResidualSchemaContracts.test_optional_document_v_is_ignored` and `test_collect_accepts_residual_with_document_v`. No new CLI.
+- Packaging: VERSION 0.7.55; skill/alias description preview `v0.7.55 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.54 notes.
+
 ## 0.7.54
 
 Quoted skill YAML so agy / npx skills discover orderfield. Shared Gemini dest. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.53 notes.
