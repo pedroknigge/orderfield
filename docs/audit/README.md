@@ -16,6 +16,6 @@ A cut, a resume, a different model — code still wins. The results do not have 
 | [recovery-test-b-beacon.md](recovery-test-b-beacon.md) | Test B — leader amnesia sim (0.5.4) → clean |
 | [recovery-test-c-harness-kill.md](recovery-test-c-harness-kill.md) | Test C — real process kill (optional harness QA) |
 
-Uniqueness gate: `python3 docs/audit/check-claims.py` (duplicate C-IDs fail). Test C stays optional harness QA, not kernel CI.
+Honesty gate: `python3 docs/audit/check-claims.py` (duplicate C-IDs fail; advertised truth score matches the table and stays ≤98%; critical Contradicted fails; marketing theater on SKILL / `/of` / README fails). Wired into `validate-skill.sh`. Test C stays optional harness QA, not kernel CI.
 
 **Recovery line (0.5.4):** complete. Test A motivated the recovery brief; Test B validated it. Test C documents optional harness-level kill/restart QA (not kernel CI).

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.49 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.50 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.49"
+  version: "0.7.50"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -37,6 +37,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
+| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; advertised truth score matches the matrix and stays ≤98%; no marketing theater on SKILL / `/of` / README. Also inside `validate-skill.sh` |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — RFC: contrast RESOLVED + residual empty + `CLOSE.json`. Residual empty is not the close |
 | child says the field is wrong | `of patch …` then `of next-wave` |
