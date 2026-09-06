@@ -1,0 +1,141 @@
+{
+  "id": "recovery/multi-wave-residual",
+  "description": "Three-wave residual loop: collect/integrate waves 1-2, mid-flight amend lands on waves 2-3, wave-1 packet is not rewritten, wave 3 stays in-flight",
+  "fixture": "recovery_multi_wave_residual",
+  "tags": ["recovery", "long-task", "residual", "amend", "multi-wave"],
+  "steps": [
+    {
+      "run": "wave",
+      "args": ["list"],
+      "exit": 0,
+      "stdout_contains": [
+        "waves         3  live 3",
+        "integrated",
+        "* in-flight",
+        "live          3"
+      ],
+      "stdout_not_contains": [
+        "live          1",
+        "live          2"
+      ]
+    },
+    {
+      "run": "wave",
+      "args": ["show", "1"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          1",
+        "live          no",
+        "integrated    yes",
+        "w1",
+        "residual=done"
+      ],
+      "stdout_not_contains": ["live          yes"]
+    },
+    {
+      "run": "wave",
+      "args": ["show", "2"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          2",
+        "live          no",
+        "integrated    yes",
+        "w2",
+        "residual=done"
+      ],
+      "stdout_not_contains": ["live          yes"]
+    },
+    {
+      "run": "wave",
+      "args": ["show"],
+      "exit": 0,
+      "stdout_contains": [
+        "wave          3",
+        "live          yes",
+        "in-flight",
+        "w3"
+      ],
+      "stdout_not_contains": [
+        "live          no",
+        "integrated    yes"
+      ]
+    },
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0,
+      "stdout_contains": ["OK", "w1", "wave=1 ok=1"]
+    },
+    {
+      "run": "collect",
+      "args": ["--wave", "2"],
+      "exit": 0,
+      "stdout_contains": ["OK", "w2", "wave=2 ok=1"]
+    },
+    {
+      "run": "collect",
+      "args": ["--wave", "3"],
+      "exit": 2,
+      "stdout_contains": ["MISSING w3"]
+    },
+    {
+      "run": "next-wave",
+      "exit": 1,
+      "stderr_contains": ["children still in flight"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["field         open"],
+      "stdout_not_contains": ["field         closed"],
+      "file_contains": [
+        {
+          "path": ".orderfield/SPEC.md",
+          "contains": [
+            "Long-task multi-wave residual loop",
+            "W1-001 implements the first wave",
+            "## Amendment 1 —",
+            "persist log dated on each write"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/001/packets/w1.json",
+          "contains": ["\"wave\": 1", "W1-001"],
+          "not_contains": [
+            "residual loop next packet must carry the dated amend",
+            "\"wave\": 2",
+            "\"wave\": 3"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/002/packets/w2.json",
+          "contains": [
+            "\"wave\": 2",
+            "W2-001",
+            "residual loop next packet must carry the dated amend",
+            "\"spec_ref\": \".orderfield/SPEC.md\"",
+            "\"reads_spec\": true"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/003/packets/w3.json",
+          "contains": [
+            "\"wave\": 3",
+            "W3-001",
+            "residual loop next packet must carry the dated amend"
+          ]
+        },
+        {
+          "path": ".orderfield/waves/001/report.json",
+          "contains": ["\"wave\": 1", "\"regime\": \"hold\""],
+          "not_contains": ["escalate_up"]
+        },
+        {
+          "path": ".orderfield/waves/002/report.json",
+          "contains": ["\"wave\": 2", "\"regime\": \"hold\""],
+          "not_contains": ["escalate_up"]
+        }
+      ]
+    }
+  ]
+}

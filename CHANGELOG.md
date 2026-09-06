@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.29
+
+Multi-wave residual-loop eval corpus. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.28 notes.
+
+- **Three waves are a loop, not a pair:** a residual-loop fixture walks pack → structured residual → collect → integrate → next-wave across three waves. Mid-flight `of spec --amend` + `of patch` after wave 1 lands on the wave-2 and wave-3 packets (`spec_hash` / `spec_ref` + dated `## Amendment 1 —`). Wave-1 packet is not rewritten. Wave 3 stays in-flight: collect is `MISSING`, `next-wave` dies on children still in flight. No new CLI verb. No new ORDER field. Not a process supervisor.
+- **Eval:** `recovery/multi-wave-residual` fails if wave list hides wave 3, if wave 1/2 lack structured reports, if the dated amend or patched constraint miss later packets, or if the prior packet is silently rewritten. `MultiWaveResidualLoop` is on `of eval --strict --kernel`. Existing `recovery/midflight-amend` stays the two-wave packed-child amend proof.
+- Packaging: VERSION 0.7.29; skill/alias description preview `v0.7.29 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.28 notes.
+
 ## 0.7.28
 
 `of status --json` machine path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.27 notes.

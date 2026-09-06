@@ -1152,6 +1152,97 @@ def eval_setup_recovery_midflight_amend(root: Path) -> None:
     MidFlightAmendEval.setup(root)
 
 
+class MultiWaveResidualEval:
+    """Three-wave residual loop with mid-flight amend. Not a second engine."""
+
+    ORIGINAL = (
+        "Long-task multi-wave residual loop.\n"
+        "W1-001 implements the first wave.\n"
+        "W2-001 implements the second wave after the dated amend.\n"
+        "W3-001 implements the third wave after the dated amend.\n"
+    )
+    AMEND = (
+        "Keep the original brief. Also require a persist log dated on each write."
+    )
+    CONSTRAINT = "residual loop next packet must carry the dated amend"
+    MISSION = "long-task multi-wave residual loop"
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        brief = root / "brief.md"
+        brief.write_text(MultiWaveResidualEval.ORIGINAL, encoding="utf-8")
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            MultiWaveResidualEval.MISSION,
+            "--phase",
+            "build",
+            "--source-file",
+            str(brief),
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        for req_id, text in (
+            ("W1-001", "implements the first wave"),
+            ("W2-001", "implements the second wave after the dated amend"),
+            ("W3-001", "implements the third wave after the dated amend"),
+        ):
+            added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+            EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        eval_pack_child(
+            root, "w1", "app/w1.py", "W1-001", "Implement app/w1.py"
+        )
+        MultiWaveResidualEval.close_child(
+            root, "w1", 1, "wave-1 structured residual names W1-001"
+        )
+        nxt = eval_run_of(root, "next-wave")
+        EvalInvariantSetup.require_ok(nxt, "next-wave 1")
+        amended = eval_run_of(root, "spec", "--amend", MultiWaveResidualEval.AMEND)
+        EvalInvariantSetup.require_ok(amended, "spec amend")
+        patched = eval_run_of(
+            root, "patch", "--constraints-add", MultiWaveResidualEval.CONSTRAINT
+        )
+        EvalInvariantSetup.require_ok(patched, "patch constraint")
+        eval_pack_child(
+            root,
+            "w2",
+            "app/w2.py",
+            "W2-001",
+            "Implement app/w2.py after the dated amend",
+        )
+        MultiWaveResidualEval.close_child(
+            root, "w2", 2, "wave-2 structured residual names W2-001"
+        )
+        nxt2 = eval_run_of(root, "next-wave")
+        EvalInvariantSetup.require_ok(nxt2, "next-wave 2")
+        eval_pack_child(
+            root,
+            "w3",
+            "app/w3.py",
+            "W3-001",
+            "Implement app/w3.py after the dated amend",
+        )
+
+    @staticmethod
+    def close_child(root: Path, child_id: str, wave: int, evidence: str) -> None:
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            child_id,
+            wave=wave,
+            evidence=evidence,
+            result_text=f"{child_id} structured result\n",
+        )
+        collected = eval_run_of(root, "collect", "--wave", str(wave))
+        EvalInvariantSetup.require_ok(collected, f"collect {child_id}")
+        integrated = eval_run_of(root, "integrate", "--wave", str(wave))
+        EvalInvariantSetup.require_ok(integrated, f"integrate {child_id}")
+
+
+@_register_eval_fixture("recovery_multi_wave_residual")
+def eval_setup_recovery_multi_wave_residual(root: Path) -> None:
+    MultiWaveResidualEval.setup(root)
+
+
 class ThresholdStopSpawnEval:
     """Wave-1 field with a constraints threshold. Eval steps prove the stop-spawn loop."""
 
@@ -1835,6 +1926,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.WaveRosterListShow",
     "tests.test_kernel.RootStubAmbiguous",
     "tests.test_kernel.StatusReportJson",
+    "tests.test_kernel.MultiWaveResidualLoop",
 )
 
 

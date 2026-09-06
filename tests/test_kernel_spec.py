@@ -972,6 +972,73 @@ class MidFlightAmend(unittest.TestCase):
         )
 
 
+class MultiWaveResidualLoop(unittest.TestCase):
+    """3-wave residual loop + mid-flight amend. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-residual-loop-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_multi_wave_residual(self.tmp)
+
+    def test_three_waves_carry_amend_and_refuse_incomplete_advance(self) -> None:
+        loop = of.MultiWaveResidualEval
+        spec_text = (self.tmp / ".orderfield" / "SPEC.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(loop.ORIGINAL.strip().splitlines()[0], spec_text)
+        self.assertRegex(
+            spec_text,
+            r"(?m)^## Amendment 1 — \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
+            spec_text,
+        )
+        self.assertIn(loop.AMEND, spec_text)
+        w1 = load_json(packet_path(self.tmp, "w1", 1))
+        w2 = load_json(packet_path(self.tmp, "w2", 2))
+        w3 = load_json(packet_path(self.tmp, "w3", 3))
+        live = of.spec_bytes_hash(self.tmp)
+        self.assertEqual(w2.get("spec_hash"), live)
+        self.assertEqual(w3.get("spec_hash"), live)
+        self.assertEqual(w2.get("spec_ref"), ".orderfield/SPEC.md")
+        self.assertEqual(w3.get("spec_ref"), ".orderfield/SPEC.md")
+        self.assertEqual(w1.get("wave"), 1)
+        self.assertEqual(w2.get("wave"), 2)
+        self.assertEqual(w3.get("wave"), 3)
+        self.assertIn(loop.CONSTRAINT, w2.get("order", {}).get("constraints") or [])
+        self.assertIn(loop.CONSTRAINT, w3.get("order", {}).get("constraints") or [])
+        self.assertNotIn(
+            loop.CONSTRAINT, w1.get("order", {}).get("constraints") or []
+        )
+        self.assertNotEqual(w1.get("spec_hash"), w2.get("spec_hash"))
+        self.assertLess(int(w1.get("order_rev") or 0), int(w2.get("order_rev") or 0))
+        self.assertEqual(w2.get("spec_hash"), w3.get("spec_hash"))
+
+        r1 = load_json(self.tmp / ".orderfield" / "waves" / "001" / "report.json")
+        r2 = load_json(self.tmp / ".orderfield" / "waves" / "002" / "report.json")
+        self.assertEqual(r1.get("wave"), 1)
+        self.assertEqual(r2.get("wave"), 2)
+        self.assertEqual(r1.get("regime"), "hold")
+        self.assertEqual(r2.get("regime"), "hold")
+        self.assertNotEqual(r1.get("regime"), "escalate_up")
+        self.assertFalse((self.tmp / ".orderfield" / "waves" / "003" / "report.json").is_file())
+
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(int(state.get("wave") or 0), 3)
+        history = state.get("integration_history") or []
+        waves = {int(item.get("wave")) for item in history if isinstance(item, dict)}
+        self.assertEqual(waves, {1, 2})
+
+        collected = run_of(self.tmp, "collect", "--wave", "3")
+        self.assertEqual(collected.returncode, 2, collected.stdout + collected.stderr)
+        self.assertIn("MISSING w3", collected.stdout)
+        blocked = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(blocked.returncode, 0, blocked.stdout + blocked.stderr)
+        self.assertIn("children still in flight", blocked.stderr)
+        listed = run_of(self.tmp, "wave", "list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("waves         3  live 3", listed.stdout)
+        self.assertIn("* in-flight", listed.stdout)
+
+
 class ContrastReportRenderer(unittest.TestCase):
     """Human one-pager and machine JSON are one document. of eval --kernel."""
 
