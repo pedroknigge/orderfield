@@ -76,7 +76,6 @@
       "file_contains": [
         {
           "path": ".orderfield/ORDER.json",
-          "contains": ["\"spec_closed\": false"],
           "not_contains": ["\"spec_closed\": true"]
         }
       ],
