@@ -145,8 +145,9 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.51 README use-case opening (problem → feature; Haken analogy below; `ReadmeProductSurface`) | documented |
 | 0.7.52 README Mid-flight H2 before Install (three kinds of change + sibling fields; `ReadmeProductSurface`) | documented |
 | 0.7.53 skill-first cheap vs frontier propose (`SkillLeaderInitiative`; consent + 0.7.47/0.7.48; no new router) | documented |
+| 0.7.54 quoted skill YAML + Shared `~/.gemini/skills` agy dest (`SkillFrontmatterQuotedGate`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
 
-Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/config/skills/orderfield/`, `~/.gemini/antigravity-cli/skills/orderfield/`, or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.
+Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/antigravity-cli/skills/orderfield/` (agy Global), `~/.gemini/skills/orderfield/` (agy Shared), `~/.gemini/config/skills/orderfield/` (optional legacy), or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

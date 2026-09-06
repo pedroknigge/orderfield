@@ -61,7 +61,7 @@ class PythonFloorTest(unittest.TestCase):
         for name in ("README.md", "SKILL.md", "DEPENDENCIES.md", "docs/architecture.md"):
             with self.subTest(surface=name):
                 self.assertIn(f"Python {FLOOR_TEXT}+", read(name))
-        self.assertIn(f"compatibility: Requires Python {FLOOR_TEXT}+.", read("SKILL.md"))
+        self.assertIn(f'compatibility: "Requires Python {FLOOR_TEXT}+.', read("SKILL.md"))
 
     def test_no_surface_advertises_an_eol_floor(self) -> None:
         for name, path in SURFACES.items():

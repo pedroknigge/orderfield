@@ -188,7 +188,24 @@ class InstallScript(unittest.TestCase):
                 tmp / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md"
             ).is_file()
         )
+        self.assertTrue(
+            (tmp / ".gemini" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertFalse((tmp / ".agy").exists())
+
+    def test_gemini_home_gets_shared_agy_skill(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-agy-shared-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".gemini").mkdir(parents=True)
+        proc = run(tmp, "bash", str(INSTALL), str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(
+            (tmp / ".gemini" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
+        self.assertTrue((tmp / ".gemini" / "skills" / "of" / "SKILL.md").is_file())
+        self.assertFalse((tmp / ".gemini" / "antigravity-cli" / "skills").exists())
+        self.assertFalse((tmp / ".gemini" / "config" / "skills").exists())
         self.assertFalse((tmp / ".agy").exists())
 
     def test_generic_only_skips_gemini_agy_dests(self) -> None:
@@ -201,6 +218,7 @@ class InstallScript(unittest.TestCase):
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertFalse((tmp / ".gemini" / "config" / "skills").exists())
         self.assertFalse((tmp / ".gemini" / "antigravity-cli" / "skills").exists())
+        self.assertFalse((tmp / ".gemini" / "skills" / "orderfield").exists())
         self.assertFalse((tmp / ".agy").exists())
 
     def test_global_agy_on_path_creates_gemini_dests_not_dot_agy(self) -> None:
@@ -217,14 +235,18 @@ class InstallScript(unittest.TestCase):
         }
         proc = run(tmp, "bash", str(INSTALL), "--global", env=env)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        self.assertTrue(
-            (tmp / ".gemini" / "config" / "skills" / "orderfield" / "SKILL.md").is_file()
+        self.assertFalse(
+            (tmp / ".gemini" / "config" / "skills" / "orderfield").exists()
         )
         self.assertTrue(
             (
                 tmp / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md"
             ).is_file()
         )
+        self.assertTrue(
+            (tmp / ".gemini" / "skills" / "orderfield" / "SKILL.md").is_file()
+        )
+        self.assertTrue((tmp / ".gemini" / "skills" / "of" / "SKILL.md").is_file())
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertFalse((tmp / ".agy").exists())
         dest_of = tmp / ".agents" / "skills" / "orderfield" / "scripts" / "of.py"
@@ -263,6 +285,7 @@ class InstallScript(unittest.TestCase):
         src = INSTALL.read_text(encoding="utf-8")
         self.assertIn(".gemini/config/skills", src)
         self.assertIn(".gemini/antigravity-cli/skills", src)
+        self.assertIn(".gemini/skills", src)
         self.assertNotIn("/.agy/", src)
         self.assertNotRegex(src, r"\$base/\.agy")
         harnesses = src.split("KNOWN_HARNESSES=", 1)[1].split(")", 1)[0]
@@ -697,11 +720,136 @@ class SkillLeaderInitiative(unittest.TestCase):
         self.assertIn("confirm", hero.casefold())
 
 
+class SkillFrontmatterQuoted:
+    """Strict YAML-ish frontmatter load. description/compatibility must be quoted."""
+
+    MUST_QUOTE = ("description", "compatibility")
+
+    @staticmethod
+    def block(text: str) -> str:
+        if not text.startswith("---\n"):
+            raise ValueError("missing opening ---")
+        end = text.find("\n---\n", 4)
+        if end < 0:
+            raise ValueError("missing closing ---")
+        return text[4:end]
+
+    @staticmethod
+    def unescape_dq(inner: str) -> str:
+        out: list[str] = []
+        esc = False
+        for ch in inner:
+            if esc:
+                mapping = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}
+                if ch not in mapping:
+                    raise ValueError(f"unknown escape \\{ch}")
+                out.append(mapping[ch])
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                raise ValueError("unescaped quote in double-quoted scalar")
+            else:
+                out.append(ch)
+        if esc:
+            raise ValueError("dangling escape")
+        return "".join(out)
+
+    @classmethod
+    def parse_value(cls, key: str, raw: str) -> object:
+        raw = raw.strip()
+        if raw == "":
+            return {}
+        if raw.startswith('"'):
+            if len(raw) < 2 or not raw.endswith('"'):
+                raise ValueError(f"{key}: unclosed double quote")
+            return cls.unescape_dq(raw[1:-1])
+        if key in cls.MUST_QUOTE:
+            raise ValueError(f"{key} must be double-quoted")
+        if ":" in raw or "—" in raw:
+            raise ValueError(f"{key}: unquoted scalar contains : or em dash")
+        return raw
+
+    @classmethod
+    def load(cls, text: str) -> dict:
+        data: dict = {}
+        nest: dict | None = None
+        for line in cls.block(text).splitlines():
+            if not line.strip():
+                continue
+            if line.startswith("  ") and nest is not None:
+                if ":" not in line:
+                    raise ValueError(f"bad nested line: {line}")
+                key, _, rest = line.strip().partition(":")
+                nest[key] = cls.parse_value(key, rest)
+                continue
+            nest = None
+            if ":" not in line or line.startswith(" "):
+                raise ValueError(f"bad line: {line}")
+            key, _, rest = line.partition(":")
+            val = rest.strip()
+            if val == "":
+                nest = {}
+                data[key] = nest
+                continue
+            data[key] = cls.parse_value(key, rest)
+        return data
+
+
 class VersionedDescription(unittest.TestCase):
     def test_description_preview_starts_with_version(self) -> None:
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn(f"description: v{ver} —", skill)
+        self.assertIn(f'description: "v{ver} —', skill)
+
+
+class SkillFrontmatterQuotedGate(unittest.TestCase):
+    """Unquoted em dash / colons skip the skill in agy. Quoted form must load."""
+
+    def test_live_skills_strict_load(self) -> None:
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        for rel in ("SKILL.md", "of/SKILL.md"):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            data = SkillFrontmatterQuoted.load(text)
+            self.assertIsInstance(data["description"], str, rel)
+            self.assertTrue(data["description"].startswith(f"v{ver} —"), rel)
+            self.assertIn("—", data["description"], rel)
+            if rel == "SKILL.md":
+                self.assertIn("compatibility", data)
+                self.assertIsInstance(data["compatibility"], str)
+                self.assertIn("3.11", data["compatibility"])
+            meta = data.get("metadata")
+            self.assertIsInstance(meta, dict, rel)
+            self.assertEqual(meta.get("version"), ver, rel)
+
+    def test_unquoted_emdash_colon_description_refused(self) -> None:
+        bad = (
+            "---\n"
+            "name: orderfield\n"
+            "description: v0.7.54 — Gaps as prose: of contrast --diff.\n"
+            "compatibility: Requires Python 3.11+.\n"
+            "---\n# body\n"
+        )
+        with self.assertRaises(ValueError) as ctx:
+            SkillFrontmatterQuoted.load(bad)
+        self.assertIn("must be double-quoted", str(ctx.exception))
+
+    def test_quoted_colon_emdash_round_trip(self) -> None:
+        good = (
+            '---\n'
+            'name: orderfield\n'
+            'description: "v0.7.54 — Gaps as prose: of contrast --diff."\n'
+            'compatibility: "Requires Python 3.11+."\n'
+            'metadata:\n'
+            '  version: "0.7.54"\n'
+            '---\n# body\n'
+        )
+        data = SkillFrontmatterQuoted.load(good)
+        self.assertEqual(
+            data["description"], "v0.7.54 — Gaps as prose: of contrast --diff."
+        )
+        self.assertEqual(data["compatibility"], "Requires Python 3.11+.")
+        self.assertEqual(data["metadata"]["version"], "0.7.54")
 
 
 class RepositoryAliasSkill(unittest.TestCase):
@@ -719,7 +867,7 @@ class RepositoryAliasSkill(unittest.TestCase):
         body = alias.read_text(encoding="utf-8")
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertIn("name: of", body)
-        self.assertIn(f"description: v{ver} —", body)
+        self.assertIn(f'description: "v{ver} —', body)
         self.assertIn("alias-of: orderfield", body)
         self.assertIn("../orderfield/SKILL.md", body)
         self.assertEqual(body, (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8"))

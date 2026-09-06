@@ -253,7 +253,7 @@ agy --output-format json \
 `--dangerously-skip-permissions --mode accept-edits`. `of spawn --adapter agy`
 keeps that flag order (trust flags, then `--output-format json`, then `-p`). Interactive Agent/subagent remains valid transport after pack; pack remains the cap surface. The message is the handoff file (or full `of render` stdout), never a pointer.
 
-Skills: `~/.gemini/config/skills/orderfield/` and `~/.gemini/antigravity-cli/skills/orderfield/`. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`.
+Skills: Global `~/.gemini/antigravity-cli/skills/orderfield/`; Shared `~/.gemini/skills/orderfield/`; `~/.gemini/config/skills/orderfield/` is optional legacy when that parent exists. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`. Skill `description` / `compatibility` frontmatter is double-quoted so agy / npx skills can parse it.
 
 ## Qwen Code
 

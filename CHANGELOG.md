@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.54
+
+Quoted skill YAML so agy / npx skills discover orderfield. Shared Gemini dest. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.53 notes.
+
+- **Quoted YAML:** `SKILL.md` / `of/SKILL.md` `description:` (and `compatibility:` on orderfield) are double-quoted. Unquoted em dash `—` plus many `:` made strict parsers skip the skill while Finder still showed the folder. Product text meaning is unchanged.
+- **Shared dest:** `install.sh` `agy_dests` adds `~/.gemini/skills/<name>` (Pedro-confirmed Shared). Global remains `~/.gemini/antigravity-cli/skills/<name>`. `~/.gemini/config/skills/<name>` stays optional legacy when that parent exists. Alias `/of` follows the same dests. `SkillVersionSkew` / `of doctor` scan Shared.
+- **Proof:** `SkillFrontmatterQuotedGate` strict-loads the quoted frontmatter and refuses the unquoted colon/em-dash form. `install.sh` lists Shared `.gemini/skills`. `validate-skill` + `check-claims` + `check_packaging_bump` green. No new CLI.
+- Packaging: VERSION 0.7.54; skill/alias description preview `v0.7.54 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.53 notes.
+
 ## 0.7.53
 
 Skill-first cheap vs frontier propose. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.52 notes.
