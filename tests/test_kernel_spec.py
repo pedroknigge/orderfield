@@ -1175,6 +1175,119 @@ class ContrastReportRenderer(unittest.TestCase):
         self._align("\n".join(lines[:-1]) + "\n", cli_machine)
 
 
+class ContrastDiffNarrative(unittest.TestCase):
+    """of contrast --diff is prose from ContrastReport + SpecDiff. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-contrast-diff-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "contrast diff narrative",
+            "--phase",
+            "explore",
+            "--source",
+            "contrast diff narrative brief",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        cli = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "CLI-001",
+            "--text",
+            "public CLI must print usage",
+        )
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        alg = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-002",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(alg.returncode, 0, alg.stderr)
+
+    def _human(self) -> str:
+        order = of.load_order(self.tmp)
+        report = of.ContrastReport.document(self.tmp, order)
+        return of.ContrastDiff.human(
+            of.ContrastDiff.document(self.tmp, order, report)
+        )
+
+    def test_narrates_unverified_without_theater(self) -> None:
+        human = self._human()
+        self.assertIn("Contrast diff", human)
+        self.assertIn("CLOSE BLOCKED", human)
+        self.assertIn("CLI-001", human)
+        self.assertIn("unowned", human)
+        self.assertIn("unverified", human)
+        self.assertIn("ORDER omission", human)
+        self.assertIn("unowned or not started", human)
+        self.assertIn("Internal close is of spec --verified-internal ALG-002", human)
+        self.assertIn(
+            "A public surface cannot close until of spec --verified-contract CLI-001",
+            human,
+        )
+        self.assertEqual(of.ContrastDiff.theater(human), [])
+        for phrase in of.ContrastDiff.THEATER:
+            self.assertNotIn(phrase, human)
+
+    def test_cli_diff_matches_document_and_machine_json(self) -> None:
+        proc = run_of(self.tmp, "contrast", "--diff")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
+        self.assertTrue(lines)
+        machine = json.loads(lines[-1])
+        self.assertEqual(machine["gate"], "CLOSE_BLOCKED")
+        self.assertIn("CLI-001", machine["blocking"])
+        narrative = "\n".join(lines[:-1]) + "\n"
+        self.assertIn("Contrast diff", narrative)
+        self.assertIn("CLI-001", narrative)
+        self.assertIn("ALG-002", narrative)
+        self.assertEqual(of.ContrastDiff.theater(narrative), [])
+        default = run_of(self.tmp, "contrast")
+        self.assertEqual(default.returncode, 2, default.stderr)
+        default_lines = [ln for ln in default.stdout.splitlines() if ln.strip()]
+        self.assertEqual(json.loads(default_lines[-1]), machine)
+
+    def test_resolved_names_order_omission_not_closed(self) -> None:
+        internal = run_of(
+            self.tmp, "spec", "--verified-internal", "ALG-002"
+        )
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        contract = run_of(
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            "CLI-001",
+            "--both-sides",
+        )
+        self.assertEqual(contract.returncode, 0, contract.stderr)
+        proc = run_of(self.tmp, "contrast", "--diff")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        narrative = proc.stdout.rsplit("\n{", 1)[0] + "\n"
+        self.assertIn("RESOLVED", narrative)
+        self.assertIn("VERIFIED_CONTRACT", narrative)
+        self.assertIn("ORDER omission", narrative)
+        self.assertIn(of.ContrastDiff.GATE_RESOLVED_GAPS, narrative)
+        self.assertNotIn(of.ContrastDiff.NONE, narrative)
+        self.assertNotIn("CLOSED", narrative)
+        self.assertEqual(of.ContrastDiff.theater(narrative), [])
+        terse = run_of(self.tmp, "spec-diff")
+        self.assertEqual(terse.returncode, 2, terse.stdout)
+        self.assertIn("ORDER_OMISSION", terse.stdout)
+        self.assertEqual(
+            of.spec_diff_lines(self.tmp, of.load_order(self.tmp)),
+            of.SpecDiff.lines(self.tmp, of.load_order(self.tmp)),
+        )
+
+
 class CloseChecklistProof(unittest.TestCase):
     """Multi-wave close checklist: contrast + residual empty. of eval --kernel."""
 

@@ -1,0 +1,84 @@
+{
+  "id": "recovery/contrast-diff-narrative",
+  "description": "of contrast --diff narrates SPEC vs coverage from ContrastReport + spec-diff; no theater; RESOLVED is not CLOSED",
+  "fixture": "recovery_contrast_close_contract",
+  "tags": ["recovery", "gate", "contrast", "diff"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0
+    },
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--apply"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "args": ["--diff"],
+      "exit": 2,
+      "stdout_contains": [
+        "Contrast diff",
+        "CLOSE BLOCKED",
+        "CLI-001",
+        "DELIVERED (owned; not close-ok)",
+        "unverified",
+        "\"gate\": \"CLOSE_BLOCKED\"",
+        "\"id\": \"CLI-001\""
+      ],
+      "stdout_not_contains": [
+        "CLOSED",
+        "mission complete",
+        "all delivered",
+        "ready to ship",
+        "all tests passed",
+        "no binding gaps vs ORDER / coverage"
+      ]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "CLI-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "args": ["--diff"],
+      "exit": 2,
+      "stdout_contains": [
+        "Contrast diff",
+        "CLOSE BLOCKED",
+        "CLI-001",
+        "VERIFIED_INTERNAL",
+        "not the public contract"
+      ],
+      "stdout_not_contains": [
+        "CLOSED",
+        "mission complete",
+        "all delivered"
+      ]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-contract", "CLI-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "args": ["--diff"],
+      "exit": 0,
+      "stdout_contains": [
+        "Contrast diff",
+        "RESOLVED",
+        "VERIFIED_CONTRACT",
+        "\"gate\": \"RESOLVED\""
+      ],
+      "stdout_not_contains": [
+        "CLOSED",
+        "mission complete",
+        "all delivered",
+        "ready to ship"
+      ]
+    }
+  ]
+}

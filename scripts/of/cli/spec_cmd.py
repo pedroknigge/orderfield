@@ -65,6 +65,7 @@ from of.spec import (
     requirement_surface,
     save_requirements,
     snapshot_spec,
+    SpecDiff,
     spec_diff_lines,
     spec_id_line_span,
     spec_mentions_req_id,
@@ -552,6 +553,169 @@ class ContrastReport:
         return ContrastReport.open(doc)
 
 
+class ContrastDiff:
+    """Human narrative of SPEC vs coverage. Same facts as spec-diff + ContrastReport.
+
+    Read-path only. No CONTRAST.json. RESOLVED is not CLOSED. ORDER_OMISSION
+    can remain after the close gate is RESOLVED — the narrative names that split.
+    """
+
+    KIND = "contrast.diff"
+    HEADER = "Contrast diff"
+    NONE = "no binding gaps vs ORDER / coverage"
+    SKIP = "no SPEC; legacy field — contrast does not invent requirements"
+    GATE_RESOLVED_GAPS = (
+        "close gate is RESOLVED; spec-diff still names the gaps above"
+    )
+    THEATER = (
+        "mission complete",
+        "all delivered",
+        "all requirements delivered",
+        "ready to ship",
+        "all tests passed",
+        "CLOSED",
+    )
+    GATE_LABEL = {
+        "CLOSE_BLOCKED": "CLOSE BLOCKED",
+        "CLOSE_SKIP": "CLOSE SKIP",
+        "RESOLVED": "RESOLVED",
+    }
+    VERDICT_LINE = {
+        "MISSING": "{id} is MISSING (unowned or not started){cite}.",
+        "DELIVERED": "{id} is DELIVERED (owned; not close-ok){cite}.",
+        "VERIFIED_INTERNAL": (
+            "{id} is VERIFIED_INTERNAL (not the public contract){cite}."
+        ),
+        "VERIFIED_CONTRACT": "{id} is VERIFIED_CONTRACT{cite}.",
+        "PAIR": "{id} is PAIR (both sides unchecked){cite}.",
+        "FAILED": "{id} is FAILED{cite}.",
+    }
+    FLAG_LINE = {
+        "UNOWNED": "{id} is unowned. Pack with --owns-requirement {id}.",
+        "UNVERIFIED": (
+            "{id} is unverified. A public surface cannot close until "
+            "of spec --verified-contract {id}."
+        ),
+        "UNVERIFIED_INTERNAL": (
+            "{id} is unverified. Internal close is of spec --verified-internal {id}."
+        ),
+        "VERIFIED_INTERNAL": (
+            "{id} is VERIFIED_INTERNAL only. That is not the public contract."
+        ),
+        "PAIR": (
+            "{id} is pair-shaped; both sides are unchecked. "
+            "of spec --verified-contract {id} --both-sides."
+        ),
+        "FAILED": "{id} is FAILED.",
+        "ORDER_OMISSION": (
+            "{id} is an ORDER omission — the requirement text is not in "
+            "mission, constraints, or done_when."
+        ),
+    }
+
+    @staticmethod
+    def theater(text: str) -> list[str]:
+        hits: list[str] = []
+        for phrase in ContrastDiff.THEATER:
+            if phrase in text:
+                hits.append(phrase)
+        return hits
+
+    @staticmethod
+    def document(
+        root: Path,
+        order: dict[str, Any],
+        contrast: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        report = contrast if contrast is not None else ContrastReport.document(
+            root, order
+        )
+        rows = list(report.get("rows") or [])
+        return {
+            "v": 1,
+            "kind": ContrastDiff.KIND,
+            "gate": str(report.get("gate") or ""),
+            "verdict": str(report.get("verdict") or ""),
+            "ok": bool(report.get("ok")),
+            "intent": str(report.get("intent") or ""),
+            "blocking": [
+                str(r.get("id") or "") for r in rows if r.get("blocking")
+            ],
+            "rows": rows,
+            "gaps": SpecDiff.rows(root, order),
+            "next": str(report.get("next") or ""),
+        }
+
+    @staticmethod
+    def _cite(row: dict[str, Any]) -> str:
+        cite = str(row.get("cite") or "").strip()
+        text = str(row.get("text") or "").strip()
+        parts: list[str] = []
+        if cite:
+            parts.append(cite)
+        if text:
+            parts.append(text)
+        if not parts:
+            return ""
+        return " — " + " — ".join(parts)
+
+    @staticmethod
+    def human(doc: dict[str, Any]) -> str:
+        gate = str(doc.get("gate") or "")
+        gate_label = ContrastDiff.GATE_LABEL.get(gate, gate)
+        blocking = [str(x) for x in (doc.get("blocking") or []) if str(x)]
+        lines = [
+            ContrastDiff.HEADER,
+            "",
+            f"intent      {doc.get('intent') or ''}",
+            f"gate        {gate_label}",
+            f"blocking    {' '.join(blocking) if blocking else 'none'}",
+            "",
+        ]
+        for row in doc.get("rows") or []:
+            rid = str(row.get("id") or "?")
+            verdict = str(row.get("verdict") or "")
+            tmpl = ContrastDiff.VERDICT_LINE.get(verdict)
+            cite = ContrastDiff._cite(row)
+            if tmpl:
+                lines.append(tmpl.format(id=rid, cite=cite))
+            else:
+                lines.append(f"{rid} is {verdict}{cite}.")
+        seen: set[tuple[str, str]] = set()
+        for gap in doc.get("gaps") or []:
+            rid = str(gap.get("id") or "?")
+            for flag in gap.get("flags") or []:
+                seen_key = (rid, str(flag))
+                if seen_key in seen:
+                    continue
+                seen.add(seen_key)
+                line_key = str(flag)
+                if (
+                    line_key == "UNVERIFIED"
+                    and str(gap.get("surface") or "") == "internal"
+                ):
+                    line_key = "UNVERIFIED_INTERNAL"
+                tmpl = ContrastDiff.FLAG_LINE.get(line_key)
+                if tmpl:
+                    lines.append(tmpl.format(id=rid))
+        gaps = list(doc.get("gaps") or [])
+        if not gaps:
+            if gate == "CLOSE_SKIP":
+                lines.append(ContrastDiff.SKIP)
+            else:
+                lines.append(ContrastDiff.NONE)
+        elif gate == "RESOLVED":
+            lines.append(ContrastDiff.GATE_RESOLVED_GAPS)
+        nxt = str(doc.get("next") or "")
+        if nxt:
+            lines.append(f"next: {nxt}")
+        text = "\n".join(lines) + "\n"
+        hits = ContrastDiff.theater(text)
+        if hits:
+            die(f"contrast --diff theater: {', '.join(hits)}")
+        return text
+
+
 def print_contrast_report(
     root: Path, order: dict[str, Any], *, machine: bool = False
 ) -> bool:
@@ -565,7 +729,12 @@ def cmd_contrast(args: argparse.Namespace) -> None:
     order = load_order(root)
     require_spec_intact(root, order)
     doc = ContrastReport.document(root, order)
-    blocked = ContrastReport.emit(doc, machine=True)
+    if getattr(args, "diff", False):
+        print(ContrastDiff.human(ContrastDiff.document(root, order, doc)), end="")
+        print(json.dumps(ContrastReport.machine(doc), sort_keys=True))
+        blocked = ContrastReport.open(doc)
+    else:
+        blocked = ContrastReport.emit(doc, machine=True)
     emit_event("contrast", **ContrastReport.event_fields(doc))
     if blocked:
         raise SystemExit(2)
@@ -2335,6 +2504,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.OrphanPackedCleanup",
     "tests.test_kernel.ClosedFieldArchiveTrail",
     "tests.test_kernel.ContrastReportRenderer",
+    "tests.test_kernel.ContrastDiffNarrative",
     "tests.test_kernel.WaveRosterListShow",
     "tests.test_kernel.RootStubAmbiguous",
     "tests.test_kernel.StatusReportJson",

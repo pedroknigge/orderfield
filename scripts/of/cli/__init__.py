@@ -89,6 +89,7 @@ from of.cli.spec_cmd import (
     eval_run_of,
     CloseChecklist,
     CloseProof,
+    ContrastDiff,
     ContrastReport,
     eval_setup_recovery_active_field_pointer,
     eval_setup_recovery_atomic_close,
@@ -142,6 +143,7 @@ __all__ = [
     "EVAL_UNITTEST_MODULES",
     "CloseChecklist",
     "CloseProof",
+    "ContrastDiff",
     "ContrastReport",
     "EfficiencySignal",
     "HandoffReport",
@@ -965,6 +967,14 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser(
         "contrast",
         help="review gate: one-pager + JSON; exit 2 while CLOSE BLOCKED",
+    )
+    s.add_argument(
+        "--diff",
+        action="store_true",
+        help=(
+            "human narrative of SPEC vs coverage (same facts as spec-diff + "
+            "ContrastReport; not a second ledger; RESOLVED is not CLOSED)"
+        ),
     )
     s.set_defaults(func=cmd_contrast)
 
