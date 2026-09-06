@@ -68,7 +68,10 @@ LIST_DEFAULT_LIMIT = 32  # of learn --list / of worktree list / of fields; --all
 WARNING_MESSAGE_MAX_CHARS = 400  # SWALLOW-001: one stderr line, no secrets/home
 UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
 UPDATE_CHECK_INTERVAL_S = 24 * 3600
-UPDATE_CMD = "README.md — tag-pinned SHA-256 installer; do not pipe unsigned main"
+UPDATE_CMD = (
+    "ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release  "
+    "(release tar.gz + SHA256SUMS; do not pipe unsigned main)"
+)
 PULSE_QUIET_SECONDS = 300
 PULSE_STALE_MINUTES = 30.0
 PUBLIC_SCHEMA_FILES = (
@@ -2771,44 +2774,197 @@ def fetch_latest_version(timeout: float = 2.0) -> str | None:
         return None
 
 
-def maybe_notify_update(fetch: Any = fetch_latest_version) -> None:
-    """One stderr line, at most once a day, when a newer release exists.
+class UpdateAsk:
+    """Daily consent ask when a newer release exists. Not a daemon.
 
-    Read-path commands only (status/resume/pulse) — never the pack/spawn hot
-    path. Silent on every failure: an offline leader must not notice this
-    exists. OF_NO_UPDATE_CHECK=1 disables it."""
-    if os.environ.get("OF_NO_UPDATE_CHECK") == "1":
-        return
-    local = semver_tuple(installed_version())
-    if local is None:
-        return
-    cache_file = update_cache_path()
-    now = time.time()
-    cache: dict[str, Any] = {}
-    try:
-        cache = json.loads(cache_file.read_text(encoding="utf-8"))
-        if not isinstance(cache, dict):
-            cache = {}
-    except (OSError, json.JSONDecodeError):
-        cache = {}
-    latest_text = cache.get("latest")
-    if now - float(cache.get("checked_at") or 0) >= UPDATE_CHECK_INTERVAL_S:
-        latest_text = fetch()
+    status/resume/pulse print one stderr line (agent relays). doctor prints a
+    section and, on a TTY, prompts. Yes runs install.sh --global --from-release
+    (GitHub tag + SHA256SUMS). At most one ask per day. Never a silent update.
+    """
+
+    @staticmethod
+    def cache_path() -> Path:
+        return update_cache_path()
+
+    @staticmethod
+    def consent_env(version: str) -> dict[str, str]:
+        ver = str(version).strip()
+        return {
+            "ORDERFIELD_VERSION": ver,
+            "ORDERFIELD_REF": f"v{ver}",
+        }
+
+    @staticmethod
+    def consent_cmd(version: str) -> str:
+        ver = str(version).strip()
+        return (
+            f"ORDERFIELD_VERSION={ver} ORDERFIELD_REF=v{ver} "
+            "bash install.sh --global --from-release"
+        )
+
+    @staticmethod
+    def notice(local: str, latest: str) -> str:
+        return (
+            f"of: update available {local} -> {latest} — "
+            f"ask the user; on yes: {UpdateAsk.consent_cmd(latest)}  "
+            f"(release tar.gz + SHA256SUMS; silence: OF_NO_UPDATE_CHECK=1)"
+        )
+
+    @staticmethod
+    def doctor_lines(local: str, latest: str) -> list[str]:
+        return [
+            "update",
+            f"  latest        {latest}  newer than {local}",
+            "  ask           once/day  (consent; not silent)",
+            f"  on yes        {UpdateAsk.consent_cmd(latest)}",
+        ]
+
+    @staticmethod
+    def load_cache() -> dict[str, Any]:
         try:
-            # checked_at advances even on a failed fetch: no hammering offline
-            dump_json(
-                cache_file,
-                {"checked_at": now, "latest": latest_text},
-            )
+            cache = json.loads(UpdateAsk.cache_path().read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        return cache if isinstance(cache, dict) else {}
+
+    @staticmethod
+    def save_cache(cache: dict[str, Any]) -> None:
+        try:
+            dump_json(UpdateAsk.cache_path(), cache)
         except OSError:
             pass
-    latest = semver_tuple(latest_text)
-    if latest is not None and latest > local:
-        print(
-            f"of: update available {installed_version()} -> {str(latest_text).strip()} — "
-            f"upgrade: {UPDATE_CMD}  (silence: OF_NO_UPDATE_CHECK=1)",
-            file=sys.stderr,
-        )
+
+    @staticmethod
+    def asked_today(cache: dict[str, Any], now: float) -> bool:
+        raw = cache.get("asked_at")
+        try:
+            asked = float(raw)
+        except (TypeError, ValueError):
+            return False
+        return now - asked < UPDATE_CHECK_INTERVAL_S
+
+    @staticmethod
+    def stamp_asked(
+        cache: dict[str, Any], version: str, now: float | None = None
+    ) -> None:
+        cache["asked_at"] = time.time() if now is None else now
+        cache["asked_version"] = str(version).strip()
+        UpdateAsk.save_cache(cache)
+
+    @staticmethod
+    def decide(
+        fetch: Any = fetch_latest_version, now: float | None = None
+    ) -> dict[str, Any] | None:
+        """Return local/latest/cache when an ask is due. None otherwise.
+
+        Refreshes checked_at at most once a day. Does not stamp asked_at.
+        Silent on every failure. OF_NO_UPDATE_CHECK=1 disables.
+        """
+        if os.environ.get("OF_NO_UPDATE_CHECK") == "1":
+            return None
+        local_text = installed_version()
+        local = semver_tuple(local_text)
+        if local is None:
+            return None
+        clock = time.time() if now is None else now
+        cache = UpdateAsk.load_cache()
+        latest_text = cache.get("latest")
+        try:
+            checked = float(cache.get("checked_at") or 0)
+        except (TypeError, ValueError):
+            checked = 0.0
+        if clock - checked >= UPDATE_CHECK_INTERVAL_S:
+            latest_text = fetch()
+            cache["checked_at"] = clock
+            cache["latest"] = latest_text
+            UpdateAsk.save_cache(cache)
+        latest = semver_tuple(latest_text)
+        if latest is None or latest <= local:
+            return None
+        if UpdateAsk.asked_today(cache, clock):
+            return None
+        return {
+            "local": str(local_text).strip(),
+            "latest": str(latest_text).strip(),
+            "cache": cache,
+        }
+
+    @staticmethod
+    def maybe_notify(
+        fetch: Any = fetch_latest_version,
+        now: float | None = None,
+        stream: Any = None,
+    ) -> str | None:
+        """One stderr ask, at most once a day. Does not install."""
+        decision = UpdateAsk.decide(fetch=fetch, now=now)
+        if decision is None:
+            return None
+        text = UpdateAsk.notice(decision["local"], decision["latest"])
+        print(text, file=sys.stderr if stream is None else stream)
+        UpdateAsk.stamp_asked(decision["cache"], decision["latest"], now)
+        return text
+
+    @staticmethod
+    def maybe_prompt(
+        fetch: Any = fetch_latest_version,
+        now: float | None = None,
+        prompt: Any = None,
+        install: Any = None,
+        interactive: bool | None = None,
+    ) -> str | None:
+        """Doctor path: print the ask; TTY y/N; on yes, verified install."""
+        decision = UpdateAsk.decide(fetch=fetch, now=now)
+        if decision is None:
+            return None
+        for line in UpdateAsk.doctor_lines(decision["local"], decision["latest"]):
+            print(line)
+        UpdateAsk.stamp_asked(decision["cache"], decision["latest"], now)
+        tty = interactive
+        if tty is None:
+            tty = bool(
+                getattr(sys.stdin, "isatty", lambda: False)()
+                and getattr(sys.stdout, "isatty", lambda: False)()
+            )
+        if not tty:
+            return UpdateAsk.notice(decision["local"], decision["latest"])
+        ask = prompt or input
+        try:
+            answer = ask("Update now via GitHub release tag + SHA256? [y/N] ")
+        except EOFError:
+            return UpdateAsk.notice(decision["local"], decision["latest"])
+        if str(answer or "").strip().lower() not in {"y", "yes"}:
+            return UpdateAsk.notice(decision["local"], decision["latest"])
+        runner = install or UpdateAsk.run_verified_install
+        runner(decision["latest"])
+        return UpdateAsk.notice(decision["local"], decision["latest"])
+
+    @staticmethod
+    def run_verified_install(
+        version: str,
+        runner: Any = None,
+        script: Path | None = None,
+    ) -> int:
+        """Classic pin: install.sh --global --from-release + release SHA-256."""
+        src = Path(script) if script is not None else skill_root() / "install.sh"
+        if not src.is_file():
+            print(
+                "of: update: missing install.sh — see README.md / PUBLISH.md",
+                file=sys.stderr,
+            )
+            return 1
+        env = {**os.environ, **UpdateAsk.consent_env(version)}
+        run = runner or subprocess.run
+        proc = run(["bash", str(src), "--global", "--from-release"], env=env)
+        return int(getattr(proc, "returncode", 0) or 0)
+
+
+def maybe_notify_update(fetch: Any = fetch_latest_version) -> None:
+    """Read-path wrapper: one stderr ask, at most once a day.
+
+    status/resume/pulse/handoff only — never the pack/spawn hot path. Silent
+    on every failure. OF_NO_UPDATE_CHECK=1 disables. Does not install.
+    """
+    UpdateAsk.maybe_notify(fetch=fetch)
 
 
 def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str] | None:

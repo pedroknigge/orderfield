@@ -6,7 +6,7 @@ set -euo pipefail
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 # INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
-DEFAULT_VERSION="0.7.45"
+DEFAULT_VERSION="0.7.46"
 KNOWN_HARNESSES=(claude codex cursor opencode grok)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
@@ -15,6 +15,7 @@ END_MARKER="<!-- END orderfield skill -->"
 MODE="auto"
 UNINSTALL=0
 GENERIC_ONLY=0
+FROM_RELEASE=0
 base=""
 
 while [[ $# -gt 0 ]]; do
@@ -22,6 +23,7 @@ while [[ $# -gt 0 ]]; do
     --global) MODE="global"; shift ;;
     --project) MODE="project"; shift ;;
     --generic) GENERIC_ONLY=1; shift ;;
+    --from-release) FROM_RELEASE=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;;
     --root)
       MODE="project"
@@ -30,13 +32,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'EOF'
-Usage: install.sh [--global|--project|--generic] [--uninstall] [--root PATH]
+Usage: install.sh [--global|--project|--generic] [--from-release] [--uninstall] [--root PATH]
 
-  --global     install under $HOME (default when no path is given)
-  --project    install under the current directory
-  --generic    only the portable path: .agents/skills/orderfield
-  --root PATH  project-style install under PATH
-  --uninstall  remove copies this script manages
+  --global        install under $HOME (default when no path is given)
+  --project       install under the current directory
+  --generic       only the portable path: .agents/skills/orderfield
+  --from-release  ignore a local checkout; fetch tag-pinned archive + SHA-256
+  --root PATH     project-style install under PATH
+  --uninstall     remove copies this script manages
 
   After install, creates an `of` symlink to the installed skill copy of
   scripts/of.py (not the checkout used as the install source):
@@ -240,7 +243,8 @@ fetch_pinned_source() {
 }
 
 # Uninstall only deletes dests; no fetch required.
-if [[ "$UNINSTALL" -eq 0 ]] && ! have_local; then
+# --from-release ignores a checkout next to this script (consent update).
+if [[ "$UNINSTALL" -eq 0 ]] && { [[ "$FROM_RELEASE" -eq 1 ]] || ! have_local; }; then
   SRC="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
   cleanup_src="$SRC"
   fetch_pinned_source "$SRC"

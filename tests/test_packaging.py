@@ -278,6 +278,7 @@ class InstallScript(unittest.TestCase):
         self.assertIn("A harness name alone or one ordinary", src)
         self.assertIn("DEFAULT_VERSION=", src)
         self.assertIn("fetch_pinned_source", src)
+        self.assertIn("--from-release", src)
         self.assertIn("SHA-256", src)
         self.assertNotIn("git clone", src)
         self.assertNotIn(
@@ -427,6 +428,34 @@ class InstallPin(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("ORDERFIELD_SHA256", proc.stderr)
         self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
+
+    def test_from_release_ignores_local_checkout(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-from-rel-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        archive = self._archive(tmp, "0.0.0-pin")
+        digest = self._sha256(archive)
+        checkout_ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        proc = run(
+            tmp,
+            "bash",
+            str(INSTALL),
+            "--root",
+            str(dest),
+            "--from-release",
+            env={
+                "HOME": str(tmp / "home"),
+                "ORDERFIELD_REF": "v0.0.0-pin",
+                "ORDERFIELD_VERSION": "0.0.0-pin",
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256": digest,
+            },
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        skill = dest / ".agents" / "skills" / "orderfield" / "SKILL.md"
+        body = skill.read_text(encoding="utf-8")
+        self.assertIn('version: "0.0.0-pin"', body)
+        self.assertNotIn(checkout_ver, body)
 
     def test_unsigned_mutable_main_refuses(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-pin-main-"))

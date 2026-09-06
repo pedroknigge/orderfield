@@ -136,6 +136,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.43 mortal-install one-sitting demo (`docs/demo/mortal-install.sh`; `install.sh` + `of doctor`) | documented |
 | 0.7.44 harness matrix residual on deep-install dests (claude/codex/cursor; `recovery/multi-harness-residual`; `MultiHarnessResidual`) | documented |
 | 0.7.45 close-is-proof RFC invariants (`docs/close-is-proof.md`; residual empty ≠ closed) | documented |
+| 0.7.46 daily ask-to-update when `of` is behind (`UpdateAsk`; `install.sh --from-release`; `UpdateAskDaily`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
