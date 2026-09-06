@@ -18,6 +18,7 @@ from of_adapters import (
     KERNEL_VERIFIES,
     TRUST_ENV,
     TRUST_PROFILES,
+    AdapterHints,
     detect_adapters,
     pick_adapter,
 )
@@ -418,6 +419,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         "  boundary      kernel verifies PATH/argv/residual; "
         "harness promises approval/auth/ready"
     )
+    print("model_hints")
+    for line in AdapterHints.doctor_lines():
+        print(f"  {line}")
     UpdateAsk.maybe_prompt()
     emit_event(
         "doctor",
@@ -1267,6 +1271,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"constraints {order['constraints']}")
     if order.get("harness"):
         print(f"harness     {order['harness']}")
+    hints_line = AdapterHints.format_line(order.get("adapter_hints"))
+    if hints_line:
+        print(f"model_hints {hints_line}")
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)

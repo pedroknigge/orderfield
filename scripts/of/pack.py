@@ -325,6 +325,12 @@ def validate_packet(packet: Any) -> list[str]:
         errs.append("packet.packet_id must be pkt_ followed by 32 lowercase hex digits")
     if packet.get("order_id") != embedded.get("id"):
         errs.append("packet.order_id must equal packet.order.id")
+    hints = packet.get("adapter_hints")
+    if hints is not None:
+        if not isinstance(hints, dict):
+            errs.append("packet.adapter_hints must be an object")
+        elif not (hints.get("tier") or hints.get("model")):
+            errs.append("packet.adapter_hints needs tier or model")
     expected_hash = packet_digest(packet)
     if packet.get("packet_hash") != expected_hash:
         errs.append("packet.packet_hash does not match the canonical packet content")

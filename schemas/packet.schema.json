@@ -98,6 +98,26 @@
       "items": { "type": "string", "minLength": 1 },
       "uniqueItems": true
     },
+    "adapter_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional consented model/tier hint for this packet. Absent unless the user opted in.",
+      "anyOf": [
+        { "required": ["tier"] },
+        { "required": ["model"] }
+      ],
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["cheap", "frontier"]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        }
+      }
+    },
     "budget": {
       "type": "object",
       "additionalProperties": false,

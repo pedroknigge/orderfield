@@ -659,6 +659,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="dry-run slice sizing; print why the pack is oversized; do not write",
     )
+    s.add_argument(
+        "--model-tier",
+        dest="model_tier",
+        choices=["cheap", "frontier"],
+        help="per-packet model tier hint (consent for this pack; not a router)",
+    )
+    s.add_argument(
+        "--model",
+        dest="model",
+        help="passthrough --model NAME for adapters that have the flag",
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser(
@@ -773,6 +784,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--harness",
         help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears",
+    )
+    s.add_argument(
+        "--model-hints",
+        dest="model_hints",
+        choices=["field", "wave", "off"],
+        help="consent for per-task model hints (field|wave) or clear (off)",
+    )
+    s.add_argument(
+        "--model-tier",
+        dest="model_tier",
+        choices=["cheap", "frontier"],
+        help="field/wave default tier; requires --model-hints or existing consent",
+    )
+    s.add_argument(
+        "--model",
+        dest="model",
+        help="field/wave default --model NAME; requires consent; not a catalog",
     )
     s.add_argument(
         "--backlog-add",

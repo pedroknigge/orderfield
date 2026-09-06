@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from of_adapters import ADAPTER_ORDER
+from of_adapters import ADAPTER_ORDER, AdapterHints
 
 from of.field import (
     PHASES,
@@ -382,6 +382,14 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 changed = True
         else:
             die(f"--harness must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    if AdapterHints.apply_patch(
+        order,
+        int(load_state(root).get("wave") or 1),
+        consent=getattr(args, "model_hints", None),
+        tier=getattr(args, "model_tier", None),
+        model=getattr(args, "model", None),
+    ):
+        changed = True
     if getattr(args, "origin", None) is not None or getattr(
         args, "session_id", None
     ) is not None:
@@ -478,6 +486,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         }
         if order.get("harness"):
             summary["harness"] = order["harness"]
+        if order.get("adapter_hints"):
+            summary["adapter_hints"] = order["adapter_hints"]
         if order.get("origin"):
             summary["origin"] = order["origin"]
         if order.get("backlog"):

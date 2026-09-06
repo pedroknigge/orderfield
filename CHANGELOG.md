@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.47
+
+Optional per-task model hints via adapters. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.46 notes.
+
+- **Consent, then a disk hint:** The leader asks once. `of patch --model-hints field|wave` writes `ORDER.adapter_hints`. `off` clears. `--model-tier cheap|frontier` and `--model NAME` on patch need that consent. `of pack --model-tier` / `--model` is per-packet consent and does not need a field write. No consent and no pack flags → packet has no hint; spawn argv is unchanged. Role never auto-picks a model. Not a router. Not a supervisor. Not `of merge`.
+- **Spawn passthrough, not a catalog:** Claude/Codex/Cursor get `--model` when the packet names one. Claude also maps `cheap→haiku` / `frontier→opus` (harness aliases). Codex/Cursor with only a tier stay no-op argv. Orca `task-create` has no `--model` (hint on disk only). Qwen/OpenCode/Grok/agy/generic stay no-op. `of doctor` prints pass vs no-op.
+- **Skill drives the cut:** Ask whether cheaper workers should run grunt packs. Then write the hint. Wave consent dies on `next-wave`. Sibling efficiency-signal / propose uptier stays later — this cut is consent + hints only.
+- **Proof:** `AdapterHintsCli` / `AdapterHintsUnit` / `AdapterHintsArgv` on `of eval --strict --kernel`. Consent gate, hint write/read, spawn argv for supported adapters, no-op for the rest, no silent auto-switch.
+- Packaging: VERSION 0.7.47; skill/alias description preview `v0.7.47 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.46 notes.
+
 ## 0.7.46
 
 Daily ask-to-update when `of` is behind. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.45 notes.

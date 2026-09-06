@@ -68,6 +68,10 @@ The child moves freely inside the packet. It does not redefine mission, phase, c
 
 Same identity plus a procedure already on the agent = invoke the skill, do not spawn. A harness name alone is not a trigger. One ordinary subagent, or work a single skill can close, is theater for a field.
 
+## adapter_hints
+
+Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). Written by `of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`. `of spawn` may pass `--model` for claude / codex / cursor. Claude maps cheap→haiku and frontier→opus. Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Sibling efficiency-signal / propose uptier is a later cut.
+
 ## HITL issue loop
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. This is self-telemetry of the kernel/skill/CLI/docs/install — never consumer `origin`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates (`of issue` without `--dry-run`). Refuse / edit-later / silence does not create. A child never posts: it writes `scratch/ISSUE.md` (or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. Search open issues first (`of issue --search`); skip duplicates, secrets, transcripts, and field-internal residuals. One draft per distinct finding. Leader: [SKILL.md](../SKILL.md). Child: [SLAVE.md](../SLAVE.md).

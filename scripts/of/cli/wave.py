@@ -16,6 +16,7 @@ from of_adapters import (
     INLINE_CONTRACT_ADAPTERS,
     KNOWN_TOOLS,
     TRUST_ENV,
+    AdapterHints,
     build_spawn_argv,
     missing_tools,
     pick_adapter,
@@ -456,6 +457,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
             "seconds": seconds,
         },
     }
+    hints = AdapterHints.resolve_pack(
+        order,
+        int(wave),
+        str(args.role),
+        pack_tier=getattr(args, "model_tier", None),
+        pack_model=getattr(args, "model", None),
+    )
+    if hints:
+        packet["adapter_hints"] = hints
     if order.get("spec_ref"):
         packet["spec_ref"] = order["spec_ref"]
         packet["spec_hash"] = order.get("spec_hash") or ""
@@ -518,18 +528,22 @@ def cmd_pack(args: argparse.Namespace) -> None:
     prompt = render_prompt(packet, root=root)
     dump_text(wdir / "prompts" / f"{child_id}.md", prompt, skip_dir_fsync=True)
     snapshot_session(root, "pack")
-    emit_event(
-        "pack",
-        child_id=child_id,
-        wave=int(wave),
-        residual=residual_path,
-        ok=True,
-    )
+    pack_event: dict[str, Any] = {
+        "child_id": child_id,
+        "wave": int(wave),
+        "residual": residual_path,
+        "ok": True,
+    }
+    if packet.get("adapter_hints"):
+        pack_event["adapter_hints"] = packet["adapter_hints"]
+    emit_event("pack", **pack_event)
     print(out_physical_rel)
     print(
         f"child_id={child_id} wave={wave} "
         f"residual (awaiting)={physical_field_rel(root, residual_path)}"
     )
+    if packet.get("adapter_hints"):
+        print(f"adapter_hints={AdapterHints.format_line(packet['adapter_hints'])}")
 
 
 def cmd_unpack(args: argparse.Namespace) -> None:
@@ -750,6 +764,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "trust": resolve_trust_profile(),
         "env_mode": spawn_env_mode(),
     }
+    model_name = AdapterHints.spawn_model(adapter, packet)
+    if model_name:
+        meta["model_hint"] = model_name
     meta_path = wdir / "spawns" / f"{child_id}.json"
     log_path = wdir / "logs" / f"{child_id}.log"
     if meta_path.is_file() and not args.dry_run:
