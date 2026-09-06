@@ -46,6 +46,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
 | [docs/external-brief.md](docs/external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
+| [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty; `CLOSE.json` |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
@@ -134,6 +135,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.42 multi-wave close checklist (`CloseChecklist`; contrast + residual empty; `recovery/multi-wave-close-checklist`) | documented |
 | 0.7.43 mortal-install one-sitting demo (`docs/demo/mortal-install.sh`; `install.sh` + `of doctor`) | documented |
 | 0.7.44 harness matrix residual on deep-install dests (claude/codex/cursor; `recovery/multi-harness-residual`; `MultiHarnessResidual`) | documented |
+| 0.7.45 close-is-proof RFC invariants (`docs/close-is-proof.md`; residual empty ≠ closed) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

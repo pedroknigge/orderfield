@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.44 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.45 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.44"
+  version: "0.7.45"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -35,6 +35,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
+| what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — RFC: contrast RESOLVED + residual empty + `CLOSE.json`. Residual empty is not the close |
 | child says the field is wrong | `of patch …` then `of next-wave` |
 | several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `of fields --json` — open packs across homes; `of status --json` stays one field |
@@ -315,7 +316,7 @@ Slices are cut from **SPEC.md + ORDER together**. After collect:
 python3 <skill>/scripts/of.py contrast
 ```
 
-This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. One `ContrastReport` document: a human one-pager on stdout (gate, blocking IDs, rows) and one machine JSON object with the same facts. `--json` / `OF_JSON=1` emits that document on the `contrast` event. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. A residual or ORDER flag that says CLOSED is not `CLOSE.json` — that split is dual-truth; `of close` stays refused until contrast is RESOLVED **and** residual is empty (no in-flight MISSING). `of close --checklist` prints that proof (`CloseChecklist`: contrast + residual empty) and does not stamp — exit 2 while either gap remains. Stamp with `of close` only when the checklist is ready; success sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. A stack of `status=done` residuals is not SPEC closed. Flying is not closed. Proof: `of eval recovery/multi-wave-close-checklist` and `of eval recovery/adversarial-dual-truth`. `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements. Generic done_when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`.
+This is the close-the-loop review (same job as a pre-landing `/review` against the original brief): Intent vs Delivered vs missing. One `ContrastReport` document: a human one-pager on stdout (gate, blocking IDs, rows) and one machine JSON object with the same facts. `--json` / `OF_JSON=1` emits that document on the `contrast` event. Verdicts: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED. Exit 2 prints **CLOSE BLOCKED**. A public-surface requirement (CLI, HTTP, file format, exit code) cannot close on VERIFIED_INTERNAL — unit tests and an internal store are not the contract. Pair-shaped requirements (same/different, success/fail, idempotency) need both sides (`of spec --verified-contract ID --both-sides`). Slice `done` is not SPEC closed. A residual or ORDER flag that says CLOSED is not `CLOSE.json` — that split is dual-truth; `of close` stays refused until contrast is RESOLVED **and** residual is empty (no in-flight MISSING). `of close --checklist` prints that proof (`CloseChecklist`: contrast + residual empty) and does not stamp — exit 2 while either gap remains. Stamp with `of close` only when the checklist is ready; success sets `spec_closed` and `done_when_closed` and writes `CLOSE.json` in one WAL generation. A stack of `status=done` residuals is not SPEC closed. Flying is not closed. RFC invariants: [docs/close-is-proof.md](docs/close-is-proof.md). Proof: `of eval recovery/multi-wave-close-checklist` and `of eval recovery/adversarial-dual-truth`. `of phase deliver` requires that stamp. Contrast does not generate tests, fix code, or invent requirements. Generic done_when placeholders (`current phase criteria closed with evidence`, `done.`, `all done`) are refused at init/patch. Empty or theater active sets cannot stamp `done_when_closed`.
 
 ```
 SPEC.md (verbatim) + ORDER.json (slow field)

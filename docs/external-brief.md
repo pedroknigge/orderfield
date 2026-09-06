@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.44` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.45` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -28,7 +28,7 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 
 1. **One leader-owned ORDER write path.** A child residual may propose. `integrate --apply` may take additive `constraints+` / `done_when+` / notes after `escalate_up`. It does not redefine mission, phase, the constraint list, or done-when. Silent rewrite dies. Threshold stays.
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
-3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close. Templates: [close-honesty.md](close-honesty.md).
+3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md).
 4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen. When to `of new` vs patch: [nested-fields.md](nested-fields.md).
 5. **Done-when has to be checkable.** Init and patch refuse generic placeholders (`current phase criteria closed with evidence`, `done.`, `all done`). Empty or theater active sets cannot stamp `done_when_closed`. Name contrast RESOLVED or a concrete ID.
 6. **Exclusive owners.** One binding ID has one child. Same-wave `--owns-path` sets are disjoint. A new child that owns nothing is refused while IDs stay unowned. Continuation of a child that already owns a binding ID is not a foreign-owner refuse.
@@ -83,7 +83,7 @@ A multi-wave mission can look finished while SPEC is still open. The lie is a st
 
 **What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref`; it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close --checklist` names contrast + residual empty and does not stamp; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together and refuses while residual is MISSING (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`, `recovery/multi-wave-close-checklist`). Child-forged close, `--tokens` theater, and unpack of a reporter are one corpus (`recovery/adversarial-dual-truth`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
 
-**What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
+**What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
 
 ### What the kernel honestly does not stop
 
