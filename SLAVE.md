@@ -84,7 +84,7 @@ Do not file secrets, tokens, private transcripts, or field-internal residuals (t
 
 ## How your turn ends
 
-Write **exactly one** valid residual to the path in the packet (`residual_path`). Schema fields: status, result_ref, residual, metrics.
+Write **exactly one** valid residual to the path in the packet (`residual_path`). Schema fields: status, result_ref, residual, metrics. Optional `usage` `{tokens?, model?}` only if the harness reported those facts — copy them. Do not invent spend. Do not treat them as a budget.
 
 ```json
 {
@@ -100,7 +100,8 @@ Write **exactly one** valid residual to the path in the packet (`residual_path`)
     "divergence": 0.0,
     "tool_failures": 0,
     "novelty": false
-  }
+  },
+  "usage": null
 }
 ```
 

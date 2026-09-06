@@ -4,33 +4,157 @@
   "title": "Orderfield residual (Codex strict output)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role", "status", "result_ref", "residual", "metrics"],
+  "required": [
+    "packet_id",
+    "packet_hash",
+    "order_id",
+    "order_rev",
+    "wave",
+    "child_id",
+    "role",
+    "status",
+    "result_ref",
+    "residual",
+    "metrics",
+    "usage"
+  ],
   "properties": {
-    "packet_id": { "type": ["string", "null"] },
-    "packet_hash": { "type": ["string", "null"] },
-    "order_id": { "type": ["string", "null"] },
-    "order_rev": { "type": ["integer", "null"], "minimum": 1 },
-    "wave": { "type": ["integer", "null"], "minimum": 1 },
-    "child_id": { "type": ["string", "null"] },
-    "role": { "type": ["string", "null"] },
-    "status": { "type": "string", "enum": ["done", "blocked", "threshold"] },
-    "result_ref": { "type": "string" },
+    "packet_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "packet_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "order_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "order_rev": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "wave": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "child_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "role": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "done",
+        "blocked",
+        "threshold"
+      ]
+    },
+    "result_ref": {
+      "type": "string"
+    },
     "residual": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["wants_to_change", "evidence", "proposed_patch"],
+      "required": [
+        "wants_to_change",
+        "evidence",
+        "proposed_patch"
+      ],
       "properties": {
         "wants_to_change": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["mission", "phase", "constraints", "done_when", "workspace"]
+            "enum": [
+              "mission",
+              "phase",
+              "constraints",
+              "done_when",
+              "workspace"
+            ]
           }
         },
-        "evidence": { "type": "string" },
+        "evidence": {
+          "type": "string"
+        },
         "proposed_patch": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
+          "properties": {
+            "constraints+": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "done_when+": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_when_closed": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "requirements_verified": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "requirements_failed": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
           "required": [
             "constraints+",
             "done_when+",
@@ -38,40 +162,68 @@
             "done_when_closed",
             "requirements_verified",
             "requirements_failed"
-          ],
-          "properties": {
-            "constraints+": {
-              "type": ["array", "null"],
-              "items": { "type": "string" }
-            },
-            "done_when+": {
-              "type": ["array", "null"],
-              "items": { "type": "string" }
-            },
-            "notes": { "type": ["string", "null"] },
-            "done_when_closed": { "type": ["boolean", "null"] },
-            "requirements_verified": {
-              "type": ["array", "null"],
-              "items": { "type": "string" }
-            },
-            "requirements_failed": {
-              "type": ["array", "null"],
-              "items": { "type": "string" }
-            }
-          }
+          ]
         }
       }
     },
     "metrics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["uncertainty", "divergence", "tool_failures", "novelty"],
+      "required": [
+        "uncertainty",
+        "divergence",
+        "tool_failures",
+        "novelty"
+      ],
       "properties": {
-        "uncertainty": { "type": "number", "minimum": 0, "maximum": 1 },
-        "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "tool_failures": { "type": "integer", "minimum": 0 },
-        "novelty": { "type": "boolean" }
+        "uncertainty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "divergence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tool_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "novelty": {
+          "type": "boolean"
+        }
       }
+    },
+    "usage": {
+      "type": [
+        "object",
+        "null",
+        "null"
+      ],
+      "additionalProperties": false,
+      "description": "Optional harness-reported model/token facts. Provenance like origin.session_id, not a budget. Never compared to budget.tokens. Omit or null when the harness did not report any.",
+      "properties": {
+        "tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        }
+      },
+      "required": [
+        "tokens",
+        "model"
+      ]
     }
   }
 }

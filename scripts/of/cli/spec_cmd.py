@@ -896,6 +896,7 @@ class EvalInvariantSetup:
         status: str = "done",
         wants: list[str] | None = None,
         patch: dict[str, Any] | None = None,
+        usage: dict[str, Any] | None = None,
         evidence: str = "eval residual names the check",
         result_text: str = "eval result\n",
         wave: int = 1,
@@ -913,6 +914,7 @@ class EvalInvariantSetup:
         rem["wants_to_change"] = list(wants or [])
         rem["evidence"] = evidence
         rem["proposed_patch"] = patch
+        residual["usage"] = usage
         result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text(result_text, encoding="utf-8")
@@ -1258,6 +1260,50 @@ def eval_setup_recovery_budget_seconds(root: Path) -> None:
         "explore",
     )
     EvalInvariantSetup.require_ok(init, "init")
+
+
+@_register_eval_fixture("recovery_efficiency_signal")
+def eval_setup_recovery_efficiency_signal(root: Path) -> None:
+    """Two cheap failures + harness usage on disk. Propose uptier; no ledger."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval efficiency signal",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    for child_id in ("fail1", "fail2"):
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "map files, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+            "--model-tier",
+            "cheap",
+        )
+        EvalInvariantSetup.require_ok(packed, f"pack {child_id}")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "fail1",
+        status="blocked",
+        usage={"tokens": 1200, "model": "haiku"},
+        evidence="cheap worker blocked on the same map twice",
+        result_text="blocked\n",
+    )
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "fail2",
+        status="threshold",
+        wants=["constraints"],
+        evidence="cheap worker cannot close without a field patch",
+        result_text="threshold\n",
+    )
 
 
 class WaveReportQualityEval:
@@ -2302,6 +2348,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PackRosterCrossField",
     "tests.test_kernel.CloseChecklistProof",
     "tests.test_kernel.AdapterHintsCli",
+    "tests.test_kernel.EfficiencySignalProof",
 )
 
 

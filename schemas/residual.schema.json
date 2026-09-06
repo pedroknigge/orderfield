@@ -64,6 +64,19 @@
         "tool_failures": { "type": "integer", "minimum": 0 },
         "novelty": { "type": "boolean" }
       }
+    },
+    "usage": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Optional harness-reported model/token facts. Provenance like origin.session_id, not a budget. Never compared to budget.tokens. Omit or null when the harness did not report any.",
+      "properties": {
+        "tokens": { "type": "integer", "minimum": 0 },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        }
+      }
     }
   }
 }

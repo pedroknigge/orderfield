@@ -448,11 +448,13 @@ class ResidualSchemaContracts(unittest.TestCase):
         done = load_json(DONE)
         for key in of.PACKET_IDENTITY_FIELDS:
             done[key] = None
+        done["usage"] = None
         assert_draft_2020_12_valid(self, schema, done)
 
         threshold = load_json(THRESHOLD)
         for key in of.PACKET_IDENTITY_FIELDS:
             threshold[key] = None
+        threshold["usage"] = None
         threshold["residual"]["proposed_patch"].update(
             {
                 "done_when+": None,

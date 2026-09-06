@@ -93,7 +93,7 @@ These are not missing features. Do not invent kernel to close them. Record: [out
 - **Leader session theater.** A leader can still say “we shipped” in chat. Disk wins: `of contrast` + `CLOSE.json`. Not a supervisor.
 - **Writes outside `of`.** Direct edits to ORDER, packets, residuals, or product paths bypass the CLI. The kernel validates what is routed through `of`.
 - **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`).
-- **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Do not add cost ceilings (`SCOPE-COST`).
+- **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Optional `residual.usage` is provenance when a child copies harness facts; `EfficiencySignal` may propose a model-tier ask. Do not add cost ceilings (`SCOPE-COST`). Design: [efficiency-signal.md](efficiency-signal.md).
 - **Publish / merge process.** No `of merge`. Independent GitHub approval is human merge practice (`SCOPE-REVIEW`). Test C is harness QA, not kernel CI (`SCOPE-TESTC`).
 
 ### How a reviewer re-runs the proof
