@@ -29,6 +29,7 @@ from test_kernel_field import (  # noqa: E402,F401
     PackedAgeWatchdog,
     ResumeAfterProcessDeath,
     ResumeRecoveryBrief,
+    InFlightVisibility,
     MidEpicHandoffPacket,
     StatusReportJson,
     WaveRosterListShow,

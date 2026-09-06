@@ -544,6 +544,56 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
     print("note         opt-in helper; not a process manager")
 
 
+class InFlightSignal:
+    """Read-path banner: residual MISSING is still running. Not a supervisor."""
+
+    CHROME = "residual MISSING; harness chrome is not the field"
+    ORDER = ("ALIVE", "QUIET", "STALE")
+
+    @staticmethod
+    def tally(verdicts: dict[str, str]) -> str:
+        parts: list[str] = []
+        for label in InFlightSignal.ORDER:
+            n = sum(1 for v in verdicts.values() if v == label)
+            if n:
+                parts.append(f"{n} {label}")
+        n = len(verdicts)
+        if not parts:
+            return f"{n} in-flight" if n else "0"
+        return ", ".join(parts)
+
+    @staticmethod
+    def banner(
+        verdicts: dict[str, str],
+        *,
+        key: str = "running",
+        key_width: int = 12,
+    ) -> str:
+        return f"{key.ljust(key_width)}{InFlightSignal.tally(verdicts)} — {InFlightSignal.CHROME}"
+
+    @staticmethod
+    def count_banner(n: int, *, key_width: int = 12) -> str:
+        return f"{'running'.ljust(key_width)}{n} in-flight — {InFlightSignal.CHROME}"
+
+    @staticmethod
+    def child_row(root: Path, pkt: dict[str, Any], verdict: str) -> dict[str, Any]:
+        cid = str(pkt.get("child_id") or "?")
+        return {
+            "child_id": cid,
+            "pulse": verdict,
+            "residual": "MISSING",
+            "scratch": "present" if scratch_nonempty(root, pkt) else "missing",
+            "parked_reason": parked_reason(root, pkt),
+        }
+
+    @staticmethod
+    def child_line(row: dict[str, Any]) -> str:
+        cid = str(row.get("child_id") or "?")
+        pulse = str(row.get("pulse") or "")
+        parked = str(row.get("parked_reason") or "")
+        return f"  {cid}  pulse={pulse}  residual=MISSING  parked={parked}"
+
+
 class StatusReport:
     """Live-field snapshot for humans and dashboards. No second ledger."""
 
@@ -634,6 +684,9 @@ class StatusReport:
         stored = str(order.get("spec_hash") or "")
         live = spec_bytes_hash(root)
         caps = order.get("caps") if isinstance(order.get("caps"), dict) else {}
+        action, verdicts, nxt_lines = HandoffReport.next_row(
+            state, packets, flying, order, root, now=now
+        )
         return {
             "v": 1,
             "ok": True,
@@ -655,6 +708,15 @@ class StatusReport:
             "max_children": int((caps or {}).get("max_children") or 0),
             "in_flight": len(flying),
             "in_flight_ids": [str(pkt.get("child_id") or "?") for pkt in flying],
+            "in_flight_detail": [
+                InFlightSignal.child_row(
+                    root, pkt, verdicts.get(str(pkt.get("child_id") or "?"), "")
+                )
+                for pkt in flying
+            ],
+            "next": action,
+            "next_label": nxt_lines[0] if nxt_lines else action.upper(),
+            "next_detail": nxt_lines[1] if len(nxt_lines) > 1 else "",
             "last_regime": state.get("last_regime"),
             "spawn_blocked": bool(state.get("spawn_blocked")),
             "signal": FieldSignal.of(order, state, packets, session, now=now),
@@ -696,6 +758,17 @@ class StatusReport:
             for row in (doc.get("packed_age") or [])
             if isinstance(row, dict)
         ]
+        detail = [
+            {
+                "child_id": str(row.get("child_id") or "?"),
+                "pulse": str(row.get("pulse") or ""),
+                "residual": "MISSING",
+                "scratch": str(row.get("scratch") or ""),
+                "parked_reason": str(row.get("parked_reason") or ""),
+            }
+            for row in (doc.get("in_flight_detail") or [])
+            if isinstance(row, dict)
+        ]
         return {
             "v": 1,
             "ok": bool(doc.get("ok")),
@@ -717,6 +790,10 @@ class StatusReport:
             "max_children": int(doc.get("max_children") or 0),
             "in_flight": int(doc.get("in_flight") or 0),
             "in_flight_ids": [str(cid) for cid in (doc.get("in_flight_ids") or [])],
+            "in_flight_detail": detail,
+            "next": str(doc.get("next") or ""),
+            "next_label": str(doc.get("next_label") or ""),
+            "next_detail": str(doc.get("next_detail") or ""),
             "last_regime": doc.get("last_regime"),
             "spawn_blocked": bool(doc.get("spawn_blocked")),
             "signal": doc.get("signal"),
@@ -726,6 +803,28 @@ class StatusReport:
             "requirements": StatusReport.requirement_counts(doc.get("requirements")),
             "phase_override": doc.get("phase_override"),
         }
+
+    @staticmethod
+    def emit_running(doc: dict[str, Any], *, key_width: int = 12) -> None:
+        rows = [
+            row
+            for row in (doc.get("in_flight_detail") or [])
+            if isinstance(row, dict)
+        ]
+        if not rows:
+            return
+        verdicts = {
+            str(row.get("child_id") or "?"): str(row.get("pulse") or "")
+            for row in rows
+        }
+        print(InFlightSignal.banner(verdicts, key_width=key_width))
+        for row in rows:
+            print(InFlightSignal.child_line(row))
+        label = str(doc.get("next_label") or doc.get("next") or "")
+        detail = str(doc.get("next_detail") or "")
+        if label:
+            extra = f" — {detail}" if detail else ""
+            print(f"{'next'.ljust(key_width)}{label}{extra}")
 
     @staticmethod
     def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
@@ -1131,6 +1230,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
     PackedAge.emit(flying)
+    session = load_session(root)
+    status_doc = StatusReport.document(root, order, state, packets, flying, session)
+    StatusReport.emit_running(status_doc)
     if flying:
         print("activity    of pulse (child scratch verdict + shared repo context)")
     print(f"last_regime {state.get('last_regime')}")
@@ -1545,6 +1647,8 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"status        {'in-flight' if flying else 'idle'}")
     print(f"in_flight     {len(flying)}")
     PackedAge.emit(flying, now=now, key_width=14)
+    if flying:
+        print(InFlightSignal.banner(verdicts, key_width=14))
     print_resume_completed(root, completed)
     print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
     if flying:
@@ -1599,6 +1703,7 @@ def pulse_once(
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
         return 0
+    print(InFlightSignal.count_banner(len(flying)))
     now = time.time()
     repo = repo_newest_mtime(root)
     exit_code = 0

@@ -689,6 +689,8 @@ class ResumeRecoveryBrief(unittest.TestCase):
         self.assertIn("      CLI-001", out)
         self.assertIn("next\n  HOLD", out)
         self.assertIn("continue existing packets; do not repack", out)
+        self.assertIn("running", out)
+        self.assertIn("residual MISSING; harness chrome is not the field", out)
         self.assertIn("parked_reason scratch_active", out)
         self.assertIn("parked", out)
         self.assertIn("agents_note", out)
@@ -961,6 +963,9 @@ class PulseActivity(unittest.TestCase):
         self.assertIn("ALIVE", r.stdout)
         self.assertIn("scratch: last write", r.stdout)
         self.assertIn("mtime heuristic", r.stdout)
+        self.assertIn("running     1 in-flight", r.stdout)
+        self.assertIn("residual MISSING", r.stdout)
+        self.assertIn("harness chrome is not the field", r.stdout)
 
     def test_pulse_help_names_activity_heuristic_not_liveness(self) -> None:
         r = run_of(self.tmp, "pulse", "--help")
@@ -1037,6 +1042,7 @@ class PulseActivity(unittest.TestCase):
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("idle", r.stdout)
+        self.assertNotIn("harness chrome", r.stdout)
 
     def test_repo_scan_ignores_orderfield_writes(self) -> None:
         found = of.repo_newest_mtime(self.tmp)
@@ -2643,6 +2649,11 @@ class StatusReportJson(unittest.TestCase):
         human = run_of(tmp, "status")
         self.assertEqual(human.returncode, 0, human.stderr)
         self.assertIn("in_flight   1", human.stdout)
+        self.assertIn("running     1 ALIVE", human.stdout)
+        self.assertIn("residual MISSING", human.stdout)
+        self.assertIn("harness chrome is not the field", human.stdout)
+        self.assertIn("pulse=ALIVE", human.stdout)
+        self.assertIn("HOLD", human.stdout)
         self.assertNotIn("{", human.stdout)
         proc = run_of(tmp, "status", "--json")
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -2653,6 +2664,12 @@ class StatusReportJson(unittest.TestCase):
         self.assertEqual(cli["field"], "open")
         self.assertEqual(cli["in_flight"], 1)
         self.assertEqual(cli["in_flight_ids"], ["worker"])
+        self.assertEqual(len(cli["in_flight_detail"]), 1)
+        self.assertEqual(cli["in_flight_detail"][0]["child_id"], "worker")
+        self.assertEqual(cli["in_flight_detail"][0]["residual"], "MISSING")
+        self.assertIn(cli["in_flight_detail"][0]["pulse"], ("ALIVE", "QUIET", "STALE"))
+        self.assertEqual(cli["next"], "hold")
+        self.assertEqual(cli["next_label"], "HOLD")
         self.assertFalse(cli["spawn_blocked"])
         self.assertEqual(cli["packed_age"], [])
         self.assertIsNone(cli["signal"])
@@ -2704,6 +2721,92 @@ class StatusReportJson(unittest.TestCase):
         )
         self.assertEqual(ev.get("wave"), cli["wave"])
         self.assertEqual(ev.get("in_flight_ids"), cli["in_flight_ids"])
+        self.assertEqual(ev.get("in_flight_detail"), cli["in_flight_detail"])
+
+
+class InFlightVisibility(unittest.TestCase):
+    """status / resume / pulse scream residual MISSING. of eval --kernel."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "in-flight visibility",
+            "--phase",
+            "build",
+        )
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    @staticmethod
+    def _pack(tmp: Path, child_id: str = "worker") -> None:
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "keep this child flying",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+
+    def test_live_commands_name_missing_residual(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-vis-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        scratch = tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("still writing\n", encoding="utf-8")
+        chrome = of.InFlightSignal.CHROME
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("running     1 ALIVE", status.stdout)
+        self.assertIn(chrome, status.stdout)
+        self.assertIn("pulse=ALIVE  residual=MISSING", status.stdout)
+        self.assertIn("HOLD", status.stdout)
+        self.assertNotIn("idle", status.stdout)
+        machine = run_of(tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["in_flight_detail"][0]["residual"], "MISSING")
+        self.assertEqual(doc["in_flight_detail"][0]["pulse"], "ALIVE")
+        self.assertEqual(doc["next"], "hold")
+        resume = run_of(tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("status        in-flight", resume.stdout)
+        self.assertIn(chrome, resume.stdout)
+        self.assertIn("    residual    MISSING", resume.stdout)
+        pulse = run_of(tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
+        self.assertIn("ALIVE", pulse.stdout)
+        self.assertNotIn("idle (nothing to watch)", pulse.stdout)
+
+    def test_idle_after_residual_lands(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-idle-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        write_bound_residual(tmp, "worker")
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   0", status.stdout)
+        self.assertNotIn("harness chrome", status.stdout)
+        machine = run_of(tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["in_flight"], 0)
+        self.assertEqual(doc["in_flight_detail"], [])
+        self.assertEqual(doc["next"], "collect")
+        pulse = run_of(tmp, "pulse")
+        self.assertIn("idle (nothing to watch)", pulse.stdout)
+        self.assertNotIn("harness chrome", pulse.stdout)
 
 
 class MidEpicHandoffPacket(unittest.TestCase):
