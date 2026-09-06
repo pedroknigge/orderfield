@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.54. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.55. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.54` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.55` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -69,6 +69,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.52 README Mid-flight H2 sits before Install. Three kinds of change plus sibling fields stay intact. Own H2. Haken analogy stays below. Proof: `ReadmeProductSurface`. No new CLI.
 - 0.7.53 skill-first cheap vs frontier propose. The `/of` skill must propose a distribution in chat before a multi-role pack. Human confirms. Then 0.7.47 `AdapterHints` / 0.7.48 `EfficiencySignal`. Never a silent switch. Proof: `SkillLeaderInitiative`. No new CLI.
 - 0.7.54 quoted skill YAML (`description` / `compatibility`) so agy / npx skills discover the skill. Shared dest `~/.gemini/skills`. Proof: `SkillFrontmatterQuotedGate`. No new CLI.
+- 0.7.55 residual schema accepts optional top-level `v` (kernel `--json` document version; ignored). Residuals without `v` stay valid. Codex derivative stays lockstep. Proof: `ResidualSchemaContracts`. No new CLI.
 
 ## Contract boundaries
 

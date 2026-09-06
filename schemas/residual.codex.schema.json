@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "v",
     "packet_id",
     "packet_hash",
     "order_id",
@@ -19,6 +20,13 @@
     "usage"
   ],
   "properties": {
+    "v": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Ignored document version. Kernel --json reports emit this; residuals may mirror it."
+    },
     "packet_id": {
       "type": [
         "string",

@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.54 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README (sibling) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; sibling). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
+description: "v0.7.55 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README (sibling) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; sibling). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
 license: MIT
 metadata:
-  version: "0.7.54"
+  version: "0.7.55"
   alias-of: orderfield
 ---
 

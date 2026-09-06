@@ -1717,6 +1717,7 @@ class MultiHarnessResidual(unittest.TestCase):
         self.addCleanup(shutil.rmtree, tmp, True)
         dest = self._pack_and_write(tmp)
         residual = load_json(dest)
+        residual["v"] = 1
         self.assertEqual(of.validate_residual(residual), [])
         schema = load_json(RESIDUAL_SCHEMA)
         codex = load_json(CODEX_RESIDUAL_SCHEMA)

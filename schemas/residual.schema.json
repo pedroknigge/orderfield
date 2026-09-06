@@ -6,6 +6,10 @@
   "additionalProperties": false,
   "required": ["status", "result_ref", "residual", "metrics"],
   "properties": {
+    "v": {
+      "type": "integer",
+      "description": "Ignored document version. Kernel --json reports emit this; residuals may mirror it."
+    },
     "packet_id": { "type": "string" },
     "packet_hash": { "type": "string" },
     "order_id": { "type": "string" },
