@@ -590,12 +590,24 @@ def cmd_render(args: argparse.Namespace) -> None:
 
 
 def cmd_handoff(args: argparse.Namespace) -> None:
+    packet_arg = getattr(args, "packet", None)
+    machine = bool(getattr(args, "handoff_json", False))
+    inline = bool(getattr(args, "inline", False))
+    if packet_arg and machine:
+        die("of handoff --json is the mid-epic field packet; omit --packet")
+    if inline and not packet_arg:
+        die("--inline is for the child prompt; pass --packet")
+    if not packet_arg:
+        from of.cli.ops import HandoffReport
+
+        HandoffReport.emit_cmd(machine=machine)
+        return
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)
     state = load_state(root)
     packet = require_registered_packet(
-        root, args.packet, order=order, state=state
+        root, packet_arg, order=order, state=state
     )
     child_id = packet.get("child_id")
     if not child_id:
@@ -621,6 +633,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     print(f"residual={residual_rel}")
     emit_event(
         "handoff",
+        kind="child",
         child_id=str(child_id),
         wave=wave,
         ok=True,

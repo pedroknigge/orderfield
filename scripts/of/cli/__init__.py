@@ -41,6 +41,7 @@ from of.cli.ops import (
     cmd_resume,
     cmd_retain,
     cmd_status,
+    HandoffReport,
     StatusReport,
     cmd_validate,
     cmd_wave,
@@ -132,6 +133,7 @@ __all__ = [
     "EVAL_UNITTEST_MODULES",
     "CloseProof",
     "ContrastReport",
+    "HandoffReport",
     "ISSUE_LABELS",
     "KNOWN_TOOLS",
     "build_parser",
@@ -640,9 +642,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "handoff",
-        help="write the child prompt file (SLAVE.md contract) and print a short envelope",
+        help="mid-epic field packet, or write a child prompt (--packet)",
+        description=(
+            "Without --packet: one mid-epic field packet for a human or next "
+            "harness (next, in-flight packet paths, pulse). Does not unpack. "
+            "With --packet: write the child prompt file (existing path)."
+        ),
     )
-    s.add_argument("--packet", required=True)
+    s.add_argument(
+        "--packet",
+        help="child packet JSON; omit for the mid-epic field packet",
+    )
+    s.add_argument(
+        "--json",
+        dest="handoff_json",
+        action="store_true",
+        help="print one mid-epic JSON packet on stdout (omit --packet)",
+    )
     s.add_argument(
         "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
     )

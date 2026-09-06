@@ -1,0 +1,54 @@
+{
+  "id": "recovery/mid-epic-handoff",
+  "description": "Mid-epic field packet: of handoff names next HANDOFF and the in-flight packet path without unpacking",
+  "fixture": "recovery_checkpoint_handoff",
+  "tags": ["recovery", "long-task", "handoff", "packet"],
+  "steps": [
+    {
+      "run": "handoff",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"field\"",
+        "\"wave\": 1",
+        "\"field\": \"open\"",
+        "\"next\": \"handoff\"",
+        "longchild",
+        ".orderfield/waves/001/packets/longchild.json"
+      ],
+      "stdout_not_contains": [
+        "no ORDER",
+        "PICK --field",
+        "kind          field"
+      ]
+    },
+    {
+      "run": "handoff",
+      "exit": 0,
+      "stdout_contains": [
+        "kind          field",
+        "HANDOFF",
+        "do not unpack",
+        "longchild",
+        ".orderfield/waves/001/packets/longchild.json"
+      ],
+      "stdout_not_contains": [
+        "no ORDER",
+        "\"kind\": \"field\""
+      ]
+    },
+    {
+      "run": "handoff",
+      "args": ["--packet", ".orderfield/waves/001/packets/longchild.json"],
+      "exit": 0,
+      "stdout_contains": [
+        "child_id=longchild",
+        "entire message"
+      ],
+      "stdout_not_contains": [
+        "kind          field",
+        "no ORDER"
+      ]
+    }
+  ]
+}
