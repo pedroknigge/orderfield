@@ -1,0 +1,84 @@
+{
+  "id": "recovery/efficiency-signal",
+  "description": "Cheap children fail twice → status/resume propose uptier (ask only). residual.usage is provenance. pack --tokens still dies. No silent adapter_hints write. Not a budget.tokens ceiling.",
+  "fixture": "recovery_efficiency_signal",
+  "tags": ["recovery", "gate", "efficiency", "hints", "budget"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "efficiency",
+        "propose uptier",
+        "cheap child failed 2 times",
+        "of patch --model-hints field --model-tier frontier"
+      ],
+      "stdout_not_contains": ["80000", "token budget", "auto-switch"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "efficiency",
+        "propose uptier",
+        "of patch --model-hints field --model-tier frontier"
+      ]
+    },
+    {
+      "run": "status",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"propose\": \"uptier\"",
+        "cheap child failed 2 times",
+        "of patch --model-hints field --model-tier frontier"
+      ],
+      "stdout_not_contains": ["\"tokens\": 80000", "runtime"]
+    },
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "efficiency",
+        "ask only",
+        "propose uptier"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "s",
+        "--role",
+        "explorer",
+        "--child-id",
+        "tok1",
+        "--tokens",
+        "80000"
+      ],
+      "exit": 1,
+      "stderr_contains": ["reserved", "budget.tokens"],
+      "stderr_not_contains": ["efficiency"],
+      "file_missing": [".orderfield/waves/001/packets/tok1.json"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/ORDER.json",
+          "not_contains": ["adapter_hints"]
+        },
+        {
+          "path": ".orderfield/waves/001/packets/fail1.json",
+          "contains": ["\"tokens\": 0"],
+          "not_contains": ["\"tokens\": 1200", "80000"]
+        },
+        {
+          "path": ".orderfield/waves/001/residuals/fail1.json",
+          "contains": ["\"tokens\": 1200", "haiku"]
+        }
+      ]
+    }
+  ]
+}

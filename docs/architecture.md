@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.47` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.48` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -183,6 +183,8 @@ Runtime ownership is **reserved**, not implemented. `of status` prints the reser
 |---------------|----------------|
 | `budget.seconds` | Enforced as the spawned subprocess wall-clock. `of spawn --timeout` must match or be omitted |
 | `budget.tokens` | Reserved; `of pack` writes 0; `--tokens N` for N>0 dies; not measured or enforced |
+| `residual.usage` | Optional harness-reported `{tokens?, model?}`. Provenance, not a budget. Never compared to `budget.tokens` |
+| `EfficiencySignal` | Live-wave quality × optional usage. Propose uptier/downtier on status/resume/doctor. Ask only. Not a router |
 | `thresholds.local_budget_pct` | Reserved; not evaluated |
 | `caps.max_depth` | Permission check for `--allow-nested`; inherited depth is not tracked |
 | `scale_up` / `scale_across` | Reserved regime enums; decision logic never selects them from accounting |

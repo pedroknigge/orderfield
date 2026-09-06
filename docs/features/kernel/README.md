@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.47. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.48. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.47` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.48` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -60,6 +60,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
 - Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor when the packet names one; Claude maps cheap→haiku / frontier→opus. Orca task-create and the rest no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli`. Not a router.
+- Efficiency signal (`EfficiencySignal`): quality × optional `residual.usage`. Status/resume/doctor may propose uptier/downtier. Ask only. `budget.tokens` stays reserved. Proof: `recovery/efficiency-signal`. Design: [efficiency-signal.md](../../efficiency-signal.md).
 - Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). One `ContrastReport` document: human one-pager + machine JSON. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice. Whole-phase slogans die at pack (`SliceLint`, `slice.phase`) with a split/constraints fix path. Oversized-slice note stays advisory (do not refuse ≥800). `of pack --explain` dry-runs that lint and does not write. Proof: `recovery/packet-sizing-lint` / `recovery/packet-sizing-explain`.
 - Optional `of --json` / `OF_JSON=1` event lines on stderr — see [docs/events.md](../../events.md)

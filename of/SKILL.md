@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.7.47 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Optional per-task model hints after consent (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.48 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Optional per-task model hints after consent (sibling). Status/resume may propose uptier/downtier (ask only; sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.47"
+  version: "0.7.48"
   alias-of: orderfield
 ---
 
@@ -20,6 +20,8 @@ Doctor / status / resume / pulse ask the user at most once a day when a newer re
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 
 Per-task model hints: ask once, then `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` only for claude/codex/cursor. Follow the sibling. Not a router.
+
+If status/resume prints `efficiency propose …`, ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never invent token spend. Follow the sibling [docs/efficiency-signal.md](../docs/efficiency-signal.md).
 
 After package installation, the full skill is normally at
 `../orderfield/SKILL.md` relative to this file. In a source checkout, it is at

@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.48
+
+Efficiency signal + propose model uptier/downtier. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.47 notes.
+
+- **Design first:** [docs/efficiency-signal.md](docs/efficiency-signal.md). Reuses residual quality, `owned_path_presence`, and 0.7.47 `AdapterHints`. Optional `residual.usage` `{tokens?, model?}` is harness-reported provenance (like `origin.session_id`). Missing stays valid. Not a second money ledger. `session.json` is unchanged.
+- **Ask, never switch:** `EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `usage.tokens`. ≥2 cheap failures → propose uptier. Frontier boilerplate with reported tokens → propose downtier. `of status` / `of resume` print one line; `of doctor` always has the section; `--json` carries `{propose, reason, consent, scored}`. Acting is still `of patch --model-hints` / `--model-tier` after the human says yes. No silent `adapter_hints` write.
+- **Accounting stays honest:** `budget.tokens` remains reserved (`tokens=0`; `--tokens N>0` dies). Usage is never compared to that field. No invented spend. No token ceiling.
+- **Skill drives the cut:** If status/resume prints `efficiency propose …`, ask; on yes run the printed patch. Children may copy harness tokens into `residual.usage`. Do not invent. Do not `--tokens`.
+- **Proof:** `recovery/efficiency-signal` + `EfficiencySignalProof` / `EfficiencySignalUnit` on `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.48; skill/alias description preview `v0.7.48 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.47 notes.
+
 ## 0.7.47
 
 Optional per-task model hints via adapters. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.46 notes.

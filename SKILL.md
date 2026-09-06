@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.47 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Optional per-task model hints after consent (not a router). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.48 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.47"
+  version: "0.7.48"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -31,6 +31,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
 | cheaper workers for grunt packs | ask once → `of patch --model-hints field` (or `wave`); pack `--model-tier cheap` / `--model NAME`; spawn passes `--model` on claude/codex/cursor |
+| status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens` |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
@@ -243,7 +244,9 @@ of pack --slice "…" --role explorer --model-tier cheap
 of pack --slice "…" --role implementer --model-tier frontier --model opus
 ```
 
-`of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor when the packet names a model (claude also maps cheap→haiku, frontier→opus). Orca `task-create`, qwen, opencode, grok, agy, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router and not a later efficiency-signal / propose-uptier cut.
+`of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor when the packet names a model (claude also maps cheap→haiku, frontier→opus). Orca `task-create`, qwen, opencode, grok, agy, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router.
+
+**Efficiency signal (post-hoc, ask only).** After residuals land, `of status` / `of resume` may print `efficiency propose uptier|downtier: … — of patch --model-hints …`. Cheap children that `rework` / `escalate` twice → suggest frontier. A frontier explorer/synthesizer that finished cleanly **and** copied harness tokens into optional `residual.usage` → suggest cheap. Missing `usage` is valid — do not invent spend. The line is an ask. Do **not** write `adapter_hints` until the human says yes. Do **not** treat `usage.tokens` as `budget.tokens` (still reserved; `--tokens N>0` dies). Design: [docs/efficiency-signal.md](docs/efficiency-signal.md). Proof: `of eval recovery/efficiency-signal`.
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 

@@ -47,6 +47,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/external-brief.md](docs/external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
 | [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty; `CLOSE.json` |
+| [docs/efficiency-signal.md](docs/efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only) |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
@@ -138,6 +139,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.45 close-is-proof RFC invariants (`docs/close-is-proof.md`; residual empty ≠ closed) | documented |
 | 0.7.46 daily ask-to-update when `of` is behind (`UpdateAsk`; `install.sh --from-release`; `UpdateAskDaily`) | documented |
 | 0.7.47 optional per-task model hints (`AdapterHints`; consent + spawn `--model` passthrough; no silent switch) | documented |
+| 0.7.48 efficiency signal + propose uptier/downtier (`EfficiencySignal`; `residual.usage` provenance; ask only; `recovery/efficiency-signal`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
