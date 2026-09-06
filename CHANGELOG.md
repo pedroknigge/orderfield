@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.40
+
+Live child progress on disk. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.39 notes.
+
+- **PULSE lines under `running`:** Children already append milestone lines to `scratch/<id>/PULSE`. The kernel now reads the last 1–3 (`PulseProgress`) and prints them on `of status` / `of resume` / `of pulse` under the `running` banner. A missing or empty `PULSE` stays `running` — no crash, no invented diary. `of status --json` `in_flight_detail[]` carries the same `progress` list. Reuses `InFlightSignal` / `StatusReport`. No new file. No new schema. No daemon. No process supervisor.
+- **Leader must speak:** `SKILL.md` teaches that `next=HOLD` + in-flight is a one-liner to the user each turn from the last `PULSE` line. Silence is a broken run for the human. `SLAVE.md` names the write path.
+- **Proof:** `recovery/in-flight-visibility` now requires the fixture `PULSE` text on status/resume/pulse and `--json` `progress`. `InFlightVisibility` covers present lines, missing file, and last-3 tail. On `of eval --strict --kernel`.
+- Packaging: VERSION 0.7.40; skill/alias description preview `v0.7.40 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.39 notes.
+
 ## 0.7.39
 
 Dogfood UX: doctor skill SKEW is advisory; residual dest is awaiting; first-home roster label. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.38 notes.

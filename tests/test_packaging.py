@@ -91,6 +91,7 @@ class VersionSync(unittest.TestCase):
         self.assertIn("activity evidence for `of pulse`", slave)
         self.assertIn("shared-repo product mtime", slave)
         self.assertIn("not process health or per-child write attribution", slave)
+        self.assertIn("print the last 1–3 lines under `running`", slave)
         self.assertNotIn("liveness is derived", slave)
 
 

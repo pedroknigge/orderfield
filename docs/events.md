@@ -27,7 +27,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `wave.list` | After `of wave list` | `count`, `live`, `ok` |
 | `wave.show` | After `of wave show` | `wave`, `live`, `ok` |
 | `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
-| `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `in_flight_detail`, `next`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
+| `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `in_flight_detail` (includes `progress`), `next`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
 | `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
 | `fields` | After `of fields` | `count`, `open`, `closed`, `archived`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |

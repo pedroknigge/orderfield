@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.39. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.40. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.39` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.40` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -26,7 +26,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: oversized evidence/notes or multi-turn Human/Assistant transcript). Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of status` / `of resume` print `packed_age` when an in-flight child's `packed_at` is older than the same 7-day SLA. Pulse STALE stays activity evidence. Read-path only; nothing is unpacked. Proof: `recovery/packed-age-watchdog` / `PackedAgeWatchdog`.
-- `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts / `InFlightSignal`). Human `of status` prints `running` plus per-child pulse while residual is MISSING. `--json` / `OF_JSON=1` emits the `status` event. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`; `recovery/in-flight-visibility` / `InFlightVisibility`.
+- `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts / `InFlightSignal`). Human `of status` prints `running` plus per-child pulse and the last 1–3 `PULSE` progress lines while residual is MISSING (`PulseProgress`; missing file stays `running`). `--json` / `OF_JSON=1` emits the `status` event with `in_flight_detail[].progress`. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`; `recovery/in-flight-visibility` / `InFlightVisibility`.
 - `of handoff` without `--packet` prints a mid-epic field packet from one `HandoffReport` document (next legal action, in-flight packet paths, pulse, checkpoint summary). `--json` is the machine object. Child prompt stays `of handoff --packet`. Does not unpack. No `HANDOFF.json`. Proof: `recovery/mid-epic-handoff` / `MidEpicHandoffPacket`.
 - `of wave list` / `of wave show [N]` is the multi-wave roster. Live wave is `state.wave` (`*`). Walks existing `waves/NNN` plus the live number. Read-path only. No new schema. Proof: `recovery/wave-list-show` / `WaveRosterListShow`.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
@@ -47,7 +47,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Workspace residuals select `escalate_up`
 - Integration input digests make identical replay a no-op/state repair; changed inputs require audited `--recompute`. Successful `integrate` stdout is the JSON report; human notes go to stderr
 - Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
-- Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Pulse leaves ORDER/state/session/wave artifacts unchanged, while update-notice throttling may write its user cache
+- Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Human pulse also prints the last 1–3 `PULSE` lines under `running`. Pulse leaves ORDER/state/session/wave artifacts unchanged, while update-notice throttling may write its user cache
 - `of doctor` reports Python/kernel, writable field, schemas, lock, adapter PATH/version, skill VERSION skew on existing HOME dests versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass. PATH presence is not authentication or readiness. Missing dests are silent. Skill VERSION SKEW is advisory (`WARN` / exit 0); field/schema/lock/kernel still FAIL (`DoctorSkew` / `SkillVersionSkew`). Proof: `recovery/doctor-one-pass-skew` / `DoctorOnePassSkew`; `recovery/doctor-advisory-ux`.
 - `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). `--list` / `--forget`. Resume lists both; not SPEC
 - `of retain` (read-only) / `of gc` walk every field home. Non-risky ephemeral uses a 7-day TTL; `spec_closed` dumps it immediately. Tree budget (64 MiB, `OF_GC_BUDGET`) prints `audit` of open fields; `--keep-field` / `--archive-field` / `--drop-field` are HITL (open drop needs `--force --reason`). `--archive-field` moves a closed sibling to `.orderfield/archive/<id>/` and keeps `CLOSE.json` / SPEC / REQUIREMENTS. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. The plan action `dump` is **permanent unlink** (`Path.unlink` / `rmtree`), not an export. Backup is operator-owned. Protocol is never unlinked. Never copy transcripts. WAL crash consistency is not a restorable dump. Orphan packed children (`OrphanPacked`: closed / leftover-home / inapplicable-order / stale-prior-wave, residual missing) are named on the plan; explicit `of gc` unlinks the packet and records `gc-stamp.json` `orphans[]`. Resume auto-gc skips packets. Proof: `recovery/closed-field-archive` / `ClosedFieldArchiveTrail`; `recovery/orphan-packed-cleanup` / `OrphanPackedCleanup`.
