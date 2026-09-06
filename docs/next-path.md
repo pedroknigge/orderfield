@@ -1,8 +1,8 @@
-# Next path (after 0.7.31)
+# Next path (after 0.7.32)
 
-Mid-epic handoff is proven: `of handoff` without `--packet` is the field packet (`HandoffReport`); child prompt stays `--packet`. `recovery/mid-epic-handoff` and `MidEpicHandoffPacket` hold. Nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+Closed-field archive is proven: `of gc --archive-field` moves a closed sibling to `.orderfield/archive/<id>/` and keeps `CLOSE.json` / SPEC / REQUIREMENTS. `--drop-field` dies while that contrast trail exists unless `--force --reason`. `recovery/closed-field-archive` and `ClosedFieldArchiveTrail` hold. Mid-epic handoff, nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
-P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
+No process supervisor, no bot org, no `of merge`. No fake token budgets.
 
 Still later (not this release): Grok Bot contrast stays written — stay-on-the-run + that table. Do not clone a bot org. `RUNTIME_OWNERSHIP` stays reserved. Brief: [external-brief.md](external-brief.md) · Contrast: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org).
 

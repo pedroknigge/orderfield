@@ -23,7 +23,7 @@ If those two columns disagree, the session is lying. Re-run `of contrast`. Read 
 
 - **Contrast** prints a human one-pager (`CLOSE BLOCKED` exit 2, or `RESOLVED` exit 0) and one machine JSON object from the same `ContrastReport` document. `--json` / `OF_JSON=1` repeats those facts on the `contrast` event. Slice `done` is not SPEC closed.
 - **`of close`** refuses while the loop is open. Success writes `ORDER.spec_closed`, `ORDER.done_when_closed`, and `CLOSE.json` together (`CloseProof.stamp`).
-- **`CLOSE.json`** is the durable proof: `verdict=RESOLVED`, both flags true, `spec_hash`, `order_id`, `rev`. Same WAL generation as ORDER. A repaired field that already had `spec_closed` still gets the proof (`REPAIRED`).
+- **`CLOSE.json`** is the durable proof: `verdict=RESOLVED`, both flags true, `spec_hash`, `order_id`, `rev`. Same WAL generation as ORDER. A repaired field that already had `spec_closed` still gets the proof (`REPAIRED`). `of gc --archive-field` moves that proof with the home to `.orderfield/archive/<id>/`. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`.
 
 Trust the proof file. Do not trust a transcript that says CLOSED.
 

@@ -1,0 +1,98 @@
+{
+  "id": "recovery/closed-field-archive",
+  "description": "Closed field archives to .orderfield/archive/<id>/; drop without --force cannot wipe CLOSE.json",
+  "fixture": "recovery_closed_field_archive",
+  "tags": ["recovery", "gc", "archive", "contrast", "close"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        2  open 2  closed 0",
+        "keep live epic",
+        "archive me"
+      ]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "ALG-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": ["RESOLVED"]
+    },
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED", "CLOSE.json"]
+    },
+    {
+      "run": "gc",
+      "args": ["--drop-field", "ord_c105ed01"],
+      "exit": 1,
+      "stderr_contains": ["contrast trail", "archive-field", "ord_c105ed01"],
+      "file_contains": [
+        {
+          "path": ".orderfield/fields/ord_c105ed01/CLOSE.json",
+          "contains": ["RESOLVED", "ord_c105ed01"]
+        }
+      ]
+    },
+    {
+      "run": "gc",
+      "args": ["--archive-field", "ord_c105ed01"],
+      "exit": 0,
+      "stdout_contains": [
+        "archived",
+        "archive/ord_c105ed01",
+        "proof=CLOSE.json"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/archive/ord_c105ed01/CLOSE.json",
+          "contains": ["RESOLVED", "ord_c105ed01"]
+        },
+        {
+          "path": ".orderfield/archive/ord_c105ed01/SPEC.md",
+          "contains": ["ALG-001"]
+        },
+        {
+          "path": ".orderfield/archive/ord_c105ed01/REQUIREMENTS.json",
+          "contains": ["ALG-001"]
+        }
+      ]
+    },
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        1  open 1  closed 0",
+        "archived      1",
+        "keep live epic"
+      ],
+      "stdout_not_contains": ["archive me"]
+    },
+    {
+      "run": "retain",
+      "exit": 0,
+      "stdout_contains": ["closed-field-archive", "CLOSE.json"]
+    },
+    {
+      "run": "gc",
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/archive/ord_c105ed01/CLOSE.json",
+          "contains": ["RESOLVED", "ord_c105ed01"]
+        }
+      ]
+    },
+    {
+      "run": ["--field", "ord_c105ed01", "status"],
+      "exit": 1,
+      "stderr_contains": ["archived", "ord_c105ed01", ".orderfield/archive/"]
+    }
+  ]
+}

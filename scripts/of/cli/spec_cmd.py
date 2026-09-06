@@ -1478,6 +1478,57 @@ def eval_setup_recovery_packed_age(root: Path) -> None:
     PackedAge.backdate_packet(root, "worker", "2018-01-01T00:00:00Z")
 
 
+@_register_eval_fixture("recovery_closed_field_archive")
+def eval_setup_recovery_closed_field_archive(root: Path) -> None:
+    """Keep-live sibling + close-ready archive-me pinned to ord_c105ed01."""
+    init = eval_run_of(
+        root, "init", "--mission", "keep live epic", "--phase", "explore"
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    created = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "archive me",
+        "--phase",
+        "build",
+        "--source",
+        "archive me: internal index ALG-001",
+    )
+    EvalInvariantSetup.require_ok(created, "new")
+    from of.field import (
+        ActiveField,
+        _read_json_object,
+        dump_bytes,
+        fields_dir,
+        json_payload_bytes,
+    )
+    from of.retain import ClosedFieldArchive
+
+    old = ActiveField.read(root)
+    if not old:
+        die("eval fixture missing ACTIVE after of new")
+    home = fields_dir(root) / old
+    data = _read_json_object(home / "ORDER.json") or {}
+    data["id"] = ClosedFieldArchive.EVAL_ID
+    dump_bytes(home / "ORDER.json", json_payload_bytes(data))
+    dest = fields_dir(root) / ClosedFieldArchive.EVAL_ID
+    if home.resolve() != dest.resolve():
+        home.rename(dest)
+    ActiveField.write(root, ClosedFieldArchive.EVAL_ID)
+    added = eval_run_of(
+        root,
+        "spec",
+        "--add",
+        "ALG-001",
+        "--text",
+        "use an in-memory index for lookups",
+        "--surface",
+        "internal",
+    )
+    EvalInvariantSetup.require_ok(added, "spec add")
+
+
 @_register_eval_fixture("recovery_orphan_packed")
 def eval_setup_recovery_orphan_packed(root: Path) -> None:
     """Closed field with a leftover packed child. of gc must leave proof."""
@@ -1964,6 +2015,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ResumeAfterProcessDeath",
     "tests.test_kernel.PackedAgeWatchdog",
     "tests.test_kernel.OrphanPackedCleanup",
+    "tests.test_kernel.ClosedFieldArchiveTrail",
     "tests.test_kernel.ContrastReportRenderer",
     "tests.test_kernel.WaveRosterListShow",
     "tests.test_kernel.RootStubAmbiguous",

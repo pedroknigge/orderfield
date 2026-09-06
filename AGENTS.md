@@ -119,6 +119,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.29 multi-wave residual-loop eval corpus (3+ waves + mid-flight amend; `recovery/multi-wave-residual`) | documented |
 | 0.7.30 nested field lifecycle (`of new --parent` / `ORDER.parent` / close returns ACTIVE; `recovery/nested-field-lifecycle`) | documented |
 | 0.7.31 mid-epic handoff packet (`of handoff` field packet / `HandoffReport`; `recovery/mid-epic-handoff`) | documented |
+| 0.7.32 closed-field archive (`of gc --archive-field`; drop refuses `CLOSE.json`; `recovery/closed-field-archive`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

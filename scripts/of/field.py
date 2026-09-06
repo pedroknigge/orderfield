@@ -836,6 +836,12 @@ class FieldRoster:
             id_of=lambda row: str(row[0]),
         )
         lines = [f"fields        {len(homes)}  open {open_n}  closed {closed_n}"]
+        if root is not None:
+            from of.retain import ClosedFieldArchive
+
+            archived_n = ClosedFieldArchive.count(root)
+            if archived_n:
+                lines.append(ClosedFieldArchive.roster_line(root, archived_n))
         for fid, home, order in page:
             facts = FieldRoster._home_facts(home, order, now=now)
             if facts["signal"]:
@@ -922,6 +928,9 @@ def bind_active_field(
                     die(f"unsafe field root {home}: kernel artifact root is a symlink")
                 ActiveField.write(root, fid)
                 return _activate_field_home(root, home, cmd)
+        from of.retain import ClosedFieldArchive
+
+        ClosedFieldArchive.refuse_live(root, explicit)
         die(f"unknown field {explicit}")
     if not homes:
         return None
@@ -3738,6 +3747,7 @@ from of.retain import (  # noqa: E402,F401
     artifact_older_than_retention,
     artifact_older_than_safe,
     directory_bytes,
+    ClosedFieldArchive,
     drop_field_home,
     field_keep_silences,
     format_bytes,

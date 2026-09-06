@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). Doctor one-pass skew is on 0.7.25 (C-111). Orphan packed-child cleanup is on 0.7.26 (C-112). Root stub refuse/migrate is on 0.7.27 (C-113). `of status --json` is on 0.7.28 (C-114). Multi-wave residual-loop evals are on 0.7.29 (C-115). Nested field lifecycle is on 0.7.30 (C-116). Mid-epic handoff packet is on 0.7.31 (C-117). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). Doctor one-pass skew is on 0.7.25 (C-111). Orphan packed-child cleanup is on 0.7.26 (C-112). Root stub refuse/migrate is on 0.7.27 (C-113). `of status --json` is on 0.7.28 (C-114). Multi-wave residual-loop evals are on 0.7.29 (C-115). Nested field lifecycle is on 0.7.30 (C-116). Mid-epic handoff packet is on 0.7.31 (C-117). Closed-field archive is on 0.7.32 (C-118). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.31`
+**Code rev:** VERSION `0.7.32`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 112 |
+| OK | 113 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 98 |
+| critical | 99 |
 | normal | 19 |
 
-**Truth score (advisory):** `(112*100 + 4*50) / 117 = 97.4` (117 matrix rows; unique IDs C-001…C-117)
+**Truth score (advisory):** `(113*100 + 4*50) / 118 = 97.5` (118 matrix rows; unique IDs C-001…C-118)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -186,6 +186,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-115 | Three-wave residual loop: pack → structured residual → collect → integrate → next-wave; mid-flight `of spec --amend` + `of patch` after wave 1 lands on wave-2/3 packets (`spec_hash` / `spec_ref` + dated `## Amendment 1 —`); wave-1 packet is not rewritten; wave 3 stays in-flight (`collect` MISSING, `next-wave` dies) | CHANGELOG / SKILL / evals / external-brief / kernel feature | `MultiWaveResidualEval`; recovery `multi-wave-residual`; `MultiWaveResidualLoop` | `scripts/of/cli/spec_cmd.py` / `evals/recovery/multi-wave-residual.eval.json` / `tests/test_kernel_spec.py` | `MultiWaveResidualEval` / `close_child` / `EvalInvariantSetup.write_bound_residual` | — | critical | OK | 0.7.29 |
 | C-116 | `of new --parent` stamps optional `ORDER.parent` on a new sibling home (phase of an open epic); plain `of new` stays an unrelated epic; `of close` returns `.orderfield/ACTIVE` to the live parent; status/resume/fields print `parent`; no `of merge`; homes stay flat under `fields/<id>/` | CHANGELOG / SKILL / evals / nested-fields / glossary / kernel feature | `NestedField`; recovery `nested-field-lifecycle`; `NestedFieldLifecycle` | `scripts/of/field.py` / `scripts/of/cli/init_cmd.py` / `scripts/of/cli/spec_cmd.py` / `evals/recovery/nested-field-lifecycle.eval.json` / `tests/test_kernel_fields.py` | `NestedField` / `cmd_new` / `cmd_close` | — | critical | OK | 0.7.30 |
 | C-117 | `of handoff` without `--packet` emits a mid-epic field packet from one `HandoffReport` document (next legal action, in-flight packet paths, pulse, checkpoint summary) for a human or next harness; `--json` is the machine object; child prompt stays `of handoff --packet`; does not unpack; no `HANDOFF.json` | CHANGELOG / SKILL / evals / events / glossary / kernel feature | `HandoffReport`; recovery `mid-epic-handoff`; `MidEpicHandoffPacket` | `scripts/of/cli/ops.py` / `scripts/of/cli/wave.py` / `evals/recovery/mid-epic-handoff.eval.json` / `tests/test_kernel_field.py` | `HandoffReport` / `cmd_handoff` | — | critical | OK | 0.7.31 |
+| C-118 | Closed field archives without losing contrast trail: `of gc --archive-field <id>` moves `.orderfield/fields/<id>/` to `.orderfield/archive/<id>/` keeping `CLOSE.json` / SPEC / REQUIREMENTS / ORDER; `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`; retain/gc keep archived trail (`closed-field-archive`); apply will not unlink `.orderfield/archive/`; `--field` of an archived id dies; no new verb; not `of merge` | CHANGELOG / SKILL / evals / troubleshooting / kernel feature | `ClosedFieldArchive`; recovery `closed-field-archive`; `ClosedFieldArchiveTrail` | `scripts/of/retain.py` / `scripts/of/cli/ops.py` / `evals/recovery/closed-field-archive.eval.json` / `tests/test_kernel_field.py` | `ClosedFieldArchive` / `cmd_gc` / `drop_field_home` | — | critical | OK | 0.7.32 |
 
 ### Verdict definitions
 
@@ -243,6 +244,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-115 0.7.29: 3-wave residual-loop eval corpus; mid-flight amend lands on later packets
 - [x] C-116 0.7.30: nested field lifecycle; `of new --parent` / close returns ACTIVE; not `of merge`
 - [x] C-117 0.7.31: mid-epic handoff packet; `of handoff` without `--packet`; no unpack
+- [x] C-118 0.7.32: closed-field archive keeps CLOSE.json; drop without --force cannot wipe contrast trail
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`
