@@ -610,16 +610,109 @@ def origin_session_id(order: dict[str, Any]) -> str:
     return str(origin.get("session_id") or "").strip()
 
 
+class NestedField:
+    """Phase-of-epic nesting on existing sibling homes.
+
+    Flat `.orderfield/fields/<id>/` plus optional `ORDER.parent`. Plain
+    `of new` stays an unrelated epic. `of new --parent` stamps the bound
+    field. `of close` returns `.orderfield/ACTIVE` to that parent.
+    Not a bot org, not `of merge`, not a second ORDER kind.
+    """
+
+    KEY = "parent"
+    ACTIVE_TOKEN = "ACTIVE"
+
+    @staticmethod
+    def id_of(order: dict[str, Any]) -> str:
+        raw = str(order.get(NestedField.KEY) or "").strip()
+        return raw if FIELD_ID_RE.match(raw) else ""
+
+    @staticmethod
+    def format_line(order: dict[str, Any], *, key_width: int = 12) -> str | None:
+        pid = NestedField.id_of(order)
+        if not pid:
+            return None
+        return f"{'parent'.ljust(key_width)}{pid}"
+
+    @staticmethod
+    def format_return_line(parent_id: str, *, key_width: int = 12) -> str:
+        return f"{'return'.ljust(key_width)}--field {parent_id}"
+
+    @staticmethod
+    def new_note(parent_id: str) -> str:
+        return (
+            f"note          nested field (phase of {parent_id}). "
+            "close returns ACTIVE to parent; not of merge"
+        )
+
+    @staticmethod
+    def lookup(
+        root: Path, field_id: str
+    ) -> tuple[str, Path, dict[str, Any]] | None:
+        for fid, home, order in list_field_homes(root):
+            if fid == field_id:
+                return fid, home, order
+        return None
+
+    @staticmethod
+    def resolve(root: Path, requested: str | None) -> str:
+        token = (requested or "").strip()
+        if not token or token == NestedField.ACTIVE_TOKEN:
+            pointed = ActiveField.read(root)
+            if pointed:
+                token = pointed
+            else:
+                opens = [
+                    fid
+                    for fid, _home, order in list_field_homes(root)
+                    if field_is_open(order)
+                ]
+                if len(opens) == 1:
+                    token = opens[0]
+                else:
+                    die(
+                        "of new --parent needs ACTIVE or --parent <id> "
+                        "(open epic)"
+                    )
+        fid = require_field_id(token)
+        hit = NestedField.lookup(root, fid)
+        if hit is None:
+            die(f"parent {fid} is not a live field")
+        _fid, _home, order = hit
+        if not field_is_open(order):
+            die(f"parent {fid} is closed; of new --parent needs an open epic")
+        return fid
+
+    @staticmethod
+    def stamp(order: dict[str, Any], parent_id: str) -> None:
+        pid = require_field_id(parent_id)
+        if pid == str(order.get("id") or ""):
+            die("parent cannot be this field")
+        order[NestedField.KEY] = pid
+
+    @staticmethod
+    def return_active(root: Path, order: dict[str, Any]) -> str | None:
+        """Rewrite ACTIVE to the live parent after close. None if absent."""
+        pid = NestedField.id_of(order)
+        if not pid:
+            return None
+        if NestedField.lookup(root, pid) is None:
+            return None
+        ActiveField.write(root, pid)
+        return pid
+
+
 class FieldRoster:
     """Sibling-field list. ACTIVE marker, open/closed, packed-age, epic vs patch.
 
     Disk contract is unchanged: `.orderfield/fields/<id>/` + `.orderfield/ACTIVE`.
-    `of new` is an unrelated epic. Same product is `of patch` / `of spec --amend`.
+    `of new` is an unrelated epic. `of new --parent` is a phase of that epic.
+    Same product is `of patch` / `of spec --amend`.
     """
 
     CHOOSE = (
-        "of new = unrelated epic; same product = of patch | of spec --amend; "
-        "attach = --field"
+        "of new = unrelated epic; of new --parent = phase of ACTIVE; "
+        "same product = of patch | of spec --amend; attach = --field"
     )
 
     @staticmethod
@@ -649,6 +742,9 @@ class FieldRoster:
         origin = origin_session_id(order)
         if origin:
             extra += f" [{origin}]"
+        parent = NestedField.id_of(order)
+        if parent:
+            extra += f"  parent={parent}"
         return extra
 
     @staticmethod

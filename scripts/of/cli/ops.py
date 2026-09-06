@@ -36,6 +36,7 @@ from of.field import (
     _read_json_object,
     DoctorSkew,
     FieldSignal,
+    NestedField,
     RootStub,
     OrphanPacked,
     PackedAge,
@@ -633,6 +634,7 @@ class StatusReport:
             "active": ActiveField.read(root),
             "harness": order.get("harness") or None,
             "origin": StatusReport.origin(order),
+            "parent": NestedField.id_of(order) or None,
             "root_stub": StatusReport.root_stub_kind(root),
             "spawned": int(state.get("children_spawned") or 0),
             "max_children": int((caps or {}).get("max_children") or 0),
@@ -694,6 +696,7 @@ class StatusReport:
             "active": doc.get("active"),
             "harness": doc.get("harness"),
             "origin": doc.get("origin"),
+            "parent": doc.get("parent"),
             "root_stub": doc.get("root_stub"),
             "spawned": int(doc.get("spawned") or 0),
             "max_children": int(doc.get("max_children") or 0),
@@ -787,6 +790,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)
+    parent_line = NestedField.format_line(order, key_width=12)
+    if parent_line:
+        print(parent_line)
     backlog = order.get("backlog") or []
     if backlog:
         print("backlog")
@@ -1206,6 +1212,9 @@ def cmd_resume(args: argparse.Namespace) -> None:
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)
+    parent_line = NestedField.format_line(order, key_width=14)
+    if parent_line:
+        print(parent_line)
     open_n = sum(1 for _fid, _home, o in homes if field_is_open(o))
     ac_label, ac_detail = resume_auto_continue_lines(
         order, open_field_count=open_n

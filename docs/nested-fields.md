@@ -4,7 +4,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `.orderfield/ACTIVE` is the pointer. Status and resume follow it. A leftover root `ORDER.json` is a stub, not the live field.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer` · `recovery/root-stub-ambiguous`
+> Hub: [AGENTS.md](../AGENTS.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer` · `recovery/root-stub-ambiguous` · `recovery/nested-field-lifecycle`
 
 ## When to `of new`
 
@@ -12,14 +12,28 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 |---|---|
 | First field in this tree | `of init --mission "…"` (legacy home: `.orderfield/ORDER.json`) |
 | Unrelated second mission, same tree | `of new --mission "…"` |
+| Phase of the **same** epic, own ORDER + close | `of new --parent --mission "…"` |
 | Same brief, other agent | attach `--field <id>` (writes ACTIVE) |
 | Mid-flight extra ask on the **same** product | `of spec --amend`, not `of new` |
 | Several unmatched open fields | ask, then `--field` or `of new` |
-| Same mission, new constraints / done-when / phase | `of patch` on the **bound** field |
+| Same mission, new constraints / done-when / phase on **this** ORDER | `of patch` on the **bound** field |
 
 `of init --force` replaces **this** field (archives old waves). It is not how you keep the current field and start another. That is `of new`.
 
-The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. `choose` says `of new` is an unrelated epic; the same product is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
+The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. `choose` says `of new` is an unrelated epic; `of new --parent` is a phase of ACTIVE; the same product on this ORDER is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
+
+## Phase of an epic (`of new --parent`)
+
+A long mission can open a nested field for one phase without a bot org and without `of merge`.
+
+```bash
+of new --parent --mission "phase: build auth" --phase build
+# work the nested field (pack / collect / integrate / contrast)
+of close          # stamps CLOSE.json; ACTIVE returns to the parent
+of resume         # parent epic
+```
+
+`--parent` with no id uses `.orderfield/ACTIVE` (or the unique open home). `--parent ord_…` names the epic. The child ORDER gets optional `parent`. Homes stay flat (`fields/<id>/`). Plain `of new` does not stamp parent. A missing or closed parent dies before the tree changes. Close of a field without parent leaves ACTIVE. Proof: `recovery/nested-field-lifecycle`.
 
 ## ACTIVE + how status / resume resolve
 

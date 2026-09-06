@@ -94,6 +94,11 @@
         "recorded_at": { "type": "string", "minLength": 1 }
       }
     },
+    "parent": {
+      "type": "string",
+      "pattern": "^ord_[0-9a-f]{8}$",
+      "description": "Optional live field id this ORDER is a phase of. Absent = unrelated sibling epic. Close returns ACTIVE. Not of merge."
+    },
     "backlog": {
       "type": "array",
       "items": {

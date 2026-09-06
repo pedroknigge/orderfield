@@ -447,6 +447,159 @@ class SiblingFields(unittest.TestCase):
         self.assertNotIn("beta epic", text)
 
 
+class NestedFieldLifecycle(unittest.TestCase):
+    """Phase-of-epic nested field: of new --parent, close returns ACTIVE.
+
+    of eval --kernel. Reuses sibling homes + CloseProof. Not of merge.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-nested-lc-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init(self, mission: str = "epic parent") -> str:
+        r = run_of(self.tmp, "init", "--mission", mission)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        order = self.tmp / ".orderfield" / "ORDER.json"
+        if order.is_file():
+            return load_json(order)["id"]
+        homes = of.list_field_homes(self.tmp)
+        self.assertTrue(homes)
+        return homes[0][0]
+
+    def _new_parent(self, mission: str = "phase build auth", **flags: str) -> str:
+        args = ["new", "--parent", "--mission", mission]
+        for key, value in flags.items():
+            args.extend([f"--{key.replace('_', '-')}", value])
+        r = run_of(self.tmp, *args)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("nested field (phase of", r.stdout)
+        self.assertIn("not of merge", r.stdout)
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        return active
+
+    def test_plain_new_does_not_stamp_parent(self) -> None:
+        self._init()
+        r = run_of(self.tmp, "new", "--mission", "unrelated epic")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("sibling field (unrelated epic)", r.stdout)
+        child = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        data = load_json(self.tmp / ".orderfield" / "fields" / child / "ORDER.json")
+        self.assertNotIn("parent", data)
+
+    def test_new_parent_stamps_and_lists(self) -> None:
+        parent = self._init()
+        child = self._new_parent()
+        self.assertNotEqual(child, parent)
+        data = load_json(self.tmp / ".orderfield" / "fields" / child / "ORDER.json")
+        self.assertEqual(data.get("parent"), parent)
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn(f"parent={parent}", listed.stdout)
+        self.assertIn("phase of ACTIVE", listed.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn(f"parent      {parent}", status.stdout)
+        resume = run_of(self.tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stdout + resume.stderr)
+        self.assertIn(f"parent        {parent}", resume.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc.get("parent"), parent)
+
+    def test_parent_missing_and_closed_die(self) -> None:
+        self._init()
+        missing = run_of(self.tmp, "new", "--parent", "ord_deadbeef", "--mission", "nope")
+        self.assertEqual(missing.returncode, 1, missing.stdout + missing.stderr)
+        self.assertIn("not a live field", missing.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
+        self.assertFalse((self.tmp / ".orderfield" / "fields").exists())
+        parent = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+        run_of(self.tmp, "new", "--mission", "to-close")
+        child = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        order_path = self.tmp / ".orderfield" / "fields" / child / "ORDER.json"
+        data = load_json(order_path)
+        data["spec_closed"] = True
+        order_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        closed = run_of(
+            self.tmp, "new", "--parent", child, "--mission", "under closed"
+        )
+        self.assertEqual(closed.returncode, 1, closed.stdout + closed.stderr)
+        self.assertIn("is closed", closed.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "fields" / parent / "ORDER.json").is_file()
+            or (self.tmp / ".orderfield" / "ORDER.json").is_file())
+
+    def test_close_returns_active_to_parent(self) -> None:
+        parent = self._init()
+        child = self._new_parent(
+            source="phase build auth: internal index ALG-001",
+        )
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        verified = run_of(self.tmp, "spec", "--verified-internal", "ALG-001")
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("CLOSED", closed.stdout)
+        self.assertIn(f"--field {parent}", closed.stdout)
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        self.assertEqual(active, parent)
+        child_order = load_json(
+            self.tmp / ".orderfield" / "fields" / child / "ORDER.json"
+        )
+        self.assertTrue(child_order.get("spec_closed"))
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "fields" / child / "CLOSE.json").is_file()
+        )
+        resume = run_of(self.tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stdout + resume.stderr)
+        self.assertIn("epic parent", resume.stdout)
+        self.assertNotIn("phase build auth", resume.stdout)
+        self.assertIn("auto_continue yes", resume.stdout)
+
+    def test_close_without_parent_keeps_active(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "solo close",
+            "--source",
+            "solo close: internal index ALG-001",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        spec = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(spec.returncode, 0, spec.stderr)
+        self.assertEqual(
+            run_of(self.tmp, "spec", "--verified-internal", "ALG-001").returncode,
+            0,
+        )
+        before = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertNotIn("return", closed.stdout)
+        after = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        self.assertEqual(after, before)
+
+
 class RootStubAmbiguous(unittest.TestCase):
     """Leftover root ORDER vs nested fields. of eval --kernel."""
 

@@ -28,11 +28,11 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `wave.show` | After `of wave show` | `wave`, `live`, `ok` |
 | `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
 | `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
-| `new` | After `of new` | `field`, `ok` |
+| `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
 | `fields` | After `of fields` | `count`, `open`, `closed`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
 | `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON |
-| `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok` |
+| `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok`; `parent` when ACTIVE returned |
 | `unpack` | After `of unpack` | `child_id`, `wave`, `ok` |
 | `phase_override` | After audited `of phase --force` | override record fields |
 | `pulse` | Each in-flight child in `of pulse` | `child_id`, `verdict`, `age_s`, `wave` |

@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.30
+
+Nested field lifecycle for epic phases. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.29 notes.
+
+- **Phase of an epic, then return:** `of new --parent` (ACTIVE when the id is omitted) stamps optional `ORDER.parent` on a new sibling home. Homes stay flat under `.orderfield/fields/<id>/`. Plain `of new` is still an unrelated epic. `of close` writes ACTIVE back to the live parent. Status / resume / fields print `parent`. Not `of merge`. Not a bot org.
+- **Eval:** `recovery/nested-field-lifecycle` fails if `--parent` does not nest, if close leaves ACTIVE on the child, or if resume after close hides the parent epic. `NestedFieldLifecycle` is on `of eval --strict --kernel`. Existing `recovery/field-roster-ux` / `recovery/active-field-pointer` stay.
+- Packaging: VERSION 0.7.30; skill/alias description preview `v0.7.30 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.29 notes.
+
 ## 0.7.29
 
 Multi-wave residual-loop eval corpus. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.28 notes.
