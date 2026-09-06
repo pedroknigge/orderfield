@@ -1406,6 +1406,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/process-death-resume", r.stdout)
         self.assertIn("PASS recovery/packed-age-watchdog", r.stdout)
         self.assertIn("PASS recovery/doctor-one-pass-skew", r.stdout)
+        self.assertIn("PASS recovery/adversarial-dual-truth", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")
@@ -1430,6 +1431,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("process-death-resume", r.stdout)
         self.assertIn("packed-age-watchdog", r.stdout)
         self.assertIn("doctor-one-pass-skew", r.stdout)
+        self.assertIn("adversarial-dual-truth", r.stdout)
 
 
 class MissionRewriteRefused(unittest.TestCase):

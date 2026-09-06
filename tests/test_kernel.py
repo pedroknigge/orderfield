@@ -41,6 +41,7 @@ from test_kernel_pack import (  # noqa: E402,F401
     WaveReportQualityGate,
 )
 from test_kernel_spec import (  # noqa: E402,F401
+    AdversarialDualTruthCorpus,
     ContrastReportRenderer,
     MultiWaveResidualLoop,
 )

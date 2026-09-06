@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.36` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.37` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -49,6 +49,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Chat-dump residual (transcript in `evidence` / `notes`) | collect/integrate refuse; wave report is `{status, wants, uncertainty}` | `recovery/wave-report-quality-gate` |
 | Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
+| Child-forged close + `--tokens` theater + unpack of a reporter | `CLOSE.json` stays absent; `--tokens N>0` dies; unpack of a residual child is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home); `--field` stub dies; `of migrate` archives | `recovery/active-field-pointer`; `recovery/root-stub-ambiguous` |
 | Many open siblings; `of new` vs `of patch` is unclear | `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
 | Epic needs a phase field, then return | `of new --parent` stamps `ORDER.parent`; `of close` returns ACTIVE; not `of merge` | `recovery/nested-field-lifecycle`; `NestedFieldLifecycle` |
@@ -79,7 +80,7 @@ A multi-wave mission can look finished while SPEC is still open. The lie is a st
 
 **The risk.** Slice close masquerades as mission close. A dump or slogan stands in for `result_ref`. A field residual rewrites mission/phase so the next wave never happens. A mid-flight amend vanishes because wave-1 packets still look current. A later session treats age, packed-age, harness chrome, or process death as a new field or a finished one.
 
-**What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref`; it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
+**What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref`; it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`). Child-forged close, `--tokens` theater, and unpack of a reporter are one corpus (`recovery/adversarial-dual-truth`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
 
 **What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
 
@@ -139,6 +140,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
 | Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
+| Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 
 ## Deliberately reserved
 

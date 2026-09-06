@@ -1,6 +1,6 @@
-# Next path (after 0.7.36)
+# Next path (after 0.7.37)
 
-The long-mission operator walk is on disk: [long-mission.md](long-mission.md) stitches epic → waves → mid-flight amend → close is proof. The 0.7.35 residual-theater addendum stays the threat-model page. `of pack --explain` stays proven. Live in-flight visibility, closed-field archive, mid-epic handoff, nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+The adversarial dual-truth corpus is on disk: `recovery/adversarial-dual-truth` walks child-forged close, fake token theater, and unpack-of-reporter. The long-mission operator walk and the 0.7.35 residual-theater addendum stay the prose pages. `of pack --explain` stays proven. Live in-flight visibility, closed-field archive, mid-epic handoff, nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

@@ -125,6 +125,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.34 `of pack --explain` dry-run slice sizing (`SliceLint.document`; `recovery/packet-sizing-explain`) | documented |
 | 0.7.35 threat-model addendum for long-task residual theater (disk contract / residual / close-is-proof; [external-brief.md](docs/external-brief.md#long-task-residual-theater)) | documented |
 | 0.7.36 long-mission operator walk (epic → waves → amend → close is proof; [docs/long-mission.md](docs/long-mission.md)) | documented |
+| 0.7.37 adversarial dual-truth corpus (close / fake budget / unpack theater; `recovery/adversarial-dual-truth`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

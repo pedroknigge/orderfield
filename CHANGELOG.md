@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.37
+
+Adversarial dual-truth corpus. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.36 notes.
+
+- **Corpus, not a runtime:** `recovery/adversarial-dual-truth` reuses the contract-close fixture and walks three adversary moves already on disk: child-forged close without `CLOSE.json` (contrast stays CLOSE BLOCKED; `of close` refused), `of pack --tokens 80000` dies as reserved accounting, and `of unpack` of a reporter is refused (packet stays). Spawn dry-run still prints that paid usage is not a budget. `EvalFileAssert.absent` / `file_missing` lets a step fail if a proof file appears. `AdversarialDualTruthCorpus` is on `of eval --strict --kernel`. Existing `recovery/contrast-close-contract` / `recovery/budget-seconds-honesty` / `recovery/atomic-close-flag-lag` stay.
+- **Skill drives the proof:** `SKILL.md` “What to type next” and the pack/close paragraphs name `of eval recovery/adversarial-dual-truth` so a leader does not invent a token ceiling or unpack-as-close. No new CLI. No new schema. Not a fake budget. Not a process supervisor.
+- Packaging: VERSION 0.7.37; skill/alias description preview `v0.7.37 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.36 notes.
+
 ## 0.7.36
 
 Long-mission operator walk. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.35 notes.
