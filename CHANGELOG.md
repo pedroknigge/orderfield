@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.49
+
+`of contrast --diff` human-readable narrative. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.48 notes.
+
+- **Gaps as prose:** `of contrast --diff` prints one `ContrastDiff` narrative from the same `ContrastReport` rows plus `SpecDiff` flags (`of spec-diff`). DELIVERED means owned, not close-ok. VERIFIED_INTERNAL is not the public contract. RESOLVED is not CLOSED. An ORDER omission can remain after the close gate is RESOLVED — the narrative names that split. No theater (`mission complete` / `all delivered` / `CLOSED`). Default `of contrast` one-pager + machine JSON stay. No new verb. No `CONTRAST.json`.
+- **Skill drives the cut:** `SKILL.md` / alias teach `of contrast --diff` when reviewing binding gaps. Same-harness, stdlib kernel.
+- **Proof:** `recovery/contrast-diff-narrative` reuses the contract-close fixture. `ContrastDiffNarrative` on `of eval --strict --kernel`. Existing `recovery/contrast-close-contract` / `ContrastReportRenderer` stay.
+- Packaging: VERSION 0.7.49; skill/alias description preview `v0.7.49 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.48 notes.
+
 ## 0.7.48
 
 Efficiency signal + propose model uptier/downtier. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.47 notes.

@@ -31,7 +31,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
 | `fields` | After `of fields` | same facts as `of fields --json` (`PackRoster.event_fields`): `count`, `open`, `closed`, `archived`, `active`, `in_flight`, `packs` (`field`, `child_id`, `wave`, `role`, `residual`, `age_s`, `packet`), `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
-| `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON |
+| `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON. `--diff` changes the human renderer only (`ContrastDiff`); the event stays `ContrastReport` |
 | `close` | After `of close` | write path: `rev`, `spec_hash`, `done_when_closed`, `ok`; `parent` when ACTIVE returned; `written=true`, `residual_empty`. `--checklist`: `checklist=true`, `written=false`, `ok`, `contrast`, `residual`, `in_flight`, `in_flight_ids`, `next` — no stamp |
 | `unpack` | After `of unpack` | `child_id`, `wave`, `ok` |
 | `phase_override` | After audited `of phase --force` | override record fields |

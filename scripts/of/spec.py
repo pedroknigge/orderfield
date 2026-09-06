@@ -826,14 +826,11 @@ def order_text_blob(order: dict[str, Any]) -> str:
     return "\n".join(parts).lower()
 
 
-def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
-    data = load_requirements(root)
-    blob = order_text_blob(order)
-    lines: list[str] = []
-    for item in data.get("requirements") or []:
-        if not is_active_requirement(item):
-            continue
-        rid = str(item.get("id") or "?")
+class SpecDiff:
+    """Binding gaps vs ORDER text / coverage. Same facts as `of spec-diff`."""
+
+    @staticmethod
+    def flags(item: dict[str, Any], blob: str) -> list[str]:
         status = str(item.get("status") or "unowned")
         owners = item.get("owned_by") or []
         text = str(item.get("text") or "")
@@ -842,7 +839,7 @@ def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
             flags.append("FAILED")
         elif not requirement_close_ok(item):
             flags.append("UNVERIFIED")
-            if str(item.get("status") or "") in REQ_INTERNAL_VERIFIED:
+            if status in REQ_INTERNAL_VERIFIED:
                 flags.append("VERIFIED_INTERNAL")
             if requirement_is_pair(item) and not item.get("pair_checked"):
                 flags.append("PAIR")
@@ -851,9 +848,42 @@ def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
         needle = text.lower()
         if needle and needle not in blob:
             flags.append("ORDER_OMISSION")
-        if flags:
-            lines.append(f"{rid:12} {' '.join(flags)}  {text[:80]}")
-    return lines
+        return flags
+
+    @staticmethod
+    def rows(root: Path, order: dict[str, Any]) -> list[dict[str, Any]]:
+        data = load_requirements(root)
+        blob = order_text_blob(order)
+        rows: list[dict[str, Any]] = []
+        for item in data.get("requirements") or []:
+            if not is_active_requirement(item):
+                continue
+            flags = SpecDiff.flags(item, blob)
+            if not flags:
+                continue
+            rows.append(
+                {
+                    "id": str(item.get("id") or "?"),
+                    "flags": flags,
+                    "text": str(item.get("text") or "")[:80],
+                    "cite": requirement_source_cite(item),
+                    "surface": requirement_surface(item),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def lines(root: Path, order: dict[str, Any]) -> list[str]:
+        out: list[str] = []
+        for row in SpecDiff.rows(root, order):
+            out.append(
+                f"{row['id']:12} {' '.join(row['flags'])}  {row['text']}"
+            )
+        return out
+
+
+def spec_diff_lines(root: Path, order: dict[str, Any]) -> list[str]:
+    return SpecDiff.lines(root, order)
 
 
 def find_requirement(data: dict[str, Any], req_id: str) -> dict[str, Any] | None:
