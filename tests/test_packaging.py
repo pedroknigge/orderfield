@@ -639,9 +639,12 @@ class ReadmeProductSurface(unittest.TestCase):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         folded = text.casefold()
         use = text.index("# Typical problems")
+        midflight = text.index("## Mid-flight, the plan can change without dying")
         install = text.index("## Install")
         kernel = text.index("## What the kernel enforces")
         haken = folded.index("haken")
+        self.assertLess(use, midflight)
+        self.assertLess(midflight, install)
         self.assertLess(use, install)
         self.assertLess(use, kernel)
         self.assertLess(use, haken)
@@ -657,12 +660,19 @@ class ReadmeProductSurface(unittest.TestCase):
             "CLOSE.json",
             ".orderfield/",
             "When not",
+            "## Mid-flight, the plan can change without dying",
+            "You intervene.",
+            "A child reports the field is wrong.",
+            "A child finds something the plan missed.",
+            "sibling fields",
         ):
             self.assertIn(needle, hero)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("typical problems", skill.casefold())
         self.assertIn("typical problems", alias.casefold())
+        self.assertIn("mid-flight", skill.casefold())
+        self.assertIn("mid-flight", alias.casefold())
 
 
 class VersionedDescription(unittest.TestCase):

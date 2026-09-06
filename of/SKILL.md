@@ -1,15 +1,15 @@
 ---
 name: of
-description: v0.7.51 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README (sibling) leads with typical problems → what Orderfield does. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Optional per-task model hints after consent (sibling). Status/resume may propose uptier/downtier (ask only; sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.52 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README (sibling) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Optional per-task model hints after consent (sibling). Status/resume may propose uptier/downtier (ask only; sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.51"
+  version: "0.7.52"
   alias-of: orderfield
 ---
 
 # /of — alias for orderfield
 
-Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with typical problems → what Orderfield does.
+Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install.
 
 Load the sibling skill and follow it. Stop if it is missing. Do not invent a second contract.
 

@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.51</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.52</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.51-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.52-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -63,6 +63,22 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 
 ---
 
+## Mid-flight, the plan can change without dying
+
+The plan is not a snapshot you defend. It absorbs three kinds of change and keeps its shape:
+
+- **You intervene.** `of spec --amend` dates the new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet already carries the new field.
+- **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
+- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
+
+Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
+
+That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
+
+Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field (an unrelated epic). `of new --parent` opens a phase of the bound epic; `of close` returns ACTIVE (not `of merge`). Same product on this ORDER: `of patch` / `of spec --amend`. `of fields` marks `.orderfield/ACTIVE` with `*` and prints open/closed / phase / wave / packed-age plus open packs across homes (`of fields --json` is the dashboard object). `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. The kernel does not prompt. It does not lock product files.
+
+---
+
 ## Install
 
 Install the package into the Agent Skills hosts selected by `skills`:
@@ -76,8 +92,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.51
-release_version=0.7.51
+release_tag=v0.7.52
+release_version=0.7.52
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -219,22 +235,6 @@ CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`
 Default spawn policy is **same harness** (current session adapter). Multi-harness only if the user asks; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew on existing HOME installs versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass — PATH presence is not authentication or readiness; missing skill dests are silent; skill SKEW alone is WARN / exit 0. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; never copy transcripts). Orphan packed children (closed / leftover / stale prior wave, residual missing) are named on the plan; explicit `of gc` unlinks them and records `gc-stamp.json` `orphans[]` — resume auto-gc never unlinks packets. `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
-
----
-
-## Mid-flight, the plan can change without dying
-
-The plan is not a snapshot you defend. It absorbs three kinds of change and keeps its shape:
-
-- **You intervene.** `of spec --amend` dates the new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet already carries the new field.
-- **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
-- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
-
-Children propose. Only the leader writes mission. Amendments are dated and auditable — silent rewrite is a field error, not a feature.
-
-That is the part a chat cannot do: the contract updates in real time, and every update has an author and a timestamp.
-
-Two unrelated missions in the **same working tree** are sibling fields, not two chats fighting one ORDER. `of new` opens another field (an unrelated epic). `of new --parent` opens a phase of the bound epic; `of close` returns ACTIVE (not `of merge`). Same product on this ORDER: `of patch` / `of spec --amend`. `of fields` marks `.orderfield/ACTIVE` with `*` and prints open/closed / phase / wave / packed-age plus open packs across homes (`of fields --json` is the dashboard object). `of resume` with several unmatched open fields prints a roster (exit 2) — pick `--field` / `OF_FIELD` or attach by origin session. Same brief, other agent: attach. The kernel does not prompt. It does not lock product files.
 
 ---
 
