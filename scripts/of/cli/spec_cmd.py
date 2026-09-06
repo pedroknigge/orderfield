@@ -17,6 +17,7 @@ from of.field import (
     FieldSignal,
     NestedField,
     PackedAge,
+    WaveRoster,
     die,
     dump_json,
     emit_event,
@@ -29,6 +30,7 @@ from of.field import (
     kernel_repo_root,
     load_json,
     load_order,
+    load_state,
     require_public_schema,
     save_order,
     session_path,
@@ -569,6 +571,171 @@ def cmd_contrast(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+class CloseChecklist:
+    """Proof checklist for multi-wave close. Contrast + residual empty.
+
+    Reuses ContrastReport + WaveRoster. No second ledger, no supervisor.
+    `of close --checklist` is the dry-run; the write path refuses the same gaps.
+    """
+
+    KIND = "checklist"
+    NEXT_READY = "of close"
+    RESIDUAL_EMPTY = "empty"
+    RESIDUAL_MISSING = "MISSING"
+
+    @staticmethod
+    def flying(root: Path, state: dict[str, Any]) -> list[str]:
+        live = WaveRoster.live_wave(state)
+        ids: list[str] = []
+        for n in WaveRoster.numbers(root, state):
+            facts = WaveRoster.facts(root, n, live)
+            for child in facts["children"]:
+                if child.get("status") == "in-flight":
+                    cid = str(child.get("child_id") or "").strip()
+                    if cid:
+                        ids.append(cid)
+        return ids
+
+    @staticmethod
+    def next_line(
+        *,
+        contrast_ok: bool,
+        residual_empty: bool,
+        live: int,
+        contrast_next: str,
+    ) -> str:
+        parts: list[str] = []
+        if not residual_empty:
+            parts.append(
+                f"residual MISSING — of collect --wave {live} "
+                "after the child writes; flying is not closed"
+            )
+        if not contrast_ok:
+            parts.append(contrast_next or ContrastReport.NEXT_BLOCKED)
+        if not parts:
+            return CloseChecklist.NEXT_READY
+        return "; ".join(parts)
+
+    @staticmethod
+    def document(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if state is None:
+            state = load_state(root)
+        contrast = ContrastReport.document(root, order)
+        flying = CloseChecklist.flying(root, state)
+        residual_empty = not flying
+        contrast_ok = not ContrastReport.open(contrast)
+        live = WaveRoster.live_wave(state)
+        waves = WaveRoster.numbers(root, state)
+        gate = str(contrast.get("gate") or "")
+        return {
+            "v": 1,
+            "ok": contrast_ok and residual_empty,
+            "kind": CloseChecklist.KIND,
+            "contrast": gate,
+            "contrast_ok": contrast_ok,
+            "residual": (
+                CloseChecklist.RESIDUAL_EMPTY
+                if residual_empty
+                else CloseChecklist.RESIDUAL_MISSING
+            ),
+            "residual_empty": residual_empty,
+            "blocking": [
+                str(row.get("id") or "")
+                for row in (contrast.get("rows") or [])
+                if row.get("blocking")
+            ],
+            "in_flight": len(flying),
+            "in_flight_ids": flying,
+            "wave": live,
+            "waves": len(waves),
+            "next": CloseChecklist.next_line(
+                contrast_ok=contrast_ok,
+                residual_empty=residual_empty,
+                live=live,
+                contrast_next=str(contrast.get("next") or ""),
+            ),
+        }
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "v": 1,
+            "blocking": [str(rid) for rid in (doc.get("blocking") or [])],
+            "contrast": str(doc.get("contrast") or ""),
+            "contrast_ok": bool(doc.get("contrast_ok")),
+            "in_flight": int(doc.get("in_flight") or 0),
+            "in_flight_ids": [str(cid) for cid in (doc.get("in_flight_ids") or [])],
+            "kind": CloseChecklist.KIND,
+            "next": str(doc.get("next") or ""),
+            "ok": bool(doc.get("ok")),
+            "residual": str(doc.get("residual") or ""),
+            "residual_empty": bool(doc.get("residual_empty")),
+            "wave": int(doc.get("wave") or 0),
+            "waves": int(doc.get("waves") or 0),
+        }
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        payload = CloseChecklist.machine(doc)
+        payload.pop("v", None)
+        return payload
+
+    @staticmethod
+    def human(doc: dict[str, Any]) -> str:
+        gate = str(doc.get("contrast") or "")
+        gate_label = {
+            "CLOSE_BLOCKED": "CLOSE BLOCKED",
+            "CLOSE_SKIP": "CLOSE SKIP",
+            "RESOLVED": "RESOLVED",
+        }.get(gate, gate or "-")
+        residual = str(doc.get("residual") or "")
+        flying = [str(cid) for cid in (doc.get("in_flight_ids") or [])]
+        if residual == CloseChecklist.RESIDUAL_MISSING and flying:
+            residual_line = f"{CloseChecklist.RESIDUAL_MISSING}  {' '.join(flying)}"
+        elif residual == CloseChecklist.RESIDUAL_EMPTY:
+            residual_line = CloseChecklist.RESIDUAL_EMPTY
+        else:
+            residual_line = residual or "-"
+        blocking = [str(rid) for rid in (doc.get("blocking") or []) if rid]
+        lines = [
+            "close checklist",
+            f"contrast     {gate_label}",
+            f"residual     {residual_line}",
+            f"wave         {int(doc.get('wave') or 0)}  "
+            f"waves {int(doc.get('waves') or 0)}  "
+            f"in_flight {int(doc.get('in_flight') or 0)}",
+            f"blocking     {' '.join(blocking) if blocking else 'none'}",
+        ]
+        nxt = str(doc.get("next") or "")
+        if nxt:
+            lines.append(f"next         {nxt}")
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def open(doc: dict[str, Any]) -> bool:
+        return not bool(doc.get("ok"))
+
+    @staticmethod
+    def emit(doc: dict[str, Any], *, machine: bool = False) -> bool:
+        print(CloseChecklist.human(doc), end="")
+        if machine:
+            print(json.dumps(CloseChecklist.machine(doc), sort_keys=True))
+        return CloseChecklist.open(doc)
+
+    @staticmethod
+    def refuse_residual(doc: dict[str, Any]) -> None:
+        ids = [str(cid) for cid in (doc.get("in_flight_ids") or []) if cid]
+        named = " ".join(ids) if ids else CloseChecklist.RESIDUAL_MISSING
+        die(
+            f"of close refused: residual MISSING {named} "
+            "(flying is not closed)"
+        )
+
+
 class CloseProof:
     """Durable close artifact. Written in the same WAL generation as ORDER."""
 
@@ -609,15 +776,30 @@ class CloseProof:
 
 
 def cmd_close(args: argparse.Namespace) -> None:
-    """Stamp SPEC closed. Refused while contrast is OPEN. Slice done ≠ SPEC closed."""
+    """Stamp SPEC closed. Refused while contrast is OPEN or residual MISSING."""
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)
+    state = load_state(root)
+    checklist = CloseChecklist.document(root, order, state)
+    if getattr(args, "checklist", False):
+        blocked = CloseChecklist.emit(checklist, machine=True)
+        emit_event(
+            "close",
+            checklist=True,
+            written=False,
+            **CloseChecklist.event_fields(checklist),
+        )
+        if blocked:
+            raise SystemExit(2)
+        return
     if print_contrast_report(root, order):
         die(
             "of close refused: binding FAILED/MISSING/DELIVERED/"
             "VERIFIED_INTERNAL/PAIR remain"
         )
+    if not checklist["residual_empty"]:
+        CloseChecklist.refuse_residual(checklist)
     if not spec_path(root).is_file():
         print("close       skipped (no SPEC)")
         return
@@ -635,6 +817,10 @@ def cmd_close(args: argparse.Namespace) -> None:
         done_when_closed=True,
         parent=returned,
         ok=True,
+        checklist=False,
+        written=True,
+        residual_empty=True,
+        in_flight=0,
     )
     label = "REPAIRED" if repaired else "CLOSED"
     print(
@@ -927,6 +1113,12 @@ def eval_setup_recovery_contrast_close(root: Path) -> None:
     )
     if packed.returncode != 0:
         die(f"eval fixture pack failed: {packed.stderr or packed.stdout}")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "imp1",
+        evidence="ALG-001 implementer residual; flying ended before close",
+        result_text="index implemented\n",
+    )
 
 
 @_register_eval_fixture("recovery_mission_rewrite")
@@ -1254,6 +1446,24 @@ class MultiWaveResidualEval:
 @_register_eval_fixture("recovery_multi_wave_residual")
 def eval_setup_recovery_multi_wave_residual(root: Path) -> None:
     MultiWaveResidualEval.setup(root)
+
+
+class MultiWaveCloseChecklistEval:
+    """3-wave epic, contrast RESOLVED, live residual MISSING. Not a supervisor."""
+
+    REQS = ("W1-001", "W2-001", "W3-001")
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        MultiWaveResidualEval.setup(root)
+        for rid in MultiWaveCloseChecklistEval.REQS:
+            stamped = eval_run_of(root, "spec", "--verified-contract", rid)
+            EvalInvariantSetup.require_ok(stamped, f"verified-contract {rid}")
+
+
+@_register_eval_fixture("recovery_multi_wave_close_checklist")
+def eval_setup_recovery_multi_wave_close_checklist(root: Path) -> None:
+    MultiWaveCloseChecklistEval.setup(root)
 
 
 class ThresholdStopSpawnEval:
@@ -2089,6 +2299,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AdversarialDualTruthCorpus",
     "tests.test_kernel.PackOutPhysicalNested",
     "tests.test_kernel.PackRosterCrossField",
+    "tests.test_kernel.CloseChecklistProof",
 )
 
 

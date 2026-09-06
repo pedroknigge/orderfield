@@ -1,0 +1,60 @@
+{
+  "id": "recovery/multi-wave-close-checklist",
+  "description": "Multi-wave close checklist: contrast RESOLVED + residual MISSING refuses stamp; --checklist is dry-run",
+  "fixture": "recovery_multi_wave_close_checklist",
+  "tags": ["recovery", "long-task", "close", "contrast", "residual", "multi-wave"],
+  "steps": [
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": [
+        "RESOLVED",
+        "\"gate\": \"RESOLVED\""
+      ]
+    },
+    {
+      "run": "close",
+      "args": ["--checklist"],
+      "exit": 2,
+      "stdout_contains": [
+        "close checklist",
+        "RESOLVED",
+        "MISSING",
+        "w3",
+        "\"residual\": \"MISSING\"",
+        "\"residual_empty\": false",
+        "\"ok\": false",
+        "\"kind\": \"checklist\""
+      ],
+      "stdout_not_contains": ["CLOSED"],
+      "file_missing": [".orderfield/CLOSE.json"]
+    },
+    {
+      "run": ["--json", "close", "--checklist"],
+      "exit": 2,
+      "stdout_contains": [
+        "close checklist",
+        "MISSING",
+        "w3"
+      ],
+      "stderr_contains": [
+        "\"event\": \"close\"",
+        "\"checklist\": true",
+        "\"written\": false",
+        "\"residual\": \"MISSING\"",
+        "\"ok\": false"
+      ],
+      "file_missing": [".orderfield/CLOSE.json"]
+    },
+    {
+      "run": "close",
+      "exit": 1,
+      "stderr_contains": [
+        "of close refused",
+        "residual MISSING",
+        "w3"
+      ],
+      "file_missing": [".orderfield/CLOSE.json"]
+    }
+  ]
+}

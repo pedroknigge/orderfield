@@ -60,12 +60,13 @@ The next packet carries the dated `## Amendment N` block and the patched constra
 
 ## 4. Close is proof
 
-Slice `done` is not SPEC closed. Contrast RESOLVED, then one stamp. Empty residual on the live wave is the honest end of flying — not the close.
+Slice `done` is not SPEC closed. Contrast RESOLVED **and** residual empty, then one stamp. Empty residual on the live wave is the honest end of flying — not the close. `of close --checklist` is that proof; it does not stamp.
 
 ```bash
 of spec --verified-contract ID
 of contrast          # CLOSE BLOCKED or RESOLVED
-of close             # refused until RESOLVED
+of close --checklist # contrast + residual empty; exit 2 while flying or OPEN
+of close             # refused until RESOLVED and residual empty
 cat .orderfield/CLOSE.json
 ```
 
@@ -87,6 +88,7 @@ These already exist. This page does not add a fixture.
 | Three-wave loop + amend | `recovery/multi-wave-residual` |
 | Threshold stops spawn | `recovery/threshold-stop-spawn` |
 | Contrast then atomic close | `recovery/contrast-close-contract` · `recovery/atomic-close-flag-lag` |
+| Multi-wave close checklist | `recovery/multi-wave-close-checklist` |
 | Dual-truth / fake tokens / unpack theater | `recovery/adversarial-dual-truth` |
 
 Re-run: [external-brief.md](external-brief.md#how-a-reviewer-re-runs-the-proof).

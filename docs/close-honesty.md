@@ -93,11 +93,13 @@ A residual may say `status=done` with a `result_ref`. That closes a slice. It do
 
 ```bash
 of contrast          # CLOSE BLOCKED or RESOLVED
-of close             # refused until RESOLVED; one stamp on success
+of close --checklist # contrast + residual empty; does not stamp
+of close             # refused until RESOLVED and residual empty; one stamp on success
 cat .orderfield/CLOSE.json
 of eval recovery/atomic-close-flag-lag --strict
 of eval recovery/contrast-close-contract --strict
 of eval recovery/adversarial-dual-truth --strict
+of eval recovery/multi-wave-close-checklist --strict
 ```
 
 Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`.

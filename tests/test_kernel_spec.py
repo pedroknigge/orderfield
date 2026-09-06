@@ -1175,6 +1175,104 @@ class ContrastReportRenderer(unittest.TestCase):
         self._align("\n".join(lines[:-1]) + "\n", cli_machine)
 
 
+class CloseChecklistProof(unittest.TestCase):
+    """Multi-wave close checklist: contrast + residual empty. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-close-check-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_multi_wave_close_checklist(self.tmp)
+
+    def _doc(self) -> dict:
+        return of.CloseChecklist.document(self.tmp, of.load_order(self.tmp))
+
+    @staticmethod
+    def _align(human: str, machine: dict) -> None:
+        if "close checklist" not in human:
+            raise AssertionError("human omitted close checklist")
+        residual = str(machine.get("residual") or "")
+        if residual and residual not in human:
+            raise AssertionError(f"machine residual {residual} missing from human")
+        gate = str(machine.get("contrast") or "")
+        if gate == "CLOSE_BLOCKED" and "CLOSE BLOCKED" not in human:
+            raise AssertionError("machine CLOSE_BLOCKED but human omits CLOSE BLOCKED")
+        if gate == "RESOLVED" and "RESOLVED" not in human:
+            raise AssertionError("machine RESOLVED but human omits RESOLVED")
+        for cid in machine.get("in_flight_ids") or []:
+            if str(cid) not in human:
+                raise AssertionError(f"in-flight {cid} missing from human")
+        nxt = str(machine.get("next") or "")
+        if nxt and nxt not in human:
+            raise AssertionError("machine next missing from human")
+        if bool(machine.get("ok")) and "MISSING" in human.split("residual", 1)[-1].splitlines()[0]:
+            raise AssertionError("machine ok true while residual line is MISSING")
+
+    def test_in_flight_checklist_is_not_ready(self) -> None:
+        doc = self._doc()
+        human = of.CloseChecklist.human(doc)
+        machine = of.CloseChecklist.machine(doc)
+        self.assertFalse(doc["ok"], doc)
+        self.assertFalse(doc["residual_empty"], doc)
+        self.assertEqual(doc["residual"], "MISSING")
+        self.assertIn("w3", doc["in_flight_ids"])
+        self.assertTrue(doc["contrast_ok"], doc)
+        self.assertEqual(doc["contrast"], "RESOLVED")
+        self._align(human, machine)
+        self.assertIn("close checklist", human)
+        self.assertIn("MISSING", human)
+        self.assertIn("w3", human)
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(listed.returncode, 2, listed.stdout + listed.stderr)
+        self.assertIn("close checklist", listed.stdout)
+        self.assertIn("MISSING", listed.stdout)
+        self.assertIn("w3", listed.stdout)
+        self.assertNotIn("CLOSED", listed.stdout)
+        lines = [ln for ln in listed.stdout.splitlines() if ln.strip()]
+        cli_machine = json.loads(lines[-1])
+        self.assertEqual(cli_machine, machine)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_close_refuses_while_residual_missing(self) -> None:
+        closed = run_of(self.tmp, "close")
+        self.assertNotEqual(closed.returncode, 0, closed.stderr)
+        self.assertIn("of close refused", closed.stderr)
+        self.assertIn("residual MISSING", closed.stderr)
+        self.assertIn("w3", closed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        self.assertFalse(
+            of.CloseProof.complete(self.tmp, of.load_order(self.tmp))
+        )
+
+    def test_empty_residual_checklist_then_stamp(self) -> None:
+        of.MultiWaveResidualEval.close_child(
+            self.tmp, "w3", 3, "wave-3 structured residual names W3-001"
+        )
+        doc = self._doc()
+        self.assertTrue(doc["residual_empty"], doc)
+        self.assertEqual(doc["residual"], "empty")
+        self.assertTrue(doc["ok"], doc)
+        self._align(of.CloseChecklist.human(doc), of.CloseChecklist.machine(doc))
+        dry = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
+        self.assertIn("close checklist", dry.stdout)
+        self.assertIn("empty", dry.stdout)
+        self.assertIn("RESOLVED", dry.stdout)
+        self.assertNotIn("CLOSED", dry.stdout)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+        self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        self.assertTrue(
+            of.CloseProof.complete(self.tmp, of.load_order(self.tmp))
+        )
+
+    def test_skill_teaches_checklist(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("of close --checklist", skill)
+        self.assertIn("recovery/multi-wave-close-checklist", skill)
+
+
 class AdversarialDualTruthCorpus(unittest.TestCase):
     """Dual-truth close, fake token budget, unpack theater. of eval --kernel."""
 
