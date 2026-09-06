@@ -471,10 +471,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die("invalid packet:\n  " + "\n  ".join(errors))
     canonical_out = canonical_packet_rel(int(wave), child_id)
     out_rel = str(args.out) if args.out else canonical_out
-    if out_rel != canonical_out:
-        die(f"noncanonical --out {out_rel!r}; expected {canonical_out}")
-    # Sibling fields: the packet lives at the physical field home, like wdir.
+    # Sibling / nested fields: --out may be the logical contract path or the
+    # physical path pack prints. Compare after physical_field_rel (idempotent
+    # on .orderfield/fields/…).
     out_physical_rel = physical_field_rel(root, canonical_out)
+    if physical_field_rel(root, out_rel) != out_physical_rel:
+        expected = canonical_out
+        if out_physical_rel != canonical_out:
+            expected = f"{canonical_out} (or {out_physical_rel})"
+        die(f"noncanonical --out {out_rel!r}; expected {expected}")
     out = safe_relative_path(root, out_physical_rel, "--out", reject_symlinks=True)
     register_packed_child(
         order, state, force=bool(getattr(args, "force_spawn", False))
