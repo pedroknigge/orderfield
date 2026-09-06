@@ -17,12 +17,12 @@ If one agent already fits, do not open a field. `/of` is for work that will not 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.7.44</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.45</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.44-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.45-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -50,7 +50,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 
 - The plan survives a cut, a resume, a different model. The results do not have to change.
 - Children cannot rewrite the mission.
-- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed.
+- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
 - Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
 - The landing is better than a cheap sprint at the public surface, even if it is not first.
 - Mid-flight you amend SPEC or a child reports threshold, and the next packet already carries the new field.
@@ -74,8 +74,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.44
-release_version=0.7.44
+release_tag=v0.7.45
+release_version=0.7.45
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -345,6 +345,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close; BLOCKED / RESOLVED / soft+reason |
+| [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty |
 | [docs/nested-fields.md](docs/nested-fields.md) | Sibling fields; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape; `MUTATING_COMMANDS` lock set |

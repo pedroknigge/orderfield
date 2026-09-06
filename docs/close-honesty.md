@@ -4,7 +4,7 @@ A session can say CLOSED. Disk can disagree. Only disk is allowed to win.
 
 `of close` is one stamp. Contrast RESOLVED, then `spec_closed` + `done_when_closed` + `CLOSE.json` in the same WAL generation. There is no `--soft`. A slogan, a green unittest, or a child-forged `verified_contract` is not a close.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Gate: [external-brief.md](external-brief.md) · Walk: [long-mission.md](long-mission.md) · Words: [glossary.md](glossary.md)
+> Hub: [AGENTS.md](../AGENTS.md) · RFC: [close-is-proof.md](close-is-proof.md) · Gate: [external-brief.md](external-brief.md) · Walk: [long-mission.md](long-mission.md) · Words: [glossary.md](glossary.md)
 
 ## Dual-truth failure
 

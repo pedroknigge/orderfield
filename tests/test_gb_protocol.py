@@ -19,6 +19,8 @@ import of  # noqa: E402
 SKILL = ROOT / "SKILL.md"
 ROADMAP = ROOT / "docs" / "roadmap.md"
 LONG_MISSION = ROOT / "docs" / "long-mission.md"
+CLOSE_IS_PROOF = ROOT / "docs" / "close-is-proof.md"
+ALIAS = ROOT / "of" / "SKILL.md"
 REGIME = ROOT / "scripts" / "of" / "regime.py"
 VERSION = ROOT / "VERSION"
 
@@ -143,6 +145,41 @@ class LongMissionGuide(unittest.TestCase):
         self.assertIn("Not `RUNTIME_OWNERSHIP`", text)
         self.assertIn("Not a fake token budget", text)
         self.assertIn("Not `of merge`", text)
+        self.assertNotIn("of merge --", text)
+
+
+class CloseIsProofRfc(unittest.TestCase):
+    """RFC invariants: close is proof + residual empty. Existing evals only."""
+
+    def test_rfc_names_the_contract(self) -> None:
+        text = CLOSE_IS_PROOF.read_text(encoding="utf-8")
+        self.assertIn("# Close is proof", text)
+        self.assertIn("## What closed means", text)
+        self.assertIn("## Invariants", text)
+        self.assertIn("Residual empty is required", text)
+        self.assertIn("Residual empty is not sufficient", text)
+        self.assertIn("CLOSE.json", text)
+        self.assertIn("of close --checklist", text)
+        self.assertIn("Slice `done` is not SPEC closed", text)
+        for fixture in (
+            "recovery/multi-wave-close-checklist",
+            "recovery/contrast-close-contract",
+            "recovery/atomic-close-flag-lag",
+            "recovery/adversarial-dual-truth",
+        ):
+            self.assertIn(fixture, text, fixture)
+        skill = SKILL.read_text(encoding="utf-8")
+        self.assertIn("docs/close-is-proof.md", skill)
+        alias = ALIAS.read_text(encoding="utf-8")
+        self.assertIn("docs/close-is-proof.md", alias)
+
+    def test_rfc_refuses_supervisor_and_new_runtime(self) -> None:
+        text = CLOSE_IS_PROOF.read_text(encoding="utf-8")
+        self.assertIn("Not a process supervisor", text)
+        self.assertIn("Not `RUNTIME_OWNERSHIP`", text)
+        self.assertIn("Not a fake token budget", text)
+        self.assertIn("Not `of merge`", text)
+        self.assertIn("This page does not add a fixture", text)
         self.assertNotIn("of merge --", text)
 
 

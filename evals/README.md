@@ -8,7 +8,7 @@ Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomi
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
-Kernel evals. CI (and `python3 -m unittest discover -s tests`) drives the shipped CLI against these manifests. They are not a second regime engine.
+Kernel evals. CI (and `python3 -m unittest discover -s tests`) drives the shipped CLI against these manifests. They are not a second regime engine. Close-is-proof + residual empty: [docs/close-is-proof.md](../docs/close-is-proof.md) — this page does not add a fixture.
 
 ## `of eval` (recovery fixtures)
 

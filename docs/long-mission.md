@@ -2,7 +2,7 @@
 
 A long mission is one ORDER that outlives a context. Epic, then waves, then a mid-flight amend, then close is proof. Disk is the session.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Nested: [nested-fields.md](nested-fields.md) · Close: [close-honesty.md](close-honesty.md) · Theater: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater)
+> Hub: [AGENTS.md](../AGENTS.md) · Nested: [nested-fields.md](nested-fields.md) · RFC: [close-is-proof.md](close-is-proof.md) · Close: [close-honesty.md](close-honesty.md) · Theater: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater)
 
 This page is the operator walk. The threat model stays on the brief. Do not invent a supervisor to hold the loop.
 
@@ -70,7 +70,7 @@ of close             # refused until RESOLVED and residual empty
 cat .orderfield/CLOSE.json
 ```
 
-Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` together. A public-surface ID cannot close on unit tests. A stack of `status=done` residuals is not SPEC closed. Templates: [close-honesty.md](close-honesty.md). Theater (dump, slogan, rewrite, amend amnesia, chrome-as-done): [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
+Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` together. A public-surface ID cannot close on unit tests. A stack of `status=done` residuals is not SPEC closed. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md). Theater (dump, slogan, rewrite, amend amnesia, chrome-as-done): [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
 
 ## What this is not
 

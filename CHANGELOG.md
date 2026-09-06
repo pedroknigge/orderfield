@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.45
+
+Close-is-proof RFC invariants. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.44 notes.
+
+- **RFC, not a second tree:** [docs/close-is-proof.md](docs/close-is-proof.md) enumerates the durable close contract: contrast RESOLVED + residual empty + one stamp (`CLOSE.json`). Residual empty is the end of flying, not the close. Templates stay on [close-honesty.md](docs/close-honesty.md). The operator walk stays on [long-mission.md](docs/long-mission.md). Theater stays on the 0.7.35 addendum. No new CLI. No new schema. No new eval.
+- **Skill drives the cut:** `SKILL.md` / alias teach the RFC when an agent asks what closed means. A turn that claims closed without `CLOSE.json` is still dual-truth.
+- **Proof:** existing fixtures only — `recovery/multi-wave-close-checklist`, `recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`, `recovery/adversarial-dual-truth`. `CloseIsProofRfc` is the file-surface lock. No invented coverage.
+- Packaging: VERSION 0.7.45; skill/alias description preview `v0.7.45 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.44 notes.
+
 ## 0.7.44
 
 Harness matrix residual on deep-install dests. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.43 notes.
