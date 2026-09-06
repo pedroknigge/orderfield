@@ -1,5 +1,7 @@
 # 90 seconds: amnesia + threshold residual
 
+Need `of` first? One sitting: [mortal-install.md](mortal-install.md) (`bash docs/demo/mortal-install.sh --global`).
+
 The lead session dies. Fleets recover from logs and teammate messages. Nobody owns who may change the plan.
 
 Disk is the session. Children cannot rewrite the mission. Threshold does not patch ORDER.

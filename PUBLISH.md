@@ -82,6 +82,8 @@ test "$(gh release view "$release_tag" --json assets --jq '[.assets[].name] | so
 
 ## Mortal install (after push)
 
+One sitting for a human (install → `of doctor` green + disk contract): [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
+
 ```bash
 npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
 ```

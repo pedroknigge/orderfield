@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.7.42 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.43 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.42"
+  version: "0.7.43"
   alias-of: orderfield
 ---
 
@@ -12,6 +12,8 @@ metadata:
 Two names. One kernel. `/of` is `/orderfield`.
 
 Load the sibling skill and follow it. Stop if it is missing. Do not invent a second contract.
+
+Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh --global` (or `--root PATH`), then `of doctor` must print `ok`. Pin recipe stays README / PUBLISH. Not pip. Not a daemon.
 
 After package installation, the full skill is normally at
 `../orderfield/SKILL.md` relative to this file. In a source checkout, it is at
