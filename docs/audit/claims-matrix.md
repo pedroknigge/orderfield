@@ -6,7 +6,7 @@ Code wins. Inventory first. Living-claims v0: anchors, severity, verdicts.
 
 Patch Contradicted and Partial rows. Do not invent kernel to match prose.
 
-Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). Doctor one-pass skew is on 0.7.25 (C-111). Orphan packed-child cleanup is on 0.7.26 (C-112). Root stub refuse/migrate is on 0.7.27 (C-113). `of status --json` is on 0.7.28 (C-114). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
+Zero critical Contradicted after the pass. Remaining Partials are protocol honesty (C-014/C-015/C-016) and REVIEW adoption (C-080). LEARN-002 / WAL-002 readers and writers are on the 0.7.2 line. Saturation control is on 0.7.3 (C-084). Issues #54–#57 are on 0.7.4 (C-085..C-088). Invariant evals + external brief are on 0.7.5 (C-089). Threat-model honesty + pack exclusivity evals are on 0.7.6 (C-090). Atomic close / ACTIVE / done_when lint are on 0.7.7 (C-091..C-093). Corpus recovery / stale-field / multi-harness residual are on 0.7.9 (C-094..C-096). Close/nested honesty guides + doctor skill VERSION skew are on 0.7.10 (C-097). Deep-install Codex schema argv basename is on 0.7.11 (C-098). Durable multi-day resume is on 0.7.12 (C-099). Sibling-field roster UX is on 0.7.13 (C-100). `budget.seconds` honesty is on 0.7.15 (C-101). Mid-flight amend evals are on 0.7.16 (C-102). Wave-report quality gate is on 0.7.17 (C-103). Packet sizing lint is on 0.7.18 (C-104). Threshold stop-spawn loop is on 0.7.19 (C-105). Resume after process death is on 0.7.20 (C-106). Stronger generic done_when lint is on 0.7.21 (C-107). In-flight packed-age watchdog is on 0.7.22 (C-108). Contrast report renderer is on 0.7.23 (C-109). Wave list/show is on 0.7.24 (C-110). Doctor one-pass skew is on 0.7.25 (C-111). Orphan packed-child cleanup is on 0.7.26 (C-112). Root stub refuse/migrate is on 0.7.27 (C-113). `of status --json` is on 0.7.28 (C-114). Multi-wave residual-loop evals are on 0.7.29 (C-115). 0.7.8 is the published-voice packaging line. Duplicate C-065 retired (shim is C-081). Duplicate CLI handler copies in `ops.py` are gone. A cut, a resume, a different model — the matrix still points at code. The results do not have to change.
 
 > Hub: [AGENTS.md](../../AGENTS.md)
 > **Code is source of truth.** Docs do not override implementation.
@@ -17,13 +17,13 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.28`
+**Code rev:** VERSION `0.7.29`
 
 ## Summary
 
 | Verdict | Count |
 |---------|------:|
-| OK | 109 |
+| OK | 110 |
 | Partial | 4 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -31,10 +31,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 | Severity | Count |
 |----------------:|
-| critical | 95 |
+| critical | 96 |
 | normal | 19 |
 
-**Truth score (advisory):** `(109*100 + 4*50) / 114 = 97.4` (114 matrix rows; unique IDs C-001…C-114)
+**Truth score (advisory):** `(110*100 + 4*50) / 115 = 97.4` (115 matrix rows; unique IDs C-001…C-115)
 **CI gate:** no critical Contradicted after docs patch. Duplicate C-IDs fail `python3 docs/audit/check-claims.py`. Local `scripts/audit-claims.sh` is not in this repo; `validate-skill.sh` still gates VERSION/docs sync.
 
 **Top risks (post-patch):**
@@ -183,6 +183,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-112 | Orphan packed child (closed field / leftover home / inapplicable order / stale prior wave, residual missing) is named by `of retain` and unlinked only by explicit `of gc` with `gc-stamp.json` `orphans[]` plus the `orphan packed` needle; resume auto-gc never unlinks packets; open current-wave in-flight is not an orphan | CHANGELOG / SKILL / evals / troubleshooting / kernel feature | `OrphanPacked`; recovery `orphan-packed-cleanup`; `OrphanPackedCleanup` | `scripts/of/retain.py` / `scripts/of/cli/ops.py` / `evals/recovery/orphan-packed-cleanup.eval.json` / `tests/test_kernel_field.py` | `OrphanPacked` / `cmd_gc` / `cmd_retain` / `maybe_safe_gc` | — | critical | OK | 0.7.26 |
 | C-113 | Leftover `.orderfield/ORDER.json` next to `fields/<id>/` is not a live field: `list_field_homes` omits it; `--field` of a different-id stub dies; `of new` does not promote it; `of migrate` archives to `ORDER.json.stub` (never silent delete); status/resume/fields print `root_stub`; `find_root` refuses a closer leftover inside a parent field tree | CHANGELOG / SKILL / evals / nested-fields / glossary / kernel feature | `RootStub`; recovery `root-stub-ambiguous`; `RootStubAmbiguous` | `scripts/of/field.py` / `scripts/of/cli/ops.py` / `evals/recovery/root-stub-ambiguous.eval.json` / `tests/test_kernel_fields.py` | `RootStub` / `bind_active_field` / `cmd_migrate` | — | critical | OK | 0.7.27 |
 | C-114 | `of status --json` emits one parseable live-wave JSON object from the same `StatusReport` document the human screen reads (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts); no `STATUS.json`; no token/runtime theater fields; `--json` / `OF_JSON=1` `status` event shares those facts; human `of status` stays one-screen | CHANGELOG / SKILL / evals / events / kernel feature | `StatusReport`; recovery `status-json`; `StatusReportJson` | `scripts/of/cli/ops.py` / `evals/recovery/status-json.eval.json` / `tests/test_kernel_field.py` | `StatusReport` / `cmd_status` | — | critical | OK | 0.7.28 |
+| C-115 | Three-wave residual loop: pack → structured residual → collect → integrate → next-wave; mid-flight `of spec --amend` + `of patch` after wave 1 lands on wave-2/3 packets (`spec_hash` / `spec_ref` + dated `## Amendment 1 —`); wave-1 packet is not rewritten; wave 3 stays in-flight (`collect` MISSING, `next-wave` dies) | CHANGELOG / SKILL / evals / external-brief / kernel feature | `MultiWaveResidualEval`; recovery `multi-wave-residual`; `MultiWaveResidualLoop` | `scripts/of/cli/spec_cmd.py` / `evals/recovery/multi-wave-residual.eval.json` / `tests/test_kernel_spec.py` | `MultiWaveResidualEval` / `close_child` / `EvalInvariantSetup.write_bound_residual` | — | critical | OK | 0.7.29 |
 
 ### Verdict definitions
 
@@ -237,6 +238,7 @@ If any **critical Contradicted** exists, CI **must** fail. This repo gates versi
 - [x] C-112 0.7.26: orphan packed-child cleanup; explicit gc with stamp proof; auto-gc skips packets
 - [x] C-113 0.7.27: root stub vs nested fields; refuse `--field` / migrate archive; no silent delete
 - [x] C-114 0.7.28: `of status --json` live-wave dashboard document; `StatusReport`; no second ledger
+- [x] C-115 0.7.29: 3-wave residual-loop eval corpus; mid-flight amend lands on later packets
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [ ] Optional: wire `docs/audit/check-claims.py` into `validate-skill.sh` (not this slice; kernel scripts unowned)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.28` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.29` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -116,6 +116,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Multi-wave field: `of wave list` marks live `state.wave`; `show` tells live from the prior integrated wave | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Long-mission dashboard: `of status --json` names live wave 2 and in-flight `w2`; not a wave roster | `recovery/status-json`; `StatusReportJson` |
 | Mid-flight `of spec --amend` + `of patch`: next packet carries dated amend + patched constraint; wave-1 packet is not rewritten | `recovery/midflight-amend`; `MidFlightAmend` |
+| Three-wave residual loop: collect/integrate waves 1–2 after mid-flight amend; wave-2/3 packets carry dated amend + constraint; wave 3 stays in-flight | `recovery/multi-wave-residual`; `MultiWaveResidualLoop` |
 | Field threshold residual forbids pack/spawn until leader `of patch` + guarded `next-wave`; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten | `recovery/threshold-stop-spawn`; `ThresholdStopSpawn` |
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
