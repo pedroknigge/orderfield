@@ -46,6 +46,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/external-brief.md](docs/external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
+| [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
 | [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B/C) |
@@ -123,6 +124,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.33 live in-flight visibility (`of status` / `resume` / `pulse` `running` + residual MISSING; `InFlightSignal`; `recovery/in-flight-visibility`) | documented |
 | 0.7.34 `of pack --explain` dry-run slice sizing (`SliceLint.document`; `recovery/packet-sizing-explain`) | documented |
 | 0.7.35 threat-model addendum for long-task residual theater (disk contract / residual / close-is-proof; [external-brief.md](docs/external-brief.md#long-task-residual-theater)) | documented |
+| 0.7.36 long-mission operator walk (epic → waves → amend → close is proof; [docs/long-mission.md](docs/long-mission.md)) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

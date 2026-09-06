@@ -4,7 +4,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `.orderfield/ACTIVE` is the pointer. Status and resume follow it. A leftover root `ORDER.json` is a stub, not the live field.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer` · `recovery/root-stub-ambiguous` · `recovery/nested-field-lifecycle`
+> Hub: [AGENTS.md](../AGENTS.md) · Walk: [long-mission.md](long-mission.md) · Words: [glossary.md](glossary.md) · Proof: `recovery/active-field-pointer` · `recovery/root-stub-ambiguous` · `recovery/nested-field-lifecycle`
 
 ## When to `of new`
 

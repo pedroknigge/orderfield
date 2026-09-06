@@ -29,6 +29,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | [docs/context-control.md](context-control.md) | Where to put contract vs procedure vs slice (incl. deictic go-ahead vs SPEC) |
 | [docs/events.md](events.md) | `of --json` / `OF_JSON` event vocabulary |
 | [docs/troubleshooting.md](troubleshooting.md) | Field failure recovery |
+| [docs/long-mission.md](long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [references/adapters.md](../references/adapters.md) | Headless argv per harness |
 
 ## Evals and recovery
@@ -44,4 +45,4 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 
 Current release line: [`VERSION`](../VERSION) · Changelog: [CHANGELOG.md](../CHANGELOG.md)
 
-Installed skill metadata should match this checkout (`of doctor` prints `SKEW` when an existing HOME dest disagrees). The same pass also names ACTIVE pointer/stub skew and stale packs. Close templates: [close-honesty.md](close-honesty.md). Nested fields: [nested-fields.md](nested-fields.md).
+Installed skill metadata should match this checkout (`of doctor` prints `SKEW` when an existing HOME dest disagrees). The same pass also names ACTIVE pointer/stub skew and stale packs. Close templates: [close-honesty.md](close-honesty.md). Nested fields: [nested-fields.md](nested-fields.md). Long-mission walk: [long-mission.md](long-mission.md).
