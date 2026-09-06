@@ -812,7 +812,9 @@ class PackRosterCrossField(unittest.TestCase):
         self._pack("dead1")
         run_of(self.tmp, "new", "--mission", "done-pack")
         self._pack("done1")
-        homes = of.list_field_homes(self.tmp)
+        from of.field import list_field_homes
+
+        homes = list_field_homes(self.tmp)
         by_id = {fid: (home, order) for fid, home, order in homes}
         active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
         done_home, _done_order = by_id[active]
