@@ -2583,6 +2583,167 @@ class StatusReportJson(unittest.TestCase):
         self.assertEqual(ev.get("in_flight_ids"), cli["in_flight_ids"])
 
 
+class MidEpicHandoffPacket(unittest.TestCase):
+    """of handoff without --packet is the mid-epic field packet. of eval --kernel."""
+
+    @staticmethod
+    def _init(tmp: Path) -> None:
+        r = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "mid-epic handoff",
+            "--phase",
+            "build",
+            "--origin",
+            "cursor",
+            "--session-id",
+            "epic-1",
+        )
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+
+    @staticmethod
+    def _pack(tmp: Path, child_id: str = "worker") -> None:
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "mid-epic implementer slice",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+        )
+        if packed.returncode != 0:
+            raise AssertionError(packed.stderr)
+
+    @staticmethod
+    def _load(stdout: str) -> dict:
+        lines = [ln for ln in stdout.splitlines() if ln.strip()]
+        if len(lines) != 1:
+            raise AssertionError(f"expected one JSON object, got {lines!r}")
+        return json.loads(lines[0])
+
+    def test_no_order_is_parseable(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-handoff-empty-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run_of(tmp, "handoff", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        doc = self._load(proc.stdout)
+        self.assertEqual(doc["kind"], "no_order")
+        self.assertFalse(doc["ok"])
+        self.assertNotIn("runtime", doc)
+        self.assertNotIn("tokens", doc)
+
+    def test_field_packet_names_in_flight_and_does_not_unpack(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-handoff-field-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        state_before = load_json(tmp / ".orderfield" / "state.json")
+        pkt_before = tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json"
+        self.assertTrue(pkt_before.is_file())
+        human = run_of(tmp, "handoff")
+        self.assertEqual(human.returncode, 0, human.stderr)
+        self.assertIn("kind          field", human.stdout)
+        self.assertIn("HOLD", human.stdout)
+        self.assertIn("do not unpack", human.stdout.lower())
+        self.assertIn(".orderfield/waves/001/packets/worker.json", human.stdout)
+        self.assertIn("worker", human.stdout)
+        self.assertNotIn("{", human.stdout)
+        proc = run_of(tmp, "handoff", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        cli = self._load(proc.stdout)
+        self.assertEqual(cli["kind"], "field")
+        self.assertTrue(cli["ok"])
+        self.assertEqual(cli["wave"], 1)
+        self.assertEqual(cli["field"], "open")
+        self.assertEqual(cli["next"], "hold")
+        self.assertEqual(cli["next_label"], "HOLD")
+        self.assertEqual(len(cli["in_flight"]), 1)
+        self.assertEqual(cli["in_flight"][0]["child_id"], "worker")
+        self.assertEqual(
+            cli["in_flight"][0]["packet"],
+            ".orderfield/waves/001/packets/worker.json",
+        )
+        self.assertIn("do not unpack", cli["do_not"])
+        self.assertNotIn("runtime", cli)
+        self.assertNotIn("tokens", cli)
+        live = of.HandoffReport.live(tmp)
+        self.assertEqual(of.HandoffReport.machine(live), cli)
+        state_after = load_json(tmp / ".orderfield" / "state.json")
+        self.assertEqual(
+            state_after["children_spawned"], state_before["children_spawned"]
+        )
+        self.assertTrue(pkt_before.is_file())
+        self.assertFalse(
+            (tmp / ".orderfield" / "waves" / "001" / "spawns").exists()
+        )
+
+    def test_stale_in_flight_says_handoff(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-handoff-stale-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        of.PackedAge.backdate_packet(tmp, "worker", "2018-01-01T00:00:00Z")
+        proc = run_of(tmp, "handoff", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        cli = self._load(proc.stdout)
+        self.assertEqual(cli["next"], "handoff")
+        self.assertEqual(cli["next_label"], "HANDOFF")
+        self.assertEqual(cli["in_flight"][0]["pulse"], "STALE")
+        self.assertTrue(packet_path(tmp, "worker").is_file())
+        human = run_of(tmp, "handoff")
+        self.assertIn("HANDOFF", human.stdout)
+        self.assertIn("do not unpack", human.stdout.lower())
+
+    def test_json_refuses_child_packet_flag(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-handoff-both-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        proc = run_of(
+            tmp,
+            "handoff",
+            "--json",
+            "--packet",
+            ".orderfield/waves/001/packets/worker.json",
+        )
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        blob = (proc.stdout + proc.stderr).lower()
+        self.assertIn("omit --packet", blob)
+        self.assertTrue(packet_path(tmp, "worker").is_file())
+
+    def test_global_json_event_matches_document(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-handoff-event-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        proc = run_of(tmp, "--json", "handoff")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("kind          field", proc.stdout)
+        events = [json.loads(ln) for ln in proc.stderr.splitlines() if ln.strip()]
+        handoff = next(e for e in events if e.get("event") == "handoff")
+        live = of.HandoffReport.event_fields(of.HandoffReport.live(tmp))
+        for key in ("id", "wave", "field", "next", "ok", "kind"):
+            self.assertEqual(handoff.get(key), live.get(key), key)
+        both = run_of(tmp, "--json", "handoff", "--json")
+        self.assertEqual(both.returncode, 0, both.stderr)
+        cli = self._load(both.stdout)
+        ev = next(
+            json.loads(ln)
+            for ln in both.stderr.splitlines()
+            if ln.strip() and json.loads(ln).get("event") == "handoff"
+        )
+        self.assertEqual(ev.get("wave"), cli["wave"])
+        self.assertEqual(ev.get("next"), cli["next"])
+        self.assertEqual(
+            [row["child_id"] for row in ev.get("in_flight") or []],
+            [row["child_id"] for row in cli["in_flight"]],
+        )
+
+
 class DurableMultiDayResume(unittest.TestCase):
     """Later session + stale session.json reconstruct wave 2. of eval --kernel."""
 

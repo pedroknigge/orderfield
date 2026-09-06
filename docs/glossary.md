@@ -26,7 +26,7 @@ One parallel pack of children under `.orderfield/waves/NNN/`. Live wave is `stat
 
 ## packet
 
-The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/packets/`. It names identity (`packet_id`, hash, ORDER id/rev, wave, child, role), the slice, exclusive owners (`--owns-requirement`, `--owns-path`), and where the residual must land. The packet is the intended context boundary. It is not a process, not a transcript, and not a replacement of SPEC.
+The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/packets/`. It names identity (`packet_id`, hash, ORDER id/rev, wave, child, role), the slice, exclusive owners (`--owns-requirement`, `--owns-path`), and where the residual must land. The packet is the intended context boundary. It is not a process, not a transcript, and not a replacement of SPEC. Mid-epic, `of handoff` without `--packet` prints a field packet (`HandoffReport`) that points at those child packets so a human or next harness can continue without unpacking. `--json` is the machine object. No on-disk `HANDOFF.json`.
 
 ## residual
 
@@ -42,7 +42,7 @@ The field is insufficient. A residual that names `mission` / `phase` / `constrai
 
 ## parked
 
-In-flight: a packed child whose residual is missing. Disk is the session. `of resume` lists parked children (`parked_reason`, scratch, owners, `agents_note`) and prints `next`. `of status` / `of resume` print `packed_age` when `packed_at` is older than seven days (same window as abandoned; not a daemon). `of status --json` is the same live snapshot as one JSON object (`StatusReport`). A packed child that is no longer live in-flight is an orphan: `of retain` / `of gc` name it (`OrphanPacked`); explicit `of gc` leaves `gc-stamp.json` `orphans[]`; resume auto-gc does not unlink packets. `of doctor` names that aged pack together with ACTIVE pointer/stub skew and skill VERSION skew. Authority is `state.wave` plus packets/residuals — stale `session.json` does not win. Nonempty scratch + missing residual means continue the same slice, do not restart, do not re-init. A later session of the unique open field auto-continues (`recovery/multi-day-resume`). A dead spawn host is the same disk (`recovery/process-death-resume`).
+In-flight: a packed child whose residual is missing. Disk is the session. `of resume` lists parked children (`parked_reason`, scratch, owners, `agents_note`) and prints `next`. `of status` / `of resume` print `packed_age` when `packed_at` is older than seven days (same window as abandoned; not a daemon). `of status --json` is the same live snapshot as one JSON object (`StatusReport`). `of handoff` without `--packet` is the mid-epic field packet (`HandoffReport`) so a human or next harness can continue without unpacking. A packed child that is no longer live in-flight is an orphan: `of retain` / `of gc` name it (`OrphanPacked`); explicit `of gc` leaves `gc-stamp.json` `orphans[]`; resume auto-gc does not unlink packets. `of doctor` names that aged pack together with ACTIVE pointer/stub skew and skill VERSION skew. Authority is `state.wave` plus packets/residuals — stale `session.json` does not win. Nonempty scratch + missing residual means continue the same slice, do not restart, do not re-init. A later session of the unique open field auto-continues (`recovery/multi-day-resume`). A dead spawn host is the same disk (`recovery/process-death-resume`).
 
 ## contrast
 

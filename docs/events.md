@@ -20,7 +20,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | --- | --- | --- |
 | `pack` | After `of pack` | `child_id`, `wave`, `residual`, `ok` |
 | `spawn` | After `of spawn` / generic handoff spawn path | `adapter`, `child_id`, `ok`, `outcome` (`ok` \| `nonzero_exit` \| `timeout` \| `missing_binary` \| `error` \| `dry_run`); `exit` on ok/nonzero_exit, `timeout_s` on timeout, `mode: handoff` on the generic path |
-| `handoff` | After `of handoff` | `child_id`, `wave`, `ok` |
+| `handoff` | After `of handoff` | Field packet (no `--packet`): same facts as `of handoff --json` (`HandoffReport.event_fields`) — `kind=field`, `next`, `in_flight`, `wave`, `do_not`, `ok`. Child `--packet` path: `kind=child`, `child_id`, `wave`, `ok` |
 | `collect` | After `of collect` | `wave`, `ok`, `invalid`, `missing`, `total` |
 | `integrate` | After `of integrate` | `wave`, `regime`, `ok` |
 | `wave.advanced` | After `of next-wave` | `from_wave`, `to_wave`, `ok` |

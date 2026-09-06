@@ -111,6 +111,8 @@ from of.spec import (
 )
 
 from of.pack import (
+    canonical_packet_rel,
+    canonical_residual_rel,
     completed_children,
     in_flight_children,
     load_packet,
@@ -728,6 +730,302 @@ class StatusReport:
             return
         payload = StatusReport.live(root) if doc is None else doc
         emit_event("status", **StatusReport.event_fields(payload))
+
+
+class HandoffReport:
+    """Mid-epic field packet for a human or next harness. No unpack. No ledger."""
+
+    KIND_FIELD = "field"
+    KIND_ROSTER = "roster"
+    KIND_NO_ORDER = "no_order"
+    KIND_CHILD = "child"
+    DO_NOT = "do not unpack the field; continue the same packets"
+
+    @staticmethod
+    def roster() -> dict[str, Any]:
+        return {
+            "v": 1,
+            "ok": False,
+            "kind": HandoffReport.KIND_ROSTER,
+            "next": "PICK",
+            "do_not": HandoffReport.DO_NOT,
+        }
+
+    @staticmethod
+    def no_order() -> dict[str, Any]:
+        return {
+            "v": 1,
+            "ok": False,
+            "kind": HandoffReport.KIND_NO_ORDER,
+            "do_not": HandoffReport.DO_NOT,
+        }
+
+    @staticmethod
+    def next_row(
+        state: dict[str, Any],
+        packets: list[Any],
+        flying: list[dict[str, Any]],
+        order: dict[str, Any],
+        root: Path,
+        *,
+        now: float | None = None,
+    ) -> tuple[str, dict[str, str], list[str]]:
+        ts = now if now is not None else time.time()
+        verdicts: dict[str, str] = {}
+        for pkt in flying:
+            cid = str(pkt.get("child_id") or "?")
+            verdicts[cid] = child_pulse_verdict(root, pkt, ts)
+        all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
+        integrated = field_is_file(wave_dir(int(state.get("wave") or 1), root) / "report.json")
+        stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
+        action = next_legal_action(
+            state,
+            flying,
+            packets,
+            integrated=integrated,
+            stale=stale,
+            children_stale=all_stale,
+        )
+        return action, verdicts, resume_next_lines(action)
+
+    @staticmethod
+    def flying_row(
+        root: Path,
+        pkt: dict[str, Any],
+        wave: int,
+        verdict: str,
+    ) -> dict[str, Any]:
+        cid = str(pkt.get("child_id") or "?")
+        residual = str(pkt.get("residual_path") or canonical_residual_rel(wave, cid))
+        return {
+            "child_id": cid,
+            "packet": canonical_packet_rel(wave, cid),
+            "residual": residual,
+            "role": str(pkt.get("role") or ""),
+            "pulse": verdict,
+            "scratch": "present" if scratch_nonempty(root, pkt) else "missing",
+            "parked_reason": parked_reason(root, pkt),
+            "slice": truncate_slice(pkt.get("slice") or ""),
+        }
+
+    @staticmethod
+    def document(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        packets: list[Any],
+        flying: list[dict[str, Any]],
+        completed: list[dict[str, Any]],
+        session: dict[str, Any] | None = None,
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        wave = int(state.get("wave") or 1)
+        action, verdicts, nxt_lines = HandoffReport.next_row(
+            state, packets, flying, order, root, now=now
+        )
+        sess = session if isinstance(session, dict) else {}
+        summary = sess.get("summary")
+        summary_text = (
+            summary.strip() if isinstance(summary, str) and summary.strip() else ""
+        )
+        return {
+            "v": 1,
+            "ok": True,
+            "kind": HandoffReport.KIND_FIELD,
+            "id": order["id"],
+            "rev": int(order["rev"]),
+            "phase": order["phase"],
+            "mission": order["mission"],
+            "wave": wave,
+            "field": "closed" if order.get("spec_closed") else "open",
+            "parent": NestedField.id_of(order) or None,
+            "harness": order.get("harness") or None,
+            "origin": StatusReport.origin(order),
+            "spawn_blocked": bool(state.get("spawn_blocked")),
+            "next": action,
+            "next_label": nxt_lines[0] if nxt_lines else action.upper(),
+            "next_detail": nxt_lines[1] if len(nxt_lines) > 1 else "",
+            "in_flight": [
+                HandoffReport.flying_row(
+                    root, pkt, wave, verdicts.get(str(pkt.get("child_id") or "?"), "")
+                )
+                for pkt in flying
+            ],
+            "completed_ids": [
+                str(pkt.get("child_id") or "?") for pkt in completed
+            ],
+            "packed_age": StatusReport.packed_age_rows(flying, now=now),
+            "signal": FieldSignal.of(order, state, packets, sess, now=now),
+            "spec_hash": str(order.get("spec_hash") or ""),
+            "summary": summary_text,
+            "do_not": HandoffReport.DO_NOT,
+        }
+
+    @staticmethod
+    def live(root: Path, *, now: float | None = None) -> dict[str, Any]:
+        order = load_order(root)
+        state = load_state(root)
+        wave = int(state.get("wave") or 1)
+        packets = packed_children(root, wave)
+        flying = in_flight_children(root, wave)
+        completed = completed_children(root, wave)
+        return HandoffReport.document(
+            root,
+            order,
+            state,
+            packets,
+            flying,
+            completed,
+            load_session(root),
+            now=now,
+        )
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        kind = str(doc.get("kind") or HandoffReport.KIND_FIELD)
+        if kind != HandoffReport.KIND_FIELD:
+            out: dict[str, Any] = {
+                "v": 1,
+                "ok": bool(doc.get("ok")),
+                "kind": kind,
+                "do_not": str(doc.get("do_not") or HandoffReport.DO_NOT),
+            }
+            nxt = doc.get("next")
+            if nxt:
+                out["next"] = str(nxt)
+            return out
+        flying = [
+            {
+                "child_id": str(row.get("child_id") or "?"),
+                "packet": str(row.get("packet") or ""),
+                "residual": str(row.get("residual") or ""),
+                "role": str(row.get("role") or ""),
+                "pulse": str(row.get("pulse") or ""),
+                "scratch": str(row.get("scratch") or ""),
+                "parked_reason": str(row.get("parked_reason") or ""),
+                "slice": str(row.get("slice") or ""),
+            }
+            for row in (doc.get("in_flight") or [])
+            if isinstance(row, dict)
+        ]
+        packed = [
+            {"age_s": int(row.get("age_s") or 0), "child_id": str(row.get("child_id") or "?")}
+            for row in (doc.get("packed_age") or [])
+            if isinstance(row, dict)
+        ]
+        return {
+            "v": 1,
+            "ok": bool(doc.get("ok")),
+            "kind": HandoffReport.KIND_FIELD,
+            "id": str(doc.get("id") or ""),
+            "rev": int(doc.get("rev") or 0),
+            "phase": str(doc.get("phase") or ""),
+            "mission": str(doc.get("mission") or ""),
+            "wave": int(doc.get("wave") or 0),
+            "field": str(doc.get("field") or ""),
+            "parent": doc.get("parent"),
+            "harness": doc.get("harness"),
+            "origin": doc.get("origin"),
+            "spawn_blocked": bool(doc.get("spawn_blocked")),
+            "next": str(doc.get("next") or ""),
+            "next_label": str(doc.get("next_label") or ""),
+            "next_detail": str(doc.get("next_detail") or ""),
+            "in_flight": flying,
+            "completed_ids": [str(cid) for cid in (doc.get("completed_ids") or [])],
+            "packed_age": packed,
+            "signal": doc.get("signal"),
+            "spec_hash": str(doc.get("spec_hash") or ""),
+            "summary": str(doc.get("summary") or ""),
+            "do_not": str(doc.get("do_not") or HandoffReport.DO_NOT),
+        }
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        payload = HandoffReport.machine(doc)
+        payload.pop("v", None)
+        return payload
+
+    @staticmethod
+    def human(doc: dict[str, Any]) -> str:
+        kind = str(doc.get("kind") or HandoffReport.KIND_FIELD)
+        if kind == HandoffReport.KIND_ROSTER:
+            return "next          PICK --field <id> | of new\n"
+        if kind == HandoffReport.KIND_NO_ORDER:
+            return "no ORDER. of init --mission '...'\n"
+        lines = [
+            f"kind          {kind}",
+            f"id            {doc.get('id') or ''}",
+            f"rev           {doc.get('rev') or 0}",
+            f"phase         {doc.get('phase') or ''}",
+            f"mission       {doc.get('mission') or ''}",
+            f"wave          {doc.get('wave') or 0}",
+            f"field         {doc.get('field') or ''}",
+        ]
+        parent = doc.get("parent")
+        if parent:
+            lines.append(f"parent        {parent}")
+        lines.append(f"next          {doc.get('next_label') or doc.get('next') or ''}")
+        detail = str(doc.get("next_detail") or "")
+        if detail:
+            lines.append(f"              {detail}")
+        flying = list(doc.get("in_flight") or [])
+        lines.append(f"in_flight     {len(flying)}")
+        for row in flying:
+            if not isinstance(row, dict):
+                continue
+            lines.append(f"  {row.get('child_id') or '?'}")
+            lines.append(f"    packet      {row.get('packet') or ''}")
+            lines.append(f"    residual    {row.get('residual') or ''}")
+            pulse = str(row.get("pulse") or "")
+            if pulse:
+                lines.append(f"    pulse       {pulse}")
+            lines.append(f"    scratch     {row.get('scratch') or ''}")
+        summary = str(doc.get("summary") or "").strip()
+        if summary:
+            lines.append("summary")
+            lines.append(summary)
+        lines.append(f"do_not        {doc.get('do_not') or HandoffReport.DO_NOT}")
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def emit_bound(doc: dict[str, Any]) -> None:
+        print(json.dumps(HandoffReport.machine(doc), sort_keys=True))
+
+    @staticmethod
+    def emit(doc: dict[str, Any], *, machine: bool = False) -> None:
+        if machine:
+            HandoffReport.emit_bound(doc)
+        else:
+            print(HandoffReport.human(doc), end="")
+        emit_event("handoff", **HandoffReport.event_fields(doc))
+
+    @staticmethod
+    def emit_cmd(*, machine: bool = False) -> None:
+        maybe_notify_update()
+        root = find_root()
+        from of.field import (
+            ROSTER_EXIT,
+            bound_field_home,
+            list_field_homes,
+            print_field_roster,
+        )
+
+        homes = list_field_homes(root)
+        if bound_field_home() is None and len(homes) > 1:
+            doc = HandoffReport.roster()
+            if machine:
+                HandoffReport.emit_bound(doc)
+            else:
+                print_field_roster(homes)
+                print(HandoffReport.human(doc), end="")
+            emit_event("handoff", **HandoffReport.event_fields(doc))
+            raise SystemExit(ROSTER_EXIT)
+        if not order_path(root).exists():
+            doc = HandoffReport.no_order()
+            HandoffReport.emit(doc, machine=machine)
+            return
+        HandoffReport.emit(HandoffReport.live(root), machine=machine)
 
 
 def cmd_status(args: argparse.Namespace) -> None:

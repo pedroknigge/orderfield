@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.31
+
+Mid-epic handoff packet. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.30 notes.
+
+- **Field packet without unpack:** `of handoff` without `--packet` prints a mid-epic packet for a human or next harness (`HandoffReport`): next legal action, in-flight packet paths, pulse, checkpoint summary. `--json` is one machine object. Child prompt stays `of handoff --packet`. Does not unpack. No `HANDOFF.json`. No second ledger.
+- **Eval:** `recovery/mid-epic-handoff` reuses the STALE-child fixture and fails if the field packet hides wave 1, omits in-flight `longchild` / its packet path, or unpacks. `MidEpicHandoffPacket` is on `of eval --strict --kernel`. Existing `recovery/checkpoint-handoff-stay-on-run` stays.
+- Packaging: VERSION 0.7.31; skill/alias description preview `v0.7.31 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.30 notes.
+
 ## 0.7.30
 
 Nested field lifecycle for epic phases. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.29 notes.
