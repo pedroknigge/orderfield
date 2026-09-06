@@ -23,7 +23,7 @@ How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH
 | Adapter tables + spawn argv | `scripts/of_adapters.py` | Keep stdlib-only; re-exported via `of` |
 | Contracts | `schemas/` | Validate with `of validate` |
 | Leader / slave doctrine | `SKILL.md`, `SLAVE.md`, `AGENTS.md` | Protocol, not a new regime |
-| Install / PATH / alias | `install.sh`, `of/SKILL.md` | Static `/of` package entry; symlink `of` → **installed** kernel |
+| Install / PATH / alias | `install.sh`, `of/SKILL.md`, `docs/demo/mortal-install.sh` | Static `/of` package entry; symlink `of` → **installed** kernel; one-sitting doctor |
 
 Do not invent a second physics (no new regimes without an explicit product decision). Prefer patching the field over hand-editing `.orderfield/ORDER.json`.
 

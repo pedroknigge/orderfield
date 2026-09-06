@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.43
+
+Mortal-install one-sitting demo. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.42 notes.
+
+- **One sitting:** `docs/demo/mortal-install.sh` reuses `install.sh` then the installed `of doctor`. `--global` lands under `$HOME`. `--root PATH` is hermetic. Exit 0 only when doctor prints `ok` (kernel + skills). Then names the disk contract (`.orderfield/`, `of resume`, no supervisor / `of merge`). Not a second installer. Not pip. Not a daemon.
+- **Skill drives the cut:** `SKILL.md` / alias teach the script + `of doctor` when a human asks install or verify. Page: [docs/demo/mortal-install.md](docs/demo/mortal-install.md). Pin recipe stays README / PUBLISH.
+- **Proof:** `MortalInstallDemo` in `tests/test_packaging.py` runs `--root` and requires `doctor        ok` plus the disk-contract lines. Existing `InstallScript` / `InstallPin` stay.
+- Packaging: VERSION 0.7.43; skill/alias description preview `v0.7.43 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.42 notes.
+
 ## 0.7.42
 
 Multi-wave close proof checklist. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.41 notes.

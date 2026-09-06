@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.42 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.43 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.42"
+  version: "0.7.43"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -40,6 +40,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | several siblings, need flying packs | `of fields` / `of fields --json` — open packs across homes; `of status --json` stays one field |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | session says CLOSED, `--tokens`, or unpack a reporter | `of eval recovery/adversarial-dual-truth` — disk wins; `--tokens` dies; collect/integrate a reporter |
+| human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` must print `ok`. Pin: README / PUBLISH. Not pip. Not a daemon |
 | `of doctor` prints FAIL | field/kernel — fix ACTIVE/stub/packs/schemas/lock; skill SKEW alone is WARN / exit 0 (`bash install.sh --global`) |
 | `next=HOLD` and children flying | quote the last `PULSE` line to the user this turn; stay on those packets |
 
@@ -89,7 +90,7 @@ Search open issues first (`of issue --search`); skip duplicates. Do not file sec
 
 ## Mandatory leader process
 
-Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
+Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill. If the human asks to install or verify install, run `bash docs/demo/mortal-install.sh --global` (checkout / extracted tree) or `--root PATH` for a hermetic look — then `of doctor` must print `ok`. Pin recipe: README / PUBLISH. Do not invent pip, a supervisor, or a second installer.
 
 **Tool-call discipline.** A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run. Announce in the past tense only after the CLI returns.
 

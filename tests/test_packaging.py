@@ -559,3 +559,47 @@ class RepositoryAliasSkill(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertFalse(alias_dir.exists())
         self.assertFalse((tmp / ".agents" / "skills" / "orderfield").exists())
+
+
+class MortalInstallDemo(unittest.TestCase):
+    """One-sitting wrap of install.sh + of doctor. docs/demo/mortal-install.sh."""
+
+    SCRIPT = ROOT / "docs" / "demo" / "mortal-install.sh"
+
+    def test_hermetic_root_doctor_ok_and_names_disk_contract(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-mortal-install-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.assertTrue(self.SCRIPT.is_file(), self.SCRIPT)
+        proc = run(ROOT, "bash", str(self.SCRIPT), "--root", str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("doctor        ok", proc.stdout)
+        self.assertNotIn("doctor        WARN", proc.stdout)
+        self.assertNotIn("doctor        FAIL", proc.stdout)
+        self.assertIn("disk contract", proc.stdout)
+        self.assertIn(".orderfield/", proc.stdout)
+        self.assertIn("of resume", proc.stdout)
+        self.assertIn("process supervisor", proc.stdout)
+        self.assertIn("of merge", proc.stdout)
+        self.assertIn("mortal-install  ok", proc.stdout)
+        dest = tmp / ".agents" / "skills" / "orderfield"
+        self.assertTrue((dest / "SKILL.md").is_file(), proc.stdout)
+        self.assertTrue((dest / "scripts" / "of.py").is_file())
+        link = tmp / ".local" / "bin" / "of"
+        self.assertTrue(link.is_symlink(), proc.stdout)
+        self.assertEqual(link.resolve(), (dest / "scripts" / "of.py").resolve())
+
+    def test_refuses_without_explicit_target(self) -> None:
+        proc = run(ROOT, "bash", str(self.SCRIPT))
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("--root", proc.stderr)
+        self.assertIn("--global", proc.stderr)
+
+    def test_refuses_detached_script_without_tree(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-mortal-lone-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        lone = tmp / "mortal-install.sh"
+        lone.write_text(self.SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+        proc = run(tmp, "bash", str(lone), "--root", str(tmp / "dest"))
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("extracted release tree", proc.stderr)
+        self.assertIn("PUBLISH.md", proc.stderr)

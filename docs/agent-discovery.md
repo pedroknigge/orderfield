@@ -8,7 +8,7 @@ Installed metadata matches `of doctor`. Resume first.
 
 A cut, a resume, a different model — the index still finds the field. The results do not have to change.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Install: [README.md](../README.md)
+> Hub: [AGENTS.md](../AGENTS.md) · Install: [README.md](../README.md) · One sitting: [docs/demo/mortal-install.md](demo/mortal-install.md)
 
 Short index for coding agents working in or with Orderfield (Eve-style `llms.txt` discovery).
 

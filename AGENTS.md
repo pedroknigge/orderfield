@@ -42,6 +42,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
 | [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
 | [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
+| [docs/demo/mortal-install.md](docs/demo/mortal-install.md) | One-sitting mortal install (`install.sh` + `of doctor`) |
 | [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
 | [docs/external-brief.md](docs/external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
@@ -131,6 +132,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.40 live PULSE progress under `running` (`PulseProgress`; `recovery/in-flight-visibility`) | documented |
 | 0.7.41 cross-field open-pack roster (`PackRoster`; `of fields --json`; `recovery/cross-field-pack-roster`) | documented |
 | 0.7.42 multi-wave close checklist (`CloseChecklist`; contrast + residual empty; `recovery/multi-wave-close-checklist`) | documented |
+| 0.7.43 mortal-install one-sitting demo (`docs/demo/mortal-install.sh`; `install.sh` + `of doctor`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
