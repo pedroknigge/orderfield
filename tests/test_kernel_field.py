@@ -2769,6 +2769,7 @@ class InFlightVisibility(unittest.TestCase):
         self.assertIn("running     1 ALIVE", status.stdout)
         self.assertIn(chrome, status.stdout)
         self.assertIn("pulse=ALIVE  residual=MISSING", status.stdout)
+        self.assertIn("still writing", status.stdout)
         self.assertIn("HOLD", status.stdout)
         self.assertNotIn("idle", status.stdout)
         machine = run_of(tmp, "status", "--json")
@@ -2776,17 +2777,89 @@ class InFlightVisibility(unittest.TestCase):
         doc = json.loads(machine.stdout.strip().splitlines()[0])
         self.assertEqual(doc["in_flight_detail"][0]["residual"], "MISSING")
         self.assertEqual(doc["in_flight_detail"][0]["pulse"], "ALIVE")
+        self.assertEqual(doc["in_flight_detail"][0]["progress"], ["still writing"])
         self.assertEqual(doc["next"], "hold")
         resume = run_of(tmp, "resume")
         self.assertEqual(resume.returncode, 0, resume.stderr)
         self.assertIn("status        in-flight", resume.stdout)
         self.assertIn(chrome, resume.stdout)
         self.assertIn("    residual    MISSING", resume.stdout)
+        self.assertIn("    progress    still writing", resume.stdout)
         pulse = run_of(tmp, "pulse")
         self.assertEqual(pulse.returncode, 0, pulse.stderr)
         self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
         self.assertIn("ALIVE", pulse.stdout)
+        self.assertIn("progress: still writing", pulse.stdout)
         self.assertNotIn("idle (nothing to watch)", pulse.stdout)
+
+    def test_missing_pulse_keeps_running(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-silence-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        pkt = {
+            "scratch_dir": ".orderfield/work/scratch/worker",
+            "child_id": "worker",
+        }
+        self.assertEqual(of.PulseProgress.lines(tmp, pkt), [])
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("running     1 ALIVE", status.stdout)
+        self.assertIn(of.InFlightSignal.CHROME, status.stdout)
+        self.assertNotIn("progress", status.stdout)
+        machine = run_of(tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["in_flight_detail"][0]["progress"], [])
+        self.assertEqual(doc["in_flight_detail"][0]["residual"], "MISSING")
+        resume = run_of(tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("status        in-flight", resume.stdout)
+        self.assertIn(of.InFlightSignal.CHROME, resume.stdout)
+        pulse = run_of(tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
+        self.assertNotIn("progress:", pulse.stdout)
+
+    def test_pulse_progress_tails_last_three(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-tail-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        scratch = tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text(
+            "\n".join(
+                [
+                    "2026-09-06T01:00:00Z first",
+                    "",
+                    "2026-09-06T02:00:00Z second",
+                    "2026-09-06T03:00:00Z third",
+                    "2026-09-06T04:00:00Z fourth",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        pkt = {"scratch_dir": ".orderfield/work/scratch/worker"}
+        self.assertEqual(
+            of.PulseProgress.lines(tmp, pkt),
+            [
+                "2026-09-06T02:00:00Z second",
+                "2026-09-06T03:00:00Z third",
+                "2026-09-06T04:00:00Z fourth",
+            ],
+        )
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertNotIn("first", status.stdout)
+        self.assertIn("2026-09-06T02:00:00Z second", status.stdout)
+        self.assertIn("2026-09-06T04:00:00Z fourth", status.stdout)
+        (scratch / "PULSE").write_text(("x" * 200) + "\n", encoding="utf-8")
+        capped = of.PulseProgress.lines(tmp, pkt)
+        self.assertEqual(len(capped), 1)
+        self.assertTrue(capped[0].endswith("..."))
+        self.assertEqual(len(capped[0]), of.PulseProgress.MAX_CHARS)
 
     def test_idle_after_residual_lands(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-inflight-idle-"))

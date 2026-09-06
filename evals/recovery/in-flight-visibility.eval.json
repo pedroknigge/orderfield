@@ -1,8 +1,8 @@
 {
   "id": "recovery/in-flight-visibility",
-  "description": "Live in-flight: status/resume/pulse print running + residual MISSING; harness chrome is not the field",
+  "description": "Live in-flight: status/resume/pulse print running + residual MISSING + last PULSE progress lines; harness chrome is not the field",
   "fixture": "recovery_process_death",
-  "tags": ["recovery", "long-task", "status", "resume", "pulse", "in-flight"],
+  "tags": ["recovery", "long-task", "status", "resume", "pulse", "in-flight", "progress"],
   "steps": [
     {
       "run": "status",
@@ -14,7 +14,8 @@
         "harness chrome is not the field",
         "worker",
         "pulse=",
-        "HOLD"
+        "HOLD",
+        "spawn host was writing this"
       ],
       "stdout_not_contains": [
         "in_flight   0",
@@ -33,6 +34,8 @@
         "\"worker\"",
         "\"residual\": \"MISSING\"",
         "\"pulse\"",
+        "\"progress\"",
+        "spawn host was writing this",
         "\"next\": \"hold\""
       ],
       "stdout_not_contains": [
@@ -49,7 +52,8 @@
         "running",
         "residual MISSING; harness chrome is not the field",
         "    residual    MISSING",
-        "HOLD"
+        "HOLD",
+        "spawn host was writing this"
       ],
       "stdout_not_contains": [
         "status        idle",
@@ -63,7 +67,8 @@
       "stdout_contains": [
         "running     1 in-flight",
         "residual MISSING; harness chrome is not the field",
-        "worker"
+        "worker",
+        "spawn host was writing this"
       ],
       "stdout_not_contains": [
         "in_flight   0 — idle (nothing to watch)"

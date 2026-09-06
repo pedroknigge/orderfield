@@ -38,7 +38,7 @@ of wave show
 of status --json
 ```
 
-While a residual is MISSING, `of status` / `of resume` / `of pulse` print `running`. Do not collect. Do not treat harness chrome as the field. `of handoff` without `--packet` is the mid-epic field packet — do not unpack.
+While a residual is MISSING, `of status` / `of resume` / `of pulse` print `running` plus the last `PULSE` progress lines. Quote one line to the human each turn while `next=HOLD`. Do not collect. Do not treat harness chrome as the field. `of handoff` without `--packet` is the mid-epic field packet — do not unpack.
 
 A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) is `escalate_up`. Pack and spawn stop until `of patch` then guarded `of next-wave` (`recovery/threshold-stop-spawn`).
 

@@ -79,6 +79,7 @@ from of.field import (
     order_path,
     page_listed,
     parse_utc,
+    physical_artifact_path,
     physical_field_rel,
     plan_field_migrations,
     plan_field_retention,
@@ -553,6 +554,45 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
     print("note         opt-in helper; not a process manager")
 
 
+class PulseProgress:
+    """Last milestone lines from scratch/<id>/PULSE. Read-path only. Not a diary."""
+
+    NAME = "PULSE"
+    MAX_LINES = 3
+    MAX_CHARS = 120
+
+    @staticmethod
+    def path(root: Path, packet: dict[str, Any]) -> Path | None:
+        rel = packet.get("scratch_dir")
+        if not rel:
+            return None
+        scratch = physical_artifact_path(root, str(rel), "packet scratch_dir")
+        return scratch / PulseProgress.NAME
+
+    @staticmethod
+    def lines(root: Path, packet: dict[str, Any]) -> list[str]:
+        target = PulseProgress.path(root, packet)
+        if target is None or not target.is_file():
+            return []
+        try:
+            raw = target.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return []
+        out: list[str] = []
+        for line in raw.splitlines():
+            text = " ".join(line.split())
+            if not text:
+                continue
+            if len(text) > PulseProgress.MAX_CHARS:
+                text = text[: PulseProgress.MAX_CHARS - 3] + "..."
+            out.append(text)
+        return out[-PulseProgress.MAX_LINES :]
+
+    @staticmethod
+    def render(lines: list[str], *, indent: str = "      ") -> list[str]:
+        return [f"{indent}{line}" for line in lines if str(line).strip()]
+
+
 class InFlightSignal:
     """Read-path banner: residual MISSING is still running. Not a supervisor."""
 
@@ -593,6 +633,7 @@ class InFlightSignal:
             "residual": "MISSING",
             "scratch": "present" if scratch_nonempty(root, pkt) else "missing",
             "parked_reason": parked_reason(root, pkt),
+            "progress": PulseProgress.lines(root, pkt),
         }
 
     @staticmethod
@@ -601,6 +642,13 @@ class InFlightSignal:
         pulse = str(row.get("pulse") or "")
         parked = str(row.get("parked_reason") or "")
         return f"  {cid}  pulse={pulse}  residual=MISSING  parked={parked}"
+
+    @staticmethod
+    def progress_lines(row: dict[str, Any]) -> list[str]:
+        raw = row.get("progress") or []
+        if not isinstance(raw, list):
+            return []
+        return PulseProgress.render([str(item) for item in raw if str(item).strip()])
 
 
 class StatusReport:
@@ -774,6 +822,11 @@ class StatusReport:
                 "residual": "MISSING",
                 "scratch": str(row.get("scratch") or ""),
                 "parked_reason": str(row.get("parked_reason") or ""),
+                "progress": [
+                    str(item)
+                    for item in (row.get("progress") or [])
+                    if str(item).strip()
+                ],
             }
             for row in (doc.get("in_flight_detail") or [])
             if isinstance(row, dict)
@@ -829,6 +882,8 @@ class StatusReport:
         print(InFlightSignal.banner(verdicts, key_width=key_width))
         for row in rows:
             print(InFlightSignal.child_line(row))
+            for line in InFlightSignal.progress_lines(row):
+                print(line)
         label = str(doc.get("next_label") or doc.get("next") or "")
         detail = str(doc.get("next_detail") or "")
         if label:
@@ -1418,6 +1473,8 @@ def print_resume_in_flight(
         print(f"    parked_reason {parked_reason(root, pkt)}")
         if verdicts and cid in verdicts:
             print(f"    pulse       {verdicts[cid]}")
+        for line in PulseProgress.lines(root, pkt):
+            print(f"    progress    {line}")
         print_resume_child_owns(root, pkt)
         print(f"    slice       {truncate_slice(pkt.get('slice') or '')}")
         packed_ts = parse_utc(pkt.get("packed_at"))
@@ -1746,6 +1803,8 @@ def pulse_once(
             signals.append((scratch[0], f"scratch/{scratch[1]}"))
         else:
             print("    scratch: empty")
+        for line in PulseProgress.lines(root, pkt):
+            print(f"    progress: {line}")
         if repo:
             print(
                 f"    shared repo: last product write "
