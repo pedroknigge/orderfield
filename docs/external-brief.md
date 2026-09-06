@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.35` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.36` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -81,7 +81,7 @@ A multi-wave mission can look finished while SPEC is still open. The lie is a st
 
 **What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref`; it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
 
-**What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. Templates: [close-honesty.md](close-honesty.md).
+**What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
 
 ### What the kernel honestly does not stop
 

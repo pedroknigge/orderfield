@@ -18,6 +18,7 @@ import of  # noqa: E402
 
 SKILL = ROOT / "SKILL.md"
 ROADMAP = ROOT / "docs" / "roadmap.md"
+LONG_MISSION = ROOT / "docs" / "long-mission.md"
 REGIME = ROOT / "scripts" / "of" / "regime.py"
 VERSION = ROOT / "VERSION"
 
@@ -106,6 +107,43 @@ class RoadmapContrast(unittest.TestCase):
         self.assertIn("`RUNTIME_OWNERSHIP` stays reserved", roadmap)
         ver = VERSION.read_text(encoding="utf-8").strip()
         self.assertIn(f"**Current release line:** `{ver}`", roadmap)
+
+
+class LongMissionGuide(unittest.TestCase):
+    """Operator walk: epic → waves → amend → close is proof. No invented supervisor."""
+
+    def test_guide_walks_existing_verbs(self) -> None:
+        text = LONG_MISSION.read_text(encoding="utf-8")
+        self.assertIn("# Long mission", text)
+        self.assertIn("## 1. Epic", text)
+        self.assertIn("## 2. Waves", text)
+        self.assertIn("## 3. Mid-flight amend", text)
+        self.assertIn("## 4. Close is proof", text)
+        for verb in (
+            "of init",
+            "of new --parent",
+            "of wave list",
+            "of pack",
+            "of handoff",
+            "of resume",
+            "of spec --amend",
+            "of contrast",
+            "of close",
+        ):
+            self.assertIn(verb, text, verb)
+        self.assertIn("CLOSE.json", text)
+        self.assertIn("Slice `done` is not SPEC closed", text)
+        self.assertIn("external-brief.md#long-task-residual-theater", text)
+        skill = SKILL.read_text(encoding="utf-8")
+        self.assertIn("docs/long-mission.md", skill)
+
+    def test_guide_refuses_supervisor_and_merge(self) -> None:
+        text = LONG_MISSION.read_text(encoding="utf-8")
+        self.assertIn("Not a process supervisor", text)
+        self.assertIn("Not `RUNTIME_OWNERSHIP`", text)
+        self.assertIn("Not a fake token budget", text)
+        self.assertIn("Not `of merge`", text)
+        self.assertNotIn("of merge --", text)
 
 
 class RuntimeOwnershipUntouched(unittest.TestCase):

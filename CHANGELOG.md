@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.36
+
+Long-mission operator walk. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.35 notes.
+
+- **Epic → waves → amend → close is proof:** [docs/long-mission.md](docs/long-mission.md) walks the existing verbs (`of init` / `of new --parent`, `of wave`, `of pack`, `of handoff`, `of resume`, `of spec --amend`, `of contrast`, `of close`). Slice `done` is not SPEC closed. Close is contrast RESOLVED + `CLOSE.json`. Theater stays on the 0.7.35 addendum — this page does not copy it. No new CLI. No new schema. Not a process supervisor. Not `of merge`.
+- **Skill points at the walk:** `SKILL.md` “What to type next” and the sibling-field resume paragraph name the guide so a leader does not invent a parallel loop.
+- Packaging: VERSION 0.7.36; skill/alias description preview `v0.7.36 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.35 notes.
+
 ## 0.7.35
 
 Long-task residual-theater threat-model addendum. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.34 notes.
