@@ -100,3 +100,5 @@ of eval recovery/contrast-close-contract --strict
 ```
 
 Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`.
+
+A stack of `status=done` residuals across waves is still not SPEC closed. Long-task residual theater — dump, slogan, silent rewrite, amend amnesia, chrome-as-done — and the disk-contract defense: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).

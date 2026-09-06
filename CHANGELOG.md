@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.35
+
+Long-task residual-theater threat-model addendum. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.34 notes.
+
+- **Residual theater is named, not invented:** [docs/external-brief.md](docs/external-brief.md#long-task-residual-theater) adds the long-task addendum under the existing threat model. A stack of `status=done` residuals, a chat dump, or a slogan is not SPEC closed. Disk contract: structured residual + `escalate_up` on field rewrite + contrast RESOLVED then `of close` (`CLOSE.json`). Chat-dump row joins the child-cannot table (`recovery/wave-report-quality-gate`). No new schema. No new CLI. Not a token budget. Not a process supervisor.
+- **Pointers stay one page:** close-honesty and glossary residual cite the addendum. No second threat-model silo.
+- Packaging: VERSION 0.7.35; skill/alias description preview `v0.7.35 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.34 notes.
+
 ## 0.7.34
 
 Pack `--explain`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.33 notes.
