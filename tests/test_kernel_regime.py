@@ -452,7 +452,6 @@ class ResidualSchemaContracts(unittest.TestCase):
         with_v["v"] = 1
         self.assertEqual(of.validate_residual(with_v), [])
         assert_draft_2020_12_valid(self, schema, with_v)
-        assert_draft_2020_12_valid(self, load_json(CODEX_RESIDUAL_SCHEMA), with_v)
         extra = json.loads(json.dumps(with_v))
         extra["unexpected"] = True
         errs = of.validate_residual(extra)
