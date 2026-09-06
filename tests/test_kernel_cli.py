@@ -1217,7 +1217,7 @@ class DoctorSkillVersionSkew(unittest.TestCase):
         self.assertIn("~/.agents/skills/orderfield", joined)
         self.assertNotIn("SKEW", joined)
 
-    def test_skill_md_version_and_mismatch_fail_doctor(self) -> None:
+    def test_skill_md_version_and_mismatch_is_advisory(self) -> None:
         dest = self.home / ".cursor" / "skills" / "orderfield"
         self._write_skill(dest, "0.0.1", via="SKILL.md")
         rows = of.SkillVersionSkew.scan(home=self.home, expected=self.expected)
@@ -1229,11 +1229,14 @@ class DoctorSkillVersionSkew(unittest.TestCase):
         init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(init.returncode, 0, init.stderr)
         r = run_of(tmp, "doctor", extra_env={"HOME": str(self.home)})
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("SKEW", r.stdout)
         self.assertIn("0.0.1", r.stdout)
         self.assertIn("~/.cursor/skills/orderfield", r.stdout)
-        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertIn("skill SKEW is advisory", r.stdout)
+        self.assertIn("bash install.sh --global", r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
         self.assertNotIn("~/.claude/skills/orderfield", r.stdout)
 
 
@@ -1265,6 +1268,10 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("packs         none", r.stdout)
         self.assertNotIn("SKEW", r.stdout)
         self.assertIn("doctor        ok", r.stdout)
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("first", listed.stdout)
+        self.assertNotIn("legacy", listed.stdout)
 
     def test_nested_field_without_stub_is_not_missing(self) -> None:
         init = run_of(self.tmp, "init", "--mission", "first", "--phase", "explore")
@@ -1287,6 +1294,18 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn(".orderfield/ORDER.json", r.stdout)
         self.assertIn("doctor        FAIL", r.stdout)
         self.assertNotIn("missing (of init", r.stdout)
+
+    def test_skill_skew_does_not_hide_field_fail(self) -> None:
+        dest = self.home / ".agents" / "skills" / "orderfield"
+        dest.mkdir(parents=True)
+        (dest / "VERSION").write_text("0.0.1\n", encoding="utf-8")
+        of.eval_setup_recovery_active_field_pointer(self.tmp)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("SKEW", r.stdout)
+        self.assertIn("skill SKEW is advisory", r.stdout)
+        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("doctor        WARN", r.stdout)
 
     def test_dangling_active_fails_doctor(self) -> None:
         init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
@@ -1348,6 +1367,41 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("SKEW", joined)
         self.assertIn("packed_age", joined)
         self.assertIn("worker", joined)
+
+    def test_pack_and_handoff_name_residual_awaiting(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the pricing tables for this wave",
+            "--role",
+            "explorer",
+            "--child-id",
+            "explorer",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn("residual (awaiting)=", packed.stdout)
+        self.assertNotIn(
+            "residual=.orderfield/waves/001/residuals/explorer.json",
+            packed.stdout,
+        )
+        residual = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer.json"
+        )
+        self.assertFalse(residual.is_file())
+        handoff = run_of(self.tmp, "handoff")
+        self.assertEqual(handoff.returncode, 0, handoff.stderr)
+        self.assertIn("    residual    MISSING", handoff.stdout)
+        child = run_of(
+            self.tmp,
+            "handoff",
+            "--packet",
+            ".orderfield/waves/001/packets/explorer.json",
+        )
+        self.assertEqual(child.returncode, 0, child.stderr)
+        self.assertIn("residual (awaiting)=", child.stdout)
 
 
 class QwenHarnessEnum(unittest.TestCase):

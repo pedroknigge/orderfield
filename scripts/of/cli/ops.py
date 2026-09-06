@@ -330,7 +330,8 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     for line in skill_lines:
         print(line)
     if skill_skew:
-        failed = True
+        print("  note          skill SKEW is advisory (not field FAIL)")
+        print("  refresh       bash install.sh --global")
 
     root = find_root()
     field = DoctorSkew.inspect_home(root) or of_dir(root)
@@ -415,10 +416,18 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         "  boundary      kernel verifies PATH/argv/residual; "
         "harness promises approval/auth/ready"
     )
-    emit_event("doctor", ok=not failed)
+    emit_event(
+        "doctor",
+        ok=not failed,
+        ok_field=not failed,
+        ok_skills=not skill_skew,
+    )
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
+    if skill_skew:
+        print("doctor        WARN")
+        return
     print("doctor        ok")
 
 
@@ -908,11 +917,14 @@ class HandoffReport:
         verdict: str,
     ) -> dict[str, Any]:
         cid = str(pkt.get("child_id") or "?")
-        residual = str(pkt.get("residual_path") or canonical_residual_rel(wave, cid))
+        residual_path = str(
+            pkt.get("residual_path") or canonical_residual_rel(wave, cid)
+        )
         return {
             "child_id": cid,
             "packet": canonical_packet_rel(wave, cid),
-            "residual": residual,
+            "residual": "MISSING",
+            "residual_path": residual_path,
             "role": str(pkt.get("role") or ""),
             "pulse": verdict,
             "scratch": "present" if scratch_nonempty(root, pkt) else "missing",
@@ -1011,7 +1023,8 @@ class HandoffReport:
             {
                 "child_id": str(row.get("child_id") or "?"),
                 "packet": str(row.get("packet") or ""),
-                "residual": str(row.get("residual") or ""),
+                "residual": str(row.get("residual") or "MISSING"),
+                "residual_path": str(row.get("residual_path") or ""),
                 "role": str(row.get("role") or ""),
                 "pulse": str(row.get("pulse") or ""),
                 "scratch": str(row.get("scratch") or ""),
@@ -1088,7 +1101,7 @@ class HandoffReport:
                 continue
             lines.append(f"  {row.get('child_id') or '?'}")
             lines.append(f"    packet      {row.get('packet') or ''}")
-            lines.append(f"    residual    {row.get('residual') or ''}")
+            lines.append(f"    residual    {row.get('residual') or 'MISSING'}")
             pulse = str(row.get("pulse") or "")
             if pulse:
                 lines.append(f"    pulse       {pulse}")

@@ -62,6 +62,14 @@ class SiblingFields(unittest.TestCase):
         self.assertTrue(order.is_file(), r.stdout)
         self.assertFalse((self.tmp / ".orderfield" / "fields").exists())
 
+    def test_fields_labels_first_home_not_legacy(self) -> None:
+        self.assertEqual(self._init("alpha epic").returncode, 0)
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("first", listed.stdout)
+        self.assertNotIn("legacy", listed.stdout)
+        self.assertIn("alpha epic", listed.stdout)
+
     def test_new_promotes_legacy_and_opens_sibling(self) -> None:
         self.assertEqual(self._init("first").returncode, 0)
         first_id = load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]

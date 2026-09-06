@@ -10,7 +10,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 | Situation | Command |
 |---|---|
-| First field in this tree | `of init --mission "…"` (legacy home: `.orderfield/ORDER.json`) |
+| First field in this tree | `of init --mission "…"` (first-home: `.orderfield/ORDER.json`; `of fields` labels the row `first`) |
 | Unrelated second mission, same tree | `of new --mission "…"` |
 | Phase of the **same** epic, own ORDER + close | `of new --parent --mission "…"` |
 | Same brief, other agent | attach `--field <id>` (writes ACTIVE) |
@@ -20,7 +20,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `of init --force` replaces **this** field (archives old waves). It is not how you keep the current field and start another. That is `of new`.
 
-The first `of new` promotes a legacy top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. `choose` says `of new` is an unrelated epic; `of new --parent` is a phase of ACTIVE; the same product on this ORDER is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
+The first `of new` promotes a first-home top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. A lone first-home row is labeled `first` (top-level `.orderfield/ORDER.json`), not `legacy` — that is not a leftover stub. `choose` says `of new` is an unrelated epic; `of new --parent` is a phase of ACTIVE; the same product on this ORDER is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
 
 ## Phase of an epic (`of new --parent`)
 

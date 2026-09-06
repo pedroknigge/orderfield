@@ -747,9 +747,14 @@ class FieldRoster:
             extra += f"  parent={parent}"
         return extra
 
+    FIRST_HOME = "first"
+
     @staticmethod
     def _home_rel(home: Path) -> str:
-        return home.name if home.name != ".orderfield" else "legacy"
+        # Top-level `.orderfield/ORDER.json` is the first-home layout, not a
+        # leftover stub. `legacy` stays an internal kind; the roster label
+        # must not read as stale.
+        return home.name if home.name != ".orderfield" else FieldRoster.FIRST_HOME
 
     @staticmethod
     def _home_facts(
@@ -2882,6 +2887,9 @@ class DoctorSkew:
 
     Reuses SkillVersionSkew, ActiveField, list_field_homes, PackedAge,
     and packet_is_stale. Read-path only. No new schema. No new CLI flag.
+
+    Skill VERSION mismatch is advisory (WARN / exit 0). Field, schema,
+    lock, symlink, and kernel failures still FAIL (exit 2).
 
     Version skew already lived on doctor (0.7.10). ACTIVE pointer and
     packed-age lived on fields/status/resume. This class is the compose
