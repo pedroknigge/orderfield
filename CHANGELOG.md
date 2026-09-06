@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.38
+
+Pack `--out` accepts the physical nested path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.37 notes.
+
+- **Nested `--out` (#94):** `of pack --out` compares after `physical_field_rel`, so the path `of pack` prints (`.orderfield/fields/<id>/waves/…`) is accepted as well as the logical `.orderfield/waves/…` contract path. A refuse names both expected forms. No new verb. No new schema. Not a token budget.
+- **Proof:** `PackOutPhysicalNested` is on `of eval --strict --kernel`. Unittest covers nested field + physical `--out`.
+- Packaging: VERSION 0.7.38; skill/alias description preview `v0.7.38 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.37 notes.
+
 ## 0.7.37
 
 Adversarial dual-truth corpus. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.36 notes.

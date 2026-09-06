@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.37 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.38 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.37"
+  version: "0.7.38"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -177,6 +177,8 @@ python3 <skill>/scripts/of.py pack \
   --owns-requirement CLI-001 \
   --out .orderfield/waves/001/packets/p1.json
 ```
+
+`--out` is optional. When set, it accepts the logical `.orderfield/waves/…` path **or** the physical `.orderfield/fields/<id>/waves/…` path `of pack` prints. Omit `--out` to write that same location.
 
 `max_children` (default 4) is the parallel cap **in one wave**. `max_across_per_wave` is reserved leftover math; it does **not** serialize implementers. Pack multiple implementers in the **same** build wave when write sets are disjoint:
 

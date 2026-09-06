@@ -167,5 +167,90 @@ class SiblingFieldRoundTrip(unittest.TestCase):
         self.assertIn("child_id=c1", handed.stdout)
 
 
+class PackOutPhysicalNested(unittest.TestCase):
+    """#94: pack --out accepts the physical nested path. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pack-out-phys-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        brief = self.tmp / "brief.md"
+        brief.write_text("# brief\n\nBuild Z.\n", encoding="utf-8")
+        r = run_of(self.tmp, "init", "--mission", "first", "--source-file", str(brief))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "--json", "new", "--mission", "second", "--source-file", str(brief)
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        events = [json.loads(ln) for ln in r.stderr.splitlines() if ln.startswith("{")]
+        self.fid = events[-1]["field"]
+        self.home = self.tmp / ".orderfield" / "fields" / self.fid
+        self.assertTrue((self.home / "ORDER.json").is_file())
+
+    def of(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, "--field", self.fid, *args)
+
+    def test_pack_out_accepts_physical_nested_path(self) -> None:
+        physical = f".orderfield/fields/{self.fid}/waves/001/packets/arch.json"
+        logical = ".orderfield/waves/001/packets/arch.json"
+        packed = self.of(
+            "pack",
+            "--slice",
+            "map Z, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "arch",
+            "--out",
+            physical,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn(physical, packed.stdout.splitlines()[0])
+        self.assertTrue((self.tmp / physical).is_file())
+        self.assertFalse((self.tmp / logical).exists())
+        self.assertFalse((self.tmp / ".orderfield" / "waves").exists())
+
+    def test_pack_out_still_accepts_logical_path(self) -> None:
+        logical = ".orderfield/waves/001/packets/log1.json"
+        physical = f".orderfield/fields/{self.fid}/waves/001/packets/log1.json"
+        packed = self.of(
+            "pack",
+            "--slice",
+            "map Z, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "log1",
+            "--out",
+            logical,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn(physical, packed.stdout.splitlines()[0])
+        self.assertTrue((self.tmp / physical).is_file())
+        self.assertFalse((self.tmp / logical).exists())
+
+    def test_pack_out_noncanonical_names_logical_and_physical(self) -> None:
+        packed = self.of(
+            "pack",
+            "--slice",
+            "map Z, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "bad",
+            "--out",
+            ".orderfield/waves/001/packets/wrong.json",
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        err = packed.stderr
+        self.assertIn("noncanonical --out", err)
+        self.assertIn(".orderfield/waves/001/packets/bad.json", err)
+        self.assertIn(
+            f".orderfield/fields/{self.fid}/waves/001/packets/bad.json", err
+        )
+        self.assertFalse(
+            (self.home / "waves" / "001" / "packets" / "bad.json").exists()
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
