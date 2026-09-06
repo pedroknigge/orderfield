@@ -2666,8 +2666,9 @@ class SkillVersionSkew:
     GENERIC = (".agents", "skills", "orderfield")
     HARNESS_NAMES = ("claude", "codex", "cursor", "opencode", "grok")
     AGY_REL = (
-        (".gemini", "config", "skills", "orderfield"),
         (".gemini", "antigravity-cli", "skills", "orderfield"),
+        (".gemini", "skills", "orderfield"),
+        (".gemini", "config", "skills", "orderfield"),
     )
     SKILL_VERSION_RE = re.compile(r'(?m)^\s*version:\s*"([^"]+)"')
 
@@ -2683,10 +2684,12 @@ class SkillVersionSkew:
     def label(rel: tuple[str, ...]) -> str:
         if rel == SkillVersionSkew.GENERIC:
             return "agents"
-        if rel[:3] == (".gemini", "config", "skills"):
-            return "gemini"
         if rel[:3] == (".gemini", "antigravity-cli", "skills"):
             return "agy"
+        if rel[:2] == (".gemini", "skills"):
+            return "agy-shared"
+        if rel[:3] == (".gemini", "config", "skills"):
+            return "gemini"
         if rel[0].startswith(".") and rel[1:3] == ("skills", "orderfield"):
             return rel[0][1:]
         return rel[0].lstrip(".")

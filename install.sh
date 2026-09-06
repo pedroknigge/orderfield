@@ -6,7 +6,7 @@ set -euo pipefail
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 # INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
-DEFAULT_VERSION="0.7.53"
+DEFAULT_VERSION="0.7.54"
 KNOWN_HARNESSES=(claude codex cursor opencode grok)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
@@ -467,9 +467,11 @@ harness_present() {
 }
 
 agy_dests() {
+  # Global antigravity-cli + Shared ~/.gemini/skills. config is optional legacy.
   printf '%s\n' \
-    "$base/.gemini/config/skills/$NAME" \
-    "$base/.gemini/antigravity-cli/skills/$NAME"
+    "$base/.gemini/antigravity-cli/skills/$NAME" \
+    "$base/.gemini/skills/$NAME" \
+    "$base/.gemini/config/skills/$NAME"
 }
 
 # Iterate dests in this shell so copied/removed persist. Command
@@ -482,6 +484,14 @@ install_agy_dests() {
   while IFS= read -r dest; do
     [[ -n "$dest" ]] || continue
     parent="$(dirname "$(dirname "$dest")")"
+    # config/skills is optional legacy: only when that home already exists.
+    if [[ "$dest" == *".gemini/config/skills/"* ]]; then
+      if [[ -d "$parent" ]]; then
+        copy_one "$dest"
+        copied=$((copied + 1))
+      fi
+      continue
+    fi
     if [[ "$agy_bin" -eq 1 || -d "$parent" ]]; then
       copy_one "$dest"
       copied=$((copied + 1))

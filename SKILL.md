@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.53 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: "v0.7.54 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
 license: MIT
-compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
+compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.53"
+  version: "0.7.54"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---

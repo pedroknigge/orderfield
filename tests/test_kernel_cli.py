@@ -1283,8 +1283,9 @@ class DoctorSkillVersionSkew(unittest.TestCase):
                 "cursor",
                 "opencode",
                 "grok",
-                "gemini",
                 "agy",
+                "agy-shared",
+                "gemini",
             ],
         )
         self.assertTrue(all(rel[-1] == "orderfield" for rel in rels))
