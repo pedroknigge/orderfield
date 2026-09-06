@@ -86,4 +86,7 @@ do
 done
 ok "fixtures + tests present"
 
+python3 "$ROOT/docs/audit/check-claims.py" "$ROOT" || fail "claims honesty gate"
+ok "claims honesty"
+
 echo "OK validate-skill"

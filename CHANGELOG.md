@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.50
+
+Claims honesty gate on the skill / product surface. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.49 notes.
+
+- **Reuse, not a verb:** `docs/audit/check-claims.py` already uniquely numbered C-IDs and counted verdicts. `ClaimsHonesty` adds: advertised truth score must match the table and stay ≤98%; critical Contradicted fails; marketing theater on `SKILL.md` / `of/SKILL.md` / `README.md` fails. Wired into `validate-skill.sh`. No `of claims`. No new schema. Not a supervisor.
+- **Skill drives the cut:** `SKILL.md` / alias teach `python3 docs/audit/check-claims.py` after kernel or published skill/docs claims change. Agents must not invent finished-product slogans or a 100% honesty number.
+- **Proof:** `ClaimsHonestyGate` injects theater and an inflated score and requires the checker to die. On `of eval --strict --kernel`. Live tree must stay green.
+- Packaging: VERSION 0.7.50; skill/alias description preview `v0.7.50 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.49 notes.
+
 ## 0.7.49
 
 `of contrast --diff` human-readable narrative. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.48 notes.

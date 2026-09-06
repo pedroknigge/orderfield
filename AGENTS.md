@@ -141,6 +141,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.47 optional per-task model hints (`AdapterHints`; consent + spawn `--model` passthrough; no silent switch) | documented |
 | 0.7.48 efficiency signal + propose uptier/downtier (`EfficiencySignal`; `residual.usage` provenance; ask only; `recovery/efficiency-signal`) | documented |
 | 0.7.49 `of contrast --diff` narrative (`ContrastDiff`; same facts as spec-diff; no theater; `recovery/contrast-diff-narrative`) | documented |
+| 0.7.50 claims honesty gate (`ClaimsHonesty`; `check-claims.py` in `validate-skill.sh`; `ClaimsHonestyGate`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

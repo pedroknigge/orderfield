@@ -22,7 +22,7 @@ python3 -m unittest discover -s tests -v
 npx --yes skills add . --list --full-depth
 ```
 
-All commands must exit 0. Package discovery must list both `orderfield` and `of`. `validate-skill.sh` checks VERSION, both skill entry points, README, the current architecture/audit docs, and the latest CHANGELOG heading. Preserve unrelated files rather than cleaning them away.
+All commands must exit 0. Package discovery must list both `orderfield` and `of`. `validate-skill.sh` checks VERSION, both skill entry points, README, the current architecture/audit docs, the latest CHANGELOG heading, and the claims honesty gate (`python3 docs/audit/check-claims.py`). Preserve unrelated files rather than cleaning them away.
 
 Run the classic installer and CLI from an isolated root:
 
