@@ -2893,6 +2893,12 @@ class MidEpicHandoffPacket(unittest.TestCase):
             cli["in_flight"][0]["packet"],
             ".orderfield/waves/001/packets/worker.json",
         )
+        self.assertEqual(cli["in_flight"][0]["residual"], "MISSING")
+        self.assertEqual(
+            cli["in_flight"][0]["residual_path"],
+            ".orderfield/waves/001/residuals/worker.json",
+        )
+        self.assertIn("    residual    MISSING", human.stdout)
         self.assertIn("do not unpack", cli["do_not"])
         self.assertNotIn("runtime", cli)
         self.assertNotIn("tokens", cli)

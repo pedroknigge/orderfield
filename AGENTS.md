@@ -127,6 +127,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.36 long-mission operator walk (epic → waves → amend → close is proof; [docs/long-mission.md](docs/long-mission.md)) | documented |
 | 0.7.37 adversarial dual-truth corpus (close / fake budget / unpack theater; `recovery/adversarial-dual-truth`) | documented |
 | 0.7.38 pack `--out` accepts physical nested path (`PackOutPhysicalNested`; #94) | documented |
+| 0.7.39 doctor skill SKEW advisory + residual awaiting + first-home roster (`recovery/doctor-advisory-ux`; #88) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

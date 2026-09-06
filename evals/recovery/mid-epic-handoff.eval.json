@@ -30,7 +30,8 @@
         "HANDOFF",
         "do not unpack",
         "longchild",
-        ".orderfield/waves/001/packets/longchild.json"
+        ".orderfield/waves/001/packets/longchild.json",
+        "residual    MISSING"
       ],
       "stdout_not_contains": [
         "no ORDER",

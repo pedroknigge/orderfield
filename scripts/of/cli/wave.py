@@ -528,7 +528,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
     print(out_physical_rel)
     print(
         f"child_id={child_id} wave={wave} "
-        f"residual={physical_field_rel(root, residual_path)}"
+        f"residual (awaiting)={physical_field_rel(root, residual_path)}"
     )
 
 
@@ -642,7 +642,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     )
     print(f"child_id={child_id}")
     print(f"prompt={prompt_path}")
-    print(f"residual={residual_rel}")
+    print(f"residual (awaiting)={residual_rel}")
     emit_event(
         "handoff",
         kind="child",

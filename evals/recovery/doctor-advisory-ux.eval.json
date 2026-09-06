@@ -1,0 +1,61 @@
+{
+  "id": "recovery/doctor-advisory-ux",
+  "description": "Healthy first-home field: doctor exit 0 (skill SKEW is advisory); pack/handoff name residual awaiting/MISSING; fields labels first not legacy",
+  "fixture": "recovery_doctor_advisory",
+  "tags": ["recovery", "doctor", "pack", "handoff", "fields"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "first",
+        "healthy first home"
+      ],
+      "stdout_not_contains": [
+        "legacy",
+        "PICK --field"
+      ]
+    },
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "checkout"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "missing (of init"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "map the pricing tables for this wave",
+        "--role",
+        "explorer",
+        "--child-id",
+        "explorer"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "residual (awaiting)="
+      ],
+      "stdout_not_contains": [
+        "residual=.orderfield/waves/001/residuals/explorer.json"
+      ]
+    },
+    {
+      "run": "handoff",
+      "exit": 0,
+      "stdout_contains": [
+        "residual    MISSING",
+        "explorer"
+      ],
+      "stdout_not_contains": [
+        "no ORDER",
+        "PICK --field"
+      ]
+    }
+  ]
+}

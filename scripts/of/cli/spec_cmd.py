@@ -1565,6 +1565,20 @@ def eval_setup_recovery_orphan_packed(root: Path) -> None:
     OrphanPacked.mark_closed(root)
 
 
+@_register_eval_fixture("recovery_doctor_advisory")
+def eval_setup_recovery_doctor_advisory(root: Path) -> None:
+    """Healthy first-home field. Doctor/pack/handoff/fields UX (#88)."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "healthy first home",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+
+
 @_register_eval_fixture("recovery_doctor_one_pass")
 def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""

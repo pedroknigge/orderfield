@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.39
+
+Dogfood UX: doctor skill SKEW is advisory; residual dest is awaiting; first-home roster label. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.38 notes.
+
+- **Doctor skill SKEW is advisory (#88):** `of doctor` still prints `SKEW` when an existing HOME skill dest disagrees with this checkout. That alone is `doctor WARN` / exit 0 plus `bash install.sh --global`. Exit 2 / `doctor FAIL` is field, schema, lock, symlink, or kernel. `of --json` / `OF_JSON=1` `doctor` event carries `ok_field` and `ok_skills`. Leftover stub / dangling ACTIVE / stale packs still FAIL.
+- **Residual dest is awaiting:** `of pack` and `of handoff --packet` print `residual (awaiting)=<path>` so the dest is named before the file exists. Field `of handoff` prints `residual    MISSING` like resume, and `--json` keeps `residual_path` for the expected dest. Status already said MISSING.
+- **First-home roster label:** `of fields` labels the top-level `.orderfield/ORDER.json` home `first`, not `legacy`. Internal layout kind stays. First `of new` still promotes under `fields/<id>/`.
+- **Proof:** `DoctorSkillVersionSkew` / `DoctorOnePassSkew` / `MidEpicHandoffPacket` plus `recovery/doctor-advisory-ux` are on `of eval --strict --kernel`. Existing `recovery/doctor-one-pass-skew` still FAILs leftover stub + aged pack.
+- Packaging: VERSION 0.7.39; skill/alias description preview `v0.7.39 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.38 notes.
+
 ## 0.7.38
 
 Pack `--out` accepts the physical nested path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.37 notes.
