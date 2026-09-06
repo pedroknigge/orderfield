@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.34
+
+Pack `--explain`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.33 notes.
+
+- **Dry-run slice sizing:** `of pack --explain` prints why a `--slice` is oversized (`SliceLint.document` / `human`) and does not write a packet, scratch, or `children_spawned` charge. Whole-phase slogans still die (`slice.phase`). Length ≥800 is `advisory` (same lint as the write path) and names the split/constraints fix — not `of unpack`, because nothing was written. Human stdout first. No `pack --json` stdout; `of --json` / `OF_JSON=1` extends the existing `pack` event with `explain=true`, `written=false`. No new schema. Not a token budget.
+- **Eval:** `recovery/packet-sizing-explain` reuses the packet-sizing fixture and fails if explain writes, if a slogan is silent, or if a later real pack of the same `--child-id` is refused as already registered. `SliceLintExplain` is on `of eval --strict --kernel`. Existing `recovery/packet-sizing-lint` stays.
+- Packaging: VERSION 0.7.34; skill/alias description preview `v0.7.34 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.33 notes.
+
 ## 0.7.33
 
 Live in-flight visibility. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.32 notes.

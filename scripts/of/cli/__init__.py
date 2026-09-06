@@ -636,6 +636,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="bypass spawn_blocked after escalate_up",
     )
+    s.add_argument(
+        "--explain",
+        action="store_true",
+        help="dry-run slice sizing; print why the pack is oversized; do not write",
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser(
