@@ -50,7 +50,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 
 - The plan survives a cut, a resume, a different model. The results do not have to change.
 - Children cannot rewrite the mission.
-- Close is proof: `of contrast` RESOLVED, then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together.
+- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed.
 - Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
 - The landing is better than a cheap sprint at the public surface, even if it is not first.
 - Mid-flight you amend SPEC or a child reports threshold, and the next packet already carries the new field.
@@ -184,7 +184,8 @@ of collect --wave 1
 of integrate --wave 1
 of spec --verified-contract CLI-001   # only after exercising the public surface, not unit tests
 of contrast    # one-pager + JSON; CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
-of close       # refused until contrast is RESOLVED
+of close --checklist  # contrast + residual empty; does not stamp
+of close       # refused until contrast is RESOLVED and residual is empty
 of status
 ```
 
@@ -329,7 +330,7 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 | `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: one-pager + machine JSON; MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
-| `close` | stamp SPEC closed; refused until contrast is RESOLVED. Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation (slice done ≠ closed) |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
 | `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm; never consumer origin. Report ONLY invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT report child did not finish, SPEC incomplete, product tests red, consumer build, “user is stuck” (`--dry-run` prints argv; omit to submit). Works with no ORDER. Children cannot submit |
 

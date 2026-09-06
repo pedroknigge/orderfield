@@ -49,7 +49,7 @@ class QuickstartTest(unittest.TestCase):
         block = quickstart_block(README.read_text(encoding="utf-8"))
         for cmd in ("of init", "of spec --add CLI-001", "of pack", "--owns-requirement CLI-001",
                     "of spawn --adapter generic", "of collect", "of integrate",
-                    "of contrast", "of close", "of status"):
+                    "of contrast", "of close --checklist", "of close", "of status"):
             self.assertIn(cmd, block, f"README loop lost the documented step: {cmd}")
         # The child step must land between spawn and collect.
         self.assertLess(block.index("of spawn"), block.index("residuals/"))

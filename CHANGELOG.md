@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.42
+
+Multi-wave close proof checklist. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.41 notes.
+
+- **Close checklist:** `of close --checklist` prints one `CloseChecklist` document (human one-pager + machine JSON): contrast gate + residual empty. Dry-run — does not stamp `CLOSE.json`. Exit 2 while contrast is OPEN or an in-flight residual is MISSING. Reuses `ContrastReport` + `WaveRoster`. No new verb. No supervisor. No `CHECKLIST.json`.
+- **Flying is not closed:** `of close` still refuses while contrast is OPEN. It now also refuses while any packed child across waves has a MISSING residual. A stack of `status=done` residuals is still not SPEC closed. Empty residual is the end of flying, then contrast RESOLVED, then one stamp.
+- **Skill drives the cut:** `SKILL.md` teaches `of close --checklist` before `of close` on the public-surface and multi-wave rows. Alias version locksteps.
+- **Proof:** `recovery/multi-wave-close-checklist` / `CloseChecklistProof` on `of eval --strict --kernel`. Contrast RESOLVED + residual MISSING cannot stamp; `--checklist` writes nothing; after the live residual lands, dry-run stays unstamped and `of close` writes `CLOSE.json`.
+- Packaging: VERSION 0.7.42; skill/alias description preview `v0.7.42 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.41 notes.
+
 ## 0.7.41
 
 Cross-field open-pack roster for epic dashboards. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.40 notes.

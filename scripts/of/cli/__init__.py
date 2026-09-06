@@ -86,6 +86,7 @@ from of.cli.spec_cmd import (
     discover_recovery_eval_specs,
     eval_pack_child,
     eval_run_of,
+    CloseChecklist,
     CloseProof,
     ContrastReport,
     eval_setup_recovery_active_field_pointer,
@@ -102,6 +103,8 @@ from of.cli.spec_cmd import (
     MidFlightAmendEval,
     eval_setup_recovery_multi_wave_residual,
     MultiWaveResidualEval,
+    eval_setup_recovery_multi_wave_close_checklist,
+    MultiWaveCloseChecklistEval,
     eval_setup_recovery_threshold_stop_spawn,
     ThresholdStopSpawnEval,
     ProcessDeathResume,
@@ -136,6 +139,7 @@ __all__ = [
     "ERROR_MESSAGE_MAX_CHARS",
     "EVAL_FIXTURES",
     "EVAL_UNITTEST_MODULES",
+    "CloseChecklist",
     "CloseProof",
     "ContrastReport",
     "HandoffReport",
@@ -197,6 +201,8 @@ __all__ = [
     "MidFlightAmendEval",
     "eval_setup_recovery_multi_wave_residual",
     "MultiWaveResidualEval",
+    "eval_setup_recovery_multi_wave_close_checklist",
+    "MultiWaveCloseChecklistEval",
     "eval_setup_recovery_threshold_stop_spawn",
     "ThresholdStopSpawnEval",
     "ProcessDeathResume",
@@ -934,7 +940,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "close",
-        help="stamp SPEC closed; refused while contrast is OPEN (slice done ≠ closed)",
+        help=(
+            "stamp SPEC closed; refused while contrast is OPEN or residual "
+            "MISSING (slice done ≠ closed)"
+        ),
+    )
+    s.add_argument(
+        "--checklist",
+        action="store_true",
+        help="print contrast + residual-empty proof; do not stamp",
     )
     s.set_defaults(func=cmd_close)
 

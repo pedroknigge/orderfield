@@ -14,6 +14,10 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
+## 0.7.42 — multi-wave close checklist
+
+- `of close --checklist` prints contrast + residual empty (`CloseChecklist`) and does not stamp. `of close` refuses while residual is MISSING as well as while contrast is OPEN. Reuses `ContrastReport` / `WaveRoster`. `recovery/multi-wave-close-checklist`. Not a supervisor. Not a new regime.
+
 ## 0.7.41 — cross-field open-pack roster
 
 - `of fields` lists in-flight packs (residual MISSING) across open sibling homes. `of fields --json` is the dashboard object (`PackRoster`). Reuses `FieldRoster` / `DoctorSkew`. `of status --json` stays one field. `recovery/cross-field-pack-roster`. No new verb. Not a new regime.
