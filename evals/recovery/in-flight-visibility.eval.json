@@ -1,0 +1,73 @@
+{
+  "id": "recovery/in-flight-visibility",
+  "description": "Live in-flight: status/resume/pulse print running + residual MISSING; harness chrome is not the field",
+  "fixture": "recovery_process_death",
+  "tags": ["recovery", "long-task", "status", "resume", "pulse", "in-flight"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   1",
+        "running",
+        "residual MISSING",
+        "harness chrome is not the field",
+        "worker",
+        "pulse=",
+        "HOLD"
+      ],
+      "stdout_not_contains": [
+        "in_flight   0",
+        "idle (nothing to watch)",
+        "signal      abandoned",
+        "no ORDER"
+      ]
+    },
+    {
+      "run": "status",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"status\"",
+        "\"in_flight\": 1",
+        "\"worker\"",
+        "\"residual\": \"MISSING\"",
+        "\"pulse\"",
+        "\"next\": \"hold\""
+      ],
+      "stdout_not_contains": [
+        "root        ",
+        "PICK --field",
+        "no ORDER"
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "status        in-flight",
+        "running",
+        "residual MISSING; harness chrome is not the field",
+        "    residual    MISSING",
+        "HOLD"
+      ],
+      "stdout_not_contains": [
+        "status        idle",
+        "signal        abandoned",
+        "next\n  PACK"
+      ]
+    },
+    {
+      "run": "pulse",
+      "exit": 0,
+      "stdout_contains": [
+        "running     1 in-flight",
+        "residual MISSING; harness chrome is not the field",
+        "worker"
+      ],
+      "stdout_not_contains": [
+        "in_flight   0 — idle (nothing to watch)"
+      ]
+    }
+  ]
+}

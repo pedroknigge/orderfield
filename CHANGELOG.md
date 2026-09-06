@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.33
+
+Live in-flight visibility. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.32 notes.
+
+- **Running while residual MISSING:** `of status` / `of resume` / `of pulse` print `running` plus residual MISSING so harness chrome (Churned / done) cannot look like the field finished. Human status adds per-child `pulse=` + `next` (HOLD/HANDOFF). `of status --json` carries `in_flight_detail[]` (pulse, residual MISSING, parked_reason) and `next` from the same `StatusReport` document (`InFlightSignal`). Reuses ALIVE/QUIET/STALE and packed-age. No new schema. No daemon. No process supervisor.
+- **Eval:** `recovery/in-flight-visibility` reuses the process-death fixture and fails if status/resume/pulse hide `running` / residual MISSING or print idle. `InFlightVisibility` is on `of eval --strict --kernel`. Existing `recovery/status-json` now requires `in_flight_detail` residual MISSING.
+- Packaging: VERSION 0.7.33; skill/alias description preview `v0.7.33 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.32 notes.
+
 ## 0.7.32
 
 Closed-field archive. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.31 notes.

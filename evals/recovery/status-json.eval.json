@@ -13,7 +13,9 @@
         "\"wave\": 2",
         "\"field\": \"open\"",
         "\"in_flight\": 1",
-        "\"w2\""
+        "\"w2\"",
+        "\"residual\": \"MISSING\"",
+        "\"pulse\""
       ],
       "stdout_not_contains": [
         "waves         2",
