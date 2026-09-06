@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.7.45 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.46 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.45"
+  version: "0.7.46"
   alias-of: orderfield
 ---
 
@@ -14,6 +14,8 @@ Two names. One kernel. `/of` is `/orderfield`.
 Load the sibling skill and follow it. Stop if it is missing. Do not invent a second contract.
 
 Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh --global` (or `--root PATH`), then `of doctor` must print `ok`. Pin recipe stays README / PUBLISH. Not pip. Not a daemon.
+
+Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 

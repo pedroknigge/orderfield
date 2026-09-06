@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.46
+
+Daily ask-to-update when `of` is behind. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.45 notes.
+
+- **Consent, not silent:** Once per day, if a newer GitHub `VERSION` exists than the installed kernel, `of status` / `of resume` / `of pulse` print one stderr ask and `of doctor` prints an `update` section. A TTY doctor prompts `[y/N]`. On yes, `install.sh --global --from-release` fetches the release tag archive and verifies SHA256SUMS. Default is no. `OF_NO_UPDATE_CHECK=1` still disables. Silent offline. Not a daemon, not a cron, not a process supervisor.
+- **`--from-release`:** `install.sh` ignores a checkout next to the script so a mortal/HOME dest cannot reinstall itself. Pin stays `ORDERFIELD_VERSION` / `ORDERFIELD_REF` + release assets.
+- **Skill drives the cut:** `SKILL.md` / alias teach: ask the user; do not upgrade mid-ORDER without consent; on yes run the printed `--from-release` command. Cache `asked_at` at `~/.cache/orderfield/update-check.json` (`OF_UPDATE_CACHE`).
+- **Proof:** `UpdateAskDaily` (no ask when current; ask when behind once; no second ask same day; consent argv/env uses `--from-release` + `ORDERFIELD_VERSION`/`REF`) on `of eval --strict --kernel`. `InstallPin.test_from_release_ignores_local_checkout` keeps the SHA-256 remote path.
+- Packaging: VERSION 0.7.46; skill/alias description preview `v0.7.46 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.45 notes.
+
 ## 0.7.45
 
 Close-is-proof RFC invariants. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.44 notes.

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.45 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.46 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.45"
+  version: "0.7.46"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -42,6 +42,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | session says CLOSED, `--tokens`, or unpack a reporter | `of eval recovery/adversarial-dual-truth` — disk wins; `--tokens` dies; collect/integrate a reporter |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` must print `ok`. Pin: README / PUBLISH. Not pip. Not a daemon |
+| stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | `of doctor` prints FAIL | field/kernel — fix ACTIVE/stub/packs/schemas/lock; skill SKEW alone is WARN / exit 0 (`bash install.sh --global`) |
 | `next=HOLD` and children flying | quote the last `PULSE` line to the user this turn; stay on those packets |
@@ -280,7 +281,7 @@ Read-only activity heuristic over the in-flight children: when any child is flyi
 
 Slaves keep the lens honest with the heartbeat in `SLAVE.md`: one line appended to `scratch/<child_id>/PULSE` on start and on every sub-task switch or long command, so a long read-only stretch does not look dead. Those lines are first-class progress: `of status` / `of resume` / `of pulse` print the last 1–3 under `running`. While `next=HOLD` and in-flight, the leader quotes one of them to the user each turn. Do not grade the wording. It is not a diary.
 
-`status` / `resume` / `pulse` also print a one-line stderr notice (at most once a day) when a newer skill release exists, with the upgrade command. If you see it, tell the user; do not upgrade mid-ORDER on your own. `OF_NO_UPDATE_CHECK=1` disables it; it is silent offline.
+`status` / `resume` / `pulse` print one stderr ask (at most once a day) when a newer release exists than the installed VERSION. `of doctor` prints the same ask and, on a TTY, prompts `[y/N]`. If you see it, ask the user; do not upgrade mid-ORDER on your own. On explicit yes, run the printed command: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (GitHub release tag + SHA256SUMS; never pipe unsigned `main`; never a silent auto-update). `OF_NO_UPDATE_CHECK=1` disables it; it is silent offline. Not a daemon.
 
 ### 5. Collect + integrate — the leader does not judge vibes
 

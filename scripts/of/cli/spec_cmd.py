@@ -2281,6 +2281,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
     "tests.test_kernel.DoctorOnePassSkew",
+    "tests.test_kernel.UpdateAskDaily",
     "tests.test_kernel.WaveReportQualityGate",
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",

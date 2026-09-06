@@ -73,6 +73,7 @@ from of.field import (
     load_state,
     load_worktrees,
     maybe_notify_update,
+    UpdateAsk,
     newest_mtime,
     next_legal_action,
     of_dir,
@@ -417,6 +418,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         "  boundary      kernel verifies PATH/argv/residual; "
         "harness promises approval/auth/ready"
     )
+    UpdateAsk.maybe_prompt()
     emit_event(
         "doctor",
         ok=not failed,
