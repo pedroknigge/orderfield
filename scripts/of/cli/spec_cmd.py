@@ -1113,6 +1113,12 @@ def eval_setup_recovery_contrast_close(root: Path) -> None:
     )
     if packed.returncode != 0:
         die(f"eval fixture pack failed: {packed.stderr or packed.stdout}")
+    EvalInvariantSetup.write_bound_residual(
+        root,
+        "imp1",
+        evidence="ALG-001 implementer residual; flying ended before close",
+        result_text="index implemented\n",
+    )
 
 
 @_register_eval_fixture("recovery_mission_rewrite")
