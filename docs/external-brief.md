@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.51` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.52` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -145,7 +145,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Claude/Grok/Codex/Cursor dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep dests `~/.claude` / `~/.agents` / `~/.cursor` stay green; `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
 | Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies | `ClaimsHonestyGate`; `python3 docs/audit/check-claims.py` |
-| README opens with typical problems → what Orderfield does; Haken analogy stays below | `ReadmeProductSurface` |
+| README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below | `ReadmeProductSurface` |
 
 ## Deliberately reserved
 

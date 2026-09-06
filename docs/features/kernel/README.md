@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.51. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.52. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.51` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.52` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -66,6 +66,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Optional `of --json` / `OF_JSON=1` event lines on stderr — see [docs/events.md](../../events.md)
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
 - 0.7.51 README product surface leads with typical problems → what Orderfield does. Haken analogy stays below ([references/principles.md](../../../references/principles.md)). Proof: `ReadmeProductSurface`. No new CLI.
+- 0.7.52 README Mid-flight H2 sits before Install. Three kinds of change plus sibling fields stay intact. Own H2. Haken analogy stays below. Proof: `ReadmeProductSurface`. No new CLI.
 
 ## Contract boundaries
 

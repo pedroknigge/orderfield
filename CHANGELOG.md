@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.52
+
+README Mid-flight H2 sits before Install. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.51 notes.
+
+- **Mid-flight early:** The section **Mid-flight, the plan can change without dying** moves above `## Install`. Own H2. Three kinds of change plus sibling fields stay intact. Not folded into the problem table. Kernel abstractions, Haken analogy, and install recipes stay below.
+- **Skill drives the cut:** `SKILL.md` / alias point at that README order. Description preview names the Mid-flight H2 before Install.
+- **Proof:** `ReadmeProductSurface` requires the Mid-flight H2 before Install. Claims honesty stays green (`python3 docs/audit/check-claims.py`). No new CLI.
+- Packaging: VERSION 0.7.52; skill/alias description preview `v0.7.52 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.51 notes.
+
 ## 0.7.51
 
 README product surface leads with typical problems → what Orderfield does. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.50 notes.
