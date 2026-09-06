@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.43` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.44` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -165,7 +165,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock |
 | `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
-| `argv_preview` / `redact_text` / `ArgvRedact` | Secrets and escalated approval flags stripped from spawn previews and logs; long `--output-schema` / path tokens keep a basename so a deep skill root still names `residual.codex.schema.json` |
+| `argv_preview` / `redact_text` / `ArgvRedact` | Secrets and escalated approval flags stripped from spawn previews and logs; long `--output-schema` / path tokens keep a basename so a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor`) still names `residual.codex.schema.json` |
 | `packets_all_stale` / `complete_stale_wave_recoverable` | Fully stale wave: `next-wave` without a report; complete stale wave may still integrate |
 | `install.sh` + `of/SKILL.md` | Skill copies, static `/of` alias, and `of` PATH → installed kernel. One-sitting mortal demo: `docs/demo/mortal-install.sh` + `of doctor` |
 

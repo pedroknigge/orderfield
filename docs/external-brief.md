@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.43` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.44` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -142,7 +142,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Field threshold residual forbids pack/spawn until leader `of patch` + guarded `next-wave`; wave-2 packet carries the patched constraint; wave-1 packet is not rewritten | `recovery/threshold-stop-spawn`; `ThresholdStopSpawn` |
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
-| Claude/Grok/Codex dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
+| Claude/Grok/Codex/Cursor dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep dests `~/.claude` / `~/.agents` / `~/.cursor` stay green; `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
 | Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 
 ## Deliberately reserved

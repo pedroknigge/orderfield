@@ -133,6 +133,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.41 cross-field open-pack roster (`PackRoster`; `of fields --json`; `recovery/cross-field-pack-roster`) | documented |
 | 0.7.42 multi-wave close checklist (`CloseChecklist`; contrast + residual empty; `recovery/multi-wave-close-checklist`) | documented |
 | 0.7.43 mortal-install one-sitting demo (`docs/demo/mortal-install.sh`; `install.sh` + `of doctor`) | documented |
+| 0.7.44 harness matrix residual on deep-install dests (claude/codex/cursor; `recovery/multi-harness-residual`; `MultiHarnessResidual`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

@@ -1,6 +1,6 @@
 {
   "id": "recovery/multi-harness-residual",
-  "description": "Claude/Grok/Codex dry-run share one residual path; Codex argv names residual.codex; collect accepts the same residual",
+  "description": "Claude/Grok/Codex/Cursor dry-run share one residual path; Codex argv names residual.codex; collect accepts the same residual",
   "fixture": "recovery_multi_harness",
   "tags": ["recovery", "adapters", "residual"],
   "steps": [
@@ -48,6 +48,21 @@
         "adapter=codex",
         "residual=.orderfield/waves/001/residuals/imp1.json",
         "residual.codex.schema.json"
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "cursor",
+        "--packet",
+        ".orderfield/waves/001/packets/imp1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "adapter=cursor",
+        "residual=.orderfield/waves/001/residuals/imp1.json"
       ]
     },
     {
