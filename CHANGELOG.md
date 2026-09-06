@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.53
+
+Skill-first cheap vs frontier propose. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.52 notes.
+
+- **Leader initiative:** When the leader understands a real multi-role wave (init → first pack, or re-planning roles), `SKILL.md` **must propose** a cheap vs frontier distribution in chat before packing. On yes → `of patch --model-hints field` (or `wave`) and pack `--model-tier` / `--model`. Reuses 0.7.47 `AdapterHints` + 0.7.48 `EfficiencySignal`. Never a silent switch. Not a router. Not a new CLI.
+- **README surface:** The opening problem → feature table names that the plan can propose cheap vs frontier workers with consent. Not buried only in Accounting.
+- **Post-hoc stays ask-only:** If `of status` / `of resume` prints `efficiency propose …`, the skill asks again and on yes runs the printed patch. Never `of pack --tokens`.
+- **Proof:** `SkillLeaderInitiative` requires propose-in-chat before pack `--model-tier` in the skill table; alias mirrors; README hero names the consent propose. Claims honesty stays green. No new CLI.
+- Packaging: VERSION 0.7.53; skill/alias description preview `v0.7.53 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.52 notes.
+
 ## 0.7.52
 
 README Mid-flight H2 sits before Install. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.51 notes.

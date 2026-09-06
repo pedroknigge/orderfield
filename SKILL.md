@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.52 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.53 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.52"
+  version: "0.7.53"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -30,7 +30,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
-| cheaper workers for grunt packs | ask once → `of patch --model-hints field` (or `wave`); pack `--model-tier cheap` / `--model NAME`; spawn passes `--model` on claude/codex/cursor |
+| multi-role pack plan (init → first pack, or re-planning roles) | **propose in chat first** — e.g. explorer/boilerplate/synthesizer on cheap, implementer/adversary/verifier/threshold on frontier. On yes → `of patch --model-hints field` (or `wave`); pack `--model-tier` / `--model`. Never silent switch. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens` |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
@@ -237,7 +237,7 @@ The original stays. The new request is a dated `## Amendment N` block. Requireme
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
-**Per-task model hints (opt-in).** Ask the human once whether grunt packs (explorer / boilerplate) should use a cheaper worker and threshold / debug / architecture should stay frontier. Then write it — do not invent a model, do not silently switch.
+**Per-task model hints (leader initiative).** When you understand a real multi-slice / multi-role wave (init → first pack, or when re-planning roles), you **must propose** a distribution in chat before packing. Example: "¿Distribuyo explorer/boilerplate/synthesizer en cheap y implementer/adversary/verifier/threshold en frontier?" On yes, write it — do not invent a model, do not silently switch. A single obvious pack is not this beat. Never silent switch.
 
 ```bash
 of patch --model-hints field                 # or wave (this wave only); off clears

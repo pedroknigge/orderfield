@@ -70,7 +70,7 @@ Same identity plus a procedure already on the agent = invoke the skill, do not s
 
 ## adapter_hints
 
-Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). Written by `of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`. `of spawn` may pass `--model` for claude / codex / cursor. Claude maps cheap→haiku and frontier→opus. Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Post-hoc score: [efficiency-signal](#efficiency-signal).
+Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor. Claude maps cheap→haiku and frontier→opus. Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Post-hoc score: [efficiency-signal](#efficiency-signal).
 
 ## efficiency-signal
 

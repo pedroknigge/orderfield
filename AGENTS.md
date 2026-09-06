@@ -144,6 +144,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.50 claims honesty gate (`ClaimsHonesty`; `check-claims.py` in `validate-skill.sh`; `ClaimsHonestyGate`) | documented |
 | 0.7.51 README use-case opening (problem → feature; Haken analogy below; `ReadmeProductSurface`) | documented |
 | 0.7.52 README Mid-flight H2 before Install (three kinds of change + sibling fields; `ReadmeProductSurface`) | documented |
+| 0.7.53 skill-first cheap vs frontier propose (`SkillLeaderInitiative`; consent + 0.7.47/0.7.48; no new router) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

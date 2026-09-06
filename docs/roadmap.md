@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.52. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.53. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.52`
+**Status:** Shipped · **Current release line:** `0.7.53`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.53 — skill-first cheap vs frontier propose
+
+- The `/of` skill **must propose** a cheap vs frontier worker split in chat before a multi-role pack. Human confirms. Then `of patch --model-hints` / pack `--model-tier`. Reuses 0.7.47 `AdapterHints` + 0.7.48 `EfficiencySignal`. Never a silent switch. `SkillLeaderInitiative`. No new CLI. Not a new regime.
 
 ## 0.7.52 — README Mid-flight H2 before Install
 

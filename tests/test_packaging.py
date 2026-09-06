@@ -665,6 +665,7 @@ class ReadmeProductSurface(unittest.TestCase):
             "A child reports the field is wrong.",
             "A child finds something the plan missed.",
             "sibling fields",
+            "cheap vs frontier",
         ):
             self.assertIn(needle, hero)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
@@ -673,6 +674,27 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("typical problems", alias.casefold())
         self.assertIn("mid-flight", skill.casefold())
         self.assertIn("mid-flight", alias.casefold())
+
+
+class SkillLeaderInitiative(unittest.TestCase):
+    """Leader must propose cheap vs frontier in chat before a multi-role pack."""
+
+    def test_skill_proposes_before_pack_and_alias_mirrors(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        propose_at = table.casefold().index("propose in chat")
+        pack_at = table.index("of pack --model-tier")
+        self.assertLess(propose_at, pack_at)
+        self.assertIn("must propose", skill.casefold())
+        self.assertIn("never silent switch", skill.casefold())
+        self.assertIn("must propose", alias.casefold())
+        self.assertIn("cheap", alias.casefold())
+        self.assertIn("frontier", alias.casefold())
+        hero = readme[: readme.index("## Install")]
+        self.assertIn("cheap vs frontier", hero.casefold())
+        self.assertIn("confirm", hero.casefold())
 
 
 class VersionedDescription(unittest.TestCase):
