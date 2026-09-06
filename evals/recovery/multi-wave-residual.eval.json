@@ -84,9 +84,12 @@
       "stderr_contains": ["children still in flight"]
     },
     {
-      "run": "status",
+      "run": "resume",
       "exit": 0,
-      "stdout_contains": ["field         open"],
+      "stdout_contains": [
+        "field         open",
+        "wave          3"
+      ],
       "stdout_not_contains": ["field         closed"],
       "file_contains": [
         {
