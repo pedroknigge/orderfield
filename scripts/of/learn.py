@@ -18,7 +18,6 @@ from of.field import (
     PHASES,
     _read_json_object,
     die,
-    dump_json,
     emit_event,
     field_home,
     flock_acquire,
@@ -34,6 +33,7 @@ from of.field import (
     utc_now,
     validate_public_schema,
 )
+from of.wal import dump_json
 
 LEARNING_MAX_CHARS = 400
 LEARNING_MAX_LINES = 4
@@ -561,3 +561,4 @@ class FieldLearnings:
     promote = staticmethod(promote_learning)
     forget = staticmethod(forget_learning)
     page = staticmethod(page_listed)
+    format_continuation = staticmethod(format_list_continuation)

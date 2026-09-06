@@ -1,7 +1,8 @@
 """Field I/O: ORDER/state/session, lock, schemas, pulse, migrate, worktree.
 
 WAL/view lives in of.wal, learnings in of.learn, retention/gc in of.retain.
-This module keeps the public of.field names (re-exports) so callers do not move.
+This module re-exports public names so callers keep importing of.field.
+Bind, lock, and roster talk through FieldWal / FieldLearnings / FieldRetain.
 """
 from __future__ import annotations
 
@@ -254,8 +255,6 @@ _LEGACY_FIELD_DIRS = ("waves", "work", "spec-log", "learnings")
 _active_field_home: ContextVar[Path | None] = ContextVar(
     "of_field_home", default=None
 )
-# View commands read CURRENT generation files. Mutating lock holders
-# rematerialize CURRENT onto live before writers inherit.
 # Frozen protocol keys. Terminology migration may map aliases onto these;
 # it must not rename them without a versioned migration of its own.
 PROTOCOL_WRITABLE_KEY = "writable_by_slaves"
@@ -559,10 +558,11 @@ def set_field_home(path: Path) -> None:
 
 
 def _activate_field_home(root: Path, home: Path, cmd: str = "") -> Path:
+    # View commands read CURRENT generation files, not a mixed live cache.
     set_field_home(home)
-    if cmd in _WAL_VIEW_COMMANDS:
-        _wal_read_current.set(True)
-        ensure_committed_field_view(root)
+    if cmd in FieldWal.VIEW_COMMANDS:
+        FieldWal.read_current.set(True)
+        FieldWal.ensure_view(root)
     return home
 
 
@@ -825,8 +825,6 @@ class FieldRoster:
         now: float | None = None,
         choose: bool = True,
     ) -> list[str]:
-        from of.learn import format_list_continuation, page_listed
-
         if active_id is None:
             active_id = ActiveField.read(root)
         open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
@@ -834,7 +832,7 @@ class FieldRoster:
         rows = FieldRoster.sort_homes(homes, active_id)
         if open_only:
             rows = [row for row in rows if field_is_open(row[2])]
-        page, next_cursor, remaining = page_listed(
+        page, next_cursor, remaining = FieldLearnings.page(
             rows,
             show_all=show_all,
             cursor=cursor,
@@ -843,11 +841,9 @@ class FieldRoster:
         )
         lines = [f"fields        {len(homes)}  open {open_n}  closed {closed_n}"]
         if root is not None:
-            from of.retain import ClosedFieldArchive
-
-            archived_n = ClosedFieldArchive.count(root)
+            archived_n = FieldRetain.archive.count(root)
             if archived_n:
-                lines.append(ClosedFieldArchive.roster_line(root, archived_n))
+                lines.append(FieldRetain.archive.roster_line(root, archived_n))
         for fid, home, order in page:
             facts = FieldRoster._home_facts(home, order, now=now)
             if facts["signal"]:
@@ -873,7 +869,7 @@ class FieldRoster:
             lines.append(f"active        {active_id}")
         if choose and homes:
             lines.append(FieldRoster.choose_line())
-        cont = format_list_continuation(next_cursor, remaining)
+        cont = FieldLearnings.format_continuation(next_cursor, remaining)
         if cont:
             lines.append(cont)
         return lines
@@ -972,8 +968,6 @@ class PackRoster:
         *,
         now: float | None = None,
     ) -> dict[str, Any]:
-        from of.retain import ClosedFieldArchive
-
         if homes is None:
             homes = list_field_homes(root)
         active_id = ActiveField.read(root)
@@ -988,7 +982,7 @@ class PackRoster:
             "count": len(homes),
             "open": open_n,
             "closed": len(homes) - open_n,
-            "archived": ClosedFieldArchive.count(root),
+            "archived": FieldRetain.archive.count(root),
             "active": active_id,
             "in_flight": len(packs),
             "packs": packs,
@@ -1077,9 +1071,7 @@ def bind_active_field(
                     die(f"unsafe field root {home}: kernel artifact root is a symlink")
                 ActiveField.write(root, fid)
                 return _activate_field_home(root, home, cmd)
-        from of.retain import ClosedFieldArchive
-
-        ClosedFieldArchive.refuse_live(root, explicit)
+        FieldRetain.archive.refuse_live(root, explicit)
         die(f"unknown field {explicit}")
     if not homes:
         return None
@@ -1893,15 +1885,16 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
         os.fsync(handle.fileno())
         _HELD_FIELD_LOCK = path
         try:
-            recover_field_wal(root)
-            # migrate plans from live bytes; CURRENT overwrite would hide them.
-            # spec --revise-file must see the live brief; pack/close still
-            # refuse a silent SPEC rewrite before inherit.
+            FieldWal.recover(root)
+            # Mutating lock holders rematerialize CURRENT onto live before
+            # inherit. migrate plans from live bytes; CURRENT overwrite
+            # would hide them. spec --revise-file must see the live brief;
+            # pack/close still refuse a silent SPEC rewrite before inherit.
             if command in MUTATING_COMMANDS and command != "migrate":
                 if command != "spec":
-                    _refuse_live_spec_tamper(root)
-                _materialize_current_only(root, overwrite=True)
-            with field_generation(root):
+                    FieldWal.refuse_live_spec_tamper(root)
+                FieldWal.materialize_current(root, overwrite=True)
+            with FieldWal.generation(root):
                 yield
         finally:
             _HELD_FIELD_LOCK = None
@@ -3804,33 +3797,12 @@ def remove_constraint(order: dict[str, Any], spec: str) -> str:
     return ""  # unreachable
 
 
-# --- form split re-exports (SCOPE-GODSPLIT). Callers keep importing of.field. ---
+# --- form split re-exports (SCOPE-GODSPLIT). Public names only; callers
+# keep importing of.field. Internals stay on of.wal / of.learn / of.retain.
 from of.wal import (  # noqa: E402,F401
     OF_WAL_CRASH_ENV,
     WAL_DIRNAME,
     FieldWal,
-    _WAL_CTX,
-    _WAL_SNAPSHOT_NAMES,
-    _WAL_VIEW_COMMANDS,
-    _WalGeneration,
-    _committed_generation,
-    _field_view_bytes,
-    _load_wal_current,
-    _load_wal_current_active,
-    _manifest_complete,
-    _materialize_current_only,
-    _materialize_generation,
-    _publish_pointer,
-    _refuse_live_spec_tamper,
-    _wal_crash,
-    _wal_gen_newer_than_current,
-    _wal_link_or_copy,
-    _wal_live_snapshot_rels,
-    _wal_overlay_json,
-    _wal_payload_bytes,
-    _wal_read_current,
-    _wal_rel,
-    _wal_snapshot_rel,
     dump_json,
     dump_text,
     ensure_committed_field_view,
@@ -3851,16 +3823,6 @@ from of.learn import (  # noqa: E402,F401
     PROTOCOL_PROMPT_CAP,
     PROTOCOL_STORE_LOCK_WAIT_SECONDS,
     FieldLearnings,
-    _LEARNING_SKIP_WARNED,
-    _filter_learnings,
-    _learning_schema_item,
-    _load_protocol_store_raw,
-    _load_skip_warn_fingerprints,
-    _normalize_learning_text,
-    _save_protocol_store,
-    _skipped_learnings_fingerprint,
-    _store_skip_warn_fingerprints,
-    _write_field_learning,
     forget_learning,
     format_list_continuation,
     learning_accepted,
@@ -3889,24 +3851,14 @@ from of.retain import (  # noqa: E402,F401
     SAFE_RETENTION_SECONDS,
     SCRATCH_CHILD_BUDGET_BYTES,
     TREE_BUDGET_BYTES,
+    ClosedFieldArchive,
     FieldRetain,
     OrphanPacked,
-    _ephemeral_dump_reason,
-    _home_residual_child_ids,
-    _home_wave_child_ids,
-    _parse_state_fragment,
-    _plan_home_contract_and_scratch,
-    _plan_home_learnings,
-    _plan_home_waves,
-    _plan_top_level_leftovers,
-    _retention_action,
-    _safe_unlink,
     apply_field_retention,
     artifact_age_seconds,
     artifact_older_than_retention,
     artifact_older_than_safe,
     directory_bytes,
-    ClosedFieldArchive,
     drop_field_home,
     field_keep_silences,
     format_bytes,
