@@ -756,6 +756,7 @@ class FieldWal:
     CRASH_ENV = OF_WAL_CRASH_ENV
     DIRNAME = WAL_DIRNAME
     VIEW_COMMANDS = _WAL_VIEW_COMMANDS
+    read_current = _wal_read_current
     home = staticmethod(wal_home)
     current_path = staticmethod(wal_current_path)
     staged_items = staticmethod(wal_staged_items)
@@ -765,6 +766,8 @@ class FieldWal:
     inflight_bytes = staticmethod(field_inflight_bytes)
     recover = staticmethod(recover_field_wal)
     ensure_view = staticmethod(ensure_committed_field_view)
+    refuse_live_spec_tamper = staticmethod(_refuse_live_spec_tamper)
+    materialize_current = staticmethod(_materialize_current_only)
     generation = staticmethod(field_generation)
     load_json = staticmethod(load_json)
     dump_json = staticmethod(dump_json)

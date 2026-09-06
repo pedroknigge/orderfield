@@ -12,7 +12,6 @@ from of.field import (
     FieldLockBusy,
     _read_json_object,
     die,
-    dump_json,
     field_home,
     field_is_open,
     field_lock,
@@ -29,6 +28,7 @@ from of.field import (
     utc_now,
 )
 from of.learn import learning_kind
+from of.wal import dump_json, field_generation
 
 RETENTION_DAYS = 30
 RETENTION_SECONDS = RETENTION_DAYS * 24 * 3600
@@ -509,7 +509,7 @@ class OrphanPacked:
     @staticmethod
     def mark_closed(root: Path) -> None:
         """Persist spec_closed through WAL. Eval/unittest helper."""
-        from of.field import field_generation, order_path, require_public_schema
+        from of.field import order_path, require_public_schema
 
         order = load_order(root)
         order["spec_closed"] = True

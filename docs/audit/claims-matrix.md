@@ -56,7 +56,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 |------|----------|-------|
 | Packages / apps | single repo, no workspace / `pyproject.toml` | **Stack: python** (stdlib CLI). **Monorepo: no.** No ArkGate. |
 | Kernel CLI | `scripts/of.py` | Shim: `from of.cli import main`. Public cmds: init, status, resume, pulse, checkpoint, detect, doctor, retain, gc, learn, migrate, worktree, wave, validate, pack, unpack, render, handoff, spawn, collect, integrate, phase, patch, next-wave, spec, spec-diff, contrast, close, eval |
-| Kernel internals | `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` | Groups: `init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`. Parser + lock wrapper in `cli/__init__.py`. `field` re-exports WAL/learn/retain. |
+| Kernel internals | `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` | Groups: `init_cmd` / `ops` / `wave` / `field_cmd` / `spec_cmd`. Parser + lock wrapper in `cli/__init__.py`. `field` re-exports public WAL/learn/retain names (`FieldWal` / `FieldLearnings` / `FieldRetain`). |
 | `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`. Sole `with field_lock` is `of.cli.main` |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER` = claude, codex, cursor, opencode, orca, grok, agy, qwen, generic. `INLINE_CONTRACT_ADAPTERS` = orca, generic |
 | Schemas | `schemas/*.json` | order, state, packet, residual, residual.codex, wave-report, session, **learning**, **requirements** |
