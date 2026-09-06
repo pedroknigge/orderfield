@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.50 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.51 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Optional per-task model hints after consent (not a router). Status/resume may propose uptier/downtier from residual quality × optional harness usage — ask, never silent switch. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.50"
+  version: "0.7.51"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -17,7 +17,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
-Contract vocabulary: [docs/glossary.md](docs/glossary.md). Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to). Invariants: `references/principles.md`.
+Product surface: [README.md](README.md) leads with typical problems → what Orderfield does. Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to). Contract vocabulary: [docs/glossary.md](docs/glossary.md). Invariants: `references/principles.md`.
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
@@ -60,7 +60,7 @@ A turn that claims pack, spawn, contrast, or close without those `of` commands i
 - Multiple slices or writers need explicit ownership, or multiple harnesses must coordinate.
 - `.orderfield/ORDER.json` already exists in the repo.
 
-A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child.
+A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child. Typical problems for a mortal reader: [README.md](README.md#typical-problems--what-orderfield-does).
 
 ## Auto-report (HITL)
 

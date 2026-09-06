@@ -545,6 +545,39 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class ReadmeProductSurface(unittest.TestCase):
+    """README opens with problem → feature. Haken analogy stays below."""
+
+    def test_use_cases_before_kernel_and_haken(self) -> None:
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+        folded = text.casefold()
+        use = text.index("# Typical problems")
+        install = text.index("## Install")
+        kernel = text.index("## What the kernel enforces")
+        haken = folded.index("haken")
+        self.assertLess(use, install)
+        self.assertLess(use, kernel)
+        self.assertLess(use, haken)
+        self.assertGreater(haken, kernel)
+        self.assertIn("references/principles.md", text)
+        self.assertIn("analogy, not a science claim", folded)
+        hero = text[:install]
+        for needle in (
+            "The brief lives on disk as SPEC",
+            "of resume",
+            "of handoff",
+            "Close is proof",
+            "CLOSE.json",
+            ".orderfield/",
+            "When not",
+        ):
+            self.assertIn(needle, hero)
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("typical problems", skill.casefold())
+        self.assertIn("typical problems", alias.casefold())
+
+
 class VersionedDescription(unittest.TestCase):
     def test_description_preview_starts_with_version(self) -> None:
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()

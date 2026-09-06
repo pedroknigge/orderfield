@@ -5,37 +5,50 @@
  | |_| |  _ <| |_| | |___|  _ <|  _|  | || |___| |___| |_| |
   \___/|_| \_\____/|_____|_| \_\_|   |___|_____|_____|____/
 
-          the plan survives the session. close is proof.
+     the plan and the steps survive chat, a token cut, a model switch.
 ```
 
-Chat is cheap. A brief that lives only in the thread dies with the room.
-
-**Orderfield is a contract kernel.** The plan lives on disk. Children get bounded packets with exclusive owners. They cannot rewrite the mission, the phase, the constraints, or done-when. `of contrast` refuses close until the public surface is proven — not “the tests passed.”
-
-If one agent already fits, do not open a field. `/of` is for work that will not survive a compacted chat.
-
-Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
+The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.50</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.51</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.50-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.51-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-# The plan does not start over
+# Typical problems → what Orderfield does
+
+Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. They cannot rewrite the mission, the phase, the constraints, or done-when.
+
+| Problem | Orderfield |
+|---|---|
+| A long or complex implementation prompt with steps that must be respected | The brief lives on disk as SPEC. Packs bind each step. The plan is not reinvented mid-flight. |
+| You find an error or a gap mid-run | It becomes an amend, a patch, or a residual. The next packet carries it. It is not lost in chat scroll. |
+| Tokens run out, or you switch model or CLI | `of resume` / `of handoff` continue from ORDER on disk. You do not re-scan the whole codebase from chat memory. |
+| Multiple fronts or writers on one mission | Exclusive ownership of a requirement or a path. |
+| The harness says done, but the public surface is not proven | Close is proof (`of contrast` / `CLOSE.json`). Tests alone are not enough. |
+| Chat compacted, or the session died | The contract remains under `.orderfield/`. |
+
+Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
+
+## It's working if
+
+- The brief and the steps are still on disk after a compacted chat, a token cut, or a model switch.
+- A mid-run error becomes an amend, a patch, or a residual, and the next packet already carries it.
+- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
+- Children cannot rewrite the mission, the phase, the constraints, or done-when.
+- Two writers on one mission have exclusive owners (requirement or path).
 
 ## When to reach for it
 
-- The user invokes `/orderfield` or `/of`.
-- `.orderfield/ORDER.json` already exists — resume it; do not re-init.
-- A software mission that will not fit one context: exclusive owners, a SPEC that survives compaction, contrast before close.
-- Multiple slices or writers need explicit ownership, or a public claim an adversary could catch as a lie.
+- The user invokes `/orderfield` or `/of`, or `.orderfield/ORDER.json` already exists — resume it; do not re-init.
+- Work that will not survive one chat: a long stepped prompt, a mid-run gap that must not be lost, a token cut or model switch, more than one writer, or a public claim that must be proven.
 
-**Skill beats child.** If one agent, one ordinary subagent, or one skill already fits, do not open a field.
+**When not.** If one ordinary subagent or skill already fits, do not open a field.
 
 ## When it is theater
 
@@ -44,18 +57,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 - Opening a field because a harness name was mentioned.
 - Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
 
-`/of` buys a better landing (SPEC intact, public surface verified), not a cheaper sprint. First productive write is not the finish. If the field only adds startup tax, it is theater.
-
-## It's working if
-
-- The plan survives a cut, a resume, a different model. The results do not have to change.
-- Children cannot rewrite the mission.
-- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
-- Turning the current harness off and installing the skill in another one leaves an ORDER of the same shape.
-- The landing is better than a cheap sprint at the public surface, even if it is not first.
-- Mid-flight you amend SPEC or a child reports threshold, and the next packet already carries the new field.
-
-Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [below](#compared-to).
+A field that only adds startup tax is theater. First productive write is not the finish.
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.”
 
@@ -74,8 +76,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.50
-release_version=0.7.50
+release_tag=v0.7.51
+release_version=0.7.51
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -238,7 +240,7 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## What the kernel enforces — and what it does not
 
-Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim.
+Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim — see [references/principles.md](references/principles.md).
 
 The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
@@ -367,6 +369,8 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
+
+Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (not a science claim): [references/principles.md](references/principles.md).
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

@@ -2520,6 +2520,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.EfficiencySignalProof",
     "tests.test_kernel.ClaimsHonestyGate",
+    "tests.test_kernel.ReadmeProductSurface",
 )
 
 

@@ -4,13 +4,13 @@ The field lives on disk. Children are coding CLIs. This page names who may chang
 
 Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec` and `checkpoint`; not spawn, handoff, learn, or gc.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
+> Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.50` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.51` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
-The first public artifact is [README Compared-to](../README.md#compared-to). This page follows it. Names match that screen; this is not a second dialect.
+The first public artifact for a mortal reader is [README use cases](../README.md#typical-problems--what-orderfield-does). Compared-to stays below. This page follows those names; this is not a second dialect.
 
 Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. The **harness** is USB: process transport that starts a child. It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**.
 
