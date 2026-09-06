@@ -31,7 +31,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | [docs/troubleshooting.md](troubleshooting.md) | Field failure recovery |
 | [docs/long-mission.md](long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [docs/close-is-proof.md](close-is-proof.md) | RFC: close-is-proof + residual empty |
-| [docs/efficiency-signal.md](efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only) |
+| [docs/efficiency-signal.md](efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only). Skill proposes cheap vs frontier in chat first. |
 | [references/adapters.md](../references/adapters.md) | Headless argv per harness |
 
 ## Evals and recovery

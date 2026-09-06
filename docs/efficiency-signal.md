@@ -4,7 +4,7 @@ Hints first. Score after. Ask before a tier change.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Hints: [glossary.md#adapter_hints](glossary.md#adapter_hints) · Reserved: [architecture.md#advisory-and-reserved-fields](architecture.md#advisory-and-reserved-fields)
 
-0.7.47 wrote consented `adapter_hints` and spawn `--model` passthrough. This page is the post-hoc sibling: a quality × optional-usage signal that may **propose** uptier or downtier. It does not switch a model. It does not invent spend.
+0.7.47 wrote consented `adapter_hints` and spawn `--model` passthrough. 0.7.53: the leader skill proposes the first cheap vs frontier split in chat before a multi-role pack. This page stays the post-hoc sibling: a quality × optional-usage signal that may **propose** uptier or downtier. It does not switch a model. It does not invent spend.
 
 ## What already existed
 

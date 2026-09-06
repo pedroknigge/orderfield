@@ -83,7 +83,7 @@ Observable via `of spawn --dry-run` (argv preview; approval flags render as
 
 ## Model hints (`ORDER.adapter_hints` / `packet.adapter_hints`)
 
-Opt-in. The kernel never invents a model. Ask once, then write.
+Opt-in. The kernel never invents a model. The `/of` skill must propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
 
 ```bash
 of patch --model-hints field|wave|off
