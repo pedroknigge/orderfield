@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, multi-wave residual loop, wave-report quality gate, packet sizing lint, pack --explain, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous, status JSON, in-flight visibility, nested field lifecycle, mid-epic handoff, closed-field archive. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, multi-wave residual loop, wave-report quality gate, packet sizing lint, pack --explain, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous, status JSON, in-flight visibility, nested field lifecycle, mid-epic handoff, closed-field archive, adversarial dual-truth. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -58,6 +58,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/in-flight-visibility` | `recovery_process_death` | in-flight worker: status/resume/pulse print `running` + residual MISSING; `--json` has `in_flight_detail` + `next`; idle is refused (`InFlightVisibility`) |
 | `recovery/mid-epic-handoff` | `recovery_checkpoint_handoff` | STALE in-flight: `of handoff` / `--json` names `HANDOFF`, wave 1, packet path for `longchild`; does not unpack; child `--packet` still writes the prompt (`MidEpicHandoffPacket`) |
 | `recovery/closed-field-archive` | `recovery_closed_field_archive` | closed sibling: `--drop-field` dies while `CLOSE.json` exists; `--archive-field` keeps the trail under `.orderfield/archive/<id>/`; later `of gc` does not wipe it (`ClosedFieldArchiveTrail`) |
+| `recovery/adversarial-dual-truth` | `recovery_contrast_close_contract` | child-forged close leaves `CLOSE.json` absent and `of close` refused; `of pack --tokens 80000` dies; unpack of a reporter is refused (`AdversarialDualTruthCorpus`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`. Two-wave packed-child amend (wave-1 still in-flight) is `recovery/midflight-amend`; the 3-wave collect/integrate loop is `recovery/multi-wave-residual`.
 
@@ -74,7 +75,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, and `SliceLintExplain`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, and `AdversarialDualTruthCorpus`.
 
 ```bash
 python3 -m unittest discover -s tests -v

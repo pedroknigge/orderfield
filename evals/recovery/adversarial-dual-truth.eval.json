@@ -1,0 +1,111 @@
+{
+  "id": "recovery/adversarial-dual-truth",
+  "description": "Adversarial corpus: child-forged close is dual-truth (CLOSE.json absent); --tokens theater dies; unpack of a reporter is refused. Reuses the contract-close fixture. Not a new runtime.",
+  "fixture": "recovery_contrast_close_contract",
+  "tags": ["recovery", "gate", "close", "budget", "unpack", "theater", "adversary"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "fake token ceiling",
+        "--role",
+        "explorer",
+        "--child-id",
+        "tok",
+        "--tokens",
+        "80000"
+      ],
+      "exit": 1,
+      "stderr_contains": [
+        "budget.tokens",
+        "reserved"
+      ],
+      "stderr_not_contains": [
+        "token budget",
+        "of: cost:"
+      ],
+      "file_missing": [
+        ".orderfield/waves/001/packets/tok.json",
+        ".orderfield/CLOSE.json"
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "generic",
+        "--packet",
+        ".orderfield/waves/001/packets/imp1.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stderr_contains": [
+        "not measured",
+        "not a budget"
+      ],
+      "stderr_not_contains": [
+        "80000",
+        "token budget"
+      ]
+    },
+    {
+      "run": "unpack",
+      "args": ["--child-id", "imp1"],
+      "exit": 1,
+      "stderr_contains": [
+        "already wrote a residual",
+        "collect/integrate"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/imp1.json",
+          "contains": ["\"child_id\": \"imp1\""]
+        }
+      ]
+    },
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0
+    },
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--apply"],
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/ORDER.json",
+          "contains": ["\"spec_closed\": false"],
+          "not_contains": ["\"spec_closed\": true"]
+        }
+      ],
+      "file_missing": [".orderfield/CLOSE.json"]
+    },
+    {
+      "run": "contrast",
+      "exit": 2,
+      "stdout_contains": [
+        "CLOSE BLOCKED",
+        "CLI-001"
+      ]
+    },
+    {
+      "run": "close",
+      "exit": 1,
+      "stderr_contains": ["of close refused"],
+      "file_missing": [".orderfield/CLOSE.json"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "done_when_closed False"
+      ],
+      "stdout_not_contains": [
+        "done_when_closed True",
+        "CLOSED"
+      ]
+    }
+  ]
+}

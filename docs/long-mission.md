@@ -86,5 +86,6 @@ These already exist. This page does not add a fixture.
 | Three-wave loop + amend | `recovery/multi-wave-residual` |
 | Threshold stops spawn | `recovery/threshold-stop-spawn` |
 | Contrast then atomic close | `recovery/contrast-close-contract` · `recovery/atomic-close-flag-lag` |
+| Dual-truth / fake tokens / unpack theater | `recovery/adversarial-dual-truth` |
 
 Re-run: [external-brief.md](external-brief.md#how-a-reviewer-re-runs-the-proof).

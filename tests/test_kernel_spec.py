@@ -1175,5 +1175,97 @@ class ContrastReportRenderer(unittest.TestCase):
         self._align("\n".join(lines[:-1]) + "\n", cli_machine)
 
 
+class AdversarialDualTruthCorpus(unittest.TestCase):
+    """Dual-truth close, fake token budget, unpack theater. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-adv-dual-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_contrast_close_contract(self.tmp)
+
+    def test_tokens_theater_writes_nothing(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "fake token ceiling",
+            "--role",
+            "explorer",
+            "--child-id",
+            "tok",
+            "--tokens",
+            "80000",
+        )
+        self.assertNotEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn("budget.tokens", packed.stderr)
+        self.assertIn("reserved", packed.stderr.lower())
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "tok.json").exists()
+        )
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_spawn_cost_is_not_a_budget(self) -> None:
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/imp1.json",
+            "--dry-run",
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        blob = f"{spawned.stdout}\n{spawned.stderr}".lower()
+        self.assertIn("not measured", blob)
+        self.assertIn("not a budget", blob)
+        self.assertNotIn("token budget", blob)
+
+    def test_unpack_reporter_is_theater(self) -> None:
+        pkt = self.tmp / ".orderfield" / "waves" / "001" / "packets" / "imp1.json"
+        self.assertTrue(pkt.is_file())
+        unpacked = run_of(self.tmp, "unpack", "--child-id", "imp1")
+        self.assertNotEqual(unpacked.returncode, 0, unpacked.stderr)
+        self.assertIn("already wrote a residual", unpacked.stderr)
+        self.assertTrue(pkt.is_file(), "unpack must not delete a reporter")
+
+    def test_forged_flags_without_proof_cannot_close(self) -> None:
+        order = of.load_order(self.tmp)
+        order["spec_closed"] = True
+        of.mark_done_when_closed(order)
+        of.save_order(order, self.tmp)
+        after = of.load_order(self.tmp)
+        self.assertTrue(after.get("spec_closed"))
+        self.assertTrue(of.done_when_closed(after))
+        self.assertFalse(of.CloseProof.complete(self.tmp, after))
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stderr)
+        self.assertIn("CLOSE BLOCKED", contrast.stdout)
+        closed = run_of(self.tmp, "close")
+        self.assertNotEqual(closed.returncode, 0, closed.stderr)
+        self.assertIn("of close refused", closed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        self.assertFalse(
+            of.CloseProof.complete(self.tmp, of.load_order(self.tmp))
+        )
+
+    def test_child_stamp_does_not_write_close_json(self) -> None:
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        applied = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        order = of.load_order(self.tmp)
+        self.assertFalse(order.get("spec_closed"))
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        closed = run_of(self.tmp, "close")
+        self.assertNotEqual(closed.returncode, 0, closed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_skill_names_the_corpus(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("recovery/adversarial-dual-truth", skill)
+        self.assertIn("of pack --tokens", skill)
+
+
 if __name__ == "__main__":
     unittest.main()

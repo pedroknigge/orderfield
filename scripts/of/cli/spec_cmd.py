@@ -668,6 +668,14 @@ class EvalFileAssert:
         except json.JSONDecodeError:
             return raw
 
+    @staticmethod
+    def absent(root: Path, rel: str) -> str | None:
+        """None when the path is missing. Error text when it exists."""
+        target = root / rel
+        if target.exists():
+            return f"must be missing: {rel}"
+        return None
+
 
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
@@ -1993,6 +2001,14 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                             "status": "failed",
                             "error": f"step {idx}: {rel} must not contain {needle!r}",
                         }
+            for rel in step.get("file_missing") or []:
+                err = EvalFileAssert.absent(tmp, str(rel))
+                if err:
+                    return {
+                        "id": eval_id,
+                        "status": "failed",
+                        "error": f"step {idx}: {err}",
+                    }
         return {"id": eval_id, "status": "passed", "description": spec.get("description")}
     except SystemExit as exc:
         return {"id": eval_id, "status": "failed", "error": f"fixture/setup: {exc}"}
@@ -2025,6 +2041,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.NestedFieldLifecycle",
     "tests.test_kernel.MidEpicHandoffPacket",
     "tests.test_kernel.SliceLintExplain",
+    "tests.test_kernel.AdversarialDualTruthCorpus",
 )
 
 
