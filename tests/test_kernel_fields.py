@@ -741,6 +741,17 @@ class PackRosterCrossField(unittest.TestCase):
             raise AssertionError(f"expected one JSON object, got {lines!r}")
         return json.loads(lines[0])
 
+    @staticmethod
+    def _without_pack_age(doc: dict) -> dict:
+        """age_s is wall-clock; two snapshots a second apart can differ."""
+        out = dict(doc)
+        out["packs"] = [
+            {k: v for k, v in row.items() if k != "age_s"}
+            for row in (doc.get("packs") or [])
+            if isinstance(row, dict)
+        ]
+        return out
+
     def _pack(self, child_id: str, role: str = "implementer") -> None:
         packed = run_of(
             self.tmp,
@@ -797,7 +808,11 @@ class PackRosterCrossField(unittest.TestCase):
             self.assertEqual(row["residual"], "MISSING")
             self.assertIn("waves/", row["packet"])
         live = of.PackRoster.document(self.tmp)
-        self.assertEqual(of.PackRoster.machine(live), cli)
+        machine = of.PackRoster.machine(live)
+        self.assertEqual(self._without_pack_age(machine), self._without_pack_age(cli))
+        for row in list(cli["packs"]) + list(machine["packs"]):
+            self.assertIsInstance(row["age_s"], int)
+            self.assertGreaterEqual(row["age_s"], 0)
         status = run_of(self.tmp, "status", "--json")
         self.assertEqual(status.returncode, 0, status.stderr)
         status_doc = self._load(status.stdout)
