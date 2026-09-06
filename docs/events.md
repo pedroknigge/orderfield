@@ -29,7 +29,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
 | `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `in_flight_detail` (includes `progress`), `next`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
 | `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
-| `fields` | After `of fields` | `count`, `open`, `closed`, `archived`, `ok` |
+| `fields` | After `of fields` | same facts as `of fields --json` (`PackRoster.event_fields`): `count`, `open`, `closed`, `archived`, `active`, `in_flight`, `packs` (`field`, `child_id`, `wave`, `role`, `residual`, `age_s`, `packet`), `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
 | `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON |
 | `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok`; `parent` when ACTIVE returned |

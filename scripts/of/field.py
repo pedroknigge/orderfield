@@ -708,6 +708,7 @@ class FieldRoster:
     Disk contract is unchanged: `.orderfield/fields/<id>/` + `.orderfield/ACTIVE`.
     `of new` is an unrelated epic. `of new --parent` is a phase of that epic.
     Same product is `of patch` / `of spec --amend`.
+    Open packs across homes are `PackRoster` on the same `of fields` verb.
     """
 
     CHOOSE = (
@@ -863,6 +864,11 @@ class FieldRoster:
                 f"  {fid}  {mark}{state:<9} {facts['phase']:<8} "
                 f"w{facts['wave']}  {facts['age']:<7} {rel}{extra}  {mission}"
             )
+        lines.extend(
+            PackRoster.format_lines(
+                homes, root=root, active_id=active_id, now=now
+            )
+        )
         if active_id:
             lines.append(f"active        {active_id}")
         if choose and homes:
@@ -888,6 +894,144 @@ class FieldRoster:
         FieldRoster.print(homes)
         print("next          PICK --field <id> | of new")
         die(detail, code=ROSTER_EXIT)
+
+
+class PackRoster:
+    """Open packs (residual MISSING) across sibling fields.
+
+    Reuses `list_field_homes`, `field_is_open`, `DoctorSkew.wave_packet_files`,
+    `DoctorSkew.residual_missing`, and `PackedAge.age_seconds`. No second
+    ledger. Closed-field leftovers are orphans (`of retain` / `of gc`), not
+    this roster. `of status --json` stays one bound field.
+    """
+
+    KIND = "fields"
+
+    @staticmethod
+    def rows(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        *,
+        root: Path | None = None,
+        active_id: str | None = None,
+        now: float | None = None,
+    ) -> list[dict[str, Any]]:
+        clock = now if now is not None else time.time()
+        if active_id is None and root is not None:
+            active_id = ActiveField.read(root)
+        out: list[dict[str, Any]] = []
+        for fid, home, order in FieldRoster.sort_homes(homes, active_id):
+            if not field_is_open(order):
+                continue
+            wave, files = DoctorSkew.wave_packet_files(home)
+            for path, pkt in files:
+                if not DoctorSkew.residual_missing(home, pkt, wave):
+                    continue
+                age = PackedAge.age_seconds(pkt, clock)
+                packet_rel = (
+                    field_rel(root, path) if root is not None else path.as_posix()
+                )
+                out.append(
+                    {
+                        "field": fid,
+                        "active": bool(active_id and fid == active_id),
+                        "child_id": str(pkt.get("child_id") or path.stem),
+                        "wave": int(wave),
+                        "role": str(pkt.get("role") or "-"),
+                        "residual": "MISSING",
+                        "age_s": int(age) if age is not None else None,
+                        "packet": packet_rel,
+                    }
+                )
+        return out
+
+    @staticmethod
+    def format_lines(
+        homes: list[tuple[str, Path, dict[str, Any]]],
+        *,
+        root: Path | None = None,
+        active_id: str | None = None,
+        now: float | None = None,
+    ) -> list[str]:
+        packs = PackRoster.rows(
+            homes, root=root, active_id=active_id, now=now
+        )
+        lines = [f"packs         {len(packs)}  in-flight"]
+        for row in packs:
+            raw_age = row.get("age_s")
+            age = fmt_age(float(raw_age)) if raw_age is not None else "-"
+            lines.append(
+                f"  {row['field']}  w{row['wave']}  {row['child_id']}  "
+                f"{row['role']}  MISSING  {age}"
+            )
+        return lines
+
+    @staticmethod
+    def document(
+        root: Path,
+        homes: list[tuple[str, Path, dict[str, Any]]] | None = None,
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        from of.retain import ClosedFieldArchive
+
+        if homes is None:
+            homes = list_field_homes(root)
+        active_id = ActiveField.read(root)
+        open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
+        packs = PackRoster.rows(
+            homes, root=root, active_id=active_id, now=now
+        )
+        return {
+            "v": 1,
+            "ok": True,
+            "kind": PackRoster.KIND,
+            "count": len(homes),
+            "open": open_n,
+            "closed": len(homes) - open_n,
+            "archived": ClosedFieldArchive.count(root),
+            "active": active_id,
+            "in_flight": len(packs),
+            "packs": packs,
+        }
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        packs = [
+            {
+                "field": str(row.get("field") or ""),
+                "active": bool(row.get("active")),
+                "child_id": str(row.get("child_id") or "?"),
+                "wave": int(row.get("wave") or 0),
+                "role": str(row.get("role") or "-"),
+                "residual": "MISSING",
+                "age_s": (
+                    int(row["age_s"])
+                    if isinstance(row.get("age_s"), int)
+                    else None
+                ),
+                "packet": str(row.get("packet") or ""),
+            }
+            for row in (doc.get("packs") or [])
+            if isinstance(row, dict)
+        ]
+        return {
+            "v": 1,
+            "ok": bool(doc.get("ok")),
+            "kind": str(doc.get("kind") or PackRoster.KIND),
+            "count": int(doc.get("count") or 0),
+            "open": int(doc.get("open") or 0),
+            "closed": int(doc.get("closed") or 0),
+            "archived": int(doc.get("archived") or 0),
+            "active": doc.get("active"),
+            "in_flight": int(doc.get("in_flight") or len(packs)),
+            "packs": packs,
+        }
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        payload = PackRoster.machine(doc)
+        payload.pop("v", None)
+        return payload
 
 
 def format_field_roster_lines(
@@ -2925,14 +3069,16 @@ class DoctorSkew:
         return RootStub.leftover_path(root)
 
     @staticmethod
-    def wave_packets(home: Path) -> tuple[int, list[dict[str, Any]]]:
+    def wave_packet_files(
+        home: Path,
+    ) -> tuple[int, list[tuple[Path, dict[str, Any]]]]:
         state = _read_json_object(home / "state.json") or {}
         try:
             wave = int(state.get("wave") or 1)
         except (TypeError, ValueError):
             wave = 1
         pdir = home / f"waves/{wave:03d}/packets"
-        packets: list[dict[str, Any]] = []
+        files: list[tuple[Path, dict[str, Any]]] = []
         if pdir.is_dir():
             try:
                 paths = sorted(pdir.glob("*.json"))
@@ -2941,8 +3087,13 @@ class DoctorSkew:
             for path in paths:
                 data = _read_json_object(path)
                 if isinstance(data, dict):
-                    packets.append(data)
-        return wave, packets
+                    files.append((path, data))
+        return wave, files
+
+    @staticmethod
+    def wave_packets(home: Path) -> tuple[int, list[dict[str, Any]]]:
+        wave, files = DoctorSkew.wave_packet_files(home)
+        return wave, [data for _path, data in files]
 
     @staticmethod
     def residual_missing(home: Path, packet: dict[str, Any], wave: int) -> bool:
@@ -3036,7 +3187,7 @@ class WaveRoster:
     Reuses `.orderfield/waves/NNN/{packets,residuals,report.json}`.
     No second ledger, no new ORDER field, no new schema.
     `of status` / `of resume` stay one-screen on the live wave.
-    `of fields` is sibling fields, not waves. `of pulse` is activity.
+    `of fields` is sibling fields plus open packs, not waves. `of pulse` is activity.
     """
 
     @staticmethod

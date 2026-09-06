@@ -13,7 +13,8 @@ Open one field. Keep it.
 ```bash
 of init --mission "…" --source "<verbatim brief>"
 of resume          # every later turn; execute printed next
-of fields          # several homes: * is ACTIVE
+of fields          # several homes: * is ACTIVE; packs = in-flight across homes
+of fields --json   # epic-dashboard object (not status --json)
 ```
 
 A phase of this epic with its own close: `of new --parent`. An unrelated second mission: `of new`. The same product, extra ask: `of spec --amend` / `of patch` — not a second field. Map: [nested-fields.md](nested-fields.md).

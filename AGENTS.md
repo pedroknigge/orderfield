@@ -129,6 +129,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.38 pack `--out` accepts physical nested path (`PackOutPhysicalNested`; #94) | documented |
 | 0.7.39 doctor skill SKEW advisory + residual awaiting + first-home roster (`recovery/doctor-advisory-ux`; #88) | documented |
 | 0.7.40 live PULSE progress under `running` (`PulseProgress`; `recovery/in-flight-visibility`) | documented |
+| 0.7.41 cross-field open-pack roster (`PackRoster`; `of fields --json`; `recovery/cross-field-pack-roster`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

@@ -1392,6 +1392,37 @@ def eval_setup_recovery_field_roster_ux(root: Path) -> None:
     EvalInvariantSetup.require_ok(third, "new gamma")
 
 
+@_register_eval_fixture("recovery_cross_field_pack_roster")
+def eval_setup_recovery_cross_field_pack_roster(root: Path) -> None:
+    """Two siblings, each with one in-flight pack. Roster must name both."""
+    init = eval_run_of(root, "init", "--mission", "epic alpha", "--phase", "build")
+    EvalInvariantSetup.require_ok(init, "init")
+    packed_a = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "alpha implementer slice",
+        "--role",
+        "implementer",
+        "--child-id",
+        "alpha1",
+    )
+    EvalInvariantSetup.require_ok(packed_a, "pack alpha")
+    created = eval_run_of(root, "new", "--mission", "epic beta", "--phase", "cut")
+    EvalInvariantSetup.require_ok(created, "new beta")
+    packed_b = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "beta explorer slice",
+        "--role",
+        "explorer",
+        "--child-id",
+        "beta1",
+    )
+    EvalInvariantSetup.require_ok(packed_b, "pack beta")
+
+
 @_register_eval_fixture("recovery_nested_field_lifecycle")
 def eval_setup_recovery_nested_field_lifecycle(root: Path) -> None:
     """Epic parent plus a close-ready nested phase field (ACTIVE = child)."""
@@ -2057,6 +2088,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SliceLintExplain",
     "tests.test_kernel.AdversarialDualTruthCorpus",
     "tests.test_kernel.PackOutPhysicalNested",
+    "tests.test_kernel.PackRosterCrossField",
 )
 
 

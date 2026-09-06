@@ -723,5 +723,124 @@ class RootStubAmbiguous(unittest.TestCase):
             of.find_root(inner)
 
 
+class PackRosterCrossField(unittest.TestCase):
+    """Open packs across sibling fields. of eval --kernel.
+
+    Reuses FieldRoster + DoctorSkew. No new verb. status --json stays
+    one bound field.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pack-roster-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    @staticmethod
+    def _load(stdout: str) -> dict:
+        lines = [ln for ln in stdout.splitlines() if ln.strip()]
+        if len(lines) != 1:
+            raise AssertionError(f"expected one JSON object, got {lines!r}")
+        return json.loads(lines[0])
+
+    def _pack(self, child_id: str, role: str = "implementer") -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            f"{child_id} slice",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr + packed.stdout)
+
+    def test_empty_tree_json_is_parseable(self) -> None:
+        proc = run_of(self.tmp, "fields", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        doc = self._load(proc.stdout)
+        self.assertEqual(doc["kind"], "fields")
+        self.assertTrue(doc["ok"])
+        self.assertEqual(doc["count"], 0)
+        self.assertEqual(doc["in_flight"], 0)
+        self.assertEqual(doc["packs"], [])
+        self.assertNotIn("runtime", doc)
+        self.assertNotIn("tokens", doc)
+        human = run_of(self.tmp, "fields")
+        self.assertEqual(human.returncode, 0, human.stderr)
+        self.assertIn("packs         0  in-flight", human.stdout)
+
+    def test_two_siblings_list_both_open_packs(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "epic alpha", "--phase", "build")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        self._pack("alpha1", "implementer")
+        created = run_of(self.tmp, "new", "--mission", "epic beta", "--phase", "cut")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        self._pack("beta1", "explorer")
+        human = run_of(self.tmp, "fields")
+        self.assertEqual(human.returncode, 0, human.stderr)
+        self.assertIn("fields        2  open 2  closed 0", human.stdout)
+        self.assertIn("packs         2  in-flight", human.stdout)
+        self.assertIn("alpha1", human.stdout)
+        self.assertIn("beta1", human.stdout)
+        self.assertIn("MISSING", human.stdout)
+        self.assertIn("choose", human.stdout)
+        proc = run_of(self.tmp, "fields", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        cli = self._load(proc.stdout)
+        self.assertEqual(cli["kind"], "fields")
+        self.assertEqual(cli["in_flight"], 2)
+        ids = {row["child_id"] for row in cli["packs"]}
+        self.assertEqual(ids, {"alpha1", "beta1"})
+        fields = {row["field"] for row in cli["packs"]}
+        self.assertEqual(len(fields), 2)
+        for row in cli["packs"]:
+            self.assertEqual(row["residual"], "MISSING")
+            self.assertIn("waves/", row["packet"])
+        live = of.PackRoster.document(self.tmp)
+        self.assertEqual(of.PackRoster.machine(live), cli)
+        status = run_of(self.tmp, "status", "--json")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        status_doc = self._load(status.stdout)
+        self.assertEqual(status_doc["kind"], "status")
+        self.assertEqual(status_doc["in_flight_ids"], ["beta1"])
+        self.assertNotIn("alpha1", status.stdout)
+
+    def test_closed_and_done_packs_are_omitted(self) -> None:
+        run_of(self.tmp, "init", "--mission", "keep flying")
+        self._pack("live1")
+        run_of(self.tmp, "new", "--mission", "to-close")
+        self._pack("dead1")
+        run_of(self.tmp, "new", "--mission", "done-pack")
+        self._pack("done1")
+        from of.field import list_field_homes
+
+        homes = list_field_homes(self.tmp)
+        by_id = {fid: (home, order) for fid, home, order in homes}
+        active = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        done_home, _done_order = by_id[active]
+        residual = done_home / "waves" / "001" / "residuals" / "done1.json"
+        residual.parent.mkdir(parents=True, exist_ok=True)
+        residual.write_text("{}\n", encoding="utf-8")
+        closed_id = next(
+            fid for fid, _home, order in homes if order.get("mission") == "to-close"
+        )
+        closed_home, closed_order = by_id[closed_id]
+        closed_order["spec_closed"] = True
+        (closed_home / "ORDER.json").write_text(
+            json.dumps(closed_order, indent=2) + "\n", encoding="utf-8"
+        )
+        proc = run_of(self.tmp, "fields", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        doc = self._load(proc.stdout)
+        ids = {row["child_id"] for row in doc["packs"]}
+        self.assertEqual(ids, {"live1"})
+        self.assertEqual(doc["in_flight"], 1)
+        human = run_of(self.tmp, "fields")
+        self.assertIn("packs         1  in-flight", human.stdout)
+        self.assertIn("live1", human.stdout)
+        self.assertNotIn("dead1", human.stdout)
+        self.assertNotIn("done1", human.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

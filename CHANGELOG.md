@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.41
+
+Cross-field open-pack roster for epic dashboards. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.40 notes.
+
+- **Open packs across sibling fields:** `of fields` prints a `packs` section of in-flight children (residual MISSING) from every open home. `of fields --json` is the dashboard path: one JSON object from `PackRoster` (`field`, `child_id`, `wave`, `role`, `residual`, `age_s`, `packet`). Reuses `FieldRoster` / `DoctorSkew.wave_packet_files` / `residual_missing` / `PackedAge`. Closed-field leftovers stay orphans (`of retain` / `of gc`). `of status --json` stays one bound field. No new verb. No new schema. No daemon. Not Notion. Not `of merge`.
+- **Leader path:** several open fields + flying work → `of fields` / `of fields --json`, then `--field` / `of handoff` on the named packet. Do not invent a second roster or a process supervisor.
+- **Proof:** `recovery/cross-field-pack-roster` fails if two sibling packs hide, if `--json` is not one object, or if `status --json` grows the other field's child. `PackRosterCrossField` covers empty JSON, both packs, and closed/done omission. On `of eval --strict --kernel`. Existing `recovery/field-roster-ux` stays.
+- Packaging: VERSION 0.7.41; skill/alias description preview `v0.7.41 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.40 notes.
+
 ## 0.7.40
 
 Live child progress on disk. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.39 notes.
