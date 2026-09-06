@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1010,6 +1011,25 @@ def _register_eval_fixture(name: str):
     return decorator
 
 
+class EvalStream:
+    """Captured of stdout/stderr for recovery contain-checks.
+
+    macOS mkdtemp can embed ``80000`` in ``/var/folders/.../wsm_g8s980000gn/T``
+    (same collision BudgetTokensReserved already strips). ``of status`` prints
+    ``root {cwd}``. Theater needles such as reserved ``80000`` must not fail
+    on that path. Update notices are a separate leak: ``eval_run_of`` sets
+    ``OF_NO_UPDATE_CHECK=1``.
+    """
+
+    FS_PATH_RE = re.compile(
+        r"(?i)(?:/private)?(?:/var/folders|/tmp|/Users)[^\s]+"
+    )
+
+    @staticmethod
+    def without_fs_paths(text: str) -> str:
+        return EvalStream.FS_PATH_RE.sub(" ", text)
+
+
 class EvalFileAssert:
     """JSON or text payload for eval file_contains. Not a second engine."""
 
@@ -1033,6 +1053,7 @@ class EvalFileAssert:
 
 
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    # Recovery contain-checks must not see daily UpdateAsk lines.
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     return subprocess.run(
         [sys.executable, str(kernel_repo_root() / "scripts" / "of.py"), *args],
@@ -2418,6 +2439,8 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                 }
             blob = proc.stdout
             err = proc.stderr
+            blob_nopath = EvalStream.without_fs_paths(blob)
+            err_nopath = EvalStream.without_fs_paths(err)
             for needle in step.get("stdout_contains") or []:
                 if str(needle) not in blob:
                     return {
@@ -2426,7 +2449,7 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                         "error": f"step {idx}: stdout missing {needle!r}",
                     }
             for needle in step.get("stdout_not_contains") or []:
-                if str(needle) in blob:
+                if str(needle) in blob_nopath:
                     return {
                         "id": eval_id,
                         "status": "failed",
@@ -2440,7 +2463,7 @@ def run_recovery_eval_spec(spec_path: Path, *, strict: bool) -> dict[str, Any]:
                         "error": f"step {idx}: stderr missing {needle!r}",
                     }
             for needle in step.get("stderr_not_contains") or []:
-                if str(needle) in err:
+                if str(needle) in err_nopath:
                     return {
                         "id": eval_id,
                         "status": "failed",
@@ -2520,6 +2543,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.EfficiencySignalProof",
     "tests.test_kernel.ClaimsHonestyGate",
+    "tests.test_kernel.ReadmeProductSurface",
 )
 
 
