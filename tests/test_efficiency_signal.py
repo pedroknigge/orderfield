@@ -15,7 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402  — shipped kernel, not a copy
-from of.cli.spec_cmd import EvalInvariantSetup  # noqa: E402
+from of.cli.spec_cmd import (  # noqa: E402
+    EvalInvariantSetup,
+    EvalStream,
+    eval_run_of,
+)
 
 OF_PY = SCRIPTS / "of.py"
 
@@ -270,6 +274,34 @@ class EfficiencySignalProof(unittest.TestCase):
         self.assertEqual(status.returncode, 0, status.stderr)
         self.assertNotIn("propose downtier", status.stdout)
         self.assertNotIn("propose uptier", status.stdout)
+
+
+class EvalStreamPathCollision(unittest.TestCase):
+    """macOS mkdtemp / UpdateAsk must not look like reserved token theater."""
+
+    def test_eval_run_of_sets_no_update_check(self) -> None:
+        import inspect
+
+        src = inspect.getsource(eval_run_of)
+        self.assertIn("OF_NO_UPDATE_CHECK", src)
+        self.assertIn('"1"', src)
+
+    def test_macos_folder_80000_is_stripped_from_not_contains(self) -> None:
+        text = (
+            "root        /var/folders/zz/wsm_g8s980000gn/T/of-eval-abc\n"
+            "efficiency  propose uptier: cheap child failed 2 times\n"
+        )
+        self.assertIn("80000", text)
+        self.assertNotIn("80000", EvalStream.without_fs_paths(text))
+
+    def test_real_token_theater_survives_path_strip(self) -> None:
+        text = (
+            "root        /var/folders/zz/wsm_g8s980000gn/T/of-eval-abc\n"
+            'budget      tokens 80000\n'
+        )
+        stripped = EvalStream.without_fs_paths(text)
+        self.assertIn("80000", stripped)
+        self.assertIn("tokens 80000", stripped)
 
 
 if __name__ == "__main__":

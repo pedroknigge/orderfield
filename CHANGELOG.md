@@ -15,6 +15,7 @@ README product surface leads with typical problems → what Orderfield does. Sam
 - **Use cases first:** The README opening is problem → feature (brief/SPEC on disk, mid-run amend, `of resume` / handoff, exclusive owners, close is proof, contract under `.orderfield/`). Kernel abstractions, install checksum recipes, compared-to, and the threat-model depth stay below. Haken “slow field constrains the fast” remains an analogy, not a science claim, with a link to [references/principles.md](references/principles.md).
 - **Skill drives the cut:** `SKILL.md` / alias point at that README positioning. Description preview names a plan that survives chat, a token cut, and a model switch. No new CLI.
 - **Proof:** `ReadmeProductSurface` requires the use-case table before kernel abstractions and the Haken analogy + principles link below. Claims honesty stays green (`python3 docs/audit/check-claims.py`). No theater slogans.
+- **Eval stream:** recovery `stdout_not_contains` / `stderr_not_contains` strip filesystem paths so a macOS mkdtemp (`…/wsm_g8s980000gn/T/…`) cannot look like reserved `80000` token theater. `eval_run_of` already sets `OF_NO_UPDATE_CHECK=1`. `EvalStream`.
 - Packaging: VERSION 0.7.51; skill/alias description preview `v0.7.51 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.50 notes.
 
 ## 0.7.50
