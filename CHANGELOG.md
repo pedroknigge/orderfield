@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.44
+
+Harness matrix residual on deep-install dests. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.43 notes.
+
+- **Claude / Codex / Cursor share one residual on deep dests:** `recovery/multi-harness-residual` now includes Cursor `--dry-run` on the same packet residual path. Grok stays. `MultiHarnessResidual` stages the skill at `~/.claude|~/.agents|~/.cursor/skills/orderfield` under a long HOME (not a padded fake root, not a pip path) and re-runs spawn dry-run from each dest. Codex `--output-schema` still names `residual.codex.schema.json` (`ArgvRedact`). Collect still accepts that residual. No new adapter. No PATH mock. No second eval engine.
+- **Leader path:** spawn preview lost the schema basename, or multi-harness residual must be proven → `of eval recovery/multi-harness-residual`. SKILL “What to type next” names that eval.
+- **Proof:** `MultiHarnessResidual.test_matrix_stays_green_on_deep_install_dests` plus dest-relpaths from `SkillVersionSkew`. On `of eval --strict --kernel`. Existing Codex basename coverage stays inside that dest loop.
+- Packaging: VERSION 0.7.44; skill/alias description preview `v0.7.44 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.43 notes.
+
 ## 0.7.43
 
 Mortal-install one-sitting demo. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.42 notes.

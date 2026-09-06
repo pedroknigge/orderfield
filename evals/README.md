@@ -41,7 +41,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
 | `recovery/multi-day-resume` | `recovery_multi_day_resume` | aged wave-2 in-flight + stale `session.json`: resume reconstructs `HOLD`; `of init` without `--force` dies |
 | `recovery/escalate-verify-build` | `recovery_verify_build` | adversary residual verify→build is `escalate_up`; leader phase stays verify |
-| `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it. Deep skill-root `--output-schema` keeps the basename (`ArgvRedact`; `MultiHarnessResidual`) |
+| `recovery/multi-harness-residual` | `recovery_multi_harness` | Claude/Grok/Codex/Cursor dry-run share one residual path; Codex argv names `residual.codex`; collect accepts it. Deep dests `~/.claude` / `~/.agents` / `~/.cursor/skills/orderfield` stay green; `--output-schema` keeps the basename (`ArgvRedact`; `MultiHarnessResidual`) |
 | `recovery/checkpoint-handoff-stay-on-run` | `recovery_checkpoint_handoff` | multi-hour STALE in-flight: resume says `HANDOFF` not `HOLD`; checkpoint captures pulse verdicts |
 | `recovery/budget-seconds-honesty` | `recovery_budget_seconds` | long pack writes `budget.seconds=7200`; spawn `--timeout 900` dies with unpack/`--seconds` fix path; matching or omitted timeout honors the packet; not a token ceiling |
 | `recovery/midflight-amend` | `recovery_midflight_amend` | mid-flight `of spec --amend` + `of patch`; next-wave packet carries dated amend + patched constraint; wave-1 packet is not rewritten |

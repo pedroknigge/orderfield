@@ -1542,7 +1542,56 @@ class MissionRewriteRefused(unittest.TestCase):
 
 
 class MultiHarnessResidual(unittest.TestCase):
-    """Claude/Grok/Codex share one residual contract. of eval --kernel."""
+    """Claude/Codex/Cursor share one residual contract. of eval --kernel."""
+
+    MATRIX = ("claude", "codex", "cursor")
+    CHECKOUT_ADAPTERS = ("claude", "grok", "codex", "cursor")
+
+    @staticmethod
+    def dest_rel(adapter: str) -> tuple[str, ...]:
+        """Install dest for adapter. Codex kernel lives on the generic path."""
+        if adapter == "codex":
+            return of.SkillVersionSkew.GENERIC
+        return (f".{adapter}", "skills", "orderfield")
+
+    @staticmethod
+    def stage_skill(dest: Path) -> Path:
+        dest.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(SCRIPTS, dest / "scripts")
+        shutil.copytree(ROOT / "schemas", dest / "schemas")
+        shutil.copy(ROOT / "SLAVE.md", dest / "SLAVE.md")
+        shutil.copy(ROOT / "VERSION", dest / "VERSION")
+        return dest / "scripts" / "of.py"
+
+    @staticmethod
+    def hermetic_env() -> dict[str, str]:
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+        env.setdefault(
+            "OF_LEARNINGS",
+            str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+        )
+        return env
+
+    @staticmethod
+    def spawn_dry_run(
+        of_py: Path, field: Path, adapter: str, env: dict[str, str]
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(of_py),
+                "spawn",
+                "--adapter",
+                adapter,
+                "--packet",
+                ".orderfield/waves/001/packets/imp1.json",
+                "--dry-run",
+            ],
+            cwd=str(field),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
 
     @staticmethod
     def _pack_and_write(tmp: Path) -> Path:
@@ -1581,12 +1630,10 @@ class MultiHarnessResidual(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp(prefix="of-multi-pack-"))
         self.addCleanup(shutil.rmtree, tmp, True)
         dest = self._pack_and_write(tmp)
-        packet = ".orderfield/waves/001/packets/imp1.json"
         residual_rel = ".orderfield/waves/001/residuals/imp1.json"
-        for adapter in ("claude", "grok", "codex"):
-            spawned = run_of(
-                tmp, "spawn", "--adapter", adapter, "--packet", packet, "--dry-run"
-            )
+        env = self.hermetic_env()
+        for adapter in self.CHECKOUT_ADAPTERS:
+            spawned = self.spawn_dry_run(OF_PY, tmp, adapter, env)
             self.assertEqual(spawned.returncode, 0, spawned.stderr)
             self.assertIn(f"adapter={adapter}", spawned.stdout)
             self.assertIn(f"residual={residual_rel}", spawned.stdout)
@@ -1596,51 +1643,39 @@ class MultiHarnessResidual(unittest.TestCase):
         self.assertEqual(collected.returncode, 0, collected.stderr)
         self.assertTrue(dest.is_file())
 
-    def test_codex_dry_run_names_schema_on_deep_skill_root(self) -> None:
-        """Deep install path >80 chars must still name residual.codex.schema.json."""
-        pad = "x" * 80
-        holder = Path(tempfile.mkdtemp(prefix="of-deep-skill-"))
-        self.addCleanup(shutil.rmtree, holder, True)
-        deep = holder / pad / "orderfield"
-        shutil.copytree(SCRIPTS, deep / "scripts")
-        shutil.copytree(ROOT / "schemas", deep / "schemas")
-        shutil.copy(ROOT / "SLAVE.md", deep / "SLAVE.md")
-        shutil.copy(ROOT / "VERSION", deep / "VERSION")
-        schema = deep / "schemas" / "residual.codex.schema.json"
-        self.assertTrue(schema.is_file(), schema)
-        self.assertGreater(len(str(schema)), of.ArgvRedact.PROMPT_CHARS)
+    def test_deep_dests_are_skill_install_relpaths(self) -> None:
+        rels = of.SkillVersionSkew.known_relpaths()
+        for adapter in self.MATRIX:
+            self.assertIn(self.dest_rel(adapter), rels, adapter)
 
+    def test_matrix_stays_green_on_deep_install_dests(self) -> None:
+        """~/.claude|~/.agents|~/.cursor skill dests; Codex schema basename survives."""
+        pad = "x" * 80
+        holder = Path(tempfile.mkdtemp(prefix="of-deep-home-"))
+        self.addCleanup(shutil.rmtree, holder, True)
+        home = holder / pad
         tmp = Path(tempfile.mkdtemp(prefix="of-deep-field-"))
         self.addCleanup(shutil.rmtree, tmp, True)
         dest = self._pack_and_write(tmp)
-        packet = ".orderfield/waves/001/packets/imp1.json"
         residual_rel = ".orderfield/waves/001/residuals/imp1.json"
-        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
-        env.setdefault(
-            "OF_LEARNINGS",
-            str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
-        )
-        spawned = subprocess.run(
-            [
-                sys.executable,
-                str(deep / "scripts" / "of.py"),
-                "spawn",
-                "--adapter",
-                "codex",
-                "--packet",
-                packet,
-                "--dry-run",
-            ],
-            cwd=str(tmp),
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        self.assertEqual(spawned.returncode, 0, spawned.stderr)
-        self.assertIn("adapter=codex", spawned.stdout)
-        self.assertIn(f"residual={residual_rel}", spawned.stdout)
-        self.assertIn("residual.codex.schema.json", spawned.stdout)
-        self.assertIn("--output-schema", spawned.stdout)
+        env = self.hermetic_env()
+        env["HOME"] = str(home)
+
+        for adapter in self.MATRIX:
+            skill = home.joinpath(*self.dest_rel(adapter))
+            of_py = self.stage_skill(skill)
+            schema = skill / "schemas" / "residual.codex.schema.json"
+            self.assertTrue(of_py.is_file(), of_py)
+            self.assertTrue(schema.is_file(), schema)
+            if adapter == "codex":
+                self.assertGreater(len(str(schema)), of.ArgvRedact.PROMPT_CHARS)
+            spawned = self.spawn_dry_run(of_py, tmp, adapter, env)
+            self.assertEqual(spawned.returncode, 0, spawned.stderr)
+            self.assertIn(f"adapter={adapter}", spawned.stdout)
+            self.assertIn(f"residual={residual_rel}", spawned.stdout)
+            if adapter == "codex":
+                self.assertIn("residual.codex.schema.json", spawned.stdout)
+                self.assertIn("--output-schema", spawned.stdout)
         self.assertTrue(dest.is_file())
 
 
