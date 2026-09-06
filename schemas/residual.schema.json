@@ -66,9 +66,9 @@
       }
     },
     "usage": {
-      "type": "object",
+      "type": ["object", "null"],
       "additionalProperties": false,
-      "description": "Optional harness-reported model/token facts. Provenance like origin.session_id, not a budget. Never compared to budget.tokens.",
+      "description": "Optional harness-reported model/token facts. Provenance like origin.session_id, not a budget. Never compared to budget.tokens. Omit or null when the harness did not report any.",
       "properties": {
         "tokens": { "type": "integer", "minimum": 0 },
         "model": {

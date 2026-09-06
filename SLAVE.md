@@ -100,7 +100,8 @@ Write **exactly one** valid residual to the path in the packet (`residual_path`)
     "divergence": 0.0,
     "tool_failures": 0,
     "novelty": false
-  }
+  },
+  "usage": null
 }
 ```
 

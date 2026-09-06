@@ -914,8 +914,7 @@ class EvalInvariantSetup:
         rem["wants_to_change"] = list(wants or [])
         rem["evidence"] = evidence
         rem["proposed_patch"] = patch
-        if usage:
-            residual["usage"] = usage
+        residual["usage"] = usage
         result = root / ".orderfield" / "work" / "scratch" / child_id / "result.md"
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text(result_text, encoding="utf-8")

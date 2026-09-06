@@ -260,7 +260,11 @@ class EfficiencySignalProof(unittest.TestCase):
         residual = load_json(
             self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "ok1.json"
         )
-        self.assertNotIn("usage", residual)
+        self.assertTrue(
+            "usage" not in residual or residual.get("usage") in (None, {}),
+            residual.get("usage"),
+        )
+        self.assertIsNone(of.EfficiencySignal.usage(residual))
         self.assertEqual(of.validate_residual(residual), [])
         status = run_of(self.tmp, "status")
         self.assertEqual(status.returncode, 0, status.stderr)
