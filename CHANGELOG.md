@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.32
+
+Closed-field archive. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.31 notes.
+
+- **Archive keeps the contrast trail:** `of gc --archive-field <id>` moves a closed sibling from `.orderfield/fields/<id>/` to `.orderfield/archive/<id>/`. `CLOSE.json`, `SPEC.md`, `REQUIREMENTS.json`, and `ORDER.json` stay. `of fields` prints `archived N`. `--field` of an archived id dies (`archived-field`). Open fields refuse archive. Legacy top-level ORDER refuses archive. Not a new verb. Not `of merge`.
+- **Drop cannot wipe CLOSE.json:** `of gc --drop-field` on a home with `CLOSE.json` dies and names `--archive-field` (or `--force --reason` to unlink). `of retain` / `of gc` keep archived trail files (`closed-field-archive`); apply will not unlink `.orderfield/archive/`.
+- **Eval:** `recovery/closed-field-archive` fails if drop silently unlinks `CLOSE.json`, if archive drops the proof, or if a later `of gc` wipes `.orderfield/archive/<id>/CLOSE.json`. `ClosedFieldArchiveTrail` is on `of eval --strict --kernel`. Existing `recovery/atomic-close-flag-lag` / `recovery/orphan-packed-cleanup` stay.
+- Packaging: VERSION 0.7.32; skill/alias description preview `v0.7.32 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.31 notes.
+
 ## 0.7.31
 
 Mid-epic handoff packet. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.30 notes.

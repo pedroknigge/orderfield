@@ -116,6 +116,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_stale_field,
     eval_setup_recovery_packed_age,
     eval_setup_recovery_orphan_packed,
+    eval_setup_recovery_closed_field_archive,
     eval_setup_recovery_doctor_one_pass,
     eval_setup_recovery_verify_build,
     eval_write_done_residual,
@@ -206,6 +207,7 @@ __all__ = [
     "eval_setup_recovery_stale_field",
     "eval_setup_recovery_packed_age",
     "eval_setup_recovery_orphan_packed",
+    "eval_setup_recovery_closed_field_archive",
     "eval_setup_recovery_doctor_one_pass",
     "eval_setup_recovery_verify_build",
     "eval_write_done_residual",
@@ -455,7 +457,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Walk every field home. Dump non-risky ephemeral after 7 days "
             "(closed fields immediately). Over tree budget: print audit of "
-            "open ORDERs. Never auto-drops an open field. Kernel never prompts."
+            "open ORDERs. Never auto-drops an open field. Kernel never prompts. "
+            "Closed fields with CLOSE.json archive via --archive-field; "
+            "--drop-field refuses that contrast trail without --force --reason."
         ),
     )
     s.add_argument(
@@ -472,7 +476,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--drop-field",
         dest="drop_field",
         metavar="ID",
-        help="unlink .orderfield/fields/<id>/ (closed, or --force --reason if open)",
+        help=(
+            "unlink .orderfield/fields/<id>/ (closed without CLOSE.json, "
+            "or --force --reason if open or if contrast trail exists)"
+        ),
+    )
+    s.add_argument(
+        "--archive-field",
+        dest="archive_field",
+        metavar="ID",
+        help=(
+            "move a closed field to .orderfield/archive/<id>/ "
+            "(keeps CLOSE.json / SPEC / REQUIREMENTS)"
+        ),
     )
     s.add_argument(
         "--keep-field",
@@ -483,11 +499,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--force",
         action="store_true",
-        help="with --drop-field: allow dropping an open or active field",
+        help="with --drop-field: allow dropping an open, active, or CLOSE.json field",
     )
     s.add_argument(
         "--reason",
-        help="required with --drop-field --force on an open field",
+        help="required with --drop-field --force on an open field or contrast trail",
     )
     s.set_defaults(func=cmd_gc)
 

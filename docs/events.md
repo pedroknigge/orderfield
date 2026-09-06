@@ -29,7 +29,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
 | `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
 | `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
-| `fields` | After `of fields` | `count`, `open`, `closed`, `ok` |
+| `fields` | After `of fields` | `count`, `open`, `closed`, `archived`, `ok` |
 | `checkpoint` | After `of checkpoint` | `ok` |
 | `contrast` | After `of contrast` | `verdict` (`OPEN` \| `RESOLVED`), `ok`, `gate` (`CLOSE_BLOCKED` \| `RESOLVED` \| `CLOSE_SKIP`), `rows`, `blocking`, `coverage`, `spec` / `spec_hash`, `intent`, `errors`, `next` — same facts as the stdout one-pager / JSON |
 | `close` | After `of close` | `rev`, `spec_hash`, `done_when_closed`, `ok`; `parent` when ACTIVE returned |
@@ -37,7 +37,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `phase_override` | After audited `of phase --force` | override record fields |
 | `pulse` | Each in-flight child in `of pulse` | `child_id`, `verdict`, `age_s`, `wave` |
 | `eval.completed` | Each `of eval` case | `id`, `status`, `ok`, optional `error` |
-| `gc` | After `of gc` | `dumped`, `ok`; `orphans` count when explicit gc records packed-child receipts |
+| `gc` | After `of gc` | `dumped`, `ok`; `orphans` count when explicit gc records packed-child receipts; `action` / `field` on `--keep-field` / `--archive-field` / `--drop-field` |
 | `doctor` | After `of doctor` | `ok` |
 | `migrate` | After `of migrate` | `applied`, `ok` |
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |

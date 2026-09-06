@@ -2357,6 +2357,129 @@ class OrphanPackedCleanup(unittest.TestCase):
         self.assertIn("stale-prior-wave", reasons)
 
 
+class ClosedFieldArchiveTrail(unittest.TestCase):
+    """Closed-field archive keeps CLOSE.json. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-closed-arch-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _keep_and_closeable(self) -> str:
+        init = run_of(
+            self.tmp, "init", "--mission", "keep live epic", "--phase", "explore"
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        created = run_of(
+            self.tmp,
+            "new",
+            "--mission",
+            "archive me",
+            "--phase",
+            "build",
+            "--source",
+            "archive me: internal index ALG-001",
+        )
+        self.assertEqual(created.returncode, 0, created.stderr + created.stdout)
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        return (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+
+    def _close_bound(self) -> None:
+        verified = run_of(self.tmp, "spec", "--verified-internal", "ALG-001")
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("CLOSE.json", closed.stdout)
+
+    def test_archive_keeps_contrast_trail(self) -> None:
+        fid = self._keep_and_closeable()
+        self._close_bound()
+        live = self.tmp / ".orderfield" / "fields" / fid
+        proof = live / "CLOSE.json"
+        spec = (live / "SPEC.md").read_text(encoding="utf-8")
+        self.assertTrue(proof.is_file())
+        archived = run_of(self.tmp, "gc", "--archive-field", fid)
+        self.assertEqual(archived.returncode, 0, archived.stderr + archived.stdout)
+        self.assertIn("archived", archived.stdout)
+        self.assertIn("proof=CLOSE.json", archived.stdout)
+        dest = self.tmp / ".orderfield" / "archive" / fid
+        self.assertFalse(live.exists())
+        self.assertTrue((dest / "CLOSE.json").is_file())
+        trail = load_json(dest / "CLOSE.json")
+        self.assertEqual(trail.get("verdict"), "RESOLVED")
+        self.assertEqual(trail.get("order_id"), fid)
+        self.assertTrue((dest / "SPEC.md").is_file())
+        self.assertEqual((dest / "SPEC.md").read_text(encoding="utf-8"), spec)
+        self.assertTrue((dest / "REQUIREMENTS.json").is_file())
+        listed = run_of(self.tmp, "fields")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("archived      1", listed.stdout)
+        self.assertIn("keep live epic", listed.stdout)
+        self.assertNotIn("archive me", listed.stdout)
+
+    def test_drop_refuses_close_json_without_force(self) -> None:
+        fid = self._keep_and_closeable()
+        self._close_bound()
+        proof = self.tmp / ".orderfield" / "fields" / fid / "CLOSE.json"
+        before = proof.read_bytes()
+        dropped = run_of(self.tmp, "gc", "--drop-field", fid)
+        self.assertNotEqual(dropped.returncode, 0, dropped.stdout)
+        self.assertIn("contrast trail", dropped.stderr)
+        self.assertIn("--archive-field", dropped.stderr)
+        self.assertTrue(proof.is_file())
+        self.assertEqual(proof.read_bytes(), before)
+
+    def test_gc_does_not_wipe_archived_trail(self) -> None:
+        fid = self._keep_and_closeable()
+        self._close_bound()
+        archived = run_of(self.tmp, "gc", "--archive-field", fid)
+        self.assertEqual(archived.returncode, 0, archived.stderr)
+        dest = self.tmp / ".orderfield" / "archive" / fid / "CLOSE.json"
+        self.assertTrue(dest.is_file())
+        planned = run_of(self.tmp, "retain")
+        self.assertEqual(planned.returncode, 0, planned.stderr)
+        self.assertIn("closed-field-archive", planned.stdout)
+        cleaned = run_of(self.tmp, "gc")
+        self.assertEqual(cleaned.returncode, 0, cleaned.stderr)
+        self.assertTrue(dest.is_file(), "explicit gc must not unlink archived CLOSE.json")
+        trail = load_json(dest)
+        self.assertEqual(trail.get("verdict"), "RESOLVED")
+        of.apply_field_retention(
+            self.tmp,
+            {},
+            {},
+            [
+                {
+                    "action": "dump",
+                    "path": f".orderfield/archive/{fid}/CLOSE.json",
+                    "reason": "adversary-wipe",
+                }
+            ],
+        )
+        self.assertTrue(dest.is_file(), "apply must not unlink archive contrast trail")
+
+    def test_archive_refuses_open_and_field_bind_names_archive(self) -> None:
+        fid = self._keep_and_closeable()
+        opened = run_of(self.tmp, "gc", "--archive-field", fid)
+        self.assertNotEqual(opened.returncode, 0, opened.stdout)
+        self.assertIn("refuses open field", opened.stderr)
+        self._close_bound()
+        run_of(self.tmp, "gc", "--archive-field", fid)
+        bound = run_of(self.tmp, "--field", fid, "status")
+        self.assertNotEqual(bound.returncode, 0, bound.stdout)
+        self.assertIn("archived", bound.stderr)
+        self.assertIn(".orderfield/archive/", bound.stderr)
+
+
 class WaveRosterListShow(unittest.TestCase):
     """of wave list/show marks the live wave. of eval --kernel."""
 

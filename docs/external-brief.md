@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.31` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.32` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -56,6 +56,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Empty waves + age look like a live deliver | status/resume print `abandoned`; field stays on disk | `recovery/stale-field-abandoned` |
 | In-flight `packed_at` older than 7 days looks idle | status/resume print `packed_age`; child is not unpacked | `recovery/packed-age-watchdog` |
 | Closed / leftover packed child never reported | `of retain` names `orphan packed`; explicit `of gc` unlinks with `gc-stamp.json` proof; resume auto-gc skips packets | `recovery/orphan-packed-cleanup` |
+| Closed field dropped and `CLOSE.json` vanishes | `--drop-field` dies while `CLOSE.json` exists; `--archive-field` keeps the trail under `.orderfield/archive/<id>/` | `recovery/closed-field-archive`; `ClosedFieldArchiveTrail` |
 | Skill copy, ACTIVE pointer, or stale packs disagree with this checkout / live field | `of doctor` names VERSION / ACTIVE / `packed_age` in one pass | `recovery/doctor-one-pass-skew` |
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave mission; which wave is live is unclear | `of wave list` marks `state.wave`; `of wave show` names live vs prior | `recovery/wave-list-show`; `WaveRosterListShow` |
@@ -108,6 +109,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Different-id leftover root ORDER: fields omits it; `--field` dies; `of migrate` archives | `recovery/root-stub-ambiguous`; `RootStubAmbiguous` |
 | Three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
 | Nested phase field: `--parent` stamps parent; close returns ACTIVE to the epic | `recovery/nested-field-lifecycle`; `NestedFieldLifecycle` |
+| Closed field archives without losing `CLOSE.json`; drop without `--force` cannot wipe the trail | `recovery/closed-field-archive`; `ClosedFieldArchiveTrail` |
 | Generic/empty done-when dies; a contrast-bound criterion is accepted and can close | `recovery/done-when-lint` |
 | explore→build without `--force` dies; forced skip is visible on status | `recovery/skip-explore-theater` |
 | Empty waves + age: status/resume print `abandoned`; not closed or deleted | `recovery/stale-field-abandoned` |

@@ -645,6 +645,7 @@ def _plan_home_contract_and_scratch(
         ("SPEC.md", "current-contract"),
         ("REQUIREMENTS.json", "current-contract"),
         ("ORDER.json", "current-contract"),
+        ("CLOSE.json", "contrast-trail"),
         ("PHASE.md", "current-contract"),
         ("SLAVE.md", "current-contract"),
     ):
@@ -812,6 +813,7 @@ def plan_field_retention(
         actions.extend(
             _plan_top_level_leftovers(root, covered, over_budget=over_budget)
         )
+        actions.extend(ClosedFieldArchive.plan_keep(root))
         return actions
     saved = field_home(root)
     try:
@@ -836,6 +838,7 @@ def plan_field_retention(
     actions.extend(
         _plan_top_level_leftovers(root, covered, over_budget=over_budget)
     )
+    actions.extend(ClosedFieldArchive.plan_keep(root))
     return actions
 
 
@@ -889,6 +892,8 @@ def apply_field_retention(
             continue
         if resolved.is_symlink():
             continue
+        if ClosedFieldArchive.protects(root, resolved):
+            continue
         _safe_unlink(resolved)
     active_state_rel = field_rel(root, state_path(root))
     for file_rel, keys in fragments.items():
@@ -933,6 +938,166 @@ def print_retention_plan(actions: list[dict[str, str]]) -> None:
     OrphanPacked.emit(OrphanPacked.rows_from_actions(actions))
 
 
+class ClosedFieldArchive:
+    """Move a closed sibling home out of the live roster; keep contrast proof.
+
+    Destination is `.orderfield/archive/<id>/` (sibling of `fields/`, not a
+    home-local `waves-archived-*`). CLOSE.json + SPEC + REQUIREMENTS + ORDER
+    stay. `--drop-field` without `--force --reason` dies while CLOSE.json
+    exists. `of gc` never unlinks the archive tree. Not a new ORDER field.
+    Not `of merge`.
+    """
+
+    DIRNAME = "archive"
+    LABEL = "closed-field-archive"
+    TRAIL = ("CLOSE.json", "SPEC.md", "REQUIREMENTS.json", "ORDER.json")
+    HINT = "of gc --archive-field"
+    EVAL_ID = "ord_c105ed01"
+
+    @staticmethod
+    def dir(root: Path) -> Path:
+        return of_dir(root) / ClosedFieldArchive.DIRNAME
+
+    @staticmethod
+    def dest(root: Path, field_id: str) -> Path:
+        dest = ClosedFieldArchive.dir(root) / field_id
+        if not dest.exists():
+            return dest
+        stamp = utc_now().replace(":", "").replace("-", "")
+        return dest.with_name(dest.name + "." + stamp)
+
+    @staticmethod
+    def homes(root: Path) -> list[tuple[str, Path, dict[str, Any]]]:
+        archive = ClosedFieldArchive.dir(root)
+        out: list[tuple[str, Path, dict[str, Any]]] = []
+        if not archive.is_dir() or archive.is_symlink():
+            return out
+        try:
+            children = sorted(archive.iterdir(), key=lambda p: p.name)
+        except OSError:
+            return out
+        for child in children:
+            if child.is_symlink() or not child.is_dir():
+                continue
+            order_file = child / "ORDER.json"
+            if not order_file.is_file() or order_file.is_symlink():
+                continue
+            data = _read_json_object(order_file) or {}
+            fid = str(data.get("id") or child.name)
+            out.append((fid, child, data))
+        return out
+
+    @staticmethod
+    def count(root: Path) -> int:
+        return len(ClosedFieldArchive.homes(root))
+
+    @staticmethod
+    def roster_line(root: Path, n: int | None = None) -> str:
+        if n is None:
+            n = ClosedFieldArchive.count(root)
+        return f"archived      {n}  (.orderfield/{ClosedFieldArchive.DIRNAME}/)"
+
+    @staticmethod
+    def has_trail(home: Path) -> bool:
+        proof = home / "CLOSE.json"
+        return proof.is_file() and not proof.is_symlink()
+
+    @staticmethod
+    def protects(root: Path, path: Path) -> bool:
+        try:
+            archive = ClosedFieldArchive.dir(root).resolve()
+            if not archive.exists():
+                return False
+            path.resolve().relative_to(archive)
+            return True
+        except (OSError, ValueError):
+            return False
+
+    @staticmethod
+    def plan_keep(root: Path) -> list[dict[str, str]]:
+        actions: list[dict[str, str]] = []
+        for _fid, home, _order in ClosedFieldArchive.homes(root):
+            for name in ClosedFieldArchive.TRAIL:
+                path = home / name
+                if path.is_file() and not path.is_symlink():
+                    actions.append(
+                        _retention_action(
+                            "keep",
+                            field_rel(root, path),
+                            ClosedFieldArchive.LABEL,
+                        )
+                    )
+        return actions
+
+    @staticmethod
+    def refuse_live(root: Path, field_id: str) -> None:
+        for fid, home, _order in ClosedFieldArchive.homes(root):
+            if fid == field_id:
+                die(
+                    f"field {field_id} is archived; contrast trail at "
+                    f"{field_rel(root, home)} (not a live field)",
+                    kind="archived-field",
+                )
+
+    @staticmethod
+    def _release_active(root: Path, field_id: str) -> None:
+        if ActiveField.read(root) != field_id:
+            return
+        try:
+            ActiveField.path(root).unlink()
+        except OSError:
+            pass
+        remain = list_field_homes(root)
+        if len(remain) == 1:
+            ActiveField.write(root, remain[0][0])
+
+    @staticmethod
+    def archive(
+        root: Path,
+        field_id: str,
+        *,
+        dry_run: bool = False,
+    ) -> str:
+        fid = require_field_id(field_id)
+        match: tuple[str, Path, dict[str, Any]] | None = None
+        for hid, home, order in list_field_homes(root):
+            if hid == fid:
+                match = (hid, home, order)
+                break
+        if match is None:
+            ClosedFieldArchive.refuse_live(root, fid)
+            die(f"unknown field {fid}")
+        _hid, home, order = match
+        of = of_dir(root).resolve()
+        if home.resolve() == of:
+            die(
+                "archive-field refuses the legacy top-level ORDER "
+                "(would move the tree)"
+            )
+        try:
+            home.resolve().relative_to(fields_dir(root).resolve())
+        except ValueError:
+            die("archive-field only moves .orderfield/fields/<id>/")
+        if field_is_open(order):
+            die(f"archive-field refuses open field {fid}; of close first")
+        dest = ClosedFieldArchive.dest(root, fid)
+        rel = field_rel(root, home)
+        dest_rel = field_rel(root, dest)
+        if dry_run:
+            print(f"dry-run archive {rel} -> {dest_rel}")
+            return dest_rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(home), str(dest))
+        ClosedFieldArchive._release_active(root, fid)
+        keeps = load_gc_keep(root)
+        if fid in keeps:
+            keeps.pop(fid, None)
+            save_gc_keep(root, keeps)
+        proof = "CLOSE.json" if ClosedFieldArchive.has_trail(dest) else "missing"
+        print(f"archived     {rel} -> {dest_rel}  proof={proof}")
+        return dest_rel
+
+
 def record_keep_field(root: Path, field_id: str) -> None:
     fid = require_field_id(field_id)
     usage = tree_usage(root)
@@ -966,6 +1131,7 @@ def drop_field_home(
             match = (hid, home, order)
             break
     if match is None:
+        ClosedFieldArchive.refuse_live(root, fid)
         die(f"unknown field {fid}")
     _hid, home, order = match
     of = of_dir(root).resolve()
@@ -982,6 +1148,13 @@ def drop_field_home(
         )
     if field_is_open(order) and force and not str(reason or "").strip():
         die("drop-field --force on an open field requires --reason")
+    if ClosedFieldArchive.has_trail(home) and not force:
+        die(
+            f"drop-field refuses contrast trail on {fid}; "
+            f"of gc --archive-field {fid} (or --force --reason to unlink)"
+        )
+    if ClosedFieldArchive.has_trail(home) and force and not str(reason or "").strip():
+        die("drop-field --force on a contrast trail requires --reason")
     if home.resolve() == field_home(root).resolve() and not force:
         die(f"drop-field refuses the active field {fid}; --force to discard")
     rel = field_rel(root, home)
@@ -1042,4 +1215,5 @@ class FieldRetain:
     drop_home = staticmethod(drop_field_home)
     maybe_safe = staticmethod(maybe_safe_gc)
     keep_field = staticmethod(record_keep_field)
+    archive = ClosedFieldArchive
     orphan = OrphanPacked

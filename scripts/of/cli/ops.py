@@ -43,6 +43,7 @@ from of.field import (
     WaveRoster,
     apply_field_migrations,
     apply_field_retention,
+    ClosedFieldArchive,
     drop_field_home,
     maybe_safe_gc,
     print_audit_block,
@@ -264,10 +265,22 @@ def cmd_retain(args: argparse.Namespace) -> None:
 def cmd_gc(args: argparse.Namespace) -> None:
     root = find_root()
     keep_id = getattr(args, "keep_field", None)
+    archive_id = getattr(args, "archive_field", None)
     drop_id = getattr(args, "drop_field", None)
+    hitl = [x for x in (keep_id, archive_id, drop_id) if x]
+    if len(hitl) > 1:
+        die("gc: use one of --keep-field / --archive-field / --drop-field")
     if keep_id:
         record_keep_field(root, keep_id)
         emit_event("gc", action="keep-field", field=keep_id, ok=True)
+        return
+    if archive_id:
+        ClosedFieldArchive.archive(
+            root,
+            archive_id,
+            dry_run=bool(getattr(args, "dry_run", False)),
+        )
+        emit_event("gc", action="archive-field", field=archive_id, ok=True)
         return
     if drop_id:
         drop_field_home(
@@ -1412,10 +1425,20 @@ def cmd_fields(args: argparse.Namespace) -> None:
     from of.field import FieldRoster, field_is_open, list_field_homes
 
     homes = list_field_homes(root)
+    archived_n = ClosedFieldArchive.count(root)
     if not homes:
         print("fields        0  open 0  closed 0")
+        if archived_n:
+            print(ClosedFieldArchive.roster_line(root, archived_n))
         print("next          of init --mission '...'")
-        emit_event("fields", count=0, open=0, closed=0, ok=True)
+        emit_event(
+            "fields",
+            count=0,
+            open=0,
+            closed=0,
+            archived=archived_n,
+            ok=True,
+        )
         return
     FieldRoster.print(
         homes,
@@ -1432,6 +1455,7 @@ def cmd_fields(args: argparse.Namespace) -> None:
         count=len(homes),
         open=open_n,
         closed=len(homes) - open_n,
+        archived=archived_n,
         ok=True,
     )
 
