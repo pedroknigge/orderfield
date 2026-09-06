@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import os
 import shutil
 import stat
@@ -541,8 +542,94 @@ class ValidateSkill(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def _load_packaging_bump() -> object:
+    spec = importlib.util.spec_from_file_location(
+        "of_check_packaging_bump",
+        ROOT / "scripts" / "check_packaging_bump.py",
+    )
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.PackagingBump
+
+
+PackagingBump = _load_packaging_bump()
+
+
+class PackagingBumpDiscipline(unittest.TestCase):
+    """One VERSION per real cut. Packaging-only lockstep dies. of eval --kernel."""
+
+    REAL_CUT = (
+        "# Changelog\n\n"
+        "## 9.9.9\n\n"
+        "Real cut. Same 0.6 line.\n\n"
+        "- **Proof:** a kernel or public-surface change landed.\n"
+        "- Packaging: VERSION 9.9.9; skill/alias description preview "
+        "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+    )
+    PACKAGING_ONLY = (
+        "# Changelog\n\n"
+        "## 9.9.9\n\n"
+        "Packaging identity only.\n\n"
+        "- Packaging: VERSION 9.9.9; skill/alias description preview "
+        "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+    )
+
+    def _stage(self, changelog: str, version: str = "9.9.9") -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-pack-bump-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "VERSION").write_text(version + "\n", encoding="utf-8")
+        (tmp / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+        return tmp
+
+    def test_repo_passes(self) -> None:
+        self.assertEqual(PackagingBump.errors(ROOT), [])
+
+    def test_cli_exits_zero_on_repo(self) -> None:
+        script = ROOT / "scripts" / "check_packaging_bump.py"
+        proc = run(ROOT, sys.executable, str(script), str(ROOT))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertIn(f"OK packaging bump {ver}", proc.stdout)
+
+    def test_real_cut_plus_lockstep_passes(self) -> None:
+        tmp = self._stage(self.REAL_CUT)
+        self.assertEqual(PackagingBump.errors(tmp), [])
+
+    def test_packaging_only_fails(self) -> None:
+        tmp = self._stage(self.PACKAGING_ONLY)
+        errs = PackagingBump.errors(tmp)
+        self.assertTrue(any("packaging-only VERSION 9.9.9" in e for e in errs), errs)
+        script = ROOT / "scripts" / "check_packaging_bump.py"
+        proc = run(tmp, sys.executable, str(script), str(tmp))
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("packaging-only VERSION 9.9.9", proc.stderr)
+
+    def test_duplicate_version_heading_fails(self) -> None:
+        text = self.REAL_CUT + "\n## 9.9.9\n\n- **Again:** same cut twice.\n"
+        tmp = self._stage(text)
+        errs = PackagingBump.errors(tmp)
+        self.assertTrue(any("duplicate VERSION 9.9.9" in e for e in errs), errs)
+
+    def test_heading_mismatch_fails(self) -> None:
+        tmp = self._stage(self.REAL_CUT, version="0.0.1")
+        errs = PackagingBump.errors(tmp)
+        self.assertTrue(
+            any("first heading 9.9.9 != VERSION 0.0.1" in e for e in errs),
+            errs,
+        )
+
+    def test_policy_docs_name_the_gate(self) -> None:
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+        publish = (ROOT / "PUBLISH.md").read_text(encoding="utf-8")
+        evals = (ROOT / "evals" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("One VERSION per real cut", contributing)
+        self.assertIn("check_packaging_bump.py", contributing)
+        self.assertIn("PackagingBumpDiscipline", contributing)
+        self.assertIn("one VERSION per real cut", publish)
+        self.assertIn("check_packaging_bump.py", publish)
+        self.assertIn("PackagingBumpDiscipline", evals)
+        self.assertIn("check_packaging_bump.py", evals)
 
 
 class ReadmeProductSurface(unittest.TestCase):
@@ -665,3 +752,7 @@ class MortalInstallDemo(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         self.assertIn("extracted release tree", proc.stderr)
         self.assertIn("PUBLISH.md", proc.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

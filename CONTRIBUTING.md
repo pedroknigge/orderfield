@@ -29,7 +29,7 @@ Do not invent a second physics (no new regimes without an explicit product decis
 
 ## How to release
 
-Follow [PUBLISH.md](PUBLISH.md). Bump the validated version surfaces, land the scoped release commit through protected `main`, create the annotated tag and GitHub release, then verify both remotely.
+Follow [PUBLISH.md](PUBLISH.md). One VERSION per real cut. Bump the validated version surfaces with the cut, land through protected `main`, then tag. Packaging-only lockstep (VERSION / skill preview / `install.sh` DEFAULT_VERSION / CHANGELOG `Packaging:` line with no real-cut bullet) fails `scripts/check_packaging_bump.py` (`PackagingBumpDiscipline`). Eval-only guards prefer no bump. Do not open a packaging-only release while another kernel/evals PR is in flight.
 
 ## Branch protection
 
