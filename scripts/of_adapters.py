@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -264,6 +265,204 @@ def pick_adapter(explicit: str | None, preferred: str | None = None) -> str:
     return "generic"
 
 
+class AdapterHints:
+    """Consented model/tier hints. Disk write, then argv passthrough.
+
+    Not a model router, not a process supervisor, not a catalog of every
+    provider id. Claude gets stable harness aliases for a tier. Codex and
+    Cursor pass ``--model`` only when the packet names one. Orca
+    ``task-create`` has no model flag — hint stays on disk, spawn no-ops.
+    """
+
+    TIERS = ("cheap", "frontier")
+    CONSENTS = ("field", "wave")
+    MODEL_FLAG_ADAPTERS = frozenset({"claude", "codex", "cursor"})
+    TIER_ALIASES = {
+        "claude": {"cheap": "haiku", "frontier": "opus"},
+    }
+    ROLE_TIER = {
+        "explorer": "cheap",
+        "synthesizer": "cheap",
+        "implementer": "frontier",
+        "adversary": "frontier",
+        "verifier": "frontier",
+    }
+    MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+
+    @staticmethod
+    def normalize_consent(raw: str) -> str:
+        value = str(raw or "").strip().lower()
+        if value in ("off", "-", "none", ""):
+            return "off"
+        if value not in AdapterHints.CONSENTS:
+            die(f"--model-hints must be field, wave, or off; got {raw!r}")
+        return value
+
+    @staticmethod
+    def normalize_tier(raw: str, *, flag: str = "--model-tier") -> str:
+        value = str(raw or "").strip().lower()
+        if value not in AdapterHints.TIERS:
+            die(f"{flag} must be cheap or frontier; got {raw!r}")
+        return value
+
+    @staticmethod
+    def normalize_model(raw: str, *, flag: str = "--model") -> str:
+        value = str(raw or "").strip()
+        if not AdapterHints.MODEL_RE.fullmatch(value):
+            die(
+                f"{flag} must be a harness model id (letters, digits, "
+                f"._:/-; no spaces); got {raw!r}"
+            )
+        return value
+
+    @staticmethod
+    def role_tier(role: str) -> str:
+        return AdapterHints.ROLE_TIER.get(str(role or ""), "frontier")
+
+    @staticmethod
+    def supports(adapter: str) -> bool:
+        return adapter in AdapterHints.MODEL_FLAG_ADAPTERS
+
+    @staticmethod
+    def inherit_ok(order: dict[str, Any], wave: int) -> bool:
+        hints = order.get("adapter_hints")
+        if not isinstance(hints, dict):
+            return False
+        consent = str(hints.get("consent") or "")
+        if consent == "field":
+            return True
+        if consent == "wave":
+            return int(hints.get("wave") or 0) == int(wave)
+        return False
+
+    @staticmethod
+    def document(*, tier: str | None = None, model: str | None = None) -> dict[str, str]:
+        out: dict[str, str] = {}
+        if tier:
+            out["tier"] = AdapterHints.normalize_tier(tier)
+        if model:
+            out["model"] = AdapterHints.normalize_model(model)
+        return out
+
+    @staticmethod
+    def resolve_pack(
+        order: dict[str, Any],
+        wave: int,
+        role: str,
+        pack_tier: str | None = None,
+        pack_model: str | None = None,
+    ) -> dict[str, str] | None:
+        explicit_tier = str(pack_tier or "").strip() or None
+        explicit_model = str(pack_model or "").strip() or None
+        if explicit_tier or explicit_model:
+            return AdapterHints.document(tier=explicit_tier, model=explicit_model)
+        if not AdapterHints.inherit_ok(order, wave):
+            return None
+        raw = order.get("adapter_hints")
+        hints = raw if isinstance(raw, dict) else {}
+        field_tier = str(hints.get("tier") or "").strip() or None
+        field_model = str(hints.get("model") or "").strip() or None
+        return AdapterHints.document(
+            tier=field_tier or AdapterHints.role_tier(role),
+            model=field_model,
+        )
+
+    @staticmethod
+    def apply_patch(
+        order: dict[str, Any],
+        wave: int,
+        consent: str | None = None,
+        tier: str | None = None,
+        model: str | None = None,
+    ) -> bool:
+        has_consent = consent is not None
+        has_tier = tier is not None
+        has_model = model is not None
+        if not (has_consent or has_tier or has_model):
+            return False
+        scope = AdapterHints.normalize_consent(consent) if has_consent else None
+        if scope == "off":
+            if has_tier or has_model:
+                die("--model-hints off cannot set --model-tier or --model")
+            if "adapter_hints" in order:
+                del order["adapter_hints"]
+                return True
+            return False
+        existing = order.get("adapter_hints")
+        if not isinstance(existing, dict):
+            existing = {}
+        current = str(existing.get("consent") or "")
+        if scope is None and current not in AdapterHints.CONSENTS:
+            die(
+                "consent first: of patch --model-hints field|wave "
+                "(or of pack --model-tier / --model on one packet)"
+            )
+        hints: dict[str, Any] = dict(existing)
+        if scope in AdapterHints.CONSENTS:
+            hints["consent"] = scope
+            if scope == "wave":
+                hints["wave"] = int(wave)
+            else:
+                hints.pop("wave", None)
+        if has_tier:
+            hints["tier"] = AdapterHints.normalize_tier(tier or "")
+        if has_model:
+            hints["model"] = AdapterHints.normalize_model(model or "")
+        if hints == existing:
+            return False
+        order["adapter_hints"] = hints
+        return True
+
+    @staticmethod
+    def spawn_model(adapter: str, packet: dict[str, Any]) -> str | None:
+        if not AdapterHints.supports(adapter):
+            return None
+        hints = packet.get("adapter_hints")
+        if not isinstance(hints, dict):
+            return None
+        model = str(hints.get("model") or "").strip()
+        if model:
+            return model
+        tier = str(hints.get("tier") or "").strip()
+        aliases = AdapterHints.TIER_ALIASES.get(adapter) or {}
+        return aliases.get(tier)
+
+    @staticmethod
+    def spawn_flags(adapter: str, packet: dict[str, Any]) -> list[str]:
+        name = AdapterHints.spawn_model(adapter, packet)
+        if not name:
+            return []
+        return ["--model", name]
+
+    @staticmethod
+    def format_line(hints: Any) -> str:
+        if not isinstance(hints, dict) or not hints:
+            return ""
+        parts: list[str] = []
+        consent = str(hints.get("consent") or "").strip()
+        if consent:
+            extra = ""
+            if consent == "wave" and hints.get("wave"):
+                extra = f"@{hints.get('wave')}"
+            parts.append(f"{consent}{extra}")
+        if hints.get("tier"):
+            parts.append(str(hints["tier"]))
+        if hints.get("model"):
+            parts.append(str(hints["model"]))
+        return " ".join(parts)
+
+    @staticmethod
+    def doctor_lines() -> list[str]:
+        passing = ",".join(sorted(AdapterHints.MODEL_FLAG_ADAPTERS))
+        return [
+            f"pass        {passing} (--model)",
+            "no-op       orca (task-create has no --model), "
+            "opencode, grok, agy, qwen, generic",
+            "aliases     claude cheap=haiku frontier=opus",
+            "default     off (of patch --model-hints field|wave)",
+        ]
+
+
 def build_spawn_argv(
     adapter: str,
     prompt: str,
@@ -273,23 +472,24 @@ def build_spawn_argv(
 ) -> list[str]:
     profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
     trust = trust_flags(adapter, profile)
+    model = AdapterHints.spawn_flags(adapter, packet)
     env_agent = os.environ.get("OF_AGENT")
     if adapter == "generic" and env_agent:
         return env_agent.split() + [prompt]
     if adapter == "claude":
         bin_ = which_bin(["claude"]) or "claude"
-        return [bin_, "-p", prompt, "--output-format", "json", *trust]
+        return [bin_, *model, "-p", prompt, "--output-format", "json", *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
         schema = skill_root() / "schemas" / "residual.codex.schema.json"
-        argv = [bin_, "exec", *trust, "-o", str(residual_abs)]
+        argv = [bin_, "exec", *model, *trust, "-o", str(residual_abs)]
         if schema.exists():
             argv += ["--output-schema", str(schema)]
         argv.append(prompt)
         return argv
     if adapter == "cursor":
         bin_ = which_bin(["agent", "cursor-agent"]) or "agent"
-        return [bin_, "-p", *trust, "--output-format", "text", prompt]
+        return [bin_, *model, "-p", *trust, "--output-format", "text", prompt]
     if adapter == "opencode":
         bin_ = which_bin(["opencode"]) or "opencode"
         return [bin_, "run", "--format", "json", *trust, prompt]

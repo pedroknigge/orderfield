@@ -81,6 +81,32 @@ is a trust decision, not a fix.
 Observable via `of spawn --dry-run` (argv preview; approval flags render as
 `<approval>`) and recorded in `spawns/<child_id>.json` as `trust`.
 
+## Model hints (`ORDER.adapter_hints` / `packet.adapter_hints`)
+
+Opt-in. The kernel never invents a model. Ask once, then write.
+
+```bash
+of patch --model-hints field|wave|off
+of pack --model-tier cheap|frontier --model NAME
+```
+
+Field consent inherits onto later packs (explorer/synthesizer → cheap;
+implementer/adversary/verifier → frontier) unless the pack overrides.
+Wave consent matches `state.wave` only. Pack flags are consent for that
+packet even without a field write. No write → spawn argv is unchanged.
+
+| Adapter | Spawn |
+|---|---|
+| claude | `--model` (tier aliases cheap=`haiku`, frontier=`opus`, or the named model) |
+| codex | `--model NAME` when the packet names one; tier-only is no-op |
+| cursor | `--model NAME` when the packet names one; tier-only is no-op |
+| orca | no-op (`task-create` has no `--model`; hint stays on disk) |
+| qwen, opencode, grok, agy, generic | no-op |
+
+`of doctor` prints that table. This is argv translation like `OF_TRUST`,
+not a model catalog and not a later efficiency-signal / propose-uptier cut.
+Class: `AdapterHints` in `scripts/of_adapters.py`.
+
 A conservative child runs with the harness's own approval policy and **no
 stdin** (`of spawn` passes `/dev/null`, so a prompt fails fast instead of
 hanging on the leader's terminal). Print-mode harnesses cannot prompt at

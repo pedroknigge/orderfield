@@ -81,6 +81,32 @@
       "type": "string",
       "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
     },
+    "adapter_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consent"],
+      "description": "Optional consented model/tier hints. Not a router. Spawn passes --model only for adapters that have the flag.",
+      "properties": {
+        "consent": {
+          "type": "string",
+          "enum": ["field", "wave"]
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["cheap", "frontier"]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Live wave when consent is wave. Pack inherits only while state.wave matches."
+        }
+      }
+    },
     "origin": {
       "type": "object",
       "additionalProperties": false,

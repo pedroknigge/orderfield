@@ -1,9 +1,9 @@
 ---
 name: of
-description: v0.7.46 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
+description: v0.7.47 — Alias for the orderfield contract kernel. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Optional per-task model hints after consent (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent.
 license: MIT
 metadata:
-  version: "0.7.46"
+  version: "0.7.47"
   alias-of: orderfield
 ---
 
@@ -18,6 +18,8 @@ Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh -
 Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
+
+Per-task model hints: ask once, then `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` only for claude/codex/cursor. Follow the sibling. Not a router.
 
 After package installation, the full skill is normally at
 `../orderfield/SKILL.md` relative to this file. In a source checkout, it is at

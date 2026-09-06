@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: v0.7.46 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
+description: v0.7.47 — Disk-backed contract kernel. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a plan that survives compaction. Human install/verify: docs/demo/mortal-install.sh then of doctor. Optional per-task model hints after consent (not a router). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode.
 license: MIT
 compatibility: Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only.
 metadata:
-  version: "0.7.46"
+  version: "0.7.47"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -30,6 +30,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
+| cheaper workers for grunt packs | ask once → `of patch --model-hints field` (or `wave`); pack `--model-tier cheap` / `--model NAME`; spawn passes `--model` on claude/codex/cursor |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
@@ -233,6 +234,17 @@ The original stays. The new request is a dated `## Amendment N` block. Requireme
 
 Do not copy the leader's thinking into the child. Shared procedure belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. Use `--requires-tool` to gracefully gate requests (e.g. in explore phase) if the chosen adapter lacks specific capabilities.
 
+**Per-task model hints (opt-in).** Ask the human once whether grunt packs (explorer / boilerplate) should use a cheaper worker and threshold / debug / architecture should stay frontier. Then write it — do not invent a model, do not silently switch.
+
+```bash
+of patch --model-hints field                 # or wave (this wave only); off clears
+of patch --model-hints field --model-tier cheap
+of pack --slice "…" --role explorer --model-tier cheap
+of pack --slice "…" --role implementer --model-tier frontier --model opus
+```
+
+`of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor when the packet names a model (claude also maps cheap→haiku, frontier→opus). Orca `task-create`, qwen, opencode, grok, agy, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router and not a later efficiency-signal / propose-uptier cut.
+
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
 
 An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packet is still written and still charged. Do not refuse. The note names the fix: split into multiple `of pack --slice` with exclusive `--owns-requirement` / `--owns-path`; shared procedure goes in `of patch --constraints-add`; `of unpack --child-id <id>` releases a bad pack. `of pack --explain` dry-runs the same `SliceLint` and prints why the slice is oversized (length, whole-phase slogan) without writing or charging. A whole-phase slogan (`do the whole explore phase`) is refused (`slice.phase`) with that same fix path — one pack is not a whole phase. To take a pack back, run `of unpack --child-id <id>`: it deletes the packet/prompt and **refunds `children_spawned`**. Deleting the packet file by hand does not refund the counter. `unpack` refuses a child that already wrote a residual, and refuses nonempty scratch without `--force` (scratch is kept either way — it is evidence). Unpacking a reporter to look finished is theater — collect/integrate. `of pack --tokens N` for N>0 dies (`budget.tokens` reserved). Spawn prints that harness paid usage is not measured; that line is not a budget. `budget.seconds` is the spawn wall-clock (default 600). `of spawn --timeout` must match that value or be omitted — it is not a second clock and not a token ceiling. A timeout names `of unpack` then `of pack --seconds N`. Dual-truth close, fake token theater, and unpack-of-reporter: `of eval recovery/adversarial-dual-truth`.
@@ -261,6 +273,8 @@ Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --g
 **Default: same harness.** Spawn every child with the current session’s adapter (or one named adapter for the whole ORDER). Do **not** mix Claude/Codex/Grok/agy/etc. in one wave unless the user **explicitly** asks for multi-harness.
 
 Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). `ORDER.origin` must **not** change `pick_adapter`. If the user later asks for multi-harness, ask once, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters. Do not infer origin from PATH.
+
+If the field opted into model hints, `of spawn --dry-run` must show `--model` on claude/codex/cursor when the packet named one. A missing flag on those adapters after a consented hint is a broken run. Do not add `--model` by hand outside `of spawn`. Do not pass a model on qwen (stays in the user's config).
 
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 
