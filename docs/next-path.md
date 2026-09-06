@@ -1,6 +1,6 @@
-# Next path (after 0.7.29)
+# Next path (after 0.7.30)
 
-The 3-wave residual loop is proven: pack → structured residual → collect → integrate → next-wave, with mid-flight amend landing on later packets. `recovery/multi-wave-residual` and `MultiWaveResidualLoop` hold. `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+Nested field lifecycle is proven: `of new --parent` stamps `ORDER.parent`; `of close` returns ACTIVE to the parent epic. `recovery/nested-field-lifecycle` and `NestedFieldLifecycle` hold. The 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 P3 polish remaining: closed-field archive. Do not invent it here. No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

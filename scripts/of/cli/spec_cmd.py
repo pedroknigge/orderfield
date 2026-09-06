@@ -15,6 +15,7 @@ from of.field import (
     FIELD_SPEC_MD,
     PULSE_STALE_MINUTES,
     FieldSignal,
+    NestedField,
     PackedAge,
     die,
     dump_json,
@@ -625,12 +626,14 @@ def cmd_close(args: argparse.Namespace) -> None:
         return
     repaired = bool(order.get("spec_closed"))
     CloseProof.stamp(root, order)
+    returned = NestedField.return_active(root, order)
     snapshot_session(root, "close")
     emit_event(
         "close",
         rev=int(order["rev"]),
         spec_hash=str(order.get("spec_hash") or "")[:12],
         done_when_closed=True,
+        parent=returned,
         ok=True,
     )
     label = "REPAIRED" if repaired else "CLOSED"
@@ -638,6 +641,8 @@ def cmd_close(args: argparse.Namespace) -> None:
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    if returned:
+        print(NestedField.format_return_line(returned))
 
 
 EVAL_FIXTURES: dict[str, Any] = {}
@@ -1379,6 +1384,43 @@ def eval_setup_recovery_field_roster_ux(root: Path) -> None:
     EvalInvariantSetup.require_ok(third, "new gamma")
 
 
+@_register_eval_fixture("recovery_nested_field_lifecycle")
+def eval_setup_recovery_nested_field_lifecycle(root: Path) -> None:
+    """Epic parent plus a close-ready nested phase field (ACTIVE = child)."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "epic parent",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init parent")
+    created = eval_run_of(
+        root,
+        "new",
+        "--parent",
+        "--mission",
+        "phase build auth",
+        "--phase",
+        "build",
+        "--source",
+        "phase build auth: internal index ALG-001",
+    )
+    EvalInvariantSetup.require_ok(created, "new --parent")
+    added = eval_run_of(
+        root,
+        "spec",
+        "--add",
+        "ALG-001",
+        "--text",
+        "use an in-memory index for lookups",
+        "--surface",
+        "internal",
+    )
+    EvalInvariantSetup.require_ok(added, "spec add")
+
+
 @_register_eval_fixture("recovery_done_when_lint")
 def eval_setup_recovery_done_when_lint(root: Path) -> None:
     """Empty tree; steps exercise init/patch refuse vs accept."""
@@ -1927,6 +1969,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.RootStubAmbiguous",
     "tests.test_kernel.StatusReportJson",
     "tests.test_kernel.MultiWaveResidualLoop",
+    "tests.test_kernel.NestedFieldLifecycle",
 )
 
 

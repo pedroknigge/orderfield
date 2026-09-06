@@ -10,6 +10,7 @@ from of.field import (
     ActiveField,
     FIELD_SPEC_MD,
     FieldRoster,
+    NestedField,
     PHASES,
     apply_origin_stamp,
     default_order,
@@ -177,14 +178,20 @@ def cmd_new(args: argparse.Namespace) -> None:
 
     if not args.mission:
         die("--mission is required")
-    # Validate the brief before promoting the legacy layout or creating fields/<id>/.
+    # Validate the brief and --parent before promoting the legacy layout.
     source_text = resolve_source_text(args)
-    promote_legacy_layout(root)
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")
+    parent_flag = getattr(args, "parent", None)
+    parent_id = None
+    if parent_flag is not None:
+        parent_id = NestedField.resolve(root, parent_flag)
+    promote_legacy_layout(root)
     phase = getattr(args, "phase", None) or "explore"
     order = default_order(args.mission, phase)
+    if parent_id:
+        NestedField.stamp(order, parent_id)
     home = fields_dir(root) / order["id"]
     if home.exists():
         die(f"field home already exists {home}")
@@ -193,8 +200,12 @@ def cmd_new(args: argparse.Namespace) -> None:
     order = _stamp_and_write_new_field(
         args, root, force=False, order=order, source_text=source_text
     )
-    emit_event("new", field=order["id"], ok=True)
+    emit_event("new", field=order["id"], parent=parent_id, ok=True)
     print(f"field         {order['id']}")
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
-    print(FieldRoster.new_note())
+    if parent_id:
+        print(f"parent        {parent_id}")
+        print(NestedField.new_note(parent_id))
+    else:
+        print(FieldRoster.new_note())

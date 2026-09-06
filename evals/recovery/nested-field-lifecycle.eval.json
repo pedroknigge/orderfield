@@ -1,0 +1,60 @@
+{
+  "id": "recovery/nested-field-lifecycle",
+  "description": "of new --parent opens a phase field; contrast+close returns ACTIVE to the parent epic; not of merge",
+  "fixture": "recovery_nested_field_lifecycle",
+  "tags": ["recovery", "fields", "nested", "close", "parent"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        2  open 2  closed 0",
+        "epic parent",
+        "phase build auth",
+        "parent=",
+        "*open",
+        "of new --parent"
+      ],
+      "stdout_not_contains": ["of merge"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["phase build auth", "parent"],
+      "stdout_not_contains": ["epic parent"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-internal", "ALG-001"],
+      "exit": 0
+    },
+    {
+      "run": "contrast",
+      "exit": 0,
+      "stdout_contains": ["RESOLVED"]
+    },
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED", "CLOSE.json", "return", "--field"],
+      "stdout_not_contains": ["of merge"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["epic parent", "auto_continue yes"],
+      "stdout_not_contains": ["phase build auth", "PICK --field"]
+    },
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        2  open 1  closed 1",
+        "epic parent",
+        "*open",
+        "phase build auth",
+        "closed"
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Recovery has to be proven, not remembered.
 
 `of eval` runs fixtures. Unittest manifests live under `evals/`. Not a second engine.
 
-Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, multi-wave residual loop, wave-report quality gate, packet sizing lint, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous, status JSON. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
+Quarry, beacon, contrast-close, mission-rewrite, slogan, pack-exclusivity, atomic-close, ACTIVE, done_when lint, skip-explore, stale-field, multi-harness residual, verify↔build escalate, checkpoint handoff, budget.seconds honesty, mid-flight amend, multi-wave residual loop, wave-report quality gate, packet sizing lint, threshold stop-spawn, process-death resume, packed-age watchdog, orphan packed cleanup, contrast report renderer, wave list/show, doctor skill-version skew, doctor one-pass skew, root-stub ambiguous, status JSON, nested field lifecycle. CI: `--strict --kernel`. A fail is a kernel regression, not a new regime.
 
 A cut, a resume, a different model — the fixtures still hold. The results do not have to change.
 
@@ -34,6 +34,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/active-field-pointer` | `recovery_active_field_pointer` | root stub + nested ACTIVE: status/resume show the nested field |
 | `recovery/root-stub-ambiguous` | `recovery_root_stub_ambiguous` | different-id leftover root ORDER: fields/status name `root_stub`; `--field` stub dies; `of migrate` archives (`RootStubAmbiguous`) |
 | `recovery/field-roster-ux` | `recovery_field_roster_ux` | three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose`; resume follows ACTIVE |
+| `recovery/nested-field-lifecycle` | `recovery_nested_field_lifecycle` | `of new --parent` nests a phase; contrast+close returns ACTIVE to the parent epic (`NestedFieldLifecycle`) |
 | `recovery/done-when-lint` | `recovery_done_when_lint` | generic/empty done_when dies; contrast-bound criterion accepted and can close |
 | `recovery/skip-explore-theater` | `recovery_skip_explore` | explore→build without `--force` dies; a forced skip is visible on status |
 | `recovery/stale-field-abandoned` | `recovery_stale_field` | empty waves + age: status/resume print `abandoned`; field is not closed or deleted |
@@ -69,7 +70,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, and `MultiWaveResidualLoop`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `MultiWaveResidualLoop`, and `NestedFieldLifecycle`.
 
 ```bash
 python3 -m unittest discover -s tests -v

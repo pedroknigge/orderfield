@@ -269,7 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "new",
-        help="open a sibling field without closing the others",
+        help="open a sibling field without closing the others; --parent nests a phase",
     )
     s.add_argument("--mission", required=True)
     s.add_argument("--phase", default="explore", choices=PHASES)
@@ -291,6 +291,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--session-id",
         dest="session_id",
         help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
+    )
+    s.add_argument(
+        "--parent",
+        nargs="?",
+        const="ACTIVE",
+        default=None,
+        help=(
+            "nest this field as a phase of an existing epic "
+            "(ACTIVE when the id is omitted); close returns ACTIVE. "
+            "Plain of new stays an unrelated epic"
+        ),
     )
     s.set_defaults(func=cmd_new)
 
