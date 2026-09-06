@@ -685,7 +685,7 @@ class SkillLeaderInitiative(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
         propose_at = table.casefold().index("propose in chat")
-        pack_at = table.index("of pack --model-tier")
+        pack_at = table.index("--model-tier")
         self.assertLess(propose_at, pack_at)
         self.assertIn("must propose", skill.casefold())
         self.assertIn("never silent switch", skill.casefold())
