@@ -1,0 +1,123 @@
+{
+  "id": "recovery/packet-sizing-explain",
+  "description": "of pack --explain dry-runs slice sizing: whole-phase still dies without writing; ≥800 is advisory and not written; a later real pack of the same child-id proves explain did not register the child",
+  "fixture": "recovery_packet_sizing",
+  "tags": ["recovery", "gate", "pack", "slice", "explain", "long-task"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--explain",
+        "--slice",
+        "do the whole explore phase",
+        "--role",
+        "explorer",
+        "--child-id",
+        "whole"
+      ],
+      "exit": 1,
+      "stdout_contains": [
+        "slice explain (not written)",
+        "verdict     refuse",
+        "whole_phase yes",
+        "whole-phase slogan",
+        "of pack --slice",
+        "--owns-requirement",
+        "of patch --constraints-add"
+      ],
+      "stderr_contains": [
+        "slice.phase",
+        "whole-phase slice refused"
+      ],
+      "stdout_not_contains": [
+        "The packet was still written"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--explain",
+        "--slice",
+        "map pricing models, do not decide the phase",
+        "--role",
+        "explorer",
+        "--child-id",
+        "ok"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "slice explain (not written)",
+        "verdict     ok",
+        "whole_phase no"
+      ],
+      "stderr_not_contains": [
+        "whole-phase slice refused",
+        "slice is"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "map pricing models, do not decide the phase",
+        "--role",
+        "explorer",
+        "--child-id",
+        "ok"
+      ],
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/ok.json",
+          "contains": ["\"child_id\": \"ok\""]
+        }
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--explain",
+        "--slice",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "--role",
+        "explorer",
+        "--child-id",
+        "long"
+      ],
+      "exit": 0,
+      "stdout_contains": [
+        "slice explain (not written)",
+        "verdict     advisory",
+        "slice is 800 chars",
+        "of pack --slice",
+        "of patch --constraints-add"
+      ],
+      "stdout_not_contains": [
+        "The packet was still written",
+        "of unpack"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "--role",
+        "explorer",
+        "--child-id",
+        "long"
+      ],
+      "exit": 0,
+      "stderr_contains": [
+        "slice is 800 chars",
+        "of unpack"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/long.json",
+          "contains": ["\"child_id\": \"long\""]
+        }
+      ]
+    }
+  ]
+}

@@ -44,6 +44,11 @@ class SliceLint:
     WARN_CHARS = SLICE_WARN_CHARS
     KIND = "slice.phase"
     WARN_KIND = "slice_long"
+    FIX = (
+        "split into multiple of pack --slice with exclusive "
+        "--owns-requirement/--owns-path; shared procedure: "
+        "of patch --constraints-add"
+    )
     SLOGANS = frozenset(
         {
             "do the whole phase",
@@ -125,9 +130,7 @@ class SliceLint:
             return
         die(
             "whole-phase slice refused: one pack is not a whole phase; "
-            "split into multiple of pack --slice with exclusive "
-            "--owns-requirement/--owns-path; shared procedure: "
-            "of patch --constraints-add",
+            + SliceLint.FIX,
             kind=SliceLint.KIND,
         )
 
@@ -137,11 +140,90 @@ class SliceLint:
             return None
         return (
             f"slice is {len(text)} chars (>= {SliceLint.WARN_CHARS}); "
-            "one pack is not a whole phase. Split into multiple of pack "
-            "--slice with exclusive --owns-requirement/--owns-path; "
-            "shared procedure: of patch --constraints-add. "
-            "The packet was still written; of unpack --child-id <id> releases it."
+            "one pack is not a whole phase. "
+            + SliceLint.FIX[0].upper()
+            + SliceLint.FIX[1:]
+            + ". The packet was still written; of unpack --child-id <id> releases it."
         )
+
+    @staticmethod
+    def document(text: str, phase: str | None = None) -> dict[str, Any]:
+        """In-memory sizing document. Does not write. No second ledger."""
+        raw = str(text or "")
+        whole = SliceLint.is_whole_phase(raw, phase)
+        long = SliceLint.too_long(raw)
+        chars = len(raw)
+        reasons: list[str] = []
+        if whole:
+            reasons.append(f"whole-phase slogan matched {SliceLint.body(raw)!r}")
+        if long:
+            reasons.append(
+                f"slice is {chars} chars (>= {SliceLint.WARN_CHARS})"
+            )
+        if not reasons:
+            reasons.append(
+                f"slice is {chars} chars (< {SliceLint.WARN_CHARS}); "
+                "not a whole-phase slogan"
+            )
+        if whole:
+            verdict = "refuse"
+            kind = SliceLint.KIND
+        elif long:
+            verdict = "advisory"
+            kind = SliceLint.WARN_KIND
+        else:
+            verdict = "ok"
+            kind = ""
+        return {
+            "v": 1,
+            "ok": not whole,
+            "explain": True,
+            "written": False,
+            "verdict": verdict,
+            "kind": kind,
+            "chars": chars,
+            "warn_chars": SliceLint.WARN_CHARS,
+            "too_long": long,
+            "whole_phase": whole,
+            "phase": str(phase or ""),
+            "reasons": reasons,
+            "fix": SliceLint.FIX if (whole or long) else "",
+        }
+
+    @staticmethod
+    def human(doc: dict[str, Any]) -> str:
+        chars = int(doc.get("chars") or 0)
+        warn = int(doc.get("warn_chars") or SliceLint.WARN_CHARS)
+        size = f"{chars} (>= {warn})" if doc.get("too_long") else f"{chars} (< {warn})"
+        lines = [
+            "slice explain (not written)",
+            "",
+            f"verdict     {doc.get('verdict') or ''}",
+            f"chars       {size}",
+            f"whole_phase {'yes' if doc.get('whole_phase') else 'no'}",
+            "reasons",
+        ]
+        for reason in doc.get("reasons") or []:
+            lines.append(f"  {reason}")
+        fix = str(doc.get("fix") or "")
+        lines.append(
+            f"fix         {fix}" if fix else "fix         none — slice is sized to pack"
+        )
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def event_fields(doc: dict[str, Any]) -> dict[str, Any]:
+        """Observe-only pack event. Same verb; written=false."""
+        return {
+            "explain": True,
+            "written": False,
+            "ok": bool(doc.get("ok")),
+            "verdict": str(doc.get("verdict") or ""),
+            "kind": str(doc.get("kind") or ""),
+            "chars": int(doc.get("chars") or 0),
+            "too_long": bool(doc.get("too_long")),
+            "whole_phase": bool(doc.get("whole_phase")),
+        }
 
 
 PROMPT_ORDER_KEYS = ("id", "rev", "mission", "phase", "spec_ref")

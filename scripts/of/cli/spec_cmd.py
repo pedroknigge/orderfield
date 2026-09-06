@@ -2024,6 +2024,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.MultiWaveResidualLoop",
     "tests.test_kernel.NestedFieldLifecycle",
     "tests.test_kernel.MidEpicHandoffPacket",
+    "tests.test_kernel.SliceLintExplain",
 )
 
 

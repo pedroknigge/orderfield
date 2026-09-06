@@ -121,6 +121,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.31 mid-epic handoff packet (`of handoff` field packet / `HandoffReport`; `recovery/mid-epic-handoff`) | documented |
 | 0.7.32 closed-field archive (`of gc --archive-field`; drop refuses `CLOSE.json`; `recovery/closed-field-archive`) | documented |
 | 0.7.33 live in-flight visibility (`of status` / `resume` / `pulse` `running` + residual MISSING; `InFlightSignal`; `recovery/in-flight-visibility`) | documented |
+| 0.7.34 `of pack --explain` dry-run slice sizing (`SliceLint.document`; `recovery/packet-sizing-explain`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

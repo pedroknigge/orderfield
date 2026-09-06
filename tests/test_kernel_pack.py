@@ -843,6 +843,183 @@ class SliceLintGate(unittest.TestCase):
         self.assertIn("of unpack", note)
         self.assertIn("of patch --constraints-add", note)
 
+    def test_document_names_reasons_without_writing(self) -> None:
+        ok = of.SliceLint.document("map pricing models")
+        self.assertEqual(ok["verdict"], "ok")
+        self.assertFalse(ok["written"])
+        self.assertTrue(ok["ok"])
+        self.assertFalse(ok["too_long"])
+        self.assertFalse(ok["whole_phase"])
+        self.assertIn("not a whole-phase slogan", ok["reasons"][0])
+        self.assertEqual(ok["fix"], "")
+        long = of.SliceLint.document("x" * of.SLICE_WARN_CHARS)
+        self.assertEqual(long["verdict"], "advisory")
+        self.assertTrue(long["too_long"])
+        self.assertFalse(long["written"])
+        self.assertIn(of.SliceLint.FIX, long["fix"])
+        human = of.SliceLint.human(long)
+        self.assertIn("slice explain (not written)", human)
+        self.assertIn("verdict     advisory", human)
+        refuse = of.SliceLint.document("do the whole explore phase", phase="explore")
+        self.assertEqual(refuse["verdict"], "refuse")
+        self.assertTrue(refuse["whole_phase"])
+        self.assertFalse(refuse["ok"])
+        self.assertIn("whole-phase slogan matched", refuse["reasons"][0])
+        fields = of.SliceLint.event_fields(refuse)
+        self.assertTrue(fields["explain"])
+        self.assertFalse(fields["written"])
+        self.assertTrue(fields["whole_phase"])
+
+
+class SliceLintExplain(unittest.TestCase):
+    """of pack --explain dry-runs sizing. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pack-explain-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        init = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+
+    def _spawned(self) -> int:
+        return load_json(self.tmp / ".orderfield" / "state.json")["children_spawned"]
+
+    def test_explain_long_slice_does_not_write(self) -> None:
+        long_slice = "x" * of.SLICE_WARN_CHARS
+        explained = run_of(
+            self.tmp,
+            "pack",
+            "--explain",
+            "--slice",
+            long_slice,
+            "--role",
+            "explorer",
+            "--child-id",
+            "long",
+        )
+        self.assertEqual(explained.returncode, 0, explained.stderr)
+        self.assertIn("slice explain (not written)", explained.stdout)
+        self.assertIn("verdict     advisory", explained.stdout)
+        self.assertIn("slice is 800 chars", explained.stdout)
+        self.assertIn("of pack --slice", explained.stdout)
+        self.assertIn("of patch --constraints-add", explained.stdout)
+        self.assertNotIn("The packet was still written", explained.stdout)
+        self.assertFalse(
+            (
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "long.json"
+            ).is_file()
+        )
+        self.assertEqual(self._spawned(), 0)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            long_slice,
+            "--role",
+            "explorer",
+            "--child-id",
+            "long",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertTrue(
+            (
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "long.json"
+            ).is_file()
+        )
+
+    def test_explain_whole_phase_refuses_without_write(self) -> None:
+        explained = run_of(
+            self.tmp,
+            "pack",
+            "--explain",
+            "--slice",
+            "do the whole explore phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "whole",
+        )
+        self.assertNotEqual(explained.returncode, 0)
+        self.assertIn("slice explain (not written)", explained.stdout)
+        self.assertIn("verdict     refuse", explained.stdout)
+        self.assertIn("whole-phase slogan", explained.stdout)
+        self.assertIn("slice.phase", explained.stderr)
+        self.assertIn("whole-phase slice refused", explained.stderr)
+        self.assertFalse(
+            (
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "whole.json"
+            ).is_file()
+        )
+        self.assertEqual(self._spawned(), 0)
+
+    def test_explain_ok_slice_then_same_child_can_pack(self) -> None:
+        explained = run_of(
+            self.tmp,
+            "pack",
+            "--explain",
+            "--slice",
+            "map pricing models, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ok",
+        )
+        self.assertEqual(explained.returncode, 0, explained.stderr)
+        self.assertIn("verdict     ok", explained.stdout)
+        self.assertIn("not written", explained.stdout)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map pricing models, do not decide the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ok",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertTrue(
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "ok.json").is_file()
+        )
+
+    def test_explain_json_event_is_pack_not_written(self) -> None:
+        proc = run_of(
+            self.tmp,
+            "--json",
+            "pack",
+            "--explain",
+            "--slice",
+            "x" * of.SLICE_WARN_CHARS,
+            "--role",
+            "explorer",
+            "--child-id",
+            "json",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        events = [
+            json.loads(line)
+            for line in proc.stderr.splitlines()
+            if line.strip()
+        ]
+        pack_events = [row for row in events if row.get("event") == "pack"]
+        self.assertTrue(pack_events, proc.stderr)
+        last = pack_events[-1]
+        self.assertTrue(last.get("explain"))
+        self.assertFalse(last.get("written"))
+        self.assertTrue(last.get("too_long"))
+        self.assertEqual(last.get("verdict"), "advisory")
+        self.assertFalse(
+            (
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "json.json"
+            ).is_file()
+        )
+
 
 class CollectByPacketResidualPath(unittest.TestCase):
     def setUp(self) -> None:

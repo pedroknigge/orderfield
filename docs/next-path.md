@@ -1,6 +1,6 @@
-# Next path (after 0.7.33)
+# Next path (after 0.7.34)
 
-Live in-flight visibility is proven: `of status` / `of resume` / `of pulse` print `running` while residual is MISSING (`InFlightSignal`); `of status --json` carries `in_flight_detail` + `next`. `recovery/in-flight-visibility` and `InFlightVisibility` hold. Closed-field archive, mid-epic handoff, nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
+`of pack --explain` is proven: `SliceLint` prints why a slice is oversized without writing a packet. `recovery/packet-sizing-explain` and `SliceLintExplain` hold. Live in-flight visibility, closed-field archive, mid-epic handoff, nested field lifecycle, the 3-wave residual loop, `of status --json`, root stub vs nested fields, orphan packed-child cleanup, doctor one-pass skew, wave list/show, contrast one-pager, packed-age watchdog, stronger done_when lint, resume after process death, threshold stop-spawn, packet sizing lint, wave-report quality, mid-flight amend, and `budget.seconds` honesty stay on the published line.
 
 No process supervisor, no bot org, no `of merge`. No fake token budgets.
 

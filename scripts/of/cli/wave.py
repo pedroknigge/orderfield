@@ -291,11 +291,18 @@ def run_child(
 def cmd_pack(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
-    require_spec_intact(root, order)
-    state = load_state(root)
     if args.role not in ROLES:
         die(f"invalid role: {args.role}")
     slice_text = args.slice or ""
+    if getattr(args, "explain", False):
+        doc = SliceLint.document(slice_text, phase=order.get("phase"))
+        print(SliceLint.human(doc), end="")
+        emit_event("pack", **SliceLint.event_fields(doc))
+        if doc.get("whole_phase"):
+            SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
+        return
+    require_spec_intact(root, order)
+    state = load_state(root)
     SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
     slice_note = SliceLint.long_note(slice_text)
     if slice_note:

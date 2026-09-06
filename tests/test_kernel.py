@@ -35,7 +35,11 @@ from test_kernel_field import (  # noqa: E402,F401
     WaveRosterListShow,
 )
 from test_kernel_fields import NestedFieldLifecycle, RootStubAmbiguous  # noqa: E402,F401
-from test_kernel_pack import StalePackets, WaveReportQualityGate  # noqa: E402,F401
+from test_kernel_pack import (  # noqa: E402,F401
+    SliceLintExplain,
+    StalePackets,
+    WaveReportQualityGate,
+)
 from test_kernel_spec import (  # noqa: E402,F401
     ContrastReportRenderer,
     MultiWaveResidualLoop,
