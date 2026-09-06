@@ -20,7 +20,7 @@ One working tree may hold several ORDERs. Product files stay at the repo root. C
 
 `of init --force` replaces **this** field (archives old waves). It is not how you keep the current field and start another. That is `of new`.
 
-The first `of new` promotes a first-home top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age. A lone first-home row is labeled `first` (top-level `.orderfield/ORDER.json`), not `legacy` — that is not a leftover stub. `choose` says `of new` is an unrelated epic; `of new --parent` is a phase of ACTIVE; the same product on this ORDER is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue.
+The first `of new` promotes a first-home top-level ORDER under `fields/<id>/` and writes ACTIVE. Later siblings land next to it. `of fields` lists them. That list is the epic roster: `*` marks ACTIVE, header counts open/closed, each row names phase / wave / packed-age, and a `packs` section names in-flight children (residual MISSING) across open homes. `of fields --json` is the dashboard object (`PackRoster`). A lone first-home row is labeled `first` (top-level `.orderfield/ORDER.json`), not `legacy` — that is not a leftover stub. `choose` says `of new` is an unrelated epic; `of new --parent` is a phase of ACTIVE; the same product on this ORDER is `of patch` or `of spec --amend`. `--open` hides closed homes. Default output is capped; `--all` / `--cursor` continue. Proof: `recovery/cross-field-pack-roster`.
 
 ## Phase of an epic (`of new --parent`)
 
@@ -52,6 +52,7 @@ If resume prints `auto_continue no` and **foreign field**, do not execute that f
 
 ```bash
 of fields
+of fields --json
 of fields --open
 of fields --all
 of status --field ord_…

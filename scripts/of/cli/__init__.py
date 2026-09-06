@@ -96,6 +96,7 @@ from of.cli.spec_cmd import (
     eval_setup_recovery_contrast_close_contract,
     eval_setup_recovery_done_when_lint,
     eval_setup_recovery_field_roster_ux,
+    eval_setup_recovery_cross_field_pack_roster,
     eval_setup_recovery_mission_rewrite,
     eval_setup_recovery_midflight_amend,
     MidFlightAmendEval,
@@ -190,6 +191,7 @@ __all__ = [
     "eval_setup_recovery_contrast_close_contract",
     "eval_setup_recovery_done_when_lint",
     "eval_setup_recovery_field_roster_ux",
+    "eval_setup_recovery_cross_field_pack_roster",
     "eval_setup_recovery_mission_rewrite",
     "eval_setup_recovery_midflight_amend",
     "MidFlightAmendEval",
@@ -316,6 +318,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_new)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
+    s.add_argument(
+        "--json",
+        dest="fields_json",
+        action="store_true",
+        help="print one cross-field pack roster JSON object on stdout (dashboard path)",
+    )
     s.add_argument(
         "--open",
         dest="open_only",

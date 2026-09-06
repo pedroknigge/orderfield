@@ -8,7 +8,7 @@ A cut, a resume, a different model: the plan holds. Children cannot rewrite the 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.7.40` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.7.41` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -52,6 +52,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Child-forged close + `--tokens` theater + unpack of a reporter | `CLOSE.json` stays absent; `--tokens N>0` dies; unpack of a residual child is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home); `--field` stub dies; `of migrate` archives | `recovery/active-field-pointer`; `recovery/root-stub-ambiguous` |
 | Many open siblings; `of new` vs `of patch` is unclear | `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
+| Epic dashboard needs flying packs across siblings | `of fields` / `of fields --json` lists in-flight packs (residual MISSING) from every open home; `of status --json` stays one field | `recovery/cross-field-pack-roster`; `PackRosterCrossField` |
 | Epic needs a phase field, then return | `of new --parent` stamps `ORDER.parent`; `of close` returns ACTIVE; not `of merge` | `recovery/nested-field-lifecycle`; `NestedFieldLifecycle` |
 | Theater done-when (`current phase criteria closed with evidence`, `done.`, `all done`) or empty active set close | init / patch / `done_when+` refuse; `--done-when-closed` / `of close` / apply `done_when_closed` refuse empty theater | `recovery/done-when-lint` |
 | Skip explore→build without `--force` | `of phase build` dies; a forced skip is printed on status | `recovery/skip-explore-theater` |
@@ -122,6 +123,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Root stub + nested ACTIVE: status and resume show the live field, not the stub | `recovery/active-field-pointer` |
 | Different-id leftover root ORDER: fields omits it; `--field` dies; `of migrate` archives | `recovery/root-stub-ambiguous`; `RootStubAmbiguous` |
 | Three siblings: `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
+| Two siblings each with an in-flight pack: `of fields` / `--json` names both; `status --json` stays the ACTIVE child | `recovery/cross-field-pack-roster`; `PackRosterCrossField` |
 | Nested phase field: `--parent` stamps parent; close returns ACTIVE to the epic | `recovery/nested-field-lifecycle`; `NestedFieldLifecycle` |
 | Closed field archives without losing `CLOSE.json`; drop without `--force` cannot wipe the trail | `recovery/closed-field-archive`; `ClosedFieldArchiveTrail` |
 | Generic/empty done-when dies; a contrast-bound criterion is accepted and can close | `recovery/done-when-lint` |

@@ -1594,23 +1594,23 @@ def cmd_wave_show(args: argparse.Namespace) -> None:
 
 def cmd_fields(args: argparse.Namespace) -> None:
     root = find_root()
-    from of.field import FieldRoster, field_is_open, list_field_homes
+    from of.field import FieldRoster, PackRoster, list_field_homes
 
     homes = list_field_homes(root)
-    archived_n = ClosedFieldArchive.count(root)
+    doc = PackRoster.document(root, homes)
+    if bool(getattr(args, "fields_json", False)):
+        print(json.dumps(PackRoster.machine(doc), sort_keys=True))
+        emit_event("fields", **PackRoster.event_fields(doc))
+        return
     if not homes:
         print("fields        0  open 0  closed 0")
+        archived_n = int(doc.get("archived") or 0)
         if archived_n:
             print(ClosedFieldArchive.roster_line(root, archived_n))
+        for line in PackRoster.format_lines(homes, root=root):
+            print(line)
         print("next          of init --mission '...'")
-        emit_event(
-            "fields",
-            count=0,
-            open=0,
-            closed=0,
-            archived=archived_n,
-            ok=True,
-        )
+        emit_event("fields", **PackRoster.event_fields(doc))
         return
     FieldRoster.print(
         homes,
@@ -1621,15 +1621,7 @@ def cmd_fields(args: argparse.Namespace) -> None:
     )
     RootStub.emit(root)
     print_audit_block(root)
-    open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
-    emit_event(
-        "fields",
-        count=len(homes),
-        open=open_n,
-        closed=len(homes) - open_n,
-        archived=archived_n,
-        ok=True,
-    )
+    emit_event("fields", **PackRoster.event_fields(doc))
 
 
 def cmd_resume(args: argparse.Namespace) -> None:

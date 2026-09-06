@@ -34,7 +34,11 @@ from test_kernel_field import (  # noqa: E402,F401
     StatusReportJson,
     WaveRosterListShow,
 )
-from test_kernel_fields import NestedFieldLifecycle, RootStubAmbiguous  # noqa: E402,F401
+from test_kernel_fields import (  # noqa: E402,F401
+    NestedFieldLifecycle,
+    PackRosterCrossField,
+    RootStubAmbiguous,
+)
 from test_sibling_field_roundtrip import PackOutPhysicalNested  # noqa: E402,F401
 from test_kernel_pack import (  # noqa: E402,F401
     SliceLintExplain,

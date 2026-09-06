@@ -1,0 +1,59 @@
+{
+  "id": "recovery/cross-field-pack-roster",
+  "description": "Two sibling fields each with an in-flight pack: of fields lists both; --json is the dashboard object; status --json stays one field",
+  "fixture": "recovery_cross_field_pack_roster",
+  "tags": ["recovery", "fields", "packs", "roster"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "fields        2  open 2  closed 0",
+        "packs         2  in-flight",
+        "alpha1",
+        "beta1",
+        "MISSING",
+        "epic alpha",
+        "epic beta",
+        "*open",
+        "choose"
+      ],
+      "stdout_not_contains": ["PICK --field"]
+    },
+    {
+      "run": "fields",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"fields\"",
+        "\"in_flight\": 2",
+        "\"alpha1\"",
+        "\"beta1\"",
+        "\"residual\": \"MISSING\""
+      ],
+      "stdout_not_contains": [
+        "fields        2",
+        "choose",
+        "root        "
+      ]
+    },
+    {
+      "run": "--json",
+      "args": ["fields"],
+      "exit": 0,
+      "stdout_contains": ["packs         2  in-flight", "alpha1", "beta1"],
+      "stderr_contains": ["\"event\": \"fields\"", "\"in_flight\": 2", "\"alpha1\""],
+      "stdout_not_contains": ["\"kind\": \"fields\""]
+    },
+    {
+      "run": "status",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"status\"",
+        "\"beta1\""
+      ],
+      "stdout_not_contains": ["\"alpha1\"", "\"kind\": \"fields\""]
+    }
+  ]
+}
