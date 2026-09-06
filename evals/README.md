@@ -66,6 +66,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/efficiency-signal` | `recovery_efficiency_signal` | two cheap failures → status/resume propose uptier (ask only); `residual.usage` accepted; packet `budget.tokens` stays 0; `--tokens 80000` dies; ORDER has no silent `adapter_hints` (`EfficiencySignalProof`) |
 | *(kernel unittest)* | — | published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies (`ClaimsHonestyGate`; `python3 docs/audit/check-claims.py`) |
 | *(kernel unittest)* | — | README opens with typical problems → what Orderfield does; Haken analogy stays below (`ReadmeProductSurface`) |
+| *(kernel unittest)* | — | one VERSION per real cut; packaging-only CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`. Two-wave packed-child amend (wave-1 still in-flight) is `recovery/midflight-amend`; the 3-wave collect/integrate loop is `recovery/multi-wave-residual`.
 
@@ -82,7 +83,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `UpdateAskDaily`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, `AdversarialDualTruthCorpus`, `PackOutPhysicalNested`, `PackRosterCrossField`, `CloseChecklistProof`, and `AdapterHintsCli`. `recovery/doctor-advisory-ux` is on `--strict`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `UpdateAskDaily`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, `AdversarialDualTruthCorpus`, `PackOutPhysicalNested`, `PackRosterCrossField`, `CloseChecklistProof`, `AdapterHintsCli`, `ClaimsHonestyGate`, `ReadmeProductSurface`, and `PackagingBumpDiscipline`. `recovery/doctor-advisory-ux` is on `--strict`.
 
 ```bash
 python3 -m unittest discover -s tests -v
