@@ -83,7 +83,7 @@ Observable via `of spawn --dry-run` (argv preview; approval flags render as
 
 ## Model hints (`ORDER.adapter_hints` / `packet.adapter_hints`)
 
-Opt-in. The kernel never invents a model. The `/of` skill must propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
+Opt-in. The kernel never invents a model. The `/of` skill consults [docs/model-catalog.md](../docs/model-catalog.md) then must propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
 
 ```bash
 of patch --model-hints field|wave|off
@@ -105,8 +105,10 @@ packet even without a field write. No write → spawn argv is unchanged.
 | orca | no-op (`task-create` has no `--model`; hint stays on disk) |
 | qwen, opencode, generic | no-op |
 
-`of doctor` prints that table. This is argv translation like `OF_TRUST`,
-not a model catalog and not a later efficiency-signal / propose-uptier cut.
+`of doctor` prints that table plus one advisory `catalog` pointer.
+This is argv translation like `OF_TRUST`, not a silent router and not
+`budget.tokens`. The living intelligence×cost sheet is
+[docs/model-catalog.md](../docs/model-catalog.md) (`ModelCatalog`).
 Class: `AdapterHints` in `scripts/of_adapters.py`.
 
 A conservative child runs with the harness's own approval policy and **no

@@ -23,6 +23,8 @@ from of_adapters import (
     pick_adapter,
 )
 
+from of.model_catalog import ModelCatalog
+
 from of.field import (
     CHECKPOINT_MAX_CHARS,
     CHECKPOINT_MAX_LINES,
@@ -643,6 +645,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     )
     print("model_hints")
     for line in AdapterHints.doctor_lines():
+        print(f"  {line}")
+    print("catalog")
+    for line in ModelCatalog.doctor_lines():
         print(f"  {line}")
     print("efficiency")
     for line in EfficiencySignal.doctor_lines():

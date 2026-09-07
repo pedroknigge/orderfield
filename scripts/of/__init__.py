@@ -31,6 +31,8 @@ from of_adapters import (
     which_bin,
 )
 
+from of.model_catalog import ModelCatalog
+
 from of.field import (
     APPROVAL_FLAG_NAMES,
     APPROVAL_REDACTED,
@@ -443,6 +445,7 @@ __all__ = [
     'ADAPTER_TOOLS',
     'AdapterDetect',
     'AdapterHints',
+    'ModelCatalog',
     'ActiveField',
     'ArgvRedact',
     'DoctorSkew',

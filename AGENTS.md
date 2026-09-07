@@ -48,6 +48,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
 | [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty; `CLOSE.json` |
 | [docs/efficiency-signal.md](docs/efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only) |
+| [docs/model-catalog.md](docs/model-catalog.md) | Living intelligence×cost sheet per harness (advisory; not a budget) |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
@@ -152,6 +153,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.58 turn-end quote-PULSE leader duty (`InFlightSignal.speak_line` on status/resume; reuses `PulseProgress`; no manual `of pulse`; `InFlightVisibility`) | documented |
 | 0.7.59 skill-first ask same-harness categories vs multi-harness mix before pack (`SkillHarnessAsk`; reuse `of detect` / `--harness`; no new CLI) | documented |
 | 0.7.60 quick detect present / missing / PATH≠auth (`AdapterDetect`; reuse `of detect` / doctor; never claim login from PATH) | documented |
+| 0.7.61 living model catalog (intelligence×cost) per harness (`ModelCatalog`; `docs/model-catalog.md` + `.json`; consult-before-propose; not `budget.tokens`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

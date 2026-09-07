@@ -17,6 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OF_PY = ROOT / "scripts" / "of.py"
 INSTALL = ROOT / "install.sh"
+_SCRIPTS = ROOT / "scripts"
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
 
 
 def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
@@ -751,6 +754,60 @@ class SkillHarnessAsk(unittest.TestCase):
         self.assertIn("same-harness", hero)
         self.assertIn("multi-harness", hero)
         self.assertIn("of detect", hero)
+
+
+class SkillModelCatalogConsult(unittest.TestCase):
+    """Leader consults the living catalog before cheap/frontier or mix."""
+
+    def test_skill_consults_catalog_before_propose_and_alias_mirrors(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        folded = table.casefold()
+        consult_at = folded.index("consult")
+        propose_at = folded.index("propose in chat")
+        ask_at = folded.index("ask in chat")
+        self.assertLess(consult_at, propose_at)
+        self.assertLess(consult_at, ask_at)
+        self.assertIn("model-catalog", folded)
+        self.assertIn("smarter", folded)
+        self.assertIn("budget.tokens", folded)
+        alias_fold = alias.casefold()
+        self.assertIn("consult", alias_fold)
+        self.assertIn("model-catalog", alias_fold)
+        self.assertIn("smarter", alias_fold)
+        hero = readme[: readme.index("## Install")].casefold()
+        self.assertIn("model catalog", hero)
+        self.assertIn("cheap vs frontier", hero)
+
+
+class ModelCatalogHonesty(unittest.TestCase):
+    """Catalog is sourced or unknown. Not IQ ranks. Not budget.tokens."""
+
+    def test_catalog_is_honest_and_lockstep(self) -> None:
+        from of.model_catalog import ModelCatalog
+
+        errors = ModelCatalog.errors(ROOT)
+        self.assertEqual(errors, [])
+        doc = ModelCatalog.load(ROOT)
+        models = ModelCatalog.models(doc)
+        self.assertGreaterEqual(len(models), 8)
+        harnesses = {str(row["harness"]) for row in models}
+        for name in ("claude", "codex", "cursor", "grok", "agy"):
+            self.assertIn(name, harnesses)
+        known = [row for row in models if row.get("price_known")]
+        self.assertTrue(known)
+        unknown = [row for row in models if not row.get("price_known")]
+        self.assertTrue(unknown)
+
+    def test_doctor_prints_advisory_pointer(self) -> None:
+        from of.model_catalog import ModelCatalog
+
+        lines = ModelCatalog.doctor_lines()
+        self.assertTrue(any("model-catalog.md" in line for line in lines))
+        self.assertTrue(any("budget.tokens" in line for line in lines))
+        self.assertFalse(any("of catalog" in line for line in lines))
 
 
 class AdapterDetectHonesty(unittest.TestCase):
