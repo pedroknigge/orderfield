@@ -155,7 +155,8 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
 
     def _install_agy(self, body: str) -> None:
         fake = self.bindir / "agy"
-        fake.write_text(textwrap.dedent(body), encoding="utf-8")
+        script = "#!/usr/bin/env python3\n" + textwrap.dedent(body).lstrip("\n")
+        fake.write_text(script, encoding="utf-8")
         fake.chmod(0o755)
 
     def _spawn(self, profile: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -178,9 +179,7 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         env = envelope(denied_actions=["command(git status)", "mcp(browser)"])
         self._install_agy(
             f"""
-            #!/usr/bin/env python3
             from pathlib import Path
-            import json, sys
             dest = Path({str(dest)!r})
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text({json.dumps(json.dumps(residual))}, encoding="utf-8")
@@ -213,7 +212,6 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         env = envelope(denied_actions=["command(git)"])
         self._install_agy(
             f"""
-            #!/usr/bin/env python3
             from pathlib import Path
             dest = Path({str(dest)!r})
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -238,7 +236,6 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         env = envelope(denied_actions=["command(npm test)"])
         self._install_agy(
             f"""
-            #!/usr/bin/env python3
             print({json.dumps(json.dumps(env))})
             """
         )
