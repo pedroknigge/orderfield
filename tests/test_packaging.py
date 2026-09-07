@@ -20,6 +20,7 @@ INSTALL = ROOT / "install.sh"
 _SCRIPTS = ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
+from skill_surface import SkillSurface  # noqa: E402
 
 
 def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
@@ -1048,6 +1049,55 @@ class MortalInstallDemo(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         self.assertIn("extracted release tree", proc.stderr)
         self.assertIn("PUBLISH.md", proc.stderr)
+
+
+class SkillSurfaceCore(unittest.TestCase):
+    """Always-loaded SKILL.md is a short core. Appendix keeps full procedure."""
+
+    def test_core_is_under_cap_and_points_at_appendix(self) -> None:
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT),
+            20_000,
+            "core must stay a cut vs the 62477-byte 0.7.65 monolith",
+        )
+        core = SkillSurface.core(ROOT)
+        self.assertIn("Hosts load this file only", core)
+        self.assertIn(SkillSurface.APPENDIX, core)
+        self.assertIn("## What to type next", core)
+        alias = SkillSurface.alias(ROOT)
+        self.assertIn(SkillSurface.APPENDIX, alias)
+
+    def test_leader_surface_keeps_kernel_verbs(self) -> None:
+        leader = SkillSurface.leader(ROOT)
+        for needle in (
+            "of resume",
+            "of pack",
+            "of spawn",
+            "of collect",
+            "of integrate",
+            "of contrast",
+            "of close --checklist",
+            "of issue",
+            "**Stay-on-the-run.**",
+            "## Forbidden",
+            "Do not pack a whole phase as one slice",
+        ):
+            self.assertIn(needle, leader, needle)
+
+    def test_install_copies_appendix(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-skill-surface-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run(ROOT, "bash", str(INSTALL), "--root", str(tmp), "--generic")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        dest = tmp / ".agents" / "skills" / "orderfield"
+        self.assertTrue((dest / SkillSurface.CORE).is_file())
+        self.assertTrue((dest / SkillSurface.APPENDIX).is_file())
+        installed = (dest / SkillSurface.CORE).read_text(encoding="utf-8")
+        self.assertIn(SkillSurface.APPENDIX, installed)
 
 
 if __name__ == "__main__":

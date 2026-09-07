@@ -25,8 +25,9 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Doc | Role |
 |-----|------|
 | [README.md](README.md) | Product surface / install |
-| [SKILL.md](SKILL.md) | Leader procedure (skill body) |
+| [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
+| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load) |
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [PRINCIPLES.md](PRINCIPLES.md) | Short-form pointer to invariants |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
@@ -159,6 +160,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.64 agy `--json-schema` residual reuses Codex file (`OutputSchema`; Claude omit inline-only / keep stream-json; Qwen omit) | documented |
 | 0.7.65 `OF_TRUST=plan` maps native cursor/agy `--mode plan` + grok `--sandbox read-only` (`TrustNativeFlags`; honesty omit for gated/missing modes) | documented |
 | 0.7.66 adapter resume/continue only when residual already has session id (`AdapterResume`; never invent; never `--continue`) | documented |
+| 0.7.67 SKILL.md short core + `references/skill-appendix.md` (`SkillSurface`; hosts load the core; appendix is the rest of the procedure) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

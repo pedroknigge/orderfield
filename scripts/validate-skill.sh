@@ -89,6 +89,9 @@ ok "fixtures + tests present"
 python3 "$ROOT/docs/audit/check-claims.py" "$ROOT" || fail "claims honesty gate"
 ok "claims honesty"
 
+python3 "$ROOT/scripts/skill_surface.py" "$ROOT" || fail "skill surface core+appendix"
+ok "skill surface"
+
 python3 "$ROOT/scripts/check_packaging_bump.py" "$ROOT" || fail "packaging bump discipline"
 ok "packaging bump"
 

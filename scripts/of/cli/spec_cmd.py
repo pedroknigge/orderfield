@@ -2563,6 +2563,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AgyDeniedActionsSpawn",
     "tests.test_kernel.AgyDeniedActionsSkill",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
+    "tests.test_kernel.SkillSurfaceCore",
     "tests.test_kernel.PackagingBumpDiscipline",
 )
 

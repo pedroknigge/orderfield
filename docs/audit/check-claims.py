@@ -30,7 +30,12 @@ class ClaimsHonesty:
     """Published claims stay evidence-backed. Static methods only."""
 
     HONESTY_CAP = 98.0
-    SURFACE = ("SKILL.md", "of/SKILL.md", "README.md")
+    SURFACE = (
+        "SKILL.md",
+        "of/SKILL.md",
+        "README.md",
+        "references/skill-appendix.md",
+    )
     THEATER = (
         "mission complete",
         "all delivered",

@@ -40,6 +40,11 @@ class ClaimsHonestyGate(unittest.TestCase):
         shutil.copy(ROOT / "SKILL.md", tmp / "SKILL.md")
         shutil.copy(ROOT / "of" / "SKILL.md", tmp / "of" / "SKILL.md")
         shutil.copy(ROOT / "README.md", tmp / "README.md")
+        (tmp / "references").mkdir()
+        shutil.copy(
+            ROOT / "references" / "skill-appendix.md",
+            tmp / "references" / "skill-appendix.md",
+        )
         return tmp
 
     def test_repo_passes(self) -> None:
