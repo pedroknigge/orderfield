@@ -157,6 +157,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.62 stream-json / JSON streams feed PULSE (`StreamJson`; reuse `PulseProgress` + stdout residual extract; claude/cursor/codex only) | documented |
 | 0.7.63 conservative agy `denied_actions` in residual (`AgyDeniedActions`; reuse `StreamJson.parse_line`; not approval; not yolo) | documented |
 | 0.7.64 agy `--json-schema` residual reuses Codex file (`OutputSchema`; Claude omit inline-only / keep stream-json; Qwen omit) | documented |
+| 0.7.65 `OF_TRUST=plan` maps native cursor/agy `--mode plan` + grok `--sandbox read-only` (`TrustNativeFlags`; honesty omit for gated/missing modes) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

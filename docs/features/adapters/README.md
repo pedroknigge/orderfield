@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.64` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.65` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -24,10 +24,10 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 `OF_TRUST` is authoritative for every adapter. Conservative (default) emits no bypass flag. `yolo` is the only bypass. Full table: [references/adapters.md](../../../references/adapters.md#trust-profiles-of_trust).
 
-- **grok:** `-p`; `--always-approve` only under `OF_TRUST=yolo`; consented named `--model` before `-p`
+- **grok:** `-p`; `OF_TRUST=plan` adds `--sandbox read-only`; `--always-approve` only under `OF_TRUST=yolo`; consented named `--model` before `-p`
 - **codex:** `exec --json`; residual still `-o`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`)
-- **claude / cursor:** `--output-format stream-json` so spawn can append harness events to the same `scratch/<id>/PULSE` (`StreamJson` / `PulseProgress`). Residual extract from stdout stays. Not a supervisor.
-- **agy:** flags before `-p`; `--json-schema` to `residual.codex.schema.json` (same Codex file; `OutputSchema`); `--dangerously-skip-permissions` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Conservative spawn copies nonempty JSON `denied_actions` into `residual.denied_actions` (`AgyDeniedActions`); missing/empty is not approval; `yolo` does not copy. Skills: Global `~/.gemini/antigravity-cli/skills`; Shared `~/.gemini/skills`; `~/.gemini/config/skills` optional legacy. Quoted `description` / `compatibility` frontmatter so agy discovers the skill.
+- **claude / cursor:** `--output-format stream-json` so spawn can append harness events to the same `scratch/<id>/PULSE` (`StreamJson` / `PulseProgress`). Residual extract from stdout stays. Cursor `OF_TRUST=plan` adds `--mode plan`. Not a supervisor.
+- **agy:** flags before `-p`; `--json-schema` to `residual.codex.schema.json` (same Codex file; `OutputSchema`); `OF_TRUST=plan` prepends `--mode plan`; `--dangerously-skip-permissions` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Conservative spawn copies nonempty JSON `denied_actions` into `residual.denied_actions` (`AgyDeniedActions`); missing/empty is not approval; `yolo` does not copy. Skills: Global `~/.gemini/antigravity-cli/skills`; Shared `~/.gemini/skills`; `~/.gemini/config/skills` optional legacy. Quoted `description` / `compatibility` frontmatter so agy discovers the skill.
 - **qwen:** positional prompt (not deprecated `-p`); `--output-format json --approval-mode default` in conservative; never `--yolo` unless `OF_TRUST=yolo`; never `-m` / `--openai-base-url` / `--openai-api-key`. Kernel verifies PATH + argv + residual file/schema; harness promises approval, sandbox, auth, readiness.
 - **model hints:** optional. The `/of` skill consults [docs/model-catalog.md](../../model-catalog.md) then must propose cheap vs frontier in chat before a multi-role pack. After consent (`of patch --model-hints` or pack `--model-tier` / `--model`), spawn may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku, frontier→opus. Grok and agy pass a named `--model` before `-p`; tier-only is no-op (no invented aliases). Orca `task-create` has no `--model` (disk hint only). Qwen, opencode, and generic stay no-op. No consent → argv unchanged. `AdapterHints` in `scripts/of_adapters.py`. Advisory catalog is not a router. Not a silent switch.
 

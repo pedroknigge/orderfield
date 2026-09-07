@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.64. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.65. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.64` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.65` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -79,6 +79,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.62 stream-json / JSON streams feed the same PULSE. `StreamJson` parses documented harness NDJSON (claude/cursor `stream-json`, codex `--json`) into `PulseProgress.append`. Residual extract stays the stdout path. agy/qwen/opencode keep a JSON blob. Proof: `StreamJsonParse` / `StreamJsonSpawn`. No new CLI.
 - 0.7.63 conservative agy spawn copies nonempty harness `denied_actions` into optional `residual.denied_actions` (`AgyDeniedActions`). Missing/empty is omit — not approval. `yolo` does not copy. Proof: `AgyDeniedActionsSpawn`. No new CLI.
 - 0.7.64 agy spawn `--json-schema` reuses `residual.codex.schema.json` (`OutputSchema`). Claude omit: inline-only; keep stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Proof: `OutputSchemaArgv`. No new CLI.
+- 0.7.65 `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only` via `_TRUST_FLAGS`. Claude `auto` stays `acceptEdits`. Cursor/OpenCode/Grok `auto-edit`/`auto` stay conservative. Proof: `TrustNativeFlags`. No new CLI.
 
 ## Contract boundaries
 

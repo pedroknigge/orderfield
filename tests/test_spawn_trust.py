@@ -173,6 +173,12 @@ class TrustMatrixInProcess(unittest.TestCase):
         self.assertEqual(codex[codex.index("--sandbox") + 1], "read-only")
         qwen = self.argv("qwen")
         self.assertEqual(qwen[qwen.index("--approval-mode") + 1], "plan")
+        cursor = self.argv("cursor")
+        self.assertEqual(cursor[cursor.index("--mode") + 1], "plan")
+        agy = self.argv("agy")
+        self.assertEqual(agy[agy.index("--mode") + 1], "plan")
+        grok = self.argv("grok")
+        self.assertEqual(grok[grok.index("--sandbox") + 1], "read-only")
 
     def test_aliases(self) -> None:
         os.environ["OF_TRUST"] = "escalated"
@@ -199,6 +205,67 @@ class TrustMatrixInProcess(unittest.TestCase):
             self.assertTrue(
                 set(found) <= set(of_adapters.YOLO_FLAGS[adapter]), (adapter, found)
             )
+
+
+class TrustNativeFlags(unittest.TestCase):
+    """OF_TRUST plan maps documented native flags; honesty fallthrough stays."""
+
+    def setUp(self) -> None:
+        self._trust = os.environ.pop("OF_TRUST", None)
+        self.addCleanup(self._restore)
+
+    def _restore(self) -> None:
+        if self._trust is None:
+            os.environ.pop("OF_TRUST", None)
+        else:
+            os.environ["OF_TRUST"] = self._trust
+
+    def test_plan_emits_documented_native_flags_only(self) -> None:
+        os.environ["OF_TRUST"] = "plan"
+        self.assertEqual(
+            of_adapters.trust_flags("cursor", "plan"), ["--mode", "plan"]
+        )
+        self.assertEqual(of_adapters.trust_flags("agy", "plan"), ["--mode", "plan"])
+        self.assertEqual(
+            of_adapters.trust_flags("grok", "plan"), ["--sandbox", "read-only"]
+        )
+        for tok in ESCALATION_TOKENS:
+            self.assertNotIn(tok, of_adapters.trust_flags("cursor", "plan"))
+            self.assertNotIn(tok, of_adapters.trust_flags("agy", "plan"))
+            self.assertNotIn(tok, of_adapters.trust_flags("grok", "plan"))
+
+    def test_honest_fallthrough_stays_conservative(self) -> None:
+        self.assertEqual(
+            of_adapters.trust_flags("claude", "auto"),
+            ["--permission-mode", "acceptEdits"],
+        )
+        self.assertNotEqual(
+            of_adapters.trust_flags("claude", "auto"),
+            ["--permission-mode", "auto"],
+        )
+        for adapter in ("cursor", "opencode", "grok"):
+            self.assertEqual(
+                of_adapters.trust_flags(adapter, "auto-edit"),
+                of_adapters.trust_flags(adapter, "conservative"),
+            )
+            self.assertEqual(
+                of_adapters.trust_flags(adapter, "auto"),
+                of_adapters.trust_flags(adapter, "conservative"),
+            )
+        self.assertEqual(of_adapters.trust_flags("orca", "plan"), [])
+        self.assertEqual(of_adapters.trust_flags("generic", "plan"), [])
+
+    def test_skill_and_table_name_the_new_plan_flags(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        table = (ROOT / "references" / "adapters.md").read_text(encoding="utf-8")
+        for text in (skill, alias, table):
+            self.assertIn("--mode plan", text)
+            self.assertIn("--sandbox read-only", text)
+        self.assertIn("`--mode plan`", table)
+        self.assertIn("| `plan` |", table)
+        self.assertIn("account/model", table)
+        self.assertNotIn("Cursor has no intermediate mode", table)
 
 
 class TrustMatrixCli(unittest.TestCase):
