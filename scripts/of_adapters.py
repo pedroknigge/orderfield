@@ -2,6 +2,7 @@
 """Harness adapter tables and headless spawn argv. Stdlib only."""
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -537,6 +538,124 @@ class AdapterHints:
         ]
 
 
+class StreamJson:
+    """Harness JSON / NDJSON streams → milestone + residual. Not a supervisor.
+
+    Reuses the one PULSE file (`PulseProgress`) and the existing stdout
+    residual extract. stream-json / ``--json`` is argv translation for
+    harnesses that already document a live event stream. Do not invent
+    stream-json for agy / qwen / opencode (they keep a JSON blob).
+    """
+
+    STATUSES = frozenset({"done", "blocked", "threshold"})
+    MAX_WORDS = 10
+    SKIP_TYPES = frozenset(
+        {
+            "system",
+            "init",
+            "ping",
+            "usage",
+            "token",
+            "tokens",
+            "thread.started",
+            "turn.started",
+        }
+    )
+    # Documented live streams only. Other adapters keep their JSON blob.
+    ARGV = {
+        "claude": ("--output-format", "stream-json"),
+        "cursor": ("--output-format", "stream-json"),
+        "codex": ("--json",),
+    }
+
+    @staticmethod
+    def argv_flags(adapter: str) -> list[str]:
+        return list(StreamJson.ARGV.get(adapter) or ())
+
+    @staticmethod
+    def parse_line(line: str) -> dict[str, Any] | None:
+        text = (line or "").strip()
+        if not text.startswith("{"):
+            return None
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        return obj if isinstance(obj, dict) else None
+
+    @staticmethod
+    def looks_residual(obj: dict[str, Any]) -> bool:
+        return (
+            obj.get("status") in StreamJson.STATUSES
+            and isinstance(obj.get("residual"), dict)
+        )
+
+    @staticmethod
+    def residual(event: dict[str, Any]) -> dict[str, Any] | None:
+        if StreamJson.looks_residual(event):
+            return event
+        for key in ("result", "result_json", "output"):
+            raw = event.get(key)
+            if isinstance(raw, dict) and StreamJson.looks_residual(raw):
+                return raw
+            if isinstance(raw, str) and raw.lstrip().startswith("{"):
+                try:
+                    inner = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(inner, dict) and StreamJson.looks_residual(inner):
+                    return inner
+        return None
+
+    @staticmethod
+    def clip(text: str) -> str | None:
+        words = " ".join(str(text).split())
+        if not words:
+            return None
+        parts = words.split()
+        if len(parts) > StreamJson.MAX_WORDS:
+            words = " ".join(parts[: StreamJson.MAX_WORDS])
+        return words
+
+    @staticmethod
+    def milestone(event: dict[str, Any]) -> str | None:
+        if StreamJson.looks_residual(event):
+            return None
+        typ = str(
+            event.get("type") or event.get("event") or event.get("kind") or ""
+        ).strip()
+        if typ.lower() in StreamJson.SKIP_TYPES:
+            return None
+        message = event.get("message")
+        if isinstance(message, dict):
+            content = message.get("content")
+            if isinstance(content, list):
+                for part in content:
+                    if not isinstance(part, dict):
+                        continue
+                    if part.get("type") == "tool_use":
+                        name = str(part.get("name") or "tool").strip()
+                        return StreamJson.clip(f"tool {name}")
+        item = event.get("item")
+        if isinstance(item, dict):
+            cmd = item.get("command") or item.get("cmd")
+            if cmd:
+                return StreamJson.clip(f"cmd {cmd}")
+            item_type = str(item.get("type") or "").strip()
+            if item_type:
+                return StreamJson.clip(item_type.replace("_", " "))
+        name = event.get("name") or event.get("tool")
+        if name:
+            return StreamJson.clip(f"tool {name}")
+        if not typ:
+            return None
+        words = typ.replace("_", " ").replace(".", " ")
+        subtype = str(event.get("subtype") or "").strip()
+        if subtype:
+            words = f"{words} {subtype}"
+        return StreamJson.clip(words)
+
+
 def build_spawn_argv(
     adapter: str,
     prompt: str,
@@ -548,22 +667,23 @@ def build_spawn_argv(
     trust = trust_flags(adapter, profile)
     model = AdapterHints.spawn_flags(adapter, packet)
     env_agent = os.environ.get("OF_AGENT")
+    stream = StreamJson.argv_flags(adapter)
     if adapter == "generic" and env_agent:
         return env_agent.split() + [prompt]
     if adapter == "claude":
         bin_ = which_bin(["claude"]) or "claude"
-        return [bin_, *model, "-p", prompt, "--output-format", "json", *trust]
+        return [bin_, *model, "-p", prompt, *stream, *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
         schema = skill_root() / "schemas" / "residual.codex.schema.json"
-        argv = [bin_, "exec", *model, *trust, "-o", str(residual_abs)]
+        argv = [bin_, "exec", *model, *trust, *stream, "-o", str(residual_abs)]
         if schema.exists():
             argv += ["--output-schema", str(schema)]
         argv.append(prompt)
         return argv
     if adapter == "cursor":
         bin_ = which_bin(["agent", "cursor-agent"]) or "agent"
-        return [bin_, *model, "-p", *trust, "--output-format", "text", prompt]
+        return [bin_, *model, "-p", *trust, *stream, prompt]
     if adapter == "opencode":
         bin_ = which_bin(["opencode"]) or "opencode"
         return [bin_, "run", "--format", "json", *trust, prompt]
