@@ -198,8 +198,13 @@ def codex_strict_schema_from(canonical: object) -> object:
         return strict
     properties = canonical.get("properties", {})
     canonical_required = set(canonical.get("required", []))
+    # Residual-only provenance is not a Codex output field. Missing is
+    # omit, not approval — drop it; do not require or null-force.
+    omit_from_output = frozenset({"denied_actions"})
     strict_properties = {}
     for key, value in properties.items():
+        if key in omit_from_output:
+            continue
         strict_value = codex_strict_schema_from(value)
         if key not in canonical_required:
             value_type = strict_value["type"]
@@ -210,7 +215,7 @@ def codex_strict_schema_from(canonical: object) -> object:
             )
         strict_properties[key] = strict_value
     strict["properties"] = strict_properties
-    strict["required"] = list(properties)
+    strict["required"] = list(strict_properties)
     strict["additionalProperties"] = False
     return strict
 

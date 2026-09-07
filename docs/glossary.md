@@ -76,6 +76,10 @@ Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave
 
 Advisory living table of harness / model id / tier hint / public `$/unit` / notes / `last_checked`. Machine copy: [model-catalog.json](model-catalog.json). Cite public sheets or mark unknown. Smarter is not always costlier. Not IQ ranks. Not `budget.tokens`. Skill consults before propose/mix; kernel does not route spawn from it. Class: `ModelCatalog`.
 
+## denied_actions
+
+Optional residual list of harness-reported refused tools. Conservative `agy` spawn copies nonempty `denied_actions` from the `--output-format json` envelope (`AgyDeniedActions`). Missing or empty is omit — not approval. `yolo` does not copy. Not a trust change.
+
 ## efficiency-signal
 
 `EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never compared to reserved `budget.tokens`. Never a silent switch. Design: [efficiency-signal.md](efficiency-signal.md).

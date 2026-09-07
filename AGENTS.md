@@ -155,6 +155,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.60 quick detect present / missing / PATH≠auth (`AdapterDetect`; reuse `of detect` / doctor; never claim login from PATH) | documented |
 | 0.7.61 living model catalog (intelligence×cost) per harness (`ModelCatalog`; `docs/model-catalog.md` + `.json`; consult-before-propose; not `budget.tokens`) | documented |
 | 0.7.62 stream-json / JSON streams feed PULSE (`StreamJson`; reuse `PulseProgress` + stdout residual extract; claude/cursor/codex only) | documented |
+| 0.7.63 conservative agy `denied_actions` in residual (`AgyDeniedActions`; reuse `StreamJson.parse_line`; not approval; not yolo) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

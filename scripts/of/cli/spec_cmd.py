@@ -2558,6 +2558,10 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PulseProgressAppend",
     "tests.test_kernel.StreamJsonSpawn",
     "tests.test_kernel.StreamJsonPulseSkill",
+    "tests.test_kernel.AgyDeniedActionsParse",
+    "tests.test_kernel.ResidualDeniedActionsSchema",
+    "tests.test_kernel.AgyDeniedActionsSpawn",
+    "tests.test_kernel.AgyDeniedActionsSkill",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.PackagingBumpDiscipline",
 )

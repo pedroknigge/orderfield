@@ -19,6 +19,7 @@ from of_adapters import (
     KNOWN_TOOLS,
     TRUST_ENV,
     AdapterHints,
+    AgyDeniedActions,
     StreamJson,
     build_spawn_argv,
     missing_tools,
@@ -942,6 +943,18 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                 print(f"residual extracted from stdout -> {residual_rel}")
         else:
             print(f"no residual yet. log={log_path}")
+    denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
+    if denied:
+        if residual_abs.is_file():
+            data = load_json(residual_abs)
+            if isinstance(data, dict):
+                merged = AgyDeniedActions.merge(data, denied)
+                if merged is not data and not validate_residual_for_packet(
+                    merged, packet, root
+                ):
+                    dump_json(residual_abs, merged, skip_dir_fsync=True)
+        print(f"denied_actions={','.join(denied)}")
+        meta["denied_actions"] = denied
     if not already:
         # The child may have run for hours; a sibling pack/spawn has moved
         # state.json since we loaded it. Re-load and bump under the lock.
@@ -1002,6 +1015,11 @@ def cmd_collect(args: argparse.Namespace) -> None:
                     trust_note = f" spawned trust={meta.get('trust')} outcome={meta.get('outcome') or 'in-flight'}"
                     if meta.get("trust") == "conservative":
                         trust_note += "; a conservative print-mode child cannot write files"
+                    raw_denied = meta.get("denied_actions")
+                    if isinstance(raw_denied, list) and raw_denied:
+                        names = ",".join(str(item) for item in raw_denied if str(item).strip())
+                        if names:
+                            trust_note += f"; denied_actions={names}"
             looked = (
                 physical_field_rel(root, str(rel)) if rel else "(no residual_path)"
             )
@@ -1017,9 +1035,13 @@ def cmd_collect(args: argparse.Namespace) -> None:
             print(f"INVALID {path.name}: {'; '.join(errs)}")
         else:
             ok += 1
+            denied = data.get("denied_actions") if isinstance(data, dict) else None
+            denied_note = ""
+            if isinstance(denied, list) and denied:
+                denied_note = f" denied={len(denied)}"
             print(
                 f"OK {path.name} status={data.get('status')} wants="
-                f"{data.get('residual', {}).get('wants_to_change')}"
+                f"{data.get('residual', {}).get('wants_to_change')}{denied_note}"
             )
     snapshot_session(root, "collect")
     emit_event(

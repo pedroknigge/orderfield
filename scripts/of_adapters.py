@@ -656,6 +656,95 @@ class StreamJson:
         return StreamJson.clip(words)
 
 
+class AgyDeniedActions:
+    """Copy agy JSON ``denied_actions`` into residual under conservative trust.
+
+    Reuses ``StreamJson.parse_line`` on the existing ``--output-format json``
+    envelope. Never invents ``[]`` (that would look like approval). Never
+    emits bypass flags. yolo does not copy — skip-permissions is not a
+    clean conservative run.
+    """
+
+    KEY = "denied_actions"
+    ADAPTER = "agy"
+    MAX_ITEMS = 64
+    MAX_CHARS = 256
+    NAME_KEYS = ("action", "tool", "name", "allow_rule", "rule")
+
+    @staticmethod
+    def from_event(event: dict[str, Any] | None) -> list[str] | None:
+        if not isinstance(event, dict) or AgyDeniedActions.KEY not in event:
+            return None
+        raw = event.get(AgyDeniedActions.KEY)
+        if not isinstance(raw, list):
+            return None
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            name = AgyDeniedActions.item_name(item)
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            out.append(name)
+            if len(out) >= AgyDeniedActions.MAX_ITEMS:
+                break
+        return out or None
+
+    @staticmethod
+    def item_name(item: Any) -> str | None:
+        if isinstance(item, str):
+            text = item.strip()
+            return text[: AgyDeniedActions.MAX_CHARS] if text else None
+        if not isinstance(item, dict):
+            return None
+        action = ""
+        for key in AgyDeniedActions.NAME_KEYS:
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                action = value.strip()
+                break
+        target = item.get("target")
+        if action and isinstance(target, str) and target.strip() and "(" not in action:
+            action = f"{action}({target.strip()})"
+        if action:
+            return action[: AgyDeniedActions.MAX_CHARS]
+        if isinstance(target, str) and target.strip():
+            return target.strip()[: AgyDeniedActions.MAX_CHARS]
+        return None
+
+    @staticmethod
+    def from_stdout(text: str) -> list[str] | None:
+        denied: list[str] | None = None
+        for line in (text or "").splitlines() or [text or ""]:
+            event = StreamJson.parse_line(line)
+            if event is None:
+                continue
+            found = AgyDeniedActions.from_event(event)
+            if found:
+                denied = found
+        if denied:
+            return denied
+        event = StreamJson.parse_line((text or "").strip())
+        return AgyDeniedActions.from_event(event)
+
+    @staticmethod
+    def reported(adapter: str, profile: str, stdout: str) -> list[str] | None:
+        if adapter != AgyDeniedActions.ADAPTER or profile != DEFAULT_TRUST_PROFILE:
+            return None
+        return AgyDeniedActions.from_stdout(stdout)
+
+    @staticmethod
+    def merge(residual: dict[str, Any], denied: list[str]) -> dict[str, Any]:
+        existing = residual.get(AgyDeniedActions.KEY)
+        if isinstance(existing, list) and any(
+            str(item).strip() for item in existing
+        ):
+            return residual
+        out = dict(residual)
+        out[AgyDeniedActions.KEY] = list(denied)
+        return out
+
+
 def build_spawn_argv(
     adapter: str,
     prompt: str,

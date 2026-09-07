@@ -264,7 +264,11 @@ Consented `adapter_hints` with a named model insert `--model NAME` before `-p`
 id; tier-only is no-op). `OF_TRUST=auto-edit` prepends `--mode accept-edits`;
 `OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
 `of spawn --adapter agy` keeps that flag order (trust flags, optional `--model`,
-then `--output-format json`, then `-p`). Interactive Agent/subagent remains
+then `--output-format json`, then `-p`). Under `OF_TRUST=conservative`, spawn
+copies nonempty harness `denied_actions` from that JSON envelope into optional
+`residual.denied_actions` (and prints `denied_actions=`). Missing or empty is
+omit — not approval. `yolo` does not copy. Do not invent `[]`. Do not add
+bypass flags to hide denials. Interactive Agent/subagent remains
 valid transport after pack; pack remains the cap surface. The message is the
 handoff file (or full `of render` stdout), never a pointer.
 
