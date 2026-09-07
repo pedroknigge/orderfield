@@ -33,6 +33,12 @@ from test_stream_json import (  # noqa: E402,F401
     StreamJsonPulseSkill,
     StreamJsonSpawn,
 )
+from test_agy_denied_actions import (  # noqa: E402,F401
+    AgyDeniedActionsParse,
+    AgyDeniedActionsSkill,
+    AgyDeniedActionsSpawn,
+    ResidualDeniedActionsSchema,
+)
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
     CliFieldResidual,

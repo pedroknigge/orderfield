@@ -17,7 +17,8 @@
     "result_ref",
     "residual",
     "metrics",
-    "usage"
+    "usage",
+    "denied_actions"
   ],
   "properties": {
     "v": {
@@ -232,6 +233,18 @@
         "tokens",
         "model"
       ]
+    },
+    "denied_actions": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Optional harness-reported refused tools (agy JSON denied_actions under conservative trust). Provenance, not approval. Omit when the harness did not report any. Empty is not approval \u2014 do not invent [].",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
     }
   }
 }

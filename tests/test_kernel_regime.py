@@ -498,6 +498,7 @@ class ResidualSchemaContracts(unittest.TestCase):
             done[key] = None
         done["usage"] = None
         done["v"] = None
+        done["denied_actions"] = None
         assert_draft_2020_12_valid(self, schema, done)
 
         threshold = load_json(THRESHOLD)
@@ -505,6 +506,7 @@ class ResidualSchemaContracts(unittest.TestCase):
             threshold[key] = None
         threshold["usage"] = None
         threshold["v"] = None
+        threshold["denied_actions"] = None
         threshold["residual"]["proposed_patch"].update(
             {
                 "done_when+": None,

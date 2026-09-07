@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.62 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line (stream-json feeds same PULSE); quote it, never claim done (no of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (check-claims.py). Gaps as prose: of contrast --diff. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic."
+description: "v0.7.63 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line (stream-json feeds same PULSE); quote it, never claim done (no of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (check-claims.py). Gaps as prose: of contrast --diff. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.62"
+  version: "0.7.63"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -35,6 +35,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens` |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
+| conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not set `OF_TRUST=yolo` to hide them |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
@@ -140,7 +141,7 @@ of learn --list
 of learn --forget lrn_ab12cd34ef56
 ```
 
-**Spawn trust.** `OF_TRUST` is authoritative for **every** adapter: `conservative` (default; also `''`/`default`) adds no escalation flag anywhere — approvals and sandboxing stay as the harness ships them; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` (alias `escalated`) is the only profile that emits bypass flags and must be selected explicitly. Children receive an environment **allowlist**, not the parent environment: `OF_SPAWN_ENV=NAME1,NAME2` adds names, `OF_SPAWN_ENV=inherit` opts out. Spawn always sets `OF_FIELD=<ORDER id>` and `OF_CHILD=<child_id>`. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
+**Spawn trust.** `OF_TRUST` is authoritative for **every** adapter: `conservative` (default; also `''`/`default`) adds no escalation flag anywhere — approvals and sandboxing stay as the harness ships them; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` (alias `escalated`) is the only profile that emits bypass flags and must be selected explicitly. After a conservative `agy` spawn, if the harness JSON named refused tools, spawn copies them into optional `residual.denied_actions` and prints `denied_actions=`. Read that list. Missing or empty is omit — **not approval**. Do not invent `[]`. `yolo` does not copy (bypass is not a clean conservative run). Do not flip `OF_TRUST=yolo` to hide denials. Children receive an environment **allowlist**, not the parent environment: `OF_SPAWN_ENV=NAME1,NAME2` adds names, `OF_SPAWN_ENV=inherit` opts out. Spawn always sets `OF_FIELD=<ORDER id>` and `OF_CHILD=<child_id>`. Spawn metadata is finalized on every outcome (exit, timeout, missing binary).
 
 **Error contract.** Kernel failures are one line on stderr — `of: error: <kind>: <message>`, exit 1; with `--json` the same failure is `{"event":"error","ok":false,"kind":…,"message":…}`. No traceback unless `OF_DEBUG=1`. Ctrl-C exits 130.
 
@@ -274,7 +275,7 @@ Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`,
 `detect` picks the first available adapter if you omit `--adapter`.
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
-Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --global` the kernel is the skill copy under `~/.agents|~/.claude|~/.cursor/skills/orderfield` — not a pip path. `of eval recovery/multi-harness-residual` proves the matrix; a deep dest still names `residual.codex.schema.json` (`ArgvRedact`).
+Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --global` the kernel is the skill copy under `~/.agents|~/.claude|~/.cursor/skills/orderfield` — not a pip path. `of eval recovery/multi-harness-residual` proves the matrix; a deep dest still names `residual.codex.schema.json` (`ArgvRedact`). Conservative `agy` spawn copies harness `denied_actions` into the residual when the JSON envelope names them (`AgyDeniedActions`). Quote the list. Do not invent approval. Do not weaken `OF_TRUST`.
 
 #### Same harness only (default)
 
