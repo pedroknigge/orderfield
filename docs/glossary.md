@@ -30,7 +30,7 @@ The child's bounded assignment: one JSON object under `.orderfield/waves/NNN/pac
 
 ## residual
 
-The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `metrics`), not a diary and not a transcript. Residuals echo packet identity (`packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, `role`). `status=done` names an existing project-relative `result_ref`. The leader consumes residuals, not child logs. Collect/integrate refuse a chat dump in `evidence` or `proposed_patch.notes` (`ResidualQuality`; `recovery/wave-report-quality-gate`). Structured evidence over 4000 chars is not a dump when it names counts, paths, or shas; the line cap and transcript heuristic stay. The wave report is the structured reduction. Slice `done` is not SPEC closed. Long-task residual theater (dump, slogan, rewrite, amend amnesia) and the disk-contract defense: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
+The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `metrics`), not a diary and not a transcript. Optional `session_id` is harness-reported provenance for adapter `--resume` (`AdapterResume`); omit when unknown; never invent. Residuals echo packet identity (`packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, `role`). `status=done` names an existing project-relative `result_ref`. The leader consumes residuals, not child logs. Collect/integrate refuse a chat dump in `evidence` or `proposed_patch.notes` (`ResidualQuality`; `recovery/wave-report-quality-gate`). Structured evidence over 4000 chars is not a dump when it names counts, paths, or shas; the line cap and transcript heuristic stay. The wave report is the structured reduction. Slice `done` is not SPEC closed. Long-task residual theater (dump, slogan, rewrite, amend amnesia) and the disk-contract defense: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
 
 ## regime
 
@@ -75,6 +75,10 @@ Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave
 ## model-catalog
 
 Advisory living table of harness / model id / tier hint / public `$/unit` / notes / `last_checked`. Machine copy: [model-catalog.json](model-catalog.json). Cite public sheets or mark unknown. Smarter is not always costlier. Not IQ ranks. Not `budget.tokens`. Skill consults before propose/mix; kernel does not route spawn from it. Class: `ModelCatalog`.
+
+## session_id (residual)
+
+Optional residual key. Adapter resume/continue reads this only (`AdapterResume`). Missing or blank is a fresh spawn. Never invent. Never `--continue`. Not `ORDER.origin.session_id` (leader provenance) and not `session.json`. Codex `--output-schema` omits the key.
 
 ## denied_actions
 

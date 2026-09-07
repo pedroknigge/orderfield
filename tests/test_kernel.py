@@ -39,6 +39,12 @@ from test_agy_denied_actions import (  # noqa: E402,F401
     AgyDeniedActionsSpawn,
     ResidualDeniedActionsSchema,
 )
+from test_adapter_resume import (  # noqa: E402,F401
+    AdapterResumeGate,
+    AdapterResumeSkill,
+    AdapterResumeSpawn,
+    ResidualSessionIdSchema,
+)
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
     CliFieldResidual,

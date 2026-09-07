@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.66
+
+Adapter resume/continue only when residual already has a session id. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.65 notes.
+
+- **Reuse, not a parallel session stack:** `AdapterResume` reads optional `residual.session_id` (same optional-provenance pattern as `usage` / `denied_actions`). `build_spawn_argv` is the only argv translator. Not `ORDER.origin.session_id`. Not `session.json`. No new CLI / supervisor / token ceiling.
+- **Gate:** claude/cursor emit documented `--resume ID` only when that key is already nonempty. Missing residual, blank id, or `-1`/`0` is a fresh spawn. `require()` dies with a clear error. Never invent an id. Never emit `--continue` / `-c`.
+- **Honesty omit:** Codex `exec`, agy, grok, qwen, opencode, orca, generic have no documented exec-resume-by-id — no-op even when the residual carries an id. Codex `--output-schema` omits the key (residual provenance, not a Codex output field).
+- **Skill drives the cut:** `SKILL.md` / `/of` teach the gate. Spawn may copy a harness-reported stream `session_id` onto a landed residual (`AdapterResume.merge`); never invent a residual just to hold it.
+- **Proof:** `AdapterResumeGate` / `AdapterResumeSpawn` / `AdapterResumeSkill` / `ResidualSessionIdSchema`. Existing spawn argv tests stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.66; skill/alias description preview `v0.7.66 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.65 notes.
+
 ## 0.7.65
 
 `OF_TRUST=plan` maps documented native plan flags. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.64 notes.

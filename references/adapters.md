@@ -165,7 +165,7 @@ claude -p --output-format stream-json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE` (`StreamJson`). Residual extract from stdout stays. Not a supervisor.
+`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE` (`StreamJson`). Residual extract from stdout stays. `--resume ID` only when `residual.session_id` is already set (`AdapterResume`). Never `--continue`. Not a supervisor.
 
 Claude `--json-schema` is **omit**. The CLI takes an inline JSON Schema string (not a file path) and pairs it with `--output-format json`, which would drop stream-json PULSE. Do not pass `residual.codex.schema.json` as a path. Do not inline a second schema stack. Residual still lands at `packet.residual_path` (child write or stdout extract).
 
@@ -206,7 +206,7 @@ agent -p --output-format stream-json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE`. Residual extract from stdout stays.
+`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE`. Residual extract from stdout stays. `--resume ID` only when `residual.session_id` is already set (`AdapterResume`). Never `--continue`.
 
 `--force` only under `OF_TRUST=yolo`. `OF_TRUST=plan` adds `--mode plan`.
 `auto-edit`/`auto` stay conservative: Cursor has no accept-edits flag.

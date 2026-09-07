@@ -718,6 +718,111 @@ class OutputSchema:
         return [flag, str(schema)]
 
 
+class AdapterResume:
+    """Resume/continue a harness session only when residual already has a session id.
+
+    Do not invent ids. Do not emit ``--continue`` / ``-c`` (latest-session,
+    no id). Cold residual (missing file / missing / blank ``session_id``)
+    is a no-op: spawn stays a fresh prompt. Not ``ORDER.origin.session_id``
+    (leader provenance). Not ``session.json``.
+    """
+
+    KEY = "session_id"
+    # Documented resume-by-id only. --continue is id-less; never emit.
+    ARGV = {
+        "claude": "--resume",
+        "cursor": "--resume",
+    }
+    # Honest omit: no documented exec-resume-by-id on these adapters.
+    OMIT = {
+        "codex": "codex resume is a different verb; exec has no --resume id",
+        "agy": "no documented -p --resume id",
+        "grok": "no documented -p --resume id",
+        "qwen": "no documented resume-by-id flag",
+        "opencode": "no documented resume-by-id flag",
+        "orca": "task-create has no resume id",
+        "generic": "OF_AGENT owns flags",
+    }
+    FAKE_IDS = frozenset({"-1", "0"})
+
+    @staticmethod
+    def session_id(residual: dict[str, Any] | None) -> str:
+        if not isinstance(residual, dict):
+            return ""
+        raw = residual.get(AdapterResume.KEY)
+        text = str(raw or "").strip()
+        if not text or text in AdapterResume.FAKE_IDS:
+            return ""
+        return text
+
+    @staticmethod
+    def load(path: Path) -> dict[str, Any] | None:
+        if not path.is_file():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @staticmethod
+    def require(residual: dict[str, Any] | None) -> str:
+        sid = AdapterResume.session_id(residual)
+        if not sid:
+            die(
+                "adapter resume/continue requires residual.session_id "
+                "(do not invent; cold residual is a fresh spawn)"
+            )
+        return sid
+
+    @staticmethod
+    def argv_flags(adapter: str, residual: dict[str, Any] | None) -> list[str]:
+        sid = AdapterResume.session_id(residual)
+        if not sid:
+            return []
+        flag = AdapterResume.ARGV.get(adapter)
+        if not flag:
+            return []
+        return [flag, sid]
+
+    @staticmethod
+    def from_event(event: dict[str, Any] | None) -> str:
+        if not isinstance(event, dict):
+            return ""
+        for key in ("session_id", "sessionId", "chat_id"):
+            text = str(event.get(key) or "").strip()
+            if text and text not in AdapterResume.FAKE_IDS:
+                return text
+        for nest in ("session", "result"):
+            inner = event.get(nest)
+            if isinstance(inner, dict):
+                found = AdapterResume.from_event(inner)
+                if found:
+                    return found
+        return ""
+
+    @staticmethod
+    def from_stdout(text: str) -> str:
+        for line in (text or "").splitlines():
+            event = StreamJson.parse_line(line)
+            found = AdapterResume.from_event(event)
+            if found:
+                return found
+        return ""
+
+    @staticmethod
+    def merge(residual: dict[str, Any], session_id: str) -> dict[str, Any]:
+        sid = str(session_id or "").strip()
+        if not sid or sid in AdapterResume.FAKE_IDS:
+            return residual
+        existing = AdapterResume.session_id(residual)
+        if existing:
+            return residual
+        out = dict(residual)
+        out[AdapterResume.KEY] = sid
+        return out
+
+
 class AgyDeniedActions:
     """Copy agy JSON ``denied_actions`` into residual under conservative trust.
 
@@ -813,10 +918,13 @@ def build_spawn_argv(
     packet: dict[str, Any],
     residual_abs: Path,
     dry_run: bool = False,
+    residual: dict[str, Any] | None = None,
 ) -> list[str]:
     profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
     trust = trust_flags(adapter, profile)
     model = AdapterHints.spawn_flags(adapter, packet)
+    landed = residual if isinstance(residual, dict) else AdapterResume.load(residual_abs)
+    resume = AdapterResume.argv_flags(adapter, landed)
     env_agent = os.environ.get("OF_AGENT")
     stream = StreamJson.argv_flags(adapter)
     schema = OutputSchema.argv_flags(adapter)
@@ -824,7 +932,7 @@ def build_spawn_argv(
         return env_agent.split() + [prompt]
     if adapter == "claude":
         bin_ = which_bin(["claude"]) or "claude"
-        return [bin_, *model, "-p", prompt, *stream, *trust]
+        return [bin_, *model, *resume, "-p", prompt, *stream, *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
         argv = [bin_, "exec", *model, *trust, *stream, "-o", str(residual_abs)]
@@ -833,7 +941,7 @@ def build_spawn_argv(
         return argv
     if adapter == "cursor":
         bin_ = which_bin(["agent", "cursor-agent"]) or "agent"
-        return [bin_, *model, "-p", *trust, *stream, prompt]
+        return [bin_, *model, *resume, "-p", *trust, *stream, prompt]
     if adapter == "opencode":
         bin_ = which_bin(["opencode"]) or "opencode"
         return [bin_, "run", "--format", "json", *trust, prompt]
