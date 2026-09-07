@@ -70,7 +70,11 @@ Same identity plus a procedure already on the agent = invoke the skill, do not s
 
 ## adapter_hints
 
-Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku and frontier→opus. Grok/agy pass a named model only (tier-only is no-op). Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Post-hoc score: [efficiency-signal](#efficiency-signal).
+Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill consults the [model catalog](model-catalog.md) then must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku and frontier→opus. Grok/agy pass a named model only (tier-only is no-op). Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Living sheet: [model-catalog](#model-catalog). Post-hoc score: [efficiency-signal](#efficiency-signal).
+
+## model-catalog
+
+Advisory living table of harness / model id / tier hint / public `$/unit` / notes / `last_checked`. Machine copy: [model-catalog.json](model-catalog.json). Cite public sheets or mark unknown. Smarter is not always costlier. Not IQ ranks. Not `budget.tokens`. Skill consults before propose/mix; kernel does not route spawn from it. Class: `ModelCatalog`.
 
 ## efficiency-signal
 

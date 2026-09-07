@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.60 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line; the leader quotes it and never claims done (no manual of pulse; sibling). Before pack: must propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth; sibling). Consented spawn --model includes grok/agy (named model; no invented aliases). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
+description: "v0.7.61 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line; the leader quotes it and never claims done (no manual of pulse; sibling). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth; sibling). Consented spawn --model includes grok/agy (named model; no invented aliases). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
 license: MIT
 metadata:
-  version: "0.7.60"
+  version: "0.7.61"
   alias-of: orderfield
 ---
 
@@ -27,9 +27,9 @@ Chat-dump residuals still cannot collect. Structured evidence over 4000 chars (c
 
 Gaps as prose: `of contrast --diff` narrates SPEC vs coverage from the same ContrastReport + spec-diff facts. RESOLVED is not CLOSED. No theater. Follow the sibling.
 
-Per-task model hints: when packing a multi-role wave, **must propose** cheap vs frontier in chat first. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router.
+Per-task model hints: when packing a multi-role wave, **consult** [docs/model-catalog.md](../docs/model-catalog.md) first, then **must propose** cheap vs frontier in chat. Do not assume smarter = costlier. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router. Never `budget.tokens`.
 
-Wave harness plan: before pack (init → first pack, or re-planning), **must ask** same-harness categories vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect` (present / missing / PATH≠auth Partial). Spawn only from **present**. Never claim login from PATH. Never silent mix. Follow the sibling. Not a router.
+Wave harness plan: before pack (init → first pack, or re-planning), **consult** the catalog, then **must ask** same-harness categories vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect` (present / missing / PATH≠auth Partial). Spawn only from **present**. Never claim login from PATH. Never silent mix. Follow the sibling. Not a router.
 
 If status/resume prints `efficiency propose …`, ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never invent token spend. Follow the sibling [docs/efficiency-signal.md](../docs/efficiency-signal.md).
 

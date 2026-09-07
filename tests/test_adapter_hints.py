@@ -289,6 +289,9 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertIn("agy,claude,codex,cursor,grok", r.stdout)
         self.assertIn("task-create has no --model", r.stdout)
         self.assertIn("cheap=haiku", r.stdout)
+        self.assertIn("catalog", r.stdout)
+        self.assertIn("model-catalog.md", r.stdout)
+        self.assertIn("not budget.tokens", r.stdout)
 
     def test_status_prints_consented_hints(self) -> None:
         r = run_of(self.tmp, "patch", "--model-hints", "field", "--model-tier", "cheap")

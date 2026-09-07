@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.60` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.61` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -186,6 +186,7 @@ Runtime ownership is **reserved**, not implemented. `of status` prints the reser
 | `budget.tokens` | Reserved; `of pack` writes 0; `--tokens N` for N>0 dies; not measured or enforced |
 | `residual.usage` | Optional harness-reported `{tokens?, model?}`. Provenance, not a budget. Never compared to `budget.tokens` |
 | `EfficiencySignal` | Live-wave quality × optional usage. Propose uptier/downtier on status/resume/doctor. Ask only. Not a router |
+| `ModelCatalog` | Advisory `docs/model-catalog.md` + `.json`. Skill consults before cheap/frontier or mix. Not a router. Not `budget.tokens` |
 | `thresholds.local_budget_pct` | Reserved; not evaluated |
 | `caps.max_depth` | Permission check for `--allow-nested`; inherited depth is not tracked |
 | `scale_up` / `scale_across` | Reserved regime enums; decision logic never selects them from accounting |

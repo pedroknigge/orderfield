@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.61
+
+Living model catalog (intelligence × cost) per harness, advisory for the skill/leader. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.60 notes.
+
+- **Reuse, not a router:** `AdapterHints` still writes only after consent. `EfficiencySignal` still proposes after residuals. The new sheet is `docs/model-catalog.md` + `docs/model-catalog.json`. No `of catalog`. No spawn routing. No `budget.tokens` ceiling.
+- **Honesty:** rows cite public price sheets (Anthropic / OpenAI / xAI / Cursor) or say `unknown`. Gemini list dollars this cut come from Cursor's published Google rates and name the unfetched Gemini sheet. Smarter is not always costlier (Opus 5 < Fable 5; Grok 4.6 < Opus 5). No invented IQ ranks.
+- **Skill drives the cut:** `SKILL.md` / `/of` **consult** the catalog before proposing cheap vs frontier or asking a multi-harness mix. README hero names the consult. `of doctor` prints one `catalog` pointer. Class `ModelCatalog`.
+- **Proof:** `ModelCatalogHonesty` (JSON/MD lockstep + sourced-or-unknown) and `SkillModelCatalogConsult` (skill/alias/README consult-before-propose). Existing `SkillLeaderInitiative` / `SkillHarnessAsk` stay. No new CLI.
+- Packaging: VERSION 0.7.61; skill/alias description preview `v0.7.61 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.60 notes.
+
 ## 0.7.60
 
 Quick detect which listed harnesses are present vs missing, without lying about auth. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.59 notes.

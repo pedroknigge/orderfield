@@ -1,0 +1,270 @@
+{
+  "v": 1,
+  "kind": "model-catalog",
+  "last_checked": "2026-09-07",
+  "disclaimer": "Advisory for the /of skill and leader only. Not a router. Not IQ ranks. Not budget.tokens. Public API list prices are not the same as a CLI subscription or Cursor usage pool. Smarter is not always costlier. Refresh from the cited sheets; mark unknown rather than invent.",
+  "sources": [
+    {
+      "id": "anthropic-api",
+      "title": "Anthropic Claude API pricing",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checked": "2026-09-07"
+    },
+    {
+      "id": "openai-api",
+      "title": "OpenAI API pricing",
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "checked": "2026-09-07"
+    },
+    {
+      "id": "xai-api",
+      "title": "xAI Text API pricing",
+      "url": "https://docs.x.ai/developers/pricing",
+      "checked": "2026-09-07"
+    },
+    {
+      "id": "cursor-models",
+      "title": "Cursor models and pricing",
+      "url": "https://cursor.com/docs/models-and-pricing",
+      "checked": "2026-09-07"
+    },
+    {
+      "id": "gemini-api",
+      "title": "Google Gemini API pricing (re-check; not fetched this cut)",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "checked": "2026-09-07"
+    }
+  ],
+  "models": [
+    {
+      "harness": "claude",
+      "model_id": "haiku",
+      "tier_hint": "cheap",
+      "price_public": "$1 / $5 per MTok in/out (Haiku 4.5 API)",
+      "price_known": true,
+      "source_id": "anthropic-api",
+      "notes": "AdapterHints cheap alias. Anthropic calls Haiku 4.5 near-frontier at this list price — do not treat cheap as weak. Claude Code may bill a subscription, not this API sheet.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "claude",
+      "model_id": "sonnet",
+      "tier_hint": "mid",
+      "price_public": "$2 / $10 per MTok in/out (Sonnet 5 API)",
+      "price_known": true,
+      "source_id": "anthropic-api",
+      "notes": "No AdapterHints mid alias. Named --model sonnet or claude-sonnet-5. Standard $2/$10 (the planned Sep 2026 rise did not happen). Tokenizer on 4.7+ can emit more tokens for the same text.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "claude",
+      "model_id": "opus",
+      "tier_hint": "frontier",
+      "price_public": "$5 / $25 per MTok in/out (Opus 5 API)",
+      "price_known": true,
+      "source_id": "anthropic-api",
+      "notes": "AdapterHints frontier alias. Opus 5 list is cheaper than Fable 5 ($10/$50) and retired Opus 4.1 ($15/$75). Smarter/newer is not always costlier.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "claude",
+      "model_id": "claude-fable-5",
+      "tier_hint": "frontier",
+      "price_public": "$10 / $50 per MTok in/out",
+      "price_known": true,
+      "source_id": "anthropic-api",
+      "notes": "Named model only. About 2x Opus 5 list. Cursor notes security-guardrail traffic can route to Opus. Do not invent an IQ rank.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "codex",
+      "model_id": "gpt-5.6-luna",
+      "tier_hint": "cheap",
+      "price_public": "$0.20 / $1.20 per MTok in/out (short context)",
+      "price_known": true,
+      "source_id": "openai-api",
+      "notes": "No cheap alias. Named --model only. Long context doubles. Codex CLI may bill ChatGPT or API; this row is the OpenAI sheet.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "codex",
+      "model_id": "gpt-5.3-codex",
+      "tier_hint": "mid",
+      "price_public": "$1.75 / $14 per MTok in/out",
+      "price_known": true,
+      "source_id": "openai-api",
+      "notes": "OpenAI specialized Codex row. Named --model only. Not an IQ rank.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "codex",
+      "model_id": "gpt-5.6-terra",
+      "tier_hint": "mid",
+      "price_public": "$2 / $12 per MTok in/out (short context)",
+      "price_known": true,
+      "source_id": "openai-api",
+      "notes": "Named --model only. Long context doubles. Between Luna and Sol on the published sheet.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "codex",
+      "model_id": "gpt-5.6-sol",
+      "tier_hint": "frontier",
+      "price_public": "$4 / $20 per MTok in/out (short context)",
+      "price_known": true,
+      "source_id": "openai-api",
+      "notes": "Named --model only. Promotional pricing through at least 2026-11-21. Cheaper list than gpt-6-astra. Long context doubles.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "codex",
+      "model_id": "gpt-6-astra",
+      "tier_hint": "frontier",
+      "price_public": "$10 / $50 per MTok in/out (short context)",
+      "price_known": true,
+      "source_id": "openai-api",
+      "notes": "Named --model only. Higher list than Sol. Do not assume it uses fewer tokens.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "cursor",
+      "model_id": "composer-2.5",
+      "tier_hint": "cheap",
+      "price_public": "$0.50 / $2.50 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Cursor Models pool (included usage), not Other Models API credits. Named --model only. Often cheaper list than third-party frontier rows.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "cursor",
+      "model_id": "grok-4.6",
+      "tier_hint": "mid",
+      "price_public": "$2 / $6 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Cursor Models pool. Fast variant is $4/$12 on the same sheet. Not a silent mix with the grok adapter.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "cursor",
+      "model_id": "composer-2.5-fast",
+      "tier_hint": "mid",
+      "price_public": "$3 / $15 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Same family as composer-2.5, higher list. Fast is not automatically smarter.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "cursor",
+      "model_id": "auto",
+      "tier_hint": "unknown",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "cursor-models",
+      "notes": "Cursor Auto Cost/Balance/Intelligence routes. Not a consented Orderfield model id. Do not treat Auto as a silent mix or a token budget.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "grok",
+      "model_id": "grok-build-0.1",
+      "tier_hint": "cheap",
+      "price_public": "$1 / $2 per MTok in/out (<200k prompt)",
+      "price_known": true,
+      "source_id": "xai-api",
+      "notes": "Named --model only; no cheap alias. ≥200k prompt doubles. Tool calls are extra on the xAI sheet.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "grok",
+      "model_id": "grok-4.3",
+      "tier_hint": "mid",
+      "price_public": "$1.25 / $2.50 per MTok in/out (<200k prompt)",
+      "price_known": true,
+      "source_id": "xai-api",
+      "notes": "Named --model only. 1M context. ≥200k prompt doubles.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "grok",
+      "model_id": "grok-4.6",
+      "tier_hint": "frontier",
+      "price_public": "$2 / $6 per MTok in/out (<200k prompt)",
+      "price_known": true,
+      "source_id": "xai-api",
+      "notes": "Named --model only. Cheaper list than Claude Opus 5. ≥200k prompt doubles. Do not invent a cheap/frontier alias.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-2.5-flash",
+      "tier_hint": "cheap",
+      "price_public": "$0.30 / $2.50 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Named --model only; no cheap alias. Price taken from Cursor's published Google row (2026-09-07). Re-check https://ai.google.dev/gemini-api/docs/pricing — that page was not fetched this cut. agy unknown slugs fail loudly.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-3.8-flash",
+      "tier_hint": "mid",
+      "price_public": "$0.75 / $3.50 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Named --model only. Cursor-listed Google rate this cut. Re-check the Gemini sheet before proposing. Not an IQ rank.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-3.1-pro",
+      "tier_hint": "frontier",
+      "price_public": "$2 / $12 per MTok in/out",
+      "price_known": true,
+      "source_id": "cursor-models",
+      "notes": "Named --model only. Cursor-listed Google rate this cut. Some Gemini Pro rows add a long-context surcharge on the Google sheet — treat as unknown here.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "orca",
+      "model_id": "(user-config)",
+      "tier_hint": "unknown",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "",
+      "notes": "Spawn no-op: task-create has no --model. Hint may sit on disk. Do not invent a price or alias.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "qwen",
+      "model_id": "(user-config)",
+      "tier_hint": "unknown",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "",
+      "notes": "Spawn no-op. Model stays in the user's Qwen config. Do not invent -m / --model.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "opencode",
+      "model_id": "(user-config)",
+      "tier_hint": "unknown",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "",
+      "notes": "Spawn no-op for --model. Provider price is whatever the user's OpenCode config already uses.",
+      "last_checked": "2026-09-07"
+    },
+    {
+      "harness": "generic",
+      "model_id": "(user-config)",
+      "tier_hint": "unknown",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "",
+      "notes": "OF_AGENT argv passthrough. No kernel model catalog and no fake token budget.",
+      "last_checked": "2026-09-07"
+    }
+  ]
+}
