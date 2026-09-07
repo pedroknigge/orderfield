@@ -100,8 +100,10 @@ packet even without a field write. No write → spawn argv is unchanged.
 | claude | `--model` (tier aliases cheap=`haiku`, frontier=`opus`, or the named model) |
 | codex | `--model NAME` when the packet names one; tier-only is no-op |
 | cursor | `--model NAME` when the packet names one; tier-only is no-op |
+| grok | `--model NAME` when the packet names one; before `-p`; tier-only is no-op |
+| agy | `--model NAME` when the packet names one; flags before `-p`; tier-only is no-op |
 | orca | no-op (`task-create` has no `--model`; hint stays on disk) |
-| qwen, opencode, grok, agy, generic | no-op |
+| qwen, opencode, generic | no-op |
 
 `of doctor` prints that table. This is argv translation like `OF_TRUST`,
 not a model catalog and not a later efficiency-signal / propose-uptier cut.
@@ -232,7 +234,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `of spawn --adapter grok` uses these flags. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` uses these flags. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -249,9 +251,14 @@ agy --output-format json \
   -p "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`OF_TRUST=auto-edit` prepends `--mode accept-edits`; `OF_TRUST=yolo` prepends
-`--dangerously-skip-permissions --mode accept-edits`. `of spawn --adapter agy`
-keeps that flag order (trust flags, then `--output-format json`, then `-p`). Interactive Agent/subagent remains valid transport after pack; pack remains the cap surface. The message is the handoff file (or full `of render` stdout), never a pointer.
+Consented `adapter_hints` with a named model insert `--model NAME` before `-p`
+(agy CLI `--model`; unknown slugs fail loudly — do not invent a cheap/frontier
+id; tier-only is no-op). `OF_TRUST=auto-edit` prepends `--mode accept-edits`;
+`OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
+`of spawn --adapter agy` keeps that flag order (trust flags, optional `--model`,
+then `--output-format json`, then `-p`). Interactive Agent/subagent remains
+valid transport after pack; pack remains the cap surface. The message is the
+handoff file (or full `of render` stdout), never a pointer.
 
 Skills: Global `~/.gemini/antigravity-cli/skills/orderfield/`; Shared `~/.gemini/skills/orderfield/`; `~/.gemini/config/skills/orderfield/` is optional legacy when that parent exists. Workspace generic is still `.agents/skills/orderfield/`. There is no `~/.agy/skills`. Skill `description` / `compatibility` frontmatter is double-quoted so agy / npx skills can parse it.
 

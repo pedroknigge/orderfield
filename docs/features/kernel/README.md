@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.56. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.57. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.56` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.57` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -59,7 +59,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
-- Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor when the packet names one; Claude maps cheap→haiku / frontier→opus. Orca task-create and the rest no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli`. Not a router.
+- Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one; Claude maps cheap→haiku / frontier→opus. Grok/agy: named model before `-p`; no invented tier aliases. Orca task-create / qwen / opencode / generic stay no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli`. Not a router.
 - Efficiency signal (`EfficiencySignal`): quality × optional `residual.usage`. Status/resume/doctor may propose uptier/downtier. Ask only. `budget.tokens` stays reserved. Proof: `recovery/efficiency-signal`. Design: [efficiency-signal.md](../../efficiency-signal.md).
 - Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). One `ContrastReport` document: human one-pager + machine JSON. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice. Whole-phase slogans die at pack (`SliceLint`, `slice.phase`) with a split/constraints fix path. Oversized-slice note stays advisory (do not refuse ≥800). `of pack --explain` dry-runs that lint and does not write. Proof: `recovery/packet-sizing-lint` / `recovery/packet-sizing-explain`.
@@ -71,6 +71,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.54 quoted skill YAML (`description` / `compatibility`) so agy / npx skills discover the skill. Shared dest `~/.gemini/skills`. Proof: `SkillFrontmatterQuotedGate`. No new CLI.
 - 0.7.55 residual schema accepts optional top-level `v` (kernel `--json` document version; ignored). Residuals without `v` stay valid. Codex derivative stays lockstep. Proof: `ResidualSchemaContracts`. No new CLI.
 - 0.7.56 `ResidualQuality` byte cap fires only when shape is ambiguous. Structured evidence over 4000 chars collects. Transcript dumps still refuse. Proof: `WaveReportQualityGate`. No new CLI.
+- 0.7.57 grok + agy honor consented `--model` passthrough (named model; flags before `-p`; no invented cheap/frontier aliases). Reuses `AdapterHints`. Proof: `AdapterHintsCli` / `AdapterHintsArgv`. No new CLI.
 
 ## Contract boundaries
 

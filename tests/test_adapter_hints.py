@@ -100,6 +100,10 @@ class AdapterHintsUnit(unittest.TestCase):
         self.assertEqual(of.AdapterHints.spawn_model("claude", cheap), "haiku")
         self.assertIsNone(of.AdapterHints.spawn_model("codex", cheap))
         self.assertEqual(of.AdapterHints.spawn_model("codex", named), "gpt-5-mini")
+        self.assertIsNone(of.AdapterHints.spawn_model("grok", cheap))
+        self.assertEqual(of.AdapterHints.spawn_model("grok", named), "gpt-5-mini")
+        self.assertIsNone(of.AdapterHints.spawn_model("agy", cheap))
+        self.assertEqual(of.AdapterHints.spawn_model("agy", named), "gpt-5-mini")
         self.assertIsNone(of.AdapterHints.spawn_model("orca", named))
         self.assertIsNone(of.AdapterHints.spawn_model("qwen", named))
 
@@ -154,8 +158,9 @@ class AdapterHintsCli(unittest.TestCase):
         packet = load_json(packet_path(self.tmp, "plain"))
         self.assertNotIn("adapter_hints", packet)
         self.assertNotIn("adapter_hints=", r.stdout)
-        out = self._spawn_argv("plain", "claude")
-        self.assertNotIn("--model", out)
+        for adapter in ("claude", "grok", "agy"):
+            out = self._spawn_argv("plain", adapter)
+            self.assertNotIn("--model", out, adapter)
 
     def test_pack_model_tier_is_per_packet_consent(self) -> None:
         r = self._pack("cheap1", "explorer", "--model-tier", "cheap")
@@ -220,11 +225,11 @@ class AdapterHintsCli(unittest.TestCase):
             packet["adapter_hints"],
             {"tier": "frontier", "model": "gpt-5.4"},
         )
-        for adapter in ("claude", "codex", "cursor"):
+        for adapter in ("claude", "codex", "cursor", "grok", "agy"):
             out = self._spawn_argv("named", adapter)
             self.assertIn("--model", out, adapter)
             self.assertIn("gpt-5.4", out, adapter)
-        for adapter in ("orca", "qwen", "grok", "agy", "opencode"):
+        for adapter in ("orca", "qwen", "opencode"):
             out = self._spawn_argv("named", adapter)
             self.assertNotIn("--model", out, adapter)
         generic = run_of(
@@ -246,6 +251,10 @@ class AdapterHintsCli(unittest.TestCase):
         out = self._spawn_argv("tieronly", "codex")
         self.assertNotIn("--model", out)
         out = self._spawn_argv("tieronly", "cursor")
+        self.assertNotIn("--model", out)
+        out = self._spawn_argv("tieronly", "grok")
+        self.assertNotIn("--model", out)
+        out = self._spawn_argv("tieronly", "agy")
         self.assertNotIn("--model", out)
 
     def test_patch_tier_without_consent_dies(self) -> None:
@@ -277,7 +286,7 @@ class AdapterHintsCli(unittest.TestCase):
         r = run_of(self.tmp, "doctor")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("model_hints", r.stdout)
-        self.assertIn("claude,codex,cursor", r.stdout)
+        self.assertIn("agy,claude,codex,cursor,grok", r.stdout)
         self.assertIn("task-create has no --model", r.stdout)
         self.assertIn("cheap=haiku", r.stdout)
 
@@ -322,6 +331,36 @@ class AdapterHintsArgv(unittest.TestCase):
         argv = self.argv("qwen", packet)
         self.assertNotIn("--model", argv)
         self.assertNotIn("-m", argv)
+
+    def test_grok_agy_named_model_precedes_dash_p(self) -> None:
+        packet = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"model": "grok-4.5"},
+        }
+        grok = self.argv("grok", packet)
+        self.assertEqual(grok[grok.index("--model") + 1], "grok-4.5")
+        self.assertLess(grok.index("--model"), grok.index("-p"))
+        agy_pkt = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"model": "gemini-3.5-flash-medium"},
+        }
+        agy = self.argv("agy", agy_pkt)
+        self.assertEqual(agy[agy.index("--model") + 1], "gemini-3.5-flash-medium")
+        self.assertLess(agy.index("--model"), agy.index("-p"))
+
+    def test_grok_agy_without_consent_stay_unchanged(self) -> None:
+        packet = {"child_id": "c1", "budget": {"seconds": 60}}
+        hinted = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"tier": "cheap"},
+        }
+        for adapter in ("grok", "agy"):
+            bare = self.argv(adapter, packet)
+            self.assertNotIn("--model", bare, adapter)
+            self.assertEqual(self.argv(adapter, hinted), bare, adapter)
 
 
 if __name__ == "__main__":
