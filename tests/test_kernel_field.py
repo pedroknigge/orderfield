@@ -396,7 +396,8 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("explorer", r.stdout)
         self.assertIn("map pricing models", r.stdout)
         self.assertIn("scratch     missing", r.stdout)
-        self.assertIn("activity      of pulse", r.stdout)
+        self.assertIn(of.InFlightSignal.speak_line(key_width=14), r.stdout)
+        self.assertIn("do not claim done while running", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
         self.assertIn("next\n  HOLD", r.stdout)
         self.assertIn("continue existing packets; do not repack", r.stdout)
@@ -528,7 +529,8 @@ class SessionCutResume(unittest.TestCase):
         r = run_of(self.tmp, "status")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("in_flight   1", r.stdout)
-        self.assertIn("activity    of pulse", r.stdout)
+        self.assertIn(of.InFlightSignal.speak_line(key_width=12), r.stdout)
+        self.assertIn("do not claim done while running", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
         self._drop_residual(DONE)
         r2 = run_of(self.tmp, "status")
@@ -2791,6 +2793,27 @@ class InFlightVisibility(unittest.TestCase):
         self.assertIn("ALIVE", pulse.stdout)
         self.assertIn("progress: still writing", pulse.stdout)
         self.assertNotIn("idle (nothing to watch)", pulse.stdout)
+
+    def test_status_and_resume_tell_leader_to_quote_pulse(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-speak-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        scratch = tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("still scanning pricing\n", encoding="utf-8")
+        for cmd, width in (("status", 12), ("resume", 14)):
+            r = run_of(tmp, cmd)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            # PULSE is already quoted on screen: the human never runs pulse by hand.
+            self.assertIn("still scanning pricing", r.stdout)
+            self.assertIn(
+                of.InFlightSignal.speak_line(key_width=width), r.stdout
+            )
+            self.assertIn("do not claim done while running", r.stdout)
+            self.assertNotIn(
+                "activity    of pulse (child scratch verdict", r.stdout
+            )
 
     def test_missing_pulse_keeps_running(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-inflight-silence-"))
