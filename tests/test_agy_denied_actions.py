@@ -112,10 +112,23 @@ class ResidualDeniedActionsSchema(unittest.TestCase):
         self.assertEqual(of.validate_residual(residual), [])
         schema = json.loads(RESIDUAL_SCHEMA.read_text(encoding="utf-8"))
         self.assertIn("denied_actions", schema["properties"])
+        self.assertNotIn("denied_actions", schema.get("required") or [])
+        self.assertEqual(schema["properties"]["denied_actions"]["type"], "array")
         extra = json.loads(json.dumps(residual))
         extra["unexpected"] = True
         errs = of.validate_residual(extra)
         self.assertTrue(any("unexpected properties" in err for err in errs), errs)
+
+    def test_denied_actions_never_required_on_codex_schema(self) -> None:
+        """Missing/empty is omit, not approval: optional key, never required."""
+        from tests.test_kernel_regime import CODEX_RESIDUAL_SCHEMA
+
+        canonical = json.loads(RESIDUAL_SCHEMA.read_text(encoding="utf-8"))
+        codex = json.loads(CODEX_RESIDUAL_SCHEMA.read_text(encoding="utf-8"))
+        self.assertNotIn("denied_actions", canonical.get("required") or [])
+        self.assertNotIn("denied_actions", codex.get("required") or [])
+        self.assertEqual(canonical["properties"]["denied_actions"]["type"], "array")
+        self.assertEqual(codex["properties"]["denied_actions"]["type"], "array")
 
 
 class AgyDeniedActionsSpawn(unittest.TestCase):
