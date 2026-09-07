@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.63 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line (stream-json feeds same PULSE); quote it, never claim done (no of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (check-claims.py). Gaps as prose: of contrast --diff. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic."
+description: "v0.7.64 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line (stream-json feeds same PULSE); quote it, never claim done (no of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). agy spawn --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier — ask, never silent switch. Install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (check-claims.py). Gaps as prose: of contrast --diff. Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.63"
+  version: "0.7.64"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -36,6 +36,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not set `OF_TRUST=yolo` to hide them |
+| agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
@@ -275,7 +276,7 @@ Native adapters: `claude`, `codex`, `orca`, `grok`, `cursor`, `opencode`, `agy`,
 `detect` picks the first available adapter if you omit `--adapter`.
 `--adapter generic` is the fallback for any harness not in that list: with `OF_AGENT` it execs that CLI; without it, it writes the prompt and you paste it into the agent. Residual still has to land on disk.
 `--dry-run` prints the command without running the child. After `escalate_up`, pack and spawn are rejected until `of next-wave` (or `--force-spawn`).
-Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --global` the kernel is the skill copy under `~/.agents|~/.claude|~/.cursor/skills/orderfield` — not a pip path. `of eval recovery/multi-harness-residual` proves the matrix; a deep dest still names `residual.codex.schema.json` (`ArgvRedact`). Conservative `agy` spawn copies harness `denied_actions` into the residual when the JSON envelope names them (`AgyDeniedActions`). Quote the list. Do not invent approval. Do not weaken `OF_TRUST`.
+Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --global` the kernel is the skill copy under `~/.agents|~/.claude|~/.cursor/skills/orderfield` — not a pip path. `of eval recovery/multi-harness-residual` proves the matrix; a deep dest still names `residual.codex.schema.json` (`ArgvRedact`). `of spawn --adapter agy` passes `--json-schema` to that same Codex file (`OutputSchema`). Claude omit: `--json-schema` is inline-only and pairs with `--output-format json`, which would drop stream-json PULSE — do not fake a path. Conservative `agy` spawn copies harness `denied_actions` into the residual when the JSON envelope names them (`AgyDeniedActions`). Quote the list. Do not invent approval. Do not weaken `OF_TRUST`.
 
 #### Same harness only (default)
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.63. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.64. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.63`
+**Status:** Shipped · **Current release line:** `0.7.64`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.64 — agy --json-schema residual (Claude omit)
+
+- agy spawn passes `--json-schema` to the same `residual.codex.schema.json` Codex already uses (`OutputSchema`). `StreamJson.residual` also reads `structured_output`. Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Codex `--output-schema` + `-o` intact. Not a supervisor. Not a new CLI. Not a new regime.
 
 ## 0.7.63 — agy denied_actions on conservative residual
 

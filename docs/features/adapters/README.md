@@ -10,11 +10,11 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.63` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.64` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
-Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`, plus `generic` / `OF_AGENT`. The residual schema is the same contract; Codex `--output-schema` is a strict derivative (`residual.codex.schema.json`). `recovery/multi-harness-residual` proves Claude/Grok/Codex/Cursor dry-run share one residual path. Deep-install dests (`~/.claude` / `~/.agents` / `~/.cursor`) stay green (`MultiHarnessResidual`).
+Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`, plus `generic` / `OF_AGENT`. The residual schema is the same contract; Codex `--output-schema` is a strict derivative (`residual.codex.schema.json`). agy `--json-schema` reuses that same file (`OutputSchema`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: `--json-schema` is a structured_output tool, not residual delivery. `recovery/multi-harness-residual` proves Claude/Grok/Codex/Cursor dry-run share one residual path. Deep-install dests (`~/.claude` / `~/.agents` / `~/.cursor`) stay green (`MultiHarnessResidual`).
 
 ## Inventory
 
@@ -27,7 +27,7 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 - **grok:** `-p`; `--always-approve` only under `OF_TRUST=yolo`; consented named `--model` before `-p`
 - **codex:** `exec --json`; residual still `-o`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`)
 - **claude / cursor:** `--output-format stream-json` so spawn can append harness events to the same `scratch/<id>/PULSE` (`StreamJson` / `PulseProgress`). Residual extract from stdout stays. Not a supervisor.
-- **agy:** flags before `-p`; `--dangerously-skip-permissions` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Conservative spawn copies nonempty JSON `denied_actions` into `residual.denied_actions` (`AgyDeniedActions`); missing/empty is not approval; `yolo` does not copy. Skills: Global `~/.gemini/antigravity-cli/skills`; Shared `~/.gemini/skills`; `~/.gemini/config/skills` optional legacy. Quoted `description` / `compatibility` frontmatter so agy discovers the skill.
+- **agy:** flags before `-p`; `--json-schema` to `residual.codex.schema.json` (same Codex file; `OutputSchema`); `--dangerously-skip-permissions` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Conservative spawn copies nonempty JSON `denied_actions` into `residual.denied_actions` (`AgyDeniedActions`); missing/empty is not approval; `yolo` does not copy. Skills: Global `~/.gemini/antigravity-cli/skills`; Shared `~/.gemini/skills`; `~/.gemini/config/skills` optional legacy. Quoted `description` / `compatibility` frontmatter so agy discovers the skill.
 - **qwen:** positional prompt (not deprecated `-p`); `--output-format json --approval-mode default` in conservative; never `--yolo` unless `OF_TRUST=yolo`; never `-m` / `--openai-base-url` / `--openai-api-key`. Kernel verifies PATH + argv + residual file/schema; harness promises approval, sandbox, auth, readiness.
 - **model hints:** optional. The `/of` skill consults [docs/model-catalog.md](../../model-catalog.md) then must propose cheap vs frontier in chat before a multi-role pack. After consent (`of patch --model-hints` or pack `--model-tier` / `--model`), spawn may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku, frontier→opus. Grok and agy pass a named `--model` before `-p`; tier-only is no-op (no invented aliases). Orca `task-create` has no `--model` (disk hint only). Qwen, opencode, and generic stay no-op. No consent → argv unchanged. `AdapterHints` in `scripts/of_adapters.py`. Advisory catalog is not a router. Not a silent switch.
 

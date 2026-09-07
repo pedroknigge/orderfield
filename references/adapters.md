@@ -160,6 +160,8 @@ claude -p --output-format stream-json \
 
 `of spawn` parses that NDJSON into the same `scratch/<id>/PULSE` (`StreamJson`). Residual extract from stdout stays. Not a supervisor.
 
+Claude `--json-schema` is **omit**. The CLI takes an inline JSON Schema string (not a file path) and pairs it with `--output-format json`, which would drop stream-json PULSE. Do not pass `residual.codex.schema.json` as a path. Do not inline a second schema stack. Residual still lands at `packet.residual_path` (child write or stdout extract).
+
 Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Because of reference-load, the child is instructed to read `SLAVE.md` on its own. Do not truncate the handoff envelope. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
 Skills: copy this folder to `.claude/skills/orderfield/`.
@@ -255,16 +257,22 @@ Binary: `agy`. Adapter name is `agy`, not `antigravity`.
 Headless:
 
 ```bash
-agy --output-format json \
+agy --json-schema schemas/residual.codex.schema.json \
+  --output-format json \
   -p "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
+
+`--json-schema` accepts a schema file path (agy CLI). Spawn reuses the same
+`residual.codex.schema.json` Codex already uses (`OutputSchema`). Flags
+**must** precede `-p`. `StreamJson.residual` reads `structured_output` on
+that envelope when the child did not write the residual file.
 
 Consented `adapter_hints` with a named model insert `--model NAME` before `-p`
 (agy CLI `--model`; unknown slugs fail loudly — do not invent a cheap/frontier
 id; tier-only is no-op). `OF_TRUST=auto-edit` prepends `--mode accept-edits`;
 `OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
 `of spawn --adapter agy` keeps that flag order (trust flags, optional `--model`,
-then `--output-format json`, then `-p`). Under `OF_TRUST=conservative`, spawn
+`--json-schema`, then `--output-format json`, then `-p`). Under `OF_TRUST=conservative`, spawn
 copies nonempty harness `denied_actions` from that JSON envelope into optional
 `residual.denied_actions` (and prints `denied_actions=`). Missing or empty is
 omit — not approval. `yolo` does not copy. Do not invent `[]`. Do not add

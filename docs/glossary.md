@@ -80,6 +80,8 @@ Advisory living table of harness / model id / tier hint / public `$/unit` / note
 
 Optional residual list of harness-reported refused tools. Conservative `agy` spawn copies nonempty `denied_actions` from the `--output-format json` envelope (`AgyDeniedActions`). Missing or empty is omit — not approval. `yolo` does not copy. Not a trust change.
 
+**OutputSchema.** Spawn table for residual-schema flags. Codex `--output-schema` and agy `--json-schema` reuse `residual.codex.schema.json`. Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Not a second schema stack.
+
 ## efficiency-signal
 
 `EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never compared to reserved `budget.tokens`. Never a silent switch. Design: [efficiency-signal.md](efficiency-signal.md).
