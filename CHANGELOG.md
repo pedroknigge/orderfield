@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.58
+
+In-flight liveness is now a turn-end leader duty, not a manual `of pulse`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. No daemon, no supervisor, no new schema/CLI. Do not rewrite v0.7.57 notes.
+
+- **Reuse the one pulse channel:** `of status` / `of resume` already quote `PulseProgress` lines under the `running` banner (0.7.40). This cut adds one reused directive — `InFlightSignal.speak_line()` (`speak  quote a PULSE line above to the user; do not claim done while running`) — printed by both `cmd_status` and `cmd_resume` while any residual is MISSING.
+- **Subtract the anti-pattern:** the old `activity    of pulse (…)` line told the human to run `of pulse` by hand even though the PULSE was already on screen — the exact thing the outcome forbids. It is replaced by the `speak` directive. No second pulse channel.
+- **Skill drives the cut:** `SKILL.md` / alias generalize the quote-PULSE rule from `next=HOLD` to **every in-flight turn** — before ending a turn or claiming the mission/field done, run `of status` / `of resume` and quote the live PULSE; a "done" while children fly is a broken run.
+- **Proof:** `InFlightVisibility.test_status_and_resume_tell_leader_to_quote_pulse`; updated `test_missing_residual_is_in_flight` / `test_status_surfaces_in_flight`. No new schema, event, verb, or daemon.
+- Packaging: VERSION 0.7.58; skill/alias description preview `v0.7.58 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.57 notes.
+
 ## 0.7.57
 
 Grok and agy honor consented `--model` passthrough. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.56 notes.

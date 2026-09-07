@@ -840,6 +840,13 @@ class InFlightSignal:
 
     CHROME = "residual MISSING; harness chrome is not the field"
     ORDER = ("ALIVE", "QUIET", "STALE")
+    # Turn-end directive: the PULSE lines are already printed above, so the
+    # leader quotes one to the user instead of running `of pulse` by hand.
+    SPEAK = "quote a PULSE line above to the user; do not claim done while running"
+
+    @staticmethod
+    def speak_line(*, key: str = "speak", key_width: int = 12) -> str:
+        return f"{key.ljust(key_width)}{InFlightSignal.SPEAK}"
 
     @staticmethod
     def tally(verdicts: dict[str, str]) -> str:
@@ -1552,7 +1559,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     status_doc = StatusReport.document(root, order, state, packets, flying, session)
     StatusReport.emit_running(status_doc)
     if flying:
-        print("activity    of pulse (child scratch verdict + shared repo context)")
+        print(InFlightSignal.speak_line(key_width=12))
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"since_across {state.get('waves_since_across')}")
@@ -1965,7 +1972,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print_resume_completed(root, completed)
     print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
     if flying:
-        print("activity      of pulse (child scratch verdict + shared repo context)")
+        print(InFlightSignal.speak_line(key_width=14))
     print("next")
     for line in resume_next_lines(nxt):
         print(f"  {line}")
