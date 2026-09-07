@@ -148,6 +148,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.54 quoted skill YAML + Shared `~/.gemini/skills` agy dest (`SkillFrontmatterQuotedGate`) | documented |
 | 0.7.55 residual optional top-level `v` (`ResidualSchemaContracts`; collect ignores kernel `--json` document version) | documented |
 | 0.7.56 ResidualQuality byte cap skips honest structured evidence (`WaveReportQualityGate`; #116) | documented |
+| 0.7.57 grok + agy consented `--model` passthrough (`AdapterHints`; named model; no invented aliases) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

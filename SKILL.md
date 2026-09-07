@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.56 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
+description: "v0.7.57 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Consented spawn --model includes grok/agy (named model; no invented aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.56"
+  version: "0.7.57"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -246,7 +246,7 @@ of pack --slice "…" --role explorer --model-tier cheap
 of pack --slice "…" --role implementer --model-tier frontier --model opus
 ```
 
-`of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor when the packet names a model (claude also maps cheap→haiku, frontier→opus). Orca `task-create`, qwen, opencode, grok, agy, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router.
+`of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor / grok / agy when the packet names a model (claude also maps cheap→haiku, frontier→opus). Grok and agy have no cheap/frontier aliases — named model only; tier-only is no-op argv. Put `--model` before `-p` on agy (and grok). Orca `task-create`, qwen, opencode, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router.
 
 **Efficiency signal (post-hoc, ask only).** After residuals land, `of status` / `of resume` may print `efficiency propose uptier|downtier: … — of patch --model-hints …`. Cheap children that `rework` / `escalate` twice → suggest frontier. A frontier explorer/synthesizer that finished cleanly **and** copied harness tokens into optional `residual.usage` → suggest cheap. Missing `usage` is valid — do not invent spend. The line is an ask. Do **not** write `adapter_hints` until the human says yes. Do **not** treat `usage.tokens` as `budget.tokens` (still reserved; `--tokens N>0` dies). Design: [docs/efficiency-signal.md](docs/efficiency-signal.md). Proof: `of eval recovery/efficiency-signal`.
 
@@ -279,7 +279,7 @@ Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --g
 
 Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). `ORDER.origin` must **not** change `pick_adapter`. If the user later asks for multi-harness, ask once, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters. Do not infer origin from PATH.
 
-If the field opted into model hints, `of spawn --dry-run` must show `--model` on claude/codex/cursor when the packet named one. A missing flag on those adapters after a consented hint is a broken run. Do not add `--model` by hand outside `of spawn`. Do not pass a model on qwen (stays in the user's config).
+If the field opted into model hints, `of spawn --dry-run` must show `--model` on claude/codex/cursor/grok/agy when the packet named one. A missing flag on those adapters after a consented hint is a broken run. Do not add `--model` by hand outside `of spawn`. Do not invent a grok or agy alias for cheap/frontier. Do not pass a model on qwen (stays in the user's config).
 
 Never launch a child by hand without a packet. Interactive Agent is transport, not a bypass of pack. The child must write a residual schema, not an essay.
 

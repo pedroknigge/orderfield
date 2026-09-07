@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.57
+
+Grok and agy honor consented `--model` passthrough. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.56 notes.
+
+- **Reuse, not a router:** `AdapterHints.MODEL_FLAG_ADAPTERS` now includes `grok` and `agy`. Same `spawn_model` / `spawn_flags` / consent gate as claude/codex/cursor. Named `--model NAME` only. No invented cheap/frontier aliases (those CLIs have no haiku/opus-style ids). Tier-only stays no-op argv, like Codex/Cursor.
+- **Flags before `-p`:** Grok and agy insert `--model` with the existing trust flags, before `-p`. Agy still cannot take flags after `-p` (that token is the prompt). No consent → argv unchanged.
+- **Skill drives the cut:** `SKILL.md` / alias / `references/adapters.md` / adapters feature teach grok/agy as pass adapters. `of doctor` lists them on `pass`. Orca / qwen / opencode / generic stay no-op.
+- **Proof:** `AdapterHintsCli` / `AdapterHintsArgv` cover named-model argv, no-consent unchanged, and tier-only no-op for grok + agy. Existing claude/codex/cursor assertions stay. No new CLI.
+- Packaging: VERSION 0.7.57; skill/alias description preview `v0.7.57 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.56 notes.
+
 ## 0.7.56
 
 `ResidualQuality` byte cap no longer refuses honest structured evidence. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.55 notes.

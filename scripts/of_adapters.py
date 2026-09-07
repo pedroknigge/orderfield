@@ -269,14 +269,15 @@ class AdapterHints:
     """Consented model/tier hints. Disk write, then argv passthrough.
 
     Not a model router, not a process supervisor, not a catalog of every
-    provider id. Claude gets stable harness aliases for a tier. Codex and
-    Cursor pass ``--model`` only when the packet names one. Orca
-    ``task-create`` has no model flag — hint stays on disk, spawn no-ops.
+    provider id. Claude gets stable harness aliases for a tier. Codex,
+    Cursor, Grok, and agy pass ``--model`` only when the packet names one.
+    Orca ``task-create`` has no model flag — hint stays on disk, spawn
+    no-ops. No invented cheap/frontier ids for grok/agy.
     """
 
     TIERS = ("cheap", "frontier")
     CONSENTS = ("field", "wave")
-    MODEL_FLAG_ADAPTERS = frozenset({"claude", "codex", "cursor"})
+    MODEL_FLAG_ADAPTERS = frozenset({"claude", "codex", "cursor", "grok", "agy"})
     TIER_ALIASES = {
         "claude": {"cheap": "haiku", "frontier": "opus"},
     }
@@ -457,7 +458,7 @@ class AdapterHints:
         return [
             f"pass        {passing} (--model)",
             "no-op       orca (task-create has no --model), "
-            "opencode, grok, agy, qwen, generic",
+            "opencode, qwen, generic",
             "aliases     claude cheap=haiku frontier=opus",
             "default     off (of patch --model-hints field|wave)",
         ]
@@ -496,11 +497,12 @@ def build_spawn_argv(
     if adapter == "grok":
         bin_ = which_bin(["grok", "grok-cli"]) or "grok"
         # headless: bare `grok <prompt>` opens the TUI and dies on no tty.
-        return [bin_, *trust, "-p", prompt]
+        # --model NAME is a grok CLI flag; keep it before -p like trust flags.
+        return [bin_, *trust, *model, "-p", prompt]
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
         bin_ = which_bin(["agy"]) or "agy"
-        return [bin_, *trust, "--output-format", "json", "-p", prompt]
+        return [bin_, *trust, *model, "--output-format", "json", "-p", prompt]
     if adapter == "qwen":
         # Qwen-owned headless: positional prompt (`-p` is deprecated).
         # Provider/model/credentials stay in the user's qwen CLI config.

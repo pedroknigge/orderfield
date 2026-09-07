@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.56. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.57. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.56`
+**Status:** Shipped · **Current release line:** `0.7.57`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.57 — grok + agy consented --model passthrough
+
+- `AdapterHints` pass set adds grok and agy. Named `--model NAME` before `-p`. No invented cheap/frontier aliases. Tier-only stays no-op. No consent → argv unchanged. `AdapterHintsCli`. No new CLI. Not a new regime.
 
 ## 0.7.56 — ResidualQuality structured evidence over 4000 chars
 
