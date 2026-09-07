@@ -101,6 +101,9 @@ _TRUST_FLAGS: dict[str, dict[str, list[str]]] = {
     "claude": {
         "plan": ["--permission-mode", "plan"],
         "auto-edit": ["--permission-mode", "acceptEdits"],
+        # classifier --permission-mode auto is account/model/admin gated;
+        # emitting it fails many headless spawns. Closest universal non-bypass
+        # stays acceptEdits (same as auto-edit).
         "auto": ["--permission-mode", "acceptEdits"],
     },
     "codex": {
@@ -108,9 +111,19 @@ _TRUST_FLAGS: dict[str, dict[str, list[str]]] = {
         "auto-edit": ["--sandbox", "workspace-write"],
         "auto": ["--sandbox", "workspace-write"],
     },
+    "cursor": {
+        "plan": ["--mode", "plan"],
+        # auto-edit/auto: no accept-edits flag; --force is yolo only
+    },
     "agy": {
+        "plan": ["--mode", "plan"],
         "auto-edit": ["--mode", "accept-edits"],
         "auto": ["--mode", "accept-edits"],
+    },
+    "grok": {
+        "plan": ["--sandbox", "read-only"],
+        # auto-edit/auto: no accept-edits flag; --always-approve is yolo only.
+        # --sandbox workspace would tighten conservative (sandbox off); omit.
     },
     # Qwen-owned --approval-mode. Always passed (even conservative) so a user
     # setting such as tools.approvalMode=yolo cannot silently escalate.

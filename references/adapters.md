@@ -66,7 +66,7 @@ approval prompts and sandbox. Escalation is an explicit `OF_TRUST=yolo`.
 | `OF_TRUST` | claude | codex | cursor | opencode | grok | agy | qwen | orca |
 |---|---|---|---|---|---|---|---|---|
 | `conservative` (default) | — | — | — | — | — | — | `--approval-mode default` | — |
-| `plan` | `--permission-mode plan` | `--sandbox read-only` | — | — | — | — | `--approval-mode plan` | — |
+| `plan` | `--permission-mode plan` | `--sandbox read-only` | `--mode plan` | — | `--sandbox read-only` | `--mode plan` | `--approval-mode plan` | — |
 | `auto-edit` | `--permission-mode acceptEdits` | `--sandbox workspace-write` | — | — | — | `--mode accept-edits` | `--approval-mode auto-edit` | — |
 | `auto` | `--permission-mode acceptEdits` | `--sandbox workspace-write` | — | — | — | `--mode accept-edits` | `--approval-mode auto` | — |
 | `yolo` | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` | `--force` | `--auto` | `--always-approve` | `--dangerously-skip-permissions --mode accept-edits` | `--approval-mode yolo` | — |
@@ -77,6 +77,13 @@ spawned. `generic` passes `OF_AGENT` verbatim; trust is your command's job.
 Orca has no trust surface (`task-create`). The table is
 `YOLO_FLAGS` / `_TRUST_FLAGS` in `scripts/of_adapters.py`; adding a flag there
 is a trust decision, not a fix.
+
+Honesty (do not invent flags): Claude `auto` stays `acceptEdits` — classifier
+`--permission-mode auto` is account/model/admin gated and would fail many
+headless spawns. Codex `--ask-for-approval` is not a reliable `exec` flag;
+sandbox only. Cursor / OpenCode / Grok have no accept-edits flag (`--force` /
+`--auto` / `--always-approve` are yolo only). Grok `--sandbox workspace` would
+tighten conservative (sandbox off); omit it.
 
 Observable via `of spawn --dry-run` (argv preview; approval flags render as
 `<approval>`) and recorded in `spawns/<child_id>.json` as `trust`.
@@ -201,8 +208,8 @@ agent -p --output-format stream-json \
 
 `of spawn` parses that NDJSON into the same `scratch/<id>/PULSE`. Residual extract from stdout stays.
 
-`--force` only under `OF_TRUST=yolo`; Cursor has no intermediate mode, so
-`plan`/`auto-edit`/`auto` behave as conservative.
+`--force` only under `OF_TRUST=yolo`. `OF_TRUST=plan` adds `--mode plan`.
+`auto-edit`/`auto` stay conservative: Cursor has no accept-edits flag.
 
 Cursor has no reliable `--append-system-prompt`. Default render/handoff is **reference-load**: the prompt points at the absolute `SLAVE.md` path (use `--inline` only when the child cannot read that path).
 
@@ -244,7 +251,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` uses these flags. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `OF_TRUST=plan` adds `--sandbox read-only`. `auto-edit`/`auto` stay conservative: Grok has no accept-edits flag. Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` uses these flags. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -269,7 +276,8 @@ that envelope when the child did not write the residual file.
 
 Consented `adapter_hints` with a named model insert `--model NAME` before `-p`
 (agy CLI `--model`; unknown slugs fail loudly — do not invent a cheap/frontier
-id; tier-only is no-op). `OF_TRUST=auto-edit` prepends `--mode accept-edits`;
+id; tier-only is no-op). `OF_TRUST=plan` prepends `--mode plan`;
+`OF_TRUST=auto-edit` prepends `--mode accept-edits`;
 `OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
 `of spawn --adapter agy` keeps that flag order (trust flags, optional `--model`,
 `--json-schema`, then `--output-format json`, then `-p`). Under `OF_TRUST=conservative`, spawn

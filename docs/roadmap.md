@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.64. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.65. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.64`
+**Status:** Shipped · **Current release line:** `0.7.65`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.65 — OF_TRUST plan maps native flags
+
+- `OF_TRUST=plan` emits cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only` via existing `_TRUST_FLAGS`. Cursor/OpenCode/Grok `auto-edit`/`auto` stay conservative. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). No invented flags. Not a new CLI. Not a new regime.
 
 ## 0.7.64 — agy --json-schema residual (Claude omit)
 

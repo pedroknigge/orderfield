@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.65
+
+`OF_TRUST=plan` maps documented native plan flags. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.64 notes.
+
+- **Reuse, not a parallel stack:** `_TRUST_FLAGS` / `trust_flags` stay the only translator. `YOLO_FLAGS` unchanged. No new CLI / supervisor / token ceiling.
+- **Native plan flags only:** cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. Claude / Codex / Qwen plan rows stay. Do not invent harness flags.
+- **Honesty fallthrough:** Cursor / OpenCode / Grok `auto-edit`/`auto` stay conservative (no accept-edits; `--force` / `--auto` / `--always-approve` are yolo only). Claude `auto` stays `acceptEdits` (classifier `--permission-mode auto` is account/model gated). Codex `--ask-for-approval` is not a reliable `exec` flag. Orca / generic stay untranslated.
+- **Skill drives the cut:** `SKILL.md` / `/of` teach the new plan mappings and the honesty omit. Table in `references/adapters.md` stays lockstep with `_TRUST_FLAGS`.
+- **Proof:** `TrustNativeFlags` in `tests/test_spawn_trust.py`. Existing trust matrix stays. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.65; skill/alias description preview `v0.7.65 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.64 notes.
+
 ## 0.7.64
 
 agy residual `--json-schema` reuses the Codex file. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.63 notes.
