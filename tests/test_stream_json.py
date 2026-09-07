@@ -189,16 +189,23 @@ class StreamJsonSpawn(unittest.TestCase):
         }
         for key in of.PACKET_IDENTITY_FIELDS:
             residual[key] = packet[key]
+        events = [
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "tool_use", "name": "Read"}]},
+            },
+            {
+                "type": "item.started",
+                "item": {"type": "command_execution", "command": "pytest -q"},
+            },
+            residual,
+        ]
         agent = tmp / "stream-agent.py"
         agent.write_text(
             "#!/usr/bin/env python3\n"
-            "import json, sys\n"
-            "print(json.dumps({'type':'assistant','message':{'content':"
-            "[{'type':'tool_use','name':'Read'}]}}))\n"
-            "print(json.dumps({'type':'item.started','item':"
-            "{'type':'command_execution','command':'pytest -q'}}))\n"
-            "print(json.dumps(" + json.dumps(residual) + "))\n"
-            "sys.stdout.flush()\n",
+            "import json\n"
+            f"for ev in {events!r}:\n"
+            "    print(json.dumps(ev))\n",
             encoding="utf-8",
         )
         agent.chmod(0o755)
