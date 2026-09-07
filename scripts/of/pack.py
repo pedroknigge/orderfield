@@ -713,6 +713,22 @@ class ResidualQuality:
         r"(?im)^(?:#{1,6}\s*)?(?:\*\*)?(human|user|assistant|chatgpt|system)"
         r"(?:\*\*)?\s*:"
     )
+    STRUCTURE_RE = re.compile(
+        r"(?:"
+        r"[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+"
+        r"|\b(?=[0-9a-f]*[0-9])[0-9a-f]{8,40}\b"
+        r"|\b\d+\s+(?:files?|lines?|tests?|paths?|symbols?)\b"
+        r")",
+        re.I,
+    )
+    RECOVERY = (
+        "Recovery: append a trim note to scratch/<child>/notes.md "
+        "and re-spawn the same packet"
+    )
+
+    @staticmethod
+    def looks_structured(text: str) -> bool:
+        return bool(ResidualQuality.STRUCTURE_RE.search(text))
 
     @staticmethod
     def dump_errors(
@@ -726,18 +742,27 @@ class ResidualQuality:
         if not raw:
             return []
         errs: list[str] = []
-        if len(raw) > max_chars:
-            errs.append(
-                f"{label} is {len(raw)} chars; refuse chat dumps "
-                f"(max {max_chars})"
-            )
+        nchars = len(raw)
         nlines = len(raw.splitlines())
+        turns = len(ResidualQuality.TURN_RE.findall(raw))
+        # Byte cap only when shape is ambiguous: not a transcript, and not
+        # honest structured evidence (counts / paths / shas). TURN_RE and
+        # the line cap stay the dump detectors.
+        if (
+            nchars > max_chars
+            and turns < 2
+            and not ResidualQuality.looks_structured(raw)
+        ):
+            errs.append(
+                f"{label} is {nchars} chars; refuse chat dumps "
+                f"(max {max_chars}). {ResidualQuality.RECOVERY}"
+            )
         if nlines > max_lines:
             errs.append(
                 f"{label} is {nlines} lines; refuse chat dumps "
-                f"(max {max_lines})"
+                f"(max {max_lines}). {ResidualQuality.RECOVERY}"
             )
-        if len(ResidualQuality.TURN_RE.findall(raw)) >= 2:
+        if turns >= 2:
             errs.append(
                 f"{label} looks like a chat dump; write a structured residual"
             )

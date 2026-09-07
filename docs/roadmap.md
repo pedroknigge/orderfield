@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.55. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.56. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.55`
+**Status:** Shipped · **Current release line:** `0.7.56`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.56 — ResidualQuality structured evidence over 4000 chars
+
+- Byte cap fires only when shape is ambiguous (no `TURN_RE`, and no counts/paths/shas). Line cap and transcript heuristic stay. Size-refuse names `scratch/<child>/notes.md` + re-spawn. `WaveReportQualityGate`. No new CLI. Not a new regime.
 
 ## 0.7.55 — residual optional document `v`
 

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.55. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.56. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.55` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.56` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -24,7 +24,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of pack --out` accepts the logical `.orderfield/waves/…` contract path or the physical `.orderfield/fields/<id>/waves/…` path the kernel prints. Comparison runs after `physical_field_rel`. A refuse names both expected forms. Proof: `PackOutPhysicalNested`. No new verb.
 - `of contrast` prints a human one-pager and one machine JSON object from the same `ContrastReport` document. `--diff` prints a `ContrastDiff` narrative of those rows plus `spec-diff` flags (RESOLVED is not CLOSED; ORDER omission can remain after the close gate; no theater). `--json` `contrast` event carries the same rows / gate / blocking. Proof: `recovery/contrast-close-contract` / `recovery/contrast-close-internal` / `recovery/contrast-diff-narrative` / `ContrastReportRenderer` / `ContrastDiffNarrative`. No new verb. No on-disk `CONTRAST.json`.
 - `of close --checklist` prints one `CloseChecklist` document (contrast gate + residual empty) and does not stamp. `of close` refuses while contrast is OPEN or any packed child residual is MISSING. Reuses `ContrastReport` + `WaveRoster`. Proof: `recovery/multi-wave-close-checklist` / `CloseChecklistProof`. No new verb. No `CHECKLIST.json`. Not a supervisor.
-- Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: oversized evidence/notes or multi-turn Human/Assistant transcript). Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
+- Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: multi-turn Human/Assistant transcript, oversized blob that is not structured evidence, or over the line cap). Honest structured evidence (counts, paths, shas) may exceed 4000 chars. Size-refuse names `scratch/<child>/notes.md` + re-spawn. Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of status` / `of resume` print `packed_age` when an in-flight child's `packed_at` is older than the same 7-day SLA. Pulse STALE stays activity evidence. Read-path only; nothing is unpacked. Proof: `recovery/packed-age-watchdog` / `PackedAgeWatchdog`.
 - `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts / `InFlightSignal`). Human `of status` prints `running` plus per-child pulse and the last 1–3 `PULSE` progress lines while residual is MISSING (`PulseProgress`; missing file stays `running`). `--json` / `OF_JSON=1` emits the `status` event with `in_flight_detail[].progress`. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`; `recovery/in-flight-visibility` / `InFlightVisibility`.
@@ -70,6 +70,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.53 skill-first cheap vs frontier propose. The `/of` skill must propose a distribution in chat before a multi-role pack. Human confirms. Then 0.7.47 `AdapterHints` / 0.7.48 `EfficiencySignal`. Never a silent switch. Proof: `SkillLeaderInitiative`. No new CLI.
 - 0.7.54 quoted skill YAML (`description` / `compatibility`) so agy / npx skills discover the skill. Shared dest `~/.gemini/skills`. Proof: `SkillFrontmatterQuotedGate`. No new CLI.
 - 0.7.55 residual schema accepts optional top-level `v` (kernel `--json` document version; ignored). Residuals without `v` stay valid. Codex derivative stays lockstep. Proof: `ResidualSchemaContracts`. No new CLI.
+- 0.7.56 `ResidualQuality` byte cap fires only when shape is ambiguous. Structured evidence over 4000 chars collects. Transcript dumps still refuse. Proof: `WaveReportQualityGate`. No new CLI.
 
 ## Contract boundaries
 

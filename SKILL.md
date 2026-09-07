@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.55 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
+description: "v0.7.56 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. README leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.55"
+  version: "0.7.56"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -314,7 +314,7 @@ Collect and integrate refuse mixed leftover stale packets (they do not silently 
 
 `collect` and `integrate` print `owned-but-unverified <ID>…` when a binding requirement is owned but not yet `verified_*`. They never auto-stamp `verified_contract` — that remains `of spec --verified-contract`. Successful `of integrate` stdout is the JSON report (`regime` set); human notes (mission-not-auto-applied, owned-but-unverified) go to stderr.
 
-Collect and integrate refuse a chat dump stuffed into `residual.evidence` or `proposed_patch.notes` (oversized, or a multi-turn Human/Assistant transcript). The child writes a structured residual; the wave report is the reduction (`status` / `wants` / `uncertainty`), not the transcript. `recovery/wave-report-quality-gate`.
+Collect and integrate refuse a chat dump stuffed into `residual.evidence` or `proposed_patch.notes` (a multi-turn Human/Assistant transcript, or an oversized blob that is not structured evidence). Honest structured evidence — counts, paths, commit shas — may exceed 4000 chars; the 40-line cap still bounds shape. If collect still refuses on size, append a trim note to `scratch/<child>/notes.md` and re-spawn the same packet (do not hand-edit the residual). The child writes a structured residual; the wave report is the reduction (`status` / `wants` / `uncertainty`), not the transcript. `recovery/wave-report-quality-gate`.
 
 One dead child does not freeze the wave: `collect` prints `MISSING <child_id>` per absent residual, keeps walking, and exits 2 when anything is missing or invalid. To reduce what did land while a straggler keeps flying, use `of integrate --wave N --partial` — skipped children are listed in the report as `skipped_in_flight` and stay in flight. Without `--partial`, integrate still refuses an incomplete wave. A child that will never report is released with `of unpack`.
 

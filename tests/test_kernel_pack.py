@@ -1934,14 +1934,14 @@ class WaveReportQualityGate(unittest.TestCase):
             (self.tmp / ".orderfield" / "waves" / "001" / "report.json").is_file()
         )
 
-    def test_oversized_evidence_is_a_chat_dump(self) -> None:
-        dump = "x" * (of.ResidualQuality.EVIDENCE_MAX_CHARS + 1)
-        residual = {
+    @staticmethod
+    def _residual(evidence: str) -> dict:
+        return {
             "status": "blocked",
             "result_ref": "scratch/notes.md",
             "residual": {
                 "wants_to_change": [],
-                "evidence": dump,
+                "evidence": evidence,
                 "proposed_patch": None,
             },
             "metrics": {
@@ -1951,9 +1951,51 @@ class WaveReportQualityGate(unittest.TestCase):
                 "novelty": False,
             },
         }
+
+    @staticmethod
+    def structured_over_old_cap() -> str:
+        """Honest counts/paths/shas past the old 4000-char false-positive path."""
+        chunk = (
+            "12 files changed; scripts/of/pack.py sha 1a2b3c4d; "
+            "counts=12 paths=1. "
+        )
+        need = of.ResidualQuality.EVIDENCE_MAX_CHARS + 1590
+        text = chunk * ((need // len(chunk)) + 1)
+        assert len(text) > of.ResidualQuality.EVIDENCE_MAX_CHARS
+        assert len(text.splitlines()) <= of.ResidualQuality.EVIDENCE_MAX_LINES
+        assert len(of.ResidualQuality.TURN_RE.findall(text)) < 2
+        return text
+
+    def test_oversized_evidence_is_a_chat_dump(self) -> None:
+        dump = "x" * (of.ResidualQuality.EVIDENCE_MAX_CHARS + 1)
+        residual = self._residual(dump)
         errs = of.ResidualQuality.errors(residual)
         self.assertTrue(any("refuse chat dumps" in e for e in errs), errs)
+        self.assertTrue(any(of.ResidualQuality.RECOVERY in e for e in errs), errs)
         self.assertTrue(of.validate_residual(residual))
+
+    def test_structured_evidence_over_old_char_cap_is_accepted(self) -> None:
+        evidence = self.structured_over_old_cap()
+        residual = self._residual(evidence)
+        self.assertEqual(of.ResidualQuality.errors(residual), [])
+
+    def test_transcript_dump_still_refused_with_structured_markers(self) -> None:
+        evidence = of.WaveReportQualityEval.DUMP_EVIDENCE + self.structured_over_old_cap()
+        residual = self._residual(evidence)
+        errs = of.ResidualQuality.errors(residual)
+        self.assertTrue(any("looks like a chat dump" in e for e in errs), errs)
+        self.assertTrue(of.validate_residual(residual))
+
+    def test_structured_evidence_over_old_char_cap_collects(self) -> None:
+        of.WaveReportQualityEval.setup(self.tmp, dump=False)
+        of.WaveReportQualityEval.write_residual(
+            self.tmp,
+            dump=False,
+            evidence=self.structured_over_old_cap(),
+        )
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertIn("OK", collected.stdout)
 
     def test_structured_residual_writes_wave_report(self) -> None:
         of.WaveReportQualityEval.setup(self.tmp, dump=False)
