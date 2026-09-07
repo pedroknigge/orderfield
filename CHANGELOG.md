@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.59
+
+Leader skill asks same-harness categories vs multi-harness mix before pack. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.58 notes.
+
+- **Reuse, not a catalog:** The ask lives in `SKILL.md` / `/of` next to the cheap vs frontier propose. Same-harness still pins with `of patch --harness`. Mix still inventories with `of detect` (PATH ≠ auth). No second harness list. No `of ask`. No new CLI / schema / router / supervisor.
+- **Active consent:** The old text was a passive default (do not mix unless the user asks). The leader now **must ask** once before the first multi-role pack (or when re-planning): same-harness categories vs a claude/codex/cursor/grok/agy mix. A single obvious pack on the current harness is not this beat. Never silent mix.
+- **C-014 stays Partial:** the kernel still does not prompt on stdin. The skill ask is C-143. Optional `of ask` remains deferred.
+- **Proof:** `SkillHarnessAsk` requires ask-in-chat before pack in the skill table; alias mirrors; README hero names the consent ask. Claims honesty stays green. No new CLI.
+- Packaging: VERSION 0.7.59; skill/alias description preview `v0.7.59 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.58 notes.
+
 ## 0.7.58
 
 In-flight liveness is now a turn-end leader duty, not a manual `of pulse`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. No daemon, no supervisor, no new schema/CLI. Do not rewrite v0.7.57 notes.

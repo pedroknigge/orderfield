@@ -720,6 +720,39 @@ class SkillLeaderInitiative(unittest.TestCase):
         self.assertIn("confirm", hero.casefold())
 
 
+class SkillHarnessAsk(unittest.TestCase):
+    """Leader must ask same-harness vs multi-harness mix before pack."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    @staticmethod
+    def folded(text: str) -> str:
+        return text.casefold()
+
+    def test_skill_asks_before_pack_and_alias_mirrors(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        table = self.folded(self.table(skill))
+        ask_at = table.index("ask in chat")
+        detect_at = table.index("of detect")
+        self.assertLess(ask_at, detect_at)
+        self.assertIn("same-harness", table)
+        self.assertIn("multi-harness", table)
+        self.assertIn("must ask", self.folded(skill))
+        self.assertIn("never silent mix", self.folded(skill))
+        self.assertIn("must ask", self.folded(alias))
+        self.assertIn("same-harness", self.folded(alias))
+        self.assertIn("multi-harness", self.folded(alias))
+        self.assertIn("of detect", self.folded(alias))
+        hero = self.folded(readme[: readme.index("## Install")])
+        self.assertIn("same-harness", hero)
+        self.assertIn("multi-harness", hero)
+        self.assertIn("of detect", hero)
+
+
 class SkillFrontmatterQuoted:
     """Strict YAML-ish frontmatter load. description/compatibility must be quoted."""
 

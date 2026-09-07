@@ -2549,6 +2549,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ClaimsHonestyGate",
     "tests.test_kernel.ReadmeProductSurface",
     "tests.test_kernel.SkillLeaderInitiative",
+    "tests.test_kernel.SkillHarnessAsk",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.PackagingBumpDiscipline",
 )
