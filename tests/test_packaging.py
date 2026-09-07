@@ -753,6 +753,32 @@ class SkillHarnessAsk(unittest.TestCase):
         self.assertIn("of detect", hero)
 
 
+class AdapterDetectHonesty(unittest.TestCase):
+    """After mix ask, leader surfaces present/missing/PATH≠auth. Not login."""
+
+    def test_skill_and_alias_teach_detect_honesty(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        folded = table.casefold()
+        detect_at = folded.index("of detect")
+        self.assertLess(detect_at, folded.index("present"))
+        self.assertLess(detect_at, folded.index("missing"))
+        self.assertIn("path≠auth", folded)
+        self.assertIn("never claim login", folded)
+        alias_fold = alias.casefold()
+        self.assertIn("present", alias_fold)
+        self.assertIn("missing", alias_fold)
+        self.assertIn("path≠auth", alias_fold)
+        self.assertIn("never claim login", alias_fold)
+        hero = readme[: readme.index("## Install")].casefold()
+        self.assertIn("present", hero)
+        self.assertIn("missing", hero)
+        self.assertIn("path≠auth", hero)
+        self.assertIn("login", hero)
+
+
 class SkillFrontmatterQuoted:
     """Strict YAML-ish frontmatter load. description/compatibility must be quoted."""
 

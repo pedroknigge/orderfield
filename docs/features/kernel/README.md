@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.59. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.60. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.59` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.60` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -74,6 +74,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.57 grok + agy honor consented `--model` passthrough (named model; flags before `-p`; no invented cheap/frontier aliases). Reuses `AdapterHints`. Proof: `AdapterHintsCli` / `AdapterHintsArgv`. No new CLI.
 - 0.7.58 in-flight liveness is a turn-end leader duty: `of status` / `of resume` add a reused `InFlightSignal.speak_line()` (`speak  quote a PULSE line above to the user; do not claim done while running`) while any residual is MISSING, replacing the old manual `activity  of pulse` pointer. Reuses `PulseProgress` (0.7.40). Proof: `InFlightVisibility`. No new CLI / schema / daemon.
 - 0.7.59 skill-first same-harness vs multi-harness ask. The `/of` skill must ask once in chat before a multi-role pack. Human confirms. Then `of patch --harness` or `of detect`. Never a silent mix. Proof: `SkillHarnessAsk`. No new CLI.
+- 0.7.60 quick detect present / missing / PATH≠auth. `AdapterDetect` wraps `detect_adapters` / `pick_adapter`. `of detect` and doctor share the labels. Never claim login from PATH. Proof: `AdapterDetectHonesty` / `AdapterDetectCli`. No new CLI.
 
 ## Contract boundaries
 

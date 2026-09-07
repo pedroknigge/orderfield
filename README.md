@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.59</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.60</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.59-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.60-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -33,7 +33,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | The harness says done, but the public surface is not proven | Close is proof (`of contrast` / `CLOSE.json`). Tests alone are not enough. |
 | Chat compacted, or the session died | The contract remains under `.orderfield/`. |
 | A multi-role wave needs cheap and frontier workers | The plan proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
-| A wave could mix CLIs or stay on one without asking | The leader asks same-harness categories vs multi-harness mix before pack. You confirm. Then `of patch --harness` or `of detect`. It does not invent a mix. |
+| A wave could mix CLIs or stay on one without asking | The leader asks same-harness categories vs multi-harness mix before pack. You confirm. Then `of patch --harness` or `of detect` (present / missing / PATH≠auth). It does not invent a mix or a login. |
 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
@@ -94,8 +94,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.59
-release_version=0.7.59
+release_tag=v0.7.60
+release_version=0.7.60
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -234,7 +234,7 @@ CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`
 
 **When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Before pack, the leader asks same-harness categories vs multi-harness mix. Default stays **same harness** (current session adapter) unless you choose mix; then `of detect` lists CLIs on PATH (not auth). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew on existing HOME installs versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass — PATH presence is not authentication or readiness; missing skill dests are silent; skill SKEW alone is WARN / exit 0. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; never copy transcripts). Orphan packed children (closed / leftover / stale prior wave, residual missing) are named on the plan; explicit `of gc` unlinks them and records `gc-stamp.json` `orphans[]` — resume auto-gc never unlinks packets. `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Before pack, the leader asks same-harness categories vs multi-harness mix. Default stays **same harness** (current session adapter) unless you choose mix; then `of detect` labels CLIs present / missing and `PATH≠auth` (Partial — not a login). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew on existing HOME installs versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass — PATH presence is not authentication or readiness; missing skill dests are silent; skill SKEW alone is WARN / exit 0. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; never copy transcripts). Orphan packed children (closed / leftover / stale prior wave, residual missing) are named on the plan; explicit `of gc` unlinks them and records `gc-stamp.json` `orphans[]` — resume auto-gc never unlinks packets. `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
@@ -315,7 +315,7 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 | `learn` | bare text = this-mission **field** note (default); `--protocol` = durable cross-project lesson; `--promote <id>` copies field → protocol. `--list` / `--forget`. Every item carries provenance; unprovenanced or invalid items are skipped on load with one warning. Protocol lives in the user cache (`OF_LEARNINGS`); `gc` never drops it. Child prompts get at most 8 protocol lines; not SPEC |
 | `status` | show field, wave, caps, in-flight |
 | `wave` | `list` / `show [N]`: multi-wave roster; `*` is `state.wave`. Read-path only |
-| `detect` | list installed harness CLIs |
+| `detect` | list harness CLIs on PATH (present/missing; PATH≠auth) |
 | `validate` | validate order / packet / residual JSON |
 | `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds `children_spawned` |

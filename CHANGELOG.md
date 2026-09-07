@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.60
+
+Quick detect which listed harnesses are present vs missing, without lying about auth. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.59 notes.
+
+- **Reuse, not a new verb:** `AdapterDetect` wraps `detect_adapters` / `pick_adapter`. `of detect` and the doctor adapters section share present / missing / `auth=not-verified`. Detect stays PATH-only (no version probe, no login probe). Doctor still adds version. No `of ask`. No `of probe`.
+- **Honesty on the quick surface:** `of detect` prints `present:` / `missing:` / `honesty: PATH≠auth (Partial)` and never `auth=ok`. A path is not a session. C-015 stays Partial.
+- **Skill drives the cut:** After the 0.7.59 mix ask, the leader runs `of detect`, quotes present / missing / PATH≠auth, and mixes only **present**. Never claim login from PATH.
+- **Proof:** `AdapterDetectHonesty` (skill/alias/README) and `AdapterDetectCli` (inventory + CLI). Existing agy/qwen detect tests and doctor PATH≠auth assertions stay. No new schema / CLI verb / supervisor.
+- Packaging: VERSION 0.7.60; skill/alias description preview `v0.7.60 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.59 notes.
+
 ## 0.7.59
 
 Leader skill asks same-harness categories vs multi-harness mix before pack. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.58 notes.
