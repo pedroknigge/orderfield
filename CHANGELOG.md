@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.56
+
+`ResidualQuality` byte cap no longer refuses honest structured evidence. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.55 notes.
+
+- **Shape first:** `TURN_RE` and the 40-line cap stay the dump detectors. The 4000-char cap fires only when shape is ambiguous (no transcript markers, and no counts/paths/shas). Honest structured residuals like the #116 field (4248 / 5590 chars) collect. An unstructured blob over 4000 chars still dies.
+- **Recovery named:** A size or line refuse names `scratch/<child>/notes.md` + re-spawn the same packet. Do not hand-edit the residual JSON.
+- **Skill drives the cut:** `SKILL.md` / alias teach structured-over-4000 is not a dump, and the notes.md recovery. No new CLI. No new schema.
+- **Proof:** `WaveReportQualityGate.test_structured_evidence_over_old_char_cap_is_accepted` / `_collects`; transcript dumps still refuse (`test_transcript_dump_still_refused_with_structured_markers`; `recovery/wave-report-quality-gate`).
+- Packaging: VERSION 0.7.56; skill/alias description preview `v0.7.56 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.55 notes.
+
 ## 0.7.55
 
 Residual schema accepts optional top-level `v`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.54 notes.

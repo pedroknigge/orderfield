@@ -1535,16 +1535,20 @@ class WaveReportQualityEval:
         WaveReportQualityEval.write_residual(root, dump=dump)
 
     @staticmethod
-    def write_residual(root: Path, *, dump: bool) -> None:
-        evidence = (
-            WaveReportQualityEval.DUMP_EVIDENCE
-            if dump
-            else WaveReportQualityEval.STRUCTURED_EVIDENCE
-        )
+    def write_residual(
+        root: Path, *, dump: bool, evidence: str | None = None
+    ) -> None:
+        text = evidence
+        if text is None:
+            text = (
+                WaveReportQualityEval.DUMP_EVIDENCE
+                if dump
+                else WaveReportQualityEval.STRUCTURED_EVIDENCE
+            )
         EvalInvariantSetup.write_bound_residual(
             root,
             "imp1",
-            evidence=evidence,
+            evidence=text,
             result_text="structured result\n",
         )
 
