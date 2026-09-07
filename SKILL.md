@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.58 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line; the leader quotes it and never claims done (no of pulse). Leader must propose cheap vs frontier workers in chat before a multi-role pack (consent; not a router). Consented spawn --model includes grok/agy (named; no aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
+description: "v0.7.59 — Disk-backed plan that survives chat, a token cut, and a model switch. Use when the user invokes /orderfield or /of, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line; the leader quotes it and never claims done (no of pulse). Before pack: must propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect). Consented spawn --model includes grok/agy (named; no aliases). Status/resume may propose uptier/downtier — ask, never silent switch. Human install/verify: docs/demo/mortal-install.sh then of doctor. Published claims stay ≤98% honest (python3 docs/audit/check-claims.py). Gaps as prose: of contrast --diff (same facts as spec-diff; no theater). Doctor/status ask once a day when a newer release exists (consent; not silent). Do not trigger for a harness name alone or one ordinary subagent. Unknown harnesses use generic mode."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.58"
+  version: "0.7.59"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -31,6 +31,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
 | multi-role pack plan (init → first pack, or re-planning roles) | **propose in chat first** — e.g. explorer/boilerplate/synthesizer on cheap, implementer/adversary/verifier/threshold on frontier. On yes → `of patch --model-hints field` (or `wave`); pack `--model-tier` / `--model`. Never silent switch. |
+| wave harness plan (init → first pack, or re-planning) | **ask in chat first** — same-harness categories (one adapter / related roles) vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect`, then spawn only from that PATH list. Never silent mix. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens` |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
@@ -248,6 +249,8 @@ of pack --slice "…" --role implementer --model-tier frontier --model opus
 
 `of pack --model-tier` / `--model NAME` is consent for that packet even without a field write. Field consent without pack flags inherits: explorer/synthesizer → cheap, implementer/adversary/verifier → frontier. Wave consent does not inherit after `of next-wave` — ask again. `of spawn` passes `--model` for claude / codex / cursor / grok / agy when the packet names a model (claude also maps cheap→haiku, frontier→opus). Grok and agy have no cheap/frontier aliases — named model only; tier-only is no-op argv. Put `--model` before `-p` on agy (and grok). Orca `task-create`, qwen, opencode, and generic stay no-op. `of doctor` prints pass vs no-op. This is argv passthrough, not a model router.
 
+**Wave harness plan (leader initiative).** After you understand the mission (and after the cheap vs frontier propose when it applies), you **must ask** once in chat before packing: same-harness categories (all children on this session's adapter / related roles) vs a multi-harness mix (claude / codex / cursor / grok / agy / …). On same → `of patch --harness <adapter>` (or stay on the session adapter). On mix → `of detect`, then spawn only adapters detect marks present on PATH (PATH ≠ auth). A single obvious pack on the current harness is not this beat. Never silent mix. Never invent adapters. Not a router.
+
 **Efficiency signal (post-hoc, ask only).** After residuals land, `of status` / `of resume` may print `efficiency propose uptier|downtier: … — of patch --model-hints …`. Cheap children that `rework` / `escalate` twice → suggest frontier. A frontier explorer/synthesizer that finished cleanly **and** copied harness tokens into optional `residual.usage` → suggest cheap. Missing `usage` is valid — do not invent spend. The line is an ask. Do **not** write `adapter_hints` until the human says yes. Do **not** treat `usage.tokens` as `budget.tokens` (still reserved; `--tokens N>0` dies). Design: [docs/efficiency-signal.md](docs/efficiency-signal.md). Proof: `of eval recovery/efficiency-signal`.
 
 Pack is the cap surface. `max_children` and `spawn_blocked` bind here even if you later use Agent / `of handoff` / `of render` instead of `of spawn`.
@@ -275,9 +278,9 @@ Claude / Codex / Cursor dry-run share one packet residual. After `install.sh --g
 
 #### Same harness only (default)
 
-**Default: same harness.** Spawn every child with the current session’s adapter (or one named adapter for the whole ORDER). Do **not** mix Claude/Codex/Grok/agy/etc. in one wave unless the user **explicitly** asks for multi-harness.
+**Default: same harness.** The ask lives at pack (above). Spawn every child with the current session’s adapter (or `ORDER.harness`). Do **not** mix Claude/Codex/Grok/agy/etc. in one wave unless that ask returned mix.
 
-Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). `ORDER.origin` must **not** change `pick_adapter`. If the user later asks for multi-harness, ask once, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters. Do not infer origin from PATH.
+Pin it as a **field**, not prose: `of patch --harness claude` writes `ORDER.harness`, and `of spawn` prefers it over detection (`--adapter` and `OF_ADAPTER` still win; `--harness -` clears). `ORDER.origin` must **not** change `pick_adapter`. If the user chose multi-harness, run `of detect`, and only then mix adapters that detect marks present on PATH (PATH ≠ auth). Do not invent adapters. Do not infer origin from PATH.
 
 If the field opted into model hints, `of spawn --dry-run` must show `--model` on claude/codex/cursor/grok/agy when the packet named one. A missing flag on those adapters after a consented hint is a broken run. Do not add `--model` by hand outside `of spawn`. Do not invent a grok or agy alias for cheap/frontier. Do not pass a model on qwen (stays in the user's config).
 

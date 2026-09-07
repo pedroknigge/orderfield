@@ -20,6 +20,7 @@ from test_packaging import (  # noqa: E402,F401
     PackagingBumpDiscipline,
     ReadmeProductSurface,
     SkillFrontmatterQuotedGate,
+    SkillHarnessAsk,
     SkillLeaderInitiative,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401

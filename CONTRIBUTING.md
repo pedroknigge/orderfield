@@ -68,7 +68,7 @@ No third-party coverage tool in CI — this package is **stdlib only** (no `pip`
 | npx skills version pin (SCOPE-NPX) | ecosystem residual | Skills CLI has no versioned source. Do not fake a pin. [PUBLISH.md](PUBLISH.md). |
 | Tag signing / immutable releases (SCOPE-SIGN) | publish-process | Classic install is already tag-pinned SHA-256. Not kernel code. [PUBLISH.md](PUBLISH.md). |
 | Claims matrix refresh after each public surface | solo | Code wins over docs |
-| Optional `of ask` for same-harness vs multi | solo | Protocol today; Partial by design |
+| Optional `of ask` CLI for same-harness vs multi | solo | Skill asks before pack (0.7.59 / C-143); kernel still no `of ask` (C-014 Partial) |
 
 ## Success metrics (package)
 
