@@ -419,7 +419,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--summary", required=True)
     s.set_defaults(func=cmd_checkpoint)
 
-    s = sub.add_parser("detect", help="detect installed harnesses")
+    s = sub.add_parser(
+        "detect",
+        help="list harness CLIs on PATH (present/missing; PATH≠auth)",
+    )
     s.set_defaults(func=cmd_detect)
 
     s = sub.add_parser(

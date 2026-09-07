@@ -290,7 +290,7 @@ Kernel vs harness verification boundary:
 | residual file exists | auth succeeded |
 | residual schema-validates | a model is ready |
 
-`of detect` is PATH inventory, not authentication or readiness.
+`of detect` is PATH inventory (`present` / `missing` / `honesty: PATH≠auth`), not authentication or readiness. Never read a path as a login.
 
 Do not copy grok `--always-approve`, claude/agy `--dangerously-skip-permissions`, or codex `--dangerously-bypass-approvals-and-sandbox` onto Qwen. `OF_TRUST` governs every adapter (table above); Qwen is the one whose conservative mode is an explicit flag.
 

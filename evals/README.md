@@ -68,6 +68,8 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | *(kernel unittest)* | — | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below (`ReadmeProductSurface`) |
 | *(kernel unittest)* | — | skill must propose cheap vs frontier in chat before pack `--model-tier`; alias mirrors; README hero names the consent propose (`SkillLeaderInitiative`) |
 | *(kernel unittest)* | — | skill must ask same-harness vs multi-harness mix in chat before pack; alias mirrors; README hero names the consent ask (`SkillHarnessAsk`) |
+| *(kernel unittest)* | — | after mix ask, skill/alias/README teach `of detect` present / missing / PATH≠auth and never claim login (`AdapterDetectHonesty`) |
+| *(kernel unittest)* | — | `of detect` / `AdapterDetect` labels present/missing + `auth=not-verified`; never `auth=ok` (`AdapterDetectCli`) |
 | *(kernel unittest)* | — | one VERSION per real cut; packaging-only CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
 | *(kernel unittest)* | — | skill `description` / `compatibility` frontmatter is YAML-quoted; unquoted em dash / colons die (`SkillFrontmatterQuotedGate`) |
 
@@ -86,7 +88,7 @@ Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --
 | `expected/stale-packets.json` | leftover packet, same `order.id`, different `phase`/`mission` | pack/collect/integrate fail; `next-wave` skips the occupied stale dir |
 | `expected/mission-rewrite-refused.json` | `recovery_mission_rewrite` | `integrate --apply` keeps leader mission/phase/constraints/done-when; `spec_closed` stays false |
 
-`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `UpdateAskDaily`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, `AdversarialDualTruthCorpus`, `PackOutPhysicalNested`, `PackRosterCrossField`, `CloseChecklistProof`, `AdapterHintsCli`, `ClaimsHonestyGate`, `ReadmeProductSurface`, `SkillLeaderInitiative`, `SkillHarnessAsk`, `SkillFrontmatterQuotedGate`, and `PackagingBumpDiscipline`. `recovery/doctor-advisory-ux` is on `--strict`.
+`--kernel` also runs `FieldAbandonedSignal`, `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `MultiHarnessResidual`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `UpdateAskDaily`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, `AdversarialDualTruthCorpus`, `PackOutPhysicalNested`, `PackRosterCrossField`, `CloseChecklistProof`, `AdapterHintsCli`, `ClaimsHonestyGate`, `ReadmeProductSurface`, `SkillLeaderInitiative`, `SkillHarnessAsk`, `AdapterDetectHonesty`, `AdapterDetectCli`, `SkillFrontmatterQuotedGate`, and `PackagingBumpDiscipline`. `recovery/doctor-advisory-ux` is on `--strict`.
 
 ```bash
 python3 -m unittest discover -s tests -v

@@ -1190,6 +1190,87 @@ class ArgvAndLogRedaction(unittest.TestCase):
         self.assertNotIn("sk-leakedsecret99", json.dumps(meta))
 
 
+class AdapterDetectCli(unittest.TestCase):
+    """of detect labels present/missing and never claims auth."""
+
+    def test_inventory_labels_and_never_auth(self) -> None:
+        detected = {name: None for name in of.ADAPTER_ORDER}
+        detected["claude"] = "/tmp/claude"
+        detected["cursor"] = "/tmp/agent"
+        rows = of.AdapterDetect.inventory(detected, "claude")
+        by_name = {row["name"]: row for row in rows}
+        self.assertEqual(by_name["claude"]["status"], "present")
+        self.assertEqual(by_name["cursor"]["status"], "present")
+        self.assertEqual(by_name["codex"]["status"], "missing")
+        self.assertTrue(by_name["claude"]["picked"])
+        self.assertFalse(by_name["cursor"]["picked"])
+        for row in rows:
+            self.assertEqual(row["auth"], "not-verified")
+            self.assertEqual(row["ready"], "not-verified")
+        lines = of.AdapterDetect.detect_lines(rows)
+        blob = "\n".join(lines)
+        self.assertIn("present: claude,cursor", blob)
+        self.assertIn("missing:", blob)
+        self.assertIn("honesty: PATH≠auth (Partial)", blob)
+        self.assertIn("default: claude", blob)
+        self.assertIn("auth=not-verified", blob)
+        self.assertNotIn("auth=ok", blob)
+        self.assertNotIn("auth=verified", blob)
+
+    def test_detect_cli_prints_honesty(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-detect-honesty-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "claude"
+        fake.write_text("#!/bin/sh\necho claude\n", encoding="utf-8")
+        fake.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = str(bindir)
+        env["OF_NO_UPDATE_CHECK"] = "1"
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        out = proc.stdout
+        claude = [
+            ln
+            for ln in out.splitlines()
+            if ln[1:].lstrip().startswith("claude")
+        ]
+        self.assertTrue(claude, out)
+        self.assertIn("present", claude[0])
+        self.assertIn(str(fake), claude[0])
+        self.assertIn("auth=not-verified", claude[0])
+        self.assertIn("present: claude", out)
+        self.assertIn("missing:", out)
+        self.assertIn("honesty: PATH≠auth (Partial)", out)
+        self.assertIn("default: claude", out)
+        self.assertNotIn("auth=ok", out)
+        self.assertNotIn("auth=verified", out)
+        self.assertNotIn("ready=ok", out)
+
+    def test_doctor_reuses_present_missing(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-doctor-detect-"))
+        home = Path(tempfile.mkdtemp(prefix="of-doctor-detect-home-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.addCleanup(shutil.rmtree, home, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        r = run_of(tmp, "doctor", extra_env={"HOME": str(home)})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("present", r.stdout)
+        self.assertIn("missing", r.stdout)
+        self.assertIn("auth=not-verified", r.stdout)
+        self.assertNotIn("auth=ok", r.stdout)
+
+
 class DoctorCommand(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-"))

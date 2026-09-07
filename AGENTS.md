@@ -13,7 +13,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 4. Every child close-out is a valid residual JSON, not loose prose.
 5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
 6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) forbids spawn in that wave until the field is patched and guarded `next-wave` runs.
-7. **Same harness only** by default: **ask** same-harness categories vs multi-harness mix before pack. Pin same-harness with `of patch --harness <adapter>` (a field, not a prose constraint). Mix only after explicit yes; then `of detect` (PATH ≠ auth).
+7. **Same harness only** by default: **ask** same-harness categories vs multi-harness mix before pack. Pin same-harness with `of patch --harness <adapter>` (a field, not a prose constraint). Mix only after explicit yes; then `of detect` (present / missing / PATH≠auth; PATH is not login).
 8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
 9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for a software mission that will not fit one context, colliding writers, and a false public claim (adversary catch); theater for bump+obvious feature (doc-manager + grok-build feedbacks).
 10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates; refuse / edit-later / silence does not. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [SLAVE.md](SLAVE.md) (child). Not a second contract.
@@ -151,6 +151,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.57 grok + agy consented `--model` passthrough (`AdapterHints`; named model; no invented aliases) | documented |
 | 0.7.58 turn-end quote-PULSE leader duty (`InFlightSignal.speak_line` on status/resume; reuses `PulseProgress`; no manual `of pulse`; `InFlightVisibility`) | documented |
 | 0.7.59 skill-first ask same-harness categories vs multi-harness mix before pack (`SkillHarnessAsk`; reuse `of detect` / `--harness`; no new CLI) | documented |
+| 0.7.60 quick detect present / missing / PATH≠auth (`AdapterDetect`; reuse `of detect` / doctor; never claim login from PATH) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

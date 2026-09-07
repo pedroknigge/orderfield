@@ -17,6 +17,7 @@ if str(_TESTS_DIR) not in sys.path:
 from test_adapter_hints import AdapterHintsCli  # noqa: E402,F401
 from test_claims_honesty import ClaimsHonestyGate  # noqa: E402,F401
 from test_packaging import (  # noqa: E402,F401
+    AdapterDetectHonesty,
     PackagingBumpDiscipline,
     ReadmeProductSurface,
     SkillFrontmatterQuotedGate,
@@ -25,6 +26,7 @@ from test_packaging import (  # noqa: E402,F401
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401
 from test_kernel_cli import (  # noqa: E402,F401
+    AdapterDetectCli,
     CliFieldResidual,
     DoctorOnePassSkew,
     DoctorSkillVersionSkew,

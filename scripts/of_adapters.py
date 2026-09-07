@@ -249,6 +249,79 @@ def detect_adapters() -> dict[str, str | None]:
     return found
 
 
+class AdapterDetect:
+    """PATH inventory. Not authentication. Not readiness.
+
+    present = binary on PATH (or OF_AGENT for generic). missing = not found.
+    auth/ready stay not-verified. PATH is not a login.
+    """
+
+    PRESENT = "present"
+    MISSING = "missing"
+    AUTH = "not-verified"
+    READY = "not-verified"
+    HONESTY = "PATH≠auth"
+
+    @staticmethod
+    def inventory(
+        detected: dict[str, str | None] | None = None,
+        picked: str | None = None,
+    ) -> list[dict[str, Any]]:
+        found = detect_adapters() if detected is None else detected
+        default = pick_adapter(None) if picked is None else picked
+        rows: list[dict[str, Any]] = []
+        for name in ADAPTER_ORDER:
+            path = found.get(name)
+            rows.append(
+                {
+                    "name": name,
+                    "status": (
+                        AdapterDetect.PRESENT if path else AdapterDetect.MISSING
+                    ),
+                    "path": path or "-",
+                    "picked": name == default,
+                    "auth": AdapterDetect.AUTH,
+                    "ready": AdapterDetect.READY,
+                }
+            )
+        return rows
+
+    @staticmethod
+    def names(rows: list[dict[str, Any]], status: str) -> list[str]:
+        return [str(row["name"]) for row in rows if row.get("status") == status]
+
+    @staticmethod
+    def detect_lines(rows: list[dict[str, Any]] | None = None) -> list[str]:
+        rows = AdapterDetect.inventory() if rows is None else rows
+        lines: list[str] = []
+        picked = "generic"
+        for row in rows:
+            mark = "*" if row["picked"] else " "
+            if row["picked"]:
+                picked = str(row["name"])
+            lines.append(
+                f"{mark} {row['name']:10} {row['status']:8} {row['path']}  "
+                f"auth={row['auth']}"
+            )
+        present = AdapterDetect.names(rows, AdapterDetect.PRESENT)
+        missing = AdapterDetect.names(rows, AdapterDetect.MISSING)
+        lines.append(f"present: {','.join(present) or '-'}")
+        lines.append(f"missing: {','.join(missing) or '-'}")
+        lines.append(f"honesty: {AdapterDetect.HONESTY} (Partial)")
+        lines.append(f"default: {picked}")
+        return lines
+
+    @staticmethod
+    def doctor_line(row: dict[str, Any], *, version: str, hint: str = "") -> str:
+        mark = "*" if row["picked"] else " "
+        extra = f"  {hint}" if hint else ""
+        return (
+            f"  {mark} {row['name']:10} {row['status']:8} path={row['path']}  "
+            f"version={version}{extra}  "
+            f"auth={row['auth']}  ready={row['ready']}"
+        )
+
+
 def pick_adapter(explicit: str | None, preferred: str | None = None) -> str:
     """--adapter > OF_ADAPTER > ORDER.harness > first detected."""
     if explicit:

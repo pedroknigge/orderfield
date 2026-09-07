@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.59` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.60` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -135,7 +135,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | Symbol / area | Role |
 |---------------|------|
 | `scripts/of.py` + `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` | Public CLI entry; 0.6 form split, 0.6.2 command groups, SCOPE-GODSPLIT (`wal` / `learn` / `retain`; `field` re-exports public names via `FieldWal` / `FieldLearnings` / `FieldRetain`). Protocol unchanged vs 0.5.7 |
-| `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / detect+pick |
+| `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / `AdapterDetect` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |
 | `cmd_unpack` | Release packed child that never reported; refunds `children_spawned` |
@@ -156,7 +156,8 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
-| `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/ready; missing dests silent |
+| `cmd_detect` | PATH inventory via `AdapterDetect`: present / missing / `auth=not-verified` / `honesty: PATH≠auth (Partial)`. Not login. Not readiness. |
+| `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/ready; missing dests silent. Adapters section reuses `AdapterDetect` labels. |
 | `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |
 | `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; `gc` is locked; never copies transcripts. `--archive-field` moves a closed home to `.orderfield/archive/<id>/` and keeps `CLOSE.json`. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. Orphan packed children (`OrphanPacked`) dump on explicit `gc` with `gc-stamp.json` `orphans[]`; resume auto-gc skips packets |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |

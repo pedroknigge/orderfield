@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Any
 
 from of_adapters import (
-    ADAPTER_ORDER,
     DEFAULT_TRUST_PROFILE,
     HARNESS_PROMISES,
     KERNEL_VERIFIES,
     TRUST_ENV,
     TRUST_PROFILES,
+    AdapterDetect,
     AdapterHints,
     detect_adapters,
     pick_adapter,
@@ -621,21 +621,17 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     detected = detect_adapters()
     picked = pick_adapter(None, None)
     print("adapters  (PATH is not auth or readiness)")
-    for name in ADAPTER_ORDER:
-        found = detected.get(name)
-        mark = "*" if name == picked else " "
+    for row in AdapterDetect.inventory(detected, picked):
+        found = detected.get(str(row["name"]))
         if found:
-            version = probe_adapter_version(found)
             print(
-                f"  {mark} {name:10} path={found}  version={version}  "
-                "auth=not-verified  ready=not-verified"
+                AdapterDetect.doctor_line(
+                    row, version=probe_adapter_version(found)
+                )
             )
         else:
-            hint = "set OF_AGENT" if name == "generic" else "not on PATH"
-            print(
-                f"  {mark} {name:10} path=-  version=-  {hint}  "
-                "auth=not-verified  ready=not-verified"
-            )
+            hint = "set OF_AGENT" if row["name"] == "generic" else "not on PATH"
+            print(AdapterDetect.doctor_line(row, version="-", hint=hint))
     print("trust")
     print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
     print(f"  profiles      {', '.join(TRUST_PROFILES)}")
@@ -1604,10 +1600,10 @@ def cmd_status(args: argparse.Namespace) -> None:
 def cmd_detect(args: argparse.Namespace) -> None:
     detected = detect_adapters()
     picked = pick_adapter(None)
-    for name, path in detected.items():
-        mark = "*" if name == picked else " "
-        print(f"{mark} {name:10} {path or '-'}")
-    print(f"default: {picked}")
+    for line in AdapterDetect.detect_lines(
+        AdapterDetect.inventory(detected, picked)
+    ):
+        print(line)
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
