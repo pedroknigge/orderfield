@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.63. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.64. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.63` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.64` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -53,7 +53,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). `--list` / `--forget`. Resume lists both; not SPEC
 - `of retain` (read-only) / `of gc` walk every field home. Non-risky ephemeral uses a 7-day TTL; `spec_closed` dumps it immediately. Tree budget (64 MiB, `OF_GC_BUDGET`) prints `audit` of open fields; `--keep-field` / `--archive-field` / `--drop-field` are HITL (open drop needs `--force --reason`). `--archive-field` moves a closed sibling to `.orderfield/archive/<id>/` and keeps `CLOSE.json` / SPEC / REQUIREMENTS. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. The plan action `dump` is **permanent unlink** (`Path.unlink` / `rmtree`), not an export. Backup is operator-owned. Protocol is never unlinked. Never copy transcripts. WAL crash consistency is not a restorable dump. Orphan packed children (`OrphanPacked`: closed / leftover-home / inapplicable-order / stale-prior-wave, residual missing) are named on the plan; explicit `of gc` unlinks the packet and records `gc-stamp.json` `orphans[]`. Resume auto-gc skips packets. Proof: `recovery/closed-field-archive` / `ClosedFieldArchiveTrail`; `recovery/orphan-packed-cleanup` / `OrphanPackedCleanup`.
 
-- Spawn `argv_preview` and child logs redact secrets and escalated approval flags. Long `--output-schema` / path tokens keep a basename (`ArgvRedact`); a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor/skills/orderfield`) still names `residual.codex.schema.json`. Claude/Codex/Cursor share that residual (`MultiHarnessResidual`).
+- Spawn `argv_preview` and child logs redact secrets and escalated approval flags. Long `--output-schema` / `--json-schema` / path tokens keep a basename (`ArgvRedact`); a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor/skills/orderfield`) still names `residual.codex.schema.json`. Claude/Codex/Cursor share that residual (`MultiHarnessResidual`). agy `--json-schema` reuses that file (`OutputSchema`). Claude omit.
 - A fully stale wave is recoverable with `of next-wave` without hand-editing ORDER; a complete stale wave (residuals at the physical field-home path) may also `collect`/`integrate`. Collect/integrate also find a leftover canonical write via `packet_residual_file` (#48). `unpack` and `complete_stale_wave_recoverable` still use the physical path only. `#49`: `done_when_closed` is in the integration digest; `--recompute` after `--done-when-closed` selects `phase` instead of replaying hold.
 - `of migrate` applies versioned rewrites for pre-0.4.2 packets/state and maps writable aliases onto `workspace.writable_by_slaves`; `.orderfield/SLAVE.md` stays the protocol path
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
@@ -78,6 +78,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.61 living model catalog. `docs/model-catalog.md` + `docs/model-catalog.json` cite public sheets or say unknown. The `/of` skill consults the catalog before proposing cheap vs frontier or asking a mix. `of doctor` prints one pointer. Not a router. Not `budget.tokens`. Proof: `ModelCatalogHonesty` / `SkillModelCatalogConsult`. No new CLI.
 - 0.7.62 stream-json / JSON streams feed the same PULSE. `StreamJson` parses documented harness NDJSON (claude/cursor `stream-json`, codex `--json`) into `PulseProgress.append`. Residual extract stays the stdout path. agy/qwen/opencode keep a JSON blob. Proof: `StreamJsonParse` / `StreamJsonSpawn`. No new CLI.
 - 0.7.63 conservative agy spawn copies nonempty harness `denied_actions` into optional `residual.denied_actions` (`AgyDeniedActions`). Missing/empty is omit — not approval. `yolo` does not copy. Proof: `AgyDeniedActionsSpawn`. No new CLI.
+- 0.7.64 agy spawn `--json-schema` reuses `residual.codex.schema.json` (`OutputSchema`). Claude omit: inline-only; keep stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Proof: `OutputSchemaArgv`. No new CLI.
 
 ## Contract boundaries
 

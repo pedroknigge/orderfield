@@ -3731,12 +3731,13 @@ class ArgvRedact:
     """Spawn argv preview. Secrets stay hidden. Paths keep a basename.
 
     A long prompt body becomes `<prompt>`. A filesystem path — especially
-    the value of `--output-schema` / `-o` — is not a prompt. Deep skill
-    roots still name `residual.codex.schema.json` in dry-run stdout.
+    the value of `--output-schema` / `--json-schema` / `-o` — is not a
+    prompt. Deep skill roots still name `residual.codex.schema.json`
+    in dry-run stdout.
     """
 
     PROMPT_CHARS = 80
-    PATH_FLAGS = frozenset({"--output-schema", "-o"})
+    PATH_FLAGS = frozenset({"--output-schema", "--json-schema", "-o"})
     PATH_SUFFIXES = (".json", ".md", ".yml", ".yaml", ".toml")
 
     @staticmethod

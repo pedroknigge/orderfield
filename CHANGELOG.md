@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.64
+
+agy residual `--json-schema` reuses the Codex file. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.63 notes.
+
+- **Reuse, not a parallel schema:** `OutputSchema` maps Codex `--output-schema` and agy `--json-schema` onto the same `residual.codex.schema.json`. Codex `-o` residual file stays. agy flags still precede `-p`. `StreamJson.residual` also reads `structured_output` on the existing json envelope. `ArgvRedact` keeps the `--json-schema` basename.
+- **Honest omit:** Claude `--json-schema` is an inline JSON string and pairs with `--output-format json`, which would drop stream-json PULSE. Do not pass a file path. Do not inline a second schema stack. Qwen `--json-schema` stays a structured_output tool, not residual delivery. Codex path intact.
+- **Skill drives the cut:** `SKILL.md` / `/of` teach agy `--json-schema` residual.codex and Claude omit. No new CLI / supervisor / token ceiling / invented schema file.
+- **Proof:** `OutputSchemaArgv` / `OutputSchemaExtract` / `OutputSchemaRedact` / `OutputSchemaSkill`. Existing Codex `--output-schema` and multi-harness residual tests stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.64; skill/alias description preview `v0.7.64 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.63 notes.
+
 ## 0.7.63
 
 Agy `denied_actions` land on the residual under conservative trust. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.62 notes.

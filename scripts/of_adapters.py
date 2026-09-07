@@ -594,7 +594,7 @@ class StreamJson:
     def residual(event: dict[str, Any]) -> dict[str, Any] | None:
         if StreamJson.looks_residual(event):
             return event
-        for key in ("result", "result_json", "output"):
+        for key in ("result", "result_json", "output", "structured_output"):
             raw = event.get(key)
             if isinstance(raw, dict) and StreamJson.looks_residual(raw):
                 return raw
@@ -654,6 +654,55 @@ class StreamJson:
         if subtype:
             words = f"{words} {subtype}"
         return StreamJson.clip(words)
+
+
+class OutputSchema:
+    """Harness residual-schema flag. Reuse residual.codex.schema.json.
+
+    Codex ``--output-schema PATH`` writes the residual via ``-o``.
+    agy ``--json-schema PATH`` is a documented file-path flag on the
+    existing ``--output-format json`` envelope; extract still uses
+    ``StreamJson.residual`` (now also ``structured_output``).
+
+    Claude omit: ``--json-schema`` is an inline JSON string and pairs
+    with ``--output-format json``, which would drop stream-json PULSE.
+    Do not pass a file path (the CLI rejects it). Do not inline a
+    parallel schema stack. Qwen omit: ``--json-schema`` is a
+    structured_output tool, not residual delivery.
+    """
+
+    FILENAME = "residual.codex.schema.json"
+    PATH_FLAGS = {
+        "codex": "--output-schema",
+        "agy": "--json-schema",
+    }
+    OMIT = {
+        "claude": "inline --json-schema only; keep stream-json PULSE",
+        "qwen": "structured_output tool, not residual delivery",
+        "cursor": "no residual schema flag",
+        "opencode": "no residual schema flag",
+        "orca": "no residual schema flag",
+        "grok": "no residual schema flag",
+        "generic": "OF_AGENT owns flags",
+    }
+
+    @staticmethod
+    def path() -> Path:
+        return skill_root() / "schemas" / OutputSchema.FILENAME
+
+    @staticmethod
+    def flag(adapter: str) -> str | None:
+        return OutputSchema.PATH_FLAGS.get(adapter)
+
+    @staticmethod
+    def argv_flags(adapter: str) -> list[str]:
+        flag = OutputSchema.flag(adapter)
+        if not flag:
+            return []
+        schema = OutputSchema.path()
+        if not schema.exists():
+            return []
+        return [flag, str(schema)]
 
 
 class AgyDeniedActions:
@@ -757,6 +806,7 @@ def build_spawn_argv(
     model = AdapterHints.spawn_flags(adapter, packet)
     env_agent = os.environ.get("OF_AGENT")
     stream = StreamJson.argv_flags(adapter)
+    schema = OutputSchema.argv_flags(adapter)
     if adapter == "generic" and env_agent:
         return env_agent.split() + [prompt]
     if adapter == "claude":
@@ -764,10 +814,8 @@ def build_spawn_argv(
         return [bin_, *model, "-p", prompt, *stream, *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
-        schema = skill_root() / "schemas" / "residual.codex.schema.json"
         argv = [bin_, "exec", *model, *trust, *stream, "-o", str(residual_abs)]
-        if schema.exists():
-            argv += ["--output-schema", str(schema)]
+        argv += schema
         argv.append(prompt)
         return argv
     if adapter == "cursor":
@@ -784,7 +832,7 @@ def build_spawn_argv(
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
         bin_ = which_bin(["agy"]) or "agy"
-        return [bin_, *trust, *model, "--output-format", "json", "-p", prompt]
+        return [bin_, *trust, *model, *schema, "--output-format", "json", "-p", prompt]
     if adapter == "qwen":
         # Qwen-owned headless: positional prompt (`-p` is deprecated).
         # Provider/model/credentials stay in the user's qwen CLI config.

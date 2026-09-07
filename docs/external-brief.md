@@ -143,6 +143,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Chat-dump residual cannot collect; structured residual writes a wave report without transcript text | `recovery/wave-report-quality-gate`; `WaveReportQualityGate` |
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
 | Claude/Grok/Codex/Cursor dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep dests `~/.claude` / `~/.agents` / `~/.cursor` stay green; `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
+| agy `--json-schema` reuses `residual.codex.schema.json`; Claude omit (inline-only; keep stream-json); Qwen omit (structured_output tool) | `OutputSchema`; `OutputSchemaArgv` |
 | Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies | `ClaimsHonestyGate`; `python3 docs/audit/check-claims.py` |
 | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below | `ReadmeProductSurface` |
