@@ -1259,15 +1259,40 @@ class AdapterDetectCli(unittest.TestCase):
     def test_doctor_reuses_present_missing(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-doctor-detect-"))
         home = Path(tempfile.mkdtemp(prefix="of-doctor-detect-home-"))
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "claude"
+        fake.write_text("#!/bin/sh\necho claude 0.0\n", encoding="utf-8")
+        fake.chmod(0o755)
         self.addCleanup(shutil.rmtree, tmp, True)
         self.addCleanup(shutil.rmtree, home, True)
-        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        hermetic = {
+            "PATH": str(bindir),
+            "HOME": str(home),
+            "OF_ADAPTER": "",
+            "OF_AGENT": "",
+        }
+        init = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "explore",
+            extra_env=hermetic,
+        )
         self.assertEqual(init.returncode, 0, init.stderr)
-        r = run_of(tmp, "doctor", extra_env={"HOME": str(home)})
+        r = run_of(tmp, "doctor", extra_env=hermetic)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("present", r.stdout)
+        claude = [
+            ln
+            for ln in r.stdout.splitlines()
+            if ln.lstrip().lstrip("* ").startswith("claude")
+        ]
+        self.assertTrue(claude, r.stdout)
+        self.assertIn("present", claude[0])
         self.assertIn("missing", r.stdout)
-        self.assertIn("auth=not-verified", r.stdout)
+        self.assertIn("auth=not-verified", claude[0])
         self.assertNotIn("auth=ok", r.stdout)
 
 
