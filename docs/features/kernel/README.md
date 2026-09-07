@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.61. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.62. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.61` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.62` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -76,6 +76,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.59 skill-first same-harness vs multi-harness ask. The `/of` skill must ask once in chat before a multi-role pack. Human confirms. Then `of patch --harness` or `of detect`. Never a silent mix. Proof: `SkillHarnessAsk`. No new CLI.
 - 0.7.60 quick detect present / missing / PATH≠auth. `AdapterDetect` wraps `detect_adapters` / `pick_adapter`. `of detect` and doctor share the labels. Never claim login from PATH. Proof: `AdapterDetectHonesty` / `AdapterDetectCli`. No new CLI.
 - 0.7.61 living model catalog. `docs/model-catalog.md` + `docs/model-catalog.json` cite public sheets or say unknown. The `/of` skill consults the catalog before proposing cheap vs frontier or asking a mix. `of doctor` prints one pointer. Not a router. Not `budget.tokens`. Proof: `ModelCatalogHonesty` / `SkillModelCatalogConsult`. No new CLI.
+- 0.7.62 stream-json / JSON streams feed the same PULSE. `StreamJson` parses documented harness NDJSON (claude/cursor `stream-json`, codex `--json`) into `PulseProgress.append`. Residual extract stays the stdout path. agy/qwen/opencode keep a JSON blob. Proof: `StreamJsonParse` / `StreamJsonSpawn`. No new CLI.
 
 ## Contract boundaries
 

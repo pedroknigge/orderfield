@@ -798,11 +798,13 @@ def cmd_worktree_list(args: argparse.Namespace) -> None:
 
 
 class PulseProgress:
-    """Last milestone lines from scratch/<id>/PULSE. Read-path only. Not a diary."""
+    """Last milestone lines from scratch/<id>/PULSE. Same file for child
+    heartbeat and spawn stream-json. Not a diary. Not a supervisor."""
 
     NAME = "PULSE"
     MAX_LINES = 3
     MAX_CHARS = 120
+    MAX_WORDS = 10
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path | None:
@@ -811,6 +813,41 @@ class PulseProgress:
             return None
         scratch = physical_artifact_path(root, str(rel), "packet scratch_dir")
         return scratch / PulseProgress.NAME
+
+    @staticmethod
+    def format_line(text: str, when: str | None = None) -> str:
+        words = " ".join(str(text).split())
+        parts = words.split()
+        if len(parts) > PulseProgress.MAX_WORDS:
+            words = " ".join(parts[: PulseProgress.MAX_WORDS])
+        ts = when or utc_now()
+        return f"{ts} {words}".strip()
+
+    @staticmethod
+    def append(root: Path, packet: dict[str, Any], text: str) -> None:
+        """Append one SLAVE-shaped line. Dedupes the last body. Not a diary."""
+        target = PulseProgress.path(root, packet)
+        if target is None or not str(text).strip():
+            return
+        line = PulseProgress.format_line(text)
+        body = " ".join(line.split()[1:])
+        if not body:
+            return
+        existing: list[str] = []
+        if target.is_file():
+            try:
+                existing = target.read_text(
+                    encoding="utf-8", errors="replace"
+                ).splitlines()
+            except OSError:
+                existing = []
+        if existing:
+            last_body = " ".join(existing[-1].split()[1:])
+            if last_body == body:
+                return
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
 
     @staticmethod
     def lines(root: Path, packet: dict[str, Any]) -> list[str]:

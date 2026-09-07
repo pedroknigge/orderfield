@@ -2554,6 +2554,10 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ModelCatalogHonesty",
     "tests.test_kernel.AdapterDetectHonesty",
     "tests.test_kernel.AdapterDetectCli",
+    "tests.test_kernel.StreamJsonParse",
+    "tests.test_kernel.PulseProgressAppend",
+    "tests.test_kernel.StreamJsonSpawn",
+    "tests.test_kernel.StreamJsonPulseSkill",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.PackagingBumpDiscipline",
 )

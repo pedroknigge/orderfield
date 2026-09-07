@@ -27,6 +27,12 @@ from test_packaging import (  # noqa: E402,F401
     ModelCatalogHonesty,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401
+from test_stream_json import (  # noqa: E402,F401
+    PulseProgressAppend,
+    StreamJsonParse,
+    StreamJsonPulseSkill,
+    StreamJsonSpawn,
+)
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
     CliFieldResidual,

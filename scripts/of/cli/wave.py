@@ -7,7 +7,9 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,7 @@ from of_adapters import (
     KNOWN_TOOLS,
     TRUST_ENV,
     AdapterHints,
+    StreamJson,
     build_spawn_argv,
     missing_tools,
     pick_adapter,
@@ -261,14 +264,20 @@ def cleanup_scratch_dir(path: Path) -> None:
 
 
 def run_child(
-    argv: list[str], root: Path, env: dict[str, str], timeout_s: float | None
+    argv: list[str],
+    root: Path,
+    env: dict[str, str],
+    timeout_s: float | None,
+    on_stdout_line: Callable[[str], None] | None = None,
 ) -> "subprocess.CompletedProcess[str]":
     """subprocess.run with a process group and no stdin.
 
     stdin=/dev/null: a harness that prompts for approval fails fast on EOF
     instead of blocking invisibly on the leader's terminal until timeout.
     On timeout the whole group is killed and TimeoutExpired carries whatever
-    output was captured, like subprocess.run."""
+    output was captured, like subprocess.run. Optional ``on_stdout_line``
+    sees each stdout line as it arrives so stream-json can feed PULSE
+    without a second process supervisor."""
     kwargs: dict[str, Any] = {
         "cwd": str(root),
         "stdout": subprocess.PIPE,
@@ -280,13 +289,48 @@ def run_child(
     if os.name == "posix":
         kwargs["start_new_session"] = True
     proc = subprocess.Popen(argv, **kwargs)
+    out_chunks: list[str] = []
+    err_chunks: list[str] = []
+
+    def _read(
+        pipe: Any,
+        chunks: list[str],
+        callback: Callable[[str], None] | None,
+    ) -> None:
+        try:
+            for line in iter(pipe.readline, ""):
+                chunks.append(line)
+                if callback is not None:
+                    callback(line.rstrip("\n\r"))
+        finally:
+            try:
+                pipe.close()
+            except OSError:
+                pass
+
+    t_out = threading.Thread(
+        target=_read, args=(proc.stdout, out_chunks, on_stdout_line)
+    )
+    t_err = threading.Thread(target=_read, args=(proc.stderr, err_chunks, None))
+    t_out.start()
+    t_err.start()
     try:
-        out, err = proc.communicate(timeout=timeout_s)
+        proc.wait(timeout=timeout_s)
     except subprocess.TimeoutExpired:
         kill_child_tree(proc)
-        out, err = proc.communicate()
-        raise subprocess.TimeoutExpired(argv, timeout_s or 0, output=out, stderr=err)
-    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+        t_out.join()
+        t_err.join()
+        raise subprocess.TimeoutExpired(
+            argv,
+            timeout_s or 0,
+            output="".join(out_chunks),
+            stderr="".join(err_chunks),
+        )
+    t_out.join()
+    t_err.join()
+    return subprocess.CompletedProcess(
+        argv, proc.returncode, "".join(out_chunks), "".join(err_chunks)
+    )
 
 
 def cmd_pack(args: argparse.Namespace) -> None:
@@ -836,8 +880,26 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_env = spawn_env(adapter)
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
+    from of.cli.ops import PulseProgress
+
+    last_residual: dict[str, Any] | None = None
+
+    def on_stdout_line(line: str) -> None:
+        nonlocal last_residual
+        event = StreamJson.parse_line(line)
+        if event is None:
+            return
+        found = StreamJson.residual(event)
+        if found is not None:
+            last_residual = found
+        note = StreamJson.milestone(event)
+        if note:
+            PulseProgress.append(root, packet, note)
+
     try:
-        proc = run_child(argv, root, child_env, timeout_s)
+        proc = run_child(
+            argv, root, child_env, timeout_s, on_stdout_line=on_stdout_line
+        )
     except FileNotFoundError:
         write_log("", f"binary not found: {argv[0]}")
         fail("missing_binary", f"binary not found for adapter={adapter}")
@@ -865,9 +927,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             plain=f"spawn exit={proc.returncode} log={log_path}",
             exit=proc.returncode,
         )
-    # best-effort: if residual missing, try to extract JSON from stdout
+    # best-effort: if residual missing, reuse stream residual or stdout JSON
     if not residual_abs.exists():
-        extracted = extract_json_object(proc.stdout)
+        extracted = last_residual or extract_json_object(proc.stdout)
         if extracted and isinstance(extracted, dict) and "status" in extracted:
             errs = validate_residual_for_packet(extracted, packet, root)
             if errs:

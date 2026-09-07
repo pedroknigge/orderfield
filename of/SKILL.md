@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.61 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line; the leader quotes it and never claims done (no manual of pulse; sibling). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth; sibling). Consented spawn --model includes grok/agy (named model; no invented aliases). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
+description: "v0.7.62 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice / multi-writer wave needs a brief and steps that stay on disk. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json / JSON streams feed the same PULSE; sibling); the leader quotes it and never claims done (no manual of pulse; sibling). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth; sibling). Consented spawn --model includes grok/agy (named model; no invented aliases). Status/resume may propose uptier/downtier (ask only; sibling). Human install/verify: follow the sibling (docs/demo/mortal-install.sh then of doctor). Published claims stay ≤98% honest (sibling check-claims.py). Gaps as prose: of contrast --diff (sibling). Doctor/status ask once a day when a newer release exists; on yes, install.sh --from-release (SHA256). Do not trigger for a harness name alone or one ordinary subagent."
 license: MIT
 metadata:
-  version: "0.7.61"
+  version: "0.7.62"
   alias-of: orderfield
 ---
 
@@ -17,7 +17,7 @@ Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh -
 
 Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
-In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
+In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Spawn stream-json / JSON streams (claude/cursor/codex) feed the same PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 

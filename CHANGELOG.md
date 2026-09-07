@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.62
+
+stream-json / JSON event streams from supported harnesses feed the same PULSE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.61 notes.
+
+- **Reuse, not a second pulse:** `PulseProgress` still reads `scratch/<id>/PULSE`. `extract_json_object` still lands a residual from stdout when the child did not write the file. `StreamJson` parses one NDJSON/JSON object into a ≤10-word milestone and an optional residual. `of status` / `resume` / `pulse` unchanged.
+- **Documented streams only:** claude and cursor spawn `--output-format stream-json`; codex spawn adds `--json`. agy / qwen keep `--output-format json`; opencode keeps `--format json`. No invented stream-json. PATH is still not auth.
+- **Live feed without a supervisor:** `run_child` sees stdout lines as they arrive and appends to the same PULSE (`PulseProgress.append`). Child heartbeat still writes that file. Not a process supervisor. Not a fake token budget.
+- **Skill drives the cut:** `SKILL.md` / `/of` teach that spawn stream-json feeds the same scratch PULSE the leader already quotes. SLAVE heartbeat stays. No new CLI / schema / event / daemon.
+- **Proof:** `StreamJsonParse` / `PulseProgressAppend` / `StreamJsonSpawn` / `StreamJsonPulseSkill`. Existing `InFlightVisibility` still quotes the file.
+- Packaging: VERSION 0.7.62; skill/alias description preview `v0.7.62 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.61 notes.
+
 ## 0.7.61
 
 Living model catalog (intelligence × cost) per harness, advisory for the skill/leader. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.60 notes.

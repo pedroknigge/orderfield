@@ -154,9 +154,11 @@ Headless (conservative; add `--dangerously-skip-permissions` only via
 `OF_TRUST=yolo`):
 
 ```bash
-claude -p --output-format json \
+claude -p --output-format stream-json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
+
+`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE` (`StreamJson`). Residual extract from stdout stays. Not a supervisor.
 
 Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Because of reference-load, the child is instructed to read `SLAVE.md` on its own. Do not truncate the handoff envelope. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
@@ -169,11 +171,13 @@ Binary: `codex`.
 Headless:
 
 ```bash
-codex exec \
+codex exec --json \
   --output-schema schemas/residual.codex.schema.json \
   -o .orderfield/waves/NNN/residuals/CHILD.json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
+
+`--json` is the event stream. Residual still lands at `-o`. Spawn appends stream milestones to the same PULSE.
 
 Conservative passes no sandbox flag. `OF_TRUST=auto-edit` adds
 `--sandbox workspace-write` so the child can write the residual without
@@ -189,9 +193,11 @@ Binaries: `agent` (official) or `cursor-agent`.
 Headless:
 
 ```bash
-agent -p --output-format text \
+agent -p --output-format stream-json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
+
+`of spawn` parses that NDJSON into the same `scratch/<id>/PULSE`. Residual extract from stdout stays.
 
 `--force` only under `OF_TRUST=yolo`; Cursor has no intermediate mode, so
 `plan`/`auto-edit`/`auto` behave as conservative.
