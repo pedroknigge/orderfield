@@ -222,7 +222,7 @@ def codex_strict_schema_from(canonical: object) -> object:
     canonical_required = set(canonical.get("required", []))
     # Residual-only provenance is not a Codex output field. Missing is
     # omit, not approval — drop it; do not require or null-force.
-    omit_from_output = frozenset({"denied_actions"})
+    omit_from_output = frozenset({"denied_actions", "session_id"})
     strict_properties = {}
     for key, value in properties.items():
         if key in omit_from_output:

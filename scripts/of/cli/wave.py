@@ -19,6 +19,7 @@ from of_adapters import (
     KNOWN_TOOLS,
     TRUST_ENV,
     AdapterHints,
+    AdapterResume,
     AgyDeniedActions,
     StreamJson,
     build_spawn_argv,
@@ -884,15 +885,19 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     from of.cli.ops import PulseProgress
 
     last_residual: dict[str, Any] | None = None
+    last_session_id = ""
 
     def on_stdout_line(line: str) -> None:
-        nonlocal last_residual
+        nonlocal last_residual, last_session_id
         event = StreamJson.parse_line(line)
         if event is None:
             return
         found = StreamJson.residual(event)
         if found is not None:
             last_residual = found
+        sid = AdapterResume.from_event(event)
+        if sid:
+            last_session_id = sid
         note = StreamJson.milestone(event)
         if note:
             PulseProgress.append(root, packet, note)
@@ -943,6 +948,15 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                 print(f"residual extracted from stdout -> {residual_rel}")
         else:
             print(f"no residual yet. log={log_path}")
+    reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
+    if reported_sid and residual_abs.is_file():
+        data = load_json(residual_abs)
+        if isinstance(data, dict):
+            merged = AdapterResume.merge(data, reported_sid)
+            if merged is not data and not validate_residual_for_packet(
+                merged, packet, root
+            ):
+                dump_json(residual_abs, merged, skip_dir_fsync=True)
     denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
     if denied:
         if residual_abs.is_file():

@@ -90,6 +90,11 @@
         "minLength": 1,
         "maxLength": 256
       }
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional harness-reported session id. Adapter resume/continue reads this key only. Omit when unknown. Never invent. Never resume a cold residual."
     }
   }
 }

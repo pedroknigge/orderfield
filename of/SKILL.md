@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.65 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice wave needs a disk brief. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json feeds the same PULSE; sibling); quote it, never claim done (no manual of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). agy --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier (ask only). Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask; yes → install.sh --from-release. Do not trigger for a harness name alone."
+description: "v0.7.66 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice wave needs a disk brief. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json feeds the same PULSE; sibling); quote it, never claim done (no manual of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier (ask only). Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask; yes → install.sh --from-release. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.65"
+  version: "0.7.66"
   alias-of: orderfield
 ---
 
@@ -36,6 +36,8 @@ Conservative agy spawn: if the harness JSON named refused tools, read `residual.
 agy residual schema: `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery. Follow the sibling.
 
 `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. `auto-edit`/`auto` stay conservative where the harness has no accept-edits flag. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). Follow the sibling table.
+
+Adapter resume/continue: `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. Follow the sibling.
 
 If status/resume prints `efficiency propose …`, ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never invent token spend. Follow the sibling [docs/efficiency-signal.md](../docs/efficiency-signal.md).
 
