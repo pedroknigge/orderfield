@@ -13,7 +13,7 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 Agy `denied_actions` land on the residual under conservative trust. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.62 notes.
 
 - **Reuse, not a trust change:** `AgyDeniedActions` reads the existing agy `--output-format json` envelope via `StreamJson.parse_line`. Conservative argv still emits no bypass. `yolo` is still the only skip-permissions path.
-- **Honesty:** copy nonempty harness `denied_actions` into optional `residual.denied_actions` plus spawn meta and a `denied_actions=` line. Missing or empty is omit — not approval. `yolo` does not copy (bypass is not a clean conservative run). Never invent a residual just to hold the list.
+- **Honesty:** copy nonempty harness `denied_actions` into optional `residual.denied_actions` plus spawn meta and a `denied_actions=` line. Missing or empty is omit — not approval. `yolo` does not copy (bypass is not a clean conservative run). Never invent a residual just to hold the list. Codex `--output-schema` omits the key (agy residual provenance, not a Codex output field; do not require or null-force).
 - **Skill drives the cut:** After conservative agy spawn, read `residual.denied_actions` (or the spawn line). Those tools were refused. Do not invent `[]`. Do not flip `OF_TRUST=yolo` to hide them.
 - **Proof:** `AgyDeniedActionsParse` / `AgyDeniedActionsSpawn` / `AgyDeniedActionsSkill` / `ResidualDeniedActionsSchema`. Existing trust matrix stays. No new CLI / supervisor / token ceiling.
 - Packaging: VERSION 0.7.63; skill/alias description preview `v0.7.63 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.62 notes.

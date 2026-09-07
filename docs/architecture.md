@@ -185,7 +185,7 @@ Runtime ownership is **reserved**, not implemented. `of status` prints the reser
 | `budget.seconds` | Enforced as the spawned subprocess wall-clock. `of spawn --timeout` must match or be omitted |
 | `budget.tokens` | Reserved; `of pack` writes 0; `--tokens N` for N>0 dies; not measured or enforced |
 | `residual.usage` | Optional harness-reported `{tokens?, model?}`. Provenance, not a budget. Never compared to `budget.tokens` |
-| `residual.denied_actions` | Optional agy-reported refused tools under conservative trust. Provenance, not approval. Omit when the harness did not report any |
+| `residual.denied_actions` | Optional agy-reported refused tools under conservative trust. Provenance, not approval. Omit when the harness did not report any. Codex `--output-schema` omits the key (not a Codex output field) |
 | `EfficiencySignal` | Live-wave quality × optional usage. Propose uptier/downtier on status/resume/doctor. Ask only. Not a router |
 | `ModelCatalog` | Advisory `docs/model-catalog.md` + `.json`. Skill consults before cheap/frontier or mix. Not a router. Not `budget.tokens` |
 | `thresholds.local_budget_pct` | Reserved; not evaluated |

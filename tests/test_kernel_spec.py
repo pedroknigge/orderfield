@@ -191,15 +191,14 @@ def codex_strict_schema_from(canonical: object) -> object:
         return strict
     properties = canonical.get("properties", {})
     canonical_required = set(canonical.get("required", []))
-    # Omit-optional provenance stays in properties and stays out of
-    # required. Missing is omit, not approval — do not force null.
-    omit_optional = frozenset({"denied_actions"})
+    # Residual-only provenance is not a Codex output field. Missing is
+    # omit, not approval — drop it; do not require or null-force.
+    omit_from_output = frozenset({"denied_actions"})
     strict_properties = {}
     for key, value in properties.items():
-        strict_value = codex_strict_schema_from(value)
-        if key in omit_optional:
-            strict_properties[key] = strict_value
+        if key in omit_from_output:
             continue
+        strict_value = codex_strict_schema_from(value)
         if key not in canonical_required:
             value_type = strict_value["type"]
             strict_value["type"] = (
@@ -209,7 +208,7 @@ def codex_strict_schema_from(canonical: object) -> object:
             )
         strict_properties[key] = strict_value
     strict["properties"] = strict_properties
-    strict["required"] = [key for key in properties if key not in omit_optional]
+    strict["required"] = list(strict_properties)
     strict["additionalProperties"] = False
     return strict
 
