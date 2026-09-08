@@ -1051,6 +1051,31 @@ class MortalInstallDemo(unittest.TestCase):
         self.assertIn("PUBLISH.md", proc.stderr)
 
 
+class SkillPackedOnlyStatus(unittest.TestCase):
+    """SKILL teaches PACKED / SPAWN. Packed-only is not ALIVE."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_packed_and_spawn(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("packed", table)
+        self.assertIn("next spawn", table)
+        self.assertIn("spawn metadata", table)
+        self.assertIn("do not hold as if alive", table)
+        alias_fold = alias.casefold()
+        self.assertIn("packed", alias_fold)
+        self.assertIn("spawned 0", alias_fold)
+        self.assertIn("next spawn", alias_fold)
+        self.assertIn("PACKED", appendix)
+        self.assertIn("SPAWN", appendix)
+        self.assertIn("no spawn record", appendix)
+
+
 class SkillAntiDoneTheater(unittest.TestCase):
     """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
 

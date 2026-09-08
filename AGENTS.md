@@ -163,6 +163,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.67 SKILL.md short core + `references/skill-appendix.md` (`SkillSurface`; hosts load the core; appendix is the rest of the procedure) | documented |
 | 0.7.68 mechanical anti-done-theater (`CloseChecklist.speak_line` on `--checklist`; contrast RESOLVED + residual empty before claiming shipped; pair with quote-PULSE) | documented |
 | 0.7.69 Claude `-p` + stream-json emits `--verbose` (`StreamJson`; #131; cursor/codex unchanged) | documented |
+| 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

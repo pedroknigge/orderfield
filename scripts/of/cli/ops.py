@@ -34,6 +34,7 @@ from of.field import (
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
     child_pulse_verdict,
+    SpawnRecord,
     PYTHON_FLOOR,
     REDACTED,
     _read_json_object,
@@ -92,7 +93,6 @@ from of.field import (
     print_retention_plan,
     probe_adapter_version,
     probe_lock_capability,
-    pulse_verdict,
     redact_text,
     save_learning,
     spawned_child_id,
@@ -877,7 +877,7 @@ class InFlightSignal:
     """Read-path banner: residual MISSING is still running. Not a supervisor."""
 
     CHROME = "residual MISSING; harness chrome is not the field"
-    ORDER = ("ALIVE", "QUIET", "STALE")
+    ORDER = ("ALIVE", "QUIET", "STALE", SpawnRecord.LABEL)
     # Turn-end directive: the PULSE lines are already printed above, so the
     # leader quotes one to the user instead of running `of pulse` by hand.
     SPEAK = "quote a PULSE line above to the user; do not claim done while running"
@@ -1048,7 +1048,7 @@ class StatusReport:
             "origin": StatusReport.origin(order),
             "parent": NestedField.id_of(order) or None,
             "root_stub": StatusReport.root_stub_kind(root),
-            "spawned": int(state.get("children_spawned") or 0),
+            "spawned": SpawnRecord.count(root, packets),
             "max_children": int((caps or {}).get("max_children") or 0),
             "in_flight": len(flying),
             "in_flight_ids": [str(pkt.get("child_id") or "?") for pkt in flying],
@@ -1242,6 +1242,7 @@ class HandoffReport:
         for pkt in flying:
             cid = str(pkt.get("child_id") or "?")
             verdicts[cid] = child_pulse_verdict(root, pkt, ts)
+        any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
         all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
         integrated = field_is_file(wave_dir(int(state.get("wave") or 1), root) / "report.json")
         stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
@@ -1252,6 +1253,7 @@ class HandoffReport:
             integrated=integrated,
             stale=stale,
             children_stale=all_stale,
+            children_packed=any_packed,
         )
         return action, verdicts, resume_next_lines(action)
 
@@ -1589,7 +1591,7 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"phase_override {last.get('from_phase')}→{last.get('to_phase')} "
             f"{last.get('reason')}"
         )
-    print(f"spawned     {state['children_spawned']} / {order['caps']['max_children']}")
+    print(f"spawned     {SpawnRecord.count(root, packets)} / {order['caps']['max_children']}")
     flying = in_flight_children(root, int(state["wave"]))
     print(f"in_flight   {len(flying)}")
     PackedAge.emit(flying)
@@ -1680,6 +1682,10 @@ def cmd_validate(args: argparse.Namespace) -> None:
 def resume_next_lines(action: str) -> list[str]:
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
+        "spawn": (
+            "SPAWN",
+            "packed children have no spawn record; of spawn / of handoff — do not wait as if running",
+        ),
         "handoff": (
             "HANDOFF",
             "stale children this wave; of handoff / of spawn on the same packet; do not unpack by default",
@@ -1965,11 +1971,13 @@ def cmd_resume(args: argparse.Namespace) -> None:
     for pkt in flying:
         cid = str(pkt.get("child_id") or "?")
         verdicts[cid] = child_pulse_verdict(root, pkt, now)
+    any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
     all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
     nxt = next_legal_action(
         state, flying, packets,
         integrated=integrated, stale=stale,
         children_stale=all_stale,
+        children_packed=any_packed,
     )
     session = load_session(root)
     print(f"id            {order['id']}")
@@ -2077,9 +2085,11 @@ def pulse_once(
                 packed_ts = now
         print(f"  {child}  role={role}  packed {fmt_age(now - packed_ts)} ago")
         print(f"    slice:   {truncate_slice(pkt.get('slice') or '')}")
-        # freshest evidence wins; packed_at floors it so a child that just
-        # started (no writes yet) reads ALIVE, not dead.
-        signals: list[tuple[float, str]] = [(packed_ts, "packed (no writes yet)")]
+        # Spawn metadata floors a just-started child. packed_at alone is PACKED.
+        signals: list[tuple[float, str]] = []
+        started = SpawnRecord.started_ts(root, pkt)
+        if started is not None:
+            signals.append((started, "spawned (no writes yet)"))
         scratch_rel = pkt.get("scratch_dir")
         scratch = (
             newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
@@ -2098,9 +2108,11 @@ def pulse_once(
                 f"    shared repo: last product write "
                 f"{fmt_age(now - repo[0])} ago ({repo[1]})"
             )
+        if not signals:
+            signals.append((packed_ts, "packed (no writes yet)"))
         freshest_ts, freshest_src = max(signals, key=lambda s: s[0])
         age = now - freshest_ts
-        verdict = pulse_verdict(age, stale_minutes)
+        verdict = child_pulse_verdict(root, pkt, now, stale_minutes)
         line = f"    -> {verdict} (freshest evidence {fmt_age(age)} ago: {freshest_src})"
         if verdict == "STALE":
             exit_code = 2

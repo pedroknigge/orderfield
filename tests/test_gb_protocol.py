@@ -83,6 +83,13 @@ class ResumeHandoffGuidance(unittest.TestCase):
         self.assertEqual(lines[0], "HOLD")
         self.assertIn("continue existing packets", lines[1])
 
+    def test_spawn_names_packed_only(self) -> None:
+        lines = of.resume_next_lines("spawn")
+        self.assertEqual(lines[0], "SPAWN")
+        self.assertIn("no spawn record", lines[1])
+        self.assertIn("of spawn", lines[1])
+        self.assertIn("of handoff", lines[1])
+
 
 class RoadmapContrast(unittest.TestCase):
     """REQ-006 / REQ-007: Grok Bot vs Orderfield vs reserved kernel; the pick."""

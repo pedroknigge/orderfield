@@ -3031,6 +3031,49 @@ def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES
     return "STALE"
 
 
+class SpawnRecord:
+    """Read-path: waves/<n>/spawns/<id>.json. Presence is spawned, not health."""
+
+    LABEL = "PACKED"
+
+    @staticmethod
+    def path(root: Path, packet: dict[str, Any]) -> Path:
+        wave = int(packet.get("wave") or 1)
+        cid = str(packet.get("child_id") or "")
+        return wave_dir(wave, root) / "spawns" / f"{cid}.json"
+
+    @staticmethod
+    def load(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+        cid = str(packet.get("child_id") or "")
+        path = SpawnRecord.path(root, packet)
+        if not cid or not path.is_file():
+            return None
+        try:
+            data = load_json(path)
+        except (OSError, SystemExit, ValueError, TypeError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @staticmethod
+    def present(root: Path, packet: dict[str, Any]) -> bool:
+        return SpawnRecord.load(root, packet) is not None
+
+    @staticmethod
+    def count(root: Path, packets: list[dict[str, Any]]) -> int:
+        return sum(1 for pkt in packets if SpawnRecord.present(root, pkt))
+
+    @staticmethod
+    def started_ts(root: Path, packet: dict[str, Any]) -> float | None:
+        meta = SpawnRecord.load(root, packet)
+        if meta is None:
+            return None
+        started = parse_utc(meta.get("started_at"))
+        if started is not None:
+            return started
+        packed = parse_utc(packet.get("packed_at"))
+        return packed
+
+
 class FieldSignal:
     """Read-path honesty: empty waves + age is abandoned, not a fake deliver.
 
@@ -3564,18 +3607,19 @@ def child_pulse_verdict(
     now: float,
     stale_minutes: float = PULSE_STALE_MINUTES,
 ) -> str:
-    """Pulse verdict for one in-flight child from packed_at + scratch mtime."""
-    packed_ts = parse_utc(packet.get("packed_at"))
-    if packed_ts is None:
-        packed_ts = now
-    signals: list[float] = [packed_ts]
+    """Pulse verdict: spawn/scratch evidence. Packed-only is PACKED, not ALIVE."""
+    signals: list[float] = []
+    started = SpawnRecord.started_ts(root, packet)
+    if started is not None:
+        signals.append(started)
     scratch_rel = packet.get("scratch_dir")
     if scratch_rel:
         scratch = newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
         if scratch:
             signals.append(scratch[0])
-    freshest = max(signals)
-    return pulse_verdict(now - freshest, stale_minutes)
+    if not signals:
+        return SpawnRecord.LABEL
+    return pulse_verdict(now - max(signals), stale_minutes)
 
 
 def next_legal_action(
@@ -3586,12 +3630,15 @@ def next_legal_action(
     integrated: bool = False,
     stale: bool = False,
     children_stale: bool = False,
+    children_packed: bool = False,
 ) -> str:
     if state.get("spawn_blocked"):
         return "patch then next-wave"
     if packets and stale:
         return "next-wave"
     if flying:
+        if children_packed:
+            return "spawn"
         if children_stale:
             return "handoff"
         return "hold"

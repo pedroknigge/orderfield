@@ -404,8 +404,8 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn(of.InFlightSignal.speak_line(key_width=14), r.stdout)
         self.assertIn("do not claim done while running", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
-        self.assertIn("next\n  HOLD", r.stdout)
-        self.assertIn("continue existing packets; do not repack", r.stdout)
+        self.assertIn("next\n  SPAWN", r.stdout)
+        self.assertIn("packed children have no spawn record", r.stdout)
         self.assertNotIn("auto-spawn", r.stdout.lower())
         self.assertNotRegex(r.stdout.lower(), r"\blogs\b")
         self.assertFalse((self.tmp / ".orderfield" / "waves" / "001" / "spawns").exists())
@@ -694,8 +694,8 @@ class ResumeRecoveryBrief(unittest.TestCase):
         self.assertIn("quarry/cli.py            present", out)
         self.assertIn("      STORE-001", out)
         self.assertIn("      CLI-001", out)
-        self.assertIn("next\n  HOLD", out)
-        self.assertIn("continue existing packets; do not repack", out)
+        self.assertIn("next\n  SPAWN", out)
+        self.assertIn("packed children have no spawn record", out)
         self.assertIn("running", out)
         self.assertIn("residual MISSING; harness chrome is not the field", out)
         self.assertIn("parked_reason scratch_active", out)
@@ -941,6 +941,17 @@ class PulseActivity(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    def _mark_spawned(self, child_id: str = "c1", started_at: str = "2020-01-01T00:00:00Z") -> None:
+        dest = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps({"child_id": child_id, "started_at": started_at}, indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
+
     def test_verdict_thresholds(self) -> None:
         self.assertEqual(of.pulse_verdict(0), "ALIVE")
         self.assertEqual(of.pulse_verdict(of.PULSE_QUIET_SECONDS - 1), "ALIVE")
@@ -993,6 +1004,7 @@ class PulseActivity(unittest.TestCase):
 
     def test_shared_repo_activity_cannot_refresh_a_stale_child(self) -> None:
         self._pack()
+        self._mark_spawned()
         pkt_path = committed_artifact(
             self.tmp / ".orderfield", "waves/001/packets/c1.json"
         )
@@ -1030,6 +1042,7 @@ class PulseActivity(unittest.TestCase):
 
     def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
         self._pack()
+        self._mark_spawned()
         pkt_path = committed_artifact(
             self.tmp / ".orderfield", "waves/001/packets/c1.json"
         )
@@ -2656,11 +2669,11 @@ class StatusReportJson(unittest.TestCase):
         human = run_of(tmp, "status")
         self.assertEqual(human.returncode, 0, human.stderr)
         self.assertIn("in_flight   1", human.stdout)
-        self.assertIn("running     1 ALIVE", human.stdout)
+        self.assertIn("running     1 PACKED", human.stdout)
         self.assertIn("residual MISSING", human.stdout)
         self.assertIn("harness chrome is not the field", human.stdout)
-        self.assertIn("pulse=ALIVE", human.stdout)
-        self.assertIn("HOLD", human.stdout)
+        self.assertIn("pulse=PACKED", human.stdout)
+        self.assertIn("SPAWN", human.stdout)
         self.assertNotIn("{", human.stdout)
         proc = run_of(tmp, "status", "--json")
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -2674,9 +2687,9 @@ class StatusReportJson(unittest.TestCase):
         self.assertEqual(len(cli["in_flight_detail"]), 1)
         self.assertEqual(cli["in_flight_detail"][0]["child_id"], "worker")
         self.assertEqual(cli["in_flight_detail"][0]["residual"], "MISSING")
-        self.assertIn(cli["in_flight_detail"][0]["pulse"], ("ALIVE", "QUIET", "STALE"))
-        self.assertEqual(cli["next"], "hold")
-        self.assertEqual(cli["next_label"], "HOLD")
+        self.assertEqual(cli["in_flight_detail"][0]["pulse"], "PACKED")
+        self.assertEqual(cli["next"], "spawn")
+        self.assertEqual(cli["next_label"], "SPAWN")
         self.assertFalse(cli["spawn_blocked"])
         self.assertEqual(cli["packed_age"], [])
         self.assertIsNone(cli["signal"])
@@ -2832,7 +2845,7 @@ class InFlightVisibility(unittest.TestCase):
         self.assertEqual(of.PulseProgress.lines(tmp, pkt), [])
         status = run_of(tmp, "status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertIn("running     1 ALIVE", status.stdout)
+        self.assertIn("running     1 PACKED", status.stdout)
         self.assertIn(of.InFlightSignal.CHROME, status.stdout)
         self.assertNotIn("progress", status.stdout)
         machine = run_of(tmp, "status", "--json")
@@ -2974,7 +2987,7 @@ class MidEpicHandoffPacket(unittest.TestCase):
         human = run_of(tmp, "handoff")
         self.assertEqual(human.returncode, 0, human.stderr)
         self.assertIn("kind          field", human.stdout)
-        self.assertIn("HOLD", human.stdout)
+        self.assertIn("SPAWN", human.stdout)
         self.assertIn("do not unpack", human.stdout.lower())
         self.assertIn(".orderfield/waves/001/packets/worker.json", human.stdout)
         self.assertIn("worker", human.stdout)
@@ -2986,8 +2999,8 @@ class MidEpicHandoffPacket(unittest.TestCase):
         self.assertTrue(cli["ok"])
         self.assertEqual(cli["wave"], 1)
         self.assertEqual(cli["field"], "open")
-        self.assertEqual(cli["next"], "hold")
-        self.assertEqual(cli["next_label"], "HOLD")
+        self.assertEqual(cli["next"], "spawn")
+        self.assertEqual(cli["next_label"], "SPAWN")
         self.assertEqual(len(cli["in_flight"]), 1)
         self.assertEqual(cli["in_flight"][0]["child_id"], "worker")
         self.assertEqual(
@@ -3020,6 +3033,16 @@ class MidEpicHandoffPacket(unittest.TestCase):
         self._init(tmp)
         self._pack(tmp)
         of.PackedAge.backdate_packet(tmp, "worker", "2018-01-01T00:00:00Z")
+        dest = tmp / ".orderfield" / "waves" / "001" / "spawns" / "worker.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps(
+                {"child_id": "worker", "started_at": "2018-01-01T00:00:00Z"},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         proc = run_of(tmp, "handoff", "--json")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         cli = self._load(proc.stdout)
@@ -3243,7 +3266,7 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         self.assertNotIn("next\n  HOLD", out)
         self.assertIn("pulse       STALE", out)
 
-    def test_resume_says_hold_when_children_alive(self) -> None:
+    def test_resume_says_spawn_when_packed_only(self) -> None:
         r = run_of(
             self.tmp,
             "init",
@@ -3267,8 +3290,9 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         resumed = run_of(self.tmp, "resume")
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         out = resumed.stdout
-        self.assertIn("next\n  HOLD", out)
+        self.assertIn("next\n  SPAWN", out)
         self.assertNotIn("HANDOFF", out)
+        self.assertNotIn("next\n  HOLD", out)
 
     def test_checkpoint_captures_pulse_verdicts(self) -> None:
         self._init_with_stale_child()
@@ -3294,6 +3318,12 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
             of.next_legal_action(state, flying, packets, children_stale=False),
             "hold",
         )
+        self.assertEqual(
+            of.next_legal_action(
+                state, flying, packets, children_packed=True, children_stale=True
+            ),
+            "spawn",
+        )
 
     def test_child_pulse_verdict_stale(self) -> None:
         self._init_with_stale_child()
@@ -3304,7 +3334,7 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         verdict = of.child_pulse_verdict(self.tmp, pkt, time.time())
         self.assertEqual(verdict, "STALE")
 
-    def test_child_pulse_verdict_alive_for_fresh_child(self) -> None:
+    def test_child_pulse_verdict_packed_for_fresh_child(self) -> None:
         r = run_of(
             self.tmp, "init", "--mission", "m", "--phase", "build"
         )
@@ -3319,7 +3349,7 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         )
         pkt = load_json(pkt_path)
         verdict = of.child_pulse_verdict(self.tmp, pkt, time.time())
-        self.assertEqual(verdict, "ALIVE")
+        self.assertEqual(verdict, "PACKED")
 
 
 class ResumeAfterProcessDeath(unittest.TestCase):
@@ -3366,6 +3396,101 @@ class ResumeAfterProcessDeath(unittest.TestCase):
         session = load_json(committed_artifact(self.tmp / ".orderfield", "session.json"))
         self.assertEqual(session.get("last_cmd"), "spawn")
         self.assertEqual(session.get("in_flight"), [death.CHILD])
+
+
+class PackedOnlyNotAlive(unittest.TestCase):
+    """#132: pack without spawn is PACKED, not spawned/ALIVE. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-packed-only-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "packed only is not alive",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str, role: str = "implementer") -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            f"{child_id} slice never spawned",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def test_pack_without_spawn_is_not_spawned_or_alive(self) -> None:
+        self._pack("explorer_a", "explorer")
+        self._pack("implementer_b", "implementer")
+        spawns = self.tmp / ".orderfield" / "waves" / "001" / "spawns"
+        self.assertFalse(spawns.exists())
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("spawned     0 /", status.stdout)
+        self.assertNotIn("spawned     2 /", status.stdout)
+        self.assertIn("in_flight   2", status.stdout)
+        self.assertIn("PACKED", status.stdout)
+        self.assertNotIn("ALIVE", status.stdout)
+        self.assertIn("SPAWN", status.stdout)
+        self.assertNotIn("HOLD — continue existing packets; do not repack", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["spawned"], 0)
+        self.assertEqual(doc["in_flight"], 2)
+        self.assertEqual(doc["next"], "spawn")
+        pulses = {row["child_id"]: row["pulse"] for row in doc["in_flight_detail"]}
+        self.assertEqual(pulses["explorer_a"], "PACKED")
+        self.assertEqual(pulses["implementer_b"], "PACKED")
+        resume = run_of(self.tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("next\n  SPAWN", resume.stdout)
+        self.assertNotIn("next\n  HOLD", resume.stdout)
+        pulse = run_of(self.tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn("PACKED", pulse.stdout)
+        self.assertNotIn("-> ALIVE", pulse.stdout)
+        self.assertIn("packed (no writes yet)", pulse.stdout)
+
+    def test_spawn_record_restores_alive_and_hold(self) -> None:
+        self._pack("worker")
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json"
+        )
+        pkt = load_json(pkt_path)
+        self.assertEqual(of.child_pulse_verdict(self.tmp, pkt, time.time()), "PACKED")
+        dest = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "worker.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps(
+                {"child_id": "worker", "started_at": of.utc_now()},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(of.child_pulse_verdict(self.tmp, pkt, time.time()), "ALIVE")
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("spawned     1 /", status.stdout)
+        self.assertIn("ALIVE", status.stdout)
+        self.assertNotIn("PACKED", status.stdout)
+        self.assertIn("HOLD", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["spawned"], 1)
+        self.assertEqual(doc["in_flight_detail"][0]["pulse"], "ALIVE")
+        self.assertEqual(doc["next"], "hold")
 
 
 if __name__ == "__main__":
