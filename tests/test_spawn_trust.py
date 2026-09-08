@@ -529,6 +529,65 @@ class SpawnFinalization(unittest.TestCase):
             meta = load_json(path)
             self.assertIn("outcome", meta, path)
             self.assertIn("ended_at", meta, path)
+            self.assertIn("exit", meta, path)
+
+    @unittest.skipUnless(os.name == "posix", "process groups")
+    def test_timeout_finalizes_when_grandchild_keeps_stdout_open(self) -> None:
+        """Leaked write-end must not leave started-only spawn metadata (#133)."""
+        packet = self.pack("leak", "--seconds", "1")
+        pidfile = self.tmp / "leaked.pid"
+        leaker = self.tmp / "leaker.py"
+        write_script(
+            leaker,
+            f"""
+            import os, time
+            from pathlib import Path
+            pid = os.fork()
+            if pid == 0:
+                os.setsid()
+                Path({str(pidfile)!r}).write_text(str(os.getpid()))
+                while True:
+                    time.sleep(60)
+            time.sleep(60)
+            """,
+        )
+        env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+        env.setdefault(
+            "OF_LEARNINGS",
+            str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+        )
+        for key in SPAWN_ENV_KEYS:
+            env.pop(key, None)
+        env["OF_AGENT"] = f"{sys.executable} {leaker}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                packet,
+            ],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=15,
+        )
+        self.assertNotEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("timeout", proc.stderr)
+        meta = self.meta("leak")
+        self.assertEqual(meta["outcome"], "timeout")
+        self.assertFalse(meta["ok"])
+        self.assertIn("ended_at", meta)
+        self.assertIn("exit", meta)
+        if pidfile.is_file():
+            leaked = int(pidfile.read_text().strip())
+            try:
+                os.kill(leaked, 9)
+            except ProcessLookupError:
+                pass
 
 
 class SiblingFieldPack(unittest.TestCase):

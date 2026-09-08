@@ -30,6 +30,7 @@ from test_packaging import (  # noqa: E402,F401
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401
 from test_stream_json import (  # noqa: E402,F401
+    GrokAdapterSpawn,
     PulseProgressAppend,
     StreamJsonParse,
     StreamJsonPulseSkill,

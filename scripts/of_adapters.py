@@ -555,9 +555,10 @@ class StreamJson:
     """Harness JSON / NDJSON streams → milestone + residual. Not a supervisor.
 
     Reuses the one PULSE file (`PulseProgress`) and the existing stdout
-    residual extract. stream-json / ``--json`` is argv translation for
-    harnesses that already document a live event stream. Do not invent
-    stream-json for agy / qwen / opencode (they keep a JSON blob).
+    residual extract. stream-json / ``--json`` / grok ``streaming-json``
+    is argv translation for harnesses that already document a live event
+    stream. Do not invent stream-json for agy / qwen / opencode (they
+    keep a JSON blob).
     """
 
     STATUSES = frozenset({"done", "blocked", "threshold"})
@@ -577,10 +578,12 @@ class StreamJson:
     # Documented live streams only. Other adapters keep their JSON blob.
     # Claude Code rejects -p/--print + stream-json unless --verbose is
     # also set (exit 1, empty residual). Cursor/codex do not.
+    # Grok's documented value is streaming-json (not stream-json).
     ARGV = {
         "claude": ("--output-format", "stream-json", "--verbose"),
         "cursor": ("--output-format", "stream-json"),
         "codex": ("--json",),
+        "grok": ("--output-format", "streaming-json"),
     }
 
     @staticmethod
@@ -950,8 +953,10 @@ def build_spawn_argv(
     if adapter == "grok":
         bin_ = which_bin(["grok", "grok-cli"]) or "grok"
         # headless: bare `grok <prompt>` opens the TUI and dies on no tty.
-        # --model NAME is a grok CLI flag; keep it before -p like trust flags.
-        return [bin_, *trust, *model, "-p", prompt]
+        # --model NAME and --output-format streaming-json are grok CLI flags;
+        # keep them before -p like trust flags. Residual extract reuses
+        # StreamJson + stdout (same path as claude/cursor).
+        return [bin_, *trust, *model, *stream, "-p", prompt]
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
         bin_ = which_bin(["agy"]) or "agy"

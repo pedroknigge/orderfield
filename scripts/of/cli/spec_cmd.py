@@ -2566,6 +2566,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PulseProgressAppend",
     "tests.test_kernel.StreamJsonSpawn",
     "tests.test_kernel.StreamJsonPulseSkill",
+    "tests.test_kernel.GrokAdapterSpawn",
     "tests.test_kernel.AgyDeniedActionsParse",
     "tests.test_kernel.ResidualDeniedActionsSchema",
     "tests.test_kernel.AgyDeniedActionsSpawn",

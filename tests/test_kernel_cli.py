@@ -661,6 +661,8 @@ class HeadlessArgv(unittest.TestCase):
         self.assertIn("--always-approve", argv)
         self.assertEqual(argv[-1], "PROMPT")
         self.assertEqual(argv[argv.index("-p") + 1], "PROMPT")
+        self.assertEqual(argv[argv.index("--output-format") + 1], "streaming-json")
+        self.assertLess(argv.index("--output-format"), argv.index("-p"))
 
     def test_codex_drops_full_auto_for_the_bypass_flag(self) -> None:
         os.environ["OF_TRUST"] = "yolo"
@@ -752,6 +754,7 @@ class HeadlessArgv(unittest.TestCase):
         argv = self.argv("grok")
         self.assertNotIn("--always-approve", argv)
         self.assertIn("-p", argv)
+        self.assertEqual(argv[argv.index("--output-format") + 1], "streaming-json")
         os.environ["OF_TRUST"] = "yolo"
         self.assertIn("--always-approve", self.argv("grok"))
 
