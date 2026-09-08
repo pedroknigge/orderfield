@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.76
+
+`of integrate --partial` keeps `hold` when landed residuals are complete and siblings remain in flight. The reason names `skipped_in_flight` instead of saying the wave closed. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.75 notes.
+
+- **Reuse, not a second ledger:** `decide_regime` still runs on the landed subset. `hold_if_partial_in_flight` overlays that verdict with the existing `skipped_in_flight` list. No new CLI / schema / supervisor / token ceiling.
+- **Honesty, not a close-guard bypass:** field stays open. `wave closed` is reserved for a complete-wave integrate. Landed-complete + flying siblings print `landed residuals complete; N sibling(s) still in flight: …`.
+- **Skill drives the cut:** appendix teaches `--partial` hold + named in-flight siblings. Complete-wave integrate still says `wave closed; done_when still open`.
+- **Proof:** `PartialIntegrateInFlightReason`. `recovery/partial-integrate-in-flight`. Existing `CollectSurvivesMissingResiduals` / complete-wave hold stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.76; skill/alias description preview `v0.7.76 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.75 notes.
+
 ## 0.7.75
 
 `of collect` no longer turns conservative trust into an unsupported cannot-write claim when a residual is missing. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.74 notes.

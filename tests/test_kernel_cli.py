@@ -1757,6 +1757,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/packed-age-watchdog", r.stdout)
         self.assertIn("PASS recovery/doctor-one-pass-skew", r.stdout)
         self.assertIn("PASS recovery/doctor-closed-historical", r.stdout)
+        self.assertIn("PASS recovery/partial-integrate-in-flight", r.stdout)
         self.assertIn("PASS recovery/adversarial-dual-truth", r.stdout)
 
     def test_eval_list(self) -> None:
@@ -1785,6 +1786,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("packed-age-watchdog", r.stdout)
         self.assertIn("doctor-one-pass-skew", r.stdout)
         self.assertIn("doctor-closed-historical", r.stdout)
+        self.assertIn("partial-integrate-in-flight", r.stdout)
         self.assertIn("adversarial-dual-truth", r.stdout)
 
 

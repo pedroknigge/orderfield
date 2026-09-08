@@ -2495,6 +2495,34 @@ def eval_setup_recovery_checkpoint_handoff(root: Path) -> None:
         dump_json(pkt_path, pkt)
 
 
+@_register_eval_fixture("recovery_partial_integrate_in_flight")
+def eval_setup_recovery_partial_integrate_in_flight(root: Path) -> None:
+    """Two landed dones + one flying sibling for integrate --partial."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "partial integrate while a sibling is still in flight",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    for child_id in ("done_a", "done_b", "late"):
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            f"slice {child_id}",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        EvalInvariantSetup.require_ok(packed, f"pack {child_id}")
+    eval_write_done_residual(root, "done_a")
+    eval_write_done_residual(root, "done_b")
+
+
 @_register_eval_fixture("recovery_verify_build")
 def eval_setup_recovery_verify_build(root: Path) -> None:
     init = eval_run_of(

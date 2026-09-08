@@ -328,6 +328,33 @@ class DecideRegimeShipped(unittest.TestCase):
         regime, _reason = of.decide_regime(self.order, self.state, [residual])
         self.assertEqual(regime, "phase")
 
+    def test_partial_in_flight_keeps_hold_and_names_siblings(self) -> None:
+        residual = load_json(DONE)
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "hold")
+        self.assertIn("wave closed", reason)
+        skipped = ["late", "later"]
+        held, text = of.hold_if_partial_in_flight(
+            regime, reason, skipped, [residual]
+        )
+        self.assertEqual(held, "hold")
+        self.assertNotIn("wave closed", text)
+        self.assertEqual(text, of.landed_complete_in_flight_reason(skipped))
+        self.assertIn("2 siblings still in flight", text)
+        for child in skipped:
+            self.assertIn(child, text)
+        self.order["done_when_closed"] = True
+        phased, phase_reason = of.decide_regime(
+            self.order, self.state, [residual]
+        )
+        self.assertEqual(phased, "phase")
+        held2, text2 = of.hold_if_partial_in_flight(
+            phased, phase_reason, ["late"], [residual]
+        )
+        self.assertEqual(held2, "hold")
+        self.assertNotIn("wave closed", text2)
+        self.assertIn("late", text2)
+
     def test_all_done_full_cap_open_done_when_is_hold_not_human(self) -> None:
         residual = load_json(DONE)
         self.state["children_spawned"] = 4

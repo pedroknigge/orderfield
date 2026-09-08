@@ -55,7 +55,7 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 - `scale_out` — the pattern is correct, volume is missing. More copies of the same fast mode; the ORDER does not get louder. On an open wave, max `uncertainty` ≥ 0.5 blocks this (`hold` instead). `uncertainty` never selects `escalate_up` by itself.
 - `scale_across` — reserved compatibility value; retained for legacy report/state recovery.
 - `scale_up` — reserved menu value; no token/depth/budget accounting selects it.
-- `hold` — wait (missing residuals, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
+- `hold` — wait (missing residuals, or landed residuals are complete while siblings remain in flight, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.
 - `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted while the wave is not all_done. A full cap of done residuals is `hold` (done_when open) or `phase` (done_when closed).
 

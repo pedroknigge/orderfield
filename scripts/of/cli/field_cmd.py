@@ -55,6 +55,7 @@ from of.regime import (
     done_when_for,
     done_when_tag,
     existing_integration_report,
+    hold_if_partial_in_flight,
     integration_input_digest,
     mark_done_when_closed,
     mission_done_when,
@@ -194,6 +195,10 @@ def cmd_integrate(args: argparse.Namespace) -> None:
                 )
             else:
                 print("note: " + note, file=sys.stderr)
+    if skipped:
+        regime, reason = hold_if_partial_in_flight(
+            regime, reason, skipped, residuals
+        )
     integrated_waves = {
         int(item.get("wave"))
         for item in state.get("integration_history", [])

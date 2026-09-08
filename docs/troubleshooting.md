@@ -59,6 +59,10 @@ of unpack --child-id <id>
 of integrate --wave N --partial
 ```
 
+The report stays `hold` with `partial:true` and `skipped_in_flight`. The reason says landed residuals are complete and names the flying siblings. `wave closed` is reserved for a complete-wave integrate.
+
+
+
 ## `spawn_blocked`
 
 **Symptom:** pack/spawn refused after a field residual (`escalate_up`).
