@@ -23,7 +23,7 @@ Hints first. Score after. Ask before a tier change.
 
 `residual.schema.json` is closed (`additionalProperties: false`). Without a typed optional slot, a child cannot record harness-reported tokens or a model id. Inventing those numbers in the kernel would be a fake ledger.
 
-Optional `residual.usage` `{tokens?, model?}` is that slot. Missing or `null` is valid on the public schema. Codex `--output-schema` is a strict derivative and requires the key (`null` or an object). The kernel does not measure paid usage. It does not compare `usage.tokens` to `budget.tokens`. Spawn still prints that harness paid usage is not measured.
+Optional `residual.usage` `{tokens?, model?}` is that slot. Missing or `null` is valid on the public schema. Codex `--output-schema` is a strict derivative and requires the key (`null` or an object; `usage.type` is `["object","null"]` once). The kernel does not measure paid usage. It does not compare `usage.tokens` to `budget.tokens`. Spawn still prints that harness paid usage is not measured.
 
 ## Signal
 

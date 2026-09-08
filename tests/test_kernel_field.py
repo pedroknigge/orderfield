@@ -215,11 +215,11 @@ def codex_strict_schema_from(canonical: object) -> object:
         strict_value = codex_strict_schema_from(value)
         if key not in canonical_required:
             value_type = strict_value["type"]
-            strict_value["type"] = (
-                [value_type, "null"]
-                if isinstance(value_type, str)
-                else [*value_type, "null"]
-            )
+            if isinstance(value_type, str):
+                if value_type != "null":
+                    strict_value["type"] = [value_type, "null"]
+            elif "null" not in value_type:
+                strict_value["type"] = [*value_type, "null"]
         strict_properties[key] = strict_value
     strict["properties"] = strict_properties
     strict["required"] = list(strict_properties)

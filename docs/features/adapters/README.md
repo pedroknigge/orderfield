@@ -10,11 +10,11 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.72` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.73` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
-Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`, plus `generic` / `OF_AGENT`. The residual schema is the same contract; Codex `--output-schema` is a strict derivative (`residual.codex.schema.json`). agy `--json-schema` reuses that same file (`OutputSchema`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: `--json-schema` is a structured_output tool, not residual delivery. `recovery/multi-harness-residual` proves Claude/Grok/Codex/Cursor dry-run share one residual path. Deep-install dests (`~/.claude` / `~/.agents` / `~/.cursor`) stay green (`MultiHarnessResidual`).
+Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok`, `agy`, `qwen`, plus `generic` / `OF_AGENT`. The residual schema is the same contract; Codex `--output-schema` is a strict derivative (`residual.codex.schema.json`; type unions unique, `usage` is `[object,null]`). agy `--json-schema` reuses that same file (`OutputSchema`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: `--json-schema` is a structured_output tool, not residual delivery. `recovery/multi-harness-residual` proves Claude/Grok/Codex/Cursor dry-run share one residual path. Deep-install dests (`~/.claude` / `~/.agents` / `~/.cursor`) stay green (`MultiHarnessResidual`).
 
 ## Inventory
 

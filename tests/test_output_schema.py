@@ -51,10 +51,10 @@ class OutputSchemaArgv(unittest.TestCase):
         self.assertIn("-o", argv)
         self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
         self.assertIn("--output-schema", argv)
-        self.assertEqual(
-            Path(argv[argv.index("--output-schema") + 1]),
-            CODEX_RESIDUAL_SCHEMA,
-        )
+        schema_path = Path(argv[argv.index("--output-schema") + 1])
+        self.assertEqual(schema_path, CODEX_RESIDUAL_SCHEMA)
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        self.assertEqual(schema["properties"]["usage"]["type"], ["object", "null"])
         self.assertNotIn("--json-schema", argv)
 
     def test_agy_json_schema_is_same_file_before_dash_p(self) -> None:
