@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.75
+
+`of collect` no longer turns conservative trust into an unsupported cannot-write claim when a residual is missing. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.74 notes.
+
+- **Facts, not capability inference:** `CollectDiagnostic.spawn_note` reports known adapter / trust / outcome and actual nonempty `denied_actions`. A missing residual remains `pending/unavailable`. Conservative print-mode adapters may have permission involvement; the message ties that possibility to the named adapter and never asserts all conservative children cannot write.
+- **Successful delivery stays supported:** conservative scratch and packet-bound residual files still collect normally. No trust-profile, spawn, residual validation, or integration behavior changed.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the exact pending/unavailable, known-facts, and adapter-tied possibility wording in the same cut.
+- **Proof:** `CollectSurvivesMissingResiduals` covers an in-flight conservative Grok spawn without the false claim. `AgyDeniedActionsSpawn` covers actual denials on a missing residual and preserves successful conservative residual collection. `SkillCollectConservativeDiagnostic` locks core / alias / appendix alignment. No new CLI / schema / supervisor / token ceiling.
+- Packaging: VERSION 0.7.75; skill/alias description preview `v0.7.75 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.74 notes.
+
 ## 0.7.74
 
 `of doctor` no longer FAILs the active-field diagnosis for historical stale packets on closed sibling fields. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.73 notes.

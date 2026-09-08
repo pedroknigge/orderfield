@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.74 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.75 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.74"
+  version: "0.7.75"
   alias-of: orderfield
 ---
 
@@ -34,6 +34,8 @@ Per-task model hints: when packing a multi-role wave, **consult** [docs/model-ca
 Wave harness plan: before pack (init → first pack, or re-planning), **consult** the catalog, then **must ask** same-harness categories vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect` (present / missing / PATH≠auth Partial). Spawn only from **present**. Never claim login from PATH. Never silent mix. Follow the sibling. Not a router.
 
 Conservative agy spawn: if the harness JSON named refused tools, read `residual.denied_actions` (or the spawn `denied_actions=` line). Those tools were refused — **not approval**. Missing/empty is omit; do not invent `[]`. Do not set `OF_TRUST=yolo` to hide them. Follow the sibling.
+
+Missing collect residual: `MISSING` means pending/unavailable. The diagnostic shows known adapter / trust / outcome and actual `denied_actions`. “permissions may be involved for conservative `<adapter>` headless mode” is a possibility, not proof; conservative children may still write scratch and residual files. Follow the sibling.
 
 agy residual schema: `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; type unions unique, `usage` is `[object,null]`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery. Follow the sibling.
 

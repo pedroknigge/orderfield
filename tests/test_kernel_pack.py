@@ -1638,6 +1638,11 @@ class CollectSurvivesMissingResiduals(unittest.TestCase):
         res = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "alive.json"
         write_bound_residual(self.tmp, "alive")
 
+    def _write_spawn_meta(self, child: str, data: dict) -> None:
+        path = self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data), encoding="utf-8")
+
     def test_collect_reports_both_and_exits_2(self) -> None:
         r = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
@@ -1646,6 +1651,25 @@ class CollectSurvivesMissingResiduals(unittest.TestCase):
         self.assertIn("missing residual", r.stdout)
         self.assertIn("ok=1", r.stdout)
         self.assertIn("missing=1", r.stdout)
+
+    def test_collect_reports_conservative_grok_as_possibility(self) -> None:
+        self._write_spawn_meta(
+            "dead",
+            {"adapter": "grok", "trust": "conservative"},
+        )
+        r = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("MISSING dead", r.stdout)
+        self.assertIn("pending/unavailable", r.stdout)
+        self.assertIn(
+            "spawned adapter=grok trust=conservative outcome=in-flight",
+            r.stdout,
+        )
+        self.assertIn(
+            "permissions may be involved for conservative grok headless mode",
+            r.stdout,
+        )
+        self.assertNotIn("cannot write files", r.stdout)
 
     def test_integrate_without_partial_still_dies(self) -> None:
         r = run_of(self.tmp, "integrate", "--wave", "1")

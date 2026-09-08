@@ -168,6 +168,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.72 `of issue --body-file` names canonical `.orderfield/work/scratch/<child_id>/` (`_issue_scratch_rel_ok`; leader draft `…/leader/ISSUE.md`; #134) | documented |
 | 0.7.73 Codex residual schema `usage.type` is `["object","null"]` once (`CodexStrictSchema`; #135) | documented |
 | 0.7.74 doctor closed-field historical packs are informational (`DoctorSkew.home_closed`; field id + wave; `recovery/doctor-closed-historical`; #137) | documented |
+| 0.7.75 collect missing-residual conservative diagnostic is factual (`CollectDiagnostic`; adapter/outcome/actual denials; possibility, not cannot-write; #138) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

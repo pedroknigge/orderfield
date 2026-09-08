@@ -111,6 +111,38 @@ field_artifact_path = physical_artifact_path
 # write simply exits without a residual. Named so spawn can say why.
 PRINT_MODE_ADAPTERS = {"claude", "codex", "cursor", "agy", "opencode", "grok", "qwen"}
 
+
+class CollectDiagnostic:
+    """Render only spawn facts known for a missing residual."""
+
+    @staticmethod
+    def spawn_note(meta: Any) -> str:
+        if not isinstance(meta, dict):
+            return ""
+        adapter = str(meta.get("adapter") or "").strip()
+        trust = str(meta.get("trust") or "").strip()
+        outcome = str(meta.get("outcome") or "in-flight").strip()
+        facts = []
+        if adapter:
+            facts.append(f"adapter={adapter}")
+        if trust:
+            facts.append(f"trust={trust}")
+        if outcome:
+            facts.append(f"outcome={outcome}")
+        note = f" spawned {' '.join(facts)}" if facts else ""
+        raw_denied = meta.get("denied_actions")
+        if isinstance(raw_denied, list) and raw_denied:
+            names = ",".join(str(item) for item in raw_denied if str(item).strip())
+            if names:
+                note += f"; denied_actions={names}"
+        if trust == "conservative" and adapter in PRINT_MODE_ADAPTERS:
+            note += (
+                f"; permissions may be involved for conservative {adapter} "
+                "headless mode"
+            )
+        return note
+
+
 # COST-001: no harness reports paid usage to the kernel. Never label tokens
 # as a budget; 0 is reserved accounting, not a measured ceiling.
 COST_DISCLAIMER = (
@@ -1097,22 +1129,14 @@ def cmd_collect(args: argparse.Namespace) -> None:
             trust_note = ""
             meta_path = wave_dir(int(pkt.get("wave") or args.wave), root) / "spawns" / f"{child}.json"
             if meta_path.is_file():
-                meta = load_json(meta_path)
-                if isinstance(meta, dict) and meta.get("trust"):
-                    trust_note = f" spawned trust={meta.get('trust')} outcome={meta.get('outcome') or 'in-flight'}"
-                    if meta.get("trust") == "conservative":
-                        trust_note += "; a conservative print-mode child cannot write files"
-                    raw_denied = meta.get("denied_actions")
-                    if isinstance(raw_denied, list) and raw_denied:
-                        names = ",".join(str(item) for item in raw_denied if str(item).strip())
-                        if names:
-                            trust_note += f"; denied_actions={names}"
+                trust_note = CollectDiagnostic.spawn_note(load_json(meta_path))
             looked = (
                 physical_field_rel(root, str(rel)) if rel else "(no residual_path)"
             )
             print(
                 f"MISSING {child}: missing residual at {looked} "
-                f"(still in flight; of unpack --child-id {child} releases it){trust_note}"
+                f"(pending/unavailable; of unpack --child-id {child} releases it)"
+                f"{trust_note}"
             )
             continue
         data = load_json(path)
