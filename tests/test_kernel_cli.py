@@ -1580,6 +1580,88 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("packed_age", joined)
         self.assertIn("worker", joined)
 
+    def test_closed_sibling_historical_skew_does_not_fail_active(self) -> None:
+        of.eval_setup_recovery_doctor_closed_historical(self.tmp)
+        from of.field import DoctorSkew, list_field_homes
+
+        homes = {fid: (home, order) for fid, home, order in list_field_homes(self.tmp)}
+        packets_before: dict[str, bytes] = {}
+        close_before: bytes | None = None
+        closed_ids: list[str] = []
+        for fid, (home, order) in homes.items():
+            if DoctorSkew.home_closed(home, order):
+                closed_ids.append(fid)
+                wave, files = DoctorSkew.wave_packet_files(home)
+                self.assertEqual(wave, 1)
+                for path, pkt in files:
+                    packets_before[str(path)] = path.read_bytes()
+                    self.assertNotEqual(pkt.get("order_rev"), order.get("rev"))
+                proof = home / "CLOSE.json"
+                if proof.is_file():
+                    close_before = proof.read_bytes()
+        self.assertEqual(len(closed_ids), 2)
+        self.assertIsNotNone(close_before)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        ok", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertIn("stub          none", r.stdout)
+        self.assertIn("historical", r.stdout)
+        self.assertIn("order_rev; closed", r.stdout)
+        self.assertIn(DoctorSkew.HISTORICAL_NOTE, r.stdout)
+        self.assertIn("historian", r.stdout)
+        self.assertIn("leftover", r.stdout)
+        self.assertIn("wave 1", r.stdout)
+        for fid in closed_ids:
+            self.assertIn(fid, r.stdout)
+        for path, payload in packets_before.items():
+            self.assertEqual(Path(path).read_bytes(), payload)
+        self.assertTrue(any((home / "CLOSE.json").is_file() for home, _o in homes.values()))
+        for fid, (home, _order) in homes.items():
+            proof = home / "CLOSE.json"
+            if proof.is_file():
+                self.assertEqual(proof.read_bytes(), close_before)
+
+    def test_open_field_order_rev_stale_still_fails(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "open-field stale packet must still fail doctor",
+            "--role",
+            "implementer",
+            "--child-id",
+            "worker",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        from of.field import (
+            DoctorSkew,
+            _read_json_object,
+            dump_bytes,
+            json_payload_bytes,
+            list_field_homes,
+            require_public_schema,
+        )
+
+        fid, home, order = list_field_homes(self.tmp)[0]
+        order["rev"] = int(order.get("rev") or 1) + 1
+        require_public_schema(order, "order.schema.json", "ORDER")
+        dump_bytes(home / "ORDER.json", json_payload_bytes(order))
+        r = self._doctor()
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("doctor        FAIL", r.stdout)
+        self.assertIn("worker  stale  (order_rev)", r.stdout)
+        self.assertIn(fid, r.stdout)
+        self.assertIn("wave 1", r.stdout)
+        self.assertNotIn("historical", r.stdout)
+        pkt = _read_json_object(home / "waves" / "001" / "packets" / "worker.json")
+        self.assertIsNotNone(pkt)
+        lines, skewed = DoctorSkew.packs(self.tmp)
+        self.assertTrue(skewed)
+        self.assertTrue(any(fid in line and "wave 1" in line for line in lines))
+
     def test_pack_and_handoff_name_residual_awaiting(self) -> None:
         init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(init.returncode, 0, init.stderr)
@@ -1674,6 +1756,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/process-death-resume", r.stdout)
         self.assertIn("PASS recovery/packed-age-watchdog", r.stdout)
         self.assertIn("PASS recovery/doctor-one-pass-skew", r.stdout)
+        self.assertIn("PASS recovery/doctor-closed-historical", r.stdout)
         self.assertIn("PASS recovery/adversarial-dual-truth", r.stdout)
 
     def test_eval_list(self) -> None:
@@ -1701,6 +1784,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("process-death-resume", r.stdout)
         self.assertIn("packed-age-watchdog", r.stdout)
         self.assertIn("doctor-one-pass-skew", r.stdout)
+        self.assertIn("doctor-closed-historical", r.stdout)
         self.assertIn("adversarial-dual-truth", r.stdout)
 
 

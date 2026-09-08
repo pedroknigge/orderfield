@@ -1076,6 +1076,32 @@ class SkillPackedOnlyStatus(unittest.TestCase):
         self.assertIn("no spawn record", appendix)
 
 
+class SkillDoctorClosedHistorical(unittest.TestCase):
+    """SKILL teaches closed-field historical packs are informational."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_closed_historical(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of doctor", table)
+        self.assertIn("closed-field historical", table)
+        self.assertIn("informational", table)
+        self.assertIn("not fail", table)
+        self.assertIn("do not rewrite a closed audit trail", table)
+        alias_fold = alias.casefold()
+        self.assertIn("closed-field historical", alias_fold)
+        self.assertIn("informational", alias_fold)
+        self.assertIn("not fail", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("closed-field historical", appendix_fold)
+        self.assertIn("informational", appendix_fold)
+
+
 class SkillAntiDoneTheater(unittest.TestCase):
     """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
 

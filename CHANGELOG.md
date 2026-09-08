@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.74
+
+`of doctor` no longer FAILs the active-field diagnosis for historical stale packets on closed sibling fields. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.73 notes.
+
+- **Reuse, not a second ledger:** `DoctorSkew.packs` still walks `list_field_homes`. Closed uses `field_is_open` (same as `of fields`) plus retained `CLOSE.json`. Open-field `order_rev` / `packed_age` still FAIL. No new CLI / schema / supervisor / token ceiling.
+- **Historical, not rewrite:** closed-field stale packets print `historical` with field id + wave and a note. They do not set FAIL. Do not rewrite `CLOSE.json` or retained packets to green the current field.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach closed-field historical packs are informational (not FAIL). Open-field stale/aged packs still FAIL.
+- **Proof:** `DoctorOnePassSkew` closed-sibling vs healthy active; open-field `order_rev` still FAIL. `recovery/doctor-closed-historical`. `SkillDoctorClosedHistorical`. Existing `recovery/doctor-one-pass-skew` still FAILs leftover stub + aged open pack. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.74; skill/alias description preview `v0.7.74 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.73 notes.
+
 ## 0.7.73
 
 Codex `--output-schema` is a legal JSON Schema again: `usage.type` is `["object","null"]` once. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.72 notes.

@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.73 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
+description: "v0.7.74 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.73"
+  version: "0.7.74"
   alias-of: orderfield
 ---
 
@@ -13,7 +13,7 @@ Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) 
 
 Load the sibling skill and follow it. When that skill names [references/skill-appendix.md](../references/skill-appendix.md), read the appendix before pack, spawn, contrast, or close. Stop if the sibling is missing. Do not invent a second contract.
 
-Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh --global` (or `--root PATH`), then `of doctor` must print `ok`. Pin recipe stays README / PUBLISH. Not pip. Not a daemon.
+Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh --global` (or `--root PATH`), then `of doctor` must print `ok`. Closed-field historical packs (older `order_rev` than the retained ORDER) are informational — not FAIL. Open-field stale/aged packs still FAIL. Pack lines name field id + wave. Do not rewrite a closed audit trail to green doctor. Pin recipe stays README / PUBLISH. Not pip. Not a daemon.
 
 Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
