@@ -161,7 +161,7 @@ Headless (conservative; add `--dangerously-skip-permissions` only via
 `OF_TRUST=yolo`):
 
 ```bash
-claude -p --output-format stream-json \
+claude -p --output-format stream-json --verbose \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 

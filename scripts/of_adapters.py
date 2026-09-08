@@ -575,8 +575,10 @@ class StreamJson:
         }
     )
     # Documented live streams only. Other adapters keep their JSON blob.
+    # Claude Code rejects -p/--print + stream-json unless --verbose is
+    # also set (exit 1, empty residual). Cursor/codex do not.
     ARGV = {
-        "claude": ("--output-format", "stream-json"),
+        "claude": ("--output-format", "stream-json", "--verbose"),
         "cursor": ("--output-format", "stream-json"),
         "codex": ("--json",),
     }
