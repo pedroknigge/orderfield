@@ -17,6 +17,8 @@ import of  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 SKILL = ROOT / "SKILL.md"
+ALIAS = ROOT / "of" / "SKILL.md"
+APPENDIX = ROOT / "references" / "skill-appendix.md"
 SLAVE = ROOT / "SLAVE.md"
 AGENTS = ROOT / "AGENTS.md"
 GLOSSARY = ROOT / "docs" / "glossary.md"
@@ -87,6 +89,8 @@ class HitlIssueFileSurface(unittest.TestCase):
         self.assertIn("ISSUE.md", skill)
         self.assertIn("Search open issues first", skill)
         self.assertIn("You ask HITL, then `of issue`", skill)
+        self.assertIn(".orderfield/work/scratch/leader", skill)
+        self.assertIn(".orderfield/work/scratch/<child_id>/", skill)
         self.assertNotIn("`of issue` does not exist", skill)
         self.assertNotIn("of issue` does not exist", skill)
         self.assertNotIn("Do not invent `of issue`", skill)
@@ -162,6 +166,27 @@ class Issue001Pair(unittest.TestCase):
         self.assertIn("Confirm creates; refuse / edit-later / silence does not", skill)
         slave = SLAVE.read_text(encoding="utf-8")
         self.assertIn("Confirm creates; refuse / edit-later / silence does not", slave)
+
+
+class SkillIssueBodyFileLeader(unittest.TestCase):
+    """Leader HITL --body-file lives under work/scratch/<child_id>/."""
+
+    def test_core_alias_appendix_name_leader_draft(self) -> None:
+        skill = SKILL.read_text(encoding="utf-8")
+        alias = ALIAS.read_text(encoding="utf-8")
+        appendix = APPENDIX.read_text(encoding="utf-8")
+        for body, name in (
+            (skill, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            self.assertIn(".orderfield/work/scratch/leader", body, name)
+            self.assertIn(".orderfield/work/scratch/<child_id>/", body, name)
+        self.assertNotIn("--body-file scratch/ISSUE.md", appendix)
+        self.assertIn(
+            "--body-file .orderfield/work/scratch/leader/ISSUE.md",
+            appendix,
+        )
 
 
 class PackedPromptCarriesSlave(unittest.TestCase):

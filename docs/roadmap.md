@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.71. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.72. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.71`
+**Status:** Shipped · **Current release line:** `0.7.72`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.72 — issue --body-file names the scratch draft
+
+- `of issue --body-file` keeps `_issue_scratch_rel_ok` (`.orderfield/work/scratch/<child_id>/ISSUE.md` or `issues/<slug>.md`, including `leader`). Refuse names that tree and `got:`. SKILL / `/of` / appendix teach the leader HITL draft. Proof: `IssueCli` / `SkillIssueBodyFileLeader`. Not a second draft root. Not a new CLI. Not a new regime.
 
 ## 0.7.71 — grok streaming-json + spawn finalize
 

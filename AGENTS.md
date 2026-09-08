@@ -165,6 +165,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.69 Claude `-p` + stream-json emits `--verbose` (`StreamJson`; #131; cursor/codex unchanged) | documented |
 | 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD) | documented |
 | 0.7.71 grok `--output-format streaming-json` + spawn metadata finalize (`StreamJson`; `SpawnResidual`; `ChildIO`; #133) | documented |
+| 0.7.72 `of issue --body-file` names canonical `.orderfield/work/scratch/<child_id>/` (`_issue_scratch_rel_ok`; leader draft `…/leader/ISSUE.md`; #134) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

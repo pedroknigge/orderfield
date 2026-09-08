@@ -32,10 +32,10 @@ Both sides are the contract. Auto-post, yolo post, and posting from a child are 
 ```bash
 of issue --search
 of issue --title "…" --body "…" --label bug --dry-run
-of issue --title "…" --body-file scratch/ISSUE.md --label enhancement
+of issue --title "…" --body-file .orderfield/work/scratch/leader/ISSUE.md --label enhancement
 ```
 
-A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`: title, body, labels `bug` or `enhancement`, evidence paths) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue`.
+A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`: title, body, labels `bug` or `enhancement`, evidence paths) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue`. A leader HITL draft uses the same primitive: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). `--body-file` refuses `/tmp`, `.orderfield/scratch/`, and the scratch root itself, and names `.orderfield/work/scratch/<child_id>/`.
 
 Search open issues first (`of issue --search`); skip duplicates. Do not file secrets, tokens, private transcripts, or field-internal residuals (those stay on disk: residual → integrate). One draft or issue per distinct finding; not a diary. Child procedure: [SLAVE.md](SLAVE.md).
 
