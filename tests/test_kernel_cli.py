@@ -1605,6 +1605,7 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("doctor        ok", r.stdout)
         self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertIn("stub          none", r.stdout)
         self.assertIn("historical", r.stdout)
         self.assertIn("order_rev; closed", r.stdout)
         self.assertIn(DoctorSkew.HISTORICAL_NOTE, r.stdout)

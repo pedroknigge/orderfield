@@ -26,6 +26,7 @@
         "historical",
         "order_rev; closed",
         "closed-field historical packs are informational",
+        "stub          none",
         "doctor        ok"
       ],
       "stdout_not_contains": [

@@ -2181,7 +2181,7 @@ class DoctorClosedHistorical:
 @_register_eval_fixture("recovery_doctor_closed_historical")
 def eval_setup_recovery_doctor_closed_historical(root: Path) -> None:
     """Closed siblings keep stale packets; selected active field matches."""
-    from of.field import ActiveField, list_field_homes
+    from of.field import ActiveField, RootStub, list_field_homes
 
     init = eval_run_of(
         root,
@@ -2270,6 +2270,12 @@ def eval_setup_recovery_doctor_closed_historical(root: Path) -> None:
         fid for fid, home, _order in list_field_homes(root) if home == home_c
     )
     ActiveField.write(root, live_fid)
+    # Second `of new` can leave a leftover root ORDER.json (RootStub).
+    # Archive it with the documented migrate path so doctor isolates
+    # historical-pack diagnosis from stub SKEW. Closed packets stay.
+    plan = RootStub.plan(root)
+    if plan:
+        RootStub.apply(plan)
 
 
 class ProcessDeathResume:
