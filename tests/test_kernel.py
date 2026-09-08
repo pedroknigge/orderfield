@@ -25,6 +25,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillLeaderInitiative,
     SkillModelCatalogConsult,
     ModelCatalogHonesty,
+    SkillAntiDoneTheater,
     SkillSurfaceCore,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401

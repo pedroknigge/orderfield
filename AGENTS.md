@@ -161,6 +161,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.65 `OF_TRUST=plan` maps native cursor/agy `--mode plan` + grok `--sandbox read-only` (`TrustNativeFlags`; honesty omit for gated/missing modes) | documented |
 | 0.7.66 adapter resume/continue only when residual already has session id (`AdapterResume`; never invent; never `--continue`) | documented |
 | 0.7.67 SKILL.md short core + `references/skill-appendix.md` (`SkillSurface`; hosts load the core; appendix is the rest of the procedure) | documented |
+| 0.7.68 mechanical anti-done-theater (`CloseChecklist.speak_line` on `--checklist`; contrast RESOLVED + residual empty before claiming shipped; pair with quote-PULSE) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.67 — Alias for orderfield. Hosts load this alias; then load sibling SKILL.md and, when it names it, references/skill-appendix.md (same contract). Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice wave needs a disk brief. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json feeds the same scratch PULSE; sibling); quote it, never claim done (no manual of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier (ask only). Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask; yes → install.sh --from-release. Do not trigger for a harness name alone."
+description: "v0.7.68 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak (stream-json feeds same scratch PULSE); quote it, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.67"
+  version: "0.7.68"
   alias-of: orderfield
 ---
 
@@ -20,6 +20,8 @@ Doctor / status / resume / pulse ask the user at most once a day when a newer re
 In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Spawn stream-json / JSON streams (claude/cursor/codex) feed the same scratch PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
+
+Claim shipped is mechanical: run `of contrast` and `of close --checklist` in the same turn. Quote `contrast RESOLVED` and `residual empty`. If either fails, do not claim shipped. Checklist prints `speak`. Pair with quote-PULSE while flying. Follow the sibling.
 
 Published claims stay ≤98% honest. After skill/docs edits: `python3 docs/audit/check-claims.py` (also inside `validate-skill.sh`). Follow the sibling.
 

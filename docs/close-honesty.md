@@ -93,7 +93,7 @@ A residual may say `status=done` with a `result_ref`. That closes a slice. It do
 
 ```bash
 of contrast          # CLOSE BLOCKED or RESOLVED
-of close --checklist # contrast + residual empty; does not stamp
+of close --checklist # contrast + residual empty + speak; does not stamp
 of close             # refused until RESOLVED and residual empty; one stamp on success
 cat .orderfield/CLOSE.json
 of eval recovery/atomic-close-flag-lag --strict
