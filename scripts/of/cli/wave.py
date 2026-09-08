@@ -256,25 +256,17 @@ def kill_child_tree(proc: "subprocess.Popen[str]") -> None:
 
 
 class ChildIO:
-    """Close pipes after kill so timeout can finalize. Not a supervisor.
+    """Bound timeout teardown so spawn can finalize. Not a supervisor.
 
     A grandchild that escaped the process group can keep the write end of
-    stdout/stderr open. Joining the reader threads then hangs forever and
-    spawn metadata stays started-only (outcome/exit missing). Close our
-    read ends so readline sees EOF, then join with a bound wait.
+    stdout/stderr open. A blocking join then never returns and spawn
+    metadata stays started-only (outcome/exit missing). Reader threads
+    are daemons; join is bounded. Do not close the pipes from this
+    thread — that deadlocks with readline on the same object.
     """
 
     JOIN_S = 2.0
     WAIT_S = 1.0
-
-    @staticmethod
-    def close(pipe: Any) -> None:
-        if pipe is None:
-            return
-        try:
-            pipe.close()
-        except OSError:
-            pass
 
     @staticmethod
     def after_timeout(
@@ -287,8 +279,6 @@ class ChildIO:
             proc.wait(timeout=ChildIO.WAIT_S)
         except subprocess.TimeoutExpired:
             pass
-        ChildIO.close(proc.stdout)
-        ChildIO.close(proc.stderr)
         t_out.join(timeout=ChildIO.JOIN_S)
         t_err.join(timeout=ChildIO.JOIN_S)
         return proc.returncode
@@ -386,9 +376,11 @@ def run_child(
                 pass
 
     t_out = threading.Thread(
-        target=_read, args=(proc.stdout, out_chunks, on_stdout_line)
+        target=_read, args=(proc.stdout, out_chunks, on_stdout_line), daemon=True
     )
-    t_err = threading.Thread(target=_read, args=(proc.stderr, err_chunks, None))
+    t_err = threading.Thread(
+        target=_read, args=(proc.stderr, err_chunks, None), daemon=True
+    )
     t_out.start()
     t_err.start()
     try:

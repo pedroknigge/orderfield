@@ -16,7 +16,7 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 ## 0.7.71 — grok streaming-json + spawn finalize
 
-- Grok spawn argv adds documented `--output-format streaming-json` (`StreamJson.ARGV`). Residual extract reuses the claude/cursor stdout path, including on timeout. Timeout closes captured pipes so a leaked grandchild cannot leave started-only spawn metadata. `outcome` + `exit` + `ended_at` land on exit, timeout, and missing binary. `--json-schema` stays omitted. Proof: `GrokAdapterSpawn`. Not a new CLI. Not a new regime.
+- Grok spawn argv adds documented `--output-format streaming-json` (`StreamJson.ARGV`). Residual extract reuses the claude/cursor stdout path, including on timeout. Timeout uses daemon reader threads and a bound join so a leaked grandchild cannot leave started-only spawn metadata. `outcome` + `exit` + `ended_at` land on exit, timeout, and missing binary. `--json-schema` stays omitted. Proof: `GrokAdapterSpawn`. Not a new CLI. Not a new regime.
 
 ## 0.7.70 — packed-only is not ALIVE
 
