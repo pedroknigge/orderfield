@@ -49,15 +49,23 @@ class StreamJsonParse(unittest.TestCase):
         claude = of.build_spawn_argv(
             "claude", "PROMPT", packet, residual, dry_run=True
         )
+        self.assertIn("-p", claude)
         self.assertEqual(
             claude[claude.index("--output-format") + 1], "stream-json"
+        )
+        self.assertIn("--verbose", claude)
+        self.assertEqual(
+            of.StreamJson.ARGV["claude"],
+            ("--output-format", "stream-json", "--verbose"),
         )
         cursor = of.build_spawn_argv(
             "cursor", "PROMPT", packet, residual, dry_run=True
         )
+        self.assertIn("-p", cursor)
         self.assertEqual(
             cursor[cursor.index("--output-format") + 1], "stream-json"
         )
+        self.assertNotIn("--verbose", cursor)
         self.assertNotIn("text", cursor)
         codex = of.build_spawn_argv(
             "codex", "PROMPT", packet, residual, dry_run=True
@@ -65,6 +73,7 @@ class StreamJsonParse(unittest.TestCase):
         self.assertIn("--json", codex)
         self.assertIn("-o", codex)
         self.assertEqual(codex[codex.index("-o") + 1], str(residual))
+        self.assertNotIn("--verbose", codex)
         for adapter, fmt in (("agy", "json"), ("qwen", "json")):
             argv = of.build_spawn_argv(
                 adapter, "PROMPT", packet, residual, dry_run=True
@@ -72,6 +81,20 @@ class StreamJsonParse(unittest.TestCase):
             self.assertEqual(argv[argv.index("--output-format") + 1], fmt)
             self.assertNotIn("stream-json", argv)
             self.assertNotIn("--json", argv)
+            self.assertNotIn("--verbose", argv)
+
+    def test_claude_print_stream_json_includes_verbose(self) -> None:
+        """Claude Code: -p + stream-json without --verbose exits 1 (#131)."""
+        packet = {"child_id": "c1", "budget": {"seconds": 60}}
+        residual = Path("/tmp/of-stream-residual.json")
+        claude = of.build_spawn_argv(
+            "claude", "PROMPT", packet, residual, dry_run=True
+        )
+        p_idx = claude.index("-p")
+        fmt_idx = claude.index("--output-format")
+        self.assertEqual(claude[fmt_idx + 1], "stream-json")
+        self.assertIn("--verbose", claude)
+        self.assertLess(p_idx, fmt_idx)
 
     def test_milestone_from_claude_and_codex_events(self) -> None:
         tool = of.StreamJson.milestone(

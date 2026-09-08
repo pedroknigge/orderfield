@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.69
+
+Claude spawn argv adds `--verbose` so `-p` + stream-json is accepted. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.68 notes.
+
+- **Reuse, not a new flag table:** `StreamJson.ARGV["claude"]` already feeds `build_spawn_argv`. Claude Code rejects `-p`/`--print` + `--output-format stream-json` unless `--verbose` is also set (exit 1, no residual). Cursor/codex keep their existing stream flags. No new CLI / schema / event / supervisor / token ceiling.
+- **Honesty, not a capability:** This is adapter argv so the documented stream-json PULSE path actually starts. Not a new pulse channel. Not a supervisor. SKILL / `/of` already teach stream-json → same scratch PULSE; they do not grow a fake `--verbose` verb.
+- **Proof:** `StreamJsonParse` asserts claude dry-run argv has `-p` + `stream-json` + `--verbose`, and that cursor/codex/agy/qwen do not get `--verbose`. Existing `StreamJsonSpawn` stays. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.69; skill/alias description preview `v0.7.69 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.68 notes.
+
 ## 0.7.68
 
 Mechanical anti-done-theater: claim shipped only after contrast RESOLVED + residual empty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.67 notes.

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.68. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.69. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.68` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.69` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -82,6 +82,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.65 `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only` via `_TRUST_FLAGS`. Claude `auto` stays `acceptEdits`. Cursor/OpenCode/Grok `auto-edit`/`auto` stay conservative. Proof: `TrustNativeFlags`. No new CLI.
 - 0.7.66 adapter resume/continue emits `--resume ID` only when `residual.session_id` is already set (`AdapterResume`). Cold residual is a fresh spawn. Never invent. Never `--continue`. Codex omit. Proof: `AdapterResumeGate`. No new CLI.
 - 0.7.67 SKILL.md is a short always-loaded core; `references/skill-appendix.md` is the rest of the leader procedure. Hosts load the core. Agents read the appendix before pack/spawn/contrast/close. Class `SkillSurface`. Proof: `SkillSurfaceCore`. No new CLI.
+- 0.7.69 Claude spawn argv adds `--verbose` when `-p` + `--output-format stream-json` (`StreamJson.ARGV`). Cursor/codex unchanged. Proof: `StreamJsonParse`. No new CLI.
 - 0.7.68 mechanical anti-done-theater: `of close --checklist` prints `CloseChecklist.speak_line()` (`speak  do not claim shipped unless contrast RESOLVED and residual empty`). SKILL / `/of` / appendix teach: run `of contrast` + `--checklist` before claiming shipped; quote the two rows. Pair with 0.7.58 quote-PULSE. Proof: `CloseChecklistProof` / `SkillAntiDoneTheater`. No new CLI / supervisor / Stop hook.
 
 ## Contract boundaries
