@@ -440,7 +440,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--body-file",
         dest="body_file",
-        help="issue body file (create)",
+        help=(
+            "canonical scratch draft under "
+            ".orderfield/work/scratch/<child_id>/"
+        ),
     )
     s.add_argument(
         "--label",

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.71. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.72. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.71` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.72` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -86,6 +86,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.68 mechanical anti-done-theater: `of close --checklist` prints `CloseChecklist.speak_line()` (`speak  do not claim shipped unless contrast RESOLVED and residual empty`). SKILL / `/of` / appendix teach: run `of contrast` + `--checklist` before claiming shipped; quote the two rows. Pair with 0.7.58 quote-PULSE. Proof: `CloseChecklistProof` / `SkillAntiDoneTheater`. No new CLI / supervisor / Stop hook.
 - 0.7.70 packed-only is not ALIVE: `SpawnRecord` + `child_pulse_verdict` derive `spawned` and ALIVE/QUIET/STALE from spawn metadata or scratch. Pack without spawn reads `PACKED` / `next SPAWN`. Pulse stays the activity lens. Proof: `PackedOnlyNotAlive`. No new CLI / supervisor.
 - 0.7.71 grok `--output-format streaming-json` + spawn finalize: `StreamJson.ARGV` / `SpawnResidual` / `ChildIO`. Residual extract reuses stdout (including timeout). Timeout cannot hang on a leaked pipe. Proof: `GrokAdapterSpawn`. No new CLI / supervisor.
+- 0.7.72 `of issue --body-file` keeps `_issue_scratch_rel_ok` (per-child `ISSUE.md` / `issues/<slug>.md`, including `leader`) and names `.orderfield/work/scratch/<child_id>/` on refuse. SKILL / `/of` / appendix teach the leader draft. Proof: `IssueCli` / `SkillIssueBodyFileLeader`. No new CLI / supervisor.
 
 ## Contract boundaries
 

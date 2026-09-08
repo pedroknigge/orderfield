@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.72
+
+`of issue --body-file` stays the existing per-child scratch draft gate and names that tree when it refuses. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.71 notes.
+
+- **Reuse, not a second draft root:** `_issue_scratch_rel_ok` already is `canonical_scratch_rel` + `ISSUE.md` / `issues/<slug>.md` (including `leader`). Field scratch root, `.orderfield/scratch/`, and `/tmp` stay refused. No new CLI / schema / supervisor / token ceiling.
+- **Error names the location:** refuse prints `.orderfield/work/scratch/<child_id>/` and `got:`. The old one-liner never said where a draft lives.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the leader HITL draft (`.orderfield/work/scratch/leader/ISSUE.md` or the child's existing path) in the same cut. The misleading `--body-file scratch/ISSUE.md` example is gone.
+- **Proof:** `IssueCli` accepts `.orderfield/work/scratch/leader/ISSUE.md`; reporter paths refuse and name the canonical tree. `SkillIssueBodyFileLeader`. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.72; skill/alias description preview `v0.7.72 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.71 notes.
+
 ## 0.7.71
 
 Grok spawn delivers residual the same way claude/cursor do, and spawn metadata is finalized even when a timeout grandchild keeps stdout open. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.70 notes.

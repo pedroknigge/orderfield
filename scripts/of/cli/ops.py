@@ -2203,10 +2203,30 @@ ISSUE_BODY_MAX_LINES = 400
 ISSUE_TITLE_MAX_CHARS = 256  # GitHub title ceiling; refuse 40k dumps
 ISSUE_SEARCH_MAX_CHARS = 256
 ISSUE_DRAFT_NAME = "ISSUE.md"
+ISSUE_BODY_FILE_UNDER = ".orderfield/work/scratch/<child_id>/"
 
 
 def _issue_die(msg: str) -> None:
     die(msg, kind="issue")
+
+
+def _issue_body_file_display(raw: str, rel: Path | None = None) -> str:
+    if rel is not None:
+        return rel.as_posix()
+    text = str(raw or "").strip()
+    if not text or any(ord(ch) < 32 for ch in text) or "\\" in text:
+        return ""
+    return text
+
+
+def _issue_die_body_file_canonical(got: str = "") -> None:
+    msg = (
+        "--body-file must be a canonical non-symlink scratch draft "
+        f"under {ISSUE_BODY_FILE_UNDER}"
+    )
+    if got:
+        msg += f" (got: {got})"
+    _issue_die(msg)
 
 
 def _gh_env() -> dict[str, str]:
@@ -2426,11 +2446,11 @@ def _load_issue_body_file(raw: str) -> str:
     """Canonical non-symlink scratch draft only. Returns redacted body text."""
     text_path = str(raw or "")
     if not text_path.strip() or text_path != text_path.strip():
-        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+        _issue_die_body_file_canonical()
     if text_path.startswith("~") or text_path.startswith("-"):
-        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+        _issue_die_body_file_canonical(_issue_body_file_display(text_path))
     if any(ord(ch) < 32 for ch in text_path) or "\\" in text_path:
-        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+        _issue_die_body_file_canonical()
     project = find_root().resolve()
     given = Path(text_path)
     abs_given = given if given.is_absolute() else (Path.cwd() / given)
@@ -2438,9 +2458,9 @@ def _load_issue_body_file(raw: str) -> str:
     try:
         rel = norm.relative_to(project)
     except ValueError:
-        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+        _issue_die_body_file_canonical(_issue_body_file_display(text_path))
     if not _issue_scratch_rel_ok(rel):
-        _issue_die("--body-file must be a canonical non-symlink scratch draft")
+        _issue_die_body_file_canonical(rel.as_posix())
     cursor = project
     for part in rel.parts:
         cursor = cursor / part

@@ -254,6 +254,7 @@ class IssueCli(unittest.TestCase):
         self.assertIn("--title", help_out.stdout)
         self.assertIn("--body", help_out.stdout)
         self.assertIn("--body-file", help_out.stdout)
+        self.assertIn(ops.ISSUE_BODY_FILE_UNDER, help_out.stdout)
         self.assertIn("--label", help_out.stdout)
         self.assertIn("--search", help_out.stdout)
         self.assertIn("kernel defects", help_out.stdout)
@@ -520,7 +521,73 @@ class IssueCli(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("of: error: issue:", r.stderr)
         self.assertIn("canonical", r.stderr)
+        self.assertIn(ops.ISSUE_BODY_FILE_UNDER, r.stderr)
+        self.assertIn("got:", r.stderr)
         self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_accepts_leader_scratch_draft(self) -> None:
+        rel = self.write_draft("leader hitl body\n", child="leader")
+        self.assertEqual(rel, ".orderfield/work/scratch/leader/ISSUE.md")
+        r = self.issue(
+            "issue",
+            "--title",
+            "leader hitl",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run argv:", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_reject_names_canonical_location(self) -> None:
+        cases = (
+            ".orderfield/scratch/ISSUE.md",
+            ".orderfield/work/scratch/ISSUE.md",
+            "scratch/ISSUE.md",
+        )
+        for rel in cases:
+            path = self.tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("leader draft\n", encoding="utf-8")
+            with self.subTest(rel=rel):
+                r = self.issue(
+                    "issue",
+                    "--title",
+                    "x",
+                    "--body-file",
+                    rel,
+                    "--label",
+                    "bug",
+                    "--dry-run",
+                )
+                self.assertEqual(r.returncode, 1, r.stderr)
+                self.assertIn("of: error: issue:", r.stderr)
+                self.assertIn("canonical", r.stderr)
+                self.assertIn(ops.ISSUE_BODY_FILE_UNDER, r.stderr)
+                self.assertIn("got:", r.stderr)
+                self.assertIn(rel, r.stderr)
+                self.assertEqual(load_log(self.log), [])
+
+    def test_issue_scratch_rel_ok_is_per_child_not_root(self) -> None:
+        self.assertTrue(
+            ops._issue_scratch_rel_ok(
+                Path(".orderfield/work/scratch/leader/ISSUE.md")
+            )
+        )
+        self.assertTrue(
+            ops._issue_scratch_rel_ok(
+                Path(".orderfield/work/scratch/e1/issues/wal-crash.md")
+            )
+        )
+        self.assertFalse(
+            ops._issue_scratch_rel_ok(Path(".orderfield/work/scratch/ISSUE.md"))
+        )
+        self.assertFalse(
+            ops._issue_scratch_rel_ok(Path(".orderfield/scratch/ISSUE.md"))
+        )
 
     def test_body_file_rejects_symlink(self) -> None:
         rel = self.write_draft("real draft\n")
