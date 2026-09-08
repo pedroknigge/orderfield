@@ -174,43 +174,84 @@ def assert_draft_2020_12_valid(
             case.assertLessEqual(instance, schema["maximum"], path)
 
 
-def codex_strict_schema_from(canonical: object) -> object:
+class CodexStrictSchema:
     """Test oracle for Codex's closed/all-required output-schema subset."""
-    if isinstance(canonical, list):
-        return [codex_strict_schema_from(item) for item in canonical]
-    if not isinstance(canonical, dict):
-        return canonical
-    strict = {
-        key: codex_strict_schema_from(value) for key, value in canonical.items()
-    }
-    schema_type = canonical.get("type")
-    is_object = schema_type == "object" or (
-        isinstance(schema_type, list) and "object" in schema_type
-    )
-    if not is_object:
+
+    OMIT = frozenset({"denied_actions", "session_id"})
+
+    @staticmethod
+    def nullable(value_type: object) -> object:
+        """Optional fields become a unique two-item union. Never duplicate null."""
+        if isinstance(value_type, str):
+            return value_type if value_type == "null" else [value_type, "null"]
+        if not isinstance(value_type, list):
+            return value_type
+        if "null" in value_type:
+            return list(value_type)
+        return [*value_type, "null"]
+
+    @staticmethod
+    def from_canonical(canonical: object) -> object:
+        if isinstance(canonical, list):
+            return [CodexStrictSchema.from_canonical(item) for item in canonical]
+        if not isinstance(canonical, dict):
+            return canonical
+        strict = {
+            key: CodexStrictSchema.from_canonical(value)
+            for key, value in canonical.items()
+        }
+        schema_type = canonical.get("type")
+        is_object = schema_type == "object" or (
+            isinstance(schema_type, list) and "object" in schema_type
+        )
+        if not is_object:
+            return strict
+        properties = canonical.get("properties", {})
+        canonical_required = set(canonical.get("required", []))
+        # Residual-only provenance is not a Codex output field. Missing is
+        # omit, not approval — drop it; do not require or null-force.
+        strict_properties = {}
+        for key, value in properties.items():
+            if key in CodexStrictSchema.OMIT:
+                continue
+            strict_value = CodexStrictSchema.from_canonical(value)
+            if key not in canonical_required:
+                strict_value["type"] = CodexStrictSchema.nullable(
+                    strict_value["type"]
+                )
+            strict_properties[key] = strict_value
+        strict["properties"] = strict_properties
+        strict["required"] = list(strict_properties)
+        strict["additionalProperties"] = False
         return strict
-    properties = canonical.get("properties", {})
-    canonical_required = set(canonical.get("required", []))
-    # Residual-only provenance is not a Codex output field. Missing is
-    # omit, not approval — drop it; do not require or null-force.
-    omit_from_output = frozenset({"denied_actions", "session_id"})
-    strict_properties = {}
-    for key, value in properties.items():
-        if key in omit_from_output:
-            continue
-        strict_value = codex_strict_schema_from(value)
-        if key not in canonical_required:
-            value_type = strict_value["type"]
-            strict_value["type"] = (
-                [value_type, "null"]
-                if isinstance(value_type, str)
-                else [*value_type, "null"]
-            )
-        strict_properties[key] = strict_value
-    strict["properties"] = strict_properties
-    strict["required"] = list(strict_properties)
-    strict["additionalProperties"] = False
-    return strict
+
+
+def codex_strict_schema_from(canonical: object) -> object:
+    return CodexStrictSchema.from_canonical(canonical)
+
+
+class ResidualSchemaType:
+    """JSON Schema type arrays must be unique. OpenAI rejects duplicate null."""
+
+    @staticmethod
+    def problems(node: object, path: str = "$") -> list[str]:
+        found: list[str] = []
+        ResidualSchemaType._walk(node, path, found)
+        return found
+
+    @staticmethod
+    def _walk(node: object, path: str, found: list[str]) -> None:
+        if isinstance(node, dict):
+            schema_type = node.get("type")
+            if isinstance(schema_type, list) and len(schema_type) != len(
+                set(schema_type)
+            ):
+                found.append(f"{path}.type={schema_type!r}")
+            for key, value in node.items():
+                ResidualSchemaType._walk(value, f"{path}.{key}", found)
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                ResidualSchemaType._walk(item, f"{path}[{index}]", found)
 
 
 
@@ -522,10 +563,30 @@ class ResidualSchemaContracts(unittest.TestCase):
         assert_draft_2020_12_valid(self, schema, threshold)
 
     def test_codex_schema_is_strict_derivative_without_semantic_drift(self) -> None:
-        expected = codex_strict_schema_from(load_json(RESIDUAL_SCHEMA))
+        expected = CodexStrictSchema.from_canonical(load_json(RESIDUAL_SCHEMA))
         expected["$id"] = "orderfield/residual.codex.schema.json"
         expected["title"] = "Orderfield residual (Codex strict output)"
         self.assertEqual(load_json(CODEX_RESIDUAL_SCHEMA), expected)
+
+    def test_codex_usage_type_is_object_null_once(self) -> None:
+        schema = load_json(CODEX_RESIDUAL_SCHEMA)
+        self.assertEqual(schema["properties"]["usage"]["type"], ["object", "null"])
+        derived = CodexStrictSchema.from_canonical(load_json(RESIDUAL_SCHEMA))
+        self.assertEqual(derived["properties"]["usage"]["type"], ["object", "null"])
+
+    def test_residual_schemas_reject_duplicate_type_members(self) -> None:
+        self.assertEqual(
+            ResidualSchemaType.problems({"type": ["object", "null", "null"]}),
+            ["$.type=['object', 'null', 'null']"],
+        )
+        nested = {"properties": {"usage": {"type": ["object", "null", "null"]}}}
+        self.assertEqual(
+            ResidualSchemaType.problems(nested),
+            ["$.properties.usage.type=['object', 'null', 'null']"],
+        )
+        for path in (RESIDUAL_SCHEMA, CODEX_RESIDUAL_SCHEMA):
+            with self.subTest(schema=path.name):
+                self.assertEqual(ResidualSchemaType.problems(load_json(path)), [])
 
 
 class CloseProtocolApply(unittest.TestCase):

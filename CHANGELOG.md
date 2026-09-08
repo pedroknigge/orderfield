@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.73
+
+Codex `--output-schema` is a legal JSON Schema again: `usage.type` is `["object","null"]` once. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.72 notes.
+
+- **Reuse, not a Codex bypass:** public `residual.schema.json` already has `usage` as `["object","null"]`. The Codex strict oracle was appending a second `"null"` because the key is optional. `CodexStrictSchema.nullable` keeps unique type unions. Spawn still passes `--output-schema` to `residual.codex.schema.json`. No dropped flag. No adapter-only skip.
+- **Honesty, not a new verb:** SKILL / `/of` / appendix teach that the Codex residual schema type unions are unique (`usage` is `[object,null]`). OpenAI rejects duplicate null.
+- **Proof:** `ResidualSchemaContracts` asserts `usage.type == ["object","null"]` and rejects duplicate members in residual `type` arrays. Spawn dry-run still names the same file (`OutputSchemaArgv` / `test_codex_output_schema_closes_every_object_branch`). No live Codex network call. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.73; skill/alias description preview `v0.7.73 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.72 notes.
+
 ## 0.7.72
 
 `of issue --body-file` stays the existing per-child scratch draft gate and names that tree when it refuses. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.71 notes.
