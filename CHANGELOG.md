@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.77
+
+`of learn` length is advisory like `pack --slice`. Over 400 chars still stores and prints a note. `LEARNING_MAX_LINES` stays the hard dump bound. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.76 notes.
+
+- **Reuse, not a second lint stack:** `LearningLint` mirrors `SliceLint` — length stays advisory (`learning_long`); chat-dump lines die (`learning.lines`). Schema `maxLength` is gone so a stored item is not schema-refused after the write. No new CLI / supervisor / token ceiling.
+- **Write + advise, not silent nothing:** a 401-char learning is stored and listed. The stderr note names `work/scratch/leader/<file>.md` plus a short pointer. Lines over 4 still `die` on stderr (`of: error: learning.lines:`). Redirected stdout is not a silent keep-nothing.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the same sizing language as oversized `--slice` (advisory; do not refuse). Lines stay the wall.
+- **Proof:** `LearningLengthAdvisory` (401 chars stores + note; 400 quiet; lines hard refuse). `SkillLearnLengthAdvisory`. Existing provenance / dump tests stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.77; skill/alias description preview `v0.7.77 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.76 notes.
+
 ## 0.7.76
 
 `of integrate --partial` keeps `hold` when landed residuals are complete and siblings remain in flight. The reason names `skipped_in_flight` instead of saying the wave closed. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.75 notes.

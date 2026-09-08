@@ -60,7 +60,7 @@ The child moves freely inside the packet. It does not redefine mission, phase, c
 
 ## protocol learning vs field learning
 
-**Protocol** (`of learn --protocol`, or `of learn --promote <id>` from a field lesson): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines as untrusted quoted data; they are not SPEC. `--protocol` / `--promote` refuse when `OF_CHILD` is set.
+**Protocol** (`of learn --protocol`, or `of learn --promote <id>` from a field lesson): a durable lesson about running Orderfield (not the product). Lives in the user cache (`~/.cache/orderfield/learnings.json`, `OF_LEARNINGS`). Survives `of init --force` and `of gc`. Child prompts may see at most 8 lines as untrusted quoted data; they are not SPEC. `--protocol` / `--promote` refuse when `OF_CHILD` is set. Length over 400 chars is advisory (still stored); over 4 lines still refuse dumps.
 
 **Field** (`of learn TEXT`, the default): this ORDER only. Dropped when the mission or a closed phase no longer applies. A child may write a field note (`source=child`); it cannot stamp `source=leader` or promote itself.
 

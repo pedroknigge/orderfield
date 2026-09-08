@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.76 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.77 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.76"
+  version: "0.7.77"
   alias-of: orderfield
 ---
 
@@ -26,6 +26,8 @@ Claim shipped is mechanical: run `of contrast` and `of close --checklist` in the
 Published claims stay ≤98% honest. After skill/docs edits: `python3 docs/audit/check-claims.py` (also inside `validate-skill.sh`). Follow the sibling.
 
 Chat-dump residuals still cannot collect. Structured evidence over 4000 chars (counts, paths, shas) can. A size refuse names `scratch/<child>/notes.md` + re-spawn the same packet. Follow the sibling.
+
+`of learn` length is advisory like pack `--slice`: over 400 chars still stores and prints a note. Over 4 lines still refuse dumps. Put the long record in `work/scratch/leader/<file>.md` and keep a short pointer learning. Follow the sibling.
 
 Gaps as prose: `of contrast --diff` narrates SPEC vs coverage from the same ContrastReport + spec-diff facts. RESOLVED is not CLOSED. No theater. Follow the sibling.
 

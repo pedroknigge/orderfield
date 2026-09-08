@@ -170,6 +170,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.74 doctor closed-field historical packs are informational (`DoctorSkew.home_closed`; field id + wave; `recovery/doctor-closed-historical`; #137) | documented |
 | 0.7.75 collect missing-residual conservative diagnostic is factual (`CollectDiagnostic`; adapter/outcome/actual denials; possibility, not cannot-write; #138) | documented |
 | 0.7.76 `integrate --partial` hold reason names in-flight siblings (`hold_if_partial_in_flight`; `recovery/partial-integrate-in-flight`; #139) | documented |
+| 0.7.77 `of learn` length is advisory like `pack --slice` (`LearningLint`; `learning_long` note + store; `LEARNING_MAX_LINES` hard; #146) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
