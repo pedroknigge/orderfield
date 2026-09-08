@@ -1102,6 +1102,28 @@ class SkillDoctorClosedHistorical(unittest.TestCase):
         self.assertIn("informational", appendix_fold)
 
 
+class SkillCollectConservativeDiagnostic(unittest.TestCase):
+    """Missing residual diagnostics report facts, not universal inability."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_pending_and_possible_permissions(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        for text in (self.table(core), alias, appendix):
+            folded = text.casefold()
+            self.assertIn("pending/unavailable", folded)
+            self.assertIn("adapter", folded)
+            self.assertIn("outcome", folded)
+            self.assertIn("denied_actions", folded)
+            self.assertIn("permissions may be involved", folded)
+            self.assertIn("possibility, not proof", folded)
+            self.assertIn("conservative children may still write", folded)
+
+
 class SkillAntiDoneTheater(unittest.TestCase):
     """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
 

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.74 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.75 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.74"
+  version: "0.7.75"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -38,6 +38,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write. **Do not pack a whole phase as one slice.** An oversized `--slice` prints an **advisory** note — **Do not refuse**. |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
+| `of collect` prints `MISSING` | residual is pending/unavailable. Quote known adapter / trust / outcome and actual `denied_actions`. “permissions may be involved for conservative `<adapter>` headless mode” is a possibility, not proof; conservative children may still write scratch and residual files |
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; type unions unique, `usage` is `[object,null]`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |

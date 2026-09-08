@@ -266,7 +266,17 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         self.assertEqual(meta["denied_actions"], ["command(npm test)"])
         collected = run_of(self.tmp, "collect")
         self.assertNotEqual(collected.returncode, 0)
+        self.assertIn("pending/unavailable", collected.stdout)
+        self.assertIn(
+            "spawned adapter=agy trust=conservative outcome=ok",
+            collected.stdout,
+        )
         self.assertIn("denied_actions=command(npm test)", collected.stdout)
+        self.assertIn(
+            "permissions may be involved for conservative agy headless mode",
+            collected.stdout,
+        )
+        self.assertNotIn("cannot write files", collected.stdout)
         self.assertIn("MISSING", collected.stdout)
 
     def test_conservative_argv_still_has_no_bypass(self) -> None:
