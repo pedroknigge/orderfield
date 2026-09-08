@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.70 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
+description: "v0.7.71 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json + spawn-meta finalize. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.70"
+  version: "0.7.71"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -56,7 +56,8 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | `of doctor` prints FAIL | field/kernel — fix ACTIVE/stub/packs/schemas/lock; skill SKEW alone is WARN / exit 0 (`bash install.sh --global`) |
-| any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse` |
+| any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json / grok `streaming-json` on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse` |
+| grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
 | status/resume says `PACKED` / `next SPAWN` | packets exist but no spawn record and no scratch activity; `of spawn` or `of handoff`. Do not HOLD as if ALIVE. `spawned` counts spawn metadata, not packs |
 | `OF_TRUST` / plan mode | `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. `auto-edit`/`auto` stay conservative where the harness has no accept-edits flag. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). Table: appendix + [references/adapters.md](references/adapters.md) |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |

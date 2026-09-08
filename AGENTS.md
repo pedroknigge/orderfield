@@ -155,7 +155,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.59 skill-first ask same-harness categories vs multi-harness mix before pack (`SkillHarnessAsk`; reuse `of detect` / `--harness`; no new CLI) | documented |
 | 0.7.60 quick detect present / missing / PATH≠auth (`AdapterDetect`; reuse `of detect` / doctor; never claim login from PATH) | documented |
 | 0.7.61 living model catalog (intelligence×cost) per harness (`ModelCatalog`; `docs/model-catalog.md` + `.json`; consult-before-propose; not `budget.tokens`) | documented |
-| 0.7.62 stream-json / JSON streams feed PULSE (`StreamJson`; reuse `PulseProgress` + stdout residual extract; claude/cursor/codex only) | documented |
+| 0.7.62 stream-json / JSON streams feed PULSE (`StreamJson`; reuse `PulseProgress` + stdout residual extract; claude/cursor/codex + 0.7.71 grok `streaming-json`) | documented |
 | 0.7.63 conservative agy `denied_actions` in residual (`AgyDeniedActions`; reuse `StreamJson.parse_line`; not approval; not yolo) | documented |
 | 0.7.64 agy `--json-schema` residual reuses Codex file (`OutputSchema`; Claude omit inline-only / keep stream-json; Qwen omit) | documented |
 | 0.7.65 `OF_TRUST=plan` maps native cursor/agy `--mode plan` + grok `--sandbox read-only` (`TrustNativeFlags`; honesty omit for gated/missing modes) | documented |
@@ -164,6 +164,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.68 mechanical anti-done-theater (`CloseChecklist.speak_line` on `--checklist`; contrast RESOLVED + residual empty before claiming shipped; pair with quote-PULSE) | documented |
 | 0.7.69 Claude `-p` + stream-json emits `--verbose` (`StreamJson`; #131; cursor/codex unchanged) | documented |
 | 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD) | documented |
+| 0.7.71 grok `--output-format streaming-json` + spawn metadata finalize (`StreamJson`; `SpawnResidual`; `ChildIO`; #133) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

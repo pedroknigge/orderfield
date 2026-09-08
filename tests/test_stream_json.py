@@ -80,8 +80,23 @@ class StreamJsonParse(unittest.TestCase):
             )
             self.assertEqual(argv[argv.index("--output-format") + 1], fmt)
             self.assertNotIn("stream-json", argv)
+            self.assertNotIn("streaming-json", argv)
             self.assertNotIn("--json", argv)
             self.assertNotIn("--verbose", argv)
+        grok = of.build_spawn_argv(
+            "grok", "PROMPT", packet, residual, dry_run=True
+        )
+        self.assertIn("-p", grok)
+        self.assertEqual(
+            grok[grok.index("--output-format") + 1], "streaming-json"
+        )
+        self.assertLess(grok.index("--output-format"), grok.index("-p"))
+        self.assertNotIn("stream-json", grok)
+        self.assertNotIn("--verbose", grok)
+        self.assertEqual(
+            of.StreamJson.ARGV["grok"],
+            ("--output-format", "streaming-json"),
+        )
 
     def test_claude_print_stream_json_includes_verbose(self) -> None:
         """Claude Code: -p + stream-json without --verbose exits 1 (#131)."""
@@ -255,6 +270,187 @@ class StreamJsonSpawn(unittest.TestCase):
         self.assertNotIn("stream residual", pulse)
 
 
+class GrokAdapterSpawn(unittest.TestCase):
+    """Grok is a spawn adapter: streaming-json extract + metadata finalize."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-grok-spawn-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        init = run_of(self.tmp, "init", "--mission", "grok spawn", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+
+    def pack(self, cid: str, *extra: str) -> str:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map grok",
+            "--role",
+            "explorer",
+            "--child-id",
+            cid,
+            *extra,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return packed.stdout.splitlines()[0].strip()
+
+    def meta(self, cid: str) -> dict:
+        return json.loads(
+            (self.tmp / f".orderfield/waves/001/spawns/{cid}.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+    def path_without_real_grok(self, extra: Path | None = None) -> str:
+        parts: list[str] = []
+        if extra is not None:
+            parts.append(str(extra))
+        for item in os.environ.get("PATH", "").split(os.pathsep):
+            if not item:
+                continue
+            if (Path(item) / "grok").exists() or (Path(item) / "grok-cli").exists():
+                continue
+            parts.append(item)
+        return os.pathsep.join(parts)
+
+    def fake_grok(self, body: str) -> Path:
+        bindir = self.tmp / "bin"
+        bindir.mkdir(exist_ok=True)
+        grok = bindir / "grok"
+        grok.write_text(body, encoding="utf-8")
+        grok.chmod(0o755)
+        return bindir
+
+    def test_stdout_residual_extracts_on_grok(self) -> None:
+        packet_rel = self.pack("g1")
+        packet = json.loads((self.tmp / packet_rel).read_text(encoding="utf-8"))
+        result = self.tmp / ".orderfield/work/scratch/g1/notes.md"
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text("grok ok\n", encoding="utf-8")
+        residual = {
+            "status": "done",
+            "result_ref": ".orderfield/work/scratch/g1/notes.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "grok residual",
+                "proposed_patch": None,
+            },
+            "metrics": {
+                "uncertainty": 0.1,
+                "divergence": 0.0,
+                "tool_failures": 0,
+                "novelty": False,
+            },
+        }
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        events = [
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "tool_use", "name": "Write"}]},
+            },
+            residual,
+        ]
+        bindir = self.fake_grok(
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            f"for ev in {events!r}:\n"
+            "    print(json.dumps(ev))\n"
+        )
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            packet_rel,
+            extra_env={"PATH": self.path_without_real_grok(bindir)},
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr + spawned.stdout)
+        self.assertIn("residual extracted from stdout", spawned.stdout)
+        dest = self.tmp / ".orderfield/waves/001/residuals/g1.json"
+        self.assertTrue(dest.is_file(), spawned.stdout)
+        landed = json.loads(dest.read_text(encoding="utf-8"))
+        self.assertEqual(landed["status"], "done")
+        meta = self.meta("g1")
+        self.assertEqual(meta["outcome"], "ok")
+        self.assertEqual(meta["exit"], 0)
+        self.assertIn("ended_at", meta)
+        pulse = (self.tmp / ".orderfield/work/scratch/g1/PULSE").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("tool Write", pulse)
+
+    def test_missing_binary_finalizes_for_grok(self) -> None:
+        packet_rel = self.pack("gmiss")
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            packet_rel,
+            extra_env={"PATH": self.path_without_real_grok()},
+        )
+        self.assertNotEqual(spawned.returncode, 0, spawned.stderr)
+        meta = self.meta("gmiss")
+        self.assertEqual(meta["outcome"], "missing_binary")
+        self.assertFalse(meta["ok"])
+        self.assertIn("ended_at", meta)
+        self.assertIn("exit", meta)
+
+    def test_timeout_finalizes_and_extracts_for_grok(self) -> None:
+        packet_rel = self.pack("gto", "--seconds", "1")
+        packet = json.loads((self.tmp / packet_rel).read_text(encoding="utf-8"))
+        result = self.tmp / ".orderfield/work/scratch/gto/notes.md"
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text("timeout notes\n", encoding="utf-8")
+        residual = {
+            "status": "done",
+            "result_ref": ".orderfield/work/scratch/gto/notes.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "printed before kill",
+                "proposed_patch": None,
+            },
+            "metrics": {
+                "uncertainty": 0.2,
+                "divergence": 0.0,
+                "tool_failures": 0,
+                "novelty": False,
+            },
+        }
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        bindir = self.fake_grok(
+            "#!/usr/bin/env python3\n"
+            "import json, sys, time\n"
+            f"print(json.dumps({residual!r}))\n"
+            "sys.stdout.flush()\n"
+            "time.sleep(10)\n"
+        )
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            packet_rel,
+            extra_env={"PATH": self.path_without_real_grok(bindir)},
+        )
+        self.assertNotEqual(spawned.returncode, 0)
+        self.assertIn("timeout", spawned.stderr)
+        meta = self.meta("gto")
+        self.assertEqual(meta["outcome"], "timeout")
+        self.assertFalse(meta["ok"])
+        self.assertIn("ended_at", meta)
+        self.assertIn("exit", meta)
+        dest = self.tmp / ".orderfield/waves/001/residuals/gto.json"
+        self.assertTrue(dest.is_file(), spawned.stdout)
+        landed = json.loads(dest.read_text(encoding="utf-8"))
+        self.assertEqual(landed["status"], "done")
+
+
 class StreamJsonPulseSkill(unittest.TestCase):
     """Skill drives the cut: same PULSE, not a second channel."""
 
@@ -269,10 +465,16 @@ class StreamJsonPulseSkill(unittest.TestCase):
         skill_fold = skill.casefold()
         self.assertIn("stream-json", skill_fold)
         self.assertIn("same scratch", skill_fold)
+        self.assertIn("streaming-json", skill_fold)
         alias_fold = alias.casefold()
         self.assertIn("stream-json", alias_fold)
+        self.assertIn("streaming-json", alias_fold)
         self.assertIn("same", alias_fold)
         self.assertIn("pulse", alias_fold)
+        appendix = (ROOT / "references" / "skill-appendix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("streaming-json", appendix)
 
 
 if __name__ == "__main__":

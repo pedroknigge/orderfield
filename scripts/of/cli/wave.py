@@ -255,6 +255,71 @@ def kill_child_tree(proc: "subprocess.Popen[str]") -> None:
         _warn_oserror("process_kill", exc)
 
 
+class ChildIO:
+    """Bound timeout teardown so spawn can finalize. Not a supervisor.
+
+    A grandchild that escaped the process group can keep the write end of
+    stdout/stderr open. A blocking join then never returns and spawn
+    metadata stays started-only (outcome/exit missing). Reader threads
+    are daemons; join is bounded. Do not close the pipes from this
+    thread — that deadlocks with readline on the same object.
+    """
+
+    JOIN_S = 2.0
+    WAIT_S = 1.0
+
+    @staticmethod
+    def after_timeout(
+        proc: "subprocess.Popen[str]",
+        t_out: threading.Thread,
+        t_err: threading.Thread,
+    ) -> int | None:
+        kill_child_tree(proc)
+        try:
+            proc.wait(timeout=ChildIO.WAIT_S)
+        except subprocess.TimeoutExpired:
+            pass
+        t_out.join(timeout=ChildIO.JOIN_S)
+        t_err.join(timeout=ChildIO.JOIN_S)
+        return proc.returncode
+
+
+class SpawnResidual:
+    """Land residual from stream/stdout. Same extract as the success path."""
+
+    @staticmethod
+    def payload(
+        last_residual: dict[str, Any] | None, stdout: Any
+    ) -> dict[str, Any] | None:
+        if isinstance(last_residual, dict) and "status" in last_residual:
+            return last_residual
+        text = stdout if isinstance(stdout, str) else ""
+        extracted = extract_json_object(text)
+        if isinstance(extracted, dict) and "status" in extracted:
+            return extracted
+        return None
+
+    @staticmethod
+    def write(
+        extracted: dict[str, Any] | None,
+        packet: dict[str, Any],
+        root: Path,
+        dest: Path,
+        rel: str,
+    ) -> None:
+        if dest.exists() or not extracted:
+            return
+        errs = validate_residual_for_packet(extracted, packet, root)
+        if errs:
+            print(
+                "invalid residual extracted from stdout; not written: "
+                + "; ".join(errs)
+            )
+            return
+        dump_json(dest, extracted, skip_dir_fsync=True)
+        print(f"residual extracted from stdout -> {rel}")
+
+
 def cleanup_scratch_dir(path: Path) -> None:
     """Remove an empty scratch dir. Nonempty is evidence; other OSError warns."""
     try:
@@ -311,23 +376,25 @@ def run_child(
                 pass
 
     t_out = threading.Thread(
-        target=_read, args=(proc.stdout, out_chunks, on_stdout_line)
+        target=_read, args=(proc.stdout, out_chunks, on_stdout_line), daemon=True
     )
-    t_err = threading.Thread(target=_read, args=(proc.stderr, err_chunks, None))
+    t_err = threading.Thread(
+        target=_read, args=(proc.stderr, err_chunks, None), daemon=True
+    )
     t_out.start()
     t_err.start()
     try:
         proc.wait(timeout=timeout_s)
     except subprocess.TimeoutExpired:
-        kill_child_tree(proc)
-        t_out.join()
-        t_err.join()
-        raise subprocess.TimeoutExpired(
+        rc = ChildIO.after_timeout(proc, t_out, t_err)
+        expired = subprocess.TimeoutExpired(
             argv,
             timeout_s or 0,
             output="".join(out_chunks),
             stderr="".join(err_chunks),
         )
+        expired.returncode = rc  # type: ignore[attr-defined]
+        raise expired
     t_out.join()
     t_err.join()
     return subprocess.CompletedProcess(
@@ -835,6 +902,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         meta.update(extra)
         meta["outcome"] = outcome
         meta["ended_at"] = utc_now()
+        if "exit" not in meta:
+            meta["exit"] = extra.get("exit")
         dump_json(meta_path, meta)
 
     dump_json(meta_path, meta)
@@ -908,14 +977,22 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
     except FileNotFoundError:
         write_log("", f"binary not found: {argv[0]}")
-        fail("missing_binary", f"binary not found for adapter={adapter}")
+        fail("missing_binary", f"binary not found for adapter={adapter}", exit=None)
     except subprocess.TimeoutExpired as exc:
         write_log(exc.stdout, exc.stderr)
+        SpawnResidual.write(
+            SpawnResidual.payload(last_residual, exc.output or exc.stdout),
+            packet,
+            root,
+            residual_abs,
+            residual_rel,
+        )
         fail(
             "timeout",
             BudgetSeconds.timeout_fail_message(child_id, int(timeout_s), log_path),
             timeout_s=timeout_s,
             residual_present=residual_abs.exists(),
+            exit=getattr(exc, "returncode", None),
         )
     except KeyboardInterrupt:
         finalize("interrupted", ok=False)
@@ -935,18 +1012,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
     # best-effort: if residual missing, reuse stream residual or stdout JSON
     if not residual_abs.exists():
-        extracted = last_residual or extract_json_object(proc.stdout)
-        if extracted and isinstance(extracted, dict) and "status" in extracted:
-            errs = validate_residual_for_packet(extracted, packet, root)
-            if errs:
-                print(
-                    "invalid residual extracted from stdout; not written: "
-                    + "; ".join(errs)
-                )
-            else:
-                dump_json(residual_abs, extracted, skip_dir_fsync=True)
-                print(f"residual extracted from stdout -> {residual_rel}")
-        else:
+        SpawnResidual.write(
+            SpawnResidual.payload(last_residual, proc.stdout),
+            packet,
+            root,
+            residual_abs,
+            residual_rel,
+        )
+        if not residual_abs.exists():
             print(f"no residual yet. log={log_path}")
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
     if reported_sid and residual_abs.is_file():
