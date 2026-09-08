@@ -2123,6 +2123,155 @@ def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     dump_bytes(root / ".orderfield" / "ORDER.json", json_payload_bytes(ghost))
 
 
+class DoctorClosedHistorical:
+    """Closed sibling historical order_rev vs healthy active. #137.
+
+    Reuses DoctorSkew / field_is_open / CloseProof. Does not rewrite
+    the closed audit trail to green doctor. Eval/unittest writer only.
+    """
+
+    HISTORIAN = "historian"
+    LEFTOVER = "leftover"
+    LIVE = "live"
+    CLOSED_REV = 17
+    HISTORICAL_REV = 15
+
+    @staticmethod
+    def home_for_child(root: Path, child_id: str) -> Path:
+        from of.field import DoctorSkew, list_field_homes
+
+        for _fid, home, _order in list_field_homes(root):
+            _wave, packets = DoctorSkew.wave_packets(home)
+            if any(str(pkt.get("child_id") or "") == child_id for pkt in packets):
+                return home
+        die(f"eval fixture doctor-closed-historical: no home for {child_id}")
+
+    @staticmethod
+    def stamp_home(
+        home: Path,
+        *,
+        order_rev: int,
+        packet_rev: int | None,
+        child_id: str,
+        spec_closed: bool,
+        close_json: bool,
+    ) -> None:
+        from of.field import _read_json_object, dump_bytes, json_payload_bytes
+
+        order = _read_json_object(home / "ORDER.json") or {}
+        order["rev"] = int(order_rev)
+        if spec_closed:
+            order["spec_closed"] = True
+        require_public_schema(order, "order.schema.json", "ORDER")
+        dump_bytes(home / "ORDER.json", json_payload_bytes(order))
+        if packet_rev is not None:
+            path = home / "waves" / "001" / "packets" / f"{child_id}.json"
+            pkt = _read_json_object(path) or {}
+            pkt["order_rev"] = int(packet_rev)
+            pkt["packet_hash"] = packet_digest(pkt)
+            require_public_schema(pkt, "packet.schema.json", "packet")
+            dump_bytes(path, json_payload_bytes(pkt))
+        if close_json:
+            dump_bytes(
+                home / CloseProof.FILENAME,
+                json_payload_bytes(CloseProof.document(order)),
+            )
+
+
+@_register_eval_fixture("recovery_doctor_closed_historical")
+def eval_setup_recovery_doctor_closed_historical(root: Path) -> None:
+    """Closed siblings keep stale packets; selected active field matches."""
+    from of.field import ActiveField, list_field_homes
+
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "closed historical sibling",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed_a = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "retain the closed-field audit trail packet",
+        "--role",
+        "implementer",
+        "--child-id",
+        DoctorClosedHistorical.HISTORIAN,
+    )
+    EvalInvariantSetup.require_ok(packed_a, "pack historian")
+    created_b = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "second closed sibling",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(created_b, "new leftover")
+    packed_b = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "second sibling leftover historical packet",
+        "--role",
+        "implementer",
+        "--child-id",
+        DoctorClosedHistorical.LEFTOVER,
+    )
+    EvalInvariantSetup.require_ok(packed_b, "pack leftover")
+    created_c = eval_run_of(
+        root,
+        "new",
+        "--mission",
+        "healthy active field",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(created_c, "new live")
+    packed_c = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "matching live packet for the active field",
+        "--role",
+        "implementer",
+        "--child-id",
+        DoctorClosedHistorical.LIVE,
+    )
+    EvalInvariantSetup.require_ok(packed_c, "pack live")
+    home_a = DoctorClosedHistorical.home_for_child(
+        root, DoctorClosedHistorical.HISTORIAN
+    )
+    home_b = DoctorClosedHistorical.home_for_child(
+        root, DoctorClosedHistorical.LEFTOVER
+    )
+    home_c = DoctorClosedHistorical.home_for_child(root, DoctorClosedHistorical.LIVE)
+    DoctorClosedHistorical.stamp_home(
+        home_a,
+        order_rev=DoctorClosedHistorical.CLOSED_REV,
+        packet_rev=DoctorClosedHistorical.HISTORICAL_REV,
+        child_id=DoctorClosedHistorical.HISTORIAN,
+        spec_closed=True,
+        close_json=True,
+    )
+    DoctorClosedHistorical.stamp_home(
+        home_b,
+        order_rev=DoctorClosedHistorical.CLOSED_REV,
+        packet_rev=DoctorClosedHistorical.HISTORICAL_REV,
+        child_id=DoctorClosedHistorical.LEFTOVER,
+        spec_closed=True,
+        close_json=False,
+    )
+    live_fid = next(
+        fid for fid, home, _order in list_field_homes(root) if home == home_c
+    )
+    ActiveField.write(root, live_fid)
+
+
 class ProcessDeathResume:
     """Spawn-host death leftovers. Resume reconstructs the live wave; no re-init."""
 

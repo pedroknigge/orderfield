@@ -3224,16 +3224,24 @@ class PackedAge:
 class DoctorSkew:
     """One-pass doctor: skill VERSION, ACTIVE pointer, stale packs.
 
-    Reuses SkillVersionSkew, ActiveField, list_field_homes, PackedAge,
-    and packet_is_stale. Read-path only. No new schema. No new CLI flag.
+    Reuses SkillVersionSkew, ActiveField, list_field_homes, field_is_open,
+    PackedAge, and packet_is_stale. Read-path only. No new schema. No
+    new CLI flag.
 
-    Skill VERSION mismatch is advisory (WARN / exit 0). Field, schema,
-    lock, symlink, and kernel failures still FAIL (exit 2).
+    Skill VERSION mismatch is advisory (WARN / exit 0). Closed-field
+    historical pack skew (retained order_rev / packed_age vs the final
+    ORDER) is informational — not FAIL. Open-field, schema, lock,
+    symlink, ACTIVE/stub, and kernel failures still FAIL (exit 2).
 
     Version skew already lived on doctor (0.7.10). ACTIVE pointer and
-    packed-age lived on fields/status/resume. This class is the compose
-    step, not a second ledger.
+    packed-age lived on fields/status/resume. Closed vs open already
+    lived on FieldRoster. This class is the compose step, not a
+    second ledger. Pack lines name field id + wave.
     """
+
+    HISTORICAL_NOTE = (
+        "closed-field historical packs are informational (not field FAIL)"
+    )
 
     @staticmethod
     def skills(
@@ -3300,6 +3308,18 @@ class DoctorSkew:
         return not (home / f"waves/{int(wave):03d}/residuals" / name).is_file()
 
     @staticmethod
+    def home_closed(home: Path, order: dict[str, Any]) -> bool:
+        """spec_closed (of fields) or retained CLOSE.json. Do not rewrite."""
+        if not field_is_open(order):
+            return True
+        proof = home / "CLOSE.json"
+        return proof.is_file() and not proof.is_symlink()
+
+    @staticmethod
+    def pack_diag(fid: str, wave: int, body: str) -> str:
+        return f"  packs         {fid} wave {wave}  {body}"
+
+    @staticmethod
     def active(root: Path) -> tuple[list[str], bool]:
         homes = list_field_homes(root)
         pointed = ActiveField.read(root)
@@ -3344,7 +3364,9 @@ class DoctorSkew:
             return ["  packs         none"], False
         lines: list[str] = []
         skewed = False
-        for _fid, home, order in homes:
+        historical = False
+        for fid, home, order in homes:
+            closed = DoctorSkew.home_closed(home, order)
             wave, packets = DoctorSkew.wave_packets(home)
             flying = [
                 pkt
@@ -3353,16 +3375,48 @@ class DoctorSkew:
             ]
             overdue = PackedAge.overdue(flying, now=now)
             if overdue:
-                line = PackedAge.format_line(overdue)
-                if line:
-                    lines.append(f"  packs         {line}")
+                parts = "; ".join(f"{cid} {fmt_age(age)}" for cid, age in overdue)
+                if closed:
+                    lines.append(
+                        DoctorSkew.pack_diag(
+                            fid,
+                            wave,
+                            f"{PackedAge.LABEL}  {parts}  (historical; closed)",
+                        )
+                    )
+                    historical = True
+                else:
+                    lines.append(
+                        DoctorSkew.pack_diag(
+                            fid,
+                            wave,
+                            f"{PackedAge.LABEL}  {parts}  "
+                            f"(past {PackedAge.SLA_LABEL} SLA)",
+                        )
+                    )
                     skewed = True
             for pkt in packets:
                 if not packet_is_stale(pkt, order):
                     continue
                 cid = str(pkt.get("child_id") or "?")
-                lines.append(f"  packs         {cid}  stale  (order_rev)")
-                skewed = True
+                if closed:
+                    lines.append(
+                        DoctorSkew.pack_diag(
+                            fid,
+                            wave,
+                            f"{cid}  historical  (order_rev; closed)",
+                        )
+                    )
+                    historical = True
+                else:
+                    lines.append(
+                        DoctorSkew.pack_diag(
+                            fid, wave, f"{cid}  stale  (order_rev)"
+                        )
+                    )
+                    skewed = True
+        if historical:
+            lines.append(f"  note          {DoctorSkew.HISTORICAL_NOTE}")
         if not lines:
             return ["  packs         none"], False
         return lines, skewed

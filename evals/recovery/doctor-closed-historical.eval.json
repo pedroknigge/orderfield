@@ -1,0 +1,39 @@
+{
+  "id": "recovery/doctor-closed-historical",
+  "description": "Closed sibling historical order_rev does not FAIL a healthy active field; pack lines name field id + wave; audit trail stays",
+  "fixture": "recovery_doctor_closed_historical",
+  "tags": ["recovery", "doctor", "closed", "historical"],
+  "steps": [
+    {
+      "run": "fields",
+      "exit": 0,
+      "stdout_contains": [
+        "closed",
+        "healthy active field"
+      ],
+      "stdout_not_contains": [
+        "PICK --field",
+        "RUNTIME_OWNERSHIP"
+      ]
+    },
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "historian",
+        "leftover",
+        "wave 1",
+        "historical",
+        "order_rev; closed",
+        "closed-field historical packs are informational",
+        "doctor        ok"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "historian  stale",
+        "leftover  stale",
+        "RUNTIME_OWNERSHIP"
+      ]
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.73 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
+description: "v0.7.74 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed-field historical packs are informational (not FAIL). Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.73"
+  version: "0.7.74"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -55,7 +55,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` must print `ok`. Pin: README / PUBLISH. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
-| `of doctor` prints FAIL | field/kernel — fix ACTIVE/stub/packs/schemas/lock; skill SKEW alone is WARN / exit 0 (`bash install.sh --global`) |
+| `of doctor` prints FAIL | field/kernel — fix ACTIVE/stub/open-field packs/schemas/lock; skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. Skill SKEW: `bash install.sh --global` |
 | any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json / grok `streaming-json` on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse` |
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue --body-file` | write `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). Refuse names `.orderfield/work/scratch/<child_id>/`. `--body "$(cat …)"` still works |

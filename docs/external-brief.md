@@ -60,7 +60,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | In-flight `packed_at` older than 7 days looks idle | status/resume print `packed_age`; child is not unpacked | `recovery/packed-age-watchdog` |
 | Closed / leftover packed child never reported | `of retain` names `orphan packed`; explicit `of gc` unlinks with `gc-stamp.json` proof; resume auto-gc skips packets | `recovery/orphan-packed-cleanup` |
 | Closed field dropped and `CLOSE.json` vanishes | `--drop-field` dies while `CLOSE.json` exists; `--archive-field` keeps the trail under `.orderfield/archive/<id>/` | `recovery/closed-field-archive`; `ClosedFieldArchiveTrail` |
-| Skill copy, ACTIVE pointer, or stale packs disagree with this checkout / live field | `of doctor` names VERSION / ACTIVE / `packed_age` in one pass | `recovery/doctor-one-pass-skew` |
+| Skill copy, ACTIVE pointer, or stale packs disagree with this checkout / live field | `of doctor` names VERSION / ACTIVE / `packed_age` in one pass; closed-field historical packs are informational | `recovery/doctor-one-pass-skew`; `recovery/doctor-closed-historical` |
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave mission; which wave is live is unclear | `of wave list` marks `state.wave`; `of wave show` names live vs prior | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Long-mission dashboard needs machine status | `of status --json` is one live-wave object from `StatusReport` | `recovery/status-json`; `StatusReportJson` |
@@ -132,6 +132,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | In-flight `packed_at` older than 7d: status/resume print `packed_age`; not unpacked or closed | `recovery/packed-age-watchdog`; `PackedAgeWatchdog` |
 | Closed leftover pack: retain names orphan; `of gc` leaves stamp proof; auto-gc does not unlink | `recovery/orphan-packed-cleanup`; `OrphanPackedCleanup` |
 | One `of doctor` names leftover ACTIVE stub and aged in-flight pack; skill VERSION skew already on doctor | `recovery/doctor-one-pass-skew`; `DoctorOnePassSkew` |
+| Closed sibling historical `order_rev` does not FAIL a healthy active field; pack lines name field id + wave | `recovery/doctor-closed-historical`; `DoctorOnePassSkew` |
 | Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave field: `of wave list` marks live `state.wave`; `show` tells live from the prior integrated wave | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Long-mission dashboard: `of status --json` names live wave 2 and in-flight `w2`; not a wave roster | `recovery/status-json`; `StatusReportJson` |

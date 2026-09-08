@@ -30,7 +30,7 @@ Do not pipe unsigned `main`. Use the tag-pinned SHA-256 recipe on [README.md](..
 of doctor
 ```
 
-`doctor        ok` is green. Skill `SKEW` alone is `WARN` / exit 0 — `bash install.sh --global`. Field FAIL is leftover ACTIVE/stub/packs, not a missing install.
+`doctor        ok` is green. Skill `SKEW` alone is `WARN` / exit 0 — `bash install.sh --global`. Field FAIL is leftover ACTIVE/stub/open-field packs, not a missing install. Closed-field historical packs are informational.
 
 If this install is behind a newer release, doctor asks at most once a day. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (GitHub tag + SHA256SUMS). Consent, not a silent auto-update.
 
