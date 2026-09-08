@@ -1,0 +1,25 @@
+{
+  "id": "recovery/partial-integrate-in-flight",
+  "description": "Partial integrate of landed dones with a sibling still flying keeps hold and names skipped_in_flight; wave closed is reserved for a complete wave",
+  "fixture": "recovery_partial_integrate_in_flight",
+  "tags": ["recovery", "integrate", "partial", "in-flight"],
+  "steps": [
+    {
+      "run": "integrate",
+      "args": ["--wave", "1", "--partial"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"regime\": \"hold\"",
+        "\"partial\": true",
+        "landed residuals complete",
+        "1 sibling still in flight",
+        "late",
+        "skipped_in_flight"
+      ],
+      "stdout_not_contains": [
+        "wave closed",
+        "RUNTIME_OWNERSHIP"
+      ]
+    }
+  ]
+}

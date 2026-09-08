@@ -300,6 +300,43 @@ def decide_regime(
     return regime, reason
 
 
+def wave_closed_wording(reason: str) -> bool:
+    """True when the reason claims a complete-wave close."""
+    text = str(reason or "")
+    return "wave closed" in text or text.startswith("residuals ~0")
+
+
+def landed_complete_in_flight_reason(skipped: list[str]) -> str:
+    """Hold reason: landed residuals are done; skipped_in_flight still fly."""
+    names = ", ".join(str(child) for child in skipped)
+    n = len(skipped)
+    noun = "sibling" if n == 1 else "siblings"
+    return f"landed residuals complete; {n} {noun} still in flight: {names}"
+
+
+def hold_if_partial_in_flight(
+    regime: str,
+    reason: str,
+    skipped: list[str],
+    residuals: list[dict[str, Any]] | None = None,
+) -> tuple[str, str]:
+    """Keep hold while skipped_in_flight is nonempty; do not say wave closed.
+
+    decide_regime still runs on the landed subset. This overlay reuses that
+    verdict plus the existing skipped list — not a second ledger.
+    """
+    if not skipped:
+        return regime, reason
+    landed_done = bool(residuals) and all(
+        item.get("status") == "done" for item in residuals
+    )
+    if regime in {"hold", "phase"} and (
+        landed_done or wave_closed_wording(reason)
+    ):
+        return "hold", landed_complete_in_flight_reason(skipped)
+    return regime, reason
+
+
 def _select_regime(
     order: dict[str, Any],
     state: dict[str, Any],

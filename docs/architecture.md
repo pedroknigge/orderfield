@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.75` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.76` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -90,7 +90,7 @@ flowchart TD
     residuals --> decide
     decide --> eu["escalate_up<br/>field insufficient<br/>spawn in this wave stops until the leader patches ORDER"]
     decide --> so["scale_out<br/>same plan · more copies"]
-    decide --> hold["hold<br/>wait — missing residuals, or wave closed and done_when still open"]
+    decide --> hold["hold<br/>wait — missing residuals, landed-complete with siblings in flight, or wave closed and done_when still open"]
     decide --> phaseR["phase<br/>done_when closed · still an explicit of phase"]
     decide --> human["human<br/>repeated mission change, irreversible action, or caps exhausted"]
     decide --> reserved["scale_up / scale_across<br/>reserved compatibility values<br/>remapped to hold — no token or depth accounting"]

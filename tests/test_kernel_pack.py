@@ -1692,6 +1692,57 @@ class CollectSurvivesMissingResiduals(unittest.TestCase):
         self.assertIn("nothing to integrate", r.stderr)
 
 
+class PartialIntegrateInFlightReason(unittest.TestCase):
+    """Two landed dones + one flying sibling: hold, not wave-closed wording."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-partial-reason-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for cid in ("done_a", "done_b", "late"):
+            r = run_of(
+                self.tmp, "pack", "--slice", "s", "--role", "explorer",
+                "--child-id", cid,
+            )
+            self.assertEqual(r.returncode, 0, r.stderr)
+        write_bound_residual(self.tmp, "done_a")
+        write_bound_residual(self.tmp, "done_b")
+
+    def test_reason_names_skipped_in_flight_not_wave_closed(self) -> None:
+        r = run_of(self.tmp, "integrate", "--wave", "1", "--partial")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        report = json.loads(r.stdout)
+        skipped = report["skipped_in_flight"]
+        self.assertEqual(report["regime"], "hold")
+        self.assertTrue(report["integration"]["partial"])
+        self.assertEqual(skipped, ["late"])
+        self.assertEqual(len(report["residuals"]), 2)
+        self.assertNotIn("wave closed", report["reason"])
+        self.assertIn("landed residuals complete", report["reason"])
+        self.assertIn("1 sibling still in flight", report["reason"])
+        for child in skipped:
+            self.assertIn(child, report["reason"])
+        self.assertEqual(
+            report["reason"], of.landed_complete_in_flight_reason(skipped)
+        )
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(order.get("spec_closed"))
+        self.assertFalse(of.done_when_closed(order))
+
+    def test_complete_wave_keeps_wave_closed_wording(self) -> None:
+        write_bound_residual(self.tmp, "late")
+        r = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        report = json.loads(r.stdout)
+        self.assertEqual(report["regime"], "hold")
+        self.assertFalse(report["integration"]["partial"])
+        self.assertNotIn("skipped_in_flight", report)
+        self.assertIn("wave closed", report["reason"])
+        self.assertIn("done_when still open", report["reason"])
+        self.assertNotIn("landed residuals complete", report["reason"])
+
+
 class PathOwnership(unittest.TestCase):
     """Same-wave exclusive owns_paths; cross-wave note; packet workspace union."""
 

@@ -1124,6 +1124,20 @@ class SkillCollectConservativeDiagnostic(unittest.TestCase):
             self.assertIn("conservative children may still write", folded)
 
 
+class SkillPartialIntegrateInFlight(unittest.TestCase):
+    """Appendix teaches --partial hold names in-flight siblings."""
+
+    def test_appendix_names_landed_complete_not_wave_closed(self) -> None:
+        appendix = SkillSurface.appendix(ROOT).casefold()
+        self.assertIn("integrate --wave n --partial", appendix)
+        self.assertIn("skipped_in_flight", appendix)
+        self.assertIn("landed residuals are complete", appendix)
+        self.assertIn("siblings still in flight", appendix)
+        self.assertIn("wave closed", appendix)
+        self.assertIn("complete-wave", appendix)
+        self.assertIn("recovery/partial-integrate-in-flight", appendix)
+
+
 class SkillAntiDoneTheater(unittest.TestCase):
     """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
 
