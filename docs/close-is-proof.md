@@ -14,7 +14,7 @@ A field is closed only when all three are true on disk:
 2. Residual is empty (no packed child residual MISSING across waves).
 3. `of close` wrote `ORDER.spec_closed`, `ORDER.done_when_closed`, and `.orderfield/CLOSE.json` in one WAL generation.
 
-`of close --checklist` prints that proof (`CloseChecklist`) and does not stamp. Empty residual is the honest end of flying — not the close.
+`of close --checklist` prints that proof (`CloseChecklist`) and does not stamp. It also prints `speak` (`do not claim shipped unless contrast RESOLVED and residual empty`). Empty residual is the honest end of flying — not the close. Claiming shipped without those two disk facts is theater.
 
 Trust `.orderfield/CLOSE.json`. Do not trust a transcript that says CLOSED.
 

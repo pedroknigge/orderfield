@@ -21,6 +21,7 @@
         "RESOLVED",
         "MISSING",
         "w3",
+        "do not claim shipped unless contrast RESOLVED and residual empty",
         "\"residual\": \"MISSING\"",
         "\"residual_empty\": false",
         "\"ok\": false",
@@ -35,7 +36,8 @@
       "stdout_contains": [
         "close checklist",
         "MISSING",
-        "w3"
+        "w3",
+        "do not claim shipped unless contrast RESOLVED and residual empty"
       ],
       "stderr_contains": [
         "\"event\": \"close\"",

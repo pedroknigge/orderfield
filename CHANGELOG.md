@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.68
+
+Mechanical anti-done-theater: claim shipped only after contrast RESOLVED + residual empty. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.67 notes.
+
+- **Reuse, not a Stop hook:** `CloseChecklist` already is contrast RESOLVED + residual empty. `of close` already refuses the same gaps. `InFlightSignal.speak_line` already forbids claiming done while residual is MISSING. This cut adds one reused directive — `CloseChecklist.speak_line()` — printed by `of close --checklist`. No new CLI / schema / event / supervisor / token ceiling.
+- **Mechanical, not an LLM judge:** `speak  do not claim shipped unless contrast RESOLVED and residual empty`. Quote the printed `contrast` + `residual` rows. If contrast is not RESOLVED or residual is MISSING, you may not claim shipped. Pair with 0.7.58 quote-PULSE.
+- **Skill drives the cut:** Always-loaded `SKILL.md` core + `/of` + appendix teach the duty in the same cut (`of contrast` then `of close --checklist` before claiming shipped). Not a process supervisor. Not a bot org. Not `of merge`.
+- **Proof:** `CloseChecklistProof` prints speak; `SkillAntiDoneTheater` (core / alias / appendix). Existing `recovery/multi-wave-close-checklist` stays. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.68; skill/alias description preview `v0.7.68 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.67 notes.
+
 ## 0.7.67
 
 SKILL.md is a short always-loaded core. The rest of the leader procedure is `references/skill-appendix.md`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.66 notes.

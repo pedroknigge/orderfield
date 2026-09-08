@@ -1344,6 +1344,8 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("close checklist", listed.stdout)
         self.assertIn("MISSING", listed.stdout)
         self.assertIn("w3", listed.stdout)
+        self.assertIn(of.CloseChecklist.SPEAK, listed.stdout)
+        self.assertIn(of.CloseChecklist.speak_line(key_width=12), listed.stdout)
         self.assertNotIn("CLOSED", listed.stdout)
         lines = [ln for ln in listed.stdout.splitlines() if ln.strip()]
         cli_machine = json.loads(lines[-1])
@@ -1375,6 +1377,7 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("close checklist", dry.stdout)
         self.assertIn("empty", dry.stdout)
         self.assertIn("RESOLVED", dry.stdout)
+        self.assertIn(of.CloseChecklist.SPEAK, dry.stdout)
         self.assertNotIn("CLOSED", dry.stdout)
         self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
         stamped = run_of(self.tmp, "close")
@@ -1389,6 +1392,8 @@ class CloseChecklistProof(unittest.TestCase):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("of close --checklist", skill)
         self.assertIn("recovery/multi-wave-close-checklist", skill)
+        self.assertIn("do not claim shipped", skill)
+        self.assertIn("mechanical", skill.casefold())
 
 
 class AdversarialDualTruthCorpus(unittest.TestCase):

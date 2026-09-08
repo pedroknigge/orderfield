@@ -1051,6 +1051,40 @@ class MortalInstallDemo(unittest.TestCase):
         self.assertIn("PUBLISH.md", proc.stderr)
 
 
+class SkillAntiDoneTheater(unittest.TestCase):
+    """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_and_alias_refuse_shipped_without_disk_facts(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("claim shipped", table)
+        self.assertIn("of contrast", table)
+        self.assertIn("of close --checklist", table)
+        self.assertIn("residual empty", table)
+        self.assertIn("mechanical", table)
+        self.assertIn("not your judgment", table)
+        self.assertIn("quote-pulse", table)
+        self.assertIn("Anti-done-theater", core)
+        self.assertIn("mechanical", core.casefold())
+        alias_fold = alias.casefold()
+        self.assertIn("claim shipped", alias_fold)
+        self.assertIn("of contrast", alias_fold)
+        self.assertIn("of close --checklist", alias_fold)
+        self.assertIn("mechanical", alias_fold)
+        self.assertIn(
+            "do not claim shipped unless contrast RESOLVED and residual empty",
+            appendix,
+        )
+        self.assertIn("mechanical", appendix.casefold())
+        self.assertIn("not your judgment", appendix.casefold())
+
+
 class SkillSurfaceCore(unittest.TestCase):
     """Always-loaded SKILL.md is a short core. Appendix keeps full procedure."""
 

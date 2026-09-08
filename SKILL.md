@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.67 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak (stream-json feeds same scratch PULSE); quote it, never claim done. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
+description: "v0.7.68 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak (stream-json feeds same scratch PULSE); quote it, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.67"
+  version: "0.7.68"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -45,6 +45,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; advertised truth score matches the matrix and stays ≤98%; no marketing theater on SKILL / `/of` / README. Also inside `validate-skill.sh` |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed. Proof: `of eval recovery/multi-wave-close-checklist` |
+| about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote `contrast RESOLVED` + `residual empty`. If either fails, do not claim shipped. Mechanical, not your judgment. Checklist prints `speak`. Pair with quote-PULSE while residual MISSING |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — RFC: contrast RESOLVED + residual empty + `CLOSE.json`. Residual empty is not the close |
 | child says the field is wrong | `of patch …` then `of next-wave` |
 | several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
@@ -98,6 +99,8 @@ Search open issues first (`of issue --search`); skip duplicates. Do not file sec
 Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`). Otherwise, run `python3 <skill>/scripts/of.py`. In a working repo, state lives in that repo's `.orderfield/`, not inside the skill.
 
 **Tool-call discipline.** A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run. Announce in the past tense only after the CLI returns.
+
+**Anti-done-theater.** Before claiming shipped / closed / done on a field, run `of contrast` and `of close --checklist` in the same turn. Quote `contrast RESOLVED` and `residual empty`. If either fails, you may not claim shipped. The checklist prints `speak` — quote it. Mechanical, not your judgment. While residual is MISSING, quote-PULSE still applies; flying is not shipped.
 
 **Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn**. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). A turn that runs `of resume` on an open field it owns but performs no `next` work is a broken run.
 

@@ -752,6 +752,13 @@ class CloseChecklist:
     NEXT_READY = "of close"
     RESIDUAL_EMPTY = "empty"
     RESIDUAL_MISSING = "MISSING"
+    # Claim-shipped directive: contrast + residual rows are already printed
+    # above. Pair with InFlightSignal.speak_line (quote-PULSE while flying).
+    SPEAK = "do not claim shipped unless contrast RESOLVED and residual empty"
+
+    @staticmethod
+    def speak_line(*, key: str = "speak", key_width: int = 12) -> str:
+        return f"{key.ljust(key_width)}{CloseChecklist.SPEAK}"
 
     @staticmethod
     def flying(root: Path, state: dict[str, Any]) -> list[str]:
@@ -883,6 +890,7 @@ class CloseChecklist:
         nxt = str(doc.get("next") or "")
         if nxt:
             lines.append(f"next         {nxt}")
+        lines.append(CloseChecklist.speak_line(key_width=12))
         return "\n".join(lines) + "\n"
 
     @staticmethod
@@ -2564,6 +2572,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AgyDeniedActionsSkill",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.SkillSurfaceCore",
+    "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.PackagingBumpDiscipline",
 )
 
