@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
+from skill_surface import SkillSurface  # noqa: E402
 
 SKILL = ROOT / "SKILL.md"
 ROADMAP = ROOT / "docs" / "roadmap.md"
@@ -37,7 +38,7 @@ class StayOnRunSkill(unittest.TestCase):
     """REQ-002: pulse STALE continues the same packet this turn. Not a daemon."""
 
     def test_skill_stale_continues_same_packet(self) -> None:
-        skill = SKILL.read_text(encoding="utf-8")
+        skill = SkillSurface.leader(ROOT)
         self.assertIn("**Stay-on-the-run.**", skill)
         self.assertIn("Pulse `STALE` means continue the **same packet this turn**", skill)
         self.assertIn("`of handoff`", skill)
@@ -50,7 +51,7 @@ class StayOnRunSkill(unittest.TestCase):
         self.assertIn("not a process supervisor", skill)
 
     def test_skill_when_pays_names_the_pick(self) -> None:
-        skill = SKILL.read_text(encoding="utf-8")
+        skill = SkillSurface.leader(ROOT)
         self.assertIn("#### When orderfield pays vs theater", skill)
         self.assertIn("Stay-on-the-run:", skill)
         self.assertIn("written Grok Bot contrast", skill)

@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.66 — Alias for orderfield. Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice wave needs a disk brief. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json feeds the same PULSE; sibling); quote it, never claim done (no manual of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier (ask only). Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask; yes → install.sh --from-release. Do not trigger for a harness name alone."
+description: "v0.7.67 — Alias for orderfield. Hosts load this alias; then load sibling SKILL.md and, when it names it, references/skill-appendix.md (same contract). Use when the user invokes /of or orderfield, an existing field must be resumed, or a genuine multi-slice wave needs a disk brief. While any child flies, of status/resume print running + live PULSE + a speak line (spawn stream-json feeds the same scratch PULSE; sibling); quote it, never claim done (no manual of pulse). Before pack: consult model-catalog, then propose cheap vs frontier and ask same-harness vs multi-harness mix (consent; of detect present/missing PATH≠auth). Consented spawn --model includes grok/agy (named; no aliases). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit (inline-only; keep stream-json). Status/resume may propose uptier/downtier (ask only). Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask; yes → install.sh --from-release. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.66"
+  version: "0.7.67"
   alias-of: orderfield
 ---
 
@@ -11,13 +11,13 @@ metadata:
 
 Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install.
 
-Load the sibling skill and follow it. Stop if it is missing. Do not invent a second contract.
+Load the sibling skill and follow it. When that skill names [references/skill-appendix.md](../references/skill-appendix.md), read the appendix before pack, spawn, contrast, or close. Stop if the sibling is missing. Do not invent a second contract.
 
 Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh --global` (or `--root PATH`), then `of doctor` must print `ok`. Pin recipe stays README / PUBLISH. Not pip. Not a daemon.
 
 Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
-In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Spawn stream-json / JSON streams (claude/cursor/codex) feed the same PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
+In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Spawn stream-json / JSON streams (claude/cursor/codex) feed the same scratch PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 
@@ -43,5 +43,6 @@ If status/resume prints `efficiency propose …`, ask the human; on yes run the 
 
 After package installation, the full skill is normally at
 `../orderfield/SKILL.md` relative to this file. In a source checkout, it is at
-`../SKILL.md`. If neither path exists, stop and report that the Orderfield skill
-package is incomplete.
+`../SKILL.md`. The leader appendix is `../orderfield/references/skill-appendix.md`
+(checkout: `../references/skill-appendix.md`). If the sibling skill is missing, stop
+and report that the Orderfield skill package is incomplete.

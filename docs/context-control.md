@@ -8,7 +8,7 @@ Reasoning may compress. The contract does not. Origin is a pointer, not a transc
 
 A cut, a resume, a different model — come back to disk. The results do not have to change.
 
-> Hub: [SKILL.md](../SKILL.md) · Eve analog: [context control](https://eve.dev/docs/concepts/context-control)
+> Hub: [SKILL.md](../SKILL.md) (always-loaded core) · Appendix: [references/skill-appendix.md](../references/skill-appendix.md) · Eve analog: [context control](https://eve.dev/docs/concepts/context-control)
 
 Orderfield is a contract kernel, not a model harness. Control context by putting information in the narrowest surface that needs it.
 
@@ -19,6 +19,8 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 | Second mission, same tree | `of new` → `.orderfield/fields/<id>/` + `.orderfield/ACTIVE` | Resume/status follow ACTIVE; roster if unmatched and no pointer (`choose`: epic vs patch); `--field` / `OF_FIELD`; `of fields` marks ACTIVE and lists open packs (`--json`); not a product subfolder |
 | Binding requirement IDs | `.orderfield/REQUIREMENTS.json` | Index over SPEC; contrast cites `SPEC.md:N` |
 | Optional procedure | Harness skill (same identity) | Skill beats child — do not spawn |
+| Always-loaded leader verbs | `SKILL.md` short core | Hosts inject this file; table names every `of` verb |
+| Full leader procedure | `references/skill-appendix.md` | Read before pack / spawn / contrast / close; not a second skill |
 | Ac bounded slice | Packet (`of pack`) | Slaving function: fresh context, no parent history |
 | Exclusive product writes | `--owns-path` on packet | Same-wave overlap dies; cross-wave reuse is a note |
 | Specialist with disjoint work | Child + residual JSON | Parent consumes residual; child never sees parent chat |

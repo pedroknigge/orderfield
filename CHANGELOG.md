@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.67
+
+SKILL.md is a short always-loaded core. The rest of the leader procedure is `references/skill-appendix.md`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.66 notes.
+
+- **Reuse, not a second skill:** Hosts still load `SKILL.md`. `install.sh` already copies the tree, so the appendix lands next to the core. `/of` still points at the sibling. Class `SkillSurface` names core / appendix / combined leader. No new CLI / supervisor / token ceiling.
+- **Subtract first:** 0.7.65 `SKILL.md` was 62477 bytes of always-injected procedure. The core is the capability table + HITL contract + auto-continue. Steps 0–7, Forbidden, Roles, and stay-on-the-run live in the appendix. Agents must read the appendix before pack / spawn / contrast / close. The 0.7.66 adapter-resume gate stays in the core table.
+- **Skill drives the cut:** `SKILL.md` / `/of` teach the split in the same cut. The core table still names every kernel verb, including `AdapterResume`. Claims honesty scans the appendix too. `validate-skill.sh` runs `SkillSurface`.
+- **Proof:** `SkillSurfaceCore` (core under cap, appendix markers, install copies the file; `--kernel`). Existing `SkillLeaderInitiative` / `SkillHarnessAsk` / stay-on-run / HITL / `AdapterResumeSkill` / claims tests stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.67; skill/alias description preview `v0.7.67 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.66 notes.
+
 ## 0.7.66
 
 Adapter resume/continue only when residual already has a session id. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.65 notes.
