@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.70
+
+Packed-only children are not spawned and not ALIVE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.69 notes.
+
+- **Reuse, not a second pulse:** `SpawnRecord` reads `waves/<n>/spawns/<id>.json`. `child_pulse_verdict` and `of pulse` share it. No spawn record and no scratch activity → `PACKED`. Spawn metadata (or scratch, for a handoff child) still yields ALIVE/QUIET/STALE. `of status` `spawned` is that count — not the `children_spawned` pack budget.
+- **next SPAWN, not HOLD-as-if-running:** packed-only in-flight prints `next SPAWN` (`of spawn` / `of handoff`). HOLD stays for spawned or scratch-active children. HANDOFF stays for all-STALE spawned children. Pulse stays the activity lens.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` and `SPAWN` in the same cut. Do not wait on a packet that was never launched.
+- **Proof:** `PackedOnlyNotAlive` (pack without spawn → `spawned 0`, not ALIVE, `next SPAWN`; spawn record restores ALIVE/HOLD). Existing pulse STALE/HANDOFF stays. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.70; skill/alias description preview `v0.7.70 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.69 notes.
+
 ## 0.7.69
 
 Claude spawn argv adds `--verbose` so `-p` + stream-json is accepted. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.68 notes.

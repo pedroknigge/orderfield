@@ -95,7 +95,8 @@ class LeftoverCanonicalResidual(unittest.TestCase):
         status = self.of("status")
         self.assertEqual(status.returncode, 0, status.stderr)
         self.assertIn("in_flight   0", status.stdout)
-        self.assertIn("spawned     1 /", status.stdout)
+        self.assertIn("spawned     0 /", status.stdout)
+        self.assertEqual(self._spawned(), 1)
 
     def test_collect_sees_leftover_canonical_residual(self) -> None:
         collect = self.of("collect")

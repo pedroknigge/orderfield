@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.69 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak (stream-json feeds same scratch PULSE); quote it, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
+description: "v0.7.70 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Spawn --resume ID only when residual.session_id already set; never invent; never --continue. agy --json-schema reuses residual.codex; Claude omit. Uptier/downtier is ask-only. Install: sibling mortal-install.sh then of doctor. Claims ≤98% honest (check-claims.py). Gaps: of contrast --diff. Daily update ask. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.69"
+  version: "0.7.70"
   alias-of: orderfield
 ---
 
@@ -17,7 +17,7 @@ Human install or verify: the sibling path is `bash docs/demo/mortal-install.sh -
 
 Doctor / status / resume / pulse ask the user at most once a day when a newer release exists. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). Do not upgrade mid-ORDER without consent. Not a silent auto-update.
 
-In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). Spawn stream-json / JSON streams (claude/cursor/codex) feed the same scratch PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
+In-flight is not done: while any residual is MISSING, `of status` / `of resume` print `running` + the live `PULSE` + a `speak` line (`quote a PULSE line above to the user; do not claim done while running`). `PACKED` / `spawned 0` / `next SPAWN` mean the packet exists but no spawn record — not ALIVE; `of spawn` or `of handoff`. Spawn stream-json / JSON streams (claude/cursor/codex) feed the same scratch PULSE. Before ending a turn or saying the mission is done, run one of them and quote the live PULSE — the human never runs `of pulse` by hand. Follow the sibling.
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 

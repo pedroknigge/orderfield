@@ -23,7 +23,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 
 | Eval | Fixture | Must hold |
 | --- | --- | --- |
-| `recovery/quarry-dirty-wave` | `recovery_quarry_dirty` | `of resume` shows completed domain, parked store/cli, `HOLD` |
+| `recovery/quarry-dirty-wave` | `recovery_quarry_dirty` | `of resume` shows completed domain, parked store/cli, `SPAWN` (cli never spawned) |
 | `recovery/beacon-amnesia` | `recovery_beacon_amnesia` | domain done, store path missing, parked agents note |
 | `recovery/contrast-close-internal` | `recovery_contrast_close` | contrast OPEN → verify internal → RESOLVED → `close` CLOSED; human one-pager and machine JSON both name the blocking ALG-001 row |
 | `recovery/mission-rewrite-refused` | `recovery_mission_rewrite` | residual rewrite of mission/phase/constraints/done-when dies; `escalate_up`; spawn blocked |
@@ -73,6 +73,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | *(kernel unittest)* | — | `of detect` / `AdapterDetect` labels present/missing + `auth=not-verified`; never `auth=ok` (`AdapterDetectCli`) |
 | *(kernel unittest)* | — | spawn stream-json / JSON streams feed the same PULSE; residual extract reused (`StreamJsonParse`; `StreamJsonSpawn`; `StreamJsonPulseSkill`) |
 | *(kernel unittest)* | — | conservative agy spawn copies nonempty `denied_actions` into residual; yolo does not; missing residual is not invented (`AgyDeniedActionsParse`; `AgyDeniedActionsSpawn`; `AgyDeniedActionsSkill`) |
+| *(kernel unittest)* | — | pack without spawn: status/resume `spawned 0`, `PACKED` not ALIVE, `next SPAWN`; pulse agrees (`PackedOnlyNotAlive`) |
 | *(kernel unittest)* | — | one VERSION per real cut; packaging-only CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
 | *(kernel unittest)* | — | skill `description` / `compatibility` frontmatter is YAML-quoted; unquoted em dash / colons die (`SkillFrontmatterQuotedGate`) |
 
