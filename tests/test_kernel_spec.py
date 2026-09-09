@@ -1840,6 +1840,11 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("recovery/multi-wave-close-checklist", skill)
         self.assertIn("do not claim shipped", skill)
         self.assertIn("mechanical", skill.casefold())
+        self.assertIn("quote the printed `speak` line", skill)
+        self.assertIn(
+            "do not claim shipped unless contrast RESOLVED and residual empty",
+            skill,
+        )
 
 
 class EvaluatorPacketProof(unittest.TestCase):

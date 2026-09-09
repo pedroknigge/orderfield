@@ -1434,24 +1434,55 @@ class SkillPartialIntegrateInFlight(unittest.TestCase):
 
 
 class SkillAntiDoneTheater(unittest.TestCase):
-    """Claim shipped requires contrast RESOLVED + residual empty. Mechanical."""
+    """Claim shipped requires contrast + residual empty + quoted speak.
+
+    Reuse (design-first; written before the wording cut):
+
+    | Existing | Already covers | This cut |
+    |---|---|---|
+    | `CloseChecklist.speak_line` (0.7.68) | prints SPEAK on `--checklist` | Skill must quote that line |
+    | `SkillAntiDoneTheater` | contrast RESOLVED + residual empty | speak-quote duty on core/alias/appendix |
+    | `CloseChecklistProof` | SPEAK on checklist stdout | stays |
+    | `InFlightSignal.speak_line` | quote-PULSE while flying | pair; do not fork |
+    | Prod§21 living map | checklist → contrast / close / residual | ship row names quote speak |
+
+    Net-new surface: none. Protocol, not a kernel chat parser. The
+    evaluator `speak` row is a different line — quote CloseChecklist.SPEAK.
+    """
+
+    QUOTE = "quote the printed `speak` line"
+    SPEAK = "do not claim shipped unless contrast RESOLVED and residual empty"
 
     @staticmethod
     def table(skill: str) -> str:
         return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
 
+    @staticmethod
+    def speak_quote_errors(text: str, rel: str) -> list[str]:
+        """Refuse pages that print speak without requiring the quote."""
+        errors: list[str] = []
+        folded = text.casefold()
+        if SkillAntiDoneTheater.QUOTE.casefold() not in folded:
+            errors.append(f"{rel} missing {SkillAntiDoneTheater.QUOTE!r}")
+        if SkillAntiDoneTheater.SPEAK not in text:
+            errors.append(f"{rel} missing {SkillAntiDoneTheater.SPEAK!r}")
+        if "that `speak` line is not quoted" not in text:
+            errors.append(f"{rel} missing refuse unless speak quoted")
+        return errors
+
     def test_core_and_alias_refuse_shipped_without_disk_facts(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
-        table = self.table(core).casefold()
-        self.assertIn("claim shipped", table)
-        self.assertIn("of contrast", table)
-        self.assertIn("of close --checklist", table)
-        self.assertIn("residual empty", table)
-        self.assertIn("mechanical", table)
-        self.assertIn("not your judgment", table)
-        self.assertIn("quote-pulse", table)
+        table = self.table(core)
+        table_fold = table.casefold()
+        self.assertIn("claim shipped", table_fold)
+        self.assertIn("of contrast", table_fold)
+        self.assertIn("of close --checklist", table_fold)
+        self.assertIn("residual empty", table_fold)
+        self.assertIn("mechanical", table_fold)
+        self.assertIn("not your judgment", table_fold)
+        self.assertIn("quote-pulse", table_fold)
         self.assertIn("Anti-done-theater", core)
         self.assertIn("mechanical", core.casefold())
         alias_fold = alias.casefold()
@@ -1459,12 +1490,33 @@ class SkillAntiDoneTheater(unittest.TestCase):
         self.assertIn("of contrast", alias_fold)
         self.assertIn("of close --checklist", alias_fold)
         self.assertIn("mechanical", alias_fold)
-        self.assertIn(
-            "do not claim shipped unless contrast RESOLVED and residual empty",
-            appendix,
-        )
+        self.assertIn(self.SPEAK, appendix)
         self.assertIn("mechanical", appendix.casefold())
         self.assertIn("not your judgment", appendix.casefold())
+        self.assertEqual(self.speak_quote_errors(table, "SKILL.md table"), [])
+        self.assertEqual(self.speak_quote_errors(alias, "of/SKILL.md"), [])
+        self.assertEqual(
+            self.speak_quote_errors(appendix, "references/skill-appendix.md"),
+            [],
+        )
+        self.assertIn(self.QUOTE, core)
+        self.assertIn(self.SPEAK, core)
+
+    def test_prints_speak_without_quote_duty_fails(self) -> None:
+        text = (
+            "run of contrast and of close --checklist. "
+            "quote contrast RESOLVED and residual empty. "
+            "Checklist prints speak. Mechanical, not your judgment."
+        )
+        errs = self.speak_quote_errors(text, "fake.md")
+        self.assertTrue(
+            any(self.QUOTE in e for e in errs),
+            errs,
+        )
+        self.assertTrue(
+            any(self.SPEAK in e for e in errs),
+            errs,
+        )
 
 
 class SkillOrcaWorkerTeardown(unittest.TestCase):

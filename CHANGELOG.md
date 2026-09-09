@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.87
+
+Refuse a shipped / closed / done claim unless the leader quotes the `of close --checklist` `speak` line. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.86 notes.
+
+- **Reuse, not a new CLI:** `CloseChecklist.speak_line()` already prints `speak  do not claim shipped unless contrast RESOLVED and residual empty`. This cut makes quoting that line mandatory, in addition to `contrast RESOLVED` + `residual empty`. No new CLI / schema / event / Stop hook / supervisor / token ceiling / `of merge`.
+- **Mechanical, not an LLM judge:** run `of contrast` + `of close --checklist` in the same turn; quote the two proof rows **and** the printed `speak` line. If either proof row fails or that `speak` line is not quoted, do not claim shipped. The evaluator `speak` row is a different line — quote `CloseChecklist.SPEAK`. Pair with 0.7.58 quote-PULSE.
+- **Skill drives the cut:** SKILL table + Anti-done-theater + `/of` + appendix (contrast + Forbidden + Prod§21 ship row) teach the same wording. Hosts still load the short core. Protocol, not a kernel chat parser.
+- **Proof:** `SkillAntiDoneTheater` refuses pages that only say checklist prints `speak`. Existing `CloseChecklistProof` / `recovery/multi-wave-close-checklist` stay. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.87; skill/alias description preview `v0.7.87 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.86 notes.
+
 ## 0.7.86
 
 Orca interactive `worker-start` must pair `worker-stop` then `worker-release` after collect or abandon. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.85 notes.

@@ -68,7 +68,7 @@ Slice `done` is not SPEC closed. Contrast RESOLVED **and** residual empty, then 
 of spec --verified-contract ID
 of contrast          # CLOSE BLOCKED or RESOLVED
 of contrast --diff   # prose of the same facts; RESOLVED is not CLOSED
-of close --checklist # contrast + residual empty + speak; exit 2 while flying or OPEN
+of close --checklist # contrast + residual empty + speak; quote the printed speak line; exit 2 while flying or OPEN
 of close             # refused until RESOLVED and residual empty
 cat .orderfield/CLOSE.json
 ```

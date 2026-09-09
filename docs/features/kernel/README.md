@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.86. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.87. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.86` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.87` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -101,6 +101,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.84 long-task efficiency mix: mid-mission propose cheap/frontier AND harness mix from honest signals only. `AdapterBalance` is read-only; unpublished probes stay **unknown**. Never invent. `budget.tokens` stays reserved. Ask before any switch. Proof: `AdapterBalanceUnit` / `SkillEfficiencyMixPlaybook`. No new CLI / supervisor.
 - 0.7.85 fresh-context evaluator packet: after a wave, ask consent for `--role adversary` / `--role verifier` before close. `EvaluatorPacket` reuses `WaveRoster`. Checklist prints the row. Not a close gate. C-080 stays Partial. Proof: `EvaluatorPacketProof` / `SkillEvaluatorPacket`. No new CLI / supervisor.
 - 0.7.86 Orca worker stop/release duty: SKILL / `/of` / appendix / adapters teach `worker-start` ↔ `worker-stop` then `worker-release` after collect or abandon; `of worktree remove` when add was used. `of doctor` warns on leftover recorded of-worktrees (advisory; no Orca poll). C-045. Proof: `SkillOrcaWorkerTeardown` / `DoctorWorktreeLeftover`. No process supervisor.
+- 0.7.87 refuse shipped / closed / done unless the leader quotes the `of close --checklist` `speak` line (`CloseChecklist.SPEAK`) in addition to `contrast RESOLVED` + `residual empty`. Protocol, not a kernel chat parser. The evaluator `speak` row is a different line. Proof: `SkillAntiDoneTheater`. Existing `CloseChecklistProof` stays. No new CLI / supervisor.
 
 ## Contract boundaries
 
