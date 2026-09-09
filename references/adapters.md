@@ -118,6 +118,17 @@ This is argv translation like `OF_TRUST`, not a silent router and not
 [docs/model-catalog.md](../docs/model-catalog.md) (`ModelCatalog`).
 Class: `AdapterHints` in `scripts/of_adapters.py`.
 
+## Session / balance (`AdapterBalance`)
+
+Read-only honesty. Claude and Codex publish interactive `/usage`.
+Claude statusLine `rate_limits` is a published JSON shape when already
+in hand (`AdapterBalance.parse_published`). No documented headless
+balance CLI exists for native adapters. `of doctor` prints
+`unknown` per adapter. The kernel never runs `/usage`, never scrapes
+home dirs, and never invents a number. `residual.usage` is not a
+balance. `budget.tokens` stays reserved. Mid-mission mix still
+**must ask**. Class: `AdapterBalance` in `scripts/of_adapters.py`.
+
 A conservative child runs with the harness's own approval policy and **no
 stdin** (`of spawn` passes `/dev/null`, so a prompt fails fast instead of
 hanging on the leader's terminal). Print-mode harnesses cannot prompt at

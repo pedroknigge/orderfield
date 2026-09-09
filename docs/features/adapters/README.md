@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.83` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.84` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -18,7 +18,7 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 ## Inventory
 
-`of detect` lists CLIs **on PATH** as present / missing plus `honesty: PATH≠auth (Partial)`. That is binary presence, not auth. Doctor reuses the same labels and adds version. **Default: same harness** for the whole ORDER. Before pack, the `/of` skill **must ask** same-harness categories vs multi-harness mix. Mix only after explicit yes; then spawn only from **present** ([SKILL.md](../../../SKILL.md)). Never claim login from PATH. Cut is optional when owners are obvious; orderfield pays for false-scope risk, not for bump+obvious feature.
+`of detect` lists CLIs **on PATH** as present / missing plus `honesty: PATH≠auth (Partial)`. That is binary presence, not auth. Doctor reuses the same labels and adds version. `of doctor` also prints `AdapterBalance`: **unknown** unless a published vendor payload is already in hand (interactive `/usage` is named, not run). Never invent spend. **Default: same harness** for the whole ORDER. Before pack, the `/of` skill **must ask** same-harness categories vs multi-harness mix. Mix only after explicit yes; then spawn only from **present** ([SKILL.md](../../../SKILL.md)). Never claim login from PATH. Cut is optional when owners are obvious; orderfield pays for false-scope risk, not for bump+obvious feature.
 
 ## Live argv notes
 

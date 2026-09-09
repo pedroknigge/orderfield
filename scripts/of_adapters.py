@@ -336,6 +336,153 @@ class AdapterDetect:
         )
 
 
+class AdapterBalance:
+    """Read-only session/balance. Published vendor probe or unknown.
+
+    Reuse (design-first; written before the wording cut):
+
+    | Existing | Already covers | This cut |
+    |---|---|---|
+    | `EfficiencySignal` | quality × residual.usage → uptier/downtier ask | Mid-mission combine with mix ask |
+    | `SkillHarnessAsk` / `SkillHarnessMix` / `AdapterDetect` | pre-pack same vs mix; PATH≠auth | Mid-mission re-ask; spawn present only |
+    | `SkillLeaderInitiative` / `ModelCatalog` | pre-pack cheap vs frontier | Re-consult catalog before rebalance |
+    | `residual.usage` | optional provenance | Not a balance; not budget.tokens |
+    | `budget.tokens` | reserved | Stays reserved |
+
+    Vendors publish interactive ``/usage`` (claude, codex) and Claude
+    statusLine ``rate_limits`` JSON during an interactive session. No
+    documented headless read-only balance CLI exists for native
+    adapters. The kernel therefore never runs a probe and never
+    invents a number.
+
+    ``parse_published`` accepts an already-provided Claude statusLine
+    payload. Missing/garbage → unknown. Does not scrape home dirs or
+    spawn slash commands.
+
+    ``of doctor`` prints the honesty table. No new CLI verb.
+    """
+
+    UNKNOWN = "unknown"
+    KNOWN = "known"
+    HONESTY = "unknown unless published payload in hand"
+    # Interactive-only published commands. headless=False → kernel does not run.
+    PUBLISHED: dict[str, dict[str, Any]] = {
+        "claude": {
+            "kind": "interactive",
+            "name": "/usage",
+            "headless": False,
+            "payload": "statusLine rate_limits",
+        },
+        "codex": {
+            "kind": "interactive",
+            "name": "/usage",
+            "headless": False,
+        },
+    }
+
+    @staticmethod
+    def published(adapter: str) -> dict[str, Any] | None:
+        return AdapterBalance.PUBLISHED.get(str(adapter or "").strip())
+
+    @staticmethod
+    def row(adapter: str) -> dict[str, Any]:
+        name = str(adapter or "").strip() or "generic"
+        pub = AdapterBalance.published(name)
+        if pub:
+            note = "interactive"
+            payload = str(pub.get("payload") or "").strip()
+            if payload:
+                note = f"interactive; {payload} if already in hand"
+            return {
+                "name": name,
+                "status": AdapterBalance.UNKNOWN,
+                "published": str(pub.get("name") or ""),
+                "headless": False,
+                "note": note,
+            }
+        return {
+            "name": name,
+            "status": AdapterBalance.UNKNOWN,
+            "published": "",
+            "headless": False,
+            "note": "no published balance CLI",
+        }
+
+    @staticmethod
+    def inventory() -> list[dict[str, Any]]:
+        return [AdapterBalance.row(name) for name in ADAPTER_ORDER]
+
+    @staticmethod
+    def _percent(raw: Any) -> float | None:
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            return None
+        value = float(raw)
+        if 0.0 <= value <= 100.0:
+            return value
+        return None
+
+    @staticmethod
+    def parse_published(payload: Any) -> dict[str, Any]:
+        """Parse a Claude statusLine-shaped payload already in hand.
+
+        Never invents. residual.usage is not a balance. budget.tokens
+        is not consulted.
+        """
+        empty: dict[str, Any] = {
+            "status": AdapterBalance.UNKNOWN,
+            "source": "",
+            "windows": {},
+        }
+        if not isinstance(payload, dict):
+            return empty
+        limits = payload.get("rate_limits")
+        if not isinstance(limits, dict):
+            return empty
+        windows: dict[str, Any] = {}
+        for key in ("five_hour", "seven_day"):
+            block = limits.get(key)
+            if not isinstance(block, dict):
+                continue
+            pct = AdapterBalance._percent(block.get("used_percentage"))
+            if pct is None:
+                continue
+            row: dict[str, Any] = {"used_percentage": pct}
+            resets = block.get("resets_at")
+            if isinstance(resets, (int, float)) and not isinstance(resets, bool):
+                row["resets_at"] = int(resets)
+            windows[key] = row
+        if not windows:
+            return empty
+        return {
+            "status": AdapterBalance.KNOWN,
+            "source": "statusLine rate_limits",
+            "windows": windows,
+        }
+
+    @staticmethod
+    def format_row(row: dict[str, Any]) -> str:
+        name = str(row.get("name") or "?")
+        status = str(row.get("status") or AdapterBalance.UNKNOWN)
+        published = str(row.get("published") or "").strip()
+        note = str(row.get("note") or "").strip()
+        extra = ""
+        if published:
+            extra = f"  published={published}"
+        if note:
+            extra += f"  {note}"
+        return f"{name:10} {status}{extra}"
+
+    @staticmethod
+    def doctor_lines() -> list[str]:
+        lines = [
+            f"honesty     {AdapterBalance.HONESTY}",
+            "never       invent spend, budget.tokens, headless /usage scrape",
+        ]
+        for row in AdapterBalance.inventory():
+            lines.append(AdapterBalance.format_row(row))
+        return lines
+
+
 def pick_adapter(explicit: str | None, preferred: str | None = None) -> str:
     """--adapter > OF_ADAPTER > ORDER.harness > first detected."""
     if explicit:

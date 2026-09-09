@@ -88,7 +88,7 @@ Optional residual list of harness-reported refused tools. Conservative `agy` spa
 
 ## efficiency-signal
 
-`EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never compared to reserved `budget.tokens`. Never a silent switch. Design: [efficiency-signal.md](efficiency-signal.md).
+`EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never compared to reserved `budget.tokens`. Never a silent switch. Mid-mission the leader also proposes harness mix from those signals plus `of detect` / `AdapterBalance` (unknown unless a published payload is already in hand). Design: [efficiency-signal.md](efficiency-signal.md).
 
 ## HITL issue loop
 
