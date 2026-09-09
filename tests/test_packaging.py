@@ -1314,7 +1314,7 @@ class SkillCloseEvidence(unittest.TestCase):
 
 
 class SkillContractSurface(unittest.TestCase):
-    """SKILL teaches timeout / idempotency / health as VERIFIED_CONTRACT."""
+    """SKILL teaches timeout / idempotency / health / version as VERIFIED_CONTRACT."""
 
     @staticmethod
     def table(skill: str) -> str:
@@ -1328,17 +1328,23 @@ class SkillContractSurface(unittest.TestCase):
         self.assertIn("timeout", table)
         self.assertIn("idempoten", table)
         self.assertIn("health", table)
+        self.assertIn("/version", table)
+        self.assertIn("release header", table)
         self.assertIn("verified_contract", table)
         self.assertIn("contractsurface", table.replace(" ", "").replace("`", ""))
         alias_fold = alias.casefold()
         self.assertIn("timeout", alias_fold)
         self.assertIn("idempoten", alias_fold)
         self.assertIn("health", alias_fold)
+        self.assertIn("/version", alias_fold)
+        self.assertIn("release header", alias_fold)
         self.assertIn("verified_contract", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("timeout", appendix_fold)
         self.assertIn("idempoten", appendix_fold)
         self.assertIn("/health", appendix_fold)
+        self.assertIn("/version", appendix_fold)
+        self.assertIn("release header", appendix_fold)
         self.assertIn("verified_contract", appendix_fold)
         self.assertIn("contractsurface", appendix_fold.replace(" ", ""))
 

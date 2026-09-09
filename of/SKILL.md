@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.87 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.88 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.87"
+  version: "0.7.88"
   alias-of: orderfield
 ---
 
@@ -33,7 +33,7 @@ Gaps as prose: `of contrast --diff` narrates SPEC vs coverage from the same Cont
 
 Webhook HMAC signature + replay is pair-shaped: accept a valid delivery AND reject replay / bad signature at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server. Follow the sibling.
 
-Timeout, idempotency, and health IDs are public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health: exercise the bound / `/health` at the surface. `ContractSurface` names the shapes. Not a health monitor. Not a timeout supervisor. Follow the sibling.
+Timeout, idempotency, health, and version IDs are public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor. Not a timeout supervisor. Not a version server. Follow the sibling.
 
 `status=done` close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions. `CloseEvidence`. Collect refuses a missing or mismatched hash and a slogan rollback. Slice done is still not SPEC closed. Follow the sibling.
 

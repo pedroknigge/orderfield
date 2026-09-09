@@ -5,8 +5,8 @@ Reuse (design-first; written before the wording cut):
 
 | Existing | Already covers | This cut |
 |---|---|---|
-| `of contrast` / `ContrastReport` / `ContractSurface` | Prod§7 timeout / idempotency / health as VERIFIED_CONTRACT | Name as the checklist's contrast plane |
-| residual `CloseEvidence` (`artifact_sha:` + `rollback:`) | Prod§11 done-residual proof | Name as the checklist's residual plane |
+| `of contrast` / `ContrastReport` / `ContractSurface` | Prod§7 timeout / idempotency / health as VERIFIED_CONTRACT | Prod§11 `/version` / release header reuses the same contrast plane (`VERSION-`) |
+| residual `CloseEvidence` (`artifact_sha:` + `rollback:`) | Prod§11 done-residual SHA + rollback | Left alone — not this gap |
 | `of close --checklist` / `CloseChecklist` / `CLOSE.json` | Field close: contrast RESOLVED + residual empty | Name as the checklist's ship plane |
 | `SkillAntiDoneTheater` / `SkillContractSurface` / `SkillCloseEvidence` | Skill already teaches each piece | One map row that binds them |
 | close-is-proof / long-mission / glossary | Close = contrast + residual empty | Left alone |
