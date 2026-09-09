@@ -1466,9 +1466,18 @@ class RunbookPathGate(unittest.TestCase):
         self.assertFalse(of.RunbookPath.cue("of contrast RESOLVED then of close"))
         self.assertFalse(of.RunbookPath.cue("ProdLab timeout /health"))
 
-    def test_toy_field_can_close_without_runbook(self) -> None:
+    def _closable_field(self) -> None:
         planted = run_of(self.tmp, "init", "--mission", "m")
         self.assertEqual(planted.returncode, 0, planted.stderr)
+        added = run_of(
+            self.tmp, "spec", "--add", "CLI-001", "--text", "the CLI must print hello"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        verified = run_of(self.tmp, "spec", "--verified-contract", "CLI-001")
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+
+    def test_toy_field_can_close_without_runbook(self) -> None:
+        self._closable_field()
         closed = run_of(self.tmp, "patch", "--done-when-closed")
         self.assertEqual(closed.returncode, 0, closed.stderr)
         stamped = run_of(self.tmp, "close")
@@ -1476,8 +1485,7 @@ class RunbookPathGate(unittest.TestCase):
         self.assertIn("CLOSED", stamped.stdout)
 
     def _production_field(self) -> None:
-        planted = run_of(self.tmp, "init", "--mission", "m")
-        self.assertEqual(planted.returncode, 0, planted.stderr)
+        self._closable_field()
         tagged = run_of(self.tmp, "patch", "--constraints-add", "day-90 ops")
         self.assertEqual(tagged.returncode, 0, tagged.stderr)
 
