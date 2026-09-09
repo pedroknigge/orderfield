@@ -101,7 +101,9 @@ class AdapterBalanceUnit(unittest.TestCase):
         self.assertIn("budget.tokens", lines)
         self.assertIn("unknown", lines)
         self.assertNotIn("budget.tokens= ", lines)
-        self.assertNotIn(AdapterBalance.KNOWN, lines)
+        for row in AdapterBalance.inventory():
+            self.assertEqual(row["status"], AdapterBalance.UNKNOWN)
+            self.assertIn(f"{row['name']:10} {AdapterBalance.UNKNOWN}", lines)
 
     def test_package_export(self) -> None:
         self.assertIs(of.AdapterBalance, AdapterBalance)
