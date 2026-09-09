@@ -875,6 +875,148 @@ class WebhookPairGate(unittest.TestCase):
         self.assertNotRegex(after.stdout, rf"PAIR\s+{rid}")
 
 
+class ContractSurfaceGate(unittest.TestCase):
+    """Timeout / idempotency / health: extract + VERIFIED_INTERNAL cannot close."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-contract-surface-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.brief = self.tmp / "brief.md"
+        self.brief.write_text(
+            "\n".join(
+                [
+                    "# ProdLab",
+                    "",
+                    "## Rules",
+                    "- requests must timeout after 30s",
+                    "- GET /health must return 200",
+                    "- same idempotency key with a different payload must fail",
+                    "",
+                    "```",
+                    "python -m prodlab serve --store PATH",
+                    "```",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    def _init(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build ProdLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _listed_id(self, *needles: str) -> str:
+        listed = run_of(self.tmp, "spec")
+        hits = [
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if line.split() and any(n in line.lower() for n in needles)
+        ]
+        self.assertTrue(hits, listed.stdout)
+        return hits[0]
+
+    def test_matches_timeout_health_idemp_not_process_health(self) -> None:
+        self.assertTrue(of.ContractSurface.matches("requests must timeout after 30s"))
+        self.assertTrue(of.ContractSurface.matches("GET /health must return 200"))
+        self.assertTrue(
+            of.ContractSurface.matches(
+                "same idempotency key with a different payload must fail"
+            )
+        )
+        self.assertFalse(
+            of.ContractSurface.matches("process-health monitoring is reserved")
+        )
+        self.assertFalse(of.ContractSurface.matches("function signature only"))
+        self.assertEqual(
+            of.ContractSurface.prefix_for("requests must timeout after 30s"),
+            "TIMEOUT",
+        )
+        self.assertEqual(
+            of.ContractSurface.prefix_for("GET /health must return 200"),
+            "HEALTH",
+        )
+        self.assertEqual(
+            of.ContractSurface.prefix_for("same idempotency key must fail"),
+            "IDEMP",
+        )
+        self.assertIsNone(of.ContractSurface.prefix_for("amount_minor is integer"))
+
+    def test_extract_timeout_health_idemp_prefixes(self) -> None:
+        reqs = of.extract_requirements_from_spec(self.brief.read_text(encoding="utf-8"))
+        by_prefix = {str(item["id"]).rsplit("-", 1)[0] for item in reqs}
+        self.assertIn("TIMEOUT", by_prefix, reqs)
+        self.assertIn("HEALTH", by_prefix, reqs)
+        self.assertIn("IDEMP", by_prefix, reqs)
+
+    def test_timeout_health_internal_verify_does_not_close(self) -> None:
+        self._init()
+        timeout_id = self._listed_id("timeout")
+        health_id = self._listed_id("/health", "health")
+        self.assertTrue(timeout_id.startswith("TIMEOUT-"), timeout_id)
+        self.assertTrue(health_id.startswith("HEALTH-"), health_id)
+        for rid in (timeout_id, health_id):
+            internal = run_of(self.tmp, "spec", "--verified", rid)
+            self.assertEqual(internal.returncode, 0, internal.stderr)
+            contrast = run_of(self.tmp, "contrast")
+            self.assertEqual(contrast.returncode, 2, contrast.stdout)
+            self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+            refused = run_of(self.tmp, "close")
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertIn("VERIFIED_INTERNAL", refused.stderr)
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid)
+            self.assertEqual(stamped.returncode, 0, stamped.stderr)
+            after = run_of(self.tmp, "contrast")
+            self.assertIn("VERIFIED_CONTRACT", after.stdout)
+            self.assertNotRegex(after.stdout, rf"VERIFIED_INTERNAL\s+{rid}")
+
+    def test_surface_internal_cannot_hide_health_or_timeout(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "HEALTH-009",
+            "--text",
+            "GET /health must return 200",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        data = load_json(self.tmp / ".orderfield" / "REQUIREMENTS.json")
+        item = next(row for row in data["requirements"] if row.get("id") == "HEALTH-009")
+        self.assertEqual(of.requirement_surface(item), "contract")
+        self.assertEqual(item.get("surface"), "contract")
+        internal = run_of(self.tmp, "spec", "--verified", "HEALTH-009")
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+
+    def test_idemp_stays_pair_and_needs_both_sides(self) -> None:
+        self._init()
+        rid = self._listed_id("idempotency")
+        self.assertTrue(rid.startswith("IDEMP-"), rid)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        self.assertNotEqual(no_pair.returncode, 0)
+        self.assertIn("pair-shaped", no_pair.stderr)
+        both = run_of(
+            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+        )
+        self.assertEqual(both.returncode, 0, both.stderr)
+
+
 class VerifierEvidence(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-verify-"))

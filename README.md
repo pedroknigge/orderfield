@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.79</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.80</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.79-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.80-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -94,8 +94,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.79
-release_version=0.7.79
+release_tag=v0.7.80
+release_version=0.7.80
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -331,7 +331,7 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 | `retain` / `gc` | walk every field home; 7-day safe TTL; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; drop dies on contrast trail unless `--force --reason`; never copies transcripts |
 | `migrate` | versioned artifact rewrite (pre-0.4.2 identity, protocol writable key); `--list` / `--dry-run` |
 | `worktree` | opt-in git worktree helper (`add`/`remove`/`list`); not a process manager |
-| `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
+| `spec` | list/add/extract/verify/amend/supersede; extract is an index over SPEC (`LEASE`/`AUDIT`/`IDEMP`/`TIMEOUT`/`HEALTH`/`HTTP`/`CLI` + line range); `--verified` is internal; `--verified-contract` closes a public surface |
 | `spec-diff` | UNOWNED / UNVERIFIED / FAILED / ORDER_OMISSION vs the lossless brief |
 | `contrast` | review gate: one-pager + machine JSON; `--diff` narrates SPEC vs coverage (same facts as spec-diff; RESOLVED is not CLOSED; no theater). MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation (slice done ≠ closed) |

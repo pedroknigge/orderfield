@@ -63,6 +63,11 @@ CONTRACT_SURFACE_CUES = (
     "/events",
     "webhook",
     "hmac",
+    "timeout",
+    "idempoten",
+    "/health",
+    "health check",
+    "healthz",
 )
 PAIR_TEXT_PAIRS = (
     ("same", "different"),
@@ -168,6 +173,71 @@ class WebhookPair:
             return WebhookPair.REPLAY
         seen.add(delivery_id)
         return WebhookPair.OK
+
+
+class ContractSurface:
+    """Timeout / idempotency / health are public-surface VERIFIED_CONTRACT.
+
+    Contrast already refuses VERIFIED_INTERNAL on a contract surface.
+    This class names the three production shapes so extract and
+    ``requirement_surface`` cannot hide them as internal. Idempotency
+    stays PAIR via ``requirement_is_pair``. Not a health monitor.
+    Not a timeout supervisor. Not ``of gate``.
+    """
+
+    PREFIXES = ("TIMEOUT-", "IDEMP-", "HEALTH-")
+    TIMEOUT_CUES = (
+        "timeout",
+        "time out",
+        "timed out",
+        "time-out",
+        "deadline",
+    )
+    HEALTH_CUES = (
+        "/health",
+        "health check",
+        "healthz",
+        "readyz",
+        "livez",
+        "liveness",
+        "readiness",
+    )
+    IDEMP_CUES = ("idempoten",)
+
+    @staticmethod
+    def _lower(text: str) -> str:
+        return str(text or "").lower()
+
+    @staticmethod
+    def _has_any(text: str, cues: tuple[str, ...]) -> bool:
+        low = ContractSurface._lower(text)
+        return any(cue in low for cue in cues)
+
+    @staticmethod
+    def matches(text: str) -> bool:
+        """True when the brief names timeout, idempotency, or health."""
+        low = ContractSurface._lower(text)
+        if not low:
+            return False
+        return (
+            ContractSurface._has_any(low, ContractSurface.TIMEOUT_CUES)
+            or ContractSurface._has_any(low, ContractSurface.HEALTH_CUES)
+            or ContractSurface._has_any(low, ContractSurface.IDEMP_CUES)
+        )
+
+    @staticmethod
+    def prefix_for(body: str) -> str | None:
+        """Extract prefix when this shape wins. None leaves other cues."""
+        low = ContractSurface._lower(body)
+        if not low:
+            return None
+        if ContractSurface._has_any(low, ContractSurface.IDEMP_CUES):
+            return "IDEMP"
+        if ContractSurface._has_any(low, ContractSurface.TIMEOUT_CUES):
+            return "TIMEOUT"
+        if ContractSurface._has_any(low, ContractSurface.HEALTH_CUES):
+            return "HEALTH"
+        return None
 
 
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
@@ -579,14 +649,17 @@ def requirement_is_pair(item: dict[str, Any]) -> bool:
 
 
 def requirement_surface(item: dict[str, Any]) -> str:
+    text = str(item.get("text") or "")
+    rid = str(item.get("id") or "")
+    if ContractSurface.matches(text) or rid.startswith(ContractSurface.PREFIXES):
+        return "contract"
     explicit = str(item.get("surface") or "").strip().lower()
     if explicit in {"contract", "internal"}:
         return explicit
-    rid = str(item.get("id") or "")
-    if rid.startswith(("CLI-", "LEASE-", "AUDIT-", "IDEMP-", "HTTP-")):
+    if rid.startswith(("CLI-", "LEASE-", "AUDIT-", "HTTP-")):
         return "contract"
-    text = f" {str(item.get('text') or '').lower()} "
-    if any(cue in text for cue in CONTRACT_SURFACE_CUES):
+    padded = f" {text.lower()} "
+    if any(cue in padded for cue in CONTRACT_SURFACE_CUES):
         return "contract"
     return "contract"
 
@@ -673,11 +746,17 @@ EXTRACT_RULE_KEYS = (
     "event",
     "webhook",
     "hmac",
+    "timeout",
+    "health",
+    "deadline",
+    "liveness",
 )
 EXTRACT_PREFIX_CUES = (
     ("LEASE", ("leaseable", "retry_wait", "stale token", "heartbeat", "lease")),
     ("AUDIT", ("execution_failed", "execution_requeued", "audit", "event type")),
     ("IDEMP", ("idempoten", "concurrent identical", "8 concurrent")),
+    ("TIMEOUT", ContractSurface.TIMEOUT_CUES),
+    ("HEALTH", ContractSurface.HEALTH_CUES),
     (
         "HTTP",
         (
@@ -701,6 +780,10 @@ NAMED_INVARIANT_CUES = (
     "concurrent identical",
     "webhook",
     "hmac",
+    "/health",
+    "health check",
+    "healthz",
+    "deadline",
 )
 
 
@@ -717,6 +800,9 @@ def _cue_in(text: str, cue: str) -> bool:
 def classify_requirement_prefix(body: str, default: str = "REQ") -> str:
     if body.lower().startswith("python -m") or body.lower().startswith("python3 -m"):
         return "CLI"
+    named = ContractSurface.prefix_for(body)
+    if named:
+        return named
     for prefix, cues in EXTRACT_PREFIX_CUES:
         if any(_cue_in(body, cue) for cue in cues):
             return prefix
