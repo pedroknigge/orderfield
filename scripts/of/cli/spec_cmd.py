@@ -2781,6 +2781,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillContractSurface",
     "tests.test_kernel.CloseEvidenceGate",
     "tests.test_kernel.SkillCloseEvidence",
+    "tests.test_kernel.SkillLivingMap",
+    "tests.test_kernel.LivingMapGate",
 )
 
 

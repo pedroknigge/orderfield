@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.82
+
+Living product/docs map binds production checklist language to the existing verbs: `of contrast`, `of close` / residual evidence. Not a second checklist doctrine. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.81 notes.
+
+- **Reuse, not a second doctrine:** Prod§7 timeout / idempotency / health stays `of contrast` VERIFIED_CONTRACT (`ContractSurface`). Prod§11 SHA + rollback stays residual `CloseEvidence`. Ship stays `of close --checklist` then `of close`. No `of gate`. No new CLI / supervisor / token ceiling.
+- **Living map names the verbs:** README / architecture / AGENTS / agent-discovery / SKILL / `/of` / appendix use the binding `checklist → of contrast` plus `of close` / residual. Captions-only pages fail `LivingMap`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the same wording in the same cut. Hosts still load the short core.
+- **Proof:** `LivingMapGate` (binding + captions-only refuse). `SkillLivingMap`. Existing `CloseChecklistProof` / `SkillAntiDoneTheater` / `SkillContractSurface` / `SkillCloseEvidence` stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.82; skill/alias description preview `v0.7.82 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.81 notes.
+
 ## 0.7.81
 
 Done residual close evidence requires an artifact SHA (sha256 of `result_ref`) and a rollback command — not captions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.80 notes.

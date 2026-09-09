@@ -30,6 +30,8 @@ from test_packaging import (  # noqa: E402,F401
     SkillSurfaceCore,
     SkillContractSurface,
     SkillCloseEvidence,
+    SkillLivingMap,
+    LivingMapGate,
     SkillWebhookReplayPair,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401

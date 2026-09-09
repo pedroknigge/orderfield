@@ -20,6 +20,7 @@ INSTALL = ROOT / "install.sh"
 _SCRIPTS = ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
+from living_map import LivingMap  # noqa: E402
 from skill_surface import SkillSurface  # noqa: E402
 
 
@@ -1142,6 +1143,60 @@ class SkillWebhookReplayPair(unittest.TestCase):
         self.assertIn("replay", appendix_fold)
         self.assertIn("--both-sides", appendix_fold)
         self.assertIn("webhookpair", appendix_fold.replace(" ", ""))
+
+
+class LivingMapGate(unittest.TestCase):
+    """Living map names checklist → of contrast / of close / residual."""
+
+    def test_pages_name_verbs_not_captions(self) -> None:
+        self.assertEqual(LivingMap.errors(ROOT), [])
+
+    def test_captions_only_page_fails(self) -> None:
+        text = "close checklist captions only; no mapped verbs"
+        errs = LivingMap.page_errors(text, "fake.md")
+        self.assertTrue(
+            any(LivingMap.BINDING in e for e in errs),
+            errs,
+        )
+        self.assertTrue(any("of close" in e for e in errs), errs)
+        self.assertTrue(any("residual" in e for e in errs), errs)
+        self.assertTrue(any(LivingMap.NO_SECOND in e for e in errs), errs)
+
+    def test_script_exits_ok_on_checkout(self) -> None:
+        proc = run(ROOT, sys.executable, str(ROOT / "scripts" / "living_map.py"), str(ROOT))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("OK living map", proc.stdout)
+
+
+class SkillLivingMap(unittest.TestCase):
+    """SKILL / /of / appendix teach checklist → contrast / close / residual."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_living_map(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(LivingMap.BINDING, table)
+        self.assertIn("of close --checklist", table)
+        self.assertIn("residual", table)
+        self.assertIn(LivingMap.NO_SECOND, table)
+        self.assertIn("closeevidence", table.replace(" ", "").replace("`", ""))
+        alias_fold = alias.casefold()
+        self.assertIn(LivingMap.BINDING, alias_fold)
+        self.assertIn("of close", alias_fold)
+        self.assertIn("residual", alias_fold)
+        self.assertIn(LivingMap.NO_SECOND, alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn(LivingMap.BINDING, appendix_fold)
+        self.assertIn("#### production mode", appendix_fold)
+        self.assertIn("contractsurface", appendix_fold.replace(" ", ""))
+        self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
+        self.assertIn("of close --checklist", appendix_fold)
+        self.assertIn(LivingMap.NO_SECOND, appendix_fold)
 
 
 class SkillCloseEvidence(unittest.TestCase):
