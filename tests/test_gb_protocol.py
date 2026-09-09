@@ -154,6 +154,16 @@ class LongMissionGuide(unittest.TestCase):
         self.assertIn("Not a fake token budget", text)
         self.assertIn("Not `of merge`", text)
         self.assertNotIn("of merge --", text)
+        self.assertIn("**Production mode**", text)
+        self.assertIn("**Gate A before features**", text)
+        appendix = SkillSurface.appendix(ROOT)
+        self.assertIn("#### Production mode", appendix)
+        self.assertIn("**Gate A before features.**", appendix)
+        self.assertIn("**Production mode**", text)
+        self.assertIn("**Gate A before features**", text)
+        appendix = SkillSurface.appendix(ROOT)
+        self.assertIn("#### Production mode", appendix)
+        self.assertIn("**Gate A before features.**", appendix)
 
 
 class CloseIsProofRfc(unittest.TestCase):

@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.78 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.79 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.78"
+  version: "0.7.79"
   alias-of: orderfield
 ---
 
@@ -32,6 +32,8 @@ Chat-dump residuals still cannot collect. Structured evidence over 4000 chars (c
 Gaps as prose: `of contrast --diff` narrates SPEC vs coverage from the same ContrastReport + spec-diff facts. RESOLVED is not CLOSED. No theater. Follow the sibling.
 
 Webhook HMAC signature + replay is pair-shaped: accept a valid delivery AND reject replay / bad signature at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server. Follow the sibling.
+
+Production mode: the sibling appendix **Production mode** names Gate A before `--role implementer`. Use the full verb table. Never invent a process supervisor, bot org, `RUNTIME_OWNERSHIP`, `--tokens`, or `of merge`. Follow the sibling.
 
 Per-task model hints: when packing a multi-role wave, **consult** [docs/model-catalog.md](../docs/model-catalog.md) first, then **must propose** cheap vs frontier in chat. Do not assume smarter = costlier. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router. Never `budget.tokens`.
 

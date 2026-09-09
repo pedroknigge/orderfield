@@ -121,6 +121,21 @@ Official phases: `explore | cut | build | verify | deliver`.
 | A false public claim (adversary can catch a lie before ship) | Explore/cut ceremony when the design is already in the feedback |
 | Stay-on-the-run: pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); written Grok Bot contrast | Bot org, Notion, cloud-agent manager, auto-merge, 5-minute kernel loop, process supervisor |
 
+#### Production mode
+
+Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is every kernel verb. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md). Reserved keys stay reserved in `scripts/of/regime.py`.
+
+**Gate A before features.** Do not pack `--role implementer` (or a net-new feature slice) until Gate A is clear. No `of gate`. No second checklist.
+
+| Gate A item | Existing verb / disk | Fail |
+|---|---|---|
+| Field + lossless SPEC | `of init --source` / `of resume` | inventing SPEC from chat; `of init` on an open field |
+| Binding IDs owned | `of spec` + `of pack --owns-requirement` | pack while unowned |
+| No invented runtime | Forbidden + `RUNTIME_OWNERSHIP` reserved | supervisor, bot org, `--tokens`, `of merge` |
+| Consumer §20 / Apéndice A tables, if present | copy criteria verbatim; any **No** blocks feature packs; never invent a **Sí**; captain signs Go | parallel checklist; auto-sign; greenwash |
+
+If the consumer tree has no §20 / Apéndice A tables, do not invent product Gate A rows. Orderfield Gate A is the table above — the real kernel, not a second doctrine. Signing a consumer production Go is captain (HITL), not `of close`. `of close --checklist` is the field close proof (contrast RESOLVED + residual empty), a different plane.
+
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
@@ -353,6 +368,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process wall-clock (`of spawn --timeout` must match or be omitted), and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
+- Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets, or `of merge`. **Gate A before features** — appendix **Production mode**.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when a field already exists. `of resume` first. Unrelated second mission in the same tree is `of new`, not `--force`.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
