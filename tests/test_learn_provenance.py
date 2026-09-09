@@ -324,8 +324,7 @@ class LearnProvenance(unittest.TestCase):
             {"id": "lrn_aaaaaaaaaaaa", "kind": "protocol", "text": injected,
              "created_at": "2026-01-01T00:00:00Z"},
             {"id": "lrn_bbbbbbbbbbbb", "kind": "protocol", "text": oversized,
-             "created_at": "2026-01-01T00:00:00Z",
-             "provenance": {"source": "leader", "repo": "b" * 12, "origin": None, "of_version": "0"}},
+             "created_at": "2026-01-01T00:00:00Z"},
             {"id": "not-an-id", "kind": "protocol", "text": "schema-invalid id",
              "created_at": "2026-01-01T00:00:00Z",
              "provenance": {"source": "leader", "repo": "c" * 12, "origin": None, "of_version": "0"}},
@@ -363,7 +362,7 @@ class LearnProvenance(unittest.TestCase):
                                                     "origin": None, "of_version": "0"}}
         self.assertTrue(of.field.learning_accepted(good))
         self.assertFalse(of.field.learning_accepted({**good, "provenance": None}))
-        self.assertFalse(of.field.learning_accepted({**good, "text": "y" * (of.LEARNING_MAX_CHARS + 1)}))
+        self.assertTrue(of.field.learning_accepted({**good, "text": "y" * (of.LEARNING_MAX_CHARS + 1)}))
         self.assertFalse(of.field.learning_accepted("not a dict"))
         child = {**good, "source": "child",
                  "provenance": {**good["provenance"], "source": "child"}}
@@ -659,6 +658,67 @@ class SkippedLearningsWarningThrottle(unittest.TestCase):
         ]
         self.assertEqual(len(changed_skips), 1, changed.stderr)
         self.assertIn("4 learning(s)", changed_skips[0])
+
+
+class LearningLengthAdvisory(unittest.TestCase):
+    """#146 — length is advisory like pack --slice; lines stay the dump bound."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-learn-advisory-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "protocol-learnings.json"
+        os.environ["OF_LEARNINGS"] = str(self.cache)
+        self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        r = run_of(self.tmp, "init", "--mission", "learn advisory", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_401_chars_stores_and_advises(self) -> None:
+        text = "x" * (of.LEARNING_MAX_CHARS + 1)
+        saved = run_of(self.tmp, "learn", text)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.assertIn("of: note —", saved.stderr)
+        self.assertIn("advisory", saved.stderr)
+        self.assertIn("work/scratch/leader", saved.stderr)
+        self.assertIn("<file>.md", saved.stderr)
+        self.assertIn("still stored", saved.stderr)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn(text, listed.stdout)
+        pins = list((self.tmp / ".orderfield" / "learnings").glob("*.json"))
+        self.assertTrue(pins)
+        self.assertIn(text, pins[0].read_text(encoding="utf-8"))
+
+    def test_400_chars_is_quiet(self) -> None:
+        text = "y" * of.LEARNING_MAX_CHARS
+        saved = run_of(self.tmp, "learn", "--protocol", text)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.assertNotIn("of: note —", saved.stderr)
+        self.assertNotIn("advisory", saved.stderr)
+
+    def test_lines_still_hard_refuse_loudly(self) -> None:
+        dump = "\n".join(["line"] * (of.LEARNING_MAX_LINES + 1))
+        refused = run_of(self.tmp, "learn", dump)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("of: error: learning.lines:", refused.stderr)
+        self.assertIn("refuse dumps", refused.stderr)
+        self.assertIn("work/scratch/leader", refused.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "learnings").exists())
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertIn("learnings    none", listed.stdout)
+
+    def test_lint_helpers_match_pack_advisory_split(self) -> None:
+        self.assertTrue(of.LearningLint.too_long("x" * (of.LEARNING_MAX_CHARS + 1)))
+        self.assertFalse(of.LearningLint.too_long("x" * of.LEARNING_MAX_CHARS))
+        self.assertIsNone(of.LearningLint.long_note("short"))
+        note = of.LearningLint.long_note("z" * (of.LEARNING_MAX_CHARS + 1))
+        self.assertIsNotNone(note)
+        assert note is not None
+        self.assertIn("advisory", note)
+        self.assertIn("work/scratch/leader", note)
+        self.assertEqual(of.LearningLint.line_count("a\nb\nc\nd\ne"), 5)
+        with self.assertRaises(SystemExit) as caught:
+            of.LearningLint.refuse_dump_lines("a\nb\nc\nd\ne")
+        self.assertEqual(caught.exception.code, 1)
 
 
 if __name__ == "__main__":

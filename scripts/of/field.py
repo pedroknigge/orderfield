@@ -4084,6 +4084,7 @@ from of.learn import (  # noqa: E402,F401
     PROTOCOL_PROMPT_CAP,
     PROTOCOL_STORE_LOCK_WAIT_SECONDS,
     FieldLearnings,
+    LearningLint,
     forget_learning,
     format_list_continuation,
     learning_accepted,

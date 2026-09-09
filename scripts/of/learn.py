@@ -64,6 +64,63 @@ def _normalize_learning_text(text: str) -> str:
     return " ".join(str(text or "").split()).strip()
 
 
+class LearningLint:
+    """Learning sizing. Length stays advisory. Chat-dump lines die."""
+
+    WARN_CHARS = LEARNING_MAX_CHARS
+    KIND = "learning.lines"
+    WARN_KIND = "learning_long"
+    FIX = (
+        "put the long record in work/scratch/leader/<file>.md "
+        "and keep a short pointer learning"
+    )
+
+    @staticmethod
+    def line_count(text: str) -> int:
+        raw = str(text or "").strip()
+        return raw.count("\n") + 1 if raw else 0
+
+    @staticmethod
+    def too_long(text: str) -> bool:
+        return len(_normalize_learning_text(text)) > LEARNING_MAX_CHARS
+
+    @staticmethod
+    def refuse_dump_lines(text: str) -> None:
+        nlines = LearningLint.line_count(text)
+        if nlines <= LEARNING_MAX_LINES:
+            return
+        die(
+            f"learning is {nlines} lines (max {LEARNING_MAX_LINES}); "
+            "refuse dumps. "
+            + LearningLint.FIX[0].upper()
+            + LearningLint.FIX[1:],
+            kind=LearningLint.KIND,
+        )
+
+    @staticmethod
+    def long_note(text: str) -> str | None:
+        cleaned = _normalize_learning_text(text)
+        if len(cleaned) <= LEARNING_MAX_CHARS:
+            return None
+        return (
+            f"learning is {len(cleaned)} chars "
+            f"(> {LEARNING_MAX_CHARS}); length is advisory. "
+            + LearningLint.FIX[0].upper()
+            + LearningLint.FIX[1:]
+            + ". The learning was still stored."
+        )
+
+    @staticmethod
+    def advise(text: str) -> None:
+        note = LearningLint.long_note(text)
+        if not note:
+            return
+        if json_events_enabled():
+            emit_event("warning", ok=True, kind=LearningLint.WARN_KIND, message=note)
+            return
+        print(f"of: note — {note}", file=sys.stderr)
+
+
 def learning_provenance(
     root: Path | None, order: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -165,7 +222,7 @@ def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
     else:
         return False
     text = _normalize_learning_text(str(item.get("text") or ""))
-    if not text or len(text) > LEARNING_MAX_CHARS:
+    if not text:
         return False
     return not validate_public_schema(
         _learning_schema_item(item), "learning.schema.json", "learning"
@@ -375,16 +432,11 @@ def save_learning(
     if kind == "protocol":
         refuse_child_forge("--protocol")
     raw = str(text or "").strip()
-    nlines = raw.count("\n") + 1 if raw else 0
     cleaned = _normalize_learning_text(raw)
     if not cleaned:
         die("learning text is empty")
-    if len(cleaned) > LEARNING_MAX_CHARS or nlines > LEARNING_MAX_LINES:
-        die(
-            f"learning is {len(cleaned)} chars / {nlines} lines; "
-            f"refuse dumps (max {LEARNING_MAX_CHARS} chars, "
-            f"{LEARNING_MAX_LINES} lines)"
-        )
+    LearningLint.refuse_dump_lines(raw)
+    LearningLint.advise(cleaned)
     # Dedupe protocol saves against the user cache only: field-dir items are
     # child-writable and must never be re-persisted into cross-repo memory.
     bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
@@ -549,6 +601,7 @@ class FieldLearnings:
 
     MAX_CHARS = LEARNING_MAX_CHARS
     MAX_LINES = LEARNING_MAX_LINES
+    Lint = LearningLint
     PROMPT_CAP = PROTOCOL_PROMPT_CAP
     dir = staticmethod(learnings_dir)
     protocol_path = staticmethod(protocol_learnings_path)

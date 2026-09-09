@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.76. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.77. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.76` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.77` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -50,7 +50,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
 - Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Human pulse also prints the last 1–3 `PULSE` lines under `running`. Pulse leaves ORDER/state/session/wave artifacts unchanged, while the daily update ask may write its user cache (`asked_at`)
 - `of doctor` reports Python/kernel, writable field, schemas, lock, adapter PATH/version, skill VERSION skew on existing HOME dests versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass. Pack lines name field id + wave. PATH presence is not authentication or readiness. Missing dests are silent. Skill VERSION SKEW and closed-field historical packs are informational (`WARN` / exit 0 for skill; historical note for closed `order_rev`); open-field pack SKEW, schema, lock, and kernel still FAIL (`DoctorSkew` / `SkillVersionSkew`). When a newer release exists, doctor prints an `update` ask at most once a day and may prompt on a TTY (`UpdateAsk`); on yes, `install.sh --global --from-release` verifies SHA256SUMS. Proof: `recovery/doctor-one-pass-skew` / `DoctorOnePassSkew`; `recovery/doctor-closed-historical`; `recovery/doctor-advisory-ux`; `UpdateAskDaily`.
-- `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). `--list` / `--forget`. Resume lists both; not SPEC
+- `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). Length over 400 chars is advisory (`LearningLint`; still stored + note naming `work/scratch/leader/<file>.md`). Over 4 lines still refuse dumps (`learning.lines`). `--list` / `--forget`. Resume lists both; not SPEC
 - `of retain` (read-only) / `of gc` walk every field home. Non-risky ephemeral uses a 7-day TTL; `spec_closed` dumps it immediately. Tree budget (64 MiB, `OF_GC_BUDGET`) prints `audit` of open fields; `--keep-field` / `--archive-field` / `--drop-field` are HITL (open drop needs `--force --reason`). `--archive-field` moves a closed sibling to `.orderfield/archive/<id>/` and keeps `CLOSE.json` / SPEC / REQUIREMENTS. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. The plan action `dump` is **permanent unlink** (`Path.unlink` / `rmtree`), not an export. Backup is operator-owned. Protocol is never unlinked. Never copy transcripts. WAL crash consistency is not a restorable dump. Orphan packed children (`OrphanPacked`: closed / leftover-home / inapplicable-order / stale-prior-wave, residual missing) are named on the plan; explicit `of gc` unlinks the packet and records `gc-stamp.json` `orphans[]`. Resume auto-gc skips packets. Proof: `recovery/closed-field-archive` / `ClosedFieldArchiveTrail`; `recovery/orphan-packed-cleanup` / `OrphanPackedCleanup`.
 
 - Spawn `argv_preview` and child logs redact secrets and escalated approval flags. Long `--output-schema` / `--json-schema` / path tokens keep a basename (`ArgvRedact`); a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor/skills/orderfield`) still names `residual.codex.schema.json`. Claude/Codex/Cursor share that residual (`MultiHarnessResidual`). agy `--json-schema` reuses that file (`OutputSchema`). Claude omit.
@@ -91,6 +91,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.74 `of doctor` treats closed-field historical packs as informational (field id + wave; not FAIL). Open-field `order_rev` / `packed_age` still FAIL. Do not rewrite a closed audit trail. Proof: `recovery/doctor-closed-historical` / `DoctorOnePassSkew`. No new CLI / supervisor.
 - 0.7.75 `of collect` reports a missing residual as pending/unavailable with known adapter / trust / outcome and actual `denied_actions`. Conservative headless permissions are an adapter-tied possibility, never a universal cannot-write claim. Proof: `CollectDiagnostic` / `CollectSurvivesMissingResiduals` / `AgyDeniedActionsSpawn`. No new CLI / supervisor.
 - 0.7.76 `of integrate --partial` keeps `hold` when landed residuals are complete and siblings remain in flight. Reason names `skipped_in_flight`. `wave closed` is reserved for a complete-wave integrate. Reuses `decide_regime`. Proof: `recovery/partial-integrate-in-flight` / `PartialIntegrateInFlightReason`. No new CLI / supervisor.
+- 0.7.77 `of learn` length is advisory like `pack --slice` (`LearningLint`). Over 400 chars still stores and prints a note. `LEARNING_MAX_LINES` stays the hard dump bound. Proof: `LearningLengthAdvisory`. No new CLI / supervisor.
 
 ## Contract boundaries
 

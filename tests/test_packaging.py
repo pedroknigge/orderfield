@@ -1076,6 +1076,34 @@ class SkillPackedOnlyStatus(unittest.TestCase):
         self.assertIn("no spawn record", appendix)
 
 
+class SkillLearnLengthAdvisory(unittest.TestCase):
+    """SKILL teaches of learn length is advisory like pack --slice."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_learn_advisory(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of learn", table)
+        self.assertIn("advisory", table)
+        self.assertIn("do not refuse", table)
+        self.assertIn("work/scratch/leader", table)
+        alias_fold = alias.casefold()
+        self.assertIn("of learn", alias_fold)
+        self.assertIn("advisory", alias_fold)
+        self.assertIn("work/scratch/leader", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("of learn", appendix_fold)
+        self.assertIn("advisory", appendix_fold)
+        self.assertIn("do not refuse", appendix_fold)
+        self.assertIn("work/scratch/leader", appendix_fold)
+        self.assertIn("learning.lines", appendix)
+
+
 class SkillDoctorClosedHistorical(unittest.TestCase):
     """SKILL teaches closed-field historical packs are informational."""
 
