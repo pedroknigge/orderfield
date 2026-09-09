@@ -176,6 +176,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.80 timeout / idempotency / health SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`; extract TIMEOUT/HEALTH; `--surface internal` cannot hide; no `of gate`) | documented |
 | 0.7.81 done residual close evidence requires artifact SHA + rollback command (`CloseEvidence`; collect refuses captions / mismatch; no new schema) | documented |
 | 0.7.82 living map checklist → of contrast / of close / residual (`LivingMap`; not a second checklist) | documented |
+| 0.7.83 multi-harness mix playbook in SKILL (roles on one harness vs mix; claude/codex/cursor/grok/agy; `SkillHarnessMix`; reuse detect/doctor/consent) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
