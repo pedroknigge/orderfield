@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.78
+
+Webhook HMAC signature + replay is a contrast PAIR gate. Accept a valid signature and reject replay or a bad signature, then `--both-sides`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.77 notes.
+
+- **Reuse, not a webhook server:** `WebhookPair` extends `requirement_is_pair` and `--both-sides`. No new CLI / HTTP listener / supervisor / token ceiling. Integration replay stays a different word.
+- **Oracle, not docs-only:** stdlib HMAC-SHA256 + delivery-id replay + timestamp skew. Tests fail on accept-without-reject or a broken signature check.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach webhook/HMAC/replay as PAIR. Stamp `--both-sides` only after both sides at the public surface.
+- **Proof:** `WebhookPairContract` (valid accept; replay / bad signature / stale reject). `WebhookPairGate` (HTTP- extract; VERIFIED_INTERNAL and one-sided contract cannot close). `SkillWebhookReplayPair`. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.78; skill/alias description preview `v0.7.78 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.77 notes.
+
 ## 0.7.77
 
 `of learn` length is advisory like `pack --slice`. Over 400 chars still stores and prints a note. `LEARNING_MAX_LINES` stays the hard dump bound. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.76 notes.

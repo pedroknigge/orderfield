@@ -1076,6 +1076,35 @@ class SkillPackedOnlyStatus(unittest.TestCase):
         self.assertIn("no spawn record", appendix)
 
 
+class SkillWebhookReplayPair(unittest.TestCase):
+    """SKILL teaches webhook signature + replay is a contrast PAIR gate."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_webhook_pair(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("webhook", table)
+        self.assertIn("replay", table)
+        self.assertIn("hmac", table)
+        self.assertIn("--both-sides", table)
+        self.assertIn("pair", table)
+        alias_fold = alias.casefold()
+        self.assertIn("webhook", alias_fold)
+        self.assertIn("replay", alias_fold)
+        self.assertIn("--both-sides", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("webhook", appendix_fold)
+        self.assertIn("hmac", appendix_fold)
+        self.assertIn("replay", appendix_fold)
+        self.assertIn("--both-sides", appendix_fold)
+        self.assertIn("webhookpair", appendix_fold.replace(" ", ""))
+
+
 class SkillLearnLengthAdvisory(unittest.TestCase):
     """SKILL teaches of learn length is advisory like pack --slice."""
 

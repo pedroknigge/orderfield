@@ -2758,6 +2758,9 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillSurfaceCore",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.PackagingBumpDiscipline",
+    "tests.test_kernel.WebhookPairContract",
+    "tests.test_kernel.WebhookPairGate",
+    "tests.test_kernel.SkillWebhookReplayPair",
 )
 
 

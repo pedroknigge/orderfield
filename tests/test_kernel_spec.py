@@ -691,6 +691,190 @@ class SpecFidelity(unittest.TestCase):
         self.assertIn("contrast", forced.stderr)
 
 
+class WebhookPairContract(unittest.TestCase):
+    """HMAC accept + replay/bad-sig reject. Contrast PAIR needs both sides."""
+
+    SECRET = "test-webhook-secret"
+    BODY = b'{"id":"evt_1","type":"invoice.paid"}'
+    TS = "1000"
+    NOW = 1000
+    DELIVERY = "wh_delivery_1"
+
+    def test_valid_signature_accepts_once_and_rejects_replay(self) -> None:
+        sig = of.WebhookPair.sign(
+            self.SECRET, self.TS, self.DELIVERY, self.BODY
+        )
+        seen: set[str] = set()
+        first = of.WebhookPair.verify(
+            self.SECRET,
+            self.TS,
+            self.DELIVERY,
+            self.BODY,
+            sig,
+            now=self.NOW,
+            seen=seen,
+        )
+        self.assertEqual(first, of.WebhookPair.OK)
+        self.assertIn(self.DELIVERY, seen)
+        replay = of.WebhookPair.verify(
+            self.SECRET,
+            self.TS,
+            self.DELIVERY,
+            self.BODY,
+            sig,
+            now=self.NOW,
+            seen=seen,
+        )
+        self.assertEqual(replay, of.WebhookPair.REPLAY)
+
+    def test_bad_signature_and_stale_timestamp_reject(self) -> None:
+        sig = of.WebhookPair.sign(
+            self.SECRET, self.TS, self.DELIVERY, self.BODY
+        )
+        seen: set[str] = set()
+        forged = of.WebhookPair.verify(
+            self.SECRET,
+            self.TS,
+            self.DELIVERY,
+            self.BODY,
+            "sha256=" + ("0" * 64),
+            now=self.NOW,
+            seen=seen,
+        )
+        self.assertEqual(forged, of.WebhookPair.BAD_SIGNATURE)
+        self.assertNotIn(self.DELIVERY, seen)
+        stale = of.WebhookPair.verify(
+            self.SECRET,
+            "1",
+            self.DELIVERY,
+            self.BODY,
+            of.WebhookPair.sign(self.SECRET, "1", self.DELIVERY, self.BODY),
+            now=self.NOW,
+            seen=seen,
+        )
+        self.assertEqual(stale, of.WebhookPair.STALE)
+        self.assertNotIn(self.DELIVERY, seen)
+        self.assertEqual(
+            of.WebhookPair.verify(
+                self.SECRET,
+                self.TS,
+                self.DELIVERY,
+                self.BODY,
+                sig,
+                now=self.NOW,
+                seen=seen,
+            ),
+            of.WebhookPair.OK,
+        )
+
+    def test_matches_webhook_hmac_replay_not_integration_replay(self) -> None:
+        self.assertTrue(
+            of.WebhookPair.matches(
+                "webhook deliveries must verify HMAC signature and reject replay"
+            )
+        )
+        self.assertTrue(
+            of.requirement_is_pair(
+                {
+                    "text": (
+                        "POST /hooks must verify HMAC signature and "
+                        "reject replayed deliveries"
+                    )
+                }
+            )
+        )
+        self.assertFalse(
+            of.WebhookPair.matches(
+                "identical integration replay returns the same report"
+            )
+        )
+        self.assertFalse(of.WebhookPair.matches("function signature only"))
+        self.assertFalse(
+            of.requirement_is_pair(
+                {"text": "identical integration replay returns the same report"}
+            )
+        )
+
+
+class WebhookPairGate(unittest.TestCase):
+    """Webhook/HMAC/replay is PAIR: internal + one-sided contract cannot close."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-webhook-pair-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.brief = self.tmp / "brief.md"
+        self.brief.write_text(
+            "\n".join(
+                [
+                    "# HookLab",
+                    "",
+                    "## Rules",
+                    "- webhook deliveries must verify HMAC signature and reject replay",
+                    "",
+                    "```",
+                    "python -m hooklab serve --store PATH",
+                    "```",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    def test_webhook_replay_is_pair_and_needs_both_sides(self) -> None:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "build HookLab",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(self.brief),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        listed = run_of(self.tmp, "spec")
+        pair_ids = [
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if line.split() and (
+                "webhook" in line.lower()
+                or "hmac" in line.lower()
+                or "replay" in line.lower()
+            )
+        ]
+        self.assertTrue(pair_ids, listed.stdout)
+        rid = pair_ids[0]
+        self.assertTrue(rid.startswith("HTTP-"), listed.stdout)
+        data = json.loads(
+            (self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        item = next(
+            row for row in data["requirements"] if row.get("id") == rid
+        )
+        self.assertTrue(of.requirement_is_pair(item), item)
+        internal = run_of(self.tmp, "spec", "--verified", rid)
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+        self.assertIn("CLOSE BLOCKED", contrast.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        self.assertNotEqual(no_pair.returncode, 0)
+        self.assertIn("pair-shaped", no_pair.stderr)
+        both = run_of(
+            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+        )
+        self.assertEqual(both.returncode, 0, both.stderr)
+        after = run_of(self.tmp, "contrast")
+        self.assertIn("VERIFIED_CONTRACT", after.stdout)
+        self.assertNotRegex(after.stdout, rf"VERIFIED_INTERNAL\s+{rid}")
+        self.assertNotRegex(after.stdout, rf"PAIR\s+{rid}")
+
+
 class VerifierEvidence(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-verify-"))

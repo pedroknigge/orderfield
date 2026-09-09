@@ -19,7 +19,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.7.77`
+**Code rev:** VERSION `0.7.78`
 
 ## Summary
 
@@ -117,7 +117,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-044 | Versioned migrations upgrade pre-0.4.2 packets/state; protocol keys stay frozen | troubleshooting / architecture / SLAVE.md | `MIGRATION_CATALOG` / `cmd_migrate` | `scripts/of/field.py` / `scripts/of/cli/ops.py` | `cmd_migrate` | — | critical | OK | keep |
 | C-045 | Optional worktree helper is opt-in and is not a process manager | troubleshooting / SKILL / kernel feature | `cmd_worktree`; spawn does not call it | `scripts/of/cli/ops.py` / `tests/test_kernel_field.py` | `cmd_worktree` | — | normal | OK | keep |
 | C-046 | Runtime ownership is encoded as reserve/remove; no fake telemetry | architecture / principles | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | `scripts/of/regime.py` | `RUNTIME_OWNERSHIP` | — | critical | OK | keep; location is `regime.py` not `scripts/of.py` |
-| C-047 | SPEC.md is the current brief; product-root prompt.md discarded; contrast is a close gate | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `cmd_contrast` / `cmd_close` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` | `cmd_spec` | — | critical | OK | keep |
+| C-047 | SPEC.md is the current brief; product-root prompt.md discarded; contrast is a close gate; webhook HMAC + replay is PAIR (`WebhookPair` + `--both-sides`) | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `WebhookPair` / `cmd_contrast` / `cmd_close` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` | `WebhookPair` / `cmd_spec` | — | critical | OK | keep; webhook PAIR 0.7.78 |
 | C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting | `cmd_pack` dies on unowned when packet owns none | `scripts/of/cli/wave.py` / `tests/test_kernel_spec.py` | `cmd_pack` | — | critical | OK | keep |
 | C-049 | Extract joins backslash-continued CLI lines | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `join_continued_lines` | — | critical | OK | keep |
 | C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
@@ -319,6 +319,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-146 0.7.75: collect missing-residual conservative diagnostic is factual (pending/unavailable; adapter-tied possibility, not cannot-write); `#138`; no new C-ID (honesty cap)
 - [x] 0.7.76: `integrate --partial` hold reason names `skipped_in_flight` instead of `wave closed` while siblings fly; `#139`; `hold_if_partial_in_flight`; no new C-ID (honesty cap)
 - [x] C-056 0.7.77: `of learn` length is advisory (`LearningLint`; store + note over 400 chars); `LEARNING_MAX_LINES` stays hard; `#146`; no new C-ID (honesty cap)
+- [x] C-047 0.7.78: webhook HMAC + replay is a contrast PAIR gate (`WebhookPair`; accept + reject; `--both-sides`); not a webhook server; no new C-ID (honesty cap)
 - [x] C-146 0.7.63: conservative agy `denied_actions` copied into residual; missing/empty is not approval; `yolo` does not copy; `AgyDeniedActions`
 - [x] C-147 0.7.64: agy `--json-schema` residual reuses Codex file; Claude omit (inline-only / keep stream-json); Qwen omit; `OutputSchema`
 - [x] C-148 0.7.65: `OF_TRUST=plan` maps cursor/agy `--mode plan` + grok `--sandbox read-only`; honesty omit for gated/missing modes; `TrustNativeFlags`
