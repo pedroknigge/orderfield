@@ -1447,6 +1447,83 @@ class DoneWhenLintRefuse(unittest.TestCase):
         self.assertTrue(order.get("done_when_closed"))
 
 
+class RunbookPathGate(unittest.TestCase):
+    """Prod§15: production/day-90 close needs a runbook path in done_when."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-runbook-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_named_path_not_theater_or_absolute(self) -> None:
+        self.assertEqual(
+            of.RunbookPath.named("docs/ops/runbook.md names day-90 ops"),
+            ["docs/ops/runbook.md"],
+        )
+        self.assertEqual(of.RunbookPath.named("the runbook is ready"), [])
+        self.assertEqual(of.RunbookPath.named("runbook.md"), [])
+        self.assertEqual(of.RunbookPath.named("/etc/passwd.md"), [])
+        self.assertTrue(of.RunbookPath.cue("Prod§15 day-90 ops"))
+        self.assertFalse(of.RunbookPath.cue("of contrast RESOLVED then of close"))
+        self.assertFalse(of.RunbookPath.cue("ProdLab timeout /health"))
+
+    def test_toy_field_can_close_without_runbook(self) -> None:
+        planted = run_of(self.tmp, "init", "--mission", "m")
+        self.assertEqual(planted.returncode, 0, planted.stderr)
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(closed.returncode, 0, closed.stderr)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+
+    def _production_field(self) -> None:
+        planted = run_of(self.tmp, "init", "--mission", "m")
+        self.assertEqual(planted.returncode, 0, planted.stderr)
+        tagged = run_of(self.tmp, "patch", "--constraints-add", "day-90 ops")
+        self.assertEqual(tagged.returncode, 0, tagged.stderr)
+
+    def test_production_close_refuses_without_path(self) -> None:
+        self._production_field()
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(of.RunbookPath.applies(order, root=self.tmp))
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertNotEqual(closed.returncode, 0)
+        self.assertIn("runbook path required", closed.stderr)
+        stamped = run_of(self.tmp, "close")
+        self.assertNotEqual(stamped.returncode, 0)
+        self.assertIn("runbook path required", stamped.stderr)
+        after = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertFalse(after.get("done_when_closed"))
+        self.assertFalse(after.get("spec_closed"))
+
+    def test_production_close_passes_with_real_path(self) -> None:
+        self._production_field()
+        theater = run_of(
+            self.tmp,
+            "patch",
+            "--done-when-mission",
+            "the runbook is ready for day-90",
+        )
+        self.assertEqual(theater.returncode, 0, theater.stderr)
+        still = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertNotEqual(still.returncode, 0)
+        self.assertIn("runbook path required", still.stderr)
+        named = run_of(
+            self.tmp,
+            "patch",
+            "--done-when-mission",
+            "docs/ops/runbook.md names the 5 most probable failures",
+        )
+        self.assertEqual(named.returncode, 0, named.stderr)
+        closed = run_of(self.tmp, "patch", "--done-when-closed")
+        self.assertEqual(closed.returncode, 0, closed.stderr)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertTrue(order.get("done_when_closed"))
+        self.assertTrue(order.get("spec_closed"))
+
+
 class ThresholdStopSpawn(unittest.TestCase):
     """Field threshold blocks pack/spawn until patch+next-wave. of eval --kernel."""
 

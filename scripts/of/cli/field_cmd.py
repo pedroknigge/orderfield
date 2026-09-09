@@ -160,7 +160,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     applied = None
     if args.apply:
         before = order["rev"]
-        order = apply_patches(order, residuals)
+        order = apply_patches(order, residuals, root=root)
         req_changed = apply_requirement_patches(
             root, residuals_without_verification_stamps(residuals)
         )
@@ -470,7 +470,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
         if reopen_done_when(order):
             changed = True
     if getattr(args, "done_when_closed", False):
-        DoneWhenLint.refuse_close(order)
+        DoneWhenLint.refuse_close(order, root=root)
         if mark_done_when_closed(order):
             changed = True
     if not changed:

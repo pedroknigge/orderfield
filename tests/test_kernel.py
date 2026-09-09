@@ -106,7 +106,10 @@ from test_kernel_spec import (  # noqa: E402,F401
     WebhookPairGate,
 )
 
-from test_kernel_regime import ThresholdStopSpawn  # noqa: E402,F401
+from test_kernel_regime import (  # noqa: E402,F401
+    RunbookPathGate,
+    ThresholdStopSpawn,
+)
 
 
 def load_tests(loader, tests, pattern):

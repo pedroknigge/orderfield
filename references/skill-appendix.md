@@ -136,13 +136,14 @@ Serious multi-agent work and long missions use the **full verb table** in the co
 
 If the consumer tree has no §20 / Apéndice A tables, do not invent product Gate A rows. Orderfield Gate A is the table above — the real kernel, not a second doctrine. Signing a consumer production Go is captain (HITL), not `of close`. `of close --checklist` is the field close proof (contrast RESOLVED + residual empty), a different plane.
 
-**Living map.** Production checklist language is those verbs — not a second checklist.
+**Living map.** Production checklist language is those verbs — not a second checklist. Prod§15 is a `done_when` path + close refuse, not an on-call bot or `of gate`. Never invent a consumer **Sí** for owner / channel / status-page rows.
 
 | Checklist row | Kernel verb |
 |---|---|
 | Prod§7 timeout / idempotency / health | `of contrast` VERIFIED_CONTRACT (`ContractSurface`) |
 | Prod§11 `/version` / release header | `of contrast` VERIFIED_CONTRACT (`ContractSurface`) |
 | Prod§11 close evidence SHA + rollback | residual `CloseEvidence` (`artifact_sha:` + `rollback:`) |
+| Prod§15 day-90 runbook path | `done_when` names a repo-relative runbook file (`docs/ops/runbook.md`); `of close` / `--done-when-closed` close refuse without it (`RunbookPath`). Not an on-call bot |
 | Ship / field close | `of close --checklist` then quote the printed `speak` line + RESOLVED + residual empty; then `of close` |
 
 `checklist → of contrast` / `of close` / residual. Do not invent a parallel checklist.

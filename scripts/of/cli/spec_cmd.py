@@ -1086,7 +1086,7 @@ class CloseProof:
 
     @staticmethod
     def stamp(root: Path, order: dict[str, Any]) -> None:
-        DoneWhenLint.refuse_close(order)
+        DoneWhenLint.refuse_close(order, root=root)
         mark_done_when_closed(order)
         order["spec_closed"] = True
         order["rev"] = int(order["rev"]) + 1
@@ -2907,6 +2907,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.SkillSurfaceCore",
     "tests.test_kernel.SkillProductionMode",
+    "tests.test_kernel.RunbookPathGate",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.SkillEvaluatorPacket",
     "tests.test_kernel.PackagingBumpDiscipline",

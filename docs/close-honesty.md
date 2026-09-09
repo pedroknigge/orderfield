@@ -140,6 +140,6 @@ of eval recovery/adversarial-dual-truth --strict
 of eval recovery/multi-wave-close-checklist --strict
 ```
 
-Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`.
+Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default.
 
 A stack of `status=done` residuals across waves is still not SPEC closed. Long-task residual theater — dump, slogan, silent rewrite, amend amnesia, chrome-as-done — and the disk-contract defense: [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
