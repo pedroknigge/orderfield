@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.86 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.87 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.86"
+  version: "0.7.87"
   alias-of: orderfield
 ---
 
@@ -21,7 +21,7 @@ In-flight is not done: while any residual is MISSING, `of status` / `of resume` 
 
 Close is proof: the sibling names [docs/close-is-proof.md](../docs/close-is-proof.md). Residual empty is not the close.
 
-Claim shipped is mechanical: run `of contrast` and `of close --checklist` in the same turn. Quote `contrast RESOLVED` and `residual empty`. If either fails, do not claim shipped. Checklist prints `speak`. Pair with quote-PULSE while flying. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Not a second checklist. After a wave, **must ask** consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Self-praise is not review. Not a new close gate. Follow the sibling.
+Claim shipped is mechanical: run `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` and `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Pair with quote-PULSE while flying. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Not a second checklist. After a wave, **must ask** consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Self-praise is not review. Not a new close gate. Follow the sibling.
 
 Published claims stay ≤98% honest. After skill/docs edits: `python3 docs/audit/check-claims.py` (also inside `validate-skill.sh`). Follow the sibling.
 
