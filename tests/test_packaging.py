@@ -1467,6 +1467,62 @@ class SkillAntiDoneTheater(unittest.TestCase):
         self.assertIn("not your judgment", appendix.casefold())
 
 
+class SkillOrcaWorkerTeardown(unittest.TestCase):
+    """Orca worker-start must pair stop/release. Not a process supervisor."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_adapters_teach_stop_release(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        adapters = (ROOT / "references" / "adapters.md").read_text(encoding="utf-8")
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        table = self.table(core).casefold()
+        self.assertIn("worker-start", table)
+        self.assertIn("worker-stop", table)
+        self.assertIn("worker-release", table)
+        self.assertIn("of worktree remove", table)
+        self.assertIn("not a supervisor", table)
+        stop_at = table.index("worker-stop")
+        release_at = table.index("worker-release")
+        self.assertLess(stop_at, release_at)
+        alias_fold = alias.casefold()
+        self.assertIn("worker-stop", alias_fold)
+        self.assertIn("worker-release", alias_fold)
+        self.assertIn("of worktree remove", alias_fold)
+        self.assertIn("not a process supervisor", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("worker-start", appendix_fold)
+        self.assertIn("worker-stop", appendix_fold)
+        self.assertIn("worker-release", appendix_fold)
+        self.assertIn("never leave `terminal=retained`", appendix_fold)
+        self.assertIn("of worktree remove", appendix_fold)
+        self.assertIn("not a process supervisor", appendix_fold)
+        adapters_fold = adapters.casefold()
+        self.assertIn("start↔stop/release", adapters)
+        self.assertIn("worker-stop --dispatch", adapters_fold)
+        self.assertIn("worker-release --dispatch", adapters_fold)
+        self.assertIn("worker-retain", adapters_fold)
+        self.assertIn("worker-list", adapters_fold)
+        self.assertIn("does not delete worktrees", adapters_fold)
+        self.assertIn("does not poll orca", adapters_fold)
+        self.assertIn("not a process supervisor", adapters_fold)
+        slave_fold = slave.casefold()
+        self.assertIn("remove the worktree when the slice closes", slave_fold)
+        self.assertIn("stops and releases orca workers", slave_fold)
+        self.assertIn("does not delete this worktree", slave_fold)
+
+    def test_teaching_is_not_a_kernel_process_manager(self) -> None:
+        adapters = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("task-create", adapters)
+        self.assertNotIn("worker-stop", adapters)
+        self.assertNotIn("worker-release", adapters)
+        self.assertNotIn("worker-start", adapters)
+
+
 class SkillEvaluatorPacket(unittest.TestCase):
     """After a wave, ask consent for a fresh-context review packet before close."""
 

@@ -38,7 +38,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `pulse` | Each in-flight child in `of pulse` | `child_id`, `verdict`, `age_s`, `wave` |
 | `eval.completed` | Each `of eval` case | `id`, `status`, `ok`, optional `error` |
 | `gc` | After `of gc` | `dumped`, `ok`; `orphans` count when explicit gc records packed-child receipts; `action` / `field` on `--keep-field` / `--archive-field` / `--drop-field` |
-| `doctor` | After `of doctor` | `ok` (field/kernel); `ok_field`; `ok_skills` (skill SKEW is advisory) |
+| `doctor` | After `of doctor` | `ok` (field/kernel); `ok_field`; `ok_skills` (skill SKEW is advisory); `leftover_worktrees` (recorded `of worktree` count; advisory WARN, not Orca poll) |
 | `migrate` | After `of migrate` | `applied`, `ok` |
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
 | `issue` | After `of issue` | `action` (`create` \| `search`), `repo` (`pedroknigge/orderfield`), `ok`; `dry_run` on create and on search preview |

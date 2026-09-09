@@ -3422,6 +3422,26 @@ class DoctorSkew:
         return lines, skewed
 
     @staticmethod
+    def recorded_worktrees(root: Path) -> list[str]:
+        trees = load_worktrees(root).get("trees") or {}
+        return sorted(str(cid) for cid in trees if str(cid).strip())
+
+    @staticmethod
+    def worktrees(root: Path) -> tuple[list[str], bool]:
+        """Leftover of-worktree records. Advisory; not a host process poll."""
+        ids = DoctorSkew.recorded_worktrees(root)
+        if not ids:
+            return [], False
+        shown = ", ".join(ids[:8])
+        extra = f" +{len(ids) - 8}" if len(ids) > 8 else ""
+        return [
+            f"  worktrees     {len(ids)} recorded  "
+            f"({shown}{extra}; of worktree list; remove when slice closes)",
+            "  note          leftover of-worktrees are advisory "
+            "(not field FAIL; not a process manager)",
+        ], True
+
+    @staticmethod
     def field(
         root: Path, *, now: float | None = None
     ) -> tuple[list[str], bool]:

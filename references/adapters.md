@@ -247,7 +247,18 @@ Binary: `orca`.
 
 Orca is **substrate**. Do not ask it to decide phase or regime.
 
-`of spawn --adapter orca` is best-effort (`task-create` with the rendered prompt as `--spec`). Prefer the interactive loop: pack first, `of render` as the worker prompt, then `of collect` on the residual. After pack, caps bind even if you never call `of spawn`. Do not let an Orca gate change phase or ORDER.
+`of spawn --adapter orca` is best-effort (`task-create` with the rendered prompt as `--spec`) — one-shot on the current worktree, not the interactive leak. Prefer the interactive loop: pack first, `of render` as the worker prompt, then `of collect` on the residual. After pack, caps bind even if you never call `of spawn`. Do not let an Orca gate change phase or ORDER.
+
+Interactive `worker-start` is a start↔stop/release pair. The skill opens workers; the leader must close them. Orderfield is not a process supervisor and does not auto-kill Orca processes.
+
+| You ran | You then run |
+|---|---|
+| `orca orchestration worker-start …` | after residual + `of collect`, or on abandon: `worker-stop --dispatch <id>` then `worker-release --dispatch <id>` |
+| settle / success | **release** (default). `worker-retain` only when the user asked to debug |
+| accounting | `orca orchestration worker-list` (succeeded + `terminal=retained` is a leak) |
+| `of worktree add` (opt-in) | `of worktree remove --child-id <id>` when the slice closes — `worker-stop` does not delete worktrees |
+
+Never leave retained unless the user asked. `of doctor` may warn on leftover **recorded** `of worktree` entries. It does not poll Orca processes.
 
 Mapping:
 
@@ -258,7 +269,7 @@ Mapping:
 | worker_done body | residual JSON |
 | gate | not a Haken threshold; human HITL only |
 
-Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns *what* goes in the spec and *how* done is read.
+Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns *what* goes in the spec and *how* done is read. The leader still closes workers the skill opened.
 
 ## Grok
 

@@ -179,6 +179,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.83 multi-harness mix playbook in SKILL (roles on one harness vs mix; claude/codex/cursor/grok/agy; `SkillHarnessMix`; reuse detect/doctor/consent) | documented |
 | 0.7.84 long-task efficiency mix from honest session/balance signals (`AdapterBalance`; unknown if unpublished; ask before rebalance; reuse EfficiencySignal / detect / doctor) | documented |
 | 0.7.85 fresh-context evaluator packet before close (`EvaluatorPacket`; ask consent for adversary/verifier; never silent; not a close gate; C-080 stays Partial) | documented |
+| 0.7.86 Orca worker stop/release duty (`SkillOrcaWorkerTeardown`; start↔stop/release after collect/abandon; leftover of-worktree doctor WARN; no process supervisor; C-045) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

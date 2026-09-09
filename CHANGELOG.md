@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.86
+
+Orca interactive `worker-start` must pair `worker-stop` then `worker-release` after collect or abandon. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.85 notes.
+
+- **Reuse, not a supervisor:** teaching drives the start↔stop/release pair. `of spawn --adapter orca` stays one-shot `task-create`. No `RUNTIME_OWNERSHIP`, no auto-kill of Orca processes, no spawn-hooked worktrees.
+- **Close what you opened:** after residual + `of collect` (and on abandon), the leader **must** `worker-stop` then `worker-release` for dispatches started for that slice. Default is release. `worker-retain` only when the user asked to debug. `worker-list` is accounting. `worker-stop` does not delete worktrees — `of worktree remove` if add was used.
+- **Thin doctor warn:** leftover recorded `of worktree` entries print advisory WARN (not FAIL). No Orca process poll.
+- **Skill drives the cut:** SKILL table + `/of` + appendix interactive steps + adapters Orca section + SLAVE isolate the leader vs child duty. Hosts still load the short core.
+- **Proof:** `SkillOrcaWorkerTeardown`. `DoctorWorktreeLeftover`. C-045 extended. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.86; skill/alias description preview `v0.7.86 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.85 notes.
+
 ## 0.7.85
 
 SKILL / `/of` / appendix teach a fresh-context review packet (adversary / verifier; council shape) after a wave and before `of close`. Ask consent; never silent. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.84 notes.
