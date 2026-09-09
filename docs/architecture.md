@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.81` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.82` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -162,7 +162,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; `gc` is locked; never copies transcripts. `--archive-field` moves a closed home to `.orderfield/archive/<id>/` and keeps `CLOSE.json`. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. Orphan packed children (`OrphanPacked`) dump on explicit `gc` with `gc-stamp.json` `orphans[]`; resume auto-gc skips packets |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
-| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`; webhook HMAC + replay via `WebhookPair`; timeout / idempotency / health via `ContractSurface`). `of contrast --diff` is the `ContrastDiff` narrative of those facts (RESOLVED is not CLOSED). `of close --checklist` is contrast + residual empty (`CloseChecklist`) plus `speak_line` (do not claim shipped unless RESOLVED and residual empty); write path refuses residual MISSING |
+| `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`; webhook HMAC + replay via `WebhookPair`; timeout / idempotency / health via `ContractSurface`). `of contrast --diff` is the `ContrastDiff` narrative of those facts (RESOLVED is not CLOSED). `of close --checklist` is contrast + residual empty (`CloseChecklist`) plus `speak_line` (do not claim shipped unless RESOLVED and residual empty); write path refuses residual MISSING. Living map: checklist → of contrast / of close / residual (Prod§7 `ContractSurface`; Prod§11 `CloseEvidence`; ship `CloseChecklist`). Not a second checklist |
 | `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock |
 | `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |

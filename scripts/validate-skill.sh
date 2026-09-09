@@ -92,6 +92,9 @@ ok "claims honesty"
 python3 "$ROOT/scripts/skill_surface.py" "$ROOT" || fail "skill surface core+appendix"
 ok "skill surface"
 
+python3 "$ROOT/scripts/living_map.py" "$ROOT" || fail "living map checklist verbs"
+ok "living map"
+
 python3 "$ROOT/scripts/check_packaging_bump.py" "$ROOT" || fail "packaging bump discipline"
 ok "packaging bump"
 

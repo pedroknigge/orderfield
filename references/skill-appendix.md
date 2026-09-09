@@ -136,6 +136,16 @@ Serious multi-agent work and long missions use the **full verb table** in the co
 
 If the consumer tree has no §20 / Apéndice A tables, do not invent product Gate A rows. Orderfield Gate A is the table above — the real kernel, not a second doctrine. Signing a consumer production Go is captain (HITL), not `of close`. `of close --checklist` is the field close proof (contrast RESOLVED + residual empty), a different plane.
 
+**Living map.** Production checklist language is those verbs — not a second checklist.
+
+| Checklist row | Kernel verb |
+|---|---|
+| Prod§7 timeout / idempotency / health | `of contrast` VERIFIED_CONTRACT (`ContractSurface`) |
+| Prod§11 close evidence SHA + rollback | residual `CloseEvidence` (`artifact_sha:` + `rollback:`) |
+| Ship / field close | `of close --checklist` then `of close` |
+
+`checklist → of contrast` / `of close` / residual. Do not invent a parallel checklist.
+
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
