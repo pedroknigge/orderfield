@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.81
+
+Done residual close evidence requires an artifact SHA (sha256 of `result_ref`) and a rollback command — not captions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.80 notes.
+
+- **Reuse, not a second doctrine:** `CloseEvidence` extends `validate_residual_for_packet` next to `ResidualQuality` / `verifier_done_errors`. `residual.evidence` stays a string. `result_ref` stays the proof file. No new schema key. No `of gate`. No new CLI / supervisor / token ceiling.
+- **Hash the artifact, not a caption:** collect hashes `result_ref` bytes (`hashlib.sha256`, same primitive as SPEC/WAL). Evidence must name `artifact_sha:` / `sha256=` that hex. A slogan or a hash that does not match the file dies. Threshold/blocked skip the gate.
+- **Rollback is a command:** `rollback:` plus a path or `git`/`rm`/`of`/… Captions (`revert the change`, `n/a`) die.
+- **Skill drives the cut:** SKILL / `/of` / appendix / SLAVE teach the same wording in the same cut. Slice `done` is still not SPEC closed.
+- **Proof:** `CloseEvidenceGate` (caption / wrong SHA / slogan rollback refuse; matching SHA + command collects; threshold skips; schema-only `validate_residual` unchanged). `SkillCloseEvidence`. Existing `recovery/slogan-evidence-refused` / `VerifierEvidence` stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.81; skill/alias description preview `v0.7.81 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.80 notes.
+
 ## 0.7.80
 
 Timeout, idempotency, and health SPEC IDs are public-surface VERIFIED_CONTRACT. Unit tests cannot close them. `--surface internal` cannot hide them. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.79 notes.

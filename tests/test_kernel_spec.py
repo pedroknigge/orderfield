@@ -90,6 +90,11 @@ def bound_residual(
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = result.relative_to(root).as_posix()
+        of.CloseEvidence.stamp(
+            residual,
+            result,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
     return residual
 
 
@@ -1060,12 +1065,122 @@ class VerifierEvidence(unittest.TestCase):
         self.assertIn("platitude", slogan.stdout + slogan.stderr)
 
     def test_evidence_naming_requirement_accepted(self) -> None:
-        self._write(
+        dest = self._write(
             "LEASE-001 only queued jobs are leaseable; "
             "ran python -m taskforge lease against the CLI."
         )
+        residual = load_json(dest)
+        artifact = self.tmp / str(residual["result_ref"])
+        of.CloseEvidence.stamp(
+            residual,
+            artifact,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stderr)
+
+
+class CloseEvidenceGate(unittest.TestCase):
+    """status=done close evidence: artifact SHA of result_ref + rollback command."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-close-ev-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "build", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the close evidence",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _artifact(self, text: str = "proof artifact\n") -> Path:
+        path = (
+            self.tmp
+            / ".orderfield"
+            / "work"
+            / "scratch"
+            / "e1"
+            / "result.md"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def _write(self, evidence: str, *, text: str = "proof artifact\n") -> None:
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = bound_residual(self.tmp, "e1")
+        artifact = self._artifact(text)
+        residual["result_ref"] = artifact.relative_to(self.tmp).as_posix()
+        residual["residual"]["evidence"] = evidence
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+    def test_caption_only_evidence_refused(self) -> None:
+        self._write("we hashed the artifact and can roll it back")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("artifact_sha", blob)
+        self.assertIn("rollback", blob)
+
+    def test_wrong_sha_is_caption_and_dies(self) -> None:
+        fake = "a" * 64
+        self._write(
+            f"artifact_sha: {fake}\n"
+            "rollback: git checkout -- .orderfield/work/scratch/e1/result.md"
+        )
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("does not match result_ref", blob)
+
+    def test_rollback_caption_dies(self) -> None:
+        artifact = self._artifact()
+        digest = of.CloseEvidence.digest(artifact)
+        self._write(f"artifact_sha: {digest}\nrollback: revert the change")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("rollback is a caption", blob)
+
+    def test_matching_sha_and_rollback_collects(self) -> None:
+        artifact = self._artifact()
+        evidence = of.CloseEvidence.attach(
+            "explorer mapped the slice",
+            artifact,
+            rollback="git checkout -- .orderfield/work/scratch/e1/result.md",
+        )
+        self._write(evidence)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+
+    def test_threshold_skips_the_gate(self) -> None:
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = load_json(THRESHOLD)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        residual["residual"]["wants_to_change"] = ["constraints"]
+        residual["residual"]["evidence"] = "need a constraint, no close"
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertNotIn("artifact_sha", collected.stdout + collected.stderr)
+
+    def test_validate_residual_schema_stays_caption_free(self) -> None:
+        residual = load_json(DONE)
+        self.assertEqual(of.validate_residual(residual), [])
+        self.assertTrue(of.CloseEvidence.errors(residual, self.tmp))
 
 
 class ForceDeliverSpec(unittest.TestCase):

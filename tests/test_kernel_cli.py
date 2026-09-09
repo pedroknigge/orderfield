@@ -97,6 +97,11 @@ def bound_residual(
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = result.relative_to(root).as_posix()
+        of.CloseEvidence.stamp(
+            residual,
+            result,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
     return residual
 
 

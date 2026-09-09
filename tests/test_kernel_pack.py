@@ -119,6 +119,11 @@ def bound_residual(
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = result.relative_to(root).as_posix()
+        of.CloseEvidence.stamp(
+            residual,
+            result,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
     return residual
 
 
@@ -508,6 +513,11 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
         result.write_text("legacy done", encoding="utf-8")
         residual = load_json(DONE)
         residual["result_ref"] = result.relative_to(self.tmp).as_posix()
+        of.CloseEvidence.stamp(
+            residual,
+            result,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
         residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
         residual_path.write_text(json.dumps(residual), encoding="utf-8")
 

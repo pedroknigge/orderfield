@@ -25,7 +25,7 @@ Trust `.orderfield/CLOSE.json`. Do not trust a transcript that says CLOSED.
 3. **Contrast RESOLVED is required.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests. VERIFIED_CONTRACT, then RESOLVED, then `of close`. Proof: `recovery/contrast-close-contract`.
 4. **One stamp, three facts.** Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` together. Flags and the proof file cannot diverge. There is no `--soft`. Soft is a reason you did **not** close. Proof: `recovery/atomic-close-flag-lag`. Templates: [close-honesty.md](close-honesty.md).
 5. **`CLOSE.json` is the proof.** Verdict `RESOLVED`, both flags true, `spec_hash`, `order_id`, `rev`. Same WAL generation as ORDER. A residual or ORDER flag that says CLOSED is dual-truth until the file exists. A child-forged close leaves it absent. Proof: `recovery/adversarial-dual-truth`.
-6. **Slice `done` is not SPEC closed.** `status=done` plus `result_ref` closes a slice. Chat-dump and slogan evidence cannot collect. `integrate --apply` may set `done_when_closed` from a residual; `of close` still needs RESOLVED and residual empty. Proof: `recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`, `recovery/done-when-lint`.
+6. **Slice `done` is not SPEC closed.** `status=done` plus `result_ref` closes a slice. Chat-dump and slogan evidence cannot collect. Done close evidence must name `artifact_sha` (sha256 of `result_ref`) and `rollback:` a command — not captions (`CloseEvidence`). `integrate --apply` may set `done_when_closed` from a residual; `of close` still needs RESOLVED and residual empty. Proof: `recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`, `recovery/done-when-lint`.
 7. **The trail survives archive.** `of gc --archive-field` keeps `CLOSE.json` under `.orderfield/archive/<id>/`. `--drop-field` dies while the proof exists unless `--force --reason`. Proof: `recovery/closed-field-archive`.
 8. **Nested close is not merge.** Close of an `of new --parent` field returns `.orderfield/ACTIVE` to the epic. Not `of merge`. Proof: `recovery/nested-field-lifecycle`.
 
@@ -43,7 +43,7 @@ These already exist. This page does not add a fixture.
 | Contrast OPEN / public ID on VERIFIED_INTERNAL cannot close | `recovery/contrast-close-contract` |
 | Flags + `CLOSE.json` one generation | `recovery/atomic-close-flag-lag` |
 | Child-forged close leaves `CLOSE.json` absent | `recovery/adversarial-dual-truth` |
-| Chat-dump / slogan cannot collect | `recovery/wave-report-quality-gate` · `recovery/slogan-evidence-refused` |
+| Chat-dump / slogan cannot collect; done evidence needs artifact SHA + rollback | `recovery/wave-report-quality-gate` · `recovery/slogan-evidence-refused` · `CloseEvidenceGate` |
 | Generic or empty done-when cannot stamp | `recovery/done-when-lint` |
 | Archive keeps the trail | `recovery/closed-field-archive` |
 | Nested close returns ACTIVE | `recovery/nested-field-lifecycle` |

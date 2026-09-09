@@ -43,7 +43,7 @@ of unpack --child-id <id>
 
 **Symptom:** collect reports `must match canonical packet` or `done result_ref must be an existing path under the project`.
 
-**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected.
+**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of those bytes) and `rollback:` a command (`CloseEvidence`); captions and mismatched hashes die.
 
 ## Missing residual / collect exit 2
 
@@ -100,11 +100,11 @@ The transition error names the missing proof: in-flight children, no integration
 
 ## Verifier residual refused
 
-**Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, or `result_ref is empty`.
+**Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, or `rollback`.
 
-**Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence.
+**Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of `result_ref`) and `rollback:` a command — not captions (`CloseEvidence`).
 
-**Recover:** Rewrite the residual with a transcript path and evidence that cites the IDs or CLI you actually ran.
+**Recover:** Rewrite the residual with a transcript path, evidence that cites the IDs or CLI you actually ran, the sha256 of `result_ref`, and a rollback command.
 
 ## Field lock wait exceeded
 

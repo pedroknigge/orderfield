@@ -406,6 +406,7 @@ def validate_residual_for_packet(
                 f"done result_ref must be an existing path under the project: {result_ref!r}"
             )
     errs.extend(verifier_done_errors(res, packet, root))
+    errs.extend(CloseEvidence.errors(res, root))
     return errs
 
 
@@ -789,6 +790,145 @@ class ResidualQuality:
                     max_lines=ResidualQuality.NOTES_MAX_LINES,
                 )
             )
+        return errs
+
+
+class CloseEvidence:
+    """Done residual close evidence: artifact SHA + rollback command.
+
+    Reuses ``residual.evidence`` (string) and ``result_ref`` (the proof
+    file collect already requires for ``status=done``). Hashes that file
+    and requires the hex plus a rollback command in evidence. Captions
+    alone die. Not a new schema key. Not ``of close`` / ``CLOSE.json``.
+    Not a second close doctrine.
+    """
+
+    SHA_RE = re.compile(
+        r"(?:artifact_sha|sha256)\s*[:=]\s*([0-9a-f]{64})\b",
+        re.I,
+    )
+    ROLLBACK_RE = re.compile(r"(?im)^rollback:\s*(\S.*)$")
+    COMMAND_RE = re.compile(
+        r"(?:"
+        r"\b(?:git|rm|mv|cp|of|python|python3|make|cargo|npm|pnpm)\b"
+        r"|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+"
+        r"|[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,7}"
+        r")",
+        re.I,
+    )
+    CAPTIONS = frozenset(
+        {
+            "revert",
+            "undo",
+            "n/a",
+            "none",
+            "rollback",
+            "we can revert",
+            "revert the change",
+            "undo the change",
+            "as needed",
+            "see above",
+            "later",
+            "ok",
+        }
+    )
+
+    @staticmethod
+    def digest(path: Path) -> str:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    @staticmethod
+    def parse_sha(evidence: str) -> str | None:
+        match = CloseEvidence.SHA_RE.search(str(evidence or ""))
+        return match.group(1).lower() if match else None
+
+    @staticmethod
+    def parse_rollback(evidence: str) -> str | None:
+        match = CloseEvidence.ROLLBACK_RE.search(str(evidence or ""))
+        if not match:
+            return None
+        return match.group(1).strip()
+
+    @staticmethod
+    def attach(
+        evidence: str,
+        artifact: Path,
+        *,
+        rollback: str | None = None,
+    ) -> str:
+        digest = CloseEvidence.digest(artifact)
+        cmd = rollback or f"git checkout -- {artifact.as_posix()}"
+        lines = [f"artifact_sha: {digest}", f"rollback: {cmd}"]
+        body = str(evidence or "").rstrip()
+        if body:
+            return body + "\n" + "\n".join(lines)
+        return "\n".join(lines)
+
+    @staticmethod
+    def stamp(
+        residual: dict[str, Any],
+        artifact: Path,
+        *,
+        rollback: str | None = None,
+    ) -> None:
+        rem = residual.setdefault("residual", {})
+        rem["evidence"] = CloseEvidence.attach(
+            str(rem.get("evidence") or ""),
+            artifact,
+            rollback=rollback,
+        )
+
+    @staticmethod
+    def errors(res: Any, root: Path) -> list[str]:
+        if not isinstance(res, dict) or res.get("status") != "done":
+            return []
+        rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+        evidence = str(rem.get("evidence") or "")
+        errs: list[str] = []
+        result_ref = res.get("result_ref")
+        artifact: Path | None = None
+        if result_ref:
+            try:
+                path = safe_relative_path(
+                    root, result_ref, "done result_ref", must_exist=False
+                )
+                if path.is_file():
+                    artifact = path
+                elif path.exists():
+                    errs.append(
+                        "done result_ref must be a file for close evidence"
+                    )
+            except SystemExit:
+                pass
+        got = CloseEvidence.parse_sha(evidence)
+        if artifact is not None:
+            want = CloseEvidence.digest(artifact)
+            if not got:
+                errs.append(
+                    "close evidence requires artifact_sha "
+                    "(sha256 of result_ref)"
+                )
+            elif got != want:
+                errs.append(
+                    "close evidence artifact sha does not match result_ref"
+                )
+        elif not got:
+            errs.append(
+                "close evidence requires artifact_sha "
+                "(sha256 of result_ref)"
+            )
+        rollback = CloseEvidence.parse_rollback(evidence)
+        if not rollback:
+            errs.append("close evidence requires rollback: <command>")
+        else:
+            collapsed = collapse_evidence(rollback)
+            if (
+                collapsed in CloseEvidence.CAPTIONS
+                or not CloseEvidence.COMMAND_RE.search(rollback)
+            ):
+                errs.append(
+                    "close evidence rollback is a caption; name a command"
+                )
         return errs
 
 

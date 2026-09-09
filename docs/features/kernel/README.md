@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.80. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.81. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.80` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.81` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -95,6 +95,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.78 webhook HMAC + replay is a contrast PAIR gate (`WebhookPair`). Accept valid signature and reject replay/bad signature, then `--both-sides`. Not a webhook server. Not integration replay. Proof: `WebhookPairContract` / `WebhookPairGate`. No new CLI / supervisor.
 - 0.7.79 skill appendix **Production mode** teaches production-mode invariants and Gate A before `--role implementer`. Reuses the verb table, `of pack --owns-requirement`, `--tokens` refuse, reserved `RUNTIME_OWNERSHIP`, and [docs/long-mission.md](../../long-mission.md). No `of gate`. Proof: `SkillProductionMode`. No new CLI / supervisor.
 - 0.7.80 timeout / idempotency / health SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`). Extract names `TIMEOUT-` / `HEALTH-`. `--surface internal` cannot hide them. Idempotency stays PAIR. Not a health monitor. Not a timeout supervisor. No `of gate`. Proof: `ContractSurfaceGate` / `SkillContractSurface`. No new CLI / supervisor.
+- 0.7.81 `status=done` close evidence requires `artifact_sha` (sha256 of `result_ref`) and `rollback:` a command (`CloseEvidence`). Captions and mismatched hashes die at collect. Threshold/blocked skip. No new schema key. Proof: `CloseEvidenceGate` / `SkillCloseEvidence`. No new CLI / supervisor.
 
 ## Contract boundaries
 

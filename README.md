@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.80</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.81</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.80-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.81-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -94,8 +94,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.80
-release_version=0.7.80
+release_tag=v0.7.81
+release_version=0.7.81
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -192,11 +192,15 @@ of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
 # no OF_AGENT set -> handoff mode: paste .orderfield/waves/001/prompts/explorer.md into any agent.
 # The child writes the residual, echoing the packet identity. Simulated here:
 python3 - <<'EOF'
-import json
+import hashlib, json, os
 p = json.load(open(".orderfield/waves/001/packets/explorer.json"))
+ref = ".orderfield/work/scratch/explorer/notes.md"
+os.makedirs(os.path.dirname(ref), exist_ok=True)
+open(ref, "w").write("CLI-001 pricing models mapped\n")
+digest = hashlib.sha256(open(ref, "rb").read()).hexdigest()
 r = {k: p[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
-r.update(status="done", result_ref=".orderfield/waves/001/prompts/explorer.md",
-         residual={"wants_to_change": [], "evidence": "CLI-001: pricing models mapped", "proposed_patch": None},
+r.update(status="done", result_ref=ref,
+         residual={"wants_to_change": [], "evidence": "CLI-001: pricing models mapped\nartifact_sha: "+digest+"\nrollback: git checkout -- "+ref, "proposed_patch": None},
          metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False})
 json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=2)
 EOF

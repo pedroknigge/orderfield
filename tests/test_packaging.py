@@ -1144,6 +1144,30 @@ class SkillWebhookReplayPair(unittest.TestCase):
         self.assertIn("webhookpair", appendix_fold.replace(" ", ""))
 
 
+class SkillCloseEvidence(unittest.TestCase):
+    """SKILL teaches done residual close evidence: artifact SHA + rollback."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_close_evidence(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("artifact_sha", table)
+        self.assertIn("rollback", table)
+        self.assertIn("closeevidence", table.replace(" ", "").replace("`", ""))
+        alias_fold = alias.casefold()
+        self.assertIn("artifact_sha", alias_fold)
+        self.assertIn("rollback", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("artifact_sha", appendix_fold)
+        self.assertIn("rollback:", appendix_fold)
+        self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
+
+
 class SkillContractSurface(unittest.TestCase):
     """SKILL teaches timeout / idempotency / health as VERIFIED_CONTRACT."""
 

@@ -85,6 +85,7 @@ class LeftoverCanonicalResidual(unittest.TestCase):
         notes = self.tmp / "notes.md"
         notes.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = "notes.md"
+        of.CloseEvidence.stamp(residual, notes, rollback="git checkout -- notes.md")
         self.leftover.parent.mkdir(parents=True, exist_ok=True)
         self.leftover.write_text(json.dumps(residual), encoding="utf-8")
 

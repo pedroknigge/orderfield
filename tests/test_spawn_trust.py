@@ -658,8 +658,10 @@ class SiblingFieldPack(unittest.TestCase):
         residual = load_json(DONE)
         for key in of.PACKET_IDENTITY_FIELDS:
             residual[key] = packet[key]
-        (self.tmp / "notes.md").write_text("done\n", encoding="utf-8")
+        notes = self.tmp / "notes.md"
+        notes.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = "notes.md"
+        of.CloseEvidence.stamp(residual, notes, rollback="git checkout -- notes.md")
         res_path = self.home / "waves/001/residuals/c1.json"
         res_path.parent.mkdir(parents=True, exist_ok=True)
         res_path.write_text(json.dumps(residual), encoding="utf-8")
@@ -676,8 +678,10 @@ class SiblingFieldPack(unittest.TestCase):
         residual = load_json(DONE)
         for key in of.PACKET_IDENTITY_FIELDS:
             residual[key] = packet[key]
-        (self.tmp / "notes.md").write_text("done\n", encoding="utf-8")
+        notes = self.tmp / "notes.md"
+        notes.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = "notes.md"
+        of.CloseEvidence.stamp(residual, notes, rollback="git checkout -- notes.md")
         leftover = self.tmp / ".orderfield/waves/001/residuals/c1.json"
         leftover.parent.mkdir(parents=True, exist_ok=True)
         leftover.write_text(json.dumps(residual), encoding="utf-8")
