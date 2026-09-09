@@ -215,7 +215,11 @@ class StreamJsonSpawn(unittest.TestCase):
             "result_ref": ".orderfield/work/scratch/s1/notes.md",
             "residual": {
                 "wants_to_change": [],
-                "evidence": "stream residual",
+                "evidence": of.CloseEvidence.attach(
+                    "stream residual",
+                    result,
+                    rollback="git checkout -- .orderfield/work/scratch/s1/notes.md",
+                ),
                 "proposed_patch": None,
             },
             "metrics": {
@@ -332,7 +336,11 @@ class GrokAdapterSpawn(unittest.TestCase):
             "result_ref": ".orderfield/work/scratch/g1/notes.md",
             "residual": {
                 "wants_to_change": [],
-                "evidence": "grok residual",
+                "evidence": of.CloseEvidence.attach(
+                    "grok residual",
+                    result,
+                    rollback="git checkout -- .orderfield/work/scratch/g1/notes.md",
+                ),
                 "proposed_patch": None,
             },
             "metrics": {
@@ -410,7 +418,11 @@ class GrokAdapterSpawn(unittest.TestCase):
             "result_ref": ".orderfield/work/scratch/gto/notes.md",
             "residual": {
                 "wants_to_change": [],
-                "evidence": "printed before kill",
+                "evidence": of.CloseEvidence.attach(
+                    "printed before kill",
+                    result,
+                    rollback="git checkout -- .orderfield/work/scratch/gto/notes.md",
+                ),
                 "proposed_patch": None,
             },
             "metrics": {

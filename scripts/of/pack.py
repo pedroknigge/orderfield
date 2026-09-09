@@ -890,11 +890,11 @@ class CloseEvidence:
         if result_ref:
             try:
                 path = safe_relative_path(
-                    root, result_ref, "done result_ref", must_exist=True
+                    root, result_ref, "done result_ref", must_exist=False
                 )
                 if path.is_file():
                     artifact = path
-                else:
+                elif path.exists():
                     errs.append(
                         "done result_ref must be a file for close evidence"
                     )

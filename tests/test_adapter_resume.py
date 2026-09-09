@@ -234,6 +234,9 @@ class AdapterResumeSpawn(unittest.TestCase):
         notes.write_text("resume notes\n", encoding="utf-8")
         residual["result_ref"] = ".orderfield/work/scratch/r1/notes.md"
         residual["role"] = "explorer"
+        of.CloseEvidence.stamp(
+            residual, notes, rollback="git checkout -- .orderfield/work/scratch/r1/notes.md"
+        )
         return residual
 
     def _install(self, name: str, body: str) -> None:

@@ -192,11 +192,15 @@ of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
 # no OF_AGENT set -> handoff mode: paste .orderfield/waves/001/prompts/explorer.md into any agent.
 # The child writes the residual, echoing the packet identity. Simulated here:
 python3 - <<'EOF'
-import json
+import hashlib, json, os
 p = json.load(open(".orderfield/waves/001/packets/explorer.json"))
+ref = ".orderfield/work/scratch/explorer/notes.md"
+os.makedirs(os.path.dirname(ref), exist_ok=True)
+open(ref, "w").write("CLI-001 pricing models mapped\n")
+digest = hashlib.sha256(open(ref, "rb").read()).hexdigest()
 r = {k: p[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
-r.update(status="done", result_ref=".orderfield/waves/001/prompts/explorer.md",
-         residual={"wants_to_change": [], "evidence": "CLI-001: pricing models mapped", "proposed_patch": None},
+r.update(status="done", result_ref=ref,
+         residual={"wants_to_change": [], "evidence": "CLI-001: pricing models mapped\nartifact_sha: "+digest+"\nrollback: git checkout -- "+ref, "proposed_patch": None},
          metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False})
 json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=2)
 EOF

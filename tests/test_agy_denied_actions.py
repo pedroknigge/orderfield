@@ -165,6 +165,9 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         notes.write_text("agy notes\n", encoding="utf-8")
         residual["result_ref"] = ".orderfield/work/scratch/a1/notes.md"
         residual["role"] = "explorer"
+        of.CloseEvidence.stamp(
+            residual, notes, rollback="git checkout -- .orderfield/work/scratch/a1/notes.md"
+        )
         return residual
 
     def _install_agy(self, body: str) -> None:
