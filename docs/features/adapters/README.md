@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.89` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.7.90` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -25,7 +25,7 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 `OF_TRUST` is authoritative for every adapter. Conservative (default) emits no bypass flag. `yolo` is the only bypass. Full table: [references/adapters.md](../../../references/adapters.md#trust-profiles-of_trust).
 
 - **grok:** `-p`; documented `--output-format streaming-json` before `-p` (`StreamJson`); residual extract from stdout; `OF_TRUST=plan` adds `--sandbox read-only`; `--always-approve` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Spawn metadata finalized on exit/timeout/missing binary. `--json-schema` omit.
-- **codex:** `exec --json`; residual still `-o`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`)
+- **codex:** `exec --json`; residual still `-o`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`). A recorded child worktree adds `-C <worktree>`, field-home `--add-dir`, and exact Git-common-dir `--add-dir`; invalid records refuse before launch (`CodexWorktree`).
 - **claude / cursor:** `--output-format stream-json` so spawn can append harness events to the same `scratch/<id>/PULSE` (`StreamJson` / `PulseProgress`). Claude also emits `--verbose` because Claude Code rejects `-p` + stream-json without it. Cursor does not. Residual extract from stdout stays. Cursor `OF_TRUST=plan` adds `--mode plan`. `--resume ID` only when `residual.session_id` is already set (`AdapterResume`); never `--continue`. Not a supervisor. Grok uses the same extract path with documented `streaming-json`.
 - **adapter resume:** `AdapterResume` reads optional `residual.session_id`. Cold residual (missing file / blank id) is a fresh spawn. Do not invent. Not `ORDER.origin.session_id`. Codex / agy / grok / qwen / opencode / orca / generic omit (no documented exec-resume-by-id).
 - **agy:** flags before `-p`; `--json-schema` to `residual.codex.schema.json` (same Codex file; `OutputSchema`); `OF_TRUST=plan` prepends `--mode plan`; `--dangerously-skip-permissions` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Conservative spawn copies nonempty JSON `denied_actions` into `residual.denied_actions` (`AgyDeniedActions`); missing/empty is not approval; `yolo` does not copy. Skills: Global `~/.gemini/antigravity-cli/skills`; Shared `~/.gemini/skills`; `~/.gemini/config/skills` optional legacy. Quoted `description` / `compatibility` frontmatter so agy discovers the skill.

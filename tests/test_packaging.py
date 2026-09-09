@@ -1628,10 +1628,14 @@ class SkillCodexWorktreeSpawn(unittest.TestCase):
         for rel, text in surfaces.items():
             folded = text.casefold()
             with self.subTest(rel=rel):
-                self.assertIn("-c <worktree>", folded)
+                self.assertIn("-c <", folded)
+                self.assertIn("worktree>", folded)
                 self.assertIn("--add-dir", folded)
                 self.assertIn("field", folded)
-                self.assertIn("git common", folded)
+                self.assertTrue(
+                    "git common" in folded or "git-common-dir" in folded,
+                    rel,
+                )
                 self.assertIn("refus", folded)
                 self.assertIn("before launch", folded)
 

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.89. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.90. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.89` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.90` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -104,6 +104,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.87 refuse shipped / closed / done unless the leader quotes the `of close --checklist` `speak` line (`CloseChecklist.SPEAK`) in addition to `contrast RESOLVED` + `residual empty`. Protocol, not a kernel chat parser. The evaluator `speak` row is a different line. Proof: `SkillAntiDoneTheater`. Existing `CloseChecklistProof` stays. No new CLI / supervisor.
 - 0.7.88 `/version` or a release header SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`). Extract names `VERSION-`. `--surface internal` cannot hide them. Same close gate as `/health`. Not CloseEvidence SHA+rollback. Not a version server. No `of gate`. Proof: `ContractSurfaceGate` / `SkillContractSurface`. No new CLI / supervisor.
 - 0.7.89 Prod§15 day-90 runbook path required in `done_when` before close (`RunbookPath` on `DoneWhenLint.refuse_close`). Production/day-90 cue only; toy fields stay. Theater stays `DoneWhenLint`. Not an on-call bot. No `of gate`. Proof: `RunbookPathGate` / `SkillProductionMode`. No new CLI / supervisor.
+- 0.7.90 native Codex spawn honors a recorded child worktree with `-C`, field-home `--add-dir`, and exact Git-common-dir `--add-dir`; invalid records refuse before launch. Proof: `CodexRecordedWorktree` / `SkillCodexWorktreeSpawn`. No new command / schema / supervisor.
 
 ## Contract boundaries
 

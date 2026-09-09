@@ -41,7 +41,7 @@ Production mode: the sibling appendix **Production mode** names Gate A before `-
 
 Orca interactive workers: after residual + `of collect` (and on abandon), **must** `worker-stop` then `worker-release` for dispatches you started. Never leave retained unless the user asked. If `of worktree add` was used, `of worktree remove` when the slice closes. `worker-stop` does not delete worktrees. Follow the sibling. Not a process supervisor.
 
-Recorded worktree + native Codex spawn: `of spawn --adapter codex` uses `-C <worktree>`, adds the canonical field home for residual/PULSE, and adds the exact Git common directory for linked-worktree metadata. Missing, malformed, or non-Git records refuse before launch with remove/re-add guidance. No record leaves Codex argv unchanged. Follow the sibling.
+Recorded worktree + native Codex spawn: `of spawn --adapter codex` uses `-C <worktree>`, `--add-dir <field-home>` for residual/PULSE, and `--add-dir <git-common-dir>` for linked-worktree metadata. Missing, malformed, or non-Git records refuse before launch with remove/re-add guidance. No record leaves Codex argv unchanged. Follow the sibling.
 
 Per-task model hints: when packing a multi-role wave, **consult** [docs/model-catalog.md](../docs/model-catalog.md) first, then **must propose** cheap vs frontier in chat. Do not assume smarter = costlier. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router. Never `budget.tokens`.
 
