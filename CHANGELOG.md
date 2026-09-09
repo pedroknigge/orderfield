@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.80
+
+Timeout, idempotency, and health SPEC IDs are public-surface VERIFIED_CONTRACT. Unit tests cannot close them. `--surface internal` cannot hide them. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.79 notes.
+
+- **Reuse, not a new gate:** `ContractSurface` extends extract prefixes and `requirement_surface`. `--verified-contract` / `--both-sides` stay. Idempotency stays PAIR. No `of gate`. No health monitor. No timeout supervisor. No new CLI / token ceiling.
+- **Extract names the IDs:** `TIMEOUT-` / `HEALTH-` join `IDEMP-` / `HTTP-` / `CLI-`. Contrast stays blocked on VERIFIED_INTERNAL.
+- **Skill drives the cut:** SKILL / `/of` / appendix / close-honesty templates teach timeout / idempotency / health as VERIFIED_CONTRACT in the same cut.
+- **Proof:** `ContractSurfaceGate` (extract; VERIFIED_INTERNAL cannot close; `--surface internal` cannot hide). `SkillContractSurface`. Existing `WebhookPairGate` / `contrast-close-contract` stay. No new CLI / supervisor / token ceiling.
+- Packaging: VERSION 0.7.80; skill/alias description preview `v0.7.80 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.79 notes.
+
 ## 0.7.79
 
 Skill appendix teaches production-mode invariants and Gate A before features. Agents use the full verb table for production missions instead of inventing a supervisor, bot org, `RUNTIME_OWNERSHIP`, fake token budgets, or `of merge`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.78 notes.

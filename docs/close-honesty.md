@@ -44,7 +44,7 @@ next: of spec --verified-contract CLI-001 after a real CLI run
 disk: spec_closed false; CLOSE.json absent
 ```
 
-Pair-shaped IDs need both sides (including webhook HMAC + replay):
+Pair-shaped IDs need both sides (including webhook HMAC + replay and idempotency):
 
 ```text
 CLOSE BLOCKED
@@ -52,6 +52,35 @@ id: REQ-035
 verdict: PAIR
 reason: success path stamped; fail path missing
 next: of spec --verified-contract REQ-035 --both-sides
+disk: spec_closed false; CLOSE.json absent
+```
+
+Timeout / idempotency / health IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Unit tests are not enough. `--surface internal` cannot hide them.
+
+```text
+CLOSE BLOCKED
+id: HEALTH-001
+verdict: VERIFIED_INTERNAL
+reason: unit tests only; GET /health not exercised
+next: of spec --verified-contract HEALTH-001 after a real /health run
+disk: spec_closed false; CLOSE.json absent
+```
+
+```text
+CLOSE BLOCKED
+id: TIMEOUT-001
+verdict: VERIFIED_INTERNAL
+reason: unit tests only; timeout bound not exercised at the surface
+next: of spec --verified-contract TIMEOUT-001 after a real timeout run
+disk: spec_closed false; CLOSE.json absent
+```
+
+```text
+CLOSE BLOCKED
+id: IDEMP-001
+verdict: PAIR
+reason: first write stamped; duplicate/conflict path missing
+next: of spec --verified-contract IDEMP-001 --both-sides
 disk: spec_closed false; CLOSE.json absent
 ```
 

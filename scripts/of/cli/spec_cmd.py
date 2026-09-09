@@ -233,6 +233,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 )
                 if raw.get("surface") in {"contract", "internal"}:
                     incoming_item["surface"] = raw["surface"]
+                incoming_item["surface"] = requirement_surface(incoming_item)
                 if "pair" in raw:
                     incoming_item["pair"] = bool(raw["pair"])
                 data.setdefault("requirements", []).append(incoming_item)
@@ -263,6 +264,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         surface_arg = str(getattr(args, "surface", None) or "").strip().lower()
         if surface_arg in {"contract", "internal"}:
             added["surface"] = surface_arg
+        added["surface"] = requirement_surface(added)
         spec_file = spec_path(root)
         current_spec = read_spec_text(root) if spec_file.is_file() else ""
         if not spec_mentions_req_id(current_spec, rid):
@@ -2762,6 +2764,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.WebhookPairContract",
     "tests.test_kernel.WebhookPairGate",
     "tests.test_kernel.SkillWebhookReplayPair",
+    "tests.test_kernel.ContractSurfaceGate",
+    "tests.test_kernel.SkillContractSurface",
 )
 
 

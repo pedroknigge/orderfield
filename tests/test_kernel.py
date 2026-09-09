@@ -28,6 +28,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillAntiDoneTheater,
     SkillProductionMode,
     SkillSurfaceCore,
+    SkillContractSurface,
     SkillWebhookReplayPair,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401
@@ -89,6 +90,7 @@ from test_kernel_spec import (  # noqa: E402,F401
     ContrastDiffNarrative,
     ContrastReportRenderer,
     MultiWaveResidualLoop,
+    ContractSurfaceGate,
     WebhookPairContract,
     WebhookPairGate,
 )

@@ -1144,6 +1144,36 @@ class SkillWebhookReplayPair(unittest.TestCase):
         self.assertIn("webhookpair", appendix_fold.replace(" ", ""))
 
 
+class SkillContractSurface(unittest.TestCase):
+    """SKILL teaches timeout / idempotency / health as VERIFIED_CONTRACT."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_contract_surface(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("timeout", table)
+        self.assertIn("idempoten", table)
+        self.assertIn("health", table)
+        self.assertIn("verified_contract", table)
+        self.assertIn("contractsurface", table.replace(" ", "").replace("`", ""))
+        alias_fold = alias.casefold()
+        self.assertIn("timeout", alias_fold)
+        self.assertIn("idempoten", alias_fold)
+        self.assertIn("health", alias_fold)
+        self.assertIn("verified_contract", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("timeout", appendix_fold)
+        self.assertIn("idempoten", appendix_fold)
+        self.assertIn("/health", appendix_fold)
+        self.assertIn("verified_contract", appendix_fold)
+        self.assertIn("contractsurface", appendix_fold.replace(" ", ""))
+
+
 class SkillLearnLengthAdvisory(unittest.TestCase):
     """SKILL teaches of learn length is advisory like pack --slice."""
 
