@@ -52,7 +52,7 @@ The close-the-loop review: Intent (SPEC) vs Delivered vs missing (`of contrast`)
 
 **VERIFIED_INTERNAL** is an internal unit test or store. It is not the public contract.
 
-**VERIFIED_CONTRACT** closes a public surface named in SPEC (CLI, HTTP, file format, exit code, timeout, idempotency, health). Pair-shaped requirements need both sides (`of spec --verified-contract ID --both-sides`). Timeout / idempotency / health IDs are contract (`ContractSurface`); `--surface internal` cannot hide them. Idempotency stays PAIR. Webhook HMAC signature + replay is PAIR (`WebhookPair`: accept valid and reject replay/bad signature). `of close` stays blocked while a public-surface ID is only internally verified.
+**VERIFIED_CONTRACT** closes a public surface named in SPEC (CLI, HTTP, file format, exit code, timeout, idempotency, health, version). Pair-shaped requirements need both sides (`of spec --verified-contract ID --both-sides`). Timeout / idempotency / health / version IDs are contract (`ContractSurface`); `--surface internal` cannot hide them. `/version` or a release header is the same shape as `/health`. Idempotency stays PAIR. Webhook HMAC signature + replay is PAIR (`WebhookPair`: accept valid and reject replay/bad signature). `of close` stays blocked while a public-surface ID is only internally verified.
 
 ## slaving (packet bound)
 

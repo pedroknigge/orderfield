@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.87. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.88. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.87`
+**Status:** Shipped · **Current release line:** `0.7.88`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.88 — `/version` or release header as VERIFIED_CONTRACT
+
+- `/version` or a release header SPEC IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Extract names `VERSION-`. `--surface internal` cannot hide them. Same close gate as `/health`. Not CloseEvidence SHA+rollback. Not a version server. No `of gate`. Proof: `ContractSurfaceGate` / `SkillContractSurface`. Not a new CLI. Not a new regime.
 
 ## 0.7.87 — quote checklist speak before claiming shipped
 

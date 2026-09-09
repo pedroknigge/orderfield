@@ -68,6 +68,8 @@ CONTRACT_SURFACE_CUES = (
     "/health",
     "health check",
     "healthz",
+    "/version",
+    "release header",
 )
 PAIR_TEXT_PAIRS = (
     ("same", "different"),
@@ -176,16 +178,18 @@ class WebhookPair:
 
 
 class ContractSurface:
-    """Timeout / idempotency / health are public-surface VERIFIED_CONTRACT.
+    """Timeout / idempotency / health / version are public-surface VERIFIED_CONTRACT.
 
     Contrast already refuses VERIFIED_INTERNAL on a contract surface.
-    This class names the three production shapes so extract and
+    This class names the production shapes so extract and
     ``requirement_surface`` cannot hide them as internal. Idempotency
-    stays PAIR via ``requirement_is_pair``. Not a health monitor.
-    Not a timeout supervisor. Not ``of gate``.
+    stays PAIR via ``requirement_is_pair``. ``/version`` and a release
+    header reuse the same close gate as ``/health`` — not CloseEvidence
+    SHA+rollback. Not a health monitor. Not a timeout supervisor.
+    Not a version server. Not ``of gate``.
     """
 
-    PREFIXES = ("TIMEOUT-", "IDEMP-", "HEALTH-")
+    PREFIXES = ("TIMEOUT-", "IDEMP-", "HEALTH-", "VERSION-")
     TIMEOUT_CUES = (
         "timeout",
         "time out",
@@ -202,6 +206,12 @@ class ContractSurface:
         "liveness",
         "readiness",
     )
+    VERSION_CUES = (
+        "/version",
+        "release header",
+        "x-release",
+        "x-version",
+    )
     IDEMP_CUES = ("idempoten",)
 
     @staticmethod
@@ -215,13 +225,14 @@ class ContractSurface:
 
     @staticmethod
     def matches(text: str) -> bool:
-        """True when the brief names timeout, idempotency, or health."""
+        """True when the brief names timeout, idempotency, health, or version."""
         low = ContractSurface._lower(text)
         if not low:
             return False
         return (
             ContractSurface._has_any(low, ContractSurface.TIMEOUT_CUES)
             or ContractSurface._has_any(low, ContractSurface.HEALTH_CUES)
+            or ContractSurface._has_any(low, ContractSurface.VERSION_CUES)
             or ContractSurface._has_any(low, ContractSurface.IDEMP_CUES)
         )
 
@@ -237,6 +248,8 @@ class ContractSurface:
             return "TIMEOUT"
         if ContractSurface._has_any(low, ContractSurface.HEALTH_CUES):
             return "HEALTH"
+        if ContractSurface._has_any(low, ContractSurface.VERSION_CUES):
+            return "VERSION"
         return None
 
 
@@ -757,6 +770,7 @@ EXTRACT_PREFIX_CUES = (
     ("IDEMP", ("idempoten", "concurrent identical", "8 concurrent")),
     ("TIMEOUT", ContractSurface.TIMEOUT_CUES),
     ("HEALTH", ContractSurface.HEALTH_CUES),
+    ("VERSION", ContractSurface.VERSION_CUES),
     (
         "HTTP",
         (
@@ -783,6 +797,8 @@ NAMED_INVARIANT_CUES = (
     "/health",
     "health check",
     "healthz",
+    "/version",
+    "release header",
     "deadline",
 )
 

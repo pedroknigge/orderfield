@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.88
+
+`/version` or a release header is a public-surface VERIFIED_CONTRACT close gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.87 notes.
+
+- **Reuse table (design-first):** `ContractSurface` already names timeout / idempotency / health. `CloseEvidence` already requires SHA + rollback (left alone). Living map already binds Prod§11 residual to `CloseEvidence`. CloseChecklist speak already ships. The remaining gap is `/version` OR a release header as a contrast-plane shape — not a second SHA+rollback doctrine.
+- **Reuse, not a new gate:** `ContractSurface` adds `VERSION-` extract + cues (`/version`, `release header`, `x-release`, `x-version`). `--verified-contract` stays. `--surface internal` cannot hide them. Bare "version" / VERSION bump / `--from-release` do not match. No `of gate`. No version server. No new CLI / schema / event / supervisor / token ceiling / `of merge`.
+- **Skill drives the cut:** SKILL / `/of` / appendix living-map row + SLAVE teach `/version` or a release header as VERIFIED_CONTRACT in the same cut. Prod§11 SHA + rollback stays residual `CloseEvidence`.
+- **Proof:** `ContractSurfaceGate` (extract VERSION; VERIFIED_INTERNAL cannot close; `--surface internal` cannot hide; captions-only VERSION bump does not match). `SkillContractSurface` refuses skill pages that omit `/version` / `release header`. Existing `CloseEvidenceGate` / `WebhookPairGate` / `contrast-close-contract` stay. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.88; skill/alias description preview `v0.7.88 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.87 notes.
+
 ## 0.7.87
 
 Refuse a shipped / closed / done claim unless the leader quotes the `of close --checklist` `speak` line. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.86 notes.

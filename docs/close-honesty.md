@@ -55,7 +55,7 @@ next: of spec --verified-contract REQ-035 --both-sides
 disk: spec_closed false; CLOSE.json absent
 ```
 
-Timeout / idempotency / health IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Unit tests are not enough. `--surface internal` cannot hide them.
+Timeout / idempotency / health / version IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Unit tests are not enough. `--surface internal` cannot hide them. `/version` or a release header is the same shape as `/health`.
 
 ```text
 CLOSE BLOCKED
@@ -72,6 +72,15 @@ id: TIMEOUT-001
 verdict: VERIFIED_INTERNAL
 reason: unit tests only; timeout bound not exercised at the surface
 next: of spec --verified-contract TIMEOUT-001 after a real timeout run
+disk: spec_closed false; CLOSE.json absent
+```
+
+```text
+CLOSE BLOCKED
+id: VERSION-001
+verdict: VERIFIED_INTERNAL
+reason: unit tests only; GET /version or release header not exercised
+next: of spec --verified-contract VERSION-001 after a real /version or release-header run
 disk: spec_closed false; CLOSE.json absent
 ```
 

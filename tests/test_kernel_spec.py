@@ -881,7 +881,7 @@ class WebhookPairGate(unittest.TestCase):
 
 
 class ContractSurfaceGate(unittest.TestCase):
-    """Timeout / idempotency / health: extract + VERIFIED_INTERNAL cannot close."""
+    """Timeout / idempotency / health / version: extract + VERIFIED_INTERNAL cannot close."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-contract-surface-"))
@@ -895,6 +895,8 @@ class ContractSurfaceGate(unittest.TestCase):
                     "## Rules",
                     "- requests must timeout after 30s",
                     "- GET /health must return 200",
+                    "- GET /version must return 200",
+                    "- responses must send a release header",
                     "- same idempotency key with a different payload must fail",
                     "",
                     "```",
@@ -929,9 +931,12 @@ class ContractSurfaceGate(unittest.TestCase):
         self.assertTrue(hits, listed.stdout)
         return hits[0]
 
-    def test_matches_timeout_health_idemp_not_process_health(self) -> None:
+    def test_matches_timeout_health_idemp_version_not_process_health(self) -> None:
         self.assertTrue(of.ContractSurface.matches("requests must timeout after 30s"))
         self.assertTrue(of.ContractSurface.matches("GET /health must return 200"))
+        self.assertTrue(of.ContractSurface.matches("GET /version must return 200"))
+        self.assertTrue(of.ContractSurface.matches("responses must send a release header"))
+        self.assertTrue(of.ContractSurface.matches("X-Release names the cut"))
         self.assertTrue(
             of.ContractSurface.matches(
                 "same idempotency key with a different payload must fail"
@@ -940,6 +945,9 @@ class ContractSurfaceGate(unittest.TestCase):
         self.assertFalse(
             of.ContractSurface.matches("process-health monitoring is reserved")
         )
+        self.assertFalse(of.ContractSurface.matches("VERSION bump plus one obvious feature"))
+        self.assertFalse(of.ContractSurface.matches("skill VERSION skew"))
+        self.assertFalse(of.ContractSurface.matches("install.sh --from-release"))
         self.assertFalse(of.ContractSurface.matches("function signature only"))
         self.assertEqual(
             of.ContractSurface.prefix_for("requests must timeout after 30s"),
@@ -950,16 +958,29 @@ class ContractSurfaceGate(unittest.TestCase):
             "HEALTH",
         )
         self.assertEqual(
+            of.ContractSurface.prefix_for("GET /version must return 200"),
+            "VERSION",
+        )
+        self.assertEqual(
+            of.ContractSurface.prefix_for("responses must send a release header"),
+            "VERSION",
+        )
+        self.assertEqual(
             of.ContractSurface.prefix_for("same idempotency key must fail"),
             "IDEMP",
         )
+        self.assertEqual(
+            of.classify_requirement_prefix("GET /version must return 200"),
+            "VERSION",
+        )
         self.assertIsNone(of.ContractSurface.prefix_for("amount_minor is integer"))
 
-    def test_extract_timeout_health_idemp_prefixes(self) -> None:
+    def test_extract_timeout_health_idemp_version_prefixes(self) -> None:
         reqs = of.extract_requirements_from_spec(self.brief.read_text(encoding="utf-8"))
         by_prefix = {str(item["id"]).rsplit("-", 1)[0] for item in reqs}
         self.assertIn("TIMEOUT", by_prefix, reqs)
         self.assertIn("HEALTH", by_prefix, reqs)
+        self.assertIn("VERSION", by_prefix, reqs)
         self.assertIn("IDEMP", by_prefix, reqs)
 
     def test_timeout_health_internal_verify_does_not_close(self) -> None:
@@ -982,6 +1003,53 @@ class ContractSurfaceGate(unittest.TestCase):
             after = run_of(self.tmp, "contrast")
             self.assertIn("VERIFIED_CONTRACT", after.stdout)
             self.assertNotRegex(after.stdout, rf"VERIFIED_INTERNAL\s+{rid}")
+
+    def test_version_internal_verify_does_not_close(self) -> None:
+        self._init()
+        version_id = self._listed_id("/version")
+        header_id = self._listed_id("release header")
+        self.assertTrue(version_id.startswith("VERSION-"), version_id)
+        self.assertTrue(header_id.startswith("VERSION-"), header_id)
+        for rid in (version_id, header_id):
+            internal = run_of(self.tmp, "spec", "--verified", rid)
+            self.assertEqual(internal.returncode, 0, internal.stderr)
+            contrast = run_of(self.tmp, "contrast")
+            self.assertEqual(contrast.returncode, 2, contrast.stdout)
+            self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+            refused = run_of(self.tmp, "close")
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertIn("VERIFIED_INTERNAL", refused.stderr)
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid)
+            self.assertEqual(stamped.returncode, 0, stamped.stderr)
+            after = run_of(self.tmp, "contrast")
+            self.assertIn("VERIFIED_CONTRACT", after.stdout)
+            self.assertNotRegex(after.stdout, rf"VERIFIED_INTERNAL\s+{rid}")
+
+    def test_surface_internal_cannot_hide_version(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "VERSION-009",
+            "--text",
+            "GET /version must return 200",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        data = load_json(self.tmp / ".orderfield" / "REQUIREMENTS.json")
+        item = next(row for row in data["requirements"] if row.get("id") == "VERSION-009")
+        self.assertEqual(of.requirement_surface(item), "contract")
+        self.assertEqual(item.get("surface"), "contract")
+        internal = run_of(self.tmp, "spec", "--verified", "VERSION-009")
+        self.assertEqual(internal.returncode, 0, internal.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
+        refused = run_of(self.tmp, "close")
+        self.assertNotEqual(refused.returncode, 0)
 
     def test_surface_internal_cannot_hide_health_or_timeout(self) -> None:
         r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
