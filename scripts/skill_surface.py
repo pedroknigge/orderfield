@@ -37,6 +37,7 @@ class SkillSurface:
         "**Gate A before features.**",
         "#### Multi-harness mix",
         "checklist → of contrast",
+        "fresh-context review packet",
         "**Stay-on-the-run.**",
     )
 

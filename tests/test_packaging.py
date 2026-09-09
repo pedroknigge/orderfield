@@ -1467,6 +1467,44 @@ class SkillAntiDoneTheater(unittest.TestCase):
         self.assertIn("not your judgment", appendix.casefold())
 
 
+class SkillEvaluatorPacket(unittest.TestCase):
+    """After a wave, ask consent for a fresh-context review packet before close."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_ask_before_close(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        ask_at = table.index("ask")
+        close_at = table.index("of close")
+        self.assertLess(ask_at, close_at)
+        self.assertIn("fresh-context review packet", table)
+        self.assertIn("never silent", table)
+        self.assertIn("--role adversary", table)
+        self.assertIn("--role verifier", table)
+        self.assertIn("self-praise", table)
+        self.assertIn("not a new close gate", table)
+        alias_fold = alias.casefold()
+        self.assertIn("fresh-context review packet", alias_fold)
+        self.assertIn("never silent", alias_fold)
+        self.assertIn("adversary", alias_fold)
+        self.assertIn("verifier", alias_fold)
+        self.assertIn("must ask", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("fresh-context review packet", appendix_fold)
+        self.assertIn("never silent", appendix_fold)
+        self.assertIn("self-praise is not review", appendix_fold)
+        self.assertIn("not a new close gate", appendix_fold)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        hero = readme[: readme.index("## Install")].casefold()
+        self.assertIn("fresh-context review packet", hero)
+        self.assertIn("never silent", hero)
+
+
 class SkillSurfaceCore(unittest.TestCase):
     """Always-loaded SKILL.md is a short core. Appendix keeps full procedure."""
 

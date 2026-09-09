@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.84</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.85</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.84-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.85-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -35,6 +35,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A multi-role wave needs cheap and frontier workers | The plan consults the [model catalog](docs/model-catalog.md), then proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
 | A wave could mix CLIs or stay on one without asking | The leader asks same-harness roles on one harness vs multi-harness mix before pack. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
+| The implementer says the wave is done | Ask consent for a fresh-context review packet (`adversary` / `verifier`) before close. Never silent. Self-praise is not review. Contrast still required. Not a new close gate. |
 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
@@ -95,8 +96,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.84
-release_version=0.7.84
+release_tag=v0.7.85
+release_version=0.7.85
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"

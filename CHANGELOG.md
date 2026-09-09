@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.85
+
+SKILL / `/of` / appendix teach a fresh-context review packet (adversary / verifier; council shape) after a wave and before `of close`. Ask consent; never silent. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.84 notes.
+
+- **Reuse, not a new role or gate:** `EvaluatorPacket` reads `WaveRoster` for existing `adversary` / `verifier` children. `of close --checklist` prints the `evaluator` row + speak. `CloseChecklist.ok` stays contrast RESOLVED + residual empty. Missing a review packet does not refuse `of close`. No new CLI / supervisor / token ceiling / `of merge`.
+- **Ask first:** after a wave the leader **must ask** consent to pack `--role adversary` and/or `--role verifier` that did not write the slice. On yes → pack + spawn. On no → contrast / checklist / close. Self-praise is not review.
+- **Honesty:** ties the independent-reviewer theme of C-080 Partial. Does **not** flip REVIEW-001 (GitHub merge-history adoption stays unproven). Not `of merge`.
+- **Skill drives the cut:** SKILL table + `/of` + appendix teach the same wording. Hosts still load the short core.
+- **Proof:** `EvaluatorPacketProof` (ask is not a close gate; in-flight then landed). `SkillEvaluatorPacket`. Existing `CloseChecklistProof` stays. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.85; skill/alias description preview `v0.7.85 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.84 notes.
+
 ## 0.7.84
 
 Long-task efficiency mix: the leader proposes cheap/frontier rebalance AND harness mix from honest signals only (session remaining, published balance payload, residual quality / EfficiencySignal). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.83 notes.
