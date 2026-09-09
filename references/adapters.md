@@ -204,6 +204,15 @@ Conservative passes no sandbox flag. `OF_TRUST=auto-edit` adds
 bypassing approvals; `OF_TRUST=yolo` is the old
 `--dangerously-bypass-approvals-and-sandbox`.
 
+If `of worktree add --child-id CHILD` recorded a worktree for this packet,
+spawn also passes `-C <recorded-worktree>`, `--add-dir
+<canonical-field-home>` for residual/PULSE writes, and `--add-dir
+<git-common-dir>` for linked-worktree `FETCH_HEAD` / lock updates. The Git
+common directory is resolved with `git rev-parse --git-common-dir`; it is not
+guessed. A missing, malformed, or non-Git record refuses before launch and
+tells the leader to remove/re-add it. Without a record, Codex argv is
+unchanged. Class: `CodexWorktree`.
+
 Skills: `.codex/skills/orderfield/` or `.agents/skills/orderfield/`.
 
 ## Cursor

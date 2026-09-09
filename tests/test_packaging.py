@@ -1613,6 +1613,36 @@ class SkillOrcaWorkerTeardown(unittest.TestCase):
         self.assertNotIn("worker-start", adapters)
 
 
+class SkillCodexWorktreeSpawn(unittest.TestCase):
+    """Core, alias, appendix, and adapter docs teach the shipped Codex roots."""
+
+    def test_all_skill_surfaces_name_worktree_roots_and_refusal(self) -> None:
+        surfaces = {
+            "SKILL.md": SkillSurface.core(ROOT),
+            "of/SKILL.md": SkillSurface.alias(ROOT),
+            "references/skill-appendix.md": SkillSurface.appendix(ROOT),
+            "references/adapters.md": (
+                ROOT / "references" / "adapters.md"
+            ).read_text(encoding="utf-8"),
+        }
+        for rel, text in surfaces.items():
+            folded = text.casefold()
+            with self.subTest(rel=rel):
+                self.assertIn("-c <worktree>", folded)
+                self.assertIn("--add-dir", folded)
+                self.assertIn("field", folded)
+                self.assertIn("git common", folded)
+                self.assertIn("refus", folded)
+                self.assertIn("before launch", folded)
+
+    def test_kernel_uses_static_codex_worktree_argv_class(self) -> None:
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("class CodexWorktree:", source)
+        self.assertIn('"-C"', source)
+        self.assertIn('"--add-dir"', source)
+        self.assertIn('"--git-common-dir"', source)
+
+
 class SkillEvaluatorPacket(unittest.TestCase):
     """After a wave, ask consent for a fresh-context review packet before close."""
 

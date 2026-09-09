@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.90
+
+Native Codex spawn honors the packet child's recorded `of worktree` instead of advertising an unwritable workspace. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.89 notes.
+
+- **Reuse table (design-first):** `load_worktrees` already binds child id → isolated path; `cmd_spawn` already knows the packet child and physical field home; `build_spawn_argv` already owns Codex flags. `CodexWorktree` adds only validation and exact argv roots. No new registry, schema, command, supervisor, bot org, token budget, `RUNTIME_OWNERSHIP`, or `of merge`.
+- **Complete linked-worktree root set:** recorded Codex children launch with `-C <worktree>`, `--add-dir <field-home>` for residual/PULSE, and `--add-dir <git-common-dir>` for `FETCH_HEAD` / lock updates. The common directory comes from `git rev-parse --git-common-dir`. Invalid records refuse before launch with remove/re-add guidance. No record keeps prior argv.
+- **Skill drives the cut:** SKILL / `/of` / appendix and adapter docs teach the Codex worktree roots and pre-spawn refusal in the same cut.
+- **Proof:** `CodexRecordedWorktree` creates a real linked worktree and checks dry-run `-C` plus both `--add-dir` roots; a stale record fails before argv. Full unittest discovery and `validate-skill.sh` stay the release gates.
+- Packaging: VERSION 0.7.90; skill/alias description preview `v0.7.90 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.89 notes.
+
 ## 0.7.89
 
 Prod§15 day-90 ops: `done_when` must name a concrete repo-relative runbook path before `of close` can stamp. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.88 notes.
