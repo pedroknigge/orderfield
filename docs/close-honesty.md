@@ -44,7 +44,7 @@ next: of spec --verified-contract CLI-001 after a real CLI run
 disk: spec_closed false; CLOSE.json absent
 ```
 
-Pair-shaped IDs need both sides:
+Pair-shaped IDs need both sides (including webhook HMAC + replay):
 
 ```text
 CLOSE BLOCKED

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
 import shutil
@@ -60,6 +61,8 @@ CONTRACT_SURFACE_CUES = (
     "curl ",
     ".jsonl",
     "/events",
+    "webhook",
+    "hmac",
 )
 PAIR_TEXT_PAIRS = (
     ("same", "different"),
@@ -69,6 +72,104 @@ PAIR_TEXT_PAIRS = (
     ("allowed", "forbidden"),
     ("before", "after"),
 )
+
+
+class WebhookPair:
+    """Webhook signature + replay is pair-shaped. Stdlib HMAC; no HTTP server.
+
+    Contrast already gates pair IDs behind ``--both-sides``. This class names
+    the webhook shape (so ``requirement_is_pair`` does not miss it) and is the
+    deterministic accept/reject oracle tests lock. Integration replay is a
+    different word — bare ``replay`` without webhook/HMAC is not this pair.
+    """
+
+    OK = ""
+    BAD_SIGNATURE = "bad_signature"
+    REPLAY = "replay"
+    STALE = "stale"
+    SKEW_SECONDS = 300
+    WEBHOOK_CUES = (
+        "webhook",
+        "x-hub-signature",
+        "webhook-signature",
+    )
+    HMAC_CUES = ("hmac",)
+    REPLAY_CUES = ("replay", "replayed")
+    SIGN_CUES = ("signature", "signed", "unsigned", "forged")
+
+    @staticmethod
+    def _lower(text: str) -> str:
+        return str(text or "").lower()
+
+    @staticmethod
+    def _has_any(text: str, cues: tuple[str, ...]) -> bool:
+        low = WebhookPair._lower(text)
+        return any(cue in low for cue in cues)
+
+    @staticmethod
+    def matches(text: str) -> bool:
+        """True when the brief names webhook/HMAC accept-and-reject."""
+        low = WebhookPair._lower(text)
+        if not low:
+            return False
+        webhook = WebhookPair._has_any(low, WebhookPair.WEBHOOK_CUES)
+        hashed = WebhookPair._has_any(low, WebhookPair.HMAC_CUES)
+        replay = WebhookPair._has_any(low, WebhookPair.REPLAY_CUES)
+        signed = WebhookPair._has_any(low, WebhookPair.SIGN_CUES)
+        if webhook and (hashed or replay or signed):
+            return True
+        return hashed and (replay or signed)
+
+    @staticmethod
+    def signed_payload(timestamp: str, delivery_id: str, body: bytes | str) -> bytes:
+        raw = body.encode("utf-8") if isinstance(body, str) else body
+        return f"{timestamp}.{delivery_id}.".encode("utf-8") + raw
+
+    @staticmethod
+    def sign(
+        secret: bytes | str, timestamp: str, delivery_id: str, body: bytes | str
+    ) -> str:
+        key = secret.encode("utf-8") if isinstance(secret, str) else secret
+        digest = hmac.new(
+            key,
+            WebhookPair.signed_payload(timestamp, delivery_id, body),
+            hashlib.sha256,
+        ).hexdigest()
+        return f"sha256={digest}"
+
+    @staticmethod
+    def verify(
+        secret: bytes | str,
+        timestamp: str,
+        delivery_id: str,
+        body: bytes | str,
+        signature: str,
+        *,
+        now: int,
+        seen: set[str],
+        skew: int | None = None,
+    ) -> str:
+        """Return ``OK`` or a reject reason. Mutates ``seen`` only on accept."""
+        if not secret or not delivery_id or not timestamp or not signature:
+            return WebhookPair.BAD_SIGNATURE
+        window = WebhookPair.SKEW_SECONDS if skew is None else int(skew)
+        try:
+            ts = int(timestamp)
+        except (TypeError, ValueError):
+            return WebhookPair.STALE
+        if abs(int(now) - ts) > window:
+            return WebhookPair.STALE
+        expected = WebhookPair.sign(secret, timestamp, delivery_id, body)
+        left = signature.encode("utf-8")
+        right = expected.encode("utf-8")
+        if len(left) != len(right) or not hmac.compare_digest(left, right):
+            return WebhookPair.BAD_SIGNATURE
+        if delivery_id in seen:
+            return WebhookPair.REPLAY
+        seen.add(delivery_id)
+        return WebhookPair.OK
+
+
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
 # Whole-string go-ahead / pointer-to-prior-chat. Advisory only — still writes SPEC.
 DEICTIC_POINTER_MAX_CHARS = 280
@@ -470,6 +571,8 @@ def requirement_is_pair(item: dict[str, Any]) -> bool:
     if "pair" in item:
         return bool(item.get("pair"))
     text = str(item.get("text") or "").lower()
+    if WebhookPair.matches(text):
+        return True
     if "idempoten" in text or "twice" in text or "repeat" in text:
         return True
     return any(left in text and right in text for left, right in PAIR_TEXT_PAIRS)
@@ -568,12 +671,26 @@ EXTRACT_RULE_KEYS = (
     "idempoten",
     "retry",
     "event",
+    "webhook",
+    "hmac",
 )
 EXTRACT_PREFIX_CUES = (
     ("LEASE", ("leaseable", "retry_wait", "stale token", "heartbeat", "lease")),
     ("AUDIT", ("execution_failed", "execution_requeued", "audit", "event type")),
     ("IDEMP", ("idempoten", "concurrent identical", "8 concurrent")),
-    ("HTTP", ("http://", "https://", "get /", "post /", "status code")),
+    (
+        "HTTP",
+        (
+            "http://",
+            "https://",
+            "get /",
+            "post /",
+            "status code",
+            "webhook",
+            "hmac",
+            "x-hub-signature",
+        ),
+    ),
 )
 NAMED_INVARIANT_CUES = (
     "execution_failed",
@@ -582,6 +699,8 @@ NAMED_INVARIANT_CUES = (
     "only queued",
     "idempoten",
     "concurrent identical",
+    "webhook",
+    "hmac",
 )
 
 

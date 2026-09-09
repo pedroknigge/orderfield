@@ -205,7 +205,7 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Symptom:** `of contrast` exit 2; `of close` refused; `VERIFIED_INTERNAL` / `PAIR` / `MISSING`.
 
-**Meaning:** Slice `done` is not SPEC closed. Unit tests and an internal store are `VERIFIED_INTERNAL`. A CLI/HTTP/file/exit-code requirement needs `of spec --verified-contract ID` after exercising that surface. Pair-shaped IDs (same/different, idempotency) need `--both-sides`.
+**Meaning:** Slice `done` is not SPEC closed. Unit tests and an internal store are `VERIFIED_INTERNAL`. A CLI/HTTP/file/exit-code requirement needs `of spec --verified-contract ID` after exercising that surface. Pair-shaped IDs (same/different, idempotency, webhook HMAC + replay) need `--both-sides`.
 
 **Recover:**
 

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.77. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.78. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.77` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.78` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -61,7 +61,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `--requires-tool` capability gate
 - Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one; Claude maps cheap→haiku / frontier→opus. Grok/agy: named model before `-p`; no invented tier aliases. Orca task-create / qwen / opencode / generic stay no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli`. Not a router.
 - Efficiency signal (`EfficiencySignal`): quality × optional `residual.usage`. Status/resume/doctor may propose uptier/downtier. Ask only. `budget.tokens` stays reserved. Proof: `recovery/efficiency-signal`. Design: [efficiency-signal.md](../../efficiency-signal.md).
-- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). One `ContrastReport` document: human one-pager + machine JSON. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs need `--both-sides`. Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
+- Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). One `ContrastReport` document: human one-pager + machine JSON. Public-surface requirements cannot close on VERIFIED_INTERNAL; pair-shaped IDs (including webhook HMAC + replay) need `--both-sides` (`WebhookPair`). Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice. Whole-phase slogans die at pack (`SliceLint`, `slice.phase`) with a split/constraints fix path. Oversized-slice note stays advisory (do not refuse ≥800). `of pack --explain` dry-runs that lint and does not write. Proof: `recovery/packet-sizing-lint` / `recovery/packet-sizing-explain`.
 - Optional `of --json` / `OF_JSON=1` event lines on stderr — see [docs/events.md](../../events.md)
 - Adapters live in `scripts/of_adapters.py` (imported by the CLI)
@@ -92,6 +92,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.75 `of collect` reports a missing residual as pending/unavailable with known adapter / trust / outcome and actual `denied_actions`. Conservative headless permissions are an adapter-tied possibility, never a universal cannot-write claim. Proof: `CollectDiagnostic` / `CollectSurvivesMissingResiduals` / `AgyDeniedActionsSpawn`. No new CLI / supervisor.
 - 0.7.76 `of integrate --partial` keeps `hold` when landed residuals are complete and siblings remain in flight. Reason names `skipped_in_flight`. `wave closed` is reserved for a complete-wave integrate. Reuses `decide_regime`. Proof: `recovery/partial-integrate-in-flight` / `PartialIntegrateInFlightReason`. No new CLI / supervisor.
 - 0.7.77 `of learn` length is advisory like `pack --slice` (`LearningLint`). Over 400 chars still stores and prints a note. `LEARNING_MAX_LINES` stays the hard dump bound. Proof: `LearningLengthAdvisory`. No new CLI / supervisor.
+- 0.7.78 webhook HMAC + replay is a contrast PAIR gate (`WebhookPair`). Accept valid signature and reject replay/bad signature, then `--both-sides`. Not a webhook server. Not integration replay. Proof: `WebhookPairContract` / `WebhookPairGate`. No new CLI / supervisor.
 
 ## Contract boundaries
 
