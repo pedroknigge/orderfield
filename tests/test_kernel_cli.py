@@ -1703,6 +1703,65 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("residual (awaiting)=", child.stdout)
 
 
+class DoctorWorktreeLeftover(unittest.TestCase):
+    """Leftover of-worktree records are doctor WARN. No Orca process poll."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-wt-"))
+        self.home = Path(tempfile.mkdtemp(prefix="of-doctor-wt-home-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def _doctor(self) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, "doctor", extra_env={"HOME": str(self.home)})
+
+    def test_recorded_worktrees_are_advisory_warn(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        clean = self._doctor()
+        self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
+        self.assertIn("doctor        ok", clean.stdout)
+        self.assertNotIn("worktrees     ", clean.stdout)
+        of.save_worktrees(
+            self.tmp,
+            {
+                "trees": {
+                    "c1": {
+                        "path": "/tmp/of-c1",
+                        "added_at": "2026-09-09T00:00:00Z",
+                        "head": "deadbeef",
+                    }
+                }
+            },
+        )
+        lines, warn = of.DoctorSkew.worktrees(self.tmp)
+        self.assertTrue(warn)
+        joined = "\n".join(lines)
+        self.assertIn("1 recorded", joined)
+        self.assertIn("c1", joined)
+        self.assertIn("of worktree list", joined)
+        self.assertIn("not a process manager", joined)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn("worktrees     1 recorded", r.stdout)
+        self.assertIn("c1", r.stdout)
+        self.assertIn("not a process manager", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("worker-stop", r.stdout)
+        self.assertNotIn("orca orchestration", r.stdout)
+
+    def test_doctor_does_not_poll_orca_binaries(self) -> None:
+        import inspect
+
+        body = inspect.getsource(of.DoctorSkew.worktrees)
+        body += inspect.getsource(of.DoctorSkew.recorded_worktrees)
+        self.assertIn("load_worktrees", body)
+        self.assertNotIn("orca", body.casefold())
+        self.assertNotIn("worker-list", body)
+        self.assertNotIn("subprocess", body)
+
+
 class QwenHarnessEnum(unittest.TestCase):
     def test_order_schema_harness_enum_matches_adapter_order(self) -> None:
         enum = load_json(ORDER_SCHEMA)["properties"]["harness"]["enum"]

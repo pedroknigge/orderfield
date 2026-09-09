@@ -241,7 +241,7 @@ An oversized `--slice` (≥ 800 chars) prints an advisory **note** — the packe
 
 New packets carry a canonical `packet_id`, content hash, ORDER id/revision, wave, child, and role. Render/handoff/spawn reject unregistered, tampered, noncanonical, or stale-revision packets. Collect/integrate require residuals to echo that identity; a `done` result must name an existing project-relative path. Pre-0.4.2 packets remain readable for recovery, using their legacy id/phase/mission stale check.
 
-Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. Opt-in helper: `of worktree add --child-id <id>` (not a process manager, not hooked from spawn). If every child needs isolation, put it in constraints, not in `--slice`.
+Same-repo isolation: slaves use their own worktree and install there; do not symlink the leader's toolchain. Doctrine: `SLAVE.md`. Opt-in helper: `of worktree add --child-id <id>` (not a process manager, not hooked from spawn). **Leader duty:** if you used `of worktree add`, run `of worktree remove --child-id <id>` when the slice closes. Orca `worker-stop` does not delete worktrees. If every child needs isolation, put it in constraints, not in `--slice`.
 
 ### 4. Spawn only through the kernel
 
@@ -393,6 +393,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process wall-clock (`of spawn --timeout` must match or be omitted), and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.
 - Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets, or `of merge`. **Gate A before features** — appendix **Production mode**.
+- Do not leave an Orca `worker-start` dispatch retained after collect or abandon. **MUST** `worker-stop` then `worker-release` for dispatches you started for that slice. Default is release. `worker-retain` only when the user asked to debug. `worker-list` is accounting. `worker-stop` does not delete worktrees — `of worktree remove` if you used `of worktree add`. Not a process supervisor.
 - Do not spawn if a skill on the same agent is enough.
 - Do not `of init` when a field already exists. `of resume` first. Unrelated second mission in the same tree is `of new`, not `--force`.
 - Do not treat `of resume` as spawn. Reconstruct from disk; no log dump; no new regime.
@@ -452,6 +453,7 @@ You do not need headless spawn for every child. The current session can be the l
 3. Delegate with the harness native primitive (`Agent` in Claude Code, subagent in eve, `worker-start` in Orca, and so on). The message to the child is the handoff file from `of handoff --packet ...` (or the full stdout of `of render --packet ...`), never a truncated pointer and never “run of render yourself.” After pack, those caps still bind; Agent/render does not bypass them.
 4. The child writes `.orderfield/waves/NNN/residuals/<id>.json`.
 5. You run `of collect` + `of integrate`.
+6. **Close what you opened.** After residual + `of collect` (and on abandon): if you `worker-start`ed Orca dispatches for this slice, you **MUST** `orca orchestration worker-stop --dispatch <id>` then `orca orchestration worker-release --dispatch <id>`. Default is release after settle. `worker-retain` only when the user asked to debug. Never leave `terminal=retained` after success. `orca orchestration worker-list` is accounting, not a kernel poll. `worker-stop` does **not** delete worktrees or tabs — if you used `of worktree add`, run `of worktree remove --child-id <id>` when the slice closes. Orderfield is not a process supervisor and does not auto-kill Orca processes.
 
 The kernel stays the authority. The native primitive only transports the packet.
 

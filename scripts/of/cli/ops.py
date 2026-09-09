@@ -595,6 +595,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         print(line)
     if field_skew:
         failed = True
+    wt_lines, wt_warn = DoctorSkew.worktrees(root) if has_order else ([], False)
+    for line in wt_lines:
+        print(line)
 
     schema_ok = 0
     schema_fail: list[str] = []
@@ -669,11 +672,14 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         ok=not failed,
         ok_field=not failed,
         ok_skills=not skill_skew,
+        leftover_worktrees=len(DoctorSkew.recorded_worktrees(root))
+        if has_order
+        else 0,
     )
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
-    if skill_skew:
+    if skill_skew or wt_warn:
         print("doctor        WARN")
         return
     print("doctor        ok")

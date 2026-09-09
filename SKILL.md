@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.85 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.86 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.85"
+  version: "0.7.86"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -45,6 +45,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` command — not captions. `CloseEvidence`. Collect refuses mismatch / missing. Slice done is still not SPEC closed |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
+| after Orca `worker-start` / `of worktree add` | MUST `worker-stop` then `worker-release` after collect or abandon; never leave retained unless asked; `of worktree remove` if add was used. `worker-list` accounts. Not a supervisor. |
 | after wave, before close | **must ask** consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. Not a new close gate. Not `of merge`. C-080 stays Partial. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
@@ -118,6 +119,6 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 
-**Read the appendix** for steps 0–7 (resume, field or nothing, cut, pack, spawn, pulse, collect/integrate, contrast, patch, phase), Forbidden, Roles, Where things live, and interactive-harness transport. That is still this skill.
+**Read the appendix** for steps 0–7 (resume, field or nothing, cut, pack, spawn, pulse, collect/integrate, contrast, patch, phase), Forbidden, Roles, Where things live, and interactive-harness transport (Orca `worker-start` ↔ `worker-stop` / `worker-release`). That is still this skill.
 
 Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, sibling fields, and close-is-proof walkthroughs live in the appendix. The table above still drives the verbs.

@@ -38,6 +38,8 @@ class SkillSurface:
         "#### Multi-harness mix",
         "checklist → of contrast",
         "fresh-context review packet",
+        "worker-stop",
+        "worker-release",
         "**Stay-on-the-run.**",
     )
 
