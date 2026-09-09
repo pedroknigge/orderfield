@@ -7,6 +7,7 @@ Reuse (design-first; written before the wording cut):
 |---|---|---|
 | `of contrast` / `ContrastReport` / `ContractSurface` | Prod§7 timeout / idempotency / health as VERIFIED_CONTRACT | Prod§11 `/version` / release header reuses the same contrast plane (`VERSION-`) |
 | residual `CloseEvidence` (`artifact_sha:` + `rollback:`) | Prod§11 done-residual SHA + rollback | Left alone — not this gap |
+| `DoneWhenLint` / `of close` stamp | Generic/empty done_when refuse | Prod§15 day-90 runbook path in `done_when` (`RunbookPath`) |
 | `of close --checklist` / `CloseChecklist` / `CLOSE.json` | Field close: contrast RESOLVED + residual empty | Name as the checklist's ship plane |
 | `SkillAntiDoneTheater` / `SkillContractSurface` / `SkillCloseEvidence` | Skill already teaches each piece | One map row that binds them |
 | close-is-proof / long-mission / glossary | Close = contrast + residual empty | Left alone |
@@ -82,6 +83,55 @@ class LivingMap:
             errors.extend(LivingMap.page_errors(page.read_text(encoding="utf-8"), rel))
         errors.extend(SkillHarnessMix.errors(path))
         errors.extend(SkillEfficiencyMix.errors(path))
+        errors.extend(SkillRunbookPath.errors(path))
+        return errors
+
+
+class SkillRunbookPath:
+    """Prod§15 teaching must name done_when + runbook path + close refuse."""
+
+    ROW = "prod§15"
+    RUNBOOK = "runbook"
+    DONE_WHEN = "done_when"
+    REFUSE = "close refuse"
+    SKILL_PAGES = (
+        "SKILL.md",
+        "of/SKILL.md",
+        "references/skill-appendix.md",
+    )
+
+    @staticmethod
+    def needles() -> tuple[str, ...]:
+        return (
+            SkillRunbookPath.ROW,
+            SkillRunbookPath.RUNBOOK,
+            SkillRunbookPath.DONE_WHEN,
+            SkillRunbookPath.REFUSE,
+        )
+
+    @staticmethod
+    def mention_errors(text: str, rel: str) -> list[str]:
+        folded = text.casefold()
+        errors: list[str] = []
+        for needle in SkillRunbookPath.needles():
+            if needle not in folded:
+                errors.append(f"{rel} missing {needle!r}")
+        return errors
+
+    @staticmethod
+    def errors(root: Path) -> list[str]:
+        path = Path(root)
+        errors: list[str] = []
+        for rel in SkillRunbookPath.SKILL_PAGES:
+            page = LivingMap.path(path, rel)
+            if not page.is_file():
+                errors.append(f"missing {rel}")
+                continue
+            errors.extend(
+                SkillRunbookPath.mention_errors(
+                    page.read_text(encoding="utf-8"), rel
+                )
+            )
         return errors
 
 

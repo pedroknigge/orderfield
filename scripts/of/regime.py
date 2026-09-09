@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -142,7 +143,11 @@ class DoneWhenLint:
                 )
 
     @staticmethod
-    def refuse_close(order: dict[str, Any], phase: str | None = None) -> None:
+    def refuse_close(
+        order: dict[str, Any],
+        phase: str | None = None,
+        root: Path | None = None,
+    ) -> None:
         """Empty or theater active set cannot stamp done_when_closed."""
         rows = done_when_for(order, phase)
         if not rows:
@@ -152,6 +157,84 @@ class DoneWhenLint:
                 "or a concrete requirement id (CLI-001)"
             )
         DoneWhenLint.refuse(rows)
+        RunbookPath.refuse(order, root=root)
+
+
+class RunbookPath:
+    """Prod§15 day-90 ops: done_when must name a repo-relative runbook path.
+
+    Applies when SPEC / ORDER already name day-90 / Prod§15 / runbook.
+    Toy fields stay on DoneWhenLint only. Theater placeholders stay
+    refused by DoneWhenLint. Not an on-call bot, process supervisor,
+    PagerDuty, ``of gate``, or new schema.
+    """
+
+    CUES = (
+        "runbook",
+        "day-90",
+        "day 90",
+        "day90",
+        "prod§15",
+        "prod §15",
+    )
+    PATH_RE = re.compile(
+        r"(?<![A-Za-z0-9_./-])"
+        r"(?:[\w.-]+/)+[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,8}"
+        r"(?![A-Za-z0-9_./-])"
+    )
+    REFUSE = (
+        "runbook path required in done_when before close: "
+        "name a repo-relative ops runbook file (docs/ops/runbook.md)"
+    )
+
+    @staticmethod
+    def fold(text: str) -> str:
+        return str(text or "").casefold()
+
+    @staticmethod
+    def cue(text: str) -> bool:
+        low = RunbookPath.fold(text)
+        return any(needle in low for needle in RunbookPath.CUES)
+
+    @staticmethod
+    def corpus(order: dict[str, Any], root: Path | None = None) -> str:
+        parts = [
+            str(order.get("mission") or ""),
+            " ".join(str(item) for item in (order.get("constraints") or [])),
+            " ".join(str(item) for item in (order.get("done_when") or [])),
+            str(order.get("notes") or ""),
+        ]
+        if root is not None:
+            spec = spec_path(root)
+            if spec.is_file():
+                parts.append(spec.read_text(encoding="utf-8"))
+        return "\n".join(parts)
+
+    @staticmethod
+    def applies(order: dict[str, Any], root: Path | None = None) -> bool:
+        return RunbookPath.cue(RunbookPath.corpus(order, root))
+
+    @staticmethod
+    def named(criterion: str) -> list[str]:
+        found: list[str] = []
+        for match in RunbookPath.PATH_RE.finditer(str(criterion or "")):
+            raw = match.group(0)
+            if raw.startswith("/") or raw.startswith("..") or "/../" in raw:
+                continue
+            found.append(raw)
+        return found
+
+    @staticmethod
+    def present(rows: list[str] | None) -> bool:
+        return any(RunbookPath.named(row) for row in (rows or []))
+
+    @staticmethod
+    def refuse(order: dict[str, Any], root: Path | None = None) -> None:
+        if not RunbookPath.applies(order, root):
+            return
+        if RunbookPath.present(list(order.get("done_when") or [])):
+            return
+        die(RunbookPath.REFUSE)
 
 
 def done_when_tag(criterion: str) -> str | None:
@@ -431,7 +514,11 @@ def constraint_present(constraints: list[Any], incoming: Any) -> bool:
     return any(constraint_norm(c) == key for c in constraints)
 
 
-def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dict[str, Any]:
+def apply_patches(
+    order: dict[str, Any],
+    residuals: list[dict[str, Any]],
+    root: Path | None = None,
+) -> dict[str, Any]:
     changed = False
     for res in residuals:
         patch = (res.get("residual") or {}).get("proposed_patch")
@@ -460,7 +547,7 @@ def apply_patches(order: dict[str, Any], residuals: list[dict[str, Any]]) -> dic
                 order["notes"] = (prev + "\n" + incoming).strip() if prev else incoming
                 changed = True
         if patch.get("done_when_closed") is True:
-            DoneWhenLint.refuse_close(order)
+            DoneWhenLint.refuse_close(order, root=root)
             if mark_done_when_closed(order):
                 changed = True
     if changed:

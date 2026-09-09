@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.89
+
+Prod§15 day-90 ops: `done_when` must name a concrete repo-relative runbook path before `of close` can stamp. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.88 notes.
+
+- **Reuse table (design-first):** `DoneWhenLint` already refuses theater/empty `done_when` at init/patch/close. `CloseProof.stamp` already calls `refuse_close`. Production-mode Living map already binds Prod§7/11. `CloseEvidence` / `ContractSurface` / `CloseChecklist` stay. The remaining gap is day-90 runbook enforceability — a path in `done_when`, not a new schema or `of gate`.
+- **Reuse, not a new gate:** `RunbookPath` extends `DoneWhenLint.refuse_close`. Applies only when SPEC / ORDER already name day-90 / Prod§15 / runbook. Toy fields keep the contrast-bound default. Theater placeholders stay `DoneWhenLint`. No on-call bot / PagerDuty / process supervisor / `of gate` / `RUNTIME_OWNERSHIP` / `of merge` / token ceiling.
+- **Skill drives the cut:** SKILL / `/of` / appendix Production-mode Living map add a Prod§15 row (`done_when` path + close refuse). Captions-only teaching fails `SkillRunbookPath` / `SkillProductionMode`.
+- **Proof:** `RunbookPathGate` (toy close ok; production close fails without a path and passes with `docs/ops/runbook.md`). `SkillProductionMode` / `LivingMapGate` refuse captions-only Prod§15. Existing `DoneWhenLintRefuse` stays. No new C-ID (honesty cap; C-093 / C-150).
+- Packaging: VERSION 0.7.89; skill/alias description preview `v0.7.89 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.88 notes.
+
 ## 0.7.88
 
 `/version` or a release header is a public-surface VERIFIED_CONTRACT close gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.87 notes.

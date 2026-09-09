@@ -20,7 +20,12 @@ INSTALL = ROOT / "install.sh"
 _SCRIPTS = ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
-from living_map import LivingMap, SkillEfficiencyMix, SkillHarnessMix  # noqa: E402
+from living_map import (  # noqa: E402
+    LivingMap,
+    SkillEfficiencyMix,
+    SkillHarnessMix,
+    SkillRunbookPath,
+)
 from skill_surface import SkillSurface  # noqa: E402
 
 
@@ -1114,6 +1119,22 @@ class SkillProductionMode(unittest.TestCase):
         self.assertNotIn("of merge --", appendix)
         self.assertIn("#### Production mode", appendix)
         self.assertIn("**Gate A before features.**", appendix)
+        self.assertEqual(SkillRunbookPath.errors(ROOT), [])
+        for text, rel in (
+            (self.table(core), "SKILL.md table"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            errs = SkillRunbookPath.mention_errors(text, rel)
+            self.assertEqual(errs, [], errs)
+
+    def test_captions_only_prod15_fails(self) -> None:
+        fake = "production mode day-90 ops are important; write docs later"
+        errs = SkillRunbookPath.mention_errors(fake, "fake.md")
+        self.assertTrue(any(SkillRunbookPath.ROW in e for e in errs), errs)
+        self.assertTrue(any(SkillRunbookPath.RUNBOOK in e for e in errs), errs)
+        self.assertTrue(any(SkillRunbookPath.DONE_WHEN in e for e in errs), errs)
+        self.assertTrue(any(SkillRunbookPath.REFUSE in e for e in errs), errs)
 
 
 class SkillWebhookReplayPair(unittest.TestCase):
@@ -1162,6 +1183,14 @@ class LivingMapGate(unittest.TestCase):
         self.assertTrue(any("residual" in e for e in errs), errs)
         self.assertTrue(any(LivingMap.NO_SECOND in e for e in errs), errs)
 
+    def test_captions_only_prod15_teaching_fails(self) -> None:
+        fake = "production checklist captions; day-90 ops later"
+        errs = SkillRunbookPath.mention_errors(fake, "fake.md")
+        self.assertTrue(any("prod§15" in e for e in errs), errs)
+        self.assertTrue(any("runbook" in e for e in errs), errs)
+        self.assertTrue(any("done_when" in e for e in errs), errs)
+        self.assertTrue(any("close refuse" in e for e in errs), errs)
+
     def test_mix_captions_without_verbs_fail(self) -> None:
         text = "multi-harness mix is powerful; use many CLIs"
         errs = SkillHarnessMix.mention_errors(text, "fake.md")
@@ -1205,6 +1234,9 @@ class SkillLivingMap(unittest.TestCase):
         self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
         self.assertIn("of close --checklist", appendix_fold)
         self.assertIn(LivingMap.NO_SECOND, appendix_fold)
+        self.assertIn("prod§15", appendix_fold)
+        self.assertIn("runbook", appendix_fold)
+        self.assertIn("done_when", appendix_fold)
 
 
 class SkillHarnessMixPlaybook(unittest.TestCase):

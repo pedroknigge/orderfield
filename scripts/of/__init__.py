@@ -316,6 +316,7 @@ from of.pack import (
 
 from of.regime import (
     DoneWhenLint,
+    RunbookPath,
     REGIMES,
     RESERVED_REGIMES,
     RUNTIME_ENFORCED,
@@ -647,6 +648,7 @@ __all__ = [
     'discard_disposable_ingest',
     'discover_recovery_eval_specs',
     'DoneWhenLint',
+    'RunbookPath',
     'done_when_closed',
     'done_when_for',
     'done_when_tag',
