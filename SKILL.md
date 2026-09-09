@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.84 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.85 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.84"
+  version: "0.7.85"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -45,6 +45,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` command — not captions. `CloseEvidence`. Collect refuses mismatch / missing. Slice done is still not SPEC closed |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
+| after wave, before close | **must ask** consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. Not a new close gate. Not `of merge`. C-080 stays Partial. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
 | timeout / idempotency / health | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health: exercise the bound / `/health` at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor |
@@ -111,7 +112,7 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Tool-call discipline.** A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run. Announce in the past tense only after the CLI returns.
 
-**Anti-done-theater.** Before claiming shipped / closed / done on a field, run `of contrast` and `of close --checklist` in the same turn. Quote `contrast RESOLVED` and `residual empty`. If either fails, you may not claim shipped. The checklist prints `speak` — quote it. Mechanical, not your judgment. While residual is MISSING, quote-PULSE still applies; flying is not shipped.
+**Anti-done-theater.** Before claiming shipped / closed / done on a field, run `of contrast` and `of close --checklist` in the same turn. Quote `contrast RESOLVED` and `residual empty`. If either fails, you may not claim shipped. The checklist prints `speak` — quote it. Mechanical, not your judgment. While residual is MISSING, quote-PULSE still applies; flying is not shipped. After a wave, **must ask** consent for a fresh-context review packet before close; never silent. Self-praise is not review. Not a new close gate.
 
 **Auto-revival.** An open field (`spec_closed` false) **does not pause** when you switch chats, lose context to compaction, or the user works on unrelated tasks elsewhere. Every leader turn in that workspace: **`of resume` first**, read `auto_continue`, then **execute the printed `next` action in the same turn**. Do **not** stop after resume and wait for the user to say "continue". Do **not** ask whether to resume unless the user explicitly paused (`pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`). A turn that runs `of resume` on an open field it owns but performs no `next` work is a broken run.
 

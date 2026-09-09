@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.84. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.85. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.84`
+**Status:** Shipped · **Current release line:** `0.7.85`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.85 — fresh-context evaluator packet before close
+
+- After a wave, the leader **must ask** consent to spawn a fresh-context review packet (`adversary` / `verifier`) before `of close`. Never silent. `EvaluatorPacket` reuses `WaveRoster` + existing roles. `of close --checklist` prints the row. Missing a review packet does not refuse close. C-080 stays Partial. No new CLI. Not `of merge`. Not a new regime.
 
 ## 0.7.84 — long-task efficiency mix (honest signals only)
 

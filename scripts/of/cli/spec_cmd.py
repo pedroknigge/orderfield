@@ -748,11 +748,131 @@ def cmd_contrast(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+class EvaluatorPacket:
+    """Fresh-context review packet status. Ask-only; not a close gate.
+
+    Reuses WaveRoster roles. Adversary / verifier already exist — no new role,
+    no of merge, no supervisor. CloseChecklist.ok stays contrast + residual.
+    """
+
+    KIND = "evaluator"
+    REVIEW_ROLES = ("adversary", "verifier")
+    STATUS_ASK = "ask"
+    STATUS_LANDED = "landed"
+    STATUS_IN_FLIGHT = "in-flight"
+    ASK_NEXT = "of pack --role adversary (or verifier)"
+    SPEAK_ASK = (
+        "ask consent for a fresh-context review packet before close; never silent"
+    )
+    SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
+    SPEAK_LANDED = "review packet landed; self-praise is not review"
+
+    @staticmethod
+    def children(root: Path, state: dict[str, Any]) -> list[dict[str, str]]:
+        live = WaveRoster.live_wave(state)
+        out: list[dict[str, str]] = []
+        for n in WaveRoster.numbers(root, state):
+            facts = WaveRoster.facts(root, n, live)
+            for child in facts["children"]:
+                role = str(child.get("role") or "")
+                if role not in EvaluatorPacket.REVIEW_ROLES:
+                    continue
+                cid = str(child.get("child_id") or "").strip()
+                if not cid:
+                    continue
+                out.append(
+                    {
+                        "child_id": cid,
+                        "role": role,
+                        "status": str(child.get("status") or ""),
+                    }
+                )
+        return out
+
+    @staticmethod
+    def status_of(children: list[dict[str, str]]) -> str:
+        if any(row.get("status") == "in-flight" for row in children):
+            return EvaluatorPacket.STATUS_IN_FLIGHT
+        if children:
+            return EvaluatorPacket.STATUS_LANDED
+        return EvaluatorPacket.STATUS_ASK
+
+    @staticmethod
+    def speak_for(status: str) -> str:
+        if status == EvaluatorPacket.STATUS_IN_FLIGHT:
+            return EvaluatorPacket.SPEAK_IN_FLIGHT
+        if status == EvaluatorPacket.STATUS_LANDED:
+            return EvaluatorPacket.SPEAK_LANDED
+        return EvaluatorPacket.SPEAK_ASK
+
+    @staticmethod
+    def speak_line(status: str = "", *, key: str = "speak", key_width: int = 12) -> str:
+        text = EvaluatorPacket.speak_for(status or EvaluatorPacket.STATUS_ASK)
+        return f"{key.ljust(key_width)}{text}"
+
+    @staticmethod
+    def document(root: Path, state: dict[str, Any] | None = None) -> dict[str, Any]:
+        if state is None:
+            state = load_state(root)
+        children = EvaluatorPacket.children(root, state)
+        status = EvaluatorPacket.status_of(children)
+        nxt = EvaluatorPacket.ASK_NEXT if status == EvaluatorPacket.STATUS_ASK else ""
+        return {
+            "v": 1,
+            "kind": EvaluatorPacket.KIND,
+            "evaluator": status,
+            "evaluator_ids": [row["child_id"] for row in children],
+            "evaluator_roles": sorted({row["role"] for row in children}),
+            "evaluator_children": children,
+            "next": nxt,
+            "speak": EvaluatorPacket.speak_for(status),
+        }
+
+    @staticmethod
+    def machine(doc: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "v": 1,
+            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK),
+            "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
+            "evaluator_roles": [
+                str(role) for role in (doc.get("evaluator_roles") or [])
+            ],
+            "kind": EvaluatorPacket.KIND,
+            "next": str(doc.get("next") or ""),
+            "speak": str(doc.get("speak") or EvaluatorPacket.SPEAK_ASK),
+        }
+
+    @staticmethod
+    def named(doc: dict[str, Any]) -> str:
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        if status == EvaluatorPacket.STATUS_ASK:
+            return EvaluatorPacket.ASK_NEXT
+        pairs: list[str] = []
+        for row in doc.get("evaluator_children") or []:
+            role = str(row.get("role") or "").strip()
+            cid = str(row.get("child_id") or "").strip()
+            if role and cid:
+                pairs.append(f"{role}:{cid}")
+            elif cid:
+                pairs.append(cid)
+        if pairs:
+            return " ".join(pairs)
+        ids = [str(cid) for cid in (doc.get("evaluator_ids") or []) if cid]
+        return " ".join(ids) if ids else "-"
+
+    @staticmethod
+    def human_line(doc: dict[str, Any], *, key_width: int = 12) -> str:
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        extra = EvaluatorPacket.named(doc)
+        return f"{'evaluator'.ljust(key_width)}{status}  {extra}"
+
+
 class CloseChecklist:
     """Proof checklist for multi-wave close. Contrast + residual empty.
 
     Reuses ContrastReport + WaveRoster. No second ledger, no supervisor.
     `of close --checklist` is the dry-run; the write path refuses the same gaps.
+    EvaluatorPacket is printed here as ask-only status — not part of ok.
     """
 
     KIND = "checklist"
@@ -815,6 +935,7 @@ class CloseChecklist:
         live = WaveRoster.live_wave(state)
         waves = WaveRoster.numbers(root, state)
         gate = str(contrast.get("gate") or "")
+        evaluator = EvaluatorPacket.document(root, state)
         return {
             "v": 1,
             "ok": contrast_ok and residual_empty,
@@ -836,6 +957,11 @@ class CloseChecklist:
             "in_flight_ids": flying,
             "wave": live,
             "waves": len(waves),
+            "evaluator": evaluator.get("evaluator"),
+            "evaluator_ids": list(evaluator.get("evaluator_ids") or []),
+            "evaluator_roles": list(evaluator.get("evaluator_roles") or []),
+            "evaluator_children": list(evaluator.get("evaluator_children") or []),
+            "evaluator_speak": evaluator.get("speak"),
             "next": CloseChecklist.next_line(
                 contrast_ok=contrast_ok,
                 residual_empty=residual_empty,
@@ -858,6 +984,11 @@ class CloseChecklist:
             "ok": bool(doc.get("ok")),
             "residual": str(doc.get("residual") or ""),
             "residual_empty": bool(doc.get("residual_empty")),
+            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK),
+            "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
+            "evaluator_roles": [
+                str(role) for role in (doc.get("evaluator_roles") or [])
+            ],
             "wave": int(doc.get("wave") or 0),
             "waves": int(doc.get("waves") or 0),
         }
@@ -897,7 +1028,10 @@ class CloseChecklist:
         nxt = str(doc.get("next") or "")
         if nxt:
             lines.append(f"next         {nxt}")
+        lines.append(EvaluatorPacket.human_line(doc, key_width=12))
         lines.append(CloseChecklist.speak_line(key_width=12))
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        lines.append(EvaluatorPacket.speak_line(status, key_width=12))
         return "\n".join(lines) + "\n"
 
     @staticmethod
@@ -2750,6 +2884,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PackOutPhysicalNested",
     "tests.test_kernel.PackRosterCrossField",
     "tests.test_kernel.CloseChecklistProof",
+    "tests.test_kernel.EvaluatorPacketProof",
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.EfficiencySignalProof",
     "tests.test_kernel.ClaimsHonestyGate",
@@ -2773,6 +2908,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillSurfaceCore",
     "tests.test_kernel.SkillProductionMode",
     "tests.test_kernel.SkillAntiDoneTheater",
+    "tests.test_kernel.SkillEvaluatorPacket",
     "tests.test_kernel.PackagingBumpDiscipline",
     "tests.test_kernel.WebhookPairContract",
     "tests.test_kernel.WebhookPairGate",

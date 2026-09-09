@@ -1763,6 +1763,9 @@ class CloseChecklistProof(unittest.TestCase):
         nxt = str(machine.get("next") or "")
         if nxt and nxt not in human:
             raise AssertionError("machine next missing from human")
+        evaluator = str(machine.get("evaluator") or "")
+        if evaluator and evaluator not in human:
+            raise AssertionError(f"machine evaluator {evaluator} missing from human")
         if bool(machine.get("ok")) and "MISSING" in human.split("residual", 1)[-1].splitlines()[0]:
             raise AssertionError("machine ok true while residual line is MISSING")
 
@@ -1787,6 +1790,8 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("w3", listed.stdout)
         self.assertIn(of.CloseChecklist.SPEAK, listed.stdout)
         self.assertIn(of.CloseChecklist.speak_line(key_width=12), listed.stdout)
+        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, listed.stdout)
+        self.assertIn(of.EvaluatorPacket.STATUS_ASK, listed.stdout)
         self.assertNotIn("CLOSED", listed.stdout)
         lines = [ln for ln in listed.stdout.splitlines() if ln.strip()]
         cli_machine = json.loads(lines[-1])
@@ -1835,6 +1840,104 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("recovery/multi-wave-close-checklist", skill)
         self.assertIn("do not claim shipped", skill)
         self.assertIn("mechanical", skill.casefold())
+
+
+class EvaluatorPacketProof(unittest.TestCase):
+    """Ask-only fresh-context review packet. Not a close gate. of eval --kernel."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-eval-packet-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_multi_wave_close_checklist(self.tmp)
+
+    def _doc(self) -> dict:
+        return of.EvaluatorPacket.document(self.tmp, of.load_state(self.tmp))
+
+    def _checklist(self) -> dict:
+        return of.CloseChecklist.document(self.tmp, of.load_order(self.tmp))
+
+    def _add_review(self, *, role: str, child_id: str) -> subprocess.CompletedProcess[str]:
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "REV-001",
+            "--text",
+            "independent review of the landed wave",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        return run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "fresh-context review of the wave claims",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+            "--owns-requirement",
+            "REV-001",
+        )
+
+    def test_implementer_only_is_ask_not_a_close_gate(self) -> None:
+        doc = self._doc()
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertEqual(doc["evaluator_ids"], [])
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_ASK)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, doc["next"])
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(listed.returncode, 2, listed.stdout + listed.stderr)
+        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, listed.stdout)
+        self.assertIn("evaluator", listed.stdout)
+        self.assertIn(of.EvaluatorPacket.STATUS_ASK, listed.stdout)
+        of.MultiWaveResidualEval.close_child(
+            self.tmp, "w3", 3, "wave-3 structured residual names W3-001"
+        )
+        checklist = self._checklist()
+        self.assertTrue(checklist["ok"], checklist)
+        self.assertEqual(checklist["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        dry = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
+        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, dry.stdout)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        self.assertIn("CLOSED", stamped.stdout)
+        self.assertNotIn("evaluator refused", stamped.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_adversary_in_flight_then_landed(self) -> None:
+        of.MultiWaveResidualEval.close_child(
+            self.tmp, "w3", 3, "wave-3 structured residual names W3-001"
+        )
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        packed = self._add_review(role="adversary", child_id="rev1")
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        flying = self._doc()
+        self.assertEqual(flying["evaluator"], of.EvaluatorPacket.STATUS_IN_FLIGHT)
+        self.assertIn("rev1", flying["evaluator_ids"])
+        self.assertIn("adversary", flying["evaluator_roles"])
+        self.assertEqual(flying["speak"], of.EvaluatorPacket.SPEAK_IN_FLIGHT)
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(listed.returncode, 2, listed.stdout + listed.stderr)
+        self.assertIn(of.EvaluatorPacket.SPEAK_IN_FLIGHT, listed.stdout)
+        self.assertIn("adversary:rev1", listed.stdout)
+        of.MultiWaveResidualEval.close_child(
+            self.tmp, "rev1", 4, "review residual names REV-001"
+        )
+        stamped = run_of(self.tmp, "spec", "--verified-contract", "REV-001")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        landed = self._doc()
+        self.assertEqual(landed["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
+        self.assertEqual(landed["speak"], of.EvaluatorPacket.SPEAK_LANDED)
+        checklist = self._checklist()
+        self.assertTrue(checklist["ok"], checklist)
+        self.assertEqual(checklist["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
+        dry = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
+        self.assertIn(of.EvaluatorPacket.SPEAK_LANDED, dry.stdout)
+        self.assertIn("adversary:rev1", dry.stdout)
+        self.assertNotIn("CLOSED", dry.stdout)
 
 
 class AdversarialDualTruthCorpus(unittest.TestCase):

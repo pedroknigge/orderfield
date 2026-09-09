@@ -26,6 +26,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillModelCatalogConsult,
     ModelCatalogHonesty,
     SkillAntiDoneTheater,
+    SkillEvaluatorPacket,
     SkillProductionMode,
     SkillSurfaceCore,
     SkillContractSurface,
@@ -93,6 +94,7 @@ from test_kernel_pack import (  # noqa: E402,F401
 from test_kernel_spec import (  # noqa: E402,F401
     AdversarialDualTruthCorpus,
     CloseChecklistProof,
+    EvaluatorPacketProof,
     ContrastDiffNarrative,
     ContrastReportRenderer,
     MultiWaveResidualLoop,
