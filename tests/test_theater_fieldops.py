@@ -69,6 +69,11 @@ def write_bound_residual(
         "LOOP-001 collect and integrate print owned-but-unverified; "
         "never auto-stamp verified_contract."
     )
+    of.CloseEvidence.stamp(
+        residual,
+        result,
+        rollback=f"git checkout -- {residual['result_ref']}",
+    )
     if patch is not None:
         residual["residual"]["proposed_patch"] = patch
     destination = root / str(packet["residual_path"])

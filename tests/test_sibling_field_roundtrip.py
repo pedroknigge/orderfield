@@ -20,6 +20,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+import of  # noqa: E402
+
 OF_PY = ROOT / "scripts" / "of.py"
 DONE_FIXTURE = ROOT / "assets" / "fixtures" / "residual.done.json"
 IDENTITY = ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")
@@ -84,6 +88,11 @@ class SiblingFieldRoundTrip(unittest.TestCase):
         result.write_text("done\n", encoding="utf-8")
         residual["result_ref"] = result.relative_to(self.tmp).as_posix()
         residual["residual"]["evidence"] = f"{child_id}: wrote {residual['result_ref']}"
+        of.CloseEvidence.stamp(
+            residual,
+            result,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
         dest = self.home / "waves" / "001" / "residuals" / f"{child_id}.json"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(residual, indent=2), encoding="utf-8")

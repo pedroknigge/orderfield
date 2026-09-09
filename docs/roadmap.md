@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.80. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.81. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.80`
+**Status:** Shipped · **Current release line:** `0.7.81`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.81 — close evidence requires artifact SHA + rollback
+
+- `status=done` residual close evidence must name `artifact_sha` (sha256 of `result_ref` bytes) and `rollback:` a command (`CloseEvidence`). Captions and mismatched hashes cannot collect. Threshold/blocked skip. No new schema key. Not a second close doctrine. Proof: `CloseEvidenceGate` / `SkillCloseEvidence`. Not a new CLI. Not a new regime.
 
 ## 0.7.80 — timeout / idempotency / health as VERIFIED_CONTRACT
 

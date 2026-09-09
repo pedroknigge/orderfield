@@ -17,7 +17,7 @@ Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **doe
 
 **Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet. Residual MISSING is still running — harness chrome saying done is not a residual.
 
-Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Same-wave overlapping `owns_paths` is a **pack error**. Follow the slice, `owns_paths`, and ORDER constraints. Two slaves writing the same product path without exclusive owners is a **cut error**, not a file locker. Verifier `status=done` needs nonempty evidence that names a requirement id, command, or path, plus a nonempty `result_ref`. `"all tests passed"` is not evidence.
+Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Same-wave overlapping `owns_paths` is a **pack error**. Follow the slice, `owns_paths`, and ORDER constraints. Two slaves writing the same product path without exclusive owners is a **cut error**, not a file locker. Verifier `status=done` needs nonempty evidence that names a requirement id, command, or path, plus a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions. Collect refuses a mismatch or a slogan rollback (`CloseEvidence`).
 
 Protocol keys `workspace.writable_by_slaves` and this file (`.orderfield/SLAVE.md`) are frozen. `of migrate` may map writable aliases onto `writable_by_slaves`. Do not rename those keys without a versioned migration.
 
@@ -92,7 +92,7 @@ Write **exactly one** valid residual to the path in the packet (`residual_path`)
   "result_ref": ".orderfield/work/scratch/CHID/notes.md",
   "residual": {
     "wants_to_change": [],
-    "evidence": "",
+    "evidence": "mapped LEASE-001\nartifact_sha: <sha256 of result_ref>\nrollback: git checkout -- .orderfield/work/scratch/CHID/notes.md",
     "proposed_patch": null
   },
   "metrics": {

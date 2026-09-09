@@ -116,7 +116,7 @@ disk: spec_closed false; done_when_closed false; CLOSE.json absent
 next: exercise the public surface, then of spec --verified-contract CLI-001
 ```
 
-A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED.
+A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED.
 
 ## How to prove it
 

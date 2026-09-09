@@ -42,7 +42,12 @@ from of.field import (
     wave_dir,
 )
 from of.regime import DoneWhenLint, done_when_closed, mark_done_when_closed
-from of.pack import PACKET_IDENTITY_FIELDS, packet_digest, truncate_slice
+from of.pack import (
+    PACKET_IDENTITY_FIELDS,
+    CloseEvidence,
+    packet_digest,
+    truncate_slice,
+)
 from of.spec import (
     append_amendment,
     append_binding_line,
@@ -1100,6 +1105,7 @@ class EvalInvariantSetup:
         evidence: str = "eval residual names the check",
         result_text: str = "eval result\n",
         wave: int = 1,
+        attach_close: bool = True,
     ) -> None:
         pkt_path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
         packet = load_json(pkt_path)
@@ -1119,6 +1125,12 @@ class EvalInvariantSetup:
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text(result_text, encoding="utf-8")
         residual["result_ref"] = result.relative_to(root).as_posix()
+        if status == "done" and attach_close:
+            rem["evidence"] = CloseEvidence.attach(
+                evidence,
+                result,
+                rollback=f"git checkout -- {residual['result_ref']}",
+            )
         dest = root / str(packet["residual_path"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         dump_json(dest, residual)
@@ -1445,6 +1457,7 @@ def eval_setup_recovery_slogan_evidence(root: Path) -> None:
         "v1",
         evidence="all tests passed",
         result_text="transcript\n",
+        attach_close=False,
     )
 
 
@@ -2766,6 +2779,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillWebhookReplayPair",
     "tests.test_kernel.ContractSurfaceGate",
     "tests.test_kernel.SkillContractSurface",
+    "tests.test_kernel.CloseEvidenceGate",
+    "tests.test_kernel.SkillCloseEvidence",
 )
 
 
