@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.82 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.83 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.82"
+  version: "0.7.83"
   alias-of: orderfield
 ---
 
@@ -41,7 +41,7 @@ Production mode: the sibling appendix **Production mode** names Gate A before `-
 
 Per-task model hints: when packing a multi-role wave, **consult** [docs/model-catalog.md](../docs/model-catalog.md) first, then **must propose** cheap vs frontier in chat. Do not assume smarter = costlier. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router. Never `budget.tokens`.
 
-Wave harness plan: before pack (init → first pack, or re-planning), **consult** the catalog, then **must ask** same-harness categories vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect` (present / missing / PATH≠auth Partial). Spawn only from **present**. Never claim login from PATH. Never silent mix. Follow the sibling. Not a router.
+Wave harness plan: before pack (init → first pack, or re-planning), **consult** the catalog, then **must ask** same-harness roles on one harness vs multi-harness mix. Playbook: sibling appendix **Multi-harness mix**. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of doctor` + `of detect` (present / missing / PATH≠auth Partial). Then `of pack` / `of spawn` only from **present**. After residuals: `of collect` → `of contrast` → `of close`. Never claim login from PATH. Never silent mix. Follow the sibling. Not a router.
 
 Conservative agy spawn: if the harness JSON named refused tools, read `residual.denied_actions` (or the spawn `denied_actions=` line). Those tools were refused — **not approval**. Missing/empty is omit; do not invent `[]`. Do not set `OF_TRUST=yolo` to hide them. Follow the sibling.
 

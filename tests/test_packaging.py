@@ -20,7 +20,7 @@ INSTALL = ROOT / "install.sh"
 _SCRIPTS = ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
-from living_map import LivingMap  # noqa: E402
+from living_map import LivingMap, SkillHarnessMix  # noqa: E402
 from skill_surface import SkillSurface  # noqa: E402
 
 
@@ -1162,6 +1162,14 @@ class LivingMapGate(unittest.TestCase):
         self.assertTrue(any("residual" in e for e in errs), errs)
         self.assertTrue(any(LivingMap.NO_SECOND in e for e in errs), errs)
 
+    def test_mix_captions_without_verbs_fail(self) -> None:
+        text = "multi-harness mix is powerful; use many CLIs"
+        errs = SkillHarnessMix.mention_errors(text, "fake.md")
+        self.assertTrue(any("of pack" in e for e in errs), errs)
+        self.assertTrue(any("of doctor" in e for e in errs), errs)
+        self.assertTrue(any("of detect" in e for e in errs), errs)
+        self.assertTrue(any("must ask" in e for e in errs), errs)
+
     def test_script_exits_ok_on_checkout(self) -> None:
         proc = run(ROOT, sys.executable, str(ROOT / "scripts" / "living_map.py"), str(ROOT))
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -1197,6 +1205,52 @@ class SkillLivingMap(unittest.TestCase):
         self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
         self.assertIn("of close --checklist", appendix_fold)
         self.assertIn(LivingMap.NO_SECOND, appendix_fold)
+
+
+class SkillHarnessMixPlaybook(unittest.TestCase):
+    """SKILL teaches when to mix vs roles-on-one; captions-only mix fails."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_bind_mix_to_verbs(self) -> None:
+        self.assertEqual(SkillHarnessMix.errors(ROOT), [])
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(SkillHarnessMix.MIX, table)
+        self.assertIn(SkillHarnessMix.WHEN, table)
+        self.assertIn("of doctor", table)
+        self.assertIn("of detect", table)
+        self.assertIn("of pack", table)
+        self.assertIn("of spawn", table)
+        self.assertIn("of collect", table)
+        self.assertIn("of contrast", table)
+        self.assertIn("of close", table)
+        alias_fold = alias.casefold()
+        self.assertIn(SkillHarnessMix.MIX, alias_fold)
+        self.assertIn(SkillHarnessMix.WHEN, alias_fold)
+        self.assertIn("of collect", alias_fold)
+        self.assertIn("of doctor", alias_fold)
+        self.assertIn(SkillHarnessMix.HEADING, appendix)
+        section = SkillHarnessMix.playbook_section(appendix)
+        self.assertIsNotNone(section)
+        folded = section.casefold()
+        self.assertIn(SkillHarnessMix.WHEN, folded)
+        for name in SkillHarnessMix.HARNESSES:
+            self.assertIn(name, folded)
+        for verb in SkillHarnessMix.VERBS:
+            self.assertIn(verb, folded)
+
+    def test_captions_only_mix_playbook_fails(self) -> None:
+        fake = "#### Multi-harness mix\n\nUse many CLIs. multi-harness mix is great.\n"
+        errs = SkillHarnessMix.playbook_errors(fake, "fake.md")
+        self.assertTrue(any("of pack" in e for e in errs), errs)
+        self.assertTrue(any("of doctor" in e for e in errs), errs)
+        self.assertTrue(any(SkillHarnessMix.WHEN in e for e in errs), errs)
+        self.assertTrue(any("claude" in e for e in errs), errs)
 
 
 class SkillCloseEvidence(unittest.TestCase):

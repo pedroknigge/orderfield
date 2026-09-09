@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.82 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). Before pack: model-catalog, cheap vs frontier, same-harness vs mix (PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.83 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.82"
+  version: "0.7.83"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -33,7 +33,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
 | multi-role pack plan (init → first pack, or re-planning roles) | **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — e.g. explorer/boilerplate/synthesizer on cheap, implementer/adversary/verifier/threshold on frontier. Do not assume smarter = costlier. On yes → `of patch --model-hints field` (or `wave`); pack `--model-tier` / `--model`. Never silent switch. Never `budget.tokens`. |
-| wave harness plan (init → first pack, or re-planning) | **consult** the catalog, then **must ask in chat first** — same-harness categories (one adapter / related roles) vs multi-harness mix. On same → `of patch --harness <adapter>` (or stay on session). On mix → `of detect` (present / missing / PATH≠auth Partial). Spawn only from **present**. Never claim login from PATH. Never silent mix. |
+| wave harness plan (init → first pack, or re-planning) | **consult** the catalog, then **must ask in chat first** — same-harness roles on one harness vs multi-harness mix. Playbook: appendix **Multi-harness mix**. Same → `of patch --harness <adapter>` (or stay on session). Mix → `of doctor` + `of detect` (present / missing / PATH≠auth Partial). Then `of pack` / `of spawn` only from **present**. After residuals: `of collect` → `of contrast` → `of close`. Never claim login from PATH. Never silent mix. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens`. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; does not write. **Do not pack a whole phase as one slice.** An oversized `--slice` prints an **advisory** note — **Do not refuse**. |
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |

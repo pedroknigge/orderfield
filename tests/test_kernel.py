@@ -32,6 +32,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillCloseEvidence,
     SkillLivingMap,
     LivingMapGate,
+    SkillHarnessMixPlaybook,
     SkillWebhookReplayPair,
 )
 from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401

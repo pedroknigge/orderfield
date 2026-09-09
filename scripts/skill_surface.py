@@ -35,6 +35,7 @@ class SkillSurface:
         "#### When orderfield pays vs theater",
         "#### Production mode",
         "**Gate A before features.**",
+        "#### Multi-harness mix",
         "checklist → of contrast",
         "**Stay-on-the-run.**",
     )

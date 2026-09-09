@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.83
+
+SKILL / `/of` / appendix teach when to mix harnesses vs roles on one harness, with Pedro's typical set (claude / codex / cursor / grok / agy) and doctor detect + consent. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.82 notes.
+
+- **Reuse, not a new CLI:** playbook sits on `SkillHarnessAsk` / `AdapterDetect` / `of detect` / `of doctor` / `of patch --harness`. Cheap vs frontier stays `--model-tier`. No supervisor / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`.
+- **When vs mix:** default is roles on one harness. Mix is opt-in after **must ask**, then `of doctor` + `of detect` (present / missing / PATH≠auth). Then `of pack` / `of spawn` / `of collect` / `of contrast` / `of close`.
+- **Skill drives the cut:** SKILL table + `/of` + appendix **Multi-harness mix** teach the same wording. Hosts still load the short core.
+- **Proof:** `SkillHarnessMixPlaybook`. `LivingMap` / `SkillHarnessMix` refuse captions-only mix pages. Existing `SkillHarnessAsk` / `AdapterDetectHonesty` stay. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.83; skill/alias description preview `v0.7.83 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.82 notes.
+
 ## 0.7.82
 
 Living product/docs map binds production checklist language to the existing verbs: `of contrast`, `of close` / residual evidence. Not a second checklist doctrine. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.81 notes.
