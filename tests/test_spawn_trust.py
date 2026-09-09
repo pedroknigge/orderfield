@@ -408,10 +408,26 @@ class CodexRecordedWorktree(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         preview = dry_run_preview(proc)
-        self.assertIn(f"-C {worktree}", preview)
-        self.assertIn(f"--add-dir {self.tmp / '.orderfield'}", preview)
-        self.assertIn(f"--add-dir {self.tmp / '.git'}", preview)
+        preview_tokens = preview.split()
+        self.assertIn("-C", preview_tokens)
+        self.assertEqual(preview_tokens.count("--add-dir"), 2)
         self.assertIn("--sandbox workspace-write", preview)
+        roots = of_adapters.CodexWorktree.argv_flags(
+            worktree,
+            self.tmp / ".orderfield",
+            "wt1",
+        )
+        self.assertEqual(
+            roots,
+            [
+                "-C",
+                str(worktree.resolve()),
+                "--add-dir",
+                str((self.tmp / ".orderfield").resolve()),
+                "--add-dir",
+                str((self.tmp / ".git").resolve()),
+            ],
+        )
 
     def test_codex_refuses_stale_record_before_spawn(self) -> None:
         missing = self.tmp.parent / f"{self.tmp.name}-missing"
