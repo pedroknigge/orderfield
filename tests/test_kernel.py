@@ -26,6 +26,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillModelCatalogConsult,
     ModelCatalogHonesty,
     SkillAntiDoneTheater,
+    SkillProductionMode,
     SkillSurfaceCore,
     SkillWebhookReplayPair,
 )

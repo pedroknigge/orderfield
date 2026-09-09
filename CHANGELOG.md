@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.79
+
+Skill appendix teaches production-mode invariants and Gate A before features. Agents use the full verb table for production missions instead of inventing a supervisor, bot org, `RUNTIME_OWNERSHIP`, fake token budgets, or `of merge`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.78 notes.
+
+- **Reuse, not a second doctrine:** appendix **Production mode** points at the existing verb table, `of pack --owns-requirement`, `--tokens` refuse, reserved `RUNTIME_OWNERSHIP`, and [docs/long-mission.md](docs/long-mission.md). Consumer §20 / Apéndice A rows, if present, are copied verbatim — never invent a **Sí**. No `of gate`. No new CLI / supervisor / token ceiling.
+- **Gate A before features:** do not pack `--role implementer` (or a net-new feature slice) until Gate A is clear. Signing a consumer production Go is captain (HITL), not `of close`. `of close --checklist` stays the field close proof (different plane).
+- **Skill drives the cut:** SKILL / `/of` / appendix / `SkillSurface` markers teach the same wording. Hosts still load the short core.
+- **Proof:** `SkillProductionMode`. `SkillSurface.errors`. Existing `StayOnRunSkill` / `LongMissionGuide` refuse lists stay. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.79; skill/alias description preview `v0.7.79 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.78 notes.
+
 ## 0.7.78
 
 Webhook HMAC signature + replay is a contrast PAIR gate. Accept a valid signature and reject replay or a bad signature, then `--both-sides`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.77 notes.

@@ -2756,6 +2756,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AgyDeniedActionsSkill",
     "tests.test_kernel.SkillFrontmatterQuotedGate",
     "tests.test_kernel.SkillSurfaceCore",
+    "tests.test_kernel.SkillProductionMode",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.PackagingBumpDiscipline",
     "tests.test_kernel.WebhookPairContract",

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.78. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.79. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.78` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.79` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -93,6 +93,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.76 `of integrate --partial` keeps `hold` when landed residuals are complete and siblings remain in flight. Reason names `skipped_in_flight`. `wave closed` is reserved for a complete-wave integrate. Reuses `decide_regime`. Proof: `recovery/partial-integrate-in-flight` / `PartialIntegrateInFlightReason`. No new CLI / supervisor.
 - 0.7.77 `of learn` length is advisory like `pack --slice` (`LearningLint`). Over 400 chars still stores and prints a note. `LEARNING_MAX_LINES` stays the hard dump bound. Proof: `LearningLengthAdvisory`. No new CLI / supervisor.
 - 0.7.78 webhook HMAC + replay is a contrast PAIR gate (`WebhookPair`). Accept valid signature and reject replay/bad signature, then `--both-sides`. Not a webhook server. Not integration replay. Proof: `WebhookPairContract` / `WebhookPairGate`. No new CLI / supervisor.
+- 0.7.79 skill appendix **Production mode** teaches production-mode invariants and Gate A before `--role implementer`. Reuses the verb table, `of pack --owns-requirement`, `--tokens` refuse, reserved `RUNTIME_OWNERSHIP`, and [docs/long-mission.md](../../long-mission.md). No `of gate`. Proof: `SkillProductionMode`. No new CLI / supervisor.
 
 ## Contract boundaries
 

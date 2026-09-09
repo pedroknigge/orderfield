@@ -33,6 +33,8 @@ class SkillSurface:
         "## Forbidden",
         "## Roles (identities, not job titles)",
         "#### When orderfield pays vs theater",
+        "#### Production mode",
+        "**Gate A before features.**",
         "**Stay-on-the-run.**",
     )
 

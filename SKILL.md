@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.78 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.79 — Disk-backed plan that survives chat. Hosts load this short core; read references/skill-appendix.md before pack/spawn/contrast/close. Use when /orderfield or /of, a field must be resumed, or a multi-slice wave needs a disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE, never claim done. Claim shipped only after of contrast RESOLVED + of close --checklist residual empty (checklist speak; mechanical). Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix (detect present/missing PATH≠auth). Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Closed historical packs informational. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.78"
+  version: "0.7.79"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -54,6 +54,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `of fields --json` — open packs across homes; `of status --json` stays one field |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
+| production mission / Gate A / before features | appendix **Production mode** — full verb table; Gate A before `--role implementer`; never invent supervisor / bot org / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`. Walk: [docs/long-mission.md](docs/long-mission.md) |
 | session says CLOSED, `--tokens`, or unpack a reporter | `of eval recovery/adversarial-dual-truth` — disk wins; `--tokens` dies; collect/integrate a reporter. Never `of pack --tokens` N>0 |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` must print `ok`. Pin: README / PUBLISH. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |

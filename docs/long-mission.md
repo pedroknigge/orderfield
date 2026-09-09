@@ -75,7 +75,7 @@ Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` together. A pub
 
 ## What this is not
 
-Not a process supervisor. Not a bot org. Not `RUNTIME_OWNERSHIP`. Not a fake token budget. Not `of merge`. The harness starts processes. The field holds the plan.
+Not a process supervisor. Not a bot org. Not `RUNTIME_OWNERSHIP`. Not a fake token budget. Not `of merge`. The harness starts processes. The field holds the plan. Skill teaching: appendix **Production mode** — **Gate A before features** (`--role implementer`) uses this walk, not a second doctrine.
 
 ## Proof
 

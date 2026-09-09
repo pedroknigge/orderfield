@@ -1076,6 +1076,45 @@ class SkillPackedOnlyStatus(unittest.TestCase):
         self.assertIn("no spawn record", appendix)
 
 
+class SkillProductionMode(unittest.TestCase):
+    """SKILL teaches production-mode invariants + Gate A before features."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_gate_a_before_features(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("production mission", table)
+        self.assertIn("gate a", table)
+        self.assertIn("before features", table)
+        self.assertIn("--role implementer", table)
+        self.assertIn("runtime_ownership", table)
+        self.assertIn("of merge", table)
+        self.assertNotIn("of merge --", table)
+        alias_fold = alias.casefold()
+        self.assertIn("production mode", alias_fold)
+        self.assertIn("gate a", alias_fold)
+        self.assertIn("--role implementer", alias_fold)
+        self.assertIn("runtime_ownership", alias_fold)
+        self.assertIn("of merge", alias_fold)
+        self.assertNotIn("of merge --", alias)
+        appendix_fold = appendix.casefold()
+        self.assertIn("#### production mode", appendix_fold)
+        self.assertIn("**gate a before features.**", appendix_fold)
+        self.assertIn("--role implementer", appendix_fold)
+        self.assertIn("runtime_ownership", appendix_fold)
+        self.assertIn("never invent a **sí**", appendix_fold)
+        self.assertIn("of pack --owns-requirement", appendix_fold)
+        self.assertIn("no `of gate`", appendix_fold)
+        self.assertNotIn("of merge --", appendix)
+        self.assertIn("#### Production mode", appendix)
+        self.assertIn("**Gate A before features.**", appendix)
+
+
 class SkillWebhookReplayPair(unittest.TestCase):
     """SKILL teaches webhook signature + replay is a contrast PAIR gate."""
 
