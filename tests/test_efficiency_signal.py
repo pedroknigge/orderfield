@@ -60,6 +60,8 @@ class EfficiencySignalDocs(unittest.TestCase):
         self.assertIn("budget.tokens", note)
         self.assertIn("Not a silent switch", note)
         self.assertIn("recovery/efficiency-signal", note)
+        self.assertIn("AdapterBalance", note)
+        self.assertIn("unknown", note)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("docs/efficiency-signal.md", skill)
         self.assertIn("efficiency propose", skill)

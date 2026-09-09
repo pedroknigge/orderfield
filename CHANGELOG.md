@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.84
+
+Long-task efficiency mix: the leader proposes cheap/frontier rebalance AND harness mix from honest signals only (session remaining, published balance payload, residual quality / EfficiencySignal). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.83 notes.
+
+- **Reuse, not a new CLI:** teaching drives `of doctor` / `of detect` / `of status` / `of patch --model-hints` / `--model-tier` / `--harness`. `AdapterBalance` is a read-only hook. No supervisor / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`.
+- **Honesty gate:** if a harness exposes no real balance/session signal → say **unknown**; never invent. Claude/codex `/usage` is interactive-only. Claude statusLine `rate_limits` parses only when already in hand. `budget.tokens` stays reserved. Ask before any uptier/downtier or harness switch.
+- **Skill drives the cut:** SKILL / `/of` / appendix **Long-task efficiency mix** teach the same wording in the same cut. Hosts still load the short core.
+- **Proof:** `AdapterBalanceUnit`. `SkillEfficiencyMixPlaybook`. `SkillEfficiencyMix` refuses pages that invent a balance. Existing `EfficiencySignalProof` / `SkillHarnessMixPlaybook` stay. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.84; skill/alias description preview `v0.7.84 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.83 notes.
+
 ## 0.7.83
 
 SKILL / `/of` / appendix teach when to mix harnesses vs roles on one harness, with Pedro's typical set (claude / codex / cursor / grok / agy) and doctor detect + consent. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.82 notes.

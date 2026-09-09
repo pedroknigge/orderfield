@@ -17,6 +17,7 @@ from of_adapters import (
     KERNEL_VERIFIES,
     TRUST_ENV,
     TRUST_PROFILES,
+    AdapterBalance,
     AdapterDetect,
     AdapterHints,
     detect_adapters,
@@ -651,6 +652,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         print(f"  {line}")
     print("efficiency")
     for line in EfficiencySignal.doctor_lines():
+        print(f"  {line}")
+    print("balance")
+    for line in AdapterBalance.doctor_lines():
         print(f"  {line}")
     if order_path(root).exists():
         state = load_state(root)

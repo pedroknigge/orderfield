@@ -45,6 +45,8 @@ A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace
 
 The child writes a structured residual. A chat dump cannot collect (`recovery/wave-report-quality-gate`).
 
+Before the next wave, quote honest efficiency signals only: `of status` efficiency, `of detect` present/missing, `of doctor` balance. No published balance/session probe → say **unknown**; never invent. `budget.tokens` stays reserved. Propose cheap/frontier rebalance and/or harness mix when those signals exist; **must ask** before `of patch --model-hints` / `--harness`. Design: [efficiency-signal.md](efficiency-signal.md).
+
 ## 3. Mid-flight amend
 
 A new human ask on the same product amends SPEC. It does not open a field and does not rewrite wave-1 packets.

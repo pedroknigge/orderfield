@@ -20,7 +20,7 @@ INSTALL = ROOT / "install.sh"
 _SCRIPTS = ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
-from living_map import LivingMap, SkillHarnessMix  # noqa: E402
+from living_map import LivingMap, SkillEfficiencyMix, SkillHarnessMix  # noqa: E402
 from skill_surface import SkillSurface  # noqa: E402
 
 
@@ -1251,6 +1251,42 @@ class SkillHarnessMixPlaybook(unittest.TestCase):
         self.assertTrue(any("of doctor" in e for e in errs), errs)
         self.assertTrue(any(SkillHarnessMix.WHEN in e for e in errs), errs)
         self.assertTrue(any("claude" in e for e in errs), errs)
+
+
+class SkillEfficiencyMixPlaybook(unittest.TestCase):
+    """SKILL teaches mid-mission mix from honest signals; unknown if none."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_unknown_balance(self) -> None:
+        self.assertEqual(SkillEfficiencyMix.errors(ROOT), [])
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(SkillEfficiencyMix.UNKNOWN, table)
+        self.assertIn(SkillEfficiencyMix.NEVER_INVENT, table)
+        self.assertIn(SkillEfficiencyMix.RESERVED, table)
+        self.assertIn("of doctor", table)
+        self.assertIn("efficiency", table)
+        self.assertIn("must ask", table)
+        alias_fold = alias.casefold()
+        self.assertIn(SkillEfficiencyMix.UNKNOWN, alias_fold)
+        self.assertIn(SkillEfficiencyMix.NEVER_INVENT, alias_fold)
+        self.assertIn(SkillEfficiencyMix.RESERVED, alias_fold)
+        self.assertIn(SkillEfficiencyMix.HEADING, appendix)
+        appendix_fold = appendix.casefold()
+        self.assertIn("adapterbalance", appendix_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("statusline", appendix_fold.replace(" ", ""))
+
+    def test_missing_unknown_fails(self) -> None:
+        fake = "rebalance to frontier now; spend is 80k tokens"
+        errs = SkillEfficiencyMix.mention_errors(fake, "fake.md")
+        self.assertTrue(any(SkillEfficiencyMix.UNKNOWN in e for e in errs), errs)
+        self.assertTrue(any(SkillEfficiencyMix.NEVER_INVENT in e for e in errs), errs)
+        self.assertTrue(any(SkillEfficiencyMix.RESERVED in e for e in errs), errs)
 
 
 class SkillCloseEvidence(unittest.TestCase):

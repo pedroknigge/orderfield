@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.83. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.84. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.83` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.84` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -98,6 +98,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.81 `status=done` close evidence requires `artifact_sha` (sha256 of `result_ref`) and `rollback:` a command (`CloseEvidence`). Captions and mismatched hashes die at collect. Threshold/blocked skip. No new schema key. Proof: `CloseEvidenceGate` / `SkillCloseEvidence`. No new CLI / supervisor.
 - 0.7.82 living map: production checklist language is `checklist → of contrast` / `of close` / residual (`LivingMap`). Not a second checklist. No new CLI / supervisor. Proof: `LivingMapGate` / `SkillLivingMap`.
 - 0.7.83 multi-harness mix playbook: SKILL / `/of` / appendix teach when to mix vs roles on one harness (claude / codex / cursor / grok / agy). Consent + `of doctor` / `of detect` (PATH≠auth), then pack / spawn / collect / contrast / close. Reuses `SkillHarnessAsk` / `AdapterDetect`. Proof: `SkillHarnessMixPlaybook`. No new CLI / supervisor.
+- 0.7.84 long-task efficiency mix: mid-mission propose cheap/frontier AND harness mix from honest signals only. `AdapterBalance` is read-only; unpublished probes stay **unknown**. Never invent. `budget.tokens` stays reserved. Ask before any switch. Proof: `AdapterBalanceUnit` / `SkillEfficiencyMixPlaybook`. No new CLI / supervisor.
 
 ## Contract boundaries
 
