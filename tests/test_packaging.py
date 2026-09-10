@@ -1245,6 +1245,32 @@ class SkillRevStaleUnpack(unittest.TestCase):
         self.assertIn("class PacketRevStale:", source)
 
 
+class SkillPostCloseTerminal(unittest.TestCase):
+    """SKILL teaches successful close is terminal. #180."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_post_close_terminal(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("successful close", table)
+        self.assertIn("not active", table)
+        self.assertIn("not alive", table)
+        self.assertIn("spawn_blocked", table)
+        self.assertIn("recovery/post-close-terminal", table)
+        alias_fold = alias.casefold()
+        self.assertIn("not active", alias_fold)
+        self.assertIn("not alive", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("not a live spawn surface", appendix_fold)
+        self.assertIn("spawn_blocked", appendix_fold)
+        self.assertIn("recovery/post-close-terminal", appendix_fold)
+
+
 class SkillPhaseNextWave(unittest.TestCase):
     """SKILL teaches of phase then next-wave without recomputing the prior wave."""
 

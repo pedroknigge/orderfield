@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.98. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.99. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.98`
+**Status:** Shipped · **Current release line:** `0.7.99`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.99 — successful close is terminal
+
+- After `RESOLVED` / `CLOSE.json`, the field is not the live ACTIVE surface. Pulse is not ALIVE. `spawn_blocked` clears. Status/doctor treat the home as closed. Proof: `recovery/post-close-terminal`. Nested return-to-parent stays. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.98 — rev-stale dead child prints UNPACK --FORCE
 

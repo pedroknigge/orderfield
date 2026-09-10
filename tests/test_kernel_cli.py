@@ -1824,6 +1824,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/doctor-closed-historical", r.stdout)
         self.assertIn("PASS recovery/partial-integrate-in-flight", r.stdout)
         self.assertIn("PASS recovery/adversarial-dual-truth", r.stdout)
+        self.assertIn("PASS recovery/post-close-terminal", r.stdout)
 
     def test_eval_list(self) -> None:
         r = run_of(ROOT, "eval", "--list")

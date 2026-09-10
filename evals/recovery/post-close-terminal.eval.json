@@ -1,0 +1,55 @@
+{
+  "id": "recovery/post-close-terminal",
+  "description": "Successful close is terminal: ACTIVE released, pulse not ALIVE, spawn_blocked cleared, status/resume treat the field as closed. Leftover scratch and unsettled spawn cannot keep a finished field live. #180.",
+  "fixture": "recovery_post_close_terminal",
+  "tags": ["recovery", "close", "active", "pulse", "spawn_blocked"],
+  "steps": [
+    {
+      "run": "close",
+      "exit": 0,
+      "stdout_contains": ["CLOSED", "CLOSE.json"],
+      "file_contains": [
+        {
+          "path": ".orderfield/CLOSE.json",
+          "contains": [
+            "\"verdict\": \"RESOLVED\"",
+            "\"spec_closed\": true"
+          ]
+        },
+        {
+          "path": ".orderfield/state.json",
+          "contains": ["\"spawn_blocked\": false"],
+          "not_contains": ["\"spawn_blocked\": true"]
+        }
+      ],
+      "file_missing": [".orderfield/ACTIVE"]
+    },
+    {
+      "run": "pulse",
+      "exit": 0,
+      "stdout_contains": ["in_flight   0 — closed"],
+      "stdout_not_contains": ["ALIVE", "running"]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   0",
+        "spawn_blocked False",
+        "done_when_closed True"
+      ],
+      "stdout_not_contains": ["ALIVE", "PATCH THEN NEXT-WAVE"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "field         closed",
+        "auto_continue no",
+        "CLOSED",
+        "do not pack or spawn"
+      ],
+      "stdout_not_contains": ["ALIVE", "PATCH THEN NEXT-WAVE", "auto_continue yes"]
+    }
+  ]
+}

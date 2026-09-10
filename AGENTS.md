@@ -193,6 +193,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.96 authority-axis README/SKILL sell + shortest install → first close + planning-with-files contrast (`ReadmeProductSurface`; C-135) | documented |
 | 0.7.97 one VERSION / GitHub tag per proven invariant (`PackagingBump`; current heading needs `**Proof:**`; docs-only / unproven fail; anti 10-tags/day) | documented |
 | 0.7.98 identity-stale + flying prints `UNPACK --FORCE` not spawn; spec `--add`/`--amend` warns rev bump stales N packets (`PacketRevStale`; #178) | documented |
+| 0.7.99 successful close is terminal (`CloseProof` / `ActiveField.release_closed`; not ACTIVE / pulse not ALIVE / `spawn_blocked` cleared; `recovery/post-close-terminal`; #180) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |

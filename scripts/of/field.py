@@ -400,6 +400,24 @@ class ActiveField:
         fid = require_field_id(field_id)
         dump_bytes(ActiveField.path(root), (fid + "\n").encode("utf-8"))
 
+    @staticmethod
+    def release_closed(root: Path, field_id: str) -> None:
+        """Drop ACTIVE when it names a just-closed field. Prefer one open sibling."""
+        fid = str(field_id or "").strip()
+        if not fid or ActiveField.read(root) != fid:
+            return
+        try:
+            ActiveField.path(root).unlink()
+        except OSError:
+            pass
+        opens = [
+            hid
+            for hid, _home, order in list_field_homes(root)
+            if hid != fid and field_is_open(order)
+        ]
+        if len(opens) == 1:
+            ActiveField.write(root, opens[0])
+
 
 class RootStub:
     """Leftover `.orderfield/ORDER.json` once `fields/<id>/` exists.
@@ -698,14 +716,13 @@ class NestedField:
 
     @staticmethod
     def return_active(root: Path, order: dict[str, Any]) -> str | None:
-        """Rewrite ACTIVE to the live parent after close. None if absent."""
+        """Rewrite ACTIVE after close. Parent if live; else release this field."""
         pid = NestedField.id_of(order)
-        if not pid:
-            return None
-        if NestedField.lookup(root, pid) is None:
-            return None
-        ActiveField.write(root, pid)
-        return pid
+        if pid and NestedField.lookup(root, pid) is not None:
+            ActiveField.write(root, pid)
+            return pid
+        ActiveField.release_closed(root, str(order.get("id") or ""))
+        return None
 
 
 class FieldRoster:
@@ -3365,7 +3382,15 @@ class DoctorSkew:
         if not homes:
             lines.append("  active        -  (no fields)")
         elif pointed and pointed in ids:
-            lines.append(f"  active        {pointed}  ok")
+            pointed_closed = False
+            for fid, home, order in homes:
+                if fid == pointed:
+                    pointed_closed = DoctorSkew.home_closed(home, order)
+                    break
+            if pointed_closed:
+                lines.append(f"  active        {pointed}  closed")
+            else:
+                lines.append(f"  active        {pointed}  ok")
         elif pointed:
             lines.append(f"  active        {pointed}  SKEW  (no home)")
             skewed = True
@@ -3373,10 +3398,17 @@ class DoctorSkew:
             lines.append("  active        -  SKEW  (invalid pointer)")
             skewed = True
         elif len(homes) > 1:
-            lines.append("  active        -  SKEW  (missing pointer)")
-            skewed = True
+            if all(DoctorSkew.home_closed(home, order) for _fid, home, order in homes):
+                lines.append("  active        -  closed")
+            else:
+                lines.append("  active        -  SKEW  (missing pointer)")
+                skewed = True
         else:
-            lines.append(f"  active        {homes[0][0]}  ok")
+            fid, home, order = homes[0]
+            if DoctorSkew.home_closed(home, order):
+                lines.append(f"  active        {fid}  closed")
+            else:
+                lines.append(f"  active        {fid}  ok")
         stub = DoctorSkew.leftover_stub(root)
         if stub is not None:
             lines.append(
@@ -3741,7 +3773,10 @@ def next_legal_action(
     stale: bool = False,
     children_stale: bool = False,
     children_packed: bool = False,
+    spec_closed: bool = False,
 ) -> str:
+    if spec_closed:
+        return "closed"
     if state.get("spawn_blocked"):
         return "patch then next-wave"
     if packets and stale:

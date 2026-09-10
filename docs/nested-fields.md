@@ -33,7 +33,7 @@ of close          # stamps CLOSE.json; ACTIVE returns to the parent
 of resume         # parent epic
 ```
 
-`--parent` with no id uses `.orderfield/ACTIVE` (or the unique open home). `--parent ord_…` names the epic. The child ORDER gets optional `parent`. Homes stay flat (`fields/<id>/`). Plain `of new` does not stamp parent. A missing or closed parent dies before the tree changes. Close of a field without parent leaves ACTIVE. Proof: `recovery/nested-field-lifecycle`.
+`--parent` with no id uses `.orderfield/ACTIVE` (or the unique open home). `--parent ord_…` names the epic. The child ORDER gets optional `parent`. Homes stay flat (`fields/<id>/`). Plain `of new` does not stamp parent. A missing or closed parent dies before the tree changes. Close of a nested field returns ACTIVE to the parent. Close of a field without parent releases ACTIVE (or retargets the unique remaining open sibling) so a finished field is not a live spawn surface. Proof: `recovery/nested-field-lifecycle` · `recovery/post-close-terminal`.
 
 ## ACTIVE + how status / resume resolve
 
