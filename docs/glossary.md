@@ -4,7 +4,7 @@ Every contract word is a disk path or an `of` verb. If a word cannot be typed, i
 
 SPEC, ORDER, packet, residual, regime, contrast. A slice cuts work from SPEC + ORDER. It does not replace the brief.
 
-Product surface: [README Compared-to](../README.md#compared-to). Leader procedure: [SKILL.md](../SKILL.md). Invariants: [references/principles.md](../references/principles.md).
+Product surface: [README Compared-to](../README.md#compared-to) (planning-with-files is same category, different product). Leader procedure: [SKILL.md](../SKILL.md). Invariants: [references/principles.md](../references/principles.md).
 
 ## SPEC vs ORDER
 

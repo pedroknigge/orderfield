@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.95` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.7.96` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -44,6 +44,7 @@ Neighbors that are **not** Orderfield (same names as the README matrix):
 
 | System | What it orchestrates | Orderfield is instead |
 |--------|----------------------|------------------------|
+| **planning-with-files** | Disk markdown + hooks that re-inject a plan after `/clear` | Who may change the plan. Same category (disk plan), different product (authority kernel). |
 | **Orca** | Work: process bus, workers, gates, DAGs | Authority over the plan. Orca may carry a packet; it must not choose the phase, patch the mission, or invent a regime. |
 | **AWS CAO** | Vendor supervisor plus workers | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow. |
 | **Claude Agent Teams** | Vendor fleet inside one harness | Portable across already-authenticated CLIs. ORDER remains if you turn Claude off. Not a team of processes. |

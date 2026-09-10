@@ -686,6 +686,7 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("analogy, not a science claim", folded)
         hero = text[:install]
         for needle in (
+            "Anyone can persist a plan. Only the leader may change it.",
             "The brief lives on disk as SPEC",
             "of resume",
             "of handoff",
@@ -701,12 +702,26 @@ class ReadmeProductSurface(unittest.TestCase):
             "cheap vs frontier",
         ):
             self.assertIn(needle, hero)
+        install_block = text[install:text.index("## Uninstall")]
+        self.assertLess(install_block.index("./install.sh"), install_block.index("npx skills"))
+        self.assertIn("first close", install_block.casefold())
+        compared = text[text.index("## Compared-to"):]
+        self.assertIn("planning-with-files", compared)
+        self.assertIn("refuse_child_forge", compared)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        appendix = (ROOT / "references" / "skill-appendix.md").read_text(encoding="utf-8")
         self.assertIn("typical problems", skill.casefold())
         self.assertIn("typical problems", alias.casefold())
         self.assertIn("mid-flight", skill.casefold())
         self.assertIn("mid-flight", alias.casefold())
+        self.assertIn("planning-with-files", skill.casefold())
+        self.assertIn("planning-with-files", alias.casefold())
+        self.assertIn("only the leader may change it", skill.casefold())
+        self.assertIn("only the leader may change it", alias.casefold())
+        self.assertIn("first close", skill.casefold())
+        self.assertIn("first close", alias.casefold())
+        self.assertIn("planning-with-files", appendix.casefold())
 
 
 class SkillLeaderInitiative(unittest.TestCase):

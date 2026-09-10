@@ -1,15 +1,15 @@
 ---
 name: of
-description: "v0.7.95 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice disk brief. While children fly, status/resume print running + live PULSE + speak; leftover residual does not hide started-only re-spawn; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Resume next INTEGRATE --RECOMPUTE when report digest drifted; do not next-wave. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Codex recorded worktree: -C plus field/Git add-dir or refuse. Consented --model includes grok/agy (named). Grok streaming-json. Generic OF_AGENT is shlex argv; dry-run prints shlex.join. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.96 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice disk brief. While children fly, status/resume print running + live PULSE + speak; leftover residual does not hide started-only re-spawn; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Resume next INTEGRATE --RECOMPUTE when report digest drifted; do not next-wave. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Codex recorded worktree: -C plus field/Git add-dir or refuse. Consented --model includes grok/agy (named). Grok streaming-json. Generic OF_AGENT is shlex argv; dry-run prints shlex.join. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.95"
+  version: "0.7.96"
   alias-of: orderfield
 ---
 
 # /of — alias for orderfield
 
-Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install.
+Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with the authority hero (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files.
 
 Load the sibling skill and follow it. When that skill names [references/skill-appendix.md](../references/skill-appendix.md), read the appendix before pack, spawn, contrast, or close. Stop if the sibling is missing. Do not invent a second contract.
 

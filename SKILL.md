@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.95 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Resume INTEGRATE --RECOMPUTE on digest drift. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.96 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Resume INTEGRATE --RECOMPUTE on digest drift. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.95"
+  version: "0.7.96"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,7 +19,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 The harness (Claude, Codex, Orca, Grok, Cursor, OpenCode, Antigravity/agy) starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
-Product surface: [README.md](README.md) leads with typical problems → what Orderfield does. Mid-flight plan-change H2 sits before Install. Compared-to (Orca, AWS CAO, Agent Teams, CrewAI/LangGraph, dual-harness skills): [README.md](README.md#compared-to). Contract vocabulary: [docs/glossary.md](docs/glossary.md). Invariants: `references/principles.md`. Procedure: [references/skill-appendix.md](references/skill-appendix.md).
+Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to). Contract vocabulary: [docs/glossary.md](docs/glossary.md). Invariants: `references/principles.md`. Procedure: [references/skill-appendix.md](references/skill-appendix.md).
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 

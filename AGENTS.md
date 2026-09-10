@@ -190,6 +190,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`); dry-run prints `shlex.join` so a space path stays one token (#165) | documented |
 | 0.7.94 empty-wave `of phase` skips integrate when `packed_children` is empty (`phase_transition_errors`; #166; C-034) | documented |
 | 0.7.95 resume names `INTEGRATE --RECOMPUTE` on digest drift; spawn-owned residual keys omitted from the covering hash (`IntegrationDigest`; #168; C-034 / C-035) | documented |
+| 0.7.96 authority-axis README/SKILL sell + shortest install → first close + planning-with-files contrast (`ReadmeProductSurface`; C-135) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
