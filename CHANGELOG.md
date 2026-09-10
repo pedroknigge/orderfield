@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.91
+
+Started-only re-spawn dominates a leftover residual so status cannot hide a live child. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.90 notes.
+
+- **Reuse table (design-first):** `in_flight_children` already means flying. `SpawnRecord` already owns `waves/<n>/spawns/<id>.json` and distinguishes started-only from `outcome`. `InFlightSignal` / `PulseProgress` / `StatusReport` already print `running` + PULSE + speak. The remaining gap is a leftover residual from a refused collect winning over a live continuation spawn.
+- **Reuse, not a supervisor:** `SpawnRecord.unsettled` / `flying` — started-only (no `outcome`, not `dry_run`) dominates the leftover file. `in_flight_children` / `completed_children` / `of pulse` / `PackRoster` / `integrate --partial` share that read. No archive path, no new schema, no process poll, no `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach leftover residual + started-only re-spawn in the same cut. Quote PULSE; do not claim done while that spawn is unsettled.
+- **Proof:** `InFlightVisibility.test_started_only_respawn_dominates_prior_residual` (status/resume/pulse stay `running` + speak; settle returns idle). `test_dry_run_spawn_does_not_dominate_residual`. `SkillRespawnInFlight`. Existing `InFlightVisibility` / `recovery/in-flight-visibility` stay. No new C-ID (honesty cap; C-119 / C-152).
+- Packaging: VERSION 0.7.91; skill/alias description preview `v0.7.91 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.90 notes.
+
 ## 0.7.90
 
 Native Codex spawn honors the packet child's recorded `of worktree` instead of advertising an unwritable workspace. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.89 notes.

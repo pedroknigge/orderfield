@@ -65,7 +65,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Later session / stale `session.json` / age look like a new field | `of resume` reconstructs the live wave (`HOLD`); `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave mission; which wave is live is unclear | `of wave list` marks `state.wave`; `of wave show` names live vs prior | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Long-mission dashboard needs machine status | `of status --json` is one live-wave object from `StatusReport` | `recovery/status-json`; `StatusReportJson` |
-| Harness chrome says done while children still fly | `of status` / `resume` / `pulse` print `running` + residual MISSING + last `PULSE` lines; `--json` has `in_flight_detail` + `progress` | `recovery/in-flight-visibility`; `InFlightVisibility` |
+| Harness chrome says done while children still fly | `of status` / `resume` / `pulse` print `running` + residual MISSING + last `PULSE` lines; a leftover residual does not hide a started-only re-spawn; `--json` has `in_flight_detail` + `progress` | `recovery/in-flight-visibility`; `InFlightVisibility` |
 | Spawn host dies mid-wave (started-only spawn meta, dead pid leftover, incomplete WAL) | `of resume` reconstructs the live wave (`HOLD`); leftovers do not invent `PACK` / `no ORDER`; `of init` without `--force` dies | `recovery/process-death-resume`; `ResumeAfterProcessDeath` |
 | Adversary residual moves verify→build | `integrate --apply` keeps verify; `escalate_up`; spawn blocked | `recovery/escalate-verify-build` |
 | Second child claims an owned binding ID | `mark_requirements_owned` dies (`already owned by …`; one exclusive owner) | `recovery/pack-exclusivity-refused`; `scripts/of/spec.py` |
@@ -137,7 +137,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Aged wave-2 in-flight + stale session: resume reconstructs `HOLD`; `of init` without `--force` dies | `recovery/multi-day-resume`; `DurableMultiDayResume` |
 | Multi-wave field: `of wave list` marks live `state.wave`; `show` tells live from the prior integrated wave | `recovery/wave-list-show`; `WaveRosterListShow` |
 | Long-mission dashboard: `of status --json` names live wave 2 and in-flight `w2`; not a wave roster | `recovery/status-json`; `StatusReportJson` |
-| In-flight residual MISSING: status/resume/pulse print `running`; `--json` has pulse + next; idle is refused | `recovery/in-flight-visibility`; `InFlightVisibility` |
+| In-flight residual MISSING (or leftover residual under a started-only re-spawn): status/resume/pulse print `running`; `--json` has pulse + next; idle is refused | `recovery/in-flight-visibility`; `InFlightVisibility` |
 | Mid-flight `of spec --amend` + `of patch`: next packet carries dated amend + patched constraint; wave-1 packet is not rewritten | `recovery/midflight-amend`; `MidFlightAmend` |
 | Three-wave residual loop: collect/integrate waves 1–2 after mid-flight amend; wave-2/3 packets carry dated amend + constraint; wave 3 stays in-flight | `recovery/multi-wave-residual`; `MultiWaveResidualLoop` |
 | Multi-wave close checklist: contrast RESOLVED + residual MISSING cannot stamp; `--checklist` is dry-run | `recovery/multi-wave-close-checklist`; `CloseChecklistProof` |

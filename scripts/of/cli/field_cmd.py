@@ -20,6 +20,7 @@ from of.field import (
     load_order,
     load_state,
     patch_origin,
+    SpawnRecord,
     physical_field_rel,
     print_owned_unverified,
     remove_constraint,
@@ -38,7 +39,6 @@ from of.pack import (
     die_on_stale_packets,
     enforce_wave_child_caps,
     packed_children,
-    packet_residual_missing,
     reconcile_children_spawned,
     require_packet_residual,
     truncate_slice,
@@ -140,7 +140,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             die_on_stale_packets(packets, order, int(wave))
         enforce_wave_child_caps(order, state, len(packets))
         for pkt in packets:
-            if partial and packet_residual_missing(root, pkt):
+            if partial and SpawnRecord.flying(root, pkt):
                 # --partial: reduce what landed; the child stays in flight.
                 skipped.append(str(pkt.get("child_id") or "?"))
                 continue

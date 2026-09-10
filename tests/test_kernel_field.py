@@ -2944,6 +2944,116 @@ class InFlightVisibility(unittest.TestCase):
         self.assertIn("idle (nothing to watch)", pulse.stdout)
         self.assertNotIn("harness chrome", pulse.stdout)
 
+    def test_started_only_respawn_dominates_prior_residual(self) -> None:
+        """#163: leftover residual must not hide a live continuation spawn."""
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-respawn-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        write_bound_residual(tmp, "worker")
+        idle = run_of(tmp, "status")
+        self.assertEqual(idle.returncode, 0, idle.stderr)
+        self.assertIn("in_flight   0", idle.stdout)
+
+        pkt = load_json(tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json")
+        self.assertFalse(of.SpawnRecord.unsettled(tmp, pkt))
+        self.assertFalse(of.SpawnRecord.flying(tmp, pkt))
+
+        spawns = tmp / ".orderfield" / "waves" / "001" / "spawns"
+        spawns.mkdir(parents=True, exist_ok=True)
+        meta_path = spawns / "worker.json"
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "child_id": "worker",
+                    "adapter": "codex",
+                    "started_at": of.utc_now(),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        scratch = tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        pulse_line = "rewriting residual after collect refuse"
+        (scratch / "PULSE").write_text(pulse_line + "\n", encoding="utf-8")
+
+        self.assertTrue(of.SpawnRecord.unsettled(tmp, pkt))
+        self.assertTrue(of.SpawnRecord.unsettled_at(meta_path))
+        self.assertTrue(of.SpawnRecord.flying(tmp, pkt))
+        flying = of.in_flight_children(tmp, 1)
+        self.assertEqual([p.get("child_id") for p in flying], ["worker"])
+        completed = of.completed_children(tmp, 1)
+        self.assertEqual(completed, [])
+
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   1", status.stdout)
+        self.assertIn("running", status.stdout)
+        self.assertIn(pulse_line, status.stdout)
+        self.assertIn(of.InFlightSignal.speak_line(key_width=12), status.stdout)
+        self.assertIn("do not claim done while running", status.stdout)
+        self.assertNotIn("in_flight   0", status.stdout)
+
+        machine = run_of(tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["in_flight"], 1)
+        self.assertEqual(doc["in_flight_ids"], ["worker"])
+        self.assertEqual(doc["in_flight_detail"][0]["residual"], "MISSING")
+        self.assertEqual(doc["next"], "hold")
+
+        resume = run_of(tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("status        in-flight", resume.stdout)
+        self.assertIn("in_flight     1", resume.stdout)
+        self.assertIn("running", resume.stdout)
+        self.assertIn(pulse_line, resume.stdout)
+        self.assertIn(of.InFlightSignal.speak_line(key_width=14), resume.stdout)
+        self.assertIn("HOLD", resume.stdout)
+
+        pulse = run_of(tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
+        self.assertIn(pulse_line, pulse.stdout)
+        self.assertNotIn("idle (nothing to watch)", pulse.stdout)
+
+        settled = json.loads(meta_path.read_text(encoding="utf-8"))
+        settled["outcome"] = "ok"
+        settled["ended_at"] = of.utc_now()
+        meta_path.write_text(json.dumps(settled) + "\n", encoding="utf-8")
+        self.assertFalse(of.SpawnRecord.unsettled(tmp, pkt))
+        self.assertFalse(of.SpawnRecord.flying(tmp, pkt))
+        landed = run_of(tmp, "status")
+        self.assertEqual(landed.returncode, 0, landed.stderr)
+        self.assertIn("in_flight   0", landed.stdout)
+        self.assertNotIn("harness chrome", landed.stdout)
+
+    def test_dry_run_spawn_does_not_dominate_residual(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-inflight-dry-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self._init(tmp)
+        self._pack(tmp)
+        write_bound_residual(tmp, "worker")
+        spawns = tmp / ".orderfield" / "waves" / "001" / "spawns"
+        spawns.mkdir(parents=True, exist_ok=True)
+        (spawns / "worker.json").write_text(
+            json.dumps(
+                {
+                    "child_id": "worker",
+                    "started_at": of.utc_now(),
+                    "dry_run": True,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        pkt = load_json(tmp / ".orderfield" / "waves" / "001" / "packets" / "worker.json")
+        self.assertFalse(of.SpawnRecord.unsettled(tmp, pkt))
+        status = run_of(tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   0", status.stdout)
+
 
 class MidEpicHandoffPacket(unittest.TestCase):
     """of handoff without --packet is the mid-epic field packet. of eval --kernel."""

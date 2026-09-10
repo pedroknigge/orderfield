@@ -1057,6 +1057,31 @@ class MortalInstallDemo(unittest.TestCase):
         self.assertIn("PUBLISH.md", proc.stderr)
 
 
+class SkillRespawnInFlight(unittest.TestCase):
+    """SKILL teaches leftover residual does not hide a started-only re-spawn."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_leftover_residual(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("leftover residual", table)
+        self.assertIn("started-only", table)
+        self.assertIn("re-spawn", table)
+        alias_fold = alias.casefold()
+        self.assertIn("leftover residual", alias_fold)
+        self.assertIn("started-only", alias_fold)
+        self.assertIn("re-spawn", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("leftover residual", appendix_fold)
+        self.assertIn("started-only", appendix_fold)
+        self.assertIn("re-spawn", appendix_fold)
+
+
 class SkillPackedOnlyStatus(unittest.TestCase):
     """SKILL teaches PACKED / SPAWN. Packed-only is not ALIVE."""
 

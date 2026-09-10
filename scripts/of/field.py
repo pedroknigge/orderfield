@@ -896,7 +896,8 @@ class FieldRoster:
 
 
 class PackRoster:
-    """Open packs (residual MISSING) across sibling fields.
+    """Open packs (residual MISSING, or leftover residual under a live spawn)
+    across sibling fields.
 
     Reuses `list_field_homes`, `field_is_open`, `DoctorSkew.wave_packet_files`,
     `DoctorSkew.residual_missing`, and `PackedAge.age_seconds`. No second
@@ -923,7 +924,12 @@ class PackRoster:
                 continue
             wave, files = DoctorSkew.wave_packet_files(home)
             for path, pkt in files:
-                if not DoctorSkew.residual_missing(home, pkt, wave):
+                cid = str(pkt.get("child_id") or path.stem)
+                spawn_path = home / f"waves/{int(wave):03d}/spawns/{cid}.json"
+                if (
+                    not DoctorSkew.residual_missing(home, pkt, wave)
+                    and not SpawnRecord.unsettled_at(spawn_path)
+                ):
                     continue
                 age = PackedAge.age_seconds(pkt, clock)
                 packet_rel = (
@@ -933,7 +939,7 @@ class PackRoster:
                     {
                         "field": fid,
                         "active": bool(active_id and fid == active_id),
-                        "child_id": str(pkt.get("child_id") or path.stem),
+                        "child_id": cid,
                         "wave": int(wave),
                         "role": str(pkt.get("role") or "-"),
                         "residual": "MISSING",
@@ -3072,6 +3078,32 @@ class SpawnRecord:
             return started
         packed = parse_utc(packet.get("packed_at"))
         return packed
+
+    @staticmethod
+    def unsettled_at(path: Path) -> bool:
+        """Started-only spawn meta: no outcome yet. Not a process poll."""
+        if not path.is_file():
+            return False
+        try:
+            data = load_json(path)
+        except (OSError, SystemExit, ValueError, TypeError):
+            return False
+        if not isinstance(data, dict) or data.get("dry_run"):
+            return False
+        return "outcome" not in data
+
+    @staticmethod
+    def unsettled(root: Path, packet: dict[str, Any]) -> bool:
+        return SpawnRecord.unsettled_at(SpawnRecord.path(root, packet))
+
+    @staticmethod
+    def flying(root: Path, packet: dict[str, Any]) -> bool:
+        """Started-only spawn dominates a leftover residual. Not a supervisor."""
+        if SpawnRecord.unsettled(root, packet):
+            return True
+        from of.pack import packet_residual_missing
+
+        return packet_residual_missing(root, packet)
 
 
 class FieldSignal:

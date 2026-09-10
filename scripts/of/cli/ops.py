@@ -126,7 +126,6 @@ from of.pack import (
     owned_path_presence,
     packed_children,
     packet_owns_paths,
-    packet_residual_missing,
     require_child_id,
     scratch_nonempty,
     stale_packet_ids,
@@ -884,7 +883,8 @@ class PulseProgress:
 
 
 class InFlightSignal:
-    """Read-path banner: residual MISSING is still running. Not a supervisor."""
+    """Read-path banner: residual MISSING — or a leftover residual under a
+    started-only spawn — is still running. Not a supervisor."""
 
     CHROME = "residual MISSING; harness chrome is not the field"
     ORDER = ("ALIVE", "QUIET", "STALE", SpawnRecord.LABEL)
@@ -2066,7 +2066,7 @@ def pulse_once(
     if pdir.is_dir():
         for f in sorted(pdir.glob("*.json")):
             pkt = load_packet(f)
-            if packet_residual_missing(root, pkt):
+            if SpawnRecord.flying(root, pkt):
                 flying.append((f, pkt))
     print(
         f"ORDER {order['id']}  phase={order['phase']}  wave={wave}  "

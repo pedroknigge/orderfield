@@ -25,6 +25,7 @@ from of.field import (
     protocol_learning_lines,
     safe_relative_path,
     skill_root,
+    SpawnRecord,
     validate_public_schema,
     wal_staged_items,
     wave_dir,
@@ -1111,8 +1112,8 @@ def packet_residual_missing(root: Path, packet: dict[str, Any]) -> bool:
 
 
 def in_flight_children(root: Path, wave: int) -> list[dict[str, Any]]:
-    """Packed children whose residual is missing. Disk is the source of truth."""
-    return [p for p in packed_children(root, wave) if packet_residual_missing(root, p)]
+    """Packed children still flying. A leftover residual does not hide a live spawn."""
+    return [p for p in packed_children(root, wave) if SpawnRecord.flying(root, p)]
 
 
 def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
@@ -1399,7 +1400,7 @@ def extract_json_object(text: str) -> Any | None:
 
 
 def completed_children(root: Path, wave: int) -> list[dict[str, Any]]:
-    return [p for p in packed_children(root, wave) if not packet_residual_missing(root, p)]
+    return [p for p in packed_children(root, wave) if not SpawnRecord.flying(root, p)]
 
 
 def try_load_packet_residual(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
