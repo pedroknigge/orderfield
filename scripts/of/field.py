@@ -4217,6 +4217,7 @@ from of.retain import (  # noqa: E402,F401
     SAFE_RETENTION_SECONDS,
     SCRATCH_CHILD_BUDGET_BYTES,
     TREE_BUDGET_BYTES,
+    AuditPressure,
     ClosedFieldArchive,
     FieldRetain,
     OrphanPacked,

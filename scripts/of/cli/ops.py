@@ -39,6 +39,7 @@ from of.field import (
     PYTHON_FLOOR,
     REDACTED,
     _read_json_object,
+    AuditPressure,
     DoctorSkew,
     FieldSignal,
     NestedField,
@@ -596,6 +597,11 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         print(line)
     if field_skew:
         failed = True
+    audit_warn = False
+    if has_order or list_field_homes(root):
+        audit_lines, audit_warn = AuditPressure.doctor_lines(root)
+        for line in audit_lines:
+            print(line)
     wt_lines, wt_warn = DoctorSkew.worktrees(root) if has_order else ([], False)
     for line in wt_lines:
         print(line)
@@ -676,11 +682,12 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         leftover_worktrees=len(DoctorSkew.recorded_worktrees(root))
         if has_order
         else 0,
+        audit_over=audit_warn,
     )
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
-    if skill_skew or wt_warn:
+    if skill_skew or wt_warn or audit_warn:
         print("doctor        WARN")
         return
     print("doctor        ok")

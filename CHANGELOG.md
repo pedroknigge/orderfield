@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.100
+
+Doctor / pre-close warn when tree audit is OVER or scratch is fat. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.99 notes.
+
+- **Reuse table (design-first):** `tree_usage` / `print_audit_block` / `field_keep_silences` already own OVER and fat-child scratch budgets (`TREE_BUDGET_BYTES` / `SCRATCH_CHILD_BUDGET_BYTES` / `OF_GC_BUDGET`). Status / resume / gc already print the audit block after the fact. The remaining gap is doctor and close staying silent while 1.4GB media scratch sits under an open field.
+- **Reuse, not a close gate:** `AuditPressure` prints the same OVER / fat-scratch facts on `of doctor` (WARN / exit 0) and on `of close` / `--checklist` (advisory note). `--keep-field` still silences. No MIME scanner. No FAIL. No refuse. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `of gc --audit` then shrink before close when audit is OVER.
+- **Proof:** `DoctorAuditPressure` (doctor WARN + close `--checklist` note; not FAIL; not a close refuse). `SkillAuditPressure`. Existing `test_audit_over_budget_does_not_drop_open_field` stays. No new C-ID (honesty cap; C-084 / C-111).
+- Packaging: VERSION 0.7.100; skill/alias description preview `v0.7.100 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.99 notes.
+
 ## 0.7.99
 
 Successful close is terminal: the finished field is not a live spawn surface. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.98 notes.

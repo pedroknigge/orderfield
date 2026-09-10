@@ -343,10 +343,85 @@ def print_audit_block(root: Path, usage: dict[str, Any] | None = None) -> None:
             f"{extra}{keep_mark}"
         )
     if usage.get("over") and not held:
+        suffix = ""
+        if any(row.get("open") for row in usage.get("fields") or []):
+            suffix = "  (before close)"
         print(
             "next         of gc --audit | of gc --keep-field <id> | "
-            "of gc --drop-field <id>"
+            f"of gc --drop-field <id>{suffix}"
         )
+
+
+class AuditPressure:
+    """Doctor / pre-close warn when tree audit is OVER or scratch is fat.
+
+    Reuses tree_usage / print_audit_block / field_keep_silences.
+    Advisory WARN, not FAIL, not a close gate. Media is fat scratch
+    (no MIME scanner).
+    """
+
+    NOTE = (
+        "audit OVER or fat scratch — of gc --audit before close "
+        "(not field FAIL)"
+    )
+    NEXT = (
+        "of gc --audit | of gc --keep-field <id> | shrink scratch "
+        "then of close"
+    )
+
+    @staticmethod
+    def document(
+        root: Path, usage: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        usage = usage or tree_usage(root)
+        held = field_keep_silences(root, usage)
+        over = bool(usage.get("over"))
+        return {
+            "over": over,
+            "held": held,
+            "hot": over and not held,
+            "total": int(usage.get("total") or 0),
+            "budget": int(usage.get("budget") or 0),
+            "usage": usage,
+        }
+
+    @staticmethod
+    def doctor_lines(root: Path) -> tuple[list[str], bool]:
+        doc = AuditPressure.document(root)
+        usage = doc["usage"]
+        if doc["held"] and doc["over"]:
+            flag = "HELD"
+        elif doc["over"]:
+            flag = "OVER"
+        else:
+            flag = "OK"
+        lines = [
+            f"  audit         {flag}  {format_bytes(doc['total'])} / "
+            f"{format_bytes(doc['budget'])}"
+        ]
+        if not doc["hot"]:
+            return lines, False
+        for row in usage.get("fields") or []:
+            fat = int(row.get("fat_bytes") or 0)
+            child = str(row.get("fat_child") or "")
+            if child and fat > SCRATCH_CHILD_BUDGET_BYTES:
+                lines.append(
+                    f"  scratch       {row['id']}  child={child}:"
+                    f"{format_bytes(fat)}"
+                )
+        lines.append(f"  note          {AuditPressure.NOTE}")
+        lines.append(f"  next          {AuditPressure.NEXT}")
+        return lines, True
+
+    @staticmethod
+    def emit(root: Path) -> bool:
+        """Print the existing audit block plus before-close note when hot."""
+        doc = AuditPressure.document(root)
+        if not doc["hot"]:
+            return False
+        print_audit_block(root, doc["usage"])
+        print(f"note         {AuditPressure.NOTE}")
+        return True
 
 
 def _plan_home_learnings(
@@ -1212,6 +1287,7 @@ class FieldRetain:
     apply = staticmethod(apply_field_retention)
     print_plan = staticmethod(print_retention_plan)
     audit = staticmethod(print_audit_block)
+    pressure = AuditPressure
     drop_home = staticmethod(drop_field_home)
     maybe_safe = staticmethod(maybe_safe_gc)
     keep_field = staticmethod(record_keep_field)

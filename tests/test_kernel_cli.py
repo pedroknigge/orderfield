@@ -1704,6 +1704,57 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("residual (awaiting)=", child.stdout)
 
 
+class DoctorAuditPressure(unittest.TestCase):
+    """Doctor / pre-close WARN when audit is OVER or scratch is fat."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-audit-"))
+        self.home = Path(tempfile.mkdtemp(prefix="of-doctor-audit-home-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(shutil.rmtree, self.home, True)
+        init = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "m",
+            "--phase",
+            "explore",
+            extra_env={"HOME": str(self.home)},
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+
+    def _env(self, **more: str) -> dict[str, str]:
+        env = {"HOME": str(self.home), "OF_GC_BUDGET": "64"}
+        env.update(more)
+        return env
+
+    def _fat_scratch(self) -> Path:
+        fat = self.tmp / ".orderfield" / "work" / "scratch" / "media" / "blob.bin"
+        fat.parent.mkdir(parents=True, exist_ok=True)
+        fat.write_bytes(b"x" * 128)
+        return fat
+
+    def test_doctor_warns_when_audit_over(self) -> None:
+        self._fat_scratch()
+        r = run_of(self.tmp, "doctor", extra_env=self._env())
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("OVER", r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertIn(of.AuditPressure.NOTE, r.stdout)
+        self.assertIn("of gc --audit", r.stdout)
+        self.assertIn("before close", r.stdout)
+
+    def test_close_checklist_warns_and_does_not_make_over_a_gate(self) -> None:
+        self._fat_scratch()
+        r = run_of(self.tmp, "close", "--checklist", extra_env=self._env())
+        self.assertIn("OVER", r.stdout)
+        self.assertIn(of.AuditPressure.NOTE, r.stdout)
+        self.assertIn("before close", r.stdout)
+        self.assertIn("of gc --audit", r.stdout)
+        self.assertNotIn("of close refused: audit", r.stderr)
+
+
 class DoctorWorktreeLeftover(unittest.TestCase):
     """Leftover of-worktree records are doctor WARN. No Orca process poll."""
 
