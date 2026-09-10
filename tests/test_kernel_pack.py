@@ -2112,5 +2112,91 @@ class WaveReportQualityGate(unittest.TestCase):
         self.assertNotIn(of.WaveReportQualityEval.DUMP_EVIDENCE, payload)
 
 
+class PackCollectWallClock(unittest.TestCase):
+    """Published pack→collect probe. N=4 handoff residuals. Not an SLO.
+
+    Replaces the docs/performance.md 30s/120s soft-warn table. of eval --kernel.
+    """
+
+    N = 4
+    SMOKE_SECONDS = 30.0
+    PERF_DOC = ROOT / "docs" / "performance.md"
+
+    @staticmethod
+    def child_id(index: int) -> str:
+        return f"c{index}"
+
+    @staticmethod
+    def timed_pack_collect(root: Path) -> float:
+        started = time.perf_counter()
+        for index in range(1, PackCollectWallClock.N + 1):
+            child = PackCollectWallClock.child_id(index)
+            packed = run_of(
+                root,
+                "pack",
+                "--slice",
+                f"noop slice {index}",
+                "--role",
+                "explorer",
+                "--child-id",
+                child,
+            )
+            if packed.returncode != 0:
+                raise AssertionError(packed.stderr)
+            spawned = run_of(
+                root,
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                f".orderfield/waves/001/packets/{child}.json",
+            )
+            if spawned.returncode != 0:
+                raise AssertionError(spawned.stderr)
+            write_bound_residual(root, child)
+        collected = run_of(root, "collect", "--wave", "1")
+        if collected.returncode != 0:
+            raise AssertionError(collected.stdout + collected.stderr)
+        return time.perf_counter() - started
+
+    def test_docs_publish_probe_not_soft_warn(self) -> None:
+        text = self.PERF_DOC.read_text(encoding="utf-8")
+        self.assertNotIn("## Soft warns", text)
+        self.assertNotIn("Soft warn in release notes", text)
+        self.assertIn("PackCollectWallClock", text)
+        self.assertIn("of collect --wave 1", text)
+        self.assertIn("of eval --kernel", text)
+        self.assertIn(
+            "tests.test_kernel.PackCollectWallClock",
+            of.EVAL_UNITTEST_MODULES,
+        )
+
+    def test_n4_handoff_pack_collect_under_smoke(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-pack-collect-wc-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "perf probe",
+            "--phase",
+            "explore",
+            "--source",
+            "noop pack collect probe",
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        elapsed = PackCollectWallClock.timed_pack_collect(tmp)
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertIn(f"total={self.N}", collected.stdout)
+        self.assertNotIn("MISSING", collected.stdout)
+        self.assertLess(
+            elapsed,
+            self.SMOKE_SECONDS,
+            f"pack→collect N={self.N} took {elapsed:.3f}s "
+            f"(smoke {self.SMOKE_SECONDS}s; disk thrash, not an SLO)",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

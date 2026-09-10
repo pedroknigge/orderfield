@@ -399,7 +399,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |
 | [docs/roadmap.md](docs/roadmap.md) | Current release line / deferred work |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
-| [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
+| [docs/performance.md](docs/performance.md) | Wave wall-clock probe (`PackCollectWallClock`; no 30s soft warn) |
 | [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
 | [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |

@@ -41,7 +41,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |
 | [docs/roadmap.md](docs/roadmap.md) | Canonical deferred work / current release line |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Field failure recovery |
-| [docs/performance.md](docs/performance.md) | Wave wall-clock measure plan |
+| [docs/performance.md](docs/performance.md) | Wave wall-clock probe (`PackCollectWallClock`; no 30s soft warn) |
 | [docs/demo/README.md](docs/demo/README.md) | 90-second amnesia + threshold demo |
 | [docs/demo/mortal-install.md](docs/demo/mortal-install.md) | One-sitting mortal install (`install.sh` + `of doctor`) |
 | [docs/agent-discovery.md](docs/agent-discovery.md) | Agent discovery index |
