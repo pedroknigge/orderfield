@@ -14,6 +14,7 @@ from of.field import (
     die,
     dump_json,
     emit_event,
+    field_generation,
     find_root,
     json_events_enabled,
     load_json,
@@ -60,6 +61,7 @@ from of.regime import (
     mark_done_when_closed,
     mission_done_when,
     partial_apply_recovery_allowed,
+    PhaseDigest,
     phase_deliver_errors,
     phase_done_when,
     phase_transition_errors,
@@ -318,8 +320,8 @@ def cmd_phase(args: argparse.Namespace) -> None:
     order["phase"] = args.phase
     order["done_when_closed"] = args.phase in closed_phases(order)
     order["rev"] = int(order["rev"]) + 1
-    save_order(order, root)
-    write_phase_md(root, order)
+    refreshed = PhaseDigest.refreshed_report(root, order, state)
+    override = None
     if args.force:
         override = {
             "at": utc_now(),
@@ -331,7 +333,26 @@ def cmd_phase(args: argparse.Namespace) -> None:
             "order_rev_after": int(order["rev"]),
         }
         state.setdefault("phase_overrides", []).append(override)
-        save_state(state, root)
+    with field_generation(root):
+        save_order(order, root)
+        write_phase_md(root, order)
+        if refreshed is not None:
+            require_public_schema(
+                refreshed, "wave-report.schema.json", "wave report"
+            )
+            integration = refreshed["integration"]
+            dump_json(
+                root / physical_field_rel(root, integration["record_path"]),
+                refreshed,
+            )
+            dump_json(
+                wave_dir(int(state.get("wave") or 1), root) / "report.json",
+                refreshed,
+            )
+            reconcile_integration_state(state, refreshed)
+        if override is not None or refreshed is not None:
+            save_state(state, root)
+    if override is not None:
         emit_event("phase_override", **override)
         print("override=" + json.dumps(override, ensure_ascii=False, sort_keys=True))
         counts = requirement_counts(load_requirements(root))

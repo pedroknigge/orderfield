@@ -1082,6 +1082,34 @@ class SkillRespawnInFlight(unittest.TestCase):
         self.assertIn("re-spawn", appendix_fold)
 
 
+class SkillPhaseNextWave(unittest.TestCase):
+    """SKILL teaches of phase then next-wave without recomputing the prior wave."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_phase_then_next_wave(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("after successful `of phase`", table)
+        self.assertIn("of next-wave", table)
+        self.assertIn("do not `--recompute`", table)
+        alias_fold = alias.casefold()
+        self.assertIn("of phase", alias_fold)
+        self.assertIn("of next-wave", alias_fold)
+        self.assertIn("do not integrate `--recompute`", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("phasedigest", appendix_fold)
+        self.assertIn("of next-wave", appendix_fold)
+        self.assertIn("do not", appendix_fold)
+        self.assertIn("integrate --recompute", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PhaseDigest:", source)
+
+
 class SkillPackedOnlyStatus(unittest.TestCase):
     """SKILL teaches PACKED / SPAWN. Packed-only is not ALIVE."""
 

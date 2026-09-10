@@ -15,6 +15,7 @@ from of.field import (
     load_order,
     load_wave_report,
     spec_path,
+    utc_now,
     wave_dir,
 )
 
@@ -651,6 +652,56 @@ def wave_report_covers_packets(
         order=load_order(root),
     )
     return current_hash == integration.get("input_hash")
+
+
+class PhaseDigest:
+    """Keep a just-integrated wave eligible for next-wave after of phase. #164.
+
+    of phase flips done_when_closed / closed_phases (and ORDER.rev). Those
+    fields are reduction-affecting for integrate (#49) so they stay in
+    integration_input_digest. Refreshing the covering hash is not
+    decide_regime and is not integrate --recompute.
+    """
+
+    @staticmethod
+    def refreshed_report(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Return a covering report for the new ORDER, or None if none exists."""
+        report = current_wave_report(root, state)
+        if report is None:
+            return None
+        integration = report.get("integration")
+        if not isinstance(integration, dict) or not integration.get("input_hash"):
+            return None
+        wave = int(state.get("wave") or 1)
+        packets = packed_children(root, wave)
+        previous_hash = str(integration.get("input_hash"))
+        new_hash = integration_input_digest(
+            root,
+            wave,
+            packets,
+            partial=bool(integration.get("partial")),
+            apply=bool(integration.get("apply")),
+            order=order,
+        )
+        new_rev = int(order["rev"])
+        if new_hash == previous_hash and report.get("order_rev") == new_rev:
+            return None
+        out = dict(report)
+        out["order_rev"] = new_rev
+        if new_hash != previous_hash:
+            refreshed = dict(integration)
+            refreshed["previous_input_hash"] = previous_hash
+            refreshed["input_hash"] = new_hash
+            refreshed["integrated_at"] = utc_now()
+            refreshed["record_path"] = (
+                f".orderfield/waves/{int(wave):03d}/integrations/{new_hash}.json"
+            )
+            out["integration"] = refreshed
+        return out
 
 
 def partial_apply_recovery_allowed(

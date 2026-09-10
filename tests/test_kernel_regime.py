@@ -1134,6 +1134,25 @@ class StateMachineGuards(unittest.TestCase):
         self.assertEqual(order["phase"], "cut")
         self.assertIn("explore", order["done_when_closed_phases"])
 
+    def test_phase_then_next_wave_without_recompute(self) -> None:
+        """#164: successful of phase leaves the wave eligible for next-wave."""
+        self._ready_for_phase()
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        replay = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertNotIn("recompute", replay.stderr)
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertEqual(advanced.returncode, 0, advanced.stderr)
+        self.assertIn("wave=2", advanced.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertEqual(state["wave"], 2)
+        report = load_json(self.tmp / ".orderfield" / "waves" / "001" / "report.json")
+        self.assertEqual(report["regime"], "phase")
+        self.assertTrue(
+            of.wave_report_covers_packets(self.tmp, {"wave": 1}, report)
+        )
+
     def test_force_phase_requires_reason_and_persists_audit_evidence(self) -> None:
         refused = run_of(self.tmp, "phase", "build", "--force")
         self.assertNotEqual(refused.returncode, 0)
