@@ -367,6 +367,8 @@ python3 <skill>/scripts/of.py phase build
 
 Only when `done_when` is closed (`of patch --done-when-closed`), the current wave has a digest-current complete integration whose regime is `phase`, and no child is in flight. Movement is one official phase at a time. A `status=done` residual does **not** advance the phase by itself. `phase --force --reason "…"` is audited break-glass.
 
+After a successful `of phase`, run `of next-wave`. The kernel refreshes the just-integrated wave's covering digest in the same transition (`PhaseDigest`) so next-wave does not require `integrate --recompute` of that completed wave. `--recompute` remains for real input changes (`of patch --done-when-closed` before the first `phase` report — #49).
+
 #### Mission vs phase `done_when`
 
 `ORDER.done_when` stays a flat string list. Two buckets:

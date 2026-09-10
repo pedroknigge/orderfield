@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.92
+
+Successful `of phase` leaves the just-integrated wave eligible for `of next-wave`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.91 notes.
+
+- **Reuse table (design-first):** `cmd_phase` already owns the phase ORDER mutation; `integration_input_digest` + `wave_report_covers_packets` already own coverage; `advance_wave` already owns next-wave. The remaining gap is `of phase` flipping `done_when_closed` / `closed_phases` (and `ORDER.rev`) so the covering digest goes stale and next-wave dies.
+- **Reuse, not a new digest:** `PhaseDigest.refreshed_report` recomputes the existing hash over the same packets/residuals with the new ORDER and writes report + integration record in the same WAL generation. Does not `decide_regime`. Does not auto-advance the wave. `#49` `done_when_closed` stays in the digest. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `of phase` then `of next-wave` without `--recompute` of the prior wave. `--recompute` remains for real input changes.
+- **Proof:** `StateMachineGuards.test_phase_then_next_wave_without_recompute`. `SkillPhaseNextWave`. Existing `#49` `test_recompute_after_done_when_closed_selects_phase` stays. No new C-ID (honesty cap; C-083).
+- Packaging: VERSION 0.7.92; skill/alias description preview `v0.7.92 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.91 notes.
+
 ## 0.7.91
 
 Started-only re-spawn dominates a leftover residual so status cannot hide a live child. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.90 notes.

@@ -90,6 +90,8 @@ of pack … --force-spawn
 
 The transition error names the missing proof: in-flight children, no integration report, changed integration digest, unclosed phase, non-sequential target, wrong report regime, or no ORDER revision after escalation. Close that condition and retry. `phase --force --reason "…"` is the audited break-glass path for phase movement; `next-wave` has no force flag. `--force` to `deliver` still requires `of close` / coverage / matching `spec_hash`.
 
+A successful `of phase` refreshes the just-integrated wave's covering digest (`PhaseDigest`) in the same transition. Do not `integrate --recompute` that completed wave before `of next-wave`. `--recompute` remains for real input changes (packets, residuals, or `of patch --done-when-closed` before the first `phase` report — #49).
+
 ## Pack `--owns-path` overlap
 
 **Symptom:** pack dies with `owns_path … overlaps … in wave N` or `wave already has an implementer`.

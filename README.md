@@ -11,12 +11,12 @@
 The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
 
 <p align="center">
-  <strong>v0.7.91</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.92</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.91-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.92-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -96,8 +96,8 @@ This source package exposes both `orderfield` and the shorter `of` alias. `--ful
 For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
 
 ```bash
-release_tag=v0.7.91
-release_version=0.7.91
+release_tag=v0.7.92
+release_version=0.7.92
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -232,7 +232,7 @@ While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity h
 
 A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is **forbidden** until you patch and `of next-wave`. New packets bind a canonical path, packet/content identity, exact ORDER revision, wave, child, and role; residuals must echo that identity, and `done` must point to an existing path under the project. A `done` residual does **not** advance the phase. `integrate --apply` may write `constraints+` / `done_when+` / `notes` / `done_when_closed`; mission is never auto-applied. Closure is reversible via `of patch --reopen`.
 
-CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`) hold `.orderfield/field.lock` — `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json`, the authority ledger. JSON artifacts are replaced atomically via `dump_json` (per-file fsync+replace). Mutations that publish more than one field artifact stage one generation, write `wal/<id>/MANIFEST.json` (paths+hashes), then publish; crash recovery is idempotent and leaves the previous published generation readable. `spawn` / `handoff` / `gc` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
+CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`) hold `.orderfield/field.lock` — `spec` is inside the lock because it rewrites `ORDER.json` and `REQUIREMENTS.json`, the authority ledger. JSON artifacts are replaced atomically via `dump_json` (per-file fsync+replace). Mutations that publish more than one field artifact stage one generation, write `wal/<id>/MANIFEST.json` (paths+hashes), then publish; crash recovery is idempotent and leaves the previous published generation readable. `spawn` / `handoff` / `gc` / `learn` / `worktree` write artifacts without that wrapper. Integration records a digest over canonical packets, residuals, and reduction options: identical replay is a no-op that repairs interrupted report-derived state; changed inputs require `--recompute`. `next-wave` and `phase` reject in-flight, incomplete, stale-digest, or unintegrated movement. A successful `of phase` refreshes the just-integrated wave's covering digest so `of next-wave` does not require `--recompute` of the prior wave. Phase transitions are sequential and require the `phase` regime; `phase --force --reason "…"` is audited break-glass.
 
 **Mission vs phase `done_when`:** `of patch --done-when` replaces criteria for the **current phase** only (auto-prefixes the phase tag) and keeps the untagged mission checklist. `of patch --done-when-mission` edits that stable mission list. Option B phase prefixes and the legacy closed bool still work. `of status` shows `done_when_mission` / `done_when_phase`.
 
