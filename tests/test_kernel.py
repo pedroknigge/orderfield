@@ -89,6 +89,7 @@ from test_kernel_fields import (  # noqa: E402,F401
 )
 from test_sibling_field_roundtrip import PackOutPhysicalNested  # noqa: E402,F401
 from test_kernel_pack import (  # noqa: E402,F401
+    PackCollectWallClock,
     SliceLintExplain,
     StalePackets,
     WaveReportQualityGate,
