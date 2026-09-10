@@ -1666,6 +1666,38 @@ class SkillOrcaWorkerTeardown(unittest.TestCase):
         self.assertNotIn("worker-start", adapters)
 
 
+class SkillGenericAgentArgv(unittest.TestCase):
+    """Core, alias, appendix, and adapter docs teach OF_AGENT shlex argv."""
+
+    def test_all_skill_surfaces_name_shlex_and_space_path(self) -> None:
+        surfaces = {
+            "SKILL.md": SkillSurface.core(ROOT),
+            "of/SKILL.md": SkillSurface.alias(ROOT),
+            "references/skill-appendix.md": SkillSurface.appendix(ROOT),
+            "references/adapters.md": (
+                ROOT / "references" / "adapters.md"
+            ).read_text(encoding="utf-8"),
+        }
+        for rel, text in surfaces.items():
+            folded = text.casefold()
+            with self.subTest(rel=rel):
+                self.assertIn("of_agent", folded)
+                self.assertIn("shlex", folded)
+                self.assertIn("spaces", folded)
+                self.assertIn("dry-run", folded)
+                self.assertTrue(
+                    "shlex.join" in folded or "shlex.join" in text,
+                    rel,
+                )
+
+    def test_kernel_uses_static_generic_agent_class(self) -> None:
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("class GenericAgent:", source)
+        self.assertIn("shlex.split", source)
+        field = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("shlex.join", field)
+
+
 class SkillCodexWorktreeSpawn(unittest.TestCase):
     """Core, alias, appendix, and adapter docs teach the shipped Codex roots."""
 

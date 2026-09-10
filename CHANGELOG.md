@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.93
+
+Generic `OF_AGENT` keeps quoted paths with spaces as one argv token. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.92 notes.
+
+- **Reuse table (design-first):** `build_spawn_argv` already owns generic/`OF_AGENT` spawn. `detect_adapters` already reads the first token. `argv_preview` / `ArgvRedact` already render dry-run. The remaining gap is `str.split` breaking `--add-dir "/path/with spaces/.git"` while space-join hid the split.
+- **Reuse, not a new format:** `GenericAgent` parses with stdlib `shlex.split`. Dry-run prints `shlex.join` of the real list so a space path cannot look valid when execution would fail. Detect uses `binary` and stays silent on unquoted garbage. No new CLI / schema / supervisor / token ceiling / `RUNTIME_OWNERSHIP` / `of merge` / pip.
+- **Skill drives the cut:** SKILL / `/of` / appendix / adapters teach shell-quoted `OF_AGENT` and dry-run `shlex.join` in the same cut.
+- **Proof:** `GenericAgentArgv` / `GenericAgentDryRun` / `GenericAgentSpawn` (quoted space path is one argv token; dry-run quotes it). `SkillGenericAgentArgv`. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.93; skill/alias description preview `v0.7.93 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.92 notes.
+
 ## 0.7.92
 
 Successful `of phase` leaves the just-integrated wave eligible for `of next-wave`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.91 notes.

@@ -1094,8 +1094,9 @@ class ArgvAndLogRedaction(unittest.TestCase):
                 "short",
             ]
         )
-        self.assertIn("--openai-api-key <redacted>", preview)
-        self.assertIn("--approval-mode <approval>", preview)
+        self.assertIn("--openai-api-key", preview)
+        self.assertIn("<redacted>", preview)
+        self.assertIn("--approval-mode", preview)
         self.assertIn("<approval>", preview)
         self.assertNotIn("sk-secretvalue1234", preview)
         self.assertNotIn("sk-othersecret", preview)

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.92. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.93. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.92` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.93` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -107,6 +107,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.90 native Codex spawn honors a recorded child worktree with `-C`, field-home `--add-dir`, and exact Git-common-dir `--add-dir`; invalid records refuse before launch. Proof: `CodexRecordedWorktree` / `SkillCodexWorktreeSpawn`. No new command / schema / supervisor.
 - 0.7.91 started-only re-spawn dominates a leftover residual (`SpawnRecord.flying`). Status/resume/pulse stay `running` + PULSE + speak until that spawn settles. `PackRoster` / `integrate --partial` share the read. Proof: `InFlightVisibility.test_started_only_respawn_dominates_prior_residual` / `SkillRespawnInFlight`. No new CLI / supervisor.
 - 0.7.92 successful `of phase` refreshes the just-integrated wave covering digest (`PhaseDigest`) so `of next-wave` does not require `--recompute`. `#49` stays. Proof: `test_phase_then_next_wave_without_recompute` / `SkillPhaseNextWave`. No new CLI / schema / supervisor.
+- 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`). Dry-run prints `shlex.join` of the real list so a space path stays one token. Proof: `GenericAgentArgv` / `SkillGenericAgentArgv`. No new CLI / supervisor.
 
 ## Contract boundaries
 
