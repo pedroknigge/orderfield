@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -257,8 +258,7 @@ def detect_adapters() -> dict[str, str | None]:
     found: dict[str, str | None] = {}
     for name in ADAPTER_ORDER:
         if name == "generic":
-            cmd = os.environ.get("OF_AGENT")
-            found[name] = cmd.split()[0] if cmd else None
+            found[name] = GenericAgent.binary(os.environ.get("OF_AGENT"))
             continue
         found[name] = which_bin(ADAPTER_BINS[name])
     return found
@@ -1065,6 +1065,44 @@ class AgyDeniedActions:
         return out
 
 
+class GenericAgent:
+    """OF_AGENT is a shell-quoted argv string, not whitespace tokens.
+
+    ``str.split`` breaks ``--add-dir "/path/with spaces/.git"``.
+    ``shlex.split`` is the stdlib parse. Detect uses ``binary`` and
+    stays silent on unquoted garbage. Spawn uses ``split`` and dies.
+    """
+
+    @staticmethod
+    def tokens(command: str | None) -> list[str] | None:
+        text = str(command or "").strip()
+        if not text:
+            return None
+        try:
+            parts = shlex.split(text, posix=True)
+        except ValueError:
+            return None
+        return parts or None
+
+    @staticmethod
+    def binary(command: str | None) -> str | None:
+        parts = GenericAgent.tokens(command)
+        return parts[0] if parts else None
+
+    @staticmethod
+    def split(command: str) -> list[str]:
+        text = str(command or "").strip()
+        if not text:
+            die("OF_AGENT is empty")
+        try:
+            parts = shlex.split(text, posix=True)
+        except ValueError as exc:
+            die(f"OF_AGENT is not a valid shell argv: {exc}")
+        if not parts:
+            die("OF_AGENT is empty")
+        return parts
+
+
 class CodexWorktree:
     """Codex argv roots for a child recorded by ``of worktree add``."""
 
@@ -1157,8 +1195,8 @@ def build_spawn_argv(
     env_agent = os.environ.get("OF_AGENT")
     stream = StreamJson.argv_flags(adapter)
     schema = OutputSchema.argv_flags(adapter)
-    if adapter == "generic" and env_agent:
-        return env_agent.split() + [prompt]
+    if adapter == "generic" and env_agent and str(env_agent).strip():
+        return GenericAgent.split(env_agent) + [prompt]
     if adapter == "claude":
         bin_ = which_bin(["claude"]) or "claude"
         return [bin_, *model, *resume, "-p", prompt, *stream, *trust]
@@ -1216,8 +1254,8 @@ def build_spawn_argv(
             "--task-title",
             packet.get("child_id", "orderfield-slice"),
         ]
-    if env_agent:
-        return env_agent.split() + [prompt]
+    if env_agent and str(env_agent).strip():
+        return GenericAgent.split(env_agent) + [prompt]
     if dry_run:
         return [adapter, "<prompt>"]
     die(

@@ -55,6 +55,9 @@ Default order if you omit `--adapter`:
 Override: `OF_ADAPTER=codex` or `--adapter`.
 
 Custom command: `OF_AGENT='my-binary --flags'` plus `--adapter generic`.
+`OF_AGENT` is a shell-quoted argv (`shlex.split`). Quote paths with spaces
+(`--add-dir "/path/with spaces/.git"`). Dry-run prints `shlex.join` of the
+real list so a space path stays one token.
 
 ## Trust profiles (`OF_TRUST`)
 
@@ -364,6 +367,13 @@ Unknown harnesses — Windsurf, Cline, Aider, a custom CLI, a web chat — all u
 ```bash
 export OF_AGENT="my-agent --headless"
 python3 scripts/of.py spawn --adapter generic --packet PACKET.json
+```
+
+Quote any path or flag that contains spaces. The kernel parses `OF_AGENT`
+with `shlex.split` and dry-run prints `shlex.join` of the real argv:
+
+```bash
+export OF_AGENT='my-agent --add-dir "/path/with spaces/.git"'
 ```
 
 The command receives the prompt as its last argument and the allowlisted

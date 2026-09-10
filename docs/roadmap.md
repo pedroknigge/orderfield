@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.92. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.93. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.92`
+**Status:** Shipped · **Current release line:** `0.7.93`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.93 — generic OF_AGENT keeps quoted paths with spaces
+
+- `of spawn --adapter generic` parses `OF_AGENT` with `shlex.split` (`GenericAgent`). A quoted path such as `--add-dir "/path/with spaces/.git"` is one argv token. Dry-run prints `shlex.join` of the real list so a space path cannot look valid when execution would fail. Proof: `GenericAgentArgv` / `SkillGenericAgentArgv`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.92 — phase then next-wave without recompute
 

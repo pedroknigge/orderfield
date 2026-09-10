@@ -17,6 +17,7 @@ import json
 import math
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -3998,6 +3999,11 @@ class ArgvRedact:
             out.append("<prompt>")
         return out
 
+    @staticmethod
+    def preview(argv: list[str]) -> str:
+        """Render the real argv. Space tokens stay quoted (shlex.join)."""
+        return shlex.join(ArgvRedact.apply(argv))
+
 
 def redact_argv(argv: list[str]) -> list[str]:
     """Redact secret values and approval flags in a spawn argv list."""
@@ -4005,7 +4011,7 @@ def redact_argv(argv: list[str]) -> list[str]:
 
 
 def argv_preview(argv: list[str]) -> str:
-    return " ".join(redact_argv(argv))
+    return ArgvRedact.preview(argv)
 
 
 def field_rel(root: Path, path: Path) -> str:
