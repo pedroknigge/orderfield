@@ -11,7 +11,11 @@
         "Keep the original brief. Also require a write log dated on each persist."
       ],
       "exit": 0,
-      "stdout_contains": ["spec amended", "rev="]
+      "stdout_contains": ["spec amended", "rev="],
+      "stderr_contains": [
+        "stales 1 packet(s) in wave 1",
+        "can no longer be re-spawned"
+      ]
     },
     {
       "run": "patch",
@@ -27,10 +31,15 @@
       "exit": 0,
       "stdout_contains": [
         "field         open",
-        "NEXT-WAVE",
-        "wave is closed or stale; run next-wave"
+        "UNPACK --FORCE",
+        "do not spawn"
       ],
-      "stdout_not_contains": ["field         closed", "next\n  PACK"]
+      "stdout_not_contains": [
+        "field         closed",
+        "next\n  PACK",
+        "of spawn",
+        "next\n  HANDOFF"
+      ]
     },
     {
       "run": "next-wave",
