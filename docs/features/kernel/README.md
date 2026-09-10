@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.90. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.91. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.90` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.91` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -27,7 +27,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Collect/integrate refuse chat-dump residuals (`ResidualQuality` on `validate_residual`: multi-turn Human/Assistant transcript, oversized blob that is not structured evidence, or over the line cap). Honest structured evidence (counts, paths, shas) may exceed 4000 chars. Size-refuse names `scratch/<child>/notes.md` + re-spawn. Wave report stays `{status, wants, uncertainty}`. Proof: `recovery/wave-report-quality-gate` / `WaveReportQualityGate`. No new schema.
 - `of status` / `of resume` print `signal abandoned` when an open field has empty waves and is older than seven days. Read-path only; nothing is deleted.
 - `of status` / `of resume` print `packed_age` when an in-flight child's `packed_at` is older than the same 7-day SLA. Pulse STALE stays activity evidence. Read-path only; nothing is unpacked. Proof: `recovery/packed-age-watchdog` / `PackedAgeWatchdog`.
-- `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts / `InFlightSignal`). Human `of status` prints `running` plus per-child pulse and the last 1–3 `PULSE` progress lines while residual is MISSING (`PulseProgress`; missing file stays `running`). `--json` / `OF_JSON=1` emits the `status` event with `in_flight_detail[].progress`. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`; `recovery/in-flight-visibility` / `InFlightVisibility`.
+- `of status --json` prints one live-wave JSON object from the same `StatusReport` document (`FieldSignal` / `PackedAge` / `RootStub` / requirement counts / `InFlightSignal`). Human `of status` prints `running` plus per-child pulse and the last 1–3 `PULSE` progress lines while residual is MISSING (`PulseProgress`; missing file stays `running`). A leftover residual does not hide a started-only re-spawn (`SpawnRecord.flying`). `--json` / `OF_JSON=1` emits the `status` event with `in_flight_detail[].progress`. No `STATUS.json`. Proof: `recovery/status-json` / `StatusReportJson`; `recovery/in-flight-visibility` / `InFlightVisibility`.
 - `of handoff` without `--packet` prints a mid-epic field packet from one `HandoffReport` document (next legal action, in-flight packet paths, pulse, checkpoint summary). `--json` is the machine object. Child prompt stays `of handoff --packet`. Does not unpack. No `HANDOFF.json`. Proof: `recovery/mid-epic-handoff` / `MidEpicHandoffPacket`.
 - `of wave list` / `of wave show [N]` is the multi-wave roster. Live wave is `state.wave` (`*`). Walks existing `waves/NNN` plus the live number. Read-path only. No new schema. Proof: `recovery/wave-list-show` / `WaveRosterListShow`.
 - `of checkpoint --summary` optional one-screen leader narrative (refuse huge dumps)
@@ -105,6 +105,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.88 `/version` or a release header SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`). Extract names `VERSION-`. `--surface internal` cannot hide them. Same close gate as `/health`. Not CloseEvidence SHA+rollback. Not a version server. No `of gate`. Proof: `ContractSurfaceGate` / `SkillContractSurface`. No new CLI / supervisor.
 - 0.7.89 Prod§15 day-90 runbook path required in `done_when` before close (`RunbookPath` on `DoneWhenLint.refuse_close`). Production/day-90 cue only; toy fields stay. Theater stays `DoneWhenLint`. Not an on-call bot. No `of gate`. Proof: `RunbookPathGate` / `SkillProductionMode`. No new CLI / supervisor.
 - 0.7.90 native Codex spawn honors a recorded child worktree with `-C`, field-home `--add-dir`, and exact Git-common-dir `--add-dir`; invalid records refuse before launch. Proof: `CodexRecordedWorktree` / `SkillCodexWorktreeSpawn`. No new command / schema / supervisor.
+- 0.7.91 started-only re-spawn dominates a leftover residual (`SpawnRecord.flying`). Status/resume/pulse stay `running` + PULSE + speak until that spawn settles. `PackRoster` / `integrate --partial` share the read. Proof: `InFlightVisibility.test_started_only_respawn_dominates_prior_residual` / `SkillRespawnInFlight`. No new CLI / supervisor.
 
 ## Contract boundaries
 

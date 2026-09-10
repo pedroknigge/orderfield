@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.90. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.91. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.90`
+**Status:** Shipped · **Current release line:** `0.7.91`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.91 — started-only re-spawn dominates a leftover residual
+
+- `of status` / `of resume` / `of pulse` stay `running` (PULSE + speak) when a started-only spawn (`SpawnRecord.unsettled`) is live, even if a prior residual still sits on disk. A leftover collect-refuse file does not win. After `outcome` lands, residual presence is idle again. `PackRoster` / `integrate --partial` share the read. Proof: `InFlightVisibility.test_started_only_respawn_dominates_prior_residual`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.90 — Codex recorded-worktree spawn
 

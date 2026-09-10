@@ -184,6 +184,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.88 `/version` or release header SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`; extract VERSION; `--surface internal` cannot hide; no `of gate`) | documented |
 | 0.7.89 Prod§15 day-90 runbook path required in `done_when` before close (`RunbookPath`; production/day-90 cue only; toy fields stay; no `of gate`) | documented |
 | 0.7.90 native Codex spawn honors recorded child worktree (`-C` + field/Git `--add-dir`) or refuses before launch (`CodexWorktree`; C-045) | documented |
+| 0.7.91 started-only re-spawn dominates leftover residual (`SpawnRecord.flying`; status/resume/pulse stay `running` + PULSE + speak; #163) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
 | Branch protection + CONTRIBUTING / coverage waiver | documented |
