@@ -1237,8 +1237,55 @@ class StateMachineGuards(unittest.TestCase):
         advanced = run_of(self.tmp, "next-wave")
         self.assertNotEqual(advanced.returncode, 0)
         self.assertIn("changed after its report", advanced.stderr)
+        self.assertIn("integrate --wave 1 --recompute", advanced.stderr)
         self.assertEqual(
             load_json(self.tmp / ".orderfield/state.json")["wave"], 1
+        )
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  INTEGRATE --RECOMPUTE", resumed.stdout)
+        self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
+        status = run_of(self.tmp, "status", "--json")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(
+            json.loads(status.stdout)["next"], "integrate --recompute"
+        )
+
+    def test_spawn_owned_residual_after_integrate_stays_eligible(self) -> None:
+        """#168: spawn metadata after integrate must not deadlock next-wave."""
+        self._pack()
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        )
+        data = load_json(path)
+        data["session_id"] = "sess-after-integrate"
+        data["denied_actions"] = ["Read"]
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        report = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "report.json"
+        )
+        self.assertTrue(
+            of.wave_report_covers_packets(self.tmp, {"wave": 1}, report)
+        )
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertNotIn("INTEGRATE --RECOMPUTE", resumed.stdout)
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertEqual(advanced.returncode, 0, advanced.stderr)
+        self.assertIn("wave=2", advanced.stdout)
+        self.assertEqual(
+            load_json(self.tmp / ".orderfield/state.json")["wave"], 2
+        )
+
+    def test_spawn_owned_keys_match_adapter_writers(self) -> None:
+        from of_adapters import AdapterResume, AgyDeniedActions
+
+        self.assertEqual(
+            of.IntegrationDigest.SPAWN_OWNED,
+            frozenset({AdapterResume.KEY, AgyDeniedActions.KEY}),
         )
 
     def test_partial_apply_late_threshold_requires_full_reduction(self) -> None:

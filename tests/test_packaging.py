@@ -1110,6 +1110,33 @@ class SkillEmptyWavePhase(unittest.TestCase):
         self.assertIn("skip-cut", appendix_fold)
 
 
+class SkillResumeRecompute(unittest.TestCase):
+    """SKILL teaches resume INTEGRATE --RECOMPUTE when the report digest drifted."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_resume_recompute(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("integrate --recompute", table)
+        self.assertIn("digest drifted", table)
+        self.assertIn("do not next-wave", table)
+        alias_fold = alias.casefold()
+        self.assertIn("integrate --recompute", alias_fold)
+        self.assertIn("digest drifted", alias_fold)
+        self.assertIn("do not next-wave", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("integrate --recompute", appendix_fold)
+        self.assertIn("integrationdigest", appendix_fold)
+        self.assertIn("session_id", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class IntegrationDigest:", source)
+
+
 class SkillPhaseNextWave(unittest.TestCase):
     """SKILL teaches of phase then next-wave without recomputing the prior wave."""
 
