@@ -45,6 +45,8 @@ from of.regime import DoneWhenLint, done_when_closed, mark_done_when_closed
 from of.pack import (
     PACKET_IDENTITY_FIELDS,
     CloseEvidence,
+    PacketRevStale,
+    packed_children,
     packet_digest,
     truncate_slice,
 )
@@ -368,9 +370,13 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             order = load_order(root)
             order.update(spec_updates)
             sync_order_spec_fields(order, root)
+            state = load_state(root)
+            wave = int(state.get("wave") or 1)
+            live_n = len(packed_children(root, wave))
             order["rev"] = int(order["rev"]) + 1
             save_order(order, root)
             print(f"rev={order['rev']}")
+            PacketRevStale.emit_note(live_n, wave)
         snapshot_session(root, "spec")
         discard_disposable_ingest(root, ingest_source)
     counts = requirement_counts(data)

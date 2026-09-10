@@ -90,6 +90,14 @@ class ResumeHandoffGuidance(unittest.TestCase):
         self.assertIn("of spawn", lines[1])
         self.assertIn("of handoff", lines[1])
 
+    def test_rev_stale_names_unpack_force_not_spawn(self) -> None:
+        lines = of.resume_next_lines(of.PacketRevStale.ACTION)
+        self.assertEqual(lines[0], of.PacketRevStale.LABEL)
+        self.assertEqual(lines[1], of.PacketRevStale.DETAIL)
+        self.assertIn("of unpack --force", lines[1])
+        self.assertIn("do not spawn", lines[1])
+        self.assertNotIn("of spawn", lines[1])
+
 
 class RoadmapContrast(unittest.TestCase):
     """REQ-006 / REQ-007: Grok Bot vs Orderfield vs reserved kernel; the pick."""

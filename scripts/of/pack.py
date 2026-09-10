@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +16,10 @@ from of.field import (
     ROLE_CONTRACTS,
     _read_json_object,
     die,
+    emit_event,
     field_home,
     field_is_file,
+    json_events_enabled,
     load_json,
     of_dir,
     order_path,
@@ -1012,6 +1015,39 @@ def die_on_stale_packets(
 
 def packets_all_stale(packets: list[dict[str, Any]], order: dict[str, Any]) -> bool:
     return bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
+
+
+class PacketRevStale:
+    """ORDER.rev vs packet.order_rev. Pulse STALE is a different lens."""
+
+    ACTION = "unpack --force"
+    LABEL = "UNPACK --FORCE"
+    WARN_KIND = "order_rev_stale"
+    DETAIL = (
+        "ORDER.rev staled every packet; of unpack --force --child-id <id> "
+        "(scratch kept); or of next-wave; do not spawn"
+    )
+
+    @staticmethod
+    def note(count: int, wave: int) -> str:
+        n = int(count)
+        w = int(wave)
+        return (
+            f"this bumps ORDER.rev and stales {n} packet(s) in wave {w}; "
+            "a child without a residual can no longer be re-spawned"
+        )
+
+    @staticmethod
+    def emit_note(count: int, wave: int) -> None:
+        if int(count) <= 0:
+            return
+        msg = PacketRevStale.note(count, wave)
+        if json_events_enabled():
+            emit_event(
+                "warning", ok=True, kind=PacketRevStale.WARN_KIND, message=msg
+            )
+            return
+        print(f"of: note — {msg}", file=sys.stderr)
 
 
 def complete_stale_wave_recoverable(

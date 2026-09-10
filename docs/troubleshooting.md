@@ -12,11 +12,11 @@ Stranger-facing recovery for common field failures. Kernel commands only — do 
 
 ## Stale packets
 
-**Symptom:** `of pack` / `collect` / `integrate` dies with stale packet language; `of resume` may say `NEXT-WAVE`.
+**Symptom:** `of pack` / `collect` / `integrate` dies with stale packet language; `of resume` may say `NEXT-WAVE` or `UNPACK --FORCE`.
 
 **Meaning:** For a 0.4.2 packet, its registered wave or exact ORDER revision no longer matches the live field. Legacy packets use the pre-0.4.2 id/phase/mission check.
 
-A **fully stale wave** (every packet stale vs live ORDER) is recoverable without hand-editing `ORDER.json`. `of resume` prints `NEXT-WAVE` under `next`. `of next-wave` skips occupied stale dirs and does **not** require a report first. If every stale packet already has a packet-bound residual **at the physical field-home path**, `of collect` / `of integrate` may still reduce that complete wave.
+A **fully stale wave** (every packet stale vs live ORDER) is recoverable without hand-editing `ORDER.json`. When a child is still flying (no residual), `of resume` / `of status` print `UNPACK --FORCE` — spawn and `of handoff --packet` refuse the old `order_rev`. `of unpack --force --child-id <id>` releases that child (scratch is kept). `of next-wave` still skips occupied stale dirs and does **not** require a report first. If every stale packet already has a packet-bound residual **at the physical field-home path**, `of collect` / `of integrate` may still reduce that complete wave. `of spec --add` / `--amend` prints an advisory note that the rev bump stales N packet(s).
 
 `of collect` / `of integrate` also find a leftover canonical write under `.orderfield/waves/…` via `packet_residual_file` (#48). `complete_stale_wave_recoverable` and `of unpack` still look only at the physical path — a residual that exists only at the leftover canonical location does not make the wave complete-stale, and unpack will still refund that child. Incomplete leftover packets (no residual) still fail collect/integrate; use `of next-wave` or `of unpack`.
 
@@ -24,11 +24,11 @@ A **fully stale wave** (every packet stale vs live ORDER) is recoverable without
 
 ```bash
 of resume
+# flying + identity-stale (no residual):
+of unpack --force --child-id <id>   # scratch kept; do not spawn
 of next-wave   # skips dirs whose packets are stale; no hand-edit
 # complete stale wave (residuals already on disk) can also:
 of integrate --wave N
-# or unpack specific children that never reported:
-of unpack --child-id <id>
 ```
 
 ## Unsafe, unregistered, or tampered packet

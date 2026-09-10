@@ -53,6 +53,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `cost_unmeasured` | Pre-spawn cost disclaimer (`of spawn`) |
 | `slice_long` | Pack slice at/over the advisory char threshold; names split/constraints/`of unpack` fix path. Whole-phase slogans are `error` `slice.phase`, not this warning |
 | `learning_long` | Learning text over the advisory char threshold; still stored. Names `work/scratch/leader/<file>.md` plus a short pointer. Chat-dump line count is `error` `learning.lines`, not this warning |
+| `order_rev_stale` | `of spec` identity bump (`--add` / `--amend` / …) will stale N live-wave packets; a child without a residual can no longer be re-spawned |
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |

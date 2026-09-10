@@ -732,12 +732,14 @@ class ResumeAfterIntegrate(unittest.TestCase):
         after = run_of(self.tmp, "resume")
         self.assertIn("next\n  NEXT-WAVE", after.stdout)
 
-    def test_all_stale_packets_point_at_next_wave_not_hold(self) -> None:
+    def test_all_stale_packets_point_at_unpack_force_not_hold(self) -> None:
         r = run_of(self.tmp, "patch", "--mission", "a different field")
         self.assertEqual(r.returncode, 0, r.stderr)
         resumed = run_of(self.tmp, "resume")
-        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertIn("next\n  UNPACK --FORCE", resumed.stdout)
+        self.assertIn("do not spawn", resumed.stdout)
         self.assertNotIn("next\n  HOLD", resumed.stdout)
+        self.assertNotIn("next\n  HANDOFF", resumed.stdout)
         nxt = run_of(self.tmp, "next-wave")
         self.assertEqual(nxt.returncode, 0, nxt.stderr)
         self.assertIn("wave=2", nxt.stdout)
@@ -3468,6 +3470,16 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
             ),
             "integrate --recompute",
         )
+        self.assertEqual(
+            of.next_legal_action(
+                state, flying, packets, stale=True, children_stale=True
+            ),
+            of.PacketRevStale.ACTION,
+        )
+        self.assertEqual(
+            of.next_legal_action(idle, [], landed, stale=True),
+            "next-wave",
+        )
 
     def test_child_pulse_verdict_stale(self) -> None:
         self._init_with_stale_child()
@@ -3494,6 +3506,100 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         pkt = load_json(pkt_path)
         verdict = of.child_pulse_verdict(self.tmp, pkt, time.time())
         self.assertEqual(verdict, "PACKED")
+
+
+class RevStaleDeadChild(unittest.TestCase):
+    """#178: rev bump + dead child (no residual) must not name of spawn."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-rev-stale-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init_packed_dead(self) -> None:
+        r = run_of(
+            self.tmp, "init", "--mission", "rev stale dead", "--phase", "build"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp, "spec", "--add", "REV-001", "--text", "first slice"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement first",
+            "--role",
+            "implementer",
+            "--child-id",
+            "mint-fix",
+            "--owns-requirement",
+            "REV-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "mint-fix"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("work on disk\n", encoding="utf-8")
+        old_ts = time.time() - (of.PULSE_STALE_MINUTES * 60 + 600)
+        os.utime(scratch / "PULSE", (old_ts, old_ts))
+
+    def test_spec_add_warns_then_status_names_unpack_force_not_spawn(self) -> None:
+        self._init_packed_dead()
+        added = run_of(
+            self.tmp, "spec", "--add", "REV-002", "--text", "new requirement"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        note = added.stderr
+        self.assertIn("of: note —", note)
+        self.assertIn("stales 1 packet(s) in wave 1", note)
+        self.assertIn("can no longer be re-spawned", note)
+        self.assertNotIn("of: note —", run_of(self.tmp, "status").stderr)
+
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("UNPACK --FORCE", status.stdout)
+        self.assertIn("do not spawn", status.stdout)
+        self.assertNotIn("of spawn", status.stdout)
+        self.assertNotIn("HANDOFF", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout)
+        self.assertEqual(doc["next"], of.PacketRevStale.ACTION)
+        self.assertEqual(doc["next_label"], of.PacketRevStale.LABEL)
+        self.assertIn("do not spawn", doc["next_detail"])
+
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  UNPACK --FORCE", resumed.stdout)
+        self.assertIn("do not spawn", resumed.stdout)
+        self.assertNotIn("next\n  HANDOFF", resumed.stdout)
+
+        pkt = ".orderfield/waves/001/packets/mint-fix.json"
+        spawn = run_of(
+            self.tmp, "spawn", "--packet", pkt, "--adapter", "generic", "--dry-run"
+        )
+        self.assertNotEqual(spawn.returncode, 0)
+        self.assertIn("stale packet", (spawn.stdout + spawn.stderr).lower())
+        forced = run_of(self.tmp, "unpack", "--child-id", "mint-fix", "--force")
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertIn("unpacked mint-fix", forced.stdout)
+
+    def test_spec_amend_warns_when_live_wave_has_packets(self) -> None:
+        self._init_packed_dead()
+        amended = run_of(self.tmp, "spec", "--amend", "dated extra ask")
+        self.assertEqual(amended.returncode, 0, amended.stderr)
+        self.assertIn("stales 1 packet(s) in wave 1", amended.stderr)
+        self.assertIn("can no longer be re-spawned", amended.stderr)
+
+    def test_spec_add_without_packets_is_quiet(self) -> None:
+        r = run_of(self.tmp, "init", "--mission", "empty", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp, "spec", "--add", "REV-001", "--text", "no packets yet"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        self.assertNotIn("stales", added.stderr)
+        self.assertNotIn("can no longer be re-spawned", added.stderr)
 
 
 class ResumeAfterProcessDeath(unittest.TestCase):
