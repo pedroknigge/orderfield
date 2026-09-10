@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.96 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Resume INTEGRATE --RECOMPUTE on digest drift. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.97 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Resume INTEGRATE --RECOMPUTE on digest drift. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.96"
+  version: "0.7.97"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -57,6 +57,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; advertised truth score matches the matrix and stays ≤98%; no marketing theater on SKILL / `/of` / README. Also inside `validate-skill.sh` |
+| VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed. Proof: `of eval recovery/multi-wave-close-checklist` |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — RFC: contrast RESOLVED + residual empty + `CLOSE.json`. Residual empty is not the close |

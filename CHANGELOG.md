@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.97
+
+One VERSION and one GitHub release tag per proven invariant. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.96 notes.
+
+- **Reuse table (design-first):** `PackagingBump` already fails packaging-only CHANGELOG sections; VersionSync / `validate-skill.sh` already lockstep VERSION, skill, alias, README, docs, heading, and `install.sh` DEFAULT_VERSION. The remaining gap is a docs-only or caption-only current heading that still tags, and a burst of packaging tags (anti-pattern: 10-tags/day).
+- **Reuse, not a new gate:** current heading must name `**Proof:**`. Docs-only / cosmetic bullets are not a cut. Historical headings without the Proof marker stay. No tag-date scanner. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach one proven invariant per VERSION and GitHub tag; packaging-only / docs-only / 10-tags/day die. `python3 scripts/check_packaging_bump.py` stays inside `validate-skill.sh`.
+- **Proof:** `PackagingBumpDiscipline` (docs-only / unproven current heading fail; historical without Proof stays). Policy docs name proven invariant + 10-tags/day. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.97; skill/alias description preview `v0.7.97 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.96 notes.
+
 ## 0.7.96
 
 Beat planning-with-files on sell clarity and install tax without becoming markdown+hooks. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.95 notes.
