@@ -110,7 +110,7 @@ One phase at a time. Do not mix `explore` with `build`.
 
 Official phases: `explore | cut | build | verify | deliver`.
 
-**Cut is optional.** Skip a dedicated cut wave when exclusive owners are already obvious (e.g. kernel vs docs) and record them in `ORDER.constraints`. Run cut when owners are disputed, schemas/paths are unowned, or an adversary would otherwise catch a missing write matrix — that is when the phase earns its keep (grok-build: cut for two obvious slices is theater; documentation-manager adversary run: cut pays when it stops a false claim).
+**Cut is optional.** Skip a dedicated cut wave when exclusive owners are already obvious (e.g. kernel vs docs) and record them in `ORDER.constraints`. Skipping the cut wave leaves wave 1 empty: after `of patch --done-when-closed`, `of phase build` is legal — do not `--force`. Run cut when owners are disputed, schemas/paths are unowned, or an adversary would otherwise catch a missing write matrix — that is when the phase earns its keep (grok-build: cut for two obvious slices is theater; documentation-manager adversary run: cut pays when it stops a false claim).
 
 #### When orderfield pays vs theater
 
@@ -365,7 +365,7 @@ Role contracts are built in: every rendered prompt carries a `Role contract — 
 python3 <skill>/scripts/of.py phase build
 ```
 
-Only when `done_when` is closed (`of patch --done-when-closed`), the current wave has a digest-current complete integration whose regime is `phase`, and no child is in flight. Movement is one official phase at a time. A `status=done` residual does **not** advance the phase by itself. `phase --force --reason "…"` is audited break-glass.
+Only when `done_when` is closed (`of patch --done-when-closed`) and no child is in flight. If the current wave has packets, it also needs a digest-current complete integration whose regime is `phase`. An empty wave (`packed_children` is empty) has nothing to integrate — `of phase <next>` succeeds without `--force`. `--force` is not the skip-cut path. Movement is one official phase at a time. A `status=done` residual does **not** advance the phase by itself. `phase --force --reason "…"` is audited break-glass.
 
 After a successful `of phase`, run `of next-wave`. The kernel refreshes the just-integrated wave's covering digest in the same transition (`PhaseDigest`) so next-wave does not require `integrate --recompute` of that completed wave. `--recompute` remains for real input changes (`of patch --done-when-closed` before the first `phase` report — #49).
 

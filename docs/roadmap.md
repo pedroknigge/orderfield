@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.93. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.94. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.93`
+**Status:** Shipped · **Current release line:** `0.7.94`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.94 — empty-wave phase without force
+
+- `of phase <next>` succeeds on a wave with zero packets (nothing to integrate) after `done_when` is closed. `phase_transition_errors` reuses `packed_children`. In-flight and `done_when_closed` stay. Packed unintegrated waves still refuse. `--force` is not the skip-cut path. Proof: `test_phase_empty_wave_succeeds_without_force` / `SkillEmptyWavePhase`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.93 — generic OF_AGENT keeps quoted paths with spaces
 

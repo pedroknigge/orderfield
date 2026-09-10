@@ -1083,9 +1083,38 @@ class StateMachineGuards(unittest.TestCase):
 
     def test_phase_rejects_unintegrated_wave(self) -> None:
         self._close()
+        self._pack()
         changed = run_of(self.tmp, "phase", "cut")
         self.assertNotEqual(changed.returncode, 0)
         self.assertIn("not integrated", changed.stderr)
+
+    def test_phase_empty_wave_succeeds_without_force(self) -> None:
+        """#166: empty wave has nothing to integrate; do not require --force."""
+        reqs = self.tmp / "reqs.json"
+        reqs.write_text(
+            json.dumps(
+                {
+                    "requirements": [
+                        {
+                            "id": "CLI-001",
+                            "text": "empty-wave phase does not need integrate",
+                        }
+                    ]
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        loaded = run_of(self.tmp, "spec", "--from-file", str(reqs))
+        self.assertEqual(loaded.returncode, 0, loaded.stderr)
+        self._close()
+        changed = run_of(self.tmp, "phase", "cut")
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        self.assertNotIn("override=", changed.stdout)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(order["phase"], "cut")
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertFalse(state.get("phase_overrides"))
 
     def test_phase_requires_phase_report_regime(self) -> None:
         self._pack()

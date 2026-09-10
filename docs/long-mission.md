@@ -33,7 +33,7 @@ of pack --explain --slice "…" --role explorer   # dry-run; no write
 of handoff --packet …   # or of spawn
 of collect --wave N
 of integrate --wave N
-of phase <next>     # when regime is phase
+of phase <next>     # when regime is phase, or empty wave after --done-when-closed
 of next-wave        # do not --recompute the prior wave
 of wave list
 of wave show

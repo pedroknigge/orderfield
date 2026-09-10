@@ -1082,6 +1082,34 @@ class SkillRespawnInFlight(unittest.TestCase):
         self.assertIn("re-spawn", appendix_fold)
 
 
+class SkillEmptyWavePhase(unittest.TestCase):
+    """SKILL teaches empty-wave of phase without --force. #166."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_empty_wave_phase(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("empty current wave", table)
+        self.assertIn("of phase", table)
+        self.assertIn("nothing to integrate", table)
+        self.assertIn("do not `--force`", table)
+        self.assertIn("packets still require integrate", table)
+        alias_fold = alias.casefold()
+        self.assertIn("empty current wave", alias_fold)
+        self.assertIn("nothing to integrate", alias_fold)
+        self.assertIn("without `--force`", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("packed_children", appendix_fold)
+        self.assertIn("nothing to integrate", appendix_fold)
+        self.assertIn("do not `--force`", appendix_fold)
+        self.assertIn("skip-cut", appendix_fold)
+
+
 class SkillPhaseNextWave(unittest.TestCase):
     """SKILL teaches of phase then next-wave without recomputing the prior wave."""
 
