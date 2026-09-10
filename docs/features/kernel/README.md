@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.94. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.95. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.94` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.95` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -54,7 +54,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of retain` (read-only) / `of gc` walk every field home. Non-risky ephemeral uses a 7-day TTL; `spec_closed` dumps it immediately. Tree budget (64 MiB, `OF_GC_BUDGET`) prints `audit` of open fields; `--keep-field` / `--archive-field` / `--drop-field` are HITL (open drop needs `--force --reason`). `--archive-field` moves a closed sibling to `.orderfield/archive/<id>/` and keeps `CLOSE.json` / SPEC / REQUIREMENTS. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. The plan action `dump` is **permanent unlink** (`Path.unlink` / `rmtree`), not an export. Backup is operator-owned. Protocol is never unlinked. Never copy transcripts. WAL crash consistency is not a restorable dump. Orphan packed children (`OrphanPacked`: closed / leftover-home / inapplicable-order / stale-prior-wave, residual missing) are named on the plan; explicit `of gc` unlinks the packet and records `gc-stamp.json` `orphans[]`. Resume auto-gc skips packets. Proof: `recovery/closed-field-archive` / `ClosedFieldArchiveTrail`; `recovery/orphan-packed-cleanup` / `OrphanPackedCleanup`.
 
 - Spawn `argv_preview` and child logs redact secrets and escalated approval flags. Long `--output-schema` / `--json-schema` / path tokens keep a basename (`ArgvRedact`); a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor/skills/orderfield`) still names `residual.codex.schema.json`. Claude/Codex/Cursor share that residual (`MultiHarnessResidual`). agy `--json-schema` reuses that file (`OutputSchema`). Claude omit.
-- A fully stale wave is recoverable with `of next-wave` without hand-editing ORDER; a complete stale wave (residuals at the physical field-home path) may also `collect`/`integrate`. Collect/integrate also find a leftover canonical write via `packet_residual_file` (#48). `unpack` and `complete_stale_wave_recoverable` still use the physical path only. `#49`: `done_when_closed` is in the integration digest; `--recompute` after `--done-when-closed` selects `phase` instead of replaying hold. `#164`: a successful `of phase` refreshes that covering digest (`PhaseDigest`) so `of next-wave` does not require `--recompute` of the prior wave.
+- A fully stale wave is recoverable with `of next-wave` without hand-editing ORDER; a complete stale wave (residuals at the physical field-home path) may also `collect`/`integrate`. Collect/integrate also find a leftover canonical write via `packet_residual_file` (#48). `unpack` and `complete_stale_wave_recoverable` still use the physical path only. `#49`: `done_when_closed` is in the integration digest; `--recompute` after `--done-when-closed` selects `phase` instead of replaying hold. `#164`: a successful `of phase` refreshes that covering digest (`PhaseDigest`) so `of next-wave` does not require `--recompute` of the prior wave. `#168`: `IntegrationDigest` omits spawn-owned `session_id` / `denied_actions`; resume names `INTEGRATE --RECOMPUTE` when a real digest still drifted.
 - `of migrate` applies versioned rewrites for pre-0.4.2 packets/state and maps writable aliases onto `workspace.writable_by_slaves`; `.orderfield/SLAVE.md` stays the protocol path
 - `of worktree` is an opt-in detached git worktree helper; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
@@ -109,6 +109,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.92 successful `of phase` refreshes the just-integrated wave covering digest (`PhaseDigest`) so `of next-wave` does not require `--recompute`. `#49` stays. Proof: `test_phase_then_next_wave_without_recompute` / `SkillPhaseNextWave`. No new CLI / schema / supervisor.
 - 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`). Dry-run prints `shlex.join` of the real list so a space path stays one token. Proof: `GenericAgentArgv` / `SkillGenericAgentArgv`. No new CLI / supervisor.
 - 0.7.94 empty-wave `of phase` skips integrate when `packed_children` is empty (`phase_transition_errors`). `done_when_closed` / in-flight stay. Proof: `test_phase_empty_wave_succeeds_without_force` / `SkillEmptyWavePhase`. No new CLI / supervisor.
+- 0.7.95 resume / status print `INTEGRATE --RECOMPUTE` when the covering digest drifted; `IntegrationDigest` omits spawn-owned `session_id` / `denied_actions`. Proof: `test_next_wave_rejects_residual_changed_after_integration` / `test_spawn_owned_residual_after_integrate_stays_eligible` / `SkillResumeRecompute`. No new CLI / supervisor.
 
 ## Contract boundaries
 

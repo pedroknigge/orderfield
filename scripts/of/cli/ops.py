@@ -137,6 +137,7 @@ from of.pack import (
 
 from of.regime import (
     RUNTIME_OWNERSHIP,
+    IntegrationDigest,
     closed_phases,
     done_when_closed,
     done_when_for,
@@ -1255,12 +1256,14 @@ class HandoffReport:
         any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
         all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
         integrated = field_is_file(wave_dir(int(state.get("wave") or 1), root) / "report.json")
+        covering = (not integrated) or IntegrationDigest.covers(root, state)
         stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
         action = next_legal_action(
             state,
             flying,
             packets,
             integrated=integrated,
+            covering=covering,
             stale=stale,
             children_stale=all_stale,
             children_packed=any_packed,
@@ -1702,6 +1705,10 @@ def resume_next_lines(action: str) -> list[str]:
         ),
         "collect": ("COLLECT", "all residuals landed; run collect"),
         "next-wave": ("NEXT-WAVE", "wave is closed or stale; run next-wave"),
+        "integrate --recompute": (
+            "INTEGRATE --RECOMPUTE",
+            "wave report digest drifted; of integrate --wave N --recompute",
+        ),
         "pack": ("PACK", "no packets on this wave; pack slices"),
         "patch then next-wave": (
             "PATCH THEN NEXT-WAVE",
@@ -1975,6 +1982,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     flying = in_flight_children(root, wave)
     completed = completed_children(root, wave)
     integrated = field_is_file(wave_dir(wave, root) / "report.json")
+    covering = (not integrated) or IntegrationDigest.covers(root, state)
     stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
     now = time.time()
     verdicts: dict[str, str] = {}
@@ -1985,7 +1993,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
     nxt = next_legal_action(
         state, flying, packets,
-        integrated=integrated, stale=stale,
+        integrated=integrated, covering=covering, stale=stale,
         children_stale=all_stale,
         children_packed=any_packed,
     )

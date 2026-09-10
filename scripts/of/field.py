@@ -3735,6 +3735,7 @@ def next_legal_action(
     packets: list[dict[str, Any]],
     *,
     integrated: bool = False,
+    covering: bool = True,
     stale: bool = False,
     children_stale: bool = False,
     children_packed: bool = False,
@@ -3751,6 +3752,8 @@ def next_legal_action(
         return "hold"
     if packets:
         if integrated:
+            if not covering:
+                return "integrate --recompute"
             return "next-wave"
         return "collect"
     return "pack"

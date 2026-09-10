@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.95
+
+Resume names `integrate --recompute` when the wave report digest drifted, and spawn-owned residual keys no longer permanent-deadlock next-wave. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.94 notes.
+
+- **Reuse table (design-first):** `integration_input_digest` + `wave_report_covers_packets` already own coverage; `next_legal_action` already owns resume `next`; `AdapterResume.KEY` / `AgyDeniedActions.KEY` already name the spawn residual writes. The remaining gap is resume printing `NEXT-WAVE` after a covering hash mismatch, and hashing spawn metadata that lands after integrate.
+- **Reuse, not a new digest:** `IntegrationDigest` omits `session_id` / `denied_actions` from the existing hash. Real residual edits still require `--recompute`. Resume / status `next` becomes `INTEGRATE --RECOMPUTE` when a report exists but does not cover. `next-wave` names the same recovery. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach resume `INTEGRATE --RECOMPUTE` (do not next-wave) and that spawn `session_id` / `denied_actions` after integrate are not drift.
+- **Proof:** `StateMachineGuards.test_next_wave_rejects_residual_changed_after_integration` (resume names recompute). `test_spawn_owned_residual_after_integrate_stays_eligible`. `SkillResumeRecompute`. No new C-ID (honesty cap; C-034 / C-035).
+- Packaging: VERSION 0.7.95; skill/alias description preview `v0.7.95 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.94 notes.
+
 ## 0.7.94
 
 Empty-wave `of phase` does not require integrate or `--force`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.93 notes.

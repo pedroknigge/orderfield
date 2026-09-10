@@ -570,6 +570,45 @@ def current_wave_report(root: Path, state: dict[str, Any]) -> dict[str, Any] | N
     return report
 
 
+class IntegrationDigest:
+    """Canonical residual for the integration input hash. #168.
+
+    Spawn finalization may write session_id / denied_actions after collect
+    accepted the child's work. Those keys are not reduction-affecting.
+    Hashing them deadlocked next-wave while resume still printed NEXT-WAVE.
+    """
+
+    SPAWN_OWNED = frozenset({"session_id", "denied_actions"})
+
+    @staticmethod
+    def residual(residual: Any) -> Any:
+        if not isinstance(residual, dict):
+            return residual
+        return {
+            key: value
+            for key, value in residual.items()
+            if key not in IntegrationDigest.SPAWN_OWNED
+        }
+
+    @staticmethod
+    def covers(
+        root: Path,
+        state: dict[str, Any],
+        report: dict[str, Any] | None = None,
+    ) -> bool:
+        blob = report if report is not None else current_wave_report(root, state)
+        if blob is None:
+            return False
+        return wave_report_covers_packets(root, state, blob)
+
+    @staticmethod
+    def drift_error(wave: int) -> str:
+        return (
+            "current wave changed after its report was integrated; "
+            f"of integrate --wave {int(wave)} --recompute"
+        )
+
+
 def integration_input_digest(
     root: Path,
     wave: int,
@@ -592,7 +631,7 @@ def integration_input_digest(
         residual_path = packet_residual_file(root, packet)
         residual: Any = None
         if residual_path is not None:
-            residual = load_json(residual_path)
+            residual = IntegrationDigest.residual(load_json(residual_path))
         children.append(
             {
                 "child_id": packet.get("child_id"),
@@ -836,7 +875,7 @@ def phase_transition_errors(
         if packets:
             errors.append(f"current wave {state.get('wave')} is not integrated")
     elif not wave_report_covers_packets(root, state, report):
-        errors.append("current wave changed after its report was integrated")
+        errors.append(IntegrationDigest.drift_error(wave))
     elif report.get("regime") != "phase":
         errors.append(
             f"current wave report regime is {report.get('regime')}, not phase"
@@ -887,7 +926,7 @@ def wave_transition_errors(
         if report is None:
             errors.append(f"current wave {wave} is not integrated")
         elif not wave_report_covers_packets(root, state, report):
-            errors.append("current wave changed after its report was integrated")
+            errors.append(IntegrationDigest.drift_error(wave))
     if state.get("spawn_blocked"):
         blocked_rev = state.get("blocked_at_order_rev")
         if blocked_rev is None and report and report.get("regime") == "escalate_up":

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.94. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.95. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.94`
+**Status:** Shipped · **Current release line:** `0.7.95`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.95 — resume names recompute; spawn metadata is not digest drift
+
+- `of resume` / `of status` print `INTEGRATE --RECOMPUTE` when `report.json` exists but `wave_report_covers_packets` is false. `of next-wave` names the same recovery. `IntegrationDigest` omits spawn-owned `session_id` / `denied_actions` from the covering hash so spawn finalization after integrate does not deadlock the wave. Real residual edits still require `--recompute`. Proof: `test_next_wave_rejects_residual_changed_after_integration` / `test_spawn_owned_residual_after_integrate_stays_eligible` / `SkillResumeRecompute`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.94 — empty-wave phase without force
 
