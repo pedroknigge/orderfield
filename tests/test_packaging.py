@@ -1708,6 +1708,38 @@ class SkillDoctorClosedHistorical(unittest.TestCase):
         self.assertIn("informational", appendix_fold)
 
 
+class SkillDoctorOpenHygiene(unittest.TestCase):
+    """SKILL teaches leftover root migrate-required and open-sibling CLOSE."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_migrate_and_open_siblings(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of doctor", table)
+        self.assertIn("leftover root", table)
+        self.assertIn("of migrate", table)
+        self.assertIn("sibling fields without close", table)
+        self.assertIn("hygiene", table)
+        self.assertIn("warn", table)
+        alias_fold = alias.casefold()
+        self.assertIn("leftover root", alias_fold)
+        self.assertIn("of migrate", alias_fold)
+        self.assertIn("sibling fields without close", alias_fold)
+        self.assertIn("hygiene", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("leftover root", appendix_fold)
+        self.assertIn("migrate required", appendix_fold)
+        self.assertIn("of migrate", appendix_fold)
+        self.assertIn("sibling fields without close", appendix_fold)
+        self.assertIn("hygiene", appendix_fold)
+        self.assertIn("warn", appendix_fold)
+
+
 class SkillCollectConservativeDiagnostic(unittest.TestCase):
     """Missing residual diagnostics report facts, not universal inability."""
 

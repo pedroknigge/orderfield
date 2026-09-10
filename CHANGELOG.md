@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.101
+
+`of doctor` loudly names leftover root `ORDER.json` SKEW (`migrate required`) and sibling fields open without CLOSE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.100 notes.
+
+- **Reuse table (design-first):** `DoctorSkew` already names leftover stub SKEW (`of migrate`) and closed-field historical packs. `list_field_homes` / `field_is_open` / `CLOSE.json` already own sibling homes. `AuditPressure` already WARNs on audit OVER / fat scratch (0.7.100). The remaining gap is a single stub line that was easy to miss, and open siblings without CLOSE that required a hand-scan of folders (`#182`).
+- **Reuse, not a new verb:** leftover root ORDER prints `migrate required` (still FAIL). Two or more open homes with no CLOSE.json print `open N fields no CLOSE` as hygiene WARN (not FAIL). One open field stays quiet. Audit OVER / fat scratch stays WARN. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Residual `v` dual-truth stays `#115`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach leftover root SKEW → `of migrate` (FAIL) and sibling fields without CLOSE as hygiene (WARN; `of fields` / `of close`).
+- **Proof:** `DoctorOnePassSkew.test_leftover_stub_fails_doctor` / `test_open_siblings_without_close_are_advisory` / `test_single_open_field_is_not_sibling_hygiene`. `SkillDoctorOpenHygiene`. `recovery/doctor-one-pass-skew` names `migrate required` + `no CLOSE`. Existing `DoctorAuditPressure` stays. No new C-ID (honesty cap; C-111).
+- Packaging: VERSION 0.7.101; skill/alias description preview `v0.7.101 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.100 notes.
+
 ## 0.7.100
 
 Doctor / pre-close warn when tree audit is OVER or scratch is fat. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.99 notes.

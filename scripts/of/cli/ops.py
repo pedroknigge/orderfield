@@ -597,6 +597,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         print(line)
     if field_skew:
         failed = True
+    _, open_warn = DoctorSkew.open_siblings(root)
     audit_warn = False
     if has_order or list_field_homes(root):
         audit_lines, audit_warn = AuditPressure.doctor_lines(root)
@@ -687,7 +688,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
-    if skill_skew or wt_warn or audit_warn:
+    if skill_skew or wt_warn or open_warn or audit_warn:
         print("doctor        WARN")
         return
     print("doctor        ok")
