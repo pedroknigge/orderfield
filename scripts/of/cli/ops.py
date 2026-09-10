@@ -118,6 +118,7 @@ from of.spec import (
 )
 
 from of.pack import (
+    PacketRevStale,
     canonical_packet_rel,
     canonical_residual_rel,
     completed_children,
@@ -1702,6 +1703,10 @@ def resume_next_lines(action: str) -> list[str]:
         "handoff": (
             "HANDOFF",
             "stale children this wave; of handoff / of spawn on the same packet; do not unpack by default",
+        ),
+        PacketRevStale.ACTION: (
+            PacketRevStale.LABEL,
+            PacketRevStale.DETAIL,
         ),
         "collect": ("COLLECT", "all residuals landed; run collect"),
         "next-wave": ("NEXT-WAVE", "wave is closed or stale; run next-wave"),

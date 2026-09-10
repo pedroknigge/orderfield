@@ -3745,6 +3745,12 @@ def next_legal_action(
     if state.get("spawn_blocked"):
         return "patch then next-wave"
     if packets and stale:
+        # Identity-stale + still flying: spawn/handoff refuse (PacketRevStale).
+        # Pulse STALE without a rev bump stays HANDOFF below.
+        if flying:
+            from of.pack import PacketRevStale
+
+            return PacketRevStale.ACTION
         return "next-wave"
     if flying:
         if children_packed:

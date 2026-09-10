@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.98
+
+After an `ORDER.rev` bump, a dead child (no residual) is no longer told to `of spawn`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.97 notes.
+
+- **Reuse table (design-first):** `next_legal_action` already owns status/resume `next`; `packets_all_stale` / `require_registered_packet` already refuse identity-stale spawn/handoff; `cmd_unpack --force` already releases a child with scratch. `resume_next_lines` already prints `INTEGRATE --RECOMPUTE` as the working flag. The remaining gap is all-identity-stale + flying still looking like pulse-STALE `HANDOFF` (names `of spawn`) on older lines, or `NEXT-WAVE` without naming the cheap release.
+- **Reuse, not a new verb:** `PacketRevStale` turns `stale` + `flying` into `UNPACK --FORCE`. `of spec --add` / `--amend` (any identity bump) prints an advisory note that the rev bump stales N packet(s). Pulse STALE without a rev bump stays `HANDOFF`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Continuation-spawn of a stale packet is not in this cut.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach resume `UNPACK --FORCE` (do not spawn) and the spec rev-stale note.
+- **Proof:** `RevStaleDeadChild` (spec `--add` warn + status/resume `UNPACK --FORCE`; spawn still refuses; unpack `--force` works). `SkillRevStaleUnpack`. Existing pulse-STALE `HANDOFF` stays. No new C-ID (honesty cap).
+- Packaging: VERSION 0.7.98; skill/alias description preview `v0.7.98 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.97 notes.
+
 ## 0.7.97
 
 One VERSION and one GitHub release tag per proven invariant. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.96 notes.

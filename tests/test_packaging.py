@@ -1219,6 +1219,32 @@ class SkillResumeRecompute(unittest.TestCase):
         self.assertIn("class IntegrationDigest:", source)
 
 
+class SkillRevStaleUnpack(unittest.TestCase):
+    """SKILL teaches rev-stale dead child → UNPACK --FORCE, not spawn."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_rev_stale_unpack(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("unpack --force", table)
+        self.assertIn("do not spawn", table)
+        self.assertIn("order.rev", table)
+        alias_fold = alias.casefold()
+        self.assertIn("unpack --force", alias_fold)
+        self.assertIn("do not spawn", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("unpack --force", appendix_fold)
+        self.assertIn("packetrevstale", appendix_fold)
+        self.assertIn("do not spawn", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
+        self.assertIn("class PacketRevStale:", source)
+
+
 class SkillPhaseNextWave(unittest.TestCase):
     """SKILL teaches of phase then next-wave without recomputing the prior wave."""
 
