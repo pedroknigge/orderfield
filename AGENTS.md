@@ -85,6 +85,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
 | 0.4.2 … + 0.5.5 auto_continue + 0.5.6 eval/parked/events + 0.5.7 eval CI/contrast recovery/Test C doc | documented |
 | 0.6.0 form split (`scripts/of.py` internals; protocol unchanged) | documented |
+| SCOPE-GODSPLIT (`field.py` WAL/learn/retain; form shipped, remaining `field.py` is field I/O) | documented |
 | 0.6.1 deictic go-ahead ingest (advisory, not a new regime) | documented |
 | 0.6.2 CLI command groups (`scripts/of/cli/`, not a new regime) | documented |
 | 0.6.4 `of learn` protocol vs field (not a new regime) | documented |

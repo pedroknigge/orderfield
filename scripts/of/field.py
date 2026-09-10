@@ -1,8 +1,10 @@
 """Field I/O: ORDER/state/session, lock, schemas, pulse, migrate, worktree.
 
-WAL/view lives in of.wal, learnings in of.learn, retention/gc in of.retain.
-This module re-exports public names so callers keep importing of.field.
-Bind, lock, and roster talk through FieldWal / FieldLearnings / FieldRetain.
+SCOPE-GODSPLIT named extractions are complete: WAL/view in of.wal,
+learnings in of.learn, retention/gc in of.retain. This module re-exports
+public names so callers keep importing of.field. Bind, lock, and roster
+talk through FieldWal / FieldLearnings / FieldRetain. Remaining size is
+this owner, not a leftover god-module.
 """
 from __future__ import annotations
 
