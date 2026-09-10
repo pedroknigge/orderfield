@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Fail packaging-only VERSION bumps. One VERSION per real cut.
+"""Fail packaging-only and unproven VERSION bumps.
 
 Reuse: VersionSync / validate-skill.sh already lockstep VERSION, skill
 metadata, alias, README, docs, CHANGELOG heading, and install.sh
-DEFAULT_VERSION. This checker adds the missing cut test: a new
-``## X.Y.Z`` that only restates packaging lockstep is not a cut.
+DEFAULT_VERSION. This checker adds the cut test: a new ``## X.Y.Z``
+that only restates packaging lockstep is not a cut. The current
+heading must also name a proven invariant (``**Proof:**``). Docs-only
+or cosmetic bullets are not a cut. One VERSION and one GitHub release
+tag per proven invariant — anti-pattern: 10 tags/day. Not a tag-date
+scanner. Not a bot.
 
 No new CLI verb. No new schema. validate-skill.sh runs this.
 """
@@ -18,10 +22,16 @@ ROOT = Path(__file__).resolve().parents[1]
 HEADING_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\s*$", re.M)
 LOCKSTEP_RE = re.compile(r"^\s*[-*]\s+Packaging:\s+VERSION\b")
 BULLET_RE = re.compile(r"^\s*[-*]\s+\S")
+PROOF_RE = re.compile(r"^\s*[-*]\s+\*\*Proof:\*\*")
+THEATER_RE = re.compile(
+    r"^\s*[-*]\s+(?:\*\*)?(?:Docs?|Cosmetic|Typo|Changelog|Wording|Note)"
+    r"(?:\*\*)?:\s",
+    re.I,
+)
 
 
 class PackagingBump:
-    """One VERSION per real cut. Packaging lockstep is not a cut."""
+    """One VERSION per proven invariant. Packaging/docs lockstep is not a cut."""
 
     @staticmethod
     def version(root: Path) -> str:
@@ -46,6 +56,14 @@ class PackagingBump:
         return bool(LOCKSTEP_RE.match(line))
 
     @staticmethod
+    def is_proof_bullet(line: str) -> bool:
+        return bool(PROOF_RE.match(line))
+
+    @staticmethod
+    def is_theater_bullet(line: str) -> bool:
+        return bool(THEATER_RE.match(line))
+
+    @staticmethod
     def cut_bullets(body: str) -> list[str]:
         cuts: list[str] = []
         for line in body.splitlines():
@@ -55,6 +73,27 @@ class PackagingBump:
                 continue
             cuts.append(line.strip())
         return cuts
+
+    @staticmethod
+    def proven_bullets(body: str) -> list[str]:
+        return [
+            line.strip()
+            for line in body.splitlines()
+            if PackagingBump.is_proof_bullet(line)
+            and not PackagingBump.is_lockstep_bullet(line)
+        ]
+
+    @staticmethod
+    def current_cut_error(version: str, body: str) -> str | None:
+        """Current VERSION needs a proven invariant, not docs/cosmetic theater."""
+        if PackagingBump.proven_bullets(body):
+            return None
+        cuts = PackagingBump.cut_bullets(body)
+        if not cuts:
+            return None
+        if all(PackagingBump.is_theater_bullet(cut) for cut in cuts):
+            return f"docs-only VERSION {version}"
+        return f"unproven VERSION {version}"
 
     @staticmethod
     def problems(text: str, version: str) -> list[str]:
@@ -67,12 +106,17 @@ class PackagingBump:
                 f"first heading {sections[0][0]} != VERSION {version}"
             )
         seen: set[str] = set()
-        for ver, body in sections:
+        for index, (ver, body) in enumerate(sections):
             if ver in seen:
                 errors.append(f"duplicate VERSION {ver}")
             seen.add(ver)
             if not PackagingBump.cut_bullets(body):
                 errors.append(f"packaging-only VERSION {ver}")
+                continue
+            if index == 0:
+                current = PackagingBump.current_cut_error(ver, body)
+                if current:
+                    errors.append(current)
         return errors
 
     @staticmethod

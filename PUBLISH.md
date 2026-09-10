@@ -22,7 +22,7 @@ python3 -m unittest discover -s tests -v
 npx --yes skills add . --list --full-depth
 ```
 
-All commands must exit 0. Package discovery must list both `orderfield` and `of`. `validate-skill.sh` checks VERSION, both skill entry points, README, the current architecture/audit docs, the latest CHANGELOG heading, the claims honesty gate (`python3 docs/audit/check-claims.py`), and packaging bump discipline (`python3 scripts/check_packaging_bump.py` — one VERSION per real cut; packaging-only lockstep fails). Preserve unrelated files rather than cleaning them away.
+All commands must exit 0. Package discovery must list both `orderfield` and `of`. `validate-skill.sh` checks VERSION, both skill entry points, README, the current architecture/audit docs, the latest CHANGELOG heading, the claims honesty gate (`python3 docs/audit/check-claims.py`), and packaging bump discipline (`python3 scripts/check_packaging_bump.py` — one VERSION per real cut; one VERSION and one GitHub release tag per proven user-facing or kernel invariant; the current CHANGELOG heading must name `**Proof:**`; packaging-only, docs-only, and cosmetic lockstep fail). Anti-pattern: 10 tags/day. Not a tag-date scanner. Preserve unrelated files rather than cleaning them away.
 
 Run the classic installer and CLI from an isolated root:
 
@@ -36,7 +36,7 @@ test -f "$install_root/.agents/skills/of/SKILL.md"
 
 ## Tag and GitHub release
 
-Land the release commit through protected `main`, then tag that exact commit. Do not tag a dirty or local-only tree.
+Land the release commit through protected `main`, then tag that exact commit. Do not tag a dirty or local-only tree. Tag only the VERSION that just landed a proven invariant. Do not cut a burst of packaging-only or docs-only tags. Anti-pattern: 10 tags/day.
 
 ```bash
 release_version="$(tr -d '[:space:]' < VERSION)"

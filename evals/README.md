@@ -81,7 +81,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | *(kernel unittest)* | — | grok `--output-format streaming-json` residual extract + spawn metadata finalize on exit/timeout/missing binary (`GrokAdapterSpawn`) |
 | *(kernel unittest)* | — | conservative agy spawn copies nonempty `denied_actions` into residual; yolo does not; missing residual is not invented (`AgyDeniedActionsParse`; `AgyDeniedActionsSpawn`; `AgyDeniedActionsSkill`) |
 | *(kernel unittest)* | — | pack without spawn: status/resume `spawned 0`, `PACKED` not ALIVE, `next SPAWN`; pulse agrees (`PackedOnlyNotAlive`) |
-| *(kernel unittest)* | — | one VERSION per real cut; packaging-only CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
+| *(kernel unittest)* | — | one VERSION per real cut; one VERSION / GitHub tag per proven invariant; packaging-only and docs-only / unproven current CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
 | *(kernel unittest)* | — | skill `description` / `compatibility` frontmatter is YAML-quoted; unquoted em dash / colons die (`SkillFrontmatterQuotedGate`) |
 
 Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic flags/`CLOSE.json` is `recovery/atomic-close-flag-lag`; CLOSE BLOCKED until `verified_contract` is `recovery/contrast-close-contract`; flag-lag is the same atomic-close eval; generic done_when is `recovery/done-when-lint`. Adversary field-residual `escalate_up` also lives in `expected/field-residual.json` and `recovery/mission-rewrite-refused`. Two-wave packed-child amend (wave-1 still in-flight) is `recovery/midflight-amend`; the 3-wave collect/integrate loop is `recovery/multi-wave-residual`.

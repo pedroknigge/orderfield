@@ -590,7 +590,7 @@ PackagingBump = _load_packaging_bump()
 
 
 class PackagingBumpDiscipline(unittest.TestCase):
-    """One VERSION per real cut. Packaging-only lockstep dies. of eval --kernel."""
+    """One VERSION per proven invariant. Packaging/docs-only lockstep dies."""
 
     REAL_CUT = (
         "# Changelog\n\n"
@@ -606,6 +606,33 @@ class PackagingBumpDiscipline(unittest.TestCase):
         "Packaging identity only.\n\n"
         "- Packaging: VERSION 9.9.9; skill/alias description preview "
         "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+    )
+    DOCS_ONLY = (
+        "# Changelog\n\n"
+        "## 9.9.9\n\n"
+        "Docs wording only.\n\n"
+        "- Docs: README badge color.\n"
+        "- Packaging: VERSION 9.9.9; skill/alias description preview "
+        "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+    )
+    UNPROVEN = (
+        "# Changelog\n\n"
+        "## 9.9.9\n\n"
+        "Caption without proof.\n\n"
+        "- Feature: did a thing.\n"
+        "- Packaging: VERSION 9.9.9; skill/alias description preview "
+        "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+    )
+    HISTORICAL_WITHOUT_PROOF = (
+        "# Changelog\n\n"
+        "## 9.9.9\n\n"
+        "Current proven cut.\n\n"
+        "- **Proof:** `PackagingBumpDiscipline` current heading.\n"
+        "- Packaging: VERSION 9.9.9; skill/alias description preview "
+        "`v9.9.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep.\n"
+        "\n"
+        "## 1.0.0\n\n"
+        "- Feature: shipped before the Proof marker existed.\n"
     )
 
     def _stage(self, changelog: str, version: str = "9.9.9") -> Path:
@@ -652,17 +679,57 @@ class PackagingBumpDiscipline(unittest.TestCase):
             errs,
         )
 
+    def test_docs_only_current_fails(self) -> None:
+        tmp = self._stage(self.DOCS_ONLY)
+        errs = PackagingBump.errors(tmp)
+        self.assertTrue(any("docs-only VERSION 9.9.9" in e for e in errs), errs)
+        script = ROOT / "scripts" / "check_packaging_bump.py"
+        proc = run(tmp, sys.executable, str(script), str(tmp))
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("docs-only VERSION 9.9.9", proc.stderr)
+
+    def test_unproven_current_fails(self) -> None:
+        tmp = self._stage(self.UNPROVEN)
+        errs = PackagingBump.errors(tmp)
+        self.assertTrue(any("unproven VERSION 9.9.9" in e for e in errs), errs)
+        script = ROOT / "scripts" / "check_packaging_bump.py"
+        proc = run(tmp, sys.executable, str(script), str(tmp))
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("unproven VERSION 9.9.9", proc.stderr)
+
+    def test_historical_without_proof_still_ok(self) -> None:
+        tmp = self._stage(self.HISTORICAL_WITHOUT_PROOF)
+        self.assertEqual(PackagingBump.errors(tmp), [])
+
     def test_policy_docs_name_the_gate(self) -> None:
         contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
         publish = (ROOT / "PUBLISH.md").read_text(encoding="utf-8")
         evals = (ROOT / "evals" / "README.md").read_text(encoding="utf-8")
         self.assertIn("One VERSION per real cut", contributing)
+        self.assertIn("proven user-facing or kernel invariant", contributing)
+        self.assertIn("10 tags/day", contributing)
         self.assertIn("check_packaging_bump.py", contributing)
         self.assertIn("PackagingBumpDiscipline", contributing)
         self.assertIn("one VERSION per real cut", publish)
+        self.assertIn("proven invariant", publish)
+        self.assertIn("10 tags/day", publish)
+        self.assertIn("GitHub release tag", publish)
         self.assertIn("check_packaging_bump.py", publish)
         self.assertIn("PackagingBumpDiscipline", evals)
         self.assertIn("check_packaging_bump.py", evals)
+        self.assertIn("proven invariant", evals)
+        skill = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = skill.split("## What to type next", 1)[1].split(
+            "## When to use", 1
+        )[0]
+        for text in (table, alias, appendix):
+            folded = text.casefold()
+            self.assertIn("proven invariant", folded)
+            self.assertIn("10-tags", folded)
+            self.assertIn("check_packaging_bump.py", text)
+            self.assertIn("**Proof:**", text)
 
 
 class ReadmeProductSurface(unittest.TestCase):

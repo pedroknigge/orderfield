@@ -121,6 +121,8 @@ Official phases: `explore | cut | build | verify | deliver`.
 | A false public claim (adversary can catch a lie before ship) | Explore/cut ceremony when the design is already in the feedback |
 | Stay-on-the-run: pulse `STALE` → continue the same packet this turn (`of handoff` / `of spawn`); written Grok Bot contrast | Bot org, Notion, cloud-agent manager, auto-merge, 5-minute kernel loop, process supervisor |
 
+**Release VERSION.** One VERSION and one GitHub release tag per proven invariant (user-facing or kernel). The current CHANGELOG heading must name `**Proof:**`. Packaging-only, docs-only, and cosmetic cuts fail `python3 scripts/check_packaging_bump.py` (also in `validate-skill.sh`). Anti-pattern: 10-tags/day. Eval-only guards prefer no bump. Follow [PUBLISH.md](../PUBLISH.md). Not a tag-date scanner. Not a bot.
+
 #### Production mode
 
 Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is every kernel verb. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md). Reserved keys stay reserved in `scripts/of/regime.py`.

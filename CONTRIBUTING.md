@@ -29,7 +29,7 @@ Do not invent a second physics (no new regimes without an explicit product decis
 
 ## How to release
 
-Follow [PUBLISH.md](PUBLISH.md). One VERSION per real cut. Bump the validated version surfaces with the cut, land through protected `main`, then tag. Packaging-only lockstep (VERSION / skill preview / `install.sh` DEFAULT_VERSION / CHANGELOG `Packaging:` line with no real-cut bullet) fails `scripts/check_packaging_bump.py` (`PackagingBumpDiscipline`). Eval-only guards prefer no bump. Do not open a packaging-only release while another kernel/evals PR is in flight.
+Follow [PUBLISH.md](PUBLISH.md). One VERSION per real cut. One VERSION and one GitHub release tag per proven user-facing or kernel invariant. Bump the validated version surfaces with the cut, land through protected `main`, then tag. Packaging-only, docs-only, or cosmetic lockstep (VERSION / skill preview / `install.sh` DEFAULT_VERSION / CHANGELOG `Packaging:` / `Docs:` line with no `**Proof:**` bullet on the current heading) fails `scripts/check_packaging_bump.py` (`PackagingBumpDiscipline`). Eval-only guards prefer no bump. Do not open a packaging-only release while another kernel/evals PR is in flight. Anti-pattern: 10 tags/day.
 
 ## Branch protection
 
