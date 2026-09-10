@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.96
+
+Beat planning-with-files on sell clarity and install tax without becoming markdown+hooks. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.95 notes.
+
+- **Reuse table (design-first):** README already owns the product surface (C-135/C-136), Compared-to (C-063), Install, and the 30-second first-close loop. SKILL already points at that surface. PWF sells persistence (`task_plan.md` + hooks). The remaining gap is authority-axis punch + a short honest path to first close + an explicit same-category / different-product table.
+- **Reuse, not a second product:** Sharpen the hero to "Anyone can persist a plan. Only the leader may change it." Lead Install with `./install.sh` + `of doctor`, then first close via the existing loop. Compared-to names planning-with-files. No jail / token budget / process supervisor / bot org / `RUNTIME_OWNERSHIP` / `of merge`. No new CLI / schema.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the authority hero, planning-with-files contrast, and `./install.sh` → first close in the same cut. Not a second contract.
+- **Proof:** `ReadmeProductSurface` (authority hero + PWF table + first-close install path). `validate-skill.sh` / `check-claims.py`. No new C-ID (honesty cap; C-135 / C-063).
+- Packaging: VERSION 0.7.96; skill/alias description preview `v0.7.96 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.95 notes.
+
 ## 0.7.95
 
 Resume names `integrate --recompute` when the wave report digest drifted, and spawn-owned residual keys no longer permanent-deadlock next-wave. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.94 notes.

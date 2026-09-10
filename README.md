@@ -5,18 +5,28 @@
  | |_| |  _ <| |_| | |___|  _ <|  _|  | || |___| |___| |_| |
   \___/|_| \_\____/|_____|_| \_\_|   |___|_____|_____|____/
 
-     the plan and the steps survive chat, a token cut, a model switch.
+     anyone can persist a plan. only the leader may change it.
 ```
 
-The brief and the steps stay on disk. They survive a compacted chat, a token cut, and a switch of model or CLI.
+Anyone can persist a plan. Only the leader may change it.
+
+The chat can die. ORDER stays. Children cannot rewrite the mission, the phase, the constraints, or done-when.
+
+**After `/clear`, without a leader-owned field**
+
+> Agent: I don't have the earlier plan. What were we building?
+
+**After `/clear`, with Orderfield**
+
+`of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.7.95</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.7.96</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.95-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.7.96-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -36,6 +46,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A wave could mix CLIs or stay on one without asking | The leader asks same-harness roles on one harness vs multi-harness mix before pack. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
 | The implementer says the wave is done | Ask consent for a fresh-context review packet (`adversary` / `verifier`) before close. Never silent. Self-praise is not review. Contrast still required. Not a new close gate. |
+| A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
@@ -85,19 +96,34 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-Install the package into the Agent Skills hosts selected by `skills`:
+Shortest honest path from a checkout:
+
+```bash
+./install.sh
+# ensure ~/.local/bin is on PATH
+of doctor    # must print ok
+```
+
+That lands `~/.local/bin/of` and the skill copies. First close is the [30-second loop](#30-second-loop): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
+
+Host skill discovery (does **not** create the `of` CLI):
 
 ```bash
 npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
 ```
 
-This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both. `npx skills` installs skills; it does not create a shell command.
+This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both.
 
-For the bare `of` CLI, use the classic installer. It always lands in the generic path `~/.agents/skills/orderfield`, adds detected harness destinations, and creates `~/.local/bin/of`. Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
+Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
+
+<details>
+<summary><strong>Pin recipe and more install options</strong></summary>
+
+<br>
 
 ```bash
-release_tag=v0.7.95
-release_version=0.7.95
+release_tag=v0.7.96
+release_version=0.7.96
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -110,16 +136,7 @@ ORDERFIELD_VERSION="$release_version" \
 ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
 ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
 bash "$verify_root/install.sh"
-```
 
-The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md). A checkout next to `install.sh` is installed as-is (`./install.sh`). One sitting (install → `of doctor` green + disk contract): [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
-
-<details>
-<summary><strong>More install options</strong></summary>
-
-<br>
-
-```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
 ORDERFIELD_REF="$release_tag" \
 ORDERFIELD_VERSION="$release_version" \
@@ -134,6 +151,8 @@ bash "$verify_root/install.sh" --generic
 Literal project install is safe from the checkout root: the installer canonicalizes the base, snapshots the source outside the destination, avoids recursive `.agents` copies, and creates an absolute project-local `.local/bin/of` target.
 
 `install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
+
+The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md).
 
 Python 3.11+ (3.9 and 3.10 are end-of-life; `scripts/of.py` refuses older interpreters with one line). No pip packages.
 
@@ -178,7 +197,7 @@ Project-local ORDER state (`.orderfield/` in a working repo) is left alone — u
 
 ## 30-second loop
 
-From the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). If the user said only `dale` / `do it` pointing at prior chat, `--source` is that prior request, not the go-ahead. Do not implement in the leader tree.
+First close, from the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). If the user said only `dale` / `do it` pointing at prior chat, `--source` is that prior request, not the go-ahead. Do not implement in the leader tree.
 
 ```bash
 of init --mission "decidable architecture for a pricing tool" --phase explore \
@@ -298,8 +317,22 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 
 ## Compared-to
 
+Same category as [planning-with-files](https://github.com/OthmanAdi/planning-with-files): a disk plan that survives `/clear`. Different product: an authority kernel, not three markdown files plus hooks.
+
+| | planning-with-files | Orderfield |
+|---|---|---|
+| Punch | Context dies; the plan does not | Anyone can persist a plan; only the leader may change it |
+| Surface | `task_plan.md` / `findings.md` / `progress.md` + hooks | `.orderfield/` ORDER + SPEC; packets; residuals |
+| Who may change the plan | Agent + hooks (optional attest) | Leader / `of patch` |
+| Enforcement | Convention + Stop hook | Schema + WAL + lock + `refuse_child_forge` |
+| Close | Checkboxes / Stop gate | Contrast + empty residual + `CLOSE.json` |
+| Harness | 60+ via Agent Skills + hooks | Native adapters + generic (not convention alone) |
+
+Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process supervisor, a bot org, `RUNTIME_OWNERSHIP`, or `of merge`.
+
 | | Orchestrates | Orderfield is instead |
 |---|---|---|
+| **planning-with-files** | Disk markdown + hooks that re-inject a plan after `/clear` | Who may change the plan. Persistence is not authority. |
 | **Orca** | Work: process bus, workers, gates, DAGs. Starts and stops coding CLIs. | Authority over the plan. Orca may transport a packet; it must not choose the phase, patch the mission, or invent a regime. Leaders who `worker-start` must `worker-stop` then `worker-release`; `of` does not supervise Orca processes. |
 | **AWS CAO** ([CLI Agent Orchestrator](https://aws.amazon.com/blogs/opensource/introducing-cli-agent-orchestrator-transforming-developer-cli-tools-into-a-multi-agent-powerhouse/)) | A supervisor plus specialized workers over Q CLI / Claude Code. Session and fleet orchestration, AWS-adjacent. | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow, no CAO UI. |
 | **Claude Agent Teams** | A vendor fleet inside one harness: lead session, teammates, shared task list, inter-agent messaging. | Portable across already-authenticated CLIs. Default is same-harness; the ORDER remains if you turn Claude off. Not a team of processes. |
@@ -380,7 +413,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
-Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (not a science claim): [references/principles.md](references/principles.md).
+Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (planning-with-files, Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (not a science claim): [references/principles.md](references/principles.md).
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

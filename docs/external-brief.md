@@ -4,7 +4,7 @@ You already have a coding CLI. It is fast, forgetful, and happy to declare victo
 
 Orderfield is the disk-backed contract that CLI cannot be. One leader-owned ORDER. Bounded packets with exclusive owners. Structured residuals. Close is `of contrast` RESOLVED, then `of close` — not “the tests passed.”
 
-A cut, a resume, a different model: the plan holds. Children cannot rewrite the mission.
+A cut, a resume, a different model: the plan holds. Children cannot rewrite the mission. Same category as planning-with-files (disk plan); different product (authority kernel — [README Compared-to](../README.md#compared-to)).
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 

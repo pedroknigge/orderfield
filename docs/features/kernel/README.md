@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.95. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.96. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.95` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.96` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -110,6 +110,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`). Dry-run prints `shlex.join` of the real list so a space path stays one token. Proof: `GenericAgentArgv` / `SkillGenericAgentArgv`. No new CLI / supervisor.
 - 0.7.94 empty-wave `of phase` skips integrate when `packed_children` is empty (`phase_transition_errors`). `done_when_closed` / in-flight stay. Proof: `test_phase_empty_wave_succeeds_without_force` / `SkillEmptyWavePhase`. No new CLI / supervisor.
 - 0.7.95 resume / status print `INTEGRATE --RECOMPUTE` when the covering digest drifted; `IntegrationDigest` omits spawn-owned `session_id` / `denied_actions`. Proof: `test_next_wave_rejects_residual_changed_after_integration` / `test_spawn_owned_residual_after_integrate_stays_eligible` / `SkillResumeRecompute`. No new CLI / supervisor.
+- 0.7.96 authority-axis README/SKILL sell, shortest install → first close, and planning-with-files contrast. Proof: `ReadmeProductSurface`. No new CLI / supervisor.
 
 ## Contract boundaries
 

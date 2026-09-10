@@ -20,7 +20,7 @@ Hermetic look (does not touch `$HOME`):
 bash docs/demo/mortal-install.sh --root "$(mktemp -d)"
 ```
 
-The script calls `install.sh`, then the installed `of doctor` from an empty workdir. Exit 0 only when doctor prints `ok` (kernel + skills). It then names the disk contract: `.orderfield/` is the session; `of resume` is the next verb; no process supervisor, no `of merge`.
+The script calls `install.sh`, then the installed `of doctor` from an empty workdir. Exit 0 only when doctor prints `ok` (kernel + skills). It then names the disk contract: `.orderfield/` is the session; `of resume` is the next verb; first close is the README 30-second loop; no process supervisor, no `of merge`.
 
 ## No tree yet
 
