@@ -1245,8 +1245,11 @@ class StateMachineGuards(unittest.TestCase):
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         self.assertIn("next\n  INTEGRATE --RECOMPUTE", resumed.stdout)
         self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
-        status = run_of(self.tmp, "status")
-        self.assertIn("INTEGRATE --RECOMPUTE", status.stdout)
+        status = run_of(self.tmp, "status", "--json")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(
+            json.loads(status.stdout)["next"], "integrate --recompute"
+        )
 
     def test_spawn_owned_residual_after_integrate_stays_eligible(self) -> None:
         """#168: spawn metadata after integrate must not deadlock next-wave."""
