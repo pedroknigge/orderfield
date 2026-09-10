@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""SCOPE-GODSPLIT: field.py re-exports public form names, not internals."""
+"""SCOPE-GODSPLIT is shipped: field.py re-exports public form names, not internals.
+
+Named owners are of.wal / of.learn / of.retain. Remaining field.py is the
+field I/O owner. A later line-count Holding is not an open god-split.
+"""
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -10,8 +15,24 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import of  # noqa: E402
 
+_FIELD_SRC = Path(of.field.__file__).read_text(encoding="utf-8")
+
 
 class FieldFormSplit(unittest.TestCase):
+    def test_named_owners_are_not_reimplemented_in_field(self) -> None:
+        for needle in (
+            r"^class FieldWal\b",
+            r"^class FieldLearnings\b",
+            r"^class FieldRetain\b",
+            r"^def dump_json\b",
+            r"^def save_learning\b",
+            r"^def plan_field_retention\b",
+        ):
+            self.assertIsNone(
+                re.search(needle, _FIELD_SRC, re.M),
+                f"field.py re-implements SCOPE-GODSPLIT owner {needle}",
+            )
+
     def test_public_reexports_are_the_form_modules(self) -> None:
         self.assertIs(of.field.dump_json, of.wal.dump_json)
         self.assertIs(of.field.load_json, of.wal.load_json)
