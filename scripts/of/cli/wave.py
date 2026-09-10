@@ -21,6 +21,7 @@ from of_adapters import (
     AdapterHints,
     AdapterResume,
     AgyDeniedActions,
+    CodexWorktree,
     StreamJson,
     build_spawn_argv,
     missing_tools,
@@ -40,11 +41,13 @@ from of.field import (
     dump_text,
     emit_event,
     field_lock,
+    field_home,
     find_root,
     json_events_enabled,
     load_json,
     load_order,
     load_state,
+    load_worktrees,
     open_backlog,
     physical_artifact_path,
     physical_field_rel,
@@ -894,8 +897,19 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             print("dry-run argv:")
             print("generic-handoff <prompt>")
         return
+    codex_worktree = (
+        CodexWorktree.recorded_path(load_worktrees(root), child_id)
+        if adapter == "codex"
+        else None
+    )
     argv = build_spawn_argv(
-        adapter, prompt, packet, residual_abs, dry_run=bool(args.dry_run)
+        adapter,
+        prompt,
+        packet,
+        residual_abs,
+        dry_run=bool(args.dry_run),
+        codex_worktree=codex_worktree,
+        field_home=field_home(root),
     )
     meta: dict[str, Any] = {
         "child_id": child_id,

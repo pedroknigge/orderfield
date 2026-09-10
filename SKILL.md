@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.89 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
+description: "v0.7.90 — Disk-backed plan that survives chat. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: quote doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.89"
+  version: "0.7.90"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -45,6 +45,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` command — not captions. `CloseEvidence`. Collect refuses mismatch / missing. Slice done is still not SPEC closed |
 | residuals landed | `of collect --wave N` → `of integrate --wave N` |
+| recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` plus `--add-dir <field-home>` and the exact Git common dir. Missing / malformed / non-Git records refuse before launch; remove then re-add the child worktree. No record → existing argv. |
 | after Orca `worker-start` / `of worktree add` | MUST `worker-stop` then `worker-release` after collect or abandon; never leave retained unless asked; `of worktree remove` if add was used. `worker-list` accounts. Not a supervisor. |
 | after wave, before close | **must ask** consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. Not a new close gate. Not `of merge`. C-080 stays Partial. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |

@@ -342,6 +342,115 @@ class TrustMatrixCli(unittest.TestCase):
         self.assertIn("ended_at", meta)
 
 
+class CodexRecordedWorktree(unittest.TestCase):
+    """Codex must honor the sibling worktree recorded for its packet child."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-codex-wt-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        git = lambda *args: subprocess.run(
+            ["git", "-C", str(self.tmp), *args],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        git("init")
+        git("config", "user.email", "test@example.com")
+        git("config", "user.name", "Test")
+        (self.tmp / "README").write_text("root\n", encoding="utf-8")
+        git("add", "README")
+        git("commit", "-m", "init")
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "edit product in isolated worktree",
+            "--role",
+            "explorer",
+            "--child-id",
+            "wt1",
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        self.packet = pack.stdout.splitlines()[0].strip()
+
+    def _record_worktree(self) -> Path:
+        added = run_of(self.tmp, "worktree", "add", "--child-id", "wt1")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        dest = Path(
+            next(
+                line.split(None, 1)[1]
+                for line in added.stdout.splitlines()
+                if line.startswith("worktree")
+            )
+        )
+
+        def cleanup() -> None:
+            run_of(self.tmp, "worktree", "remove", "--child-id", "wt1")
+            shutil.rmtree(dest, ignore_errors=True)
+
+        self.addCleanup(cleanup)
+        return dest
+
+    @unittest.skipUnless(shutil.which("git"), "git not on PATH")
+    def test_codex_dry_run_authorizes_worktree_field_and_git_common_dir(self) -> None:
+        worktree = self._record_worktree()
+        proc = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "codex",
+            "--packet",
+            self.packet,
+            "--dry-run",
+            extra_env={"OF_TRUST": "auto-edit"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        preview = dry_run_preview(proc)
+        preview_tokens = preview.split()
+        self.assertIn("-C", preview_tokens)
+        self.assertEqual(preview_tokens.count("--add-dir"), 2)
+        self.assertIn("--sandbox workspace-write", preview)
+        roots = of_adapters.CodexWorktree.argv_flags(
+            worktree,
+            self.tmp / ".orderfield",
+            "wt1",
+        )
+        self.assertEqual(
+            roots,
+            [
+                "-C",
+                str(worktree.resolve()),
+                "--add-dir",
+                str((self.tmp / ".orderfield").resolve()),
+                "--add-dir",
+                str((self.tmp / ".git").resolve()),
+            ],
+        )
+
+    def test_codex_refuses_stale_record_before_spawn(self) -> None:
+        missing = self.tmp.parent / f"{self.tmp.name}-missing"
+        of.save_worktrees(
+            self.tmp,
+            {"trees": {"wt1": {"path": str(missing), "head": "deadbeef"}}},
+        )
+        proc = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "codex",
+            "--packet",
+            self.packet,
+            "--dry-run",
+            extra_env={"OF_TRUST": "auto-edit"},
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("recorded worktree", proc.stderr)
+        self.assertIn("of worktree remove", proc.stderr)
+        self.assertNotIn("dry-run argv:", proc.stdout)
+
+
 class SpawnEnvAllowlist(unittest.TestCase):
     """Children receive an allowlisted environment, not the parent's (SEC-002)."""
 

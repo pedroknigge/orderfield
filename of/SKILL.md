@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.7.89 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
+description: "v0.7.90 — Alias for orderfield. Hosts load this alias; then sibling SKILL.md and references/skill-appendix.md (same contract). Use when /of or orderfield, a field must be resumed, or a multi-slice disk brief. While children fly, status/resume print running + live PULSE + speak; PACKED/spawned=spawn meta not pack (SPAWN≠HOLD). Quote PULSE. Checklist → of contrast / of close / residual (not a second doctrine). After wave: must ask consent for a fresh-context review packet (adversary/verifier) before close; never silent. Before pack: consult model-catalog, propose cheap vs frontier, ask same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; never invent; ask before rebalance. Codex recorded worktree: -C plus field/Git add-dir or refuse. Consented --model includes grok/agy (named). Grok streaming-json. --body-file under work/scratch/<id>/. Spawn --resume only with residual.session_id; never invent/--continue. agy --json-schema reuses residual.codex; Claude omit. Install: sibling mortal-install.sh then of doctor. Orca: stop+release after collect. Claims ≤98% honest (check-claims.py). Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.7.89"
+  version: "0.7.90"
   alias-of: orderfield
 ---
 
@@ -40,6 +40,8 @@ Timeout, idempotency, health, and version IDs are public-surface VERIFIED_CONTRA
 Production mode: the sibling appendix **Production mode** names Gate A before `--role implementer`. Use the full verb table. Prod§15: name a repo-relative runbook path in `done_when` before close; close refuse without it. Never invent a process supervisor, bot org, `RUNTIME_OWNERSHIP`, `--tokens`, or `of merge`. Follow the sibling.
 
 Orca interactive workers: after residual + `of collect` (and on abandon), **must** `worker-stop` then `worker-release` for dispatches you started. Never leave retained unless the user asked. If `of worktree add` was used, `of worktree remove` when the slice closes. `worker-stop` does not delete worktrees. Follow the sibling. Not a process supervisor.
+
+Recorded worktree + native Codex spawn: `of spawn --adapter codex` uses `-C <worktree>`, `--add-dir <field-home>` for residual/PULSE, and `--add-dir <git-common-dir>` for linked-worktree metadata. Missing, malformed, or non-Git records refuse before launch with remove/re-add guidance. No record leaves Codex argv unchanged. Follow the sibling.
 
 Per-task model hints: when packing a multi-role wave, **consult** [docs/model-catalog.md](../docs/model-catalog.md) first, then **must propose** cheap vs frontier in chat. Do not assume smarter = costlier. On yes → `of patch --model-hints field|wave` and/or `of pack --model-tier cheap|frontier` / `--model NAME`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one (claude also maps cheap→haiku / frontier→opus). Grok/agy: named model only; no invented aliases; flags before `-p`. Orca/qwen/opencode/generic stay no-op. Follow the sibling. Not a router. Never `budget.tokens`.
 

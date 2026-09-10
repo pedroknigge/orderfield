@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -1064,6 +1065,80 @@ class AgyDeniedActions:
         return out
 
 
+class CodexWorktree:
+    """Codex argv roots for a child recorded by ``of worktree add``."""
+
+    @staticmethod
+    def refuse(child_id: str, detail: str) -> None:
+        die(
+            f"recorded worktree for {child_id} cannot be honored by Codex: {detail}; "
+            f"run 'of worktree remove --child-id {child_id}', then re-add it"
+        )
+
+    @staticmethod
+    def recorded_path(records: dict[str, Any], child_id: str) -> Path | None:
+        record = (records.get("trees") or {}).get(child_id)
+        if record is None:
+            return None
+        if not isinstance(record, dict):
+            CodexWorktree.refuse(child_id, "record is not an object with a path")
+        raw = record.get("path")
+        if not isinstance(raw, str) or not raw.strip():
+            CodexWorktree.refuse(child_id, "record has no path")
+        return Path(raw)
+
+    @staticmethod
+    def argv_flags(
+        worktree: Path | None,
+        field_home: Path | None,
+        child_id: str,
+    ) -> list[str]:
+        if worktree is None:
+            return []
+        path = worktree.expanduser().resolve()
+        if not path.is_dir():
+            CodexWorktree.refuse(child_id, f"path is missing or not a directory: {path}")
+        git = shutil.which("git")
+        if not git:
+            CodexWorktree.refuse(child_id, "git is not on PATH")
+        proc = subprocess.run(
+            [git, "-C", str(path), "rev-parse", "--show-toplevel", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+        )
+        lines = (proc.stdout or "").splitlines()
+        if proc.returncode != 0 or len(lines) != 2:
+            detail = (proc.stderr or proc.stdout or "git rev-parse failed").strip()
+            CodexWorktree.refuse(child_id, f"{path} is not a usable Git worktree ({detail})")
+        top = Path(lines[0]).expanduser().resolve()
+        if top != path:
+            CodexWorktree.refuse(
+                child_id,
+                f"recorded path is not the worktree root ({path}; Git root is {top})",
+            )
+        common_raw = Path(lines[1]).expanduser()
+        common = (
+            common_raw.resolve()
+            if common_raw.is_absolute()
+            else (path / common_raw).resolve()
+        )
+        if not common.is_dir():
+            CodexWorktree.refuse(
+                child_id,
+                f"Git common directory is missing or not a directory: {common}",
+            )
+        if field_home is None:
+            CodexWorktree.refuse(child_id, "canonical field home is unavailable")
+        return [
+            "-C",
+            str(path),
+            "--add-dir",
+            str(field_home.resolve()),
+            "--add-dir",
+            str(common),
+        ]
+
+
 def build_spawn_argv(
     adapter: str,
     prompt: str,
@@ -1071,6 +1146,8 @@ def build_spawn_argv(
     residual_abs: Path,
     dry_run: bool = False,
     residual: dict[str, Any] | None = None,
+    codex_worktree: Path | None = None,
+    field_home: Path | None = None,
 ) -> list[str]:
     profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
     trust = trust_flags(adapter, profile)
@@ -1087,7 +1164,21 @@ def build_spawn_argv(
         return [bin_, *model, *resume, "-p", prompt, *stream, *trust]
     if adapter == "codex":
         bin_ = which_bin(["codex"]) or "codex"
-        argv = [bin_, "exec", *model, *trust, *stream, "-o", str(residual_abs)]
+        roots = CodexWorktree.argv_flags(
+            codex_worktree,
+            field_home,
+            str(packet.get("child_id") or "orderfield-slice"),
+        )
+        argv = [
+            bin_,
+            "exec",
+            *model,
+            *trust,
+            *roots,
+            *stream,
+            "-o",
+            str(residual_abs),
+        ]
         argv += schema
         argv.append(prompt)
         return argv
