@@ -706,7 +706,7 @@ class PackagingBumpDiscipline(unittest.TestCase):
         publish = (ROOT / "PUBLISH.md").read_text(encoding="utf-8")
         evals = (ROOT / "evals" / "README.md").read_text(encoding="utf-8")
         self.assertIn("One VERSION per real cut", contributing)
-        self.assertIn("proven invariant", contributing)
+        self.assertIn("proven user-facing or kernel invariant", contributing)
         self.assertIn("10 tags/day", contributing)
         self.assertIn("check_packaging_bump.py", contributing)
         self.assertIn("PackagingBumpDiscipline", contributing)
@@ -727,7 +727,7 @@ class PackagingBumpDiscipline(unittest.TestCase):
         for text in (table, alias, appendix):
             folded = text.casefold()
             self.assertIn("proven invariant", folded)
-            self.assertIn("10 tags", folded)
+            self.assertIn("10-tags", folded)
             self.assertIn("check_packaging_bump.py", text)
             self.assertIn("**Proof:**", text)
 
