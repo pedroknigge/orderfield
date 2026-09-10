@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.94
+
+Empty-wave `of phase` does not require integrate or `--force`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.93 notes.
+
+- **Reuse table (design-first):** `packed_children` already distinguishes empty vs packed waves; `wave_transition_errors` already consults that list. `phase_transition_errors` treated a missing report as "not integrated" without asking whether packets exist.
+- **Reuse, not a new guard:** skip the integrate requirement when `packed_children` is empty and there is no report. `done_when_closed` and `in_flight_children` stay. Packed unintegrated waves still refuse. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach empty-wave `of phase <next>` without `--force` (skip-cut path). `--force` is not that path.
+- **Proof:** `StateMachineGuards.test_phase_empty_wave_succeeds_without_force` / `test_phase_rejects_unintegrated_wave`. `SkillEmptyWavePhase`. No new C-ID (honesty cap; C-034).
+- Packaging: VERSION 0.7.94; skill/alias description preview `v0.7.94 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.93 notes.
+
 ## 0.7.93
 
 Generic `OF_AGENT` keeps quoted paths with spaces as one argv token. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.92 notes.

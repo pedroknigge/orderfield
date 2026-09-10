@@ -830,8 +830,11 @@ def phase_transition_errors(
         children = ", ".join(str(p.get("child_id") or "?") for p in flying)
         errors.append(f"children still in flight: {children}")
     report = current_wave_report(root, state)
+    wave = int(state.get("wave") or 1)
+    packets = packed_children(root, wave)
     if report is None:
-        errors.append(f"current wave {state.get('wave')} is not integrated")
+        if packets:
+            errors.append(f"current wave {state.get('wave')} is not integrated")
     elif not wave_report_covers_packets(root, state, report):
         errors.append("current wave changed after its report was integrated")
     elif report.get("regime") != "phase":

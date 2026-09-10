@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.93. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.94. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.93` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.94` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -47,7 +47,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
 - Workspace residuals select `escalate_up`
 - Integration input digests make identical replay a no-op/state repair; changed inputs require audited `--recompute`. Successful `integrate` stdout is the JSON report; human notes go to stderr
-- Phase/wave transitions require complete current-digest integration and no in-flight children; phase movement is sequential and `--force --reason` is recorded
+- Phase/wave transitions require complete current-digest integration and no in-flight children when packets exist; an empty wave has nothing to integrate so `of phase` does not require a report. Phase movement is sequential and `--force --reason` is recorded
 - Pulse child verdicts use packet/scratch evidence only; shared-repo writes are displayed as wave context. Human pulse also prints the last 1–3 `PULSE` lines under `running`. Pulse leaves ORDER/state/session/wave artifacts unchanged, while the daily update ask may write its user cache (`asked_at`)
 - `of doctor` reports Python/kernel, writable field, schemas, lock, adapter PATH/version, skill VERSION skew on existing HOME dests versus this checkout, ACTIVE pointer/stub skew, and stale packs (`packed_age` / `order_rev`) in one pass. Pack lines name field id + wave. PATH presence is not authentication or readiness. Missing dests are silent. Skill VERSION SKEW and closed-field historical packs are informational (`WARN` / exit 0 for skill; historical note for closed `order_rev`); open-field pack SKEW, schema, lock, and kernel still FAIL (`DoctorSkew` / `SkillVersionSkew`). When a newer release exists, doctor prints an `update` ask at most once a day and may prompt on a TTY (`UpdateAsk`); on yes, `install.sh --global --from-release` verifies SHA256SUMS. Proof: `recovery/doctor-one-pass-skew` / `DoctorOnePassSkew`; `recovery/doctor-closed-historical`; `recovery/doctor-advisory-ux`; `UpdateAskDaily`.
 - `of learn TEXT` writes a **field** note bound to this ORDER (default); `--protocol` writes a cross-project lesson to the user cache (`~/.cache/orderfield/learnings.json` / `OF_LEARNINGS`, pinned under `.orderfield/learnings/`); `--promote <id>` copies field → protocol. Spawn sets `OF_CHILD`; `--protocol`/`--promote` refuse it (`child-forge`). Child prompts get at most 8 untrusted quoted protocol lines. Items carry provenance (an audit trail, not authentication); unprovenanced or schema-invalid items are skipped on load (stderr warning once per unchanged skipped set). Length over 400 chars is advisory (`LearningLint`; still stored + note naming `work/scratch/leader/<file>.md`). Over 4 lines still refuse dumps (`learning.lines`). `--list` / `--forget`. Resume lists both; not SPEC
@@ -108,6 +108,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.91 started-only re-spawn dominates a leftover residual (`SpawnRecord.flying`). Status/resume/pulse stay `running` + PULSE + speak until that spawn settles. `PackRoster` / `integrate --partial` share the read. Proof: `InFlightVisibility.test_started_only_respawn_dominates_prior_residual` / `SkillRespawnInFlight`. No new CLI / supervisor.
 - 0.7.92 successful `of phase` refreshes the just-integrated wave covering digest (`PhaseDigest`) so `of next-wave` does not require `--recompute`. `#49` stays. Proof: `test_phase_then_next_wave_without_recompute` / `SkillPhaseNextWave`. No new CLI / schema / supervisor.
 - 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`). Dry-run prints `shlex.join` of the real list so a space path stays one token. Proof: `GenericAgentArgv` / `SkillGenericAgentArgv`. No new CLI / supervisor.
+- 0.7.94 empty-wave `of phase` skips integrate when `packed_children` is empty (`phase_transition_errors`). `done_when_closed` / in-flight stay. Proof: `test_phase_empty_wave_succeeds_without_force` / `SkillEmptyWavePhase`. No new CLI / supervisor.
 
 ## Contract boundaries
 
