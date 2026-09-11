@@ -3480,6 +3480,11 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
             of.next_legal_action(idle, [], landed, stale=True),
             "next-wave",
         )
+        blocked = {"wave": 1, "children_spawned": 1, "spawn_blocked": True}
+        self.assertEqual(
+            of.next_legal_action(blocked, flying, packets, spec_closed=True),
+            "closed",
+        )
 
     def test_child_pulse_verdict_stale(self) -> None:
         self._init_with_stale_child()

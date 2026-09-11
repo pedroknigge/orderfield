@@ -34,6 +34,7 @@ from of.field import (
     load_state,
     require_public_schema,
     save_order,
+    save_state,
     session_path,
     sha256_text,
     snapshot_session,
@@ -1096,8 +1097,12 @@ class CloseProof:
         mark_done_when_closed(order)
         order["spec_closed"] = True
         order["rev"] = int(order["rev"]) + 1
-        save_order(order, root)
-        dump_json(CloseProof.path(root), CloseProof.document(order))
+        state = load_state(root)
+        state["spawn_blocked"] = False
+        with field_generation(root):
+            save_order(order, root)
+            save_state(state, root)
+            dump_json(CloseProof.path(root), CloseProof.document(order))
 
 
 def cmd_close(args: argparse.Namespace) -> None:
@@ -2084,6 +2089,27 @@ def eval_setup_recovery_atomic_close(root: Path) -> None:
     eval_setup_recovery_contrast_close(root)
 
 
+@_register_eval_fixture("recovery_post_close_terminal")
+def eval_setup_recovery_post_close_terminal(root: Path) -> None:
+    """Close-ready field with spawn_blocked + leftover ALIVE scratch. #180."""
+    from of.field import SpawnRecord
+
+    eval_setup_recovery_contrast_close(root)
+    verified = eval_run_of(root, "spec", "--verified-internal", "ALG-001")
+    EvalInvariantSetup.require_ok(verified, "verified-internal")
+    state = load_state(root)
+    state["spawn_blocked"] = True
+    with field_generation(root):
+        save_state(state, root)
+    pkt = load_json(wave_dir(1, root) / "packets" / "imp1.json")
+    meta = SpawnRecord.path(root, pkt)
+    meta.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(meta, {"child_id": "imp1", "started_at": utc_now()})
+    scratch = root / ".orderfield" / "work" / "scratch" / "imp1"
+    scratch.mkdir(parents=True, exist_ok=True)
+    (scratch / "PULSE").write_text("apply-media still writing\n", encoding="utf-8")
+
+
 @_register_eval_fixture("recovery_skip_explore")
 def eval_setup_recovery_skip_explore(root: Path) -> None:
     """Empty tree; steps exercise explore→build refuse and force-override honesty."""
@@ -2884,6 +2910,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.InFlightVisibility",
     "tests.test_kernel.MultiWaveResidualLoop",
     "tests.test_kernel.NestedFieldLifecycle",
+    "tests.test_kernel.PostCloseTerminal",
     "tests.test_kernel.MidEpicHandoffPacket",
     "tests.test_kernel.SliceLintExplain",
     "tests.test_kernel.AdversarialDualTruthCorpus",

@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.7.99
+
+Successful close is terminal: the finished field is not a live spawn surface. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.98 notes.
+
+- **Reuse table (design-first):** `CloseProof.stamp` already writes `spec_closed` + `CLOSE.json`; `NestedField.return_active` already returns ACTIVE to a live parent; `in_flight_children` / `pulse_once` / `StatusReport` / `DoctorSkew.active` / `next_legal_action` already own the live lenses. The remaining gap is a solo `RESOLVED` close that leaves `.orderfield/ACTIVE`, `spawn_blocked`, and leftover scratch looking `ALIVE`.
+- **Reuse, not a new lens:** stamp clears `spawn_blocked` in the same WAL generation. Close without a parent releases ACTIVE (or retargets the unique remaining open sibling). Pulse/status/resume treat `spec_closed` as idle/`next=closed`. Doctor names a closed pointer `closed` (not live `ok`, not FAIL). No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach post-close terminal (not ACTIVE / pulse not ALIVE / `spawn_blocked` cleared). Nested return-to-parent stays.
+- **Proof:** `PostCloseTerminal` / `recovery/post-close-terminal` (ACTIVE gone; pulse `in_flight 0 — closed` not ALIVE; `spawn_blocked` false; status/resume/doctor terminal). Existing `recovery/nested-field-lifecycle` stays. No new C-ID (honesty cap; C-091 / close-is-proof).
+- Packaging: VERSION 0.7.99; skill/alias description preview `v0.7.99 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.98 notes.
+
 ## 0.7.98
 
 After an `ORDER.rev` bump, a dead child (no residual) is no longer told to `of spawn`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.97 notes.

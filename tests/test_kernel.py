@@ -85,6 +85,7 @@ from test_kernel_field import (  # noqa: E402,F401
 from test_kernel_fields import (  # noqa: E402,F401
     NestedFieldLifecycle,
     PackRosterCrossField,
+    PostCloseTerminal,
     RootStubAmbiguous,
 )
 from test_sibling_field_roundtrip import PackOutPhysicalNested  # noqa: E402,F401

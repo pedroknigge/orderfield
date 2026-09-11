@@ -1094,7 +1094,7 @@ class StatusReport:
         state = load_state(root)
         wave = int(state.get("wave") or 1)
         packets = packed_children(root, wave)
-        flying = in_flight_children(root, wave)
+        flying = [] if order.get("spec_closed") else in_flight_children(root, wave)
         return StatusReport.document(
             root, order, state, packets, flying, load_session(root), now=now
         )
@@ -1268,6 +1268,7 @@ class HandoffReport:
             stale=stale,
             children_stale=all_stale,
             children_packed=any_packed,
+            spec_closed=bool(order.get("spec_closed")),
         )
         return action, verdicts, resume_next_lines(action)
 
@@ -1606,7 +1607,9 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"{last.get('reason')}"
         )
     print(f"spawned     {SpawnRecord.count(root, packets)} / {order['caps']['max_children']}")
-    flying = in_flight_children(root, int(state["wave"]))
+    flying = [] if order.get("spec_closed") else in_flight_children(
+        root, int(state["wave"])
+    )
     print(f"in_flight   {len(flying)}")
     PackedAge.emit(flying)
     session = load_session(root)
@@ -1718,6 +1721,10 @@ def resume_next_lines(action: str) -> list[str]:
         "patch then next-wave": (
             "PATCH THEN NEXT-WAVE",
             "spawn blocked after escalate_up; patch ORDER then next-wave",
+        ),
+        "closed": (
+            "CLOSED",
+            "field closed; do not pack or spawn",
         ),
     }
     label, detail = guidance.get(
@@ -1984,7 +1991,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     state = load_state(root)
     wave = int(state.get("wave") or 1)
     packets = packed_children(root, wave)
-    flying = in_flight_children(root, wave)
+    flying = [] if order.get("spec_closed") else in_flight_children(root, wave)
     completed = completed_children(root, wave)
     integrated = field_is_file(wave_dir(wave, root) / "report.json")
     covering = (not integrated) or IntegrationDigest.covers(root, state)
@@ -2001,6 +2008,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         integrated=integrated, covering=covering, stale=stale,
         children_stale=all_stale,
         children_packed=any_packed,
+        spec_closed=bool(order.get("spec_closed")),
     )
     session = load_session(root)
     print(f"id            {order['id']}")
@@ -2073,14 +2081,8 @@ def pulse_once(
 
     Child verdicts use only packet and scratch activity. The newest shared-repo
     product mtime is shown separately as wave context, never child evidence.
+    A closed field is terminal: leftover scratch is not ALIVE.
     """
-    pdir = wave_dir(wave, root) / "packets"
-    flying: list[tuple[Path, dict[str, Any]]] = []
-    if pdir.is_dir():
-        for f in sorted(pdir.glob("*.json")):
-            pkt = load_packet(f)
-            if SpawnRecord.flying(root, pkt):
-                flying.append((f, pkt))
     print(
         f"ORDER {order['id']}  phase={order['phase']}  wave={wave}  "
         f"regime={state.get('last_regime') or '-'}"
@@ -2089,6 +2091,16 @@ def pulse_once(
         "activity    mtime heuristic; child scratch decides verdict, "
         "product repo is shared wave context"
     )
+    if order.get("spec_closed"):
+        print("in_flight   0 — closed (not a live spawn surface)")
+        return 0
+    pdir = wave_dir(wave, root) / "packets"
+    flying: list[tuple[Path, dict[str, Any]]] = []
+    if pdir.is_dir():
+        for f in sorted(pdir.glob("*.json")):
+            pkt = load_packet(f)
+            if SpawnRecord.flying(root, pkt):
+                flying.append((f, pkt))
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
         return 0

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.98. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.7.99. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.98` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.7.99` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -42,7 +42,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. Multi-file mutations stage one WAL generation + MANIFEST, then publish (`wal/CURRENT.json`). **Readers** (status/resume/render/pulse/wave/contrast/spec-diff/handoff/spawn/validate) use CURRENT; live disk is cache/tamper. **Writers** rematerialize CURRENT onto stale live files before inherit; immediate checkpoint after `OF_WAL_CRASH=after-current` keeps committed children and packets. WAL crash consistency is not a restorable dump. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper
 - `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
 - Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD` / `.orderfield/ACTIVE`; resume roster exit 2 when unmatched and no pointer; foreign origin gate; leftover root stub ignored when nested homes exist; `--field` of a different-id stub dies; `of migrate` archives to `ORDER.json.stub` (`RootStub`; `recovery/root-stub-ambiguous`); cross-field in-flight `--owns-path` overlap dies. First-home `.orderfield/ORDER.json` remains valid until the first `of new` promotes it; `of fields` labels that row `first`. Roster (`FieldRoster`) marks ACTIVE with `*`, prints open/closed/phase/wave/packed-age, and a `choose` line (`of new` = unrelated epic; `of new --parent` = phase of ACTIVE; same product = `of patch` / `of spec --amend`). A `packs` section plus `of fields --json` (`PackRoster`) lists in-flight children across open homes. `--open` / `--all` / `--cursor` page many homes. Proof: `recovery/cross-field-pack-roster`. `of new --parent` stamps optional `ORDER.parent`; `of close` returns ACTIVE to that parent (`NestedField`; `recovery/nested-field-lifecycle`). Not `of merge`.
-- Atomic close: `of close` refuses unless contrast is RESOLVED **and** residual is empty; success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation. Generic done_when placeholders die at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. RFC: [docs/close-is-proof.md](../../close-is-proof.md).
+- Atomic close: `of close` refuses unless contrast is RESOLVED **and** residual is empty; success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation and clears `spawn_blocked`. A close without a parent releases `.orderfield/ACTIVE` (or retargets the unique remaining open sibling). Pulse/status/doctor treat the home as terminal — leftover scratch is not ALIVE. Proof: `recovery/post-close-terminal`. Generic done_when placeholders die at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. RFC: [docs/close-is-proof.md](../../close-is-proof.md).
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
 - Residuals bind to their canonical live packet; `done.result_ref` must already exist under the project
 - Workspace residuals select `escalate_up`
@@ -112,6 +112,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.95 resume / status print `INTEGRATE --RECOMPUTE` when the covering digest drifted; `IntegrationDigest` omits spawn-owned `session_id` / `denied_actions`. Proof: `test_next_wave_rejects_residual_changed_after_integration` / `test_spawn_owned_residual_after_integrate_stays_eligible` / `SkillResumeRecompute`. No new CLI / supervisor.
 - 0.7.96 authority-axis README/SKILL sell, shortest install → first close, and planning-with-files contrast. Proof: `ReadmeProductSurface`. No new CLI / supervisor.
 - 0.7.98 identity-stale + flying prints `UNPACK --FORCE` (not spawn); `of spec --add` / `--amend` warns that the rev bump stales N packet(s). Proof: `RevStaleDeadChild` / `SkillRevStaleUnpack`. No new CLI / supervisor.
+- 0.7.99 successful close is terminal: not ACTIVE, pulse not ALIVE, `spawn_blocked` cleared. Proof: `PostCloseTerminal` / `recovery/post-close-terminal`. Nested return-to-parent stays. No new CLI / supervisor.
 
 ## Contract boundaries
 

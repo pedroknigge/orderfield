@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
+from of.cli.spec_cmd import EvalInvariantSetup  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 
@@ -575,7 +576,7 @@ class NestedFieldLifecycle(unittest.TestCase):
         self.assertNotIn("phase build auth", resume.stdout)
         self.assertIn("auto_continue yes", resume.stdout)
 
-    def test_close_without_parent_keeps_active(self) -> None:
+    def test_close_without_parent_releases_active(self) -> None:
         r = run_of(
             self.tmp,
             "init",
@@ -601,11 +602,161 @@ class NestedFieldLifecycle(unittest.TestCase):
             0,
         )
         before = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        self.assertTrue(before)
         closed = run_of(self.tmp, "close")
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertNotIn("return", closed.stdout)
-        after = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
-        self.assertEqual(after, before)
+        self.assertIsNone(of.ActiveField.read(self.tmp))
+        self.assertFalse((self.tmp / ".orderfield" / "ACTIVE").is_file())
+
+
+class PostCloseTerminal(unittest.TestCase):
+    """Successful close is terminal: not ACTIVE, pulse not ALIVE, spawn_blocked clear.
+
+    of eval --kernel. Reuses CloseProof + pulse/status/doctor. #180.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-post-close-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _close_ready(self, mission: str = "post close zombie") -> str:
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            mission,
+            "--source",
+            f"{mission}: internal index ALG-001",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        spec = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(spec.returncode, 0, spec.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "apply media leftover scratch",
+            "--role",
+            "implementer",
+            "--child-id",
+            "apply-media",
+            "--owns-requirement",
+            "ALG-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        EvalInvariantSetup.write_bound_residual(
+            self.tmp,
+            "apply-media",
+            evidence="ALG-001 implementer residual; flying ended before close",
+            result_text="media applied\n",
+        )
+        self.assertEqual(
+            run_of(self.tmp, "spec", "--verified-internal", "ALG-001").returncode,
+            0,
+        )
+        return load_json(self.tmp / ".orderfield" / "ORDER.json")["id"]
+
+    def test_close_clears_active_pulse_alive_and_spawn_blocked(self) -> None:
+        field_id = self._close_ready()
+        state = of.load_state(self.tmp)
+        state["spawn_blocked"] = True
+        of.save_state(state, self.tmp)
+        pkt = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "apply-media.json"
+        )
+        meta = of.SpawnRecord.path(self.tmp, pkt)
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        of.dump_json(meta, {"child_id": "apply-media", "started_at": of.utc_now()})
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "apply-media"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("apply-media still writing\n", encoding="utf-8")
+        pre = run_of(self.tmp, "pulse")
+        self.assertEqual(pre.returncode, 0, pre.stdout + pre.stderr)
+        self.assertIn("ALIVE", pre.stdout)
+        self.assertIn("apply-media", pre.stdout)
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("CLOSED", closed.stdout)
+        self.assertIsNone(of.ActiveField.read(self.tmp))
+        self.assertFalse(of.load_state(self.tmp).get("spawn_blocked"))
+        pulse = run_of(self.tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stdout + pulse.stderr)
+        self.assertIn("in_flight   0 — closed", pulse.stdout)
+        self.assertNotIn("ALIVE", pulse.stdout)
+        self.assertNotIn("running", pulse.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("spawn_blocked False", status.stdout)
+        self.assertIn("in_flight   0", status.stdout)
+        self.assertIn("done_when_closed True", status.stdout)
+        self.assertNotIn("ALIVE", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc.get("field"), "closed")
+        self.assertFalse(doc.get("spawn_blocked"))
+        self.assertEqual(doc.get("in_flight"), 0)
+        self.assertEqual(doc.get("next"), "closed")
+        resume = run_of(self.tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stdout + resume.stderr)
+        self.assertIn("field         closed", resume.stdout)
+        self.assertIn("auto_continue no", resume.stdout)
+        self.assertIn("CLOSED", resume.stdout)
+        self.assertNotIn("PATCH THEN NEXT-WAVE", resume.stdout)
+        self.assertNotIn("ALIVE", resume.stdout)
+        home = Path(tempfile.mkdtemp(prefix="of-post-close-home-"))
+        self.addCleanup(shutil.rmtree, home, True)
+        doctor = run_of(self.tmp, "doctor", extra_env={"HOME": str(home)})
+        self.assertEqual(doctor.returncode, 0, doctor.stdout + doctor.stderr)
+        self.assertIn(f"active        {field_id}  closed", doctor.stdout)
+        self.assertNotIn("SKEW", doctor.stdout)
+
+    def test_close_retargets_active_to_remaining_open_sibling(self) -> None:
+        keep = run_of(self.tmp, "init", "--mission", "keep live")
+        self.assertEqual(keep.returncode, 0, keep.stderr)
+        created = run_of(
+            self.tmp,
+            "new",
+            "--mission",
+            "close me",
+            "--source",
+            "close me: internal index ALG-001",
+        )
+        self.assertEqual(created.returncode, 0, created.stderr + created.stdout)
+        child = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        from of.field import list_field_homes
+
+        homes = list_field_homes(self.tmp)
+        parent = next(fid for fid, _home, _order in homes if fid != child)
+        spec = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "ALG-001",
+            "--text",
+            "use an in-memory index for lookups",
+            "--surface",
+            "internal",
+        )
+        self.assertEqual(spec.returncode, 0, spec.stderr)
+        self.assertEqual(
+            run_of(self.tmp, "spec", "--verified-internal", "ALG-001").returncode,
+            0,
+        )
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertEqual(of.ActiveField.read(self.tmp), parent)
+        self.assertNotEqual(of.ActiveField.read(self.tmp), child)
 
 
 class RootStubAmbiguous(unittest.TestCase):

@@ -28,6 +28,7 @@ Trust `.orderfield/CLOSE.json`. Do not trust a transcript that says CLOSED.
 6. **Slice `done` is not SPEC closed.** `status=done` plus `result_ref` closes a slice. Chat-dump and slogan evidence cannot collect. Done close evidence must name `artifact_sha` (sha256 of `result_ref`) and `rollback:` a command — not captions (`CloseEvidence`). `integrate --apply` may set `done_when_closed` from a residual; `of close` still needs RESOLVED and residual empty. Production-mode / day-90 `done_when` must name a repo-relative runbook path before the stamp (`RunbookPath`). Proof: `recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`, `recovery/done-when-lint`.
 7. **The trail survives archive.** `of gc --archive-field` keeps `CLOSE.json` under `.orderfield/archive/<id>/`. `--drop-field` dies while the proof exists unless `--force --reason`. Proof: `recovery/closed-field-archive`.
 8. **Nested close is not merge.** Close of an `of new --parent` field returns `.orderfield/ACTIVE` to the epic. Not `of merge`. Proof: `recovery/nested-field-lifecycle`.
+9. **Closed is terminal.** After a successful stamp the field must not stay the live ACTIVE surface. `of pulse` must not report `ALIVE` when nothing is in flight or the field is closed. `spawn_blocked` clears (or is irrelevant). Status/doctor treat the home as closed, not a spawn surface. Proof: `recovery/post-close-terminal`.
 
 ## What this is not
 
@@ -47,5 +48,6 @@ These already exist. This page does not add a fixture.
 | Generic or empty done-when cannot stamp | `recovery/done-when-lint` |
 | Archive keeps the trail | `recovery/closed-field-archive` |
 | Nested close returns ACTIVE | `recovery/nested-field-lifecycle` |
+| Closed field is not ACTIVE / pulse ALIVE / spawn_blocked | `recovery/post-close-terminal` |
 
 Re-run: [external-brief.md](external-brief.md#how-a-reviewer-re-runs-the-proof). Walk the verbs: [long-mission.md](long-mission.md).
