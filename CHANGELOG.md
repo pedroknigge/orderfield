@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.4
+
+`OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.3 notes.
+
+- **Reuse table (design-first):** `resolve_trust_profile` / `spawn_env_mode` already classify. Spawn meta already records `trust` + `env_mode`. `emit_wave_warning` already speaks + events. Doctor already has a trust section. `IssueConfirm` / `phase --force --reason` are different shapes (HITL / transition break-glass) — do not clone a TTY lock onto env-selected opts. The remaining gap is a silent agent export that looks like a default or an undocumented escape.
+- **Reuse, not a supervisor:** `OperatorAction` speaks on spawn when yolo or inherit is set, records `operator_actions` on spawn metadata and `--json` spawn/warning events, and names the pair on `of doctor`. Conservative + allowlist stay quiet. Inherit still forwards the whole parent env. No new CLI verb / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach **must ask**, `operator action`, not silent defaults, never invent. auto-edit stays the working headless profile; yolo is never implied.
+- **Proof:** `OperatorActionAudit` (unit classify/speak; yolo/inherit/escalated spawn speak+meta+event; collect names inherit; doctor names the pair). `SkillOperatorAction`. Existing trust matrix stays. No new C-ID (honesty cap; C-066 / C-067).
+- Packaging: VERSION 0.8.4; skill/alias description preview `v0.8.4 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.3 notes.
+
 ## 0.8.3
 
 `of issue` create is a real HITL lock. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.2 notes.

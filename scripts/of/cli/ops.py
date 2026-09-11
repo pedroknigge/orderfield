@@ -20,6 +20,7 @@ from of_adapters import (
     AdapterBalance,
     AdapterDetect,
     AdapterHints,
+    OperatorAction,
     detect_adapters,
     pick_adapter,
 )
@@ -655,6 +656,8 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("trust")
     print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
     print(f"  profiles      {', '.join(TRUST_PROFILES)}")
+    for line in OperatorAction.doctor_lines():
+        print(f"  {line}")
     print(f"  kernel_verifies  {', '.join(KERNEL_VERIFIES)}")
     print(f"  harness_promises {', '.join(HARNESS_PROMISES)}")
     print(

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.3 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. Install: SHA-256 pin then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.4 — Leader-owned disk plan. Hosts load this core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. yolo+inherit are audited operator actions (ask). Install: SHA-256 pin then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.3"
+  version: "0.8.4"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -79,7 +79,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | after human yes: `--confirm` or TTY y/N. `--dry-run` is **not HITL**. Non-TTY without `--confirm` refuses. `--search` is a read. `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `…/leader/ISSUE.md`). Children never post. |
 | status/resume says `PACKED` / `next SPAWN` | packets exist but no spawn record and no scratch activity; `of spawn` or `of handoff`. Do not HOLD as if ALIVE. `spawned` counts spawn metadata, not packs |
-| `OF_TRUST` / plan mode | `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. `auto-edit`/`auto` stay conservative where the harness has no accept-edits flag. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). Table: appendix + [references/adapters.md](references/adapters.md) |
+| `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. yolo is never implied. inherit forwards the parent env. Conservative + allowlist stay defaults. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. Table: appendix + adapters.md |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
 
 A turn that claims pack, spawn, contrast, or close without those `of` commands in the same turn is a broken run.

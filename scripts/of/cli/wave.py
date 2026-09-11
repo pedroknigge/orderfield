@@ -29,6 +29,7 @@ from of_adapters import (
     resolve_trust_profile,
     spawn_env,
     spawn_env_mode,
+    OperatorAction,
 )
 
 from of.field import (
@@ -130,6 +131,9 @@ class CollectDiagnostic:
             facts.append(f"adapter={adapter}")
         if trust:
             facts.append(f"trust={trust}")
+        env_mode = str(meta.get("env_mode") or "").strip()
+        if env_mode == OperatorAction.INHERIT:
+            facts.append("env_mode=inherit")
         if outcome:
             facts.append(f"outcome={outcome}")
         note = f" spawned {' '.join(facts)}" if facts else ""
@@ -871,6 +875,15 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     refuse_nonzero_tokens(int((packet.get("budget") or {}).get("tokens") or 0))
     timeout_s = BudgetSeconds.resolve_spawn(packet, getattr(args, "timeout", None))
     print_cost_disclaimer()
+    env_mode = spawn_env_mode()
+    operator_actions = OperatorAction.actions(trust=profile, env_mode=env_mode)
+    speak = OperatorAction.speak_line(operator_actions)
+    if speak:
+        emit_wave_warning(
+            OperatorAction.KIND,
+            speak,
+            plain=f"of: note — {speak}",
+        )
     ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
@@ -886,6 +899,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             child_id=child_id,
             mode="handoff",
             ok=True,
+            **OperatorAction.event_fields(operator_actions),
         )
         print(f"adapter=generic child_id={child_id} mode=handoff")
         print(f"prompt={prompt_path}")
@@ -920,9 +934,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "residual": residual_rel,
         "started_at": utc_now(),
         "dry_run": bool(args.dry_run),
-        "trust": resolve_trust_profile(),
-        "env_mode": spawn_env_mode(),
+        "trust": profile,
+        "env_mode": env_mode,
     }
+    OperatorAction.apply_meta(meta)
     model_name = AdapterHints.spawn_model(adapter, packet)
     if model_name:
         meta["model_hint"] = model_name
@@ -958,7 +973,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if args.dry_run:
         finalize("dry_run", ok=True)
         snapshot_session(root, "spawn")
-        emit_event("spawn", adapter=adapter, child_id=child_id, outcome="dry_run", ok=True)
+        emit_event(
+            "spawn",
+            adapter=adapter,
+            child_id=child_id,
+            outcome="dry_run",
+            ok=True,
+            **OperatorAction.event_fields(operator_actions),
+        )
         print("dry-run argv:")
         print(argv_preview(argv))
         return
@@ -988,6 +1010,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             outcome=outcome,
             ok=False,
             **{k: v for k, v in extra.items() if k in ("timeout_s",)},
+            **OperatorAction.event_fields(operator_actions),
         )
         die(message)
 
@@ -1110,6 +1133,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         exit=proc.returncode,
         outcome=meta["outcome"],
         ok=proc.returncode == 0,
+        **OperatorAction.event_fields(operator_actions),
     )
     print(f"exit={proc.returncode} log={log_path}")
 

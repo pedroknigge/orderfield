@@ -2264,6 +2264,40 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("never silent", hero)
 
 
+class SkillOperatorAction(unittest.TestCase):
+    """SKILL / /of teach yolo + inherit as audited operator actions."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_operator_actions(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of_trust=yolo", table)
+        self.assertIn("of_spawn_env=inherit", table)
+        self.assertIn("must ask", table)
+        self.assertIn("operator action", table)
+        self.assertIn("not silent defaults", table)
+        self.assertIn("never invent", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("operator action", fold, name)
+            self.assertIn("of_trust=yolo", fold, name)
+            self.assertIn("of_spawn_env=inherit", fold, name)
+            self.assertIn("not silent", fold, name)
+            self.assertIn("must ask", fold, name)
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("class OperatorAction:", source)
+        self.assertIn("not silent defaults", source)
+
+
 class SkillSurfaceCore(unittest.TestCase):
     """Always-loaded SKILL.md is a short core. Appendix keeps full procedure."""
 

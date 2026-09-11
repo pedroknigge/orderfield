@@ -21,12 +21,12 @@ The chat can die. ORDER stays. A child residual cannot rewrite the mission, the 
 `of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.8.3</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.4</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.4-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -99,8 +99,8 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
-release_tag=v0.8.3
-release_version=0.8.3
+release_tag=v0.8.4
+release_version=0.8.4
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -315,7 +315,7 @@ of spawn --adapter generic --packet PACKET.json
 
 If `of detect` finds nothing, the default adapter **is** generic.
 
-Every adapter (generic included) honours `OF_TRUST` — `conservative` (default) adds no escalation flag anywhere; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` is the only bypass and is never implied. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
+Every adapter (generic included) honours `OF_TRUST` — `conservative` (default) adds no escalation flag anywhere; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` is the only bypass and is never implied. `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`), not silent defaults — spawn speaks and records them; the skill must ask first. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
 
 ---
 

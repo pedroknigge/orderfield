@@ -19,7 +19,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | Event | When | Typical fields |
 | --- | --- | --- |
 | `pack` | After `of pack` | write path: `child_id`, `wave`, `residual`, `ok`; `adapter_hints` when the packet carries a consented hint. `--explain`: `explain=true`, `written=false`, `ok`, `verdict` (`ok` \| `advisory` \| `refuse`), `kind`, `chars`, `too_long`, `whole_phase` — no `child_id` / `residual` (nothing was packed) |
-| `spawn` | After `of spawn` / generic handoff spawn path | `adapter`, `child_id`, `ok`, `outcome` (`ok` \| `nonzero_exit` \| `timeout` \| `missing_binary` \| `error` \| `dry_run`); `exit` on ok/nonzero_exit, `timeout_s` on timeout, `mode: handoff` on the generic path |
+| `spawn` | After `of spawn` / generic handoff spawn path | `adapter`, `child_id`, `ok`, `outcome` (`ok` \| `nonzero_exit` \| `timeout` \| `missing_binary` \| `error` \| `dry_run`); `exit` on ok/nonzero_exit, `timeout_s` on timeout, `mode: handoff` on the generic path; `operator_actions` (`yolo` and/or `inherit`) when those audited operator actions are set |
 | `handoff` | After `of handoff` | Field packet (no `--packet`): same facts as `of handoff --json` (`HandoffReport.event_fields`) — `kind=field`, `next`, `in_flight`, `wave`, `do_not`, `ok`. Child `--packet` path: `kind=child`, `child_id`, `wave`, `ok` |
 | `collect` | After `of collect` | `wave`, `ok`, `invalid`, `missing`, `total` |
 | `integrate` | After `of integrate` | `wave`, `regime`, `ok` |
@@ -57,6 +57,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |
+| `operator_action` | Spawn selected `OF_TRUST=yolo` and/or `OF_SPAWN_ENV=inherit` (audited operator action; not a silent default) |
 | `spawn_in_flight` | `--force-spawn` overrides a started-only spawn record |
 | `spawn_exit` | Child process nonzero exit (`exit` field) |
 | `process_kill` | Process-group / child kill hit `OSError` (not already-gone) |

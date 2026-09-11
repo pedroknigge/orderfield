@@ -229,6 +229,94 @@ def spawn_env_mode(parent: dict[str, str] | None = None) -> str:
     return "inherit" if raw == "inherit" else "allowlist"
 
 
+class OperatorAction:
+    """yolo + inherit are explicit audited operator actions. Not silent defaults.
+
+    Reuse: resolve_trust_profile / spawn_env_mode already classify; spawn meta
+    already records trust + env_mode. The remaining gap is a silent agent
+    export that looks like a default or an undocumented escape. Speak +
+    meta.operator_actions + spawn/warning events name the action.
+    Conservative + allowlist stay quiet. No TTY lock (the env var is the
+    operator token). No new CLI / schema / supervisor.
+    """
+
+    YOLO = "yolo"
+    INHERIT = "inherit"
+    KIND = "operator_action"
+    SPEAK = (
+        "explicit audited operator action; not a silent default; "
+        "ask the human; never invent"
+    )
+
+    @staticmethod
+    def actions(
+        trust: str | None = None,
+        env_mode: str | None = None,
+        parent: dict[str, str] | None = None,
+    ) -> list[str]:
+        profile = (
+            trust
+            if trust is not None
+            else resolve_trust_profile()
+        )
+        mode = (
+            env_mode
+            if env_mode is not None
+            else spawn_env_mode(parent)
+        )
+        out: list[str] = []
+        if profile == OperatorAction.YOLO:
+            out.append(OperatorAction.YOLO)
+        if mode == OperatorAction.INHERIT:
+            out.append(OperatorAction.INHERIT)
+        return out
+
+    @staticmethod
+    def speak_line(actions: list[str] | None = None) -> str | None:
+        names = (
+            actions if actions is not None else OperatorAction.actions()
+        )
+        if not names:
+            return None
+        return f"operator action: {','.join(names)} ({OperatorAction.SPEAK})"
+
+    @staticmethod
+    def apply_meta(meta: dict[str, Any]) -> list[str]:
+        actions = OperatorAction.actions(
+            str(meta.get("trust") or ""),
+            str(meta.get("env_mode") or ""),
+        )
+        if actions:
+            meta["operator_actions"] = actions
+        return actions
+
+    @staticmethod
+    def event_fields(actions: list[str] | None = None) -> dict[str, list[str]]:
+        names = (
+            actions if actions is not None else OperatorAction.actions()
+        )
+        if not names:
+            return {}
+        return {"operator_actions": names}
+
+    @staticmethod
+    def doctor_lines(
+        trust: str | None = None,
+        env_mode: str | None = None,
+        parent: dict[str, str] | None = None,
+    ) -> list[str]:
+        lines = [
+            "operator      yolo + inherit are audited operator actions "
+            "(not silent defaults)"
+        ]
+        active = OperatorAction.actions(
+            trust=trust, env_mode=env_mode, parent=parent
+        )
+        if active:
+            lines.append(f"active        {','.join(active)}")
+        return lines
+
+
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
     """Environment for a spawned child: allowlist, not the parent's whole env.
 

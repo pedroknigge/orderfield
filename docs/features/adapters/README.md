@@ -10,7 +10,7 @@ A cut, a resume, a different model — spawn still matches this table. The resul
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Detail: [references/adapters.md](../../../references/adapters.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.3` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
+**Status:** Introduced by `0.3.2`, current in `0.8.4` · **Code:** [`scripts/of_adapters.py`](../../../scripts/of_adapters.py) (imported by [`scripts/of.py`](../../../scripts/of.py))
 
 ## What
 
@@ -22,7 +22,7 @@ Native headless adapters: `claude`, `codex`, `cursor`, `opencode`, `orca`, `grok
 
 ## Live argv notes
 
-`OF_TRUST` is authoritative for every adapter. Conservative (default) emits no bypass flag. `yolo` is the only bypass. Full table: [references/adapters.md](../../../references/adapters.md#trust-profiles-of_trust).
+`OF_TRUST` is authoritative for every adapter. Conservative (default) emits no bypass flag. `yolo` is the only bypass. `yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`), not silent defaults. Full table: [references/adapters.md](../../../references/adapters.md#trust-profiles-of_trust).
 
 - **grok:** `-p`; documented `--output-format streaming-json` before `-p` (`StreamJson`); residual extract from stdout; `OF_TRUST=plan` adds `--sandbox read-only`; `--always-approve` only under `OF_TRUST=yolo`; consented named `--model` before `-p`. Spawn metadata finalized on exit/timeout/missing binary. `--json-schema` omit.
 - **codex:** `exec --json`; residual still `-o`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`). A recorded child worktree adds `-C <worktree>`, field-home `--add-dir`, and exact Git-common-dir `--add-dir`; invalid records refuse before launch (`CodexWorktree`).
