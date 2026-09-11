@@ -15,7 +15,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** The full leader procedure is [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names every kernel verb — that is 100% of the product surface, not a subset. A turn that claims those verbs without the `of` commands in the same turn is a broken run.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names every kernel verb — that is 100% of the product surface. A turn that claims those verbs without the `of` commands in the same turn is a broken run.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
@@ -29,7 +29,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 
 | Disk says | You type |
 |---|---|
-| `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn |
+| `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn. Clone/checkout + installed skill: operator risk, not an escape |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | `of pack --slice "…" --owns-requirement ID` then `of handoff --packet` or `of spawn` |
 | multi-role pack plan (init → first pack, or re-planning roles) | **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — e.g. explorer/boilerplate/synthesizer on cheap, implementer/adversary/verifier/threshold on frontier. Do not assume smarter = costlier. On yes → `of patch --model-hints field` (or `wave`); pack `--model-tier` / `--model`. Never silent switch. Never `budget.tokens`. |
@@ -91,7 +91,7 @@ A turn that claims pack, spawn, contrast, or close without those `of` commands i
 - Multiple slices or writers need explicit ownership, or multiple harnesses must coordinate.
 - `.orderfield/ORDER.json` already exists in the repo.
 
-A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child. Typical problems for a mortal reader: [README.md](README.md#typical-problems--what-orderfield-does).
+A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
 
 ## Auto-report (HITL)
 
@@ -124,10 +124,10 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Anti-done-theater.** Before claiming shipped / closed / done on a field, run `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` and `residual empty`. If either proof row fails or that `speak` line is not quoted, you may not claim shipped. Mechanical, not your judgment. While residual is MISSING, quote-PULSE still applies; flying is not shipped. After a wave, **must ask** consent for a fresh-context review packet before close; never silent. Self-praise is not review. Not a new close gate.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate. A status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Pause only on explicit `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Resume-without-`next` is a broken run.
+**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate. A status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Pause only on explicit `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Resume-without-`next` is a broken run. Clone/checkout + HOME dest skill is the same.
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 
-**Read the appendix** for steps 0–7 (resume, field or nothing, cut, pack, spawn, pulse, collect/integrate, contrast, patch, phase), Forbidden, Roles, Where things live, and interactive-harness transport (Orca `worker-start` ↔ `worker-stop` / `worker-release`). That is still this skill.
+**Read the appendix** for steps 0–7 (resume, field or nothing, cut, pack, spawn, pulse, collect/integrate, contrast, patch, phase), Forbidden, Roles, Where things live, and interactive-harness transport (Orca `worker-start` ↔ `worker-stop` / `worker-release`).
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, sibling fields, and close-is-proof walkthroughs live in the appendix. The table above still drives the verbs.
+Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, sibling fields, and close-is-proof walkthroughs live in the appendix.

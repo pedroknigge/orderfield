@@ -174,6 +174,8 @@ Where it lands:
 | Grok | `~/.grok/skills/orderfield` |
 | Antigravity (`agy`) | Global `~/.gemini/antigravity-cli/skills/orderfield`; Shared `~/.gemini/skills/orderfield`; `~/.gemini/config/skills/orderfield` optional legacy |
 
+Those HOME dest copies load in every working tree. A clone or checkout that already has an open `.orderfield/` still auto-continues (rule 0). Operator risk, not a feature to gut. Pause/stop/close only.
+
 Then invoke `/orderfield` or `/of` in the host. A harness name by itself is not a trigger; use Orderfield explicitly or for a real multi-slice/multi-writer wave.
 
 ---
@@ -242,7 +244,7 @@ of status
 
 90-second demo of the amnesia + threshold residual case (plan changes without swallowing transcripts): [docs/demo/README.md](docs/demo/README.md).
 
-Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). The live wave is reconstructed from `state.wave` plus packets/residuals — stale `session.json` does not win. A unique open field prints `auto_continue yes` even when `OF_SESSION_ID` differs from `ORDER.origin.session_id` (origin is provenance, not authority). Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs. `of init` without `--force` dies while a field exists (`recovery/multi-day-resume`, `recovery/process-death-resume`).
+Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). The live wave is reconstructed from `state.wave` plus packets/residuals — stale `session.json` does not win. A unique open field prints `auto_continue yes` even when `OF_SESSION_ID` differs from `ORDER.origin.session_id` (origin is provenance, not authority). A clone or checkout of an open `.orderfield/` plus those HOME dest skill copies is the same auto-continue — operator risk, not an escape. Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs. `of init` without `--force` dies while a field exists (`recovery/multi-day-resume`, `recovery/process-death-resume`).
 
 While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. Each child verdict uses only its packet time and scratch mtime (including the contract-required heartbeat); the newest shared-repo product mtime is displayed separately as wave context. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision. Pulse does not mutate ORDER, state, session, or wave artifacts; update-notice throttling may write its user cache.
 

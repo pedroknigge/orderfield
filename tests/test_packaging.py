@@ -1492,6 +1492,107 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         self.assertIn("must propose", table)
 
 
+class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
+    """Clone/checkout of an open field still auto-continues. Rule 0 stays."""
+
+    RISK = "operator risk"
+    ESCAPE = "not an escape"
+    CLONE = "clone/checkout"
+    DEST = "home dest"
+    RULE0 = (
+        "Only explicit user pause/stop/cancel (`pause`, `stop`, "
+        "`wait on the field`, `cancel the mission`, `of init --force`) "
+        "or `spec_closed` ends auto-continue."
+    )
+    FORBIDDEN = (
+        "OF_NO_AUTO_CONTINUE",
+        "checkout mode",
+        "auto_continue=off",
+    )
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    @staticmethod
+    def surfaces() -> dict[str, str]:
+        return {
+            "SKILL.md": SkillSurface.core(ROOT),
+            "of/SKILL.md": SkillSurface.alias(ROOT),
+            "references/skill-appendix.md": SkillSurface.appendix(ROOT),
+            "AGENTS.md": (ROOT / "AGENTS.md").read_text(encoding="utf-8"),
+            "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+            "docs/external-brief.md": (ROOT / "docs" / "external-brief.md").read_text(
+                encoding="utf-8"
+            ),
+            "docs/troubleshooting.md": (
+                ROOT / "docs" / "troubleshooting.md"
+            ).read_text(encoding="utf-8"),
+        }
+
+    def test_rule_0_stays(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn(self.RULE0, agents)
+        self.assertIn("Open field auto-continues.", agents)
+
+    def test_surfaces_teach_checkout_risk_not_escape(self) -> None:
+        for rel, text in self.surfaces().items():
+            folded = text.casefold()
+            self.assertIn(self.RISK, folded, rel)
+            self.assertTrue(
+                self.ESCAPE in folded or "not a silent escape" in folded,
+                f"{rel} missing not-an-escape",
+            )
+            self.assertTrue(
+                self.CLONE in folded or "cloning" in folded or "clone or checkout" in folded,
+                f"{rel} missing clone/checkout",
+            )
+            if rel == "docs/troubleshooting.md":
+                self.assertIn("do not invent", folded, rel)
+                continue
+            compact = folded.replace("-", " ").replace("_", " ")
+            for banned in self.FORBIDDEN:
+                self.assertNotIn(
+                    banned.casefold().replace("-", " ").replace("_", " "),
+                    compact,
+                    rel,
+                )
+
+    def test_core_table_and_dests_pair(self) -> None:
+        core = SkillSurface.core(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("clone/checkout", table)
+        self.assertIn(self.RISK, table)
+        self.assertIn(self.ESCAPE, table)
+        self.assertIn("of resume", table)
+        alias = SkillSurface.alias(ROOT).casefold()
+        appendix = SkillSurface.appendix(ROOT).casefold()
+        readme = (ROOT / "README.md").read_text(encoding="utf-8").casefold()
+        for rel, text in (
+            ("of/SKILL.md", alias),
+            ("references/skill-appendix.md", appendix),
+            ("README.md", readme),
+        ):
+            self.assertIn(self.DEST, text, rel)
+            self.assertIn("~/.agents", text, rel)
+            self.assertIn("~/.claude", text, rel)
+            self.assertIn("~/.cursor", text, rel)
+
+    def test_kernel_has_no_silent_skip(self) -> None:
+        ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        self.assertNotIn("OF_NO_AUTO_CONTINUE", ops)
+        self.assertIn("resume_auto_continue_lines", ops)
+        self.assertIn("class DriveAfterIntegrate:", ops)
+
+    def test_claims_matrix_keeps_rule_0(self) -> None:
+        matrix = (ROOT / "docs" / "audit" / "claims-matrix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(matrix, r"\| C-025 \|.*\| normal \| OK \|")
+        self.assertIn("SkillCheckoutAutoContinueHonesty", matrix)
+        self.assertIn("operator risk, not an escape", matrix.casefold())
+
+
 class SkillRevStaleUnpack(unittest.TestCase):
     """SKILL teaches rev-stale dead child → UNPACK --FORCE, not spawn."""
 
