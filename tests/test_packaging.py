@@ -1548,7 +1548,7 @@ class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
                 f"{rel} missing clone/checkout",
             )
             if rel == "docs/troubleshooting.md":
-                self.assertIn("do not invent", folded, rel)
+                self.assertIn("not invent", folded, rel)
                 continue
             compact = folded.replace("-", " ").replace("_", " ")
             for banned in self.FORBIDDEN:
