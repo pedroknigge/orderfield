@@ -429,3 +429,5 @@ python3 -m unittest discover -s tests -v
 of eval --strict --kernel
 # validate-skill runs python3 docs/audit/check-claims.py (≤98% truth score; no theater on SKILL / /of / README)
 ```
+
+That suite is **in-repo lab proof** (recovery evals, unittest, mortal-install C-127, claims-matrix). External dogfood stays Partial (C-153). Do not invent case studies. Reviewer path: [docs/external-brief.md](docs/external-brief.md#how-a-reviewer-re-runs-the-proof).

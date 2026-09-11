@@ -805,6 +805,46 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("not a jail", appendix.casefold())
 
 
+class FieldEvidenceHonesty(unittest.TestCase):
+    """In-repo lab proof is re-runnable; external dogfood stays Partial."""
+
+    LAB = "in-repo lab"
+    EVAL = "of eval --strict --kernel"
+    PARTIAL = "external dogfood stays partial (c-153)"
+    NO_INVENT = "do not invent case studies"
+
+    @staticmethod
+    def surfaces() -> dict[str, str]:
+        return {
+            "SKILL.md": SkillSurface.core(ROOT),
+            "of/SKILL.md": SkillSurface.alias(ROOT),
+            "references/skill-appendix.md": SkillSurface.appendix(ROOT),
+            "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+            "docs/external-brief.md": (ROOT / "docs" / "external-brief.md").read_text(
+                encoding="utf-8"
+            ),
+        }
+
+    def test_surfaces_teach_lab_vs_partial_dogfood(self) -> None:
+        for rel, text in self.surfaces().items():
+            folded = text.casefold()
+            self.assertIn(self.LAB, folded, rel)
+            self.assertIn(self.EVAL, text, rel)
+            self.assertIn(self.PARTIAL, folded, rel)
+            self.assertIn(self.NO_INVENT, folded, rel)
+
+    def test_claims_matrix_keeps_external_dogfood_partial(self) -> None:
+        matrix = (ROOT / "docs" / "audit" / "claims-matrix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(
+            matrix,
+            r"\| C-153 \|.*\| normal \| Partial \|",
+        )
+        self.assertIn("in-repo lab", matrix.casefold())
+        self.assertIn("no invented customers", matrix.casefold())
+
+
 class SkillLeaderInitiative(unittest.TestCase):
     """Leader must propose cheap vs frontier in chat before a multi-role pack."""
 

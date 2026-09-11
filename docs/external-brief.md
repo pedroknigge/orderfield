@@ -109,6 +109,8 @@ python3 scripts/check_unused_imports.py
 
 `--strict --kernel` is every `evals/recovery/*.eval.json` plus the unittest modules in `EVAL_UNITTEST_MODULES` (`scripts/of/cli/spec_cmd.py`). A fail is a kernel regression. Index: [evals/README.md](../evals/README.md).
 
+This is **in-repo lab proof**. External dogfood stays Partial (C-153). Do not invent case studies.
+
 ## Proof suite
 
 These are regressions, not prose. CI runs unittest then `of eval --strict --kernel`.
@@ -149,6 +151,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies | `ClaimsHonestyGate`; `python3 docs/audit/check-claims.py` |
 | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below | `ReadmeProductSurface` |
+| In-repo lab is re-runnable; external field dogfood stays Partial | C-153; `FieldEvidenceHonesty` |
 
 ## Deliberately reserved
 

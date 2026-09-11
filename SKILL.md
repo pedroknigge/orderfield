@@ -19,7 +19,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
-Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to). Contract vocabulary: [docs/glossary.md](docs/glossary.md). Invariants: `references/principles.md`. Procedure: [references/skill-appendix.md](references/skill-appendix.md).
+Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
@@ -57,7 +57,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
-| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; advertised truth score matches the matrix and stays ≤98%; no marketing theater on SKILL / `/of` / README. Also inside `validate-skill.sh` |
+| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score matches ≤98%; no theater on SKILL / `/of` / README. In-repo lab: `of eval --strict --kernel`. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed. Proof: `of eval recovery/multi-wave-close-checklist` |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
