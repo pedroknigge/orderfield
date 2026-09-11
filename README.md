@@ -10,7 +10,7 @@
 
 Anyone can persist a plan. Only the leader may change it.
 
-The chat can die. ORDER stays. Children cannot rewrite the mission, the phase, the constraints, or done-when.
+The chat can die. ORDER stays. A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
 
 **After `/clear`, without a leader-owned field**
 
@@ -32,7 +32,7 @@ The chat can die. ORDER stays. Children cannot rewrite the mission, the phase, t
 
 # Typical problems → what Orderfield does
 
-Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. They cannot rewrite the mission, the phase, the constraints, or done-when.
+Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
 
 | Problem | Orderfield |
 |---|---|
@@ -55,7 +55,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 - The brief and the steps are still on disk after a compacted chat, a token cut, or a model switch.
 - A mid-run error becomes an amend, a patch, or a residual, and the next packet already carries it.
 - Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Prod§15 day-90 runbook path lives in `done_when` before close. Not a second checklist. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
-- Children cannot rewrite the mission, the phase, the constraints, or done-when.
+- A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
 - Two writers on one mission have exclusive owners (requirement or path).
 
 ## When to reach for it
@@ -267,9 +267,9 @@ Before pack, the leader asks same-harness categories vs multi-harness mix. Defau
 
 ## What the kernel enforces — and what it does not
 
-Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim — see [references/principles.md](references/principles.md).
+Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim — slaving-by-contract through `of`, not a jail. See [references/principles.md](references/principles.md).
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain contractual. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
+The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu when work goes through `of`. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper, not a process manager.
 
 Accounting is reserved, not implemented: `budget.seconds` is the only enforced field (the spawned-process wall-clock); `of spawn --timeout` must match that value or be omitted — there is no second clock and no token ceiling; `budget.tokens` and `thresholds.local_budget_pct` are reserved — `of pack` writes `tokens=0` and `--tokens N` for N>0 dies; never measured or enforced. Optional `residual.usage` is harness-reported provenance when the child copies facts — not a budget, not invented spend. `of status` may propose a model-tier ask from residual quality × that optional usage (`EfficiencySignal`); it does not switch a model and does not enforce a token ceiling. `of doctor` prints `AdapterBalance` as **unknown** unless a published vendor payload is already in hand — never invented spend. `max_depth` only permits `--allow-nested` rather than tracking inherited depth, and `scale_up` / `scale_across` stay reserved. No fake telemetry. `of migrate` upgrades pre-0.4.2 packets/state onto the current generation and maps writable aliases onto `workspace.writable_by_slaves` without renaming `SLAVE.md`.
 
@@ -317,14 +317,14 @@ Every adapter (generic included) honours `OF_TRUST` — `conservative` (default)
 
 ## Compared-to
 
-Same category as [planning-with-files](https://github.com/OthmanAdi/planning-with-files): a disk plan that survives `/clear`. Different product: an authority kernel, not three markdown files plus hooks.
+Same category as [planning-with-files](https://github.com/OthmanAdi/planning-with-files): a disk plan that survives `/clear`. Different product: an authority kernel through `of` (cooperative CLI, not a jail), not three markdown files plus hooks.
 
 | | planning-with-files | Orderfield |
 |---|---|---|
 | Punch | Context dies; the plan does not | Anyone can persist a plan; only the leader may change it |
 | Surface | `task_plan.md` / `findings.md` / `progress.md` + hooks | `.orderfield/` ORDER + SPEC; packets; residuals |
 | Who may change the plan | Agent + hooks (optional attest) | Leader / `of patch` |
-| Enforcement | Convention + Stop hook | Schema + WAL + lock + `refuse_child_forge` |
+| Enforcement | Convention + Stop hook | Schema + WAL + lock + `refuse_child_forge` through `of` |
 | Close | Checkboxes / Stop gate | Contrast + empty residual + `CLOSE.json` |
 | Harness | 60+ via Agent Skills + hooks | Native adapters + generic (not convention alone) |
 
@@ -413,7 +413,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
-Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (planning-with-files, Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (not a science claim): [references/principles.md](references/principles.md).
+Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (planning-with-files, Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (slaving-by-contract through `of`, not a science claim, not a jail): [references/principles.md](references/principles.md).
 
 Portability test: turn the current harness off. Install the same skill in another one. The ORDER that remains should have the same shape.
 

@@ -9,7 +9,7 @@ metadata:
 
 # /of — alias for orderfield
 
-Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with the authority hero (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files.
+Two names. One kernel. `/of` is `/orderfield`. Product surface (sibling README) leads with the authority hero (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files. Haken analogy is slaving-by-contract through `of`, not a jail.
 
 Load the sibling skill and follow it. When that skill names [references/skill-appendix.md](../references/skill-appendix.md), read the appendix before pack, spawn, contrast, or close. Stop if the sibling is missing. Do not invent a second contract.
 

@@ -751,6 +751,11 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertGreater(haken, kernel)
         self.assertIn("references/principles.md", text)
         self.assertIn("analogy, not a science claim", folded)
+        kernel_block = text[kernel : text.index("## Generic mode")]
+        self.assertIn("when work goes through `of`", kernel_block)
+        self.assertIn("remain protocol", kernel_block)
+        self.assertIn("slaving-by-contract", kernel_block.casefold())
+        self.assertIn("not a jail", kernel_block.casefold())
         hero = text[:install]
         for needle in (
             "Anyone can persist a plan. Only the leader may change it.",
@@ -767,6 +772,7 @@ class ReadmeProductSurface(unittest.TestCase):
             "A child finds something the plan missed.",
             "sibling fields",
             "cheap vs frontier",
+            "A child residual cannot rewrite",
         ):
             self.assertIn(needle, hero)
         install_block = text[install:text.index("## Uninstall")]
@@ -775,6 +781,8 @@ class ReadmeProductSurface(unittest.TestCase):
         compared = text[text.index("## Compared-to"):]
         self.assertIn("planning-with-files", compared)
         self.assertIn("refuse_child_forge", compared)
+        self.assertIn("authority kernel through `of`", compared)
+        self.assertIn("cooperative CLI, not a jail", compared)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
         appendix = (ROOT / "references" / "skill-appendix.md").read_text(encoding="utf-8")
@@ -789,6 +797,12 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("first close", skill.casefold())
         self.assertIn("first close", alias.casefold())
         self.assertIn("planning-with-files", appendix.casefold())
+        self.assertIn("when work goes through `of`", skill)
+        self.assertIn("remain protocol", skill)
+        self.assertIn("slaving-by-contract through `of`", alias)
+        self.assertIn("slaving-by-contract through `of`", appendix)
+        self.assertIn("not a jail", alias.casefold())
+        self.assertIn("not a jail", appendix.casefold())
 
 
 class SkillLeaderInitiative(unittest.TestCase):
