@@ -1,0 +1,39 @@
+{
+  "id": "recovery/plan-doc-sync",
+  "description": "Cited docs/plans path is mtime-stale vs last integrate: of doctor WARNs docs_sync stale; dump is Mode B, not a close gate",
+  "fixture": "recovery_plan_doc_sync",
+  "tags": ["recovery", "doctor", "docs-sync"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "docs_sync",
+        "stale",
+        "docs/plans/active/money.md",
+        "DOCS_SYNC.md",
+        "mode A",
+        "mode B",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ]
+    },
+    {
+      "run": "close",
+      "args": ["--checklist"],
+      "exit": 2,
+      "stdout_contains": [
+        "docs_sync stale",
+        "DOCS_SYNC.md"
+      ],
+      "stdout_not_contains": [
+        "of close refused: docs_sync",
+        "RUNTIME_OWNERSHIP"
+      ]
+    }
+  ]
+}

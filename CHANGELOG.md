@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.1
+
+Cited plan docs stay living surfaces: patch them or dump + ask. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.101 notes.
+
+- **Reuse table (design-first):** `RunbookPath.PATH_RE` / `corpus` already extract repo-relative paths from ORDER + SPEC. `AuditPressure` already prints doctor WARN + close `--checklist` note without being a close gate. Residual `proposed_patch` already allows extra keys (`docs_sync: pending|done` needs no schema change). Leader scratch already lives at `work/scratch/leader/`. `of learn` stays OF-runtime lessons, not product plan sync. The remaining gap is silent drift of `docs/plans/…` while the field “succeeds” (`#188`).
+- **Reuse, not a CMS:** `PlanDocSync` WARNs on `of doctor` / `of close --checklist` / integrate / `of spec --amend` when cited plan paths are mtime-stale vs last integrate (or a residual names an open project finding with no dump). Mode A = patch the named docs. Mode B = write `work/scratch/leader/DOCS_SYNC.md` and ask to promote. Not FAIL. Not a close refuse. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / SLAVE teach Mode A vs Mode B, when to dump vs patch, and that project findings are not chat vapor.
+- **Proof:** `DoctorPlanDocSync` (stale WARN; dump → pending ask; fresh mtime quiet; findings without a path; close `--checklist` not a gate). `PlanDocSyncUnit`. `SkillPlanDocSync`. `recovery/plan-doc-sync`. No new C-ID (honesty cap; C-111).
+- Packaging: VERSION 0.8.1; skill/alias description preview `v0.8.1 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.7.101 notes. Unpadded X.Y.Z; do not ship 0.7.102.
+
 ## 0.7.101
 
 `of doctor` loudly names leftover root `ORDER.json` SKEW (`migrate required`) and sibling fields open without CLOSE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.100 notes.

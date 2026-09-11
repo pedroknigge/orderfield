@@ -47,6 +47,7 @@ from of.pack import (
 )
 from of.regime import (
     DoneWhenLint,
+    PlanDocSync,
     advance_wave,
     apply_patches,
     closed_phases,
@@ -286,6 +287,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         ok=True,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
+    PlanDocSync.emit(root, order, file=sys.stderr)
     _emit_owned_unverified(root)
 
 

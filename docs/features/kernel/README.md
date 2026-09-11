@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.7.101. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.1. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.7.101` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.1` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -115,6 +115,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.99 successful close is terminal: not ACTIVE, pulse not ALIVE, `spawn_blocked` cleared. Proof: `PostCloseTerminal` / `recovery/post-close-terminal`. Nested return-to-parent stays. No new CLI / supervisor.
 - 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`); `of gc --audit` before close. Not FAIL. Not a close gate. Proof: `DoctorAuditPressure` / `SkillAuditPressure`. No new CLI / supervisor.
 - 0.7.101 leftover root ORDER.json SKEW prints `migrate required` (FAIL); two or more sibling homes open without CLOSE.json are hygiene WARN. Proof: `DoctorOnePassSkew` / `SkillDoctorOpenHygiene` / `recovery/doctor-one-pass-skew`. No new CLI / supervisor.
+- 0.8.1 cited plan docs (`docs/plans/…`) stale vs last integrate print `docs_sync` WARN (`PlanDocSync`). Mode A patch or Mode B dump + ask. Not a close gate. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / supervisor.
 
 ## Contract boundaries
 

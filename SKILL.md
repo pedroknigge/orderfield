@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.7.101 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.1 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.7.101"
+  version: "0.8.1"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -74,6 +74,7 @@ The kernel enforces public JSON schemas, atomic per-file writes plus a field-wid
 | multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
+| cited `docs/plans/…` or a project finding | **Mode A** patch or **Mode B** `DOCS_SYNC.md` + ask. `PlanDocSync` doctor WARN. Not a close gate. |
 | any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json / grok `streaming-json` on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse`. A leftover residual from a prior collect refuse does not hide a started-only re-spawn — stay `running` + speak until that spawn settles |
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue --body-file` | write `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). Refuse names `.orderfield/work/scratch/<child_id>/`. `--body "$(cat …)"` still works |

@@ -9,11 +9,17 @@ from typing import Any
 
 from of.field import (
     PHASES,
+    _read_json_object,
     die,
+    field_home,
     field_is_file,
+    field_rel,
     load_json,
     load_order,
+    load_state,
     load_wave_report,
+    parse_utc,
+    spec_log_dir,
     spec_path,
     utc_now,
     wave_dir,
@@ -236,6 +242,330 @@ class RunbookPath:
         if RunbookPath.present(list(order.get("done_when") or [])):
             return
         die(RunbookPath.REFUSE)
+
+
+class PlanDocSync:
+    """Cited plan docs stay current, or dump + ask. Advisory, not a CMS.
+
+    Reuses RunbookPath.PATH_RE / corpus. Doctor / close / integrate /
+    spec-amend note. Not a close gate. Not silent rewrite of unrelated
+    docs. ``of learn`` stays OF-runtime lessons, not product plan sync.
+    """
+
+    DUMP_REL = "work/scratch/leader/DOCS_SYNC.md"
+    STATUS_IDLE = "idle"
+    STATUS_FRESH = "fresh"
+    STATUS_DUMPED = "dumped"
+    STATUS_STALE = "stale"
+    STATUS_FINDINGS = "findings"
+    PLAN_DIR_CUES = ("docs/plans/", "docs/plan/")
+    PLAN_NAME_CUES = ("plan", "debt", "findings", "living")
+    FINDING_CUES = (
+        "review later",
+        "review más adelante",
+        "open question",
+        "open finding",
+        "project finding",
+        "we should review",
+        "tenemos que revisarlo",
+    )
+    NOTE_STALE = (
+        "docs_sync stale — update cited plan docs or write "
+        "work/scratch/leader/DOCS_SYNC.md then ask to promote "
+        "(not a close gate)"
+    )
+    NOTE_DUMPED = (
+        "docs_sync pending — ask to promote "
+        "work/scratch/leader/DOCS_SYNC.md into the named plan docs"
+    )
+    NOTE_FINDINGS = (
+        "docs_sync findings — write project findings to a cited plan/"
+        "debt/findings doc or work/scratch/leader/DOCS_SYNC.md "
+        "(not chat vapor)"
+    )
+    NEXT = (
+        "patch cited plan docs (mode A) or dump + ask to promote (mode B)"
+    )
+
+    @staticmethod
+    def fold(text: str) -> str:
+        return str(text or "").casefold()
+
+    @staticmethod
+    def planish(rel: str) -> bool:
+        posix = str(rel or "").replace("\\", "/").casefold()
+        if (
+            not posix
+            or posix.startswith("/")
+            or posix.startswith("..")
+            or "/../" in posix
+        ):
+            return False
+        if any(cue in posix for cue in PlanDocSync.PLAN_DIR_CUES):
+            return True
+        if not (posix.startswith("docs/") or posix.endswith(".md")):
+            return False
+        name = posix.rsplit("/", 1)[-1]
+        parts = posix.split("/")
+        return any(
+            cue in name or cue in parts for cue in PlanDocSync.PLAN_NAME_CUES
+        )
+
+    @staticmethod
+    def named(text: str) -> list[str]:
+        found: list[str] = []
+        seen: set[str] = set()
+        for match in RunbookPath.PATH_RE.finditer(str(text or "")):
+            raw = match.group(0)
+            if not PlanDocSync.planish(raw) or raw in seen:
+                continue
+            seen.add(raw)
+            found.append(raw)
+        return found
+
+    @staticmethod
+    def cited(order: dict[str, Any], root: Path) -> list[str]:
+        return PlanDocSync.named(RunbookPath.corpus(order, root))
+
+    @staticmethod
+    def resolve(root: Path, rel: str) -> Path | None:
+        posix = str(rel or "").replace("\\", "/")
+        if (
+            not posix
+            or posix.startswith("/")
+            or posix.startswith("..")
+            or "/../" in posix
+        ):
+            return None
+        cand = (Path(root) / posix).resolve()
+        try:
+            cand.relative_to(Path(root).resolve())
+        except ValueError:
+            return None
+        return cand
+
+    @staticmethod
+    def dump_path(root: Path) -> Path:
+        return field_home(root) / PlanDocSync.DUMP_REL
+
+    @staticmethod
+    def dump_rel(root: Path) -> str:
+        return field_rel(root, PlanDocSync.dump_path(root))
+
+    @staticmethod
+    def last_anchor(root: Path) -> float | None:
+        times: list[float] = []
+        home = field_home(root)
+        waves = home / "waves"
+        if waves.is_dir() and not waves.is_symlink():
+            for child in waves.iterdir():
+                if not child.is_dir() or child.is_symlink():
+                    continue
+                report = child / "report.json"
+                if not report.is_file() or report.is_symlink():
+                    continue
+                data = _read_json_object(report)
+                integ = (
+                    data.get("integration")
+                    if isinstance(data, dict)
+                    else None
+                )
+                if isinstance(integ, dict):
+                    parsed = parse_utc(integ.get("integrated_at"))
+                    if parsed is not None:
+                        times.append(parsed)
+                        continue
+                try:
+                    times.append(report.stat().st_mtime)
+                except OSError:
+                    pass
+        try:
+            state = load_state(root)
+        except SystemExit:
+            state = {}
+        for item in state.get("integration_history") or []:
+            if not isinstance(item, dict):
+                continue
+            parsed = parse_utc(item.get("integrated_at"))
+            if parsed is not None:
+                times.append(parsed)
+        slog = spec_log_dir(root)
+        if slog.is_dir() and not slog.is_symlink():
+            for path in slog.iterdir():
+                if not path.is_file() or path.is_symlink():
+                    continue
+                try:
+                    times.append(path.stat().st_mtime)
+                except OSError:
+                    pass
+        return max(times) if times else None
+
+    @staticmethod
+    def mtime(path: Path) -> float | None:
+        try:
+            if path.is_file() and not path.is_symlink():
+                return path.stat().st_mtime
+        except OSError:
+            return None
+        return None
+
+    @staticmethod
+    def residual_rows(root: Path) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        waves = field_home(root) / "waves"
+        if not waves.is_dir() or waves.is_symlink():
+            return rows
+        for path in sorted(waves.glob("*/residuals/*.json")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            data = _read_json_object(path)
+            if not isinstance(data, dict):
+                continue
+            rem = data.get("residual")
+            if not isinstance(rem, dict):
+                rem = {}
+            patch = rem.get("proposed_patch")
+            if not isinstance(patch, dict):
+                patch = {}
+            rows.append(
+                {
+                    "evidence": str(rem.get("evidence") or ""),
+                    "notes": str(patch.get("notes") or ""),
+                    "docs_sync": str(patch.get("docs_sync") or "")
+                    .strip()
+                    .casefold(),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def finding_open(rows: list[dict[str, Any]]) -> bool:
+        for row in rows:
+            blob = PlanDocSync.fold(
+                f"{row.get('evidence') or ''} {row.get('notes') or ''}"
+            )
+            if any(cue in blob for cue in PlanDocSync.FINDING_CUES):
+                return True
+        return False
+
+    @staticmethod
+    def residual_sync(rows: list[dict[str, Any]]) -> str:
+        marks = [str(row.get("docs_sync") or "") for row in rows]
+        if "pending" in marks:
+            return "pending"
+        if "done" in marks:
+            return "done"
+        return ""
+
+    @staticmethod
+    def note_for(status: str) -> str:
+        if status == PlanDocSync.STATUS_STALE:
+            return PlanDocSync.NOTE_STALE
+        if status == PlanDocSync.STATUS_DUMPED:
+            return PlanDocSync.NOTE_DUMPED
+        if status == PlanDocSync.STATUS_FINDINGS:
+            return PlanDocSync.NOTE_FINDINGS
+        return ""
+
+    @staticmethod
+    def document(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        if order is None:
+            order = load_order(root)
+        cited = PlanDocSync.cited(order, root)
+        anchor = PlanDocSync.last_anchor(root)
+        dump = PlanDocSync.dump_path(root)
+        dump_mtime = PlanDocSync.mtime(dump)
+        dump_fresh = (
+            anchor is not None
+            and dump_mtime is not None
+            and dump_mtime >= anchor
+        )
+        stale: list[str] = []
+        if anchor is not None:
+            for rel in cited:
+                path = PlanDocSync.resolve(root, rel)
+                mt = PlanDocSync.mtime(path) if path is not None else None
+                if mt is None or mt < anchor:
+                    stale.append(rel)
+        rows = PlanDocSync.residual_rows(root)
+        sync = PlanDocSync.residual_sync(rows)
+        if dump_fresh or sync == "pending":
+            status = PlanDocSync.STATUS_DUMPED
+        elif cited and anchor is not None and not stale:
+            status = PlanDocSync.STATUS_FRESH
+        elif cited and stale:
+            status = PlanDocSync.STATUS_STALE
+        elif (
+            anchor is not None
+            and PlanDocSync.finding_open(rows)
+            and not dump_fresh
+        ):
+            status = PlanDocSync.STATUS_FINDINGS
+        else:
+            status = PlanDocSync.STATUS_IDLE
+        # residual docs_sync=done is theater unless the cited files moved
+        if sync == "done" and status == PlanDocSync.STATUS_STALE:
+            status = PlanDocSync.STATUS_STALE
+        note = PlanDocSync.note_for(status)
+        return {
+            "status": status,
+            "cited": cited,
+            "stale": stale,
+            "dump": PlanDocSync.dump_rel(root) if dump_mtime is not None else "",
+            "dump_fresh": dump_fresh,
+            "anchor": anchor,
+            "hot": status
+            in {
+                PlanDocSync.STATUS_STALE,
+                PlanDocSync.STATUS_DUMPED,
+                PlanDocSync.STATUS_FINDINGS,
+            },
+            "note": note,
+            "next": PlanDocSync.NEXT if note else "",
+        }
+
+    @staticmethod
+    def doctor_lines(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> tuple[list[str], bool]:
+        doc = PlanDocSync.document(root, order)
+        if not doc["hot"]:
+            return [], False
+        status = str(doc["status"])
+        if status == PlanDocSync.STATUS_DUMPED:
+            flag = "pending"
+            extra = str(doc.get("dump") or PlanDocSync.dump_rel(root))
+        elif status == PlanDocSync.STATUS_FINDINGS:
+            flag = "findings"
+            extra = ""
+        else:
+            flag = "stale"
+            extra = " ".join(str(p) for p in (doc.get("stale") or [])[:3])
+        line = f"  docs_sync     {flag}"
+        if extra:
+            line += f"  {extra}"
+        lines = [
+            line,
+            f"  note          {doc['note']}",
+            f"  next          {doc['next']}",
+        ]
+        return lines, True
+
+    @staticmethod
+    def emit(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        file: Any = None,
+    ) -> bool:
+        doc = PlanDocSync.document(root, order)
+        if not doc.get("hot"):
+            return False
+        print(f"note         {doc['note']}", file=file)
+        print(f"next         {doc['next']}", file=file)
+        return True
 
 
 def done_when_tag(criterion: str) -> str | None:
