@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.2 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.3 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.2"
+  version: "0.8.3"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -77,7 +77,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | cited `docs/plans/…` or a project finding | **Mode A** patch or **Mode B** `DOCS_SYNC.md` + ask. `PlanDocSync` doctor WARN. Not a close gate. |
 | any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json / grok `streaming-json` on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse`. A leftover residual from a prior collect refuse does not hide a started-only re-spawn — stay `running` + speak until that spawn settles |
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
-| leader HITL `of issue --body-file` | write `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). Refuse names `.orderfield/work/scratch/<child_id>/`. `--body "$(cat …)"` still works |
+| leader HITL `of issue` | after human yes: `--confirm` or TTY y/N. `--dry-run` is **not HITL**. Non-TTY without `--confirm` refuses. `--search` is a read. `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `…/leader/ISSUE.md`). Children never post. |
 | status/resume says `PACKED` / `next SPAWN` | packets exist but no spawn record and no scratch activity; `of spawn` or `of handoff`. Do not HOLD as if ALIVE. `spawned` counts spawn metadata, not packs |
 | `OF_TRUST` / plan mode | `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. `auto-edit`/`auto` stay conservative where the harness has no accept-edits flag. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). Table: appendix + [references/adapters.md](references/adapters.md) |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
@@ -105,14 +105,14 @@ If unsure, draft + HITL, default to *not* posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
-- Confirm → create (`of issue` without `--dry-run` after HITL; running it **is** the send).
+- Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**.
 - Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
 
 Both sides are the contract. Auto-post, yolo post, and posting from a child are forbidden. Confirm creates; refuse / edit-later / silence does not.
 
-`of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate. The kernel never prompts on stdin — HITL stays the leader/human.
+`of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: logged-in account (`gh auth`). Do not impersonate. Non-TTY create without `--confirm` refuses.
 
-A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue`. A leader HITL draft uses the same tree: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing path). `--body-file` refuses anything else and names `.orderfield/work/scratch/<child_id>/`.
+A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue --confirm`. A leader HITL draft uses the same tree: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing path). `--body-file` refuses anything else and names `.orderfield/work/scratch/<child_id>/`.
 
 Search open issues first (`of issue --search`); skip duplicates. Do not file secrets, tokens, private transcripts, or field-internal residuals. One draft or issue per distinct finding. Child procedure: [SLAVE.md](SLAVE.md). Commands and classifier detail: [references/skill-appendix.md](references/skill-appendix.md).
 

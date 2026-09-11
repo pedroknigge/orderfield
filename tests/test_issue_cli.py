@@ -178,6 +178,7 @@ class IssueCli(unittest.TestCase):
             "of issue should target pedroknigge/orderfield",
             "--label",
             "bug",
+            "--confirm",
             *extra,
         )
 
@@ -251,6 +252,8 @@ class IssueCli(unittest.TestCase):
         self.assertEqual(help_out.returncode, 0, help_out.stderr)
         self.assertIn(REPO, help_out.stdout)
         self.assertIn("--dry-run", help_out.stdout)
+        self.assertIn("--confirm", help_out.stdout)
+        self.assertIn("not HITL", help_out.stdout)
         self.assertIn("--title", help_out.stdout)
         self.assertIn("--body", help_out.stdout)
         self.assertIn("--body-file", help_out.stdout)
@@ -283,6 +286,39 @@ class IssueCli(unittest.TestCase):
         self.assertEqual(load_log(self.log), [])
         self.assertNotIn("https://github.com/", r.stdout)
 
+    def test_create_without_confirm_refuses_and_does_not_spawn_gh(self) -> None:
+        r = self.issue(
+            "issue",
+            "--title",
+            "docs lie in glossary",
+            "--body",
+            "of issue should target pedroknigge/orderfield",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("--confirm", r.stderr)
+        self.assertIn("TTY", r.stderr)
+        self.assertIn("--dry-run is not HITL", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+        self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_dry_run_without_confirm_never_mutates(self) -> None:
+        r = self.issue(
+            "issue",
+            "--title",
+            "docs lie in glossary",
+            "--body",
+            "of issue should target pedroknigge/orderfield",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run argv:", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
     def test_submit_spawns_gh_create(self) -> None:
         r = self.issue(*self.create_flags())
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -312,6 +348,7 @@ class IssueCli(unittest.TestCase):
             rel,
             "--label",
             "enhancement",
+            "--confirm",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         creates = [
@@ -656,6 +693,7 @@ class IssueCli(unittest.TestCase):
             rel,
             "--label",
             "bug",
+            "--confirm",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         blob = r.stdout + r.stderr + self.log.read_text(encoding="utf-8")
@@ -735,6 +773,7 @@ class IssueCli(unittest.TestCase):
             "y",
             "--label",
             "bug",
+            "--confirm",
         )
         self.assertEqual(submit.returncode, 0, submit.stderr)
         creates = [
@@ -771,6 +810,7 @@ class IssueCli(unittest.TestCase):
             "y",
             "--label",
             "bug",
+            "--confirm",
         )
         self.assertEqual(submit.returncode, 0, submit.stderr)
         self.assertNotIn(secret, submit.stdout + submit.stderr)
@@ -933,6 +973,7 @@ class IssueCli(unittest.TestCase):
             "y",
             "--label",
             "bug",
+            "--confirm",
         )
         self.assertEqual(submit.returncode, 0, submit.stderr)
         creates = [
