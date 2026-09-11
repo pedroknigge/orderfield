@@ -10,7 +10,7 @@ Disk is the session. Children cannot rewrite the mission. Threshold does not pat
 
 A cut, a resume, a different model — the plan changes without swallowing transcripts. The results do not have to change.
 
-Orca orchestrates **work**. Orderfield orchestrates **authority over the plan** — a portable contract across already-authenticated coding CLIs. Not a fleet, not an LLM graph, not a vendor primitive.
+Orca orchestrates **work**. Orderfield orchestrates **authority over the plan** — a portable contract across coding CLIs on PATH (detect ≠ credentials or session authority). Not a fleet, not an LLM graph, not a vendor primitive.
 
 **The case fleets get wrong.** The lead session dies (compaction, new chat). A child has found the plan insufficient. Workers keep going from logs and teammate messages. The parent swallows transcripts to catch up. Nobody owns who may change the plan.
 

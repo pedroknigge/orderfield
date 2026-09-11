@@ -485,7 +485,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Kernel-verifiable local checks in one pass: skill VERSION skew, "
             "ACTIVE pointer/stub, stale packs (closed-field historical "
-            "is informational), PATH (not auth or readiness)."
+            "is informational), PATH (not auth, credentials, or session authority)."
         ),
     )
     s.set_defaults(func=cmd_doctor)

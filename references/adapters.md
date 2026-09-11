@@ -352,7 +352,7 @@ Kernel vs harness verification boundary:
 | residual file exists | auth succeeded |
 | residual schema-validates | a model is ready |
 
-`of detect` is PATH inventory (`present` / `missing` / `honesty: PATH≠auth`), not authentication or readiness. Never read a path as a login.
+`of detect` is PATH inventory (`present` / `missing` / `honesty: PATH≠auth`), not authentication, credentials, session authority, or readiness. Never read a path as a login.
 
 Do not copy grok `--always-approve`, claude/agy `--dangerously-skip-permissions`, or codex `--dangerously-bypass-approvals-and-sandbox` onto Qwen. `OF_TRUST` governs every adapter (table above); Qwen is the one whose conservative mode is an explicit flag.
 
@@ -405,7 +405,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 Default: every child in the same repo sees `.orderfield/` (shared field, scratch split by child_id).
 
-`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not enforce it, lock files, or create worktrees. Two slaves writing the same product path is a **cut error**: exclusive files belong in cut scratch plus ORDER constraints, not in `of.py`. Do not add `of claim`.
+`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not enforce it, lock files, or create worktrees. A worktree/process bound is an honesty surface, not a security guarantee or a jail. Two slaves writing the same product path is a **cut error**: exclusive files belong in cut scratch plus ORDER constraints, not in `of.py`. Do not add `of claim`.
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.
 

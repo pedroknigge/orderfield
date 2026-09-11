@@ -23,6 +23,8 @@ Protocol keys `workspace.writable_by_slaves` and this file (`.orderfield/SLAVE.m
 
 ## Isolation when the leader shares the repo
 
+Cooperative doctrine, not a jail. A worktree/process bound is an honesty surface, not a security guarantee.
+
 If the leader is also working in the same git repo:
 
 - Use your own `git worktree` (or equivalent). Do not work in the leader's dirty tree.

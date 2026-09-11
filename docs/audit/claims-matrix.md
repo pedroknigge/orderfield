@@ -39,7 +39,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 **Top risks (post-patch):**
 1. Same-harness is the default; skill asks before pack (C-143); no `of ask` CLI — Partial by design (C-014).
-2. `detect` / `doctor` PATH ≠ auth/ready — documented Partial.
+2. `detect` / `doctor` PATH ≠ credentials or session authority — documented Partial (C-015). Worktree/process bounds are honesty surfaces, not a security guarantee (C-016).
 3. Role/product-workspace compliance and metric truth remain contract; the field lock covers `MUTATING_COMMANDS` only, not spawn/handoff/gc/learn/worktree. `spec` and `checkpoint` joined the lock in 0.6.7.
 4. Token/local-budget/inherited-depth accounting and `scale_up` are **reserved** (no telemetry).
 5. LEARN-002 spawn pid/starttime registry plus unauthenticated provenance is on the 0.7.1 line (C-070). Not OS-user authentication.
@@ -83,8 +83,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-012 | Cursor prompt is reference-load | adapters.md | `render_prompt` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
 | C-013 | SLAVE reference-load by default | SKILL.md | `render_prompt` / `--inline` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |
 | C-014 | Leader asks same-harness vs multi; uses detect inventory | SKILL.md / AGENTS.md | protocol + `cmd_detect`; no `of ask` | `scripts/of/cli/ops.py` | `cmd_detect` | — | normal | Partial | keep protocol (C-143 skill ask); optional `of ask` CLI later |
-| C-015 | `detect` proves auth / “logueado” | user phrasing | PATH binary presence only; `AdapterDetect` prints `auth=not-verified` and `honesty: PATH≠auth (Partial)` | `scripts/of_adapters.py` / `scripts/of/cli/ops.py` | `AdapterDetect` / `cmd_detect` | — | normal | Partial | PATH ≠ login; 0.7.60 labels the Partial |
-| C-016 | Worktree isolation always enforced by kernel | SKILL isolation notes | workspace is documentation only | `scripts/of/field.py` | `default_order` | — | normal | Partial | keep adapters honesty |
+| C-015 | `detect` proves auth / “logueado” | user phrasing | PATH binary presence only; `AdapterDetect` prints `auth=not-verified` and `honesty: PATH≠auth (Partial)`; doctor/SKILL/README teach not credentials or session authority | `scripts/of_adapters.py` / `scripts/of/cli/ops.py` | `AdapterDetect` / `cmd_detect` | — | normal | Partial | PATH ≠ credentials/session authority; pair C-016 |
+| C-016 | Worktree isolation always enforced by kernel | SKILL isolation notes | workspace is documentation only; `of worktree` is an opt-in helper; worktree/process bounds are honesty surfaces, not a security guarantee | `scripts/of/field.py` | `default_order` | — | normal | Partial | honesty surface, not a jail; pair C-015 |
 | C-017 | Skill beats child | SKILL / principles | procedure only | `references/principles.md` | | — | normal | Unverifiable | keep |
 | C-018 | `--done-when` scopes to current phase; `--done-when-mission` edits untagged mission list | SKILL / README / CHANGELOG / AGENTS | `cmd_patch`, `mission_done_when`, `phase_done_when` | `scripts/of/cli/field_cmd.py` / `scripts/of/regime.py` | `cmd_patch` | — | critical | OK | keep |
 | C-019 | Cut optional when owners obvious; pays vs theater doctrine | SKILL / README / principles | leader protocol (no new regime) | `SKILL.md` | §2 | — | normal | OK | keep doctrine |
@@ -352,6 +352,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-025 0.8.2: after collect+integrate, execute printed `next` same turn (`DriveAfterIntegrate`; report is not a stop; ordinary next-wave is not a consent ask; #191); `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`; no new C-ID (honesty cap)
 - [x] C-152 0.7.70: packed-only is not ALIVE; `SpawnRecord` + status/resume `spawned` from spawn meta; `PACKED` + `next SPAWN`; pulse stays authoritative
 - [x] C-153 docs honesty: in-repo lab proof is re-runnable; external multi-agent field dogfood stays Partial; `FieldEvidenceHonesty`; no invented case studies; no VERSION bump
+- [x] C-015/C-016 docs honesty: detect ≠ credentials/session authority; worktree/process bounds are honesty surfaces, not a security guarantee; `HardnessDetectAuthWorktree`; stay Partial; no new C-ID; no VERSION bump
 - [x] Duplicate C-065 retired (shim → C-081); uniqueness gate `docs/audit/check-claims.py`
 - [x] Wire `docs/audit/check-claims.py` into `validate-skill.sh` (0.7.50 honesty gate)
 - [ ] Optional: wire consumer `audit-claims.sh` if this package wants a docs CI gate beyond `validate-skill.sh`

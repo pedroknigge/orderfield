@@ -979,6 +979,74 @@ class AdapterDetectHonesty(unittest.TestCase):
         self.assertIn("login", hero)
 
 
+class HardnessDetectAuthWorktree(unittest.TestCase):
+    """C-015/C-016 stay Partial: detect ≠ auth; worktree is not a jail."""
+
+    DETECT = ("credentials", "session authority")
+    WORKTREE = ("honesty surface", "not a jail")
+    OVERCLAIM = "already authenticated"
+
+    @staticmethod
+    def surfaces() -> dict[str, str]:
+        return {
+            "SKILL.md": SkillSurface.core(ROOT),
+            "of/SKILL.md": SkillSurface.alias(ROOT),
+            "references/skill-appendix.md": SkillSurface.appendix(ROOT),
+            "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+            "docs/architecture.md": (ROOT / "docs" / "architecture.md").read_text(
+                encoding="utf-8"
+            ),
+        }
+
+    @staticmethod
+    def folded(text: str) -> str:
+        return text.casefold()
+
+    def test_surfaces_teach_detect_not_auth(self) -> None:
+        for rel, text in self.surfaces().items():
+            folded = self.folded(text)
+            for needle in self.DETECT:
+                self.assertIn(needle, folded, f"{rel} missing {needle}")
+            compact = folded.replace("-", " ")
+            self.assertNotIn(self.OVERCLAIM, compact, rel)
+
+    def test_surfaces_teach_worktree_honesty(self) -> None:
+        for rel, text in self.surfaces().items():
+            folded = self.folded(text)
+            self.assertTrue(
+                "honesty surface" in folded or "honesty surfaces" in folded,
+                f"{rel} missing honesty surface",
+            )
+            self.assertIn("not a jail", folded, rel)
+        for rel in (
+            "of/SKILL.md",
+            "references/skill-appendix.md",
+            "README.md",
+            "docs/architecture.md",
+            "SLAVE.md",
+        ):
+            folded = self.folded((ROOT / rel).read_text(encoding="utf-8"))
+            self.assertIn("security guarantee", folded, rel)
+
+    def test_doctor_names_credentials_not_session(self) -> None:
+        ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "PATH is not auth, credentials, or session authority",
+            ops,
+        )
+        detect = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("Not credentials or session authority", detect)
+
+    def test_claims_matrix_keeps_partials(self) -> None:
+        matrix = (ROOT / "docs" / "audit" / "claims-matrix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(matrix, r"\| C-015 \|.*\| normal \| Partial \|")
+        self.assertRegex(matrix, r"\| C-016 \|.*\| normal \| Partial \|")
+        self.assertIn("credentials/session authority", matrix.casefold())
+        self.assertIn("honesty surface", matrix.casefold())
+
+
 class SkillFrontmatterQuoted:
     """Strict YAML-ish frontmatter load. description/compatibility must be quoted."""
 

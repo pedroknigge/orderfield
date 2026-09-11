@@ -12,7 +12,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 The first public artifact for a mortal reader is [README use cases](../README.md#typical-problems--what-orderfield-does). Compared-to stays below. This page follows those names; this is not a second dialect.
 
-Orderfield is a **portable contract of authority** across already-authenticated coding CLIs. The **harness** is USB: process transport that starts a child. It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**.
+Orderfield is a **portable contract of authority** across coding CLIs on PATH (detect ≠ credentials or session authority). The **harness** is USB: process transport that starts a child. It is **not a fleet**, **not an LLM graph**, and **not a vendor primitive**. Orca orchestrates work; Orderfield orchestrates **authority over the plan**.
 
 | C4 view | Shows | Compared-to name |
 |---------|--------|------------------|
@@ -28,7 +28,7 @@ Canonical contract words (ORDER, packet, residual, regime, contrast) stay in [do
 C4Context
     title Orderfield context — portable contract of authority
     Person(leader, "Leader", "Designs ORDER. Only they may change the plan.")
-    Person(child, "Child coding CLI", "Already authenticated. Packet in, residual out. Cannot redefine the plan.")
+    Person(child, "Child coding CLI", "PATH present; detect ≠ auth. Packet in, residual out. Cannot redefine the plan.")
     System(kernel, "Orderfield", "Portable contract of authority on disk: ORDER, packets, residuals, closed regime.")
     System_Ext(harness, "Harness CLI", "USB / process transport. Starts the child. Does not choose the regime.")
     System_Ext(orca, "Orca", "Orchestrates work. May transport a packet. Must not choose phase, mission, or regime.")
@@ -46,8 +46,8 @@ Neighbors that are **not** Orderfield (same names as the README matrix):
 |--------|----------------------|------------------------|
 | **planning-with-files** | Disk markdown + hooks that re-inject a plan after `/clear` | Who may change the plan. Same category (disk plan), different product (authority kernel through `of`, not a jail). |
 | **Orca** | Work: process bus, workers, gates, DAGs | Authority over the plan. Orca may carry a packet; it must not choose the phase, patch the mission, or invent a regime. |
-| **AWS CAO** | Vendor supervisor plus workers | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow. |
-| **Claude Agent Teams** | Vendor fleet inside one harness | Portable across already-authenticated CLIs. ORDER remains if you turn Claude off. Not a team of processes. |
+| **AWS CAO** | Vendor supervisor plus workers | Not a vendor primitive. Uses CLIs already on PATH (detect ≠ credentials or session authority). No supervisor process, no AWS workflow. |
+| **Claude Agent Teams** | Vendor fleet inside one harness | Portable across PATH-present CLIs (detect ≠ auth). ORDER remains if you turn Claude off. Not a team of processes. |
 | **CrewAI / LangGraph** | An LLM graph: nodes, edges, tools, memory | Not an LLM graph. Children are coding CLIs with packets. The kernel is stdlib JSON plus a closed regime menu. |
 | **Dual-harness skills** | Which runtime does the work | Who may change the plan. Multi-harness only if the user asks. |
 
@@ -61,11 +61,11 @@ Inside the kernel boundary: CLI, adapters, public schemas, and the disk field. T
 C4Container
     title Orderfield containers — kernel, not a fleet
     Person(leader, "Leader", "Who may change the plan")
-    Container_Ext(child, "Child coding CLI", "already-authenticated CLI", "Executes one packet; writes a residual; cannot redefine ORDER")
+    Container_Ext(child, "Child coding CLI", "PATH-present CLI", "Executes one packet; writes a residual; cannot redefine ORDER")
     System_Ext(harness, "Harness", "USB / process transport")
     System_Boundary(ofb, "Orderfield") {
         Container(cli, "of CLI", "Python 3.11+ stdlib", "pack, spawn, collect, integrate, contrast, close")
-        Container(adp, "Adapters", "of_adapters.py", "Headless argv per already-authenticated CLI")
+        Container(adp, "Adapters", "of_adapters.py", "Headless argv per PATH-present CLI")
         ContainerDb(disk, "Disk field", "JSON on .orderfield/", "ORDER, SPEC, packets, residuals, state, session")
         Container(sch, "Public schemas", "JSON Schema", "Runtime validation of artifacts")
     }
@@ -157,12 +157,12 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
 | `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
-| `cmd_detect` | PATH inventory via `AdapterDetect`: present / missing / `auth=not-verified` / `honesty: PATH≠auth (Partial)`. Not login. Not readiness. |
-| `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/ready; missing dests silent. Adapters section reuses `AdapterDetect` labels. `balance` prints `AdapterBalance` (unknown unless a published payload is already in hand). |
+| `cmd_detect` | PATH inventory via `AdapterDetect`: present / missing / `auth=not-verified` / `honesty: PATH≠auth (Partial)`. Not login. Not credentials or session authority. Not readiness. |
+| `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/credentials/session authority/ready; missing dests silent. Adapters section reuses `AdapterDetect` labels. `balance` prints `AdapterBalance` (unknown unless a published payload is already in hand). |
 | `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |
 | `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; `gc` is locked; never copies transcripts. `--archive-field` moves a closed home to `.orderfield/archive/<id>/` and keeps `CLOSE.json`. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. Orphan packed children (`OrphanPacked`) dump on explicit `gc` with `gc-stamp.json` `orphans[]`; resume auto-gc skips packets |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
-| `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); not a process manager; not hooked from spawn |
+| `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); honesty surface, not a security guarantee; not a process manager; not hooked from spawn |
 | `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`; webhook HMAC + replay via `WebhookPair`; timeout / idempotency / health / version via `ContractSurface`). `of contrast --diff` is the `ContrastDiff` narrative of those facts (RESOLVED is not CLOSED). `of close --checklist` is contrast + residual empty (`CloseChecklist`) plus `speak_line` (do not claim shipped unless RESOLVED and residual empty); leaders must quote that `speak` line before claiming shipped (protocol); write path refuses residual MISSING. Living map: checklist → of contrast / of close / residual (Prod§7 `ContractSurface`; Prod§11 `/version` / release header `ContractSurface` + residual `CloseEvidence`; Prod§15 `RunbookPath` in `done_when`; ship `CloseChecklist`). Not a second checklist |
 | `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock |
 | `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
