@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.1. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.2. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.1` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -19,7 +19,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 ## Notable behaviors (code-backed)
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`). Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
-- Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; `of init` without `--force` dies; does not auto-spawn or dump logs. A dead spawn host is the same disk (started-only spawn metadata + incomplete WAL leftover). Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`; `recovery/process-death-resume` / `ResumeAfterProcessDeath`.
+- Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); open fields require executing `next` same turn; after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (report is not a stop); `of init` without `--force` dies; does not auto-spawn or dump logs. A dead spawn host is the same disk (started-only spawn metadata + incomplete WAL leftover). Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`; `recovery/process-death-resume` / `ResumeAfterProcessDeath`; `recovery/drive-after-integrate`.
 - `of eval` runs recovery fixtures under `evals/recovery/` (including mission-rewrite, contract-close, contrast-diff-narrative, slogan-evidence, pack-exclusivity, skip-explore, stale-field, multi-day-resume, process-death-resume, field-roster-ux, cross-field-pack-roster, nested-field-lifecycle, multi-harness residual, verify↔build escalate, mid-flight amend, multi-wave residual loop, multi-wave close checklist, wave-report quality gate, packet sizing lint, threshold stop-spawn, packed-age-watchdog, orphan-packed-cleanup, wave-list-show, doctor-one-pass-skew, doctor-closed-historical, root-stub-ambiguous, status-json, in-flight-visibility, mid-epic-handoff, closed-field-archive, adversarial-dual-truth); `--strict`, `--kernel`, `--list`. Eval steps may assert stderr. `--kernel` includes `DurableMultiDayResume`, `ResumeAfterProcessDeath`, `DoctorSkillVersionSkew`, `DoctorOnePassSkew`, `WaveReportQualityGate`, `ThresholdStopSpawn`, `PackedAgeWatchdog`, `OrphanPackedCleanup`, `ContrastReportRenderer`, `ContrastDiffNarrative`, `WaveRosterListShow`, `RootStubAmbiguous`, `StatusReportJson`, `InFlightVisibility`, `MultiWaveResidualLoop`, `NestedFieldLifecycle`, `MidEpicHandoffPacket`, `ClosedFieldArchiveTrail`, `SliceLintExplain`, `AdversarialDualTruthCorpus`, `PackOutPhysicalNested`, `PackCollectWallClock`, `PackRosterCrossField`, `CloseChecklistProof`, `AdapterHintsCli`, `AdapterResumeGate`, `EfficiencySignalProof`, `ClaimsHonestyGate`, `ReadmeProductSurface`, `SkillLeaderInitiative`, `SkillHarnessMixPlaybook`, `SkillModelCatalogConsult`, `ModelCatalogHonesty`, `SkillFrontmatterQuotedGate`, `SkillSurfaceCore`, `SkillAntiDoneTheater`, and `GrokAdapterSpawn`. `file_contains` reads JSON or text; `file_missing` fails if the path exists (`EvalFileAssert.absent`).
 - `of pack --out` accepts the logical `.orderfield/waves/…` contract path or the physical `.orderfield/fields/<id>/waves/…` path the kernel prints. Comparison runs after `physical_field_rel`. A refuse names both expected forms. Proof: `PackOutPhysicalNested`. No new verb.
 - `of contrast` prints a human one-pager and one machine JSON object from the same `ContrastReport` document. `--diff` prints a `ContrastDiff` narrative of those rows plus `spec-diff` flags (RESOLVED is not CLOSED; ORDER omission can remain after the close gate; no theater). `--json` `contrast` event carries the same rows / gate / blocking. Proof: `recovery/contrast-close-contract` / `recovery/contrast-close-internal` / `recovery/contrast-diff-narrative` / `ContrastReportRenderer` / `ContrastDiffNarrative`. No new verb. No on-disk `CONTRAST.json`.
@@ -116,6 +116,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`); `of gc --audit` before close. Not FAIL. Not a close gate. Proof: `DoctorAuditPressure` / `SkillAuditPressure`. No new CLI / supervisor.
 - 0.7.101 leftover root ORDER.json SKEW prints `migrate required` (FAIL); two or more sibling homes open without CLOSE.json are hygiene WARN. Proof: `DoctorOnePassSkew` / `SkillDoctorOpenHygiene` / `recovery/doctor-one-pass-skew`. No new CLI / supervisor.
 - 0.8.1 cited plan docs (`docs/plans/…`) stale vs last integrate print `docs_sync` WARN (`PlanDocSync`). Mode A patch or Mode B dump + ask. Not a close gate. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / supervisor.
+- 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 
 ## Contract boundaries
 

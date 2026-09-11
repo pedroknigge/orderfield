@@ -747,6 +747,91 @@ class ResumeAfterIntegrate(unittest.TestCase):
         self.assertEqual(state["wave"], 2)
 
 
+class DriveAfterIntegrateProof(unittest.TestCase):
+    """Idle + actionable next prints speak. Report is not a stop. #191."""
+
+    SPEAK = of.DriveAfterIntegrate.SPEAK
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-drive-int-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_applies_only_when_idle_and_actionable(self) -> None:
+        self.assertTrue(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action="next-wave"
+            )
+        )
+        self.assertTrue(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action="pack"
+            )
+        )
+        self.assertTrue(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action="collect"
+            )
+        )
+        self.assertFalse(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[{"child_id": "c1"}], action="next-wave"
+            )
+        )
+        self.assertFalse(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=True, flying=[], action="next-wave"
+            )
+        )
+        self.assertFalse(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action="hold"
+            )
+        )
+        self.assertFalse(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action="closed"
+            )
+        )
+
+    def test_resume_status_integrate_speak_after_report(self) -> None:
+        write_bound_residual(self.tmp, "c1")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(self.SPEAK, integrated.stderr)
+        report = json.loads(integrated.stdout)
+        self.assertEqual(report.get("wave"), 1)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("auto_continue yes", resumed.stdout)
+        self.assertIn("status        idle", resumed.stdout)
+        self.assertIn("in_flight     0", resumed.stdout)
+        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertIn(self.SPEAK, resumed.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("NEXT-WAVE", status.stdout)
+        self.assertIn(self.SPEAK, status.stdout)
+        replay = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertIn(self.SPEAK, replay.stderr)
+
+    def test_flying_keeps_pulse_speak_not_drive_speak(self) -> None:
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  SPAWN", resumed.stdout)
+        self.assertNotIn(self.SPEAK, resumed.stdout)
+        self.assertIn(of.InFlightSignal.SPEAK, resumed.stdout)
+
+
 class ConstraintsRm(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-crm-"))

@@ -88,6 +88,27 @@ def _emit_owned_unverified(root: Path) -> None:
     print_owned_unverified(root, file=sys.stderr)
 
 
+def _emit_drive_after_integrate(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+    wave: int,
+) -> None:
+    if json_events_enabled():
+        return
+    from of.cli.ops import DriveAfterIntegrate
+
+    DriveAfterIntegrate.emit_from_disk(
+        root,
+        order,
+        state,
+        wave,
+        key_width=12,
+        file=sys.stderr,
+        with_next=True,
+    )
+
+
 def cmd_integrate(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
@@ -129,6 +150,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             snapshot_session(root, "integrate")
         print(json.dumps(previous_report, indent=2, ensure_ascii=False))
         _emit_owned_unverified(root)
+        _emit_drive_after_integrate(root, order, state, int(wave))
         return
     if previous_report is not None and not bool(getattr(args, "recompute", False)):
         die(
@@ -289,6 +311,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     print(json.dumps(report, indent=2, ensure_ascii=False))
     PlanDocSync.emit(root, order, file=sys.stderr)
     _emit_owned_unverified(root)
+    _emit_drive_after_integrate(root, order, state, int(wave))
 
 
 def cmd_phase(args: argparse.Namespace) -> None:

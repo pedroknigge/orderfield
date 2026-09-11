@@ -2339,6 +2339,49 @@ def eval_setup_recovery_plan_doc_sync(root: Path) -> None:
     PlanDocSyncEval.setup(root)
 
 
+class DriveAfterIntegrateEval:
+    """Money-plan shape: one wave collect+integrate, idle + NEXT-WAVE."""
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "drive after integrate continuous progress",
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "write the first wave slice",
+            "--role",
+            "implementer",
+            "--child-id",
+            "w1",
+        )
+        EvalInvariantSetup.require_ok(packed, "pack")
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            "w1",
+            evidence="wave-1 structured residual for drive-after-integrate",
+            result_text="w1 structured result\n",
+        )
+        collected = eval_run_of(root, "collect", "--wave", "1")
+        EvalInvariantSetup.require_ok(collected, "collect")
+        integrated = eval_run_of(root, "integrate", "--wave", "1")
+        EvalInvariantSetup.require_ok(integrated, "integrate")
+
+
+@_register_eval_fixture("recovery_drive_after_integrate")
+def eval_setup_recovery_drive_after_integrate(root: Path) -> None:
+    """Idle after integrate: resume/status/integrate speak is not a stop."""
+    DriveAfterIntegrateEval.setup(root)
+
+
 @_register_eval_fixture("recovery_doctor_one_pass")
 def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""
@@ -3036,6 +3079,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PlanDocSyncUnit",
     "tests.test_kernel.DoctorPlanDocSync",
     "tests.test_kernel.SkillPlanDocSync",
+    "tests.test_kernel.DriveAfterIntegrateProof",
+    "tests.test_kernel.SkillDriveAfterIntegrate",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.SkillEvaluatorPacket",
     "tests.test_kernel.PackagingBumpDiscipline",

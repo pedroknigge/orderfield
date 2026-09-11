@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.1. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.2. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.1`
+**Status:** Shipped · **Current release line:** `0.8.2`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.2 — drive after integrate (report is not a stop)
+
+- After collect+integrate, idle + actionable `next` (NEXT-WAVE / PACK / COLLECT / …) prints `DriveAfterIntegrate.speak`. Resume/status/integrate stderr name the duty. Ordinary next-wave/pack is not a consent ask. HOLD stays continue-packets. Reuses `InFlightSignal.speak_line` / `next_legal_action`. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.8.1 — plan-doc sync (cited docs stay living, or dump + ask)
 

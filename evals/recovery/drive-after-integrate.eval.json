@@ -1,0 +1,59 @@
+{
+  "id": "recovery/drive-after-integrate",
+  "description": "After collect+integrate, in_flight=0 and next=NEXT-WAVE: resume/status/integrate print DriveAfterIntegrate speak; report is not a stop",
+  "fixture": "recovery_drive_after_integrate",
+  "tags": ["recovery", "long-task", "auto-continue", "drive-after-integrate"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "field         open",
+        "auto_continue yes",
+        "status        idle",
+        "in_flight     0",
+        "NEXT-WAVE",
+        "report is not a stop; execute printed next this turn",
+        "do not wait for ok/pulse"
+      ],
+      "stdout_not_contains": [
+        "field         closed",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   0",
+        "NEXT-WAVE",
+        "report is not a stop; execute printed next this turn"
+      ],
+      "stdout_not_contains": [
+        "of merge",
+        "RUNTIME_OWNERSHIP"
+      ]
+    },
+    {
+      "run": "integrate",
+      "args": ["--wave", "1"],
+      "exit": 0,
+      "stdout_contains": ["\"wave\": 1"],
+      "stderr_contains": [
+        "NEXT-WAVE",
+        "report is not a stop; execute printed next this turn"
+      ],
+      "stderr_not_contains": [
+        "of merge",
+        "RUNTIME_OWNERSHIP"
+      ]
+    },
+    {
+      "run": "pulse",
+      "exit": 0,
+      "stdout_contains": ["in_flight   0 — idle"],
+      "stdout_not_contains": ["ALIVE"]
+    }
+  ]
+}
