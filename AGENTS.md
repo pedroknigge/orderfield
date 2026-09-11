@@ -199,6 +199,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.1 cited plan-doc sync (`PlanDocSync`; Mode A patch or Mode B `DOCS_SYNC.md` + ask; doctor/close WARN on stale; #188) | documented |
 | 0.8.2 after collect+integrate, execute printed `next` same turn (`DriveAfterIntegrate`; report is not a stop; ordinary next-wave is not a consent ask; #191) | documented |
 | 0.8.3 `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`; dry-run is not HITL; #193) | documented |
+| 0.8.4 `OF_TRUST=yolo` + `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`; not silent defaults) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

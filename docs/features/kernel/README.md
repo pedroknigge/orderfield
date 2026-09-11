@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.3. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.4. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.3` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.4` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -40,7 +40,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned unless this child already owns a binding ID; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); packet workspace unions owned paths; not a file lock
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
 - `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. Multi-file mutations stage one WAL generation + MANIFEST, then publish (`wal/CURRENT.json`). **Readers** (status/resume/render/pulse/wave/contrast/spec-diff/handoff/spawn/validate) use CURRENT; live disk is cache/tamper. **Writers** rematerialize CURRENT onto stale live files before inherit; immediate checkpoint after `OF_WAL_CRASH=after-current` keeps committed children and packets. WAL crash consistency is not a restorable dump. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper
-- `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
+- `OF_TRUST` is authoritative for every adapter (`conservative` default; only `yolo` emits bypass flags). `yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. Spawn metadata is finalized on every outcome.
 - Sibling fields: `of new` / `of fields` / `--field` / `OF_FIELD` / `.orderfield/ACTIVE`; resume roster exit 2 when unmatched and no pointer; foreign origin gate; leftover root stub ignored when nested homes exist; `--field` of a different-id stub dies; `of migrate` archives to `ORDER.json.stub` (`RootStub`; `recovery/root-stub-ambiguous`); cross-field in-flight `--owns-path` overlap dies. First-home `.orderfield/ORDER.json` remains valid until the first `of new` promotes it; `of fields` labels that row `first`. Roster (`FieldRoster`) marks ACTIVE with `*`, prints open/closed/phase/wave/packed-age, and a `choose` line (`of new` = unrelated epic; `of new --parent` = phase of ACTIVE; same product = `of patch` / `of spec --amend`). A `packs` section plus `of fields --json` (`PackRoster`) lists in-flight children across open homes. `--open` / `--all` / `--cursor` page many homes. Proof: `recovery/cross-field-pack-roster`. `of new --parent` stamps optional `ORDER.parent`; `of close` returns ACTIVE to that parent (`NestedField`; `recovery/nested-field-lifecycle`). Not `of merge`.
 - Atomic close: `of close` refuses unless contrast is RESOLVED **and** residual is empty; success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation and clears `spawn_blocked`. A close without a parent releases `.orderfield/ACTIVE` (or retargets the unique remaining open sibling). Pulse/status/doctor treat the home as terminal — leftover scratch is not ALIVE. Proof: `recovery/post-close-terminal`. Generic done_when placeholders die at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. RFC: [docs/close-is-proof.md](../../close-is-proof.md).
 - New packet identity binds content hash, exact ORDER revision, wave, child, role, and canonical artifact paths; kernel path components reject symlinks
@@ -118,6 +118,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.1 cited plan docs (`docs/plans/…`) stale vs last integrate print `docs_sync` WARN (`PlanDocSync`). Mode A patch or Mode B dump + ask. Not a close gate. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / supervisor.
 - 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.
+- 0.8.4 `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`). Spawn speaks and records `operator_actions`. Conservative + allowlist stay quiet. Proof: `OperatorActionAudit` / `SkillOperatorAction`. No new CLI / supervisor.
 
 ## Contract boundaries
 

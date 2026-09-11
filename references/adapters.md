@@ -65,6 +65,9 @@ real list so a space path stays one token.
 `conservative`: no approval bypass, no sandbox bypass, no `--force`, no
 `--auto`, no `--dangerously-*` for any harness. The harness keeps its own
 approval prompts and sandbox. Escalation is an explicit `OF_TRUST=yolo`.
+`yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`),
+not silent defaults: spawn speaks, records `operator_actions`, and the skill
+must ask first.
 
 | `OF_TRUST` | claude | codex | cursor | opencode | grok | agy | qwen | orca |
 |---|---|---|---|---|---|---|---|---|
@@ -161,7 +164,9 @@ allowlist:
   GEMINI_* ANTHROPIC_* OLLAMA_*`; `generic` nothing extra.
 
 `OF_SPAWN_ENV=NAME1,NAME2` adds names. `OF_SPAWN_ENV=inherit` opts out and
-passes the whole parent environment (recorded as `env_mode: inherit`). The
+passes the whole parent environment (recorded as `env_mode: inherit`). That
+opt-out is an audited operator action (`OperatorAction`), not a silent
+default — spawn prints `operator action: inherit`. The
 child always receives `OF_FIELD=<ORDER id>` so its own `of` calls bind the
 same field in a multi-field tree, and `OF_CHILD=<child_id>` so `of learn --protocol` / `--promote` refuse (leader-only). `generic` forwards no credential prefixes:
 an `OF_AGENT` harness needs `OF_SPAWN_ENV` for its API keys.

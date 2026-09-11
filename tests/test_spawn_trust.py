@@ -340,6 +340,186 @@ class TrustMatrixCli(unittest.TestCase):
         self.assertEqual(meta["env_mode"], "allowlist")
         self.assertEqual(meta["outcome"], "dry_run")
         self.assertIn("ended_at", meta)
+        self.assertNotIn("operator_actions", meta)
+        self.assertNotIn("operator action", proc.stderr)
+
+
+class OperatorActionAudit(unittest.TestCase):
+    """yolo + inherit are explicit audited operator actions. Not silent defaults."""
+
+    def test_unit_classifies_and_speaks_only_when_set(self) -> None:
+        self.assertEqual(of_adapters.OperatorAction.actions("conservative", "allowlist"), [])
+        self.assertIsNone(of_adapters.OperatorAction.speak_line([]))
+        self.assertEqual(of_adapters.OperatorAction.event_fields([]), {})
+        self.assertEqual(
+            of_adapters.OperatorAction.actions("yolo", "allowlist"),
+            ["yolo"],
+        )
+        self.assertEqual(
+            of_adapters.OperatorAction.actions("conservative", "inherit"),
+            ["inherit"],
+        )
+        self.assertEqual(
+            of_adapters.OperatorAction.actions("yolo", "inherit"),
+            ["yolo", "inherit"],
+        )
+        self.assertEqual(
+            of_adapters.OperatorAction.actions("escalated", "allowlist"),
+            [],
+        )
+        line = of_adapters.OperatorAction.speak_line(["yolo"])
+        self.assertIsNotNone(line)
+        assert line is not None
+        self.assertIn("operator action: yolo", line)
+        self.assertIn("not a silent default", line)
+        self.assertIn("ask the human", line)
+        both = of_adapters.OperatorAction.speak_line(["yolo", "inherit"])
+        self.assertIsNotNone(both)
+        assert both is not None
+        self.assertIn("yolo,inherit", both)
+        meta: dict = {"trust": "yolo", "env_mode": "inherit"}
+        self.assertEqual(
+            of_adapters.OperatorAction.apply_meta(meta),
+            ["yolo", "inherit"],
+        )
+        self.assertEqual(meta["operator_actions"], ["yolo", "inherit"])
+        quiet: dict = {"trust": "conservative", "env_mode": "allowlist"}
+        self.assertEqual(of_adapters.OperatorAction.apply_meta(quiet), [])
+        self.assertNotIn("operator_actions", quiet)
+        docs = of_adapters.OperatorAction.doctor_lines("conservative", "allowlist")
+        self.assertTrue(any("audited operator actions" in row for row in docs))
+        self.assertFalse(any(row.startswith("active") for row in docs))
+        active = of_adapters.OperatorAction.doctor_lines("yolo", "inherit")
+        self.assertTrue(any("active        yolo,inherit" in row for row in active))
+
+    def test_yolo_spawn_speaks_and_records(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-op-yolo-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "y1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        proc = run_of(
+            tmp,
+            "--json",
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            pack.stdout.splitlines()[0].strip(),
+            "--dry-run",
+            extra_env={"OF_TRUST": "yolo", "OF_JSON": "1"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        events = [
+            json.loads(line)
+            for line in proc.stderr.splitlines()
+            if line.strip().startswith("{")
+        ]
+        warns = [e for e in events if e.get("event") == "warning" and e.get("kind") == "operator_action"]
+        self.assertTrue(warns, proc.stderr)
+        self.assertIn("operator action: yolo", warns[0]["message"])
+        spawns = [e for e in events if e.get("event") == "spawn"]
+        self.assertTrue(spawns, proc.stderr)
+        self.assertEqual(spawns[-1].get("operator_actions"), ["yolo"])
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/y1.json")
+        self.assertEqual(meta["trust"], "yolo")
+        self.assertEqual(meta["env_mode"], "allowlist")
+        self.assertEqual(meta["operator_actions"], ["yolo"])
+
+    def test_inherit_spawn_speaks_and_records(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-op-inh-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "i1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        proc = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            pack.stdout.splitlines()[0].strip(),
+            "--dry-run",
+            extra_env={"OF_SPAWN_ENV": "inherit"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("operator action: inherit", proc.stderr)
+        self.assertIn("not a silent default", proc.stderr)
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/i1.json")
+        self.assertEqual(meta["env_mode"], "inherit")
+        self.assertEqual(meta["operator_actions"], ["inherit"])
+
+    def test_escalated_alias_is_yolo_operator_action(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-op-esc-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "e1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        proc = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "grok",
+            "--packet",
+            pack.stdout.splitlines()[0].strip(),
+            "--dry-run",
+            extra_env={"OF_TRUST": "escalated"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("operator action: yolo", proc.stderr)
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/e1.json")
+        self.assertEqual(meta["trust"], "yolo")
+        self.assertEqual(meta["operator_actions"], ["yolo"])
+
+    def test_collect_names_inherit(self) -> None:
+        from of.cli.wave import CollectDiagnostic
+
+        note = CollectDiagnostic.spawn_note(
+            {
+                "adapter": "generic",
+                "trust": "conservative",
+                "env_mode": "inherit",
+                "operator_actions": ["inherit"],
+                "outcome": "ok",
+            }
+        )
+        self.assertIn("env_mode=inherit", note)
+        quiet = CollectDiagnostic.spawn_note(
+            {
+                "adapter": "generic",
+                "trust": "conservative",
+                "env_mode": "allowlist",
+                "outcome": "ok",
+            }
+        )
+        self.assertNotIn("env_mode=", quiet)
+
+    def test_doctor_names_operator_actions(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-op-doc-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        proc = run_of(tmp, "doctor")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("audited operator actions", proc.stdout)
+        self.assertIn("not silent defaults", proc.stdout)
+        self.assertNotIn("active        yolo", proc.stdout)
+        hot = run_of(
+            tmp,
+            "doctor",
+            extra_env={"OF_TRUST": "yolo", "OF_SPAWN_ENV": "inherit"},
+        )
+        self.assertEqual(hot.returncode, 0, hot.stderr)
+        self.assertIn("active        yolo,inherit", hot.stdout)
 
 
 class CodexRecordedWorktree(unittest.TestCase):
