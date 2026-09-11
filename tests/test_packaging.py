@@ -776,8 +776,26 @@ class ReadmeProductSurface(unittest.TestCase):
         ):
             self.assertIn(needle, hero)
         install_block = text[install:text.index("## Uninstall")]
-        self.assertLess(install_block.index("./install.sh"), install_block.index("npx skills"))
+        chunks = install_block.split("```")
+        lead, first_fence = chunks[0], chunks[1]
+        self.assertTrue(first_fence.startswith("bash"), first_fence[:20])
+        self.assertIn("SHA256SUMS", first_fence)
+        self.assertIn("releases/download", first_fence)
+        self.assertIn("SHA-256", first_fence)
+        self.assertNotIn("npx skills add pedroknigge/orderfield", first_fence)
+        self.assertIn("SHA-256", lead)
+        self.assertIn("unpinned", lead.casefold())
+        self.assertIn("npx skills add", lead.casefold())
+        self.assertIn("not", lead.casefold())
+        self.assertIn("trusted", lead.casefold())
+        npx_cmd = install_block.index("npx skills add pedroknigge/orderfield")
+        self.assertLess(install_block.index("SHA256SUMS"), npx_cmd)
+        self.assertLess(install_block.index("releases/download"), npx_cmd)
+        self.assertLess(install_block.index("./install.sh"), npx_cmd)
         self.assertIn("first close", install_block.casefold())
+        self.assertIn("unpinned", install_block.casefold())
+        self.assertIn("not the trusted", install_block.casefold())
+        self.assertIn("SHA-256", install_block)
         compared = text[text.index("## Compared-to"):]
         self.assertIn("planning-with-files", compared)
         self.assertIn("refuse_child_forge", compared)
@@ -796,6 +814,16 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("only the leader may change it", alias.casefold())
         self.assertIn("first close", skill.casefold())
         self.assertIn("first close", alias.casefold())
+        for surface, label in (
+            (skill, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            folded = surface.casefold()
+            self.assertIn("sha-256", folded, label)
+            self.assertIn("unpinned", folded, label)
+            self.assertIn("npx", folded, label)
+            self.assertIn("not trusted", folded, label)
         self.assertIn("planning-with-files", appendix.casefold())
         self.assertIn("when work goes through `of`", skill)
         self.assertIn("remain protocol", skill)

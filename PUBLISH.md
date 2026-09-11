@@ -84,11 +84,7 @@ test "$(gh release view "$release_tag" --json assets --jq '[.assets[].name] | so
 
 One sitting for a human (install → `of doctor` green + disk contract): [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
-```bash
-npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
-```
-
-Classic install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
+Classic install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` is **not** the trusted path (SCOPE-NPX).
 
 ```bash
 release_version="$(tr -d '[:space:]' < VERSION)"
@@ -127,6 +123,7 @@ PY
 Confirm the published source still exposes both skill names and that the verified classic installer reports the release version:
 
 ```bash
+# host discovery only — unpinned; not the trusted install path
 npx --yes skills add pedroknigge/orderfield --list --full-depth
 remote_root="$(mktemp -d)"
 ORDERFIELD_REF="$release_tag" \

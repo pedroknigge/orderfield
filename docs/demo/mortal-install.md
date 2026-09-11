@@ -34,7 +34,7 @@ of doctor
 
 If this install is behind a newer release, doctor asks at most once a day. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (GitHub tag + SHA256SUMS). Consent, not a silent auto-update.
 
-`npx skills add` installs skill markdown. It does not create the `of` CLI. Classic `install.sh` is the pin path.
+Unpinned `npx skills add` is **not** the trusted path. It installs skill markdown. It does not create the `of` CLI. Classic `install.sh` (tag + SHA-256) is the pin path.
 
 ## After green
 

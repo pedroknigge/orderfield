@@ -25,7 +25,7 @@ The chat can die. ORDER stays. A child residual cannot rewrite the mission, the 
 </p>
 
 <p align="center">
-  <a href="#install"><img src="https://img.shields.io/badge/install-npx%20skills-111827?style=for-the-badge" alt="Install" /></a>
+  <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
   <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
@@ -96,30 +96,7 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-Shortest honest path from a checkout:
-
-```bash
-./install.sh
-# ensure ~/.local/bin is on PATH
-of doctor    # must print ok
-```
-
-That lands `~/.local/bin/of` and the skill copies. First close is the [30-second loop](#30-second-loop): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
-
-Host skill discovery (does **not** create the `of` CLI):
-
-```bash
-npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
-```
-
-This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both.
-
-Remote install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`.
-
-<details>
-<summary><strong>Pin recipe and more install options</strong></summary>
-
-<br>
+Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
 release_tag=v0.8.3
@@ -136,7 +113,26 @@ ORDERFIELD_VERSION="$release_version" \
 ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
 ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
 bash "$verify_root/install.sh"
+# ensure ~/.local/bin is on PATH
+of doctor    # must print ok
+```
 
+That lands `~/.local/bin/of` and the skill copies. First close is the [30-second loop](#30-second-loop): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
+
+From a checkout you already trust (local tree, not a remote pin):
+
+```bash
+./install.sh
+# ensure ~/.local/bin is on PATH
+of doctor    # must print ok
+```
+
+<details>
+<summary><strong>More install options</strong></summary>
+
+<br>
+
+```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
 ORDERFIELD_REF="$release_tag" \
 ORDERFIELD_VERSION="$release_version" \
@@ -157,6 +153,14 @@ The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md).
 Python 3.11+ (3.9 and 3.10 are end-of-life; `scripts/of.py` refuses older interpreters with one line). No pip packages.
 
 </details>
+
+Host skill discovery only — unpinned; **not the trusted path**; does **not** create the `of` CLI:
+
+```bash
+npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
+```
+
+This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both.
 
 Where it lands:
 

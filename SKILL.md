@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: "v0.8.3 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. Install: ./install.sh then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.3 — Leader-owned disk plan. Hosts load this short core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Consented --model includes grok/agy. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. Install: SHA-256 pin then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
@@ -19,7 +19,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
-Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (`./install.sh` → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
+Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (SHA-256 pin → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
@@ -69,7 +69,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | production mission / Gate A / before features | appendix **Production mode** — full verb table; Gate A before `--role implementer`; never invent supervisor / bot org / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`. Walk: [docs/long-mission.md](docs/long-mission.md) |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, `--tokens`, or unpack a reporter | `of eval recovery/adversarial-dual-truth` — disk wins; `--tokens` dies; collect/integrate a reporter. Never `of pack --tokens` N>0 |
-| human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` must print `ok`. Pin: README / PUBLISH. Not pip. Not a daemon |
+| human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256 pin: README / PUBLISH. Unpinned npx is not trusted. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
