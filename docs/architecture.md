@@ -44,7 +44,7 @@ Neighbors that are **not** Orderfield (same names as the README matrix):
 
 | System | What it orchestrates | Orderfield is instead |
 |--------|----------------------|------------------------|
-| **planning-with-files** | Disk markdown + hooks that re-inject a plan after `/clear` | Who may change the plan. Same category (disk plan), different product (authority kernel). |
+| **planning-with-files** | Disk markdown + hooks that re-inject a plan after `/clear` | Who may change the plan. Same category (disk plan), different product (authority kernel through `of`, not a jail). |
 | **Orca** | Work: process bus, workers, gates, DAGs | Authority over the plan. Orca may carry a packet; it must not choose the phase, patch the mission, or invent a regime. |
 | **AWS CAO** | Vendor supervisor plus workers | Not a vendor primitive. Uses CLIs you already authenticated. No supervisor process, no AWS workflow. |
 | **Claude Agent Teams** | Vendor fleet inside one harness | Portable across already-authenticated CLIs. ORDER remains if you turn Claude off. Not a team of processes. |

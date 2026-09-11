@@ -4,7 +4,7 @@ Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the le
 
 **Read this appendix before pack, spawn, contrast, or close.** The core table names every kernel verb; these sections are how you run them. A turn that claims those verbs without the `of` commands is still a broken run.
 
-Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md).
+Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md).
 
 ## Auto-report (HITL)
 
