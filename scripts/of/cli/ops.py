@@ -964,6 +964,119 @@ class InFlightSignal:
         return PulseProgress.render([str(item) for item in raw if str(item).strip()])
 
 
+class DriveAfterIntegrate:
+    """Idle + actionable next is not a stop. Not a supervisor.
+
+    Reuse: ``InFlightSignal.speak_line`` owns flying; ``next_legal_action``
+    already names NEXT-WAVE / PACK / COLLECT. The remaining gap is a
+    leader who dumps the integrate JSON (or a status report) and waits
+    for ok/pulse while ``in_flight=0`` and ``next`` is work (#191).
+    """
+
+    SPEAK = (
+        "report is not a stop; execute printed next this turn "
+        "(do not wait for ok/pulse)"
+    )
+    ACTIONABLE = frozenset(
+        {
+            "next-wave",
+            "pack",
+            "collect",
+            "integrate --recompute",
+            "patch then next-wave",
+        }
+    )
+
+    @staticmethod
+    def applies(
+        *,
+        spec_closed: bool,
+        flying: list[Any],
+        action: str,
+    ) -> bool:
+        if spec_closed or flying:
+            return False
+        return action in DriveAfterIntegrate.ACTIONABLE
+
+    @staticmethod
+    def speak_line(*, key: str = "speak", key_width: int = 12) -> str:
+        return f"{key.ljust(key_width)}{DriveAfterIntegrate.SPEAK}"
+
+    @staticmethod
+    def action_of(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int,
+    ) -> tuple[str, list[dict[str, Any]]]:
+        packets = packed_children(root, int(wave))
+        flying: list[dict[str, Any]] = (
+            []
+            if order.get("spec_closed")
+            else in_flight_children(root, int(wave))
+        )
+        integrated = field_is_file(wave_dir(int(wave), root) / "report.json")
+        covering = (not integrated) or IntegrationDigest.covers(root, state)
+        stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(
+            packets
+        )
+        action = next_legal_action(
+            state,
+            flying,
+            packets,
+            integrated=integrated,
+            covering=covering,
+            stale=stale,
+            spec_closed=bool(order.get("spec_closed")),
+        )
+        return action, flying
+
+    @staticmethod
+    def emit(
+        *,
+        spec_closed: bool,
+        flying: list[Any],
+        action: str,
+        key_width: int = 12,
+        file: Any = None,
+        with_next: bool = False,
+    ) -> bool:
+        if not DriveAfterIntegrate.applies(
+            spec_closed=spec_closed,
+            flying=flying,
+            action=action,
+        ):
+            return False
+        dest = file if file is not None else sys.stdout
+        if with_next:
+            label, detail = resume_next_lines(action)
+            extra = f" — {detail}" if detail else ""
+            print(f"{'next'.ljust(key_width)}{label}{extra}", file=dest)
+        print(DriveAfterIntegrate.speak_line(key_width=key_width), file=dest)
+        return True
+
+    @staticmethod
+    def emit_from_disk(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int,
+        *,
+        key_width: int = 12,
+        file: Any = None,
+        with_next: bool = False,
+    ) -> bool:
+        action, flying = DriveAfterIntegrate.action_of(root, order, state, wave)
+        return DriveAfterIntegrate.emit(
+            spec_closed=bool(order.get("spec_closed")),
+            flying=flying,
+            action=action,
+            key_width=key_width,
+            file=file,
+            with_next=with_next,
+        )
+
+
 class StatusReport:
     """Live-field snapshot for humans and dashboards. No second ledger."""
 
@@ -1631,6 +1744,14 @@ def cmd_status(args: argparse.Namespace) -> None:
     StatusReport.emit_running(status_doc)
     if flying:
         print(InFlightSignal.speak_line(key_width=12))
+    else:
+        DriveAfterIntegrate.emit(
+            spec_closed=bool(order.get("spec_closed")),
+            flying=flying,
+            action=str(status_doc.get("next") or ""),
+            key_width=12,
+            with_next=True,
+        )
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"since_across {state.get('waves_since_across')}")
@@ -2067,6 +2188,12 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print("next")
     for line in resume_next_lines(nxt):
         print(f"  {line}")
+    DriveAfterIntegrate.emit(
+        spec_closed=bool(order.get("spec_closed")),
+        flying=flying,
+        action=nxt,
+        key_width=14,
+    )
     print_learnings(list_learnings(root))
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():

@@ -1339,6 +1339,63 @@ class SkillPlanDocSync(unittest.TestCase):
         self.assertIn("class PlanDocSync:", source)
 
 
+class SkillDriveAfterIntegrate(unittest.TestCase):
+    """After integrate, execute next same turn. Report is not a stop. #191."""
+
+    SPEAK = "report is not a stop"
+    WAIT = "do not wait for ok/pulse"
+    CONSENT = "not a consent ask"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_agents_teach_drive_not_consent_bleed(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        table = self.table(core).casefold()
+        self.assertIn("collect+integrate", table)
+        self.assertIn(self.SPEAK, table)
+        self.assertIn(self.WAIT, table)
+        self.assertIn(self.CONSENT, table)
+        self.assertIn("not after ordinary integrate", table)
+        self.assertIn("fresh-context review packet", table)
+        self.assertIn("must ask", table)
+        core_fold = core.casefold()
+        self.assertIn("not invent a consent ask", core_fold)
+        self.assertIn("ordinary next-wave/pack is not the adversary", core_fold)
+        alias_fold = alias.casefold()
+        self.assertIn(self.SPEAK, alias_fold)
+        self.assertIn(self.WAIT, alias_fold)
+        self.assertIn("not a consent ask", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn(self.SPEAK, appendix_fold)
+        self.assertIn("driveafterintegrate", appendix_fold)
+        self.assertIn("not invent a consent ask", appendix_fold)
+        self.assertIn("ordinary next-wave/pack is not the adversary", appendix_fold)
+        self.assertIn("recovery/drive-after-integrate", appendix_fold)
+        agents_fold = agents.casefold()
+        self.assertIn(self.SPEAK, agents_fold)
+        self.assertIn(self.WAIT, agents_fold)
+        self.assertIn("not invent a consent ask", agents_fold)
+        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class DriveAfterIntegrate:", source)
+        self.assertIn("report is not a stop", source)
+
+    def test_consent_gates_still_ask(self) -> None:
+        core = SkillSurface.core(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("after wave, before close", table)
+        self.assertLess(table.index("must ask"), table.index("of close --checklist"))
+        self.assertIn("same-harness", table)
+        self.assertIn("must ask", table)
+        self.assertIn("must propose", table)
+
+
 class SkillRevStaleUnpack(unittest.TestCase):
     """SKILL teaches rev-stale dead child → UNPACK --FORCE, not spawn."""
 

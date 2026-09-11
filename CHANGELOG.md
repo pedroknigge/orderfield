@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.2
+
+After collect+integrate, idle + actionable `next` is not a stop. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.1 notes.
+
+- **Reuse table (design-first):** `next_legal_action` already names NEXT-WAVE / PACK / COLLECT after residuals land. `InFlightSignal.speak_line` already owns flying. `resume_auto_continue_lines` already says execute `next` this turn. The remaining gap is a leader who dumps `report.json` (or a chat status) and waits for ok/pulse while `in_flight=0` and `next` is work (`#191`).
+- **Reuse, not a supervisor:** `DriveAfterIntegrate` prints `speak` (`report is not a stop; execute printed next this turn`) on resume / idle status / integrate stderr when the field is open, idle, and `next` is actionable. HOLD stays continue-packets. Consent asks (adversary before close, harness mix, model tier) stay asks. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / AGENTS teach after-integrate same-turn `next`, report-is-not-a-stop, HOLD vs invent-consent, and that ordinary next-wave/pack is not a consent ask.
+- **Proof:** `DriveAfterIntegrateProof` (resume/status/integrate speak after integrate; flying stays quote-PULSE; HOLD/closed omit). `SkillDriveAfterIntegrate`. `recovery/drive-after-integrate`. No new C-ID (honesty cap; C-025).
+- Packaging: VERSION 0.8.2; skill/alias description preview `v0.8.2 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.1 notes.
+
 ## 0.8.1
 
 Cited plan docs stay living surfaces: patch them or dump + ask. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.7.101 notes.

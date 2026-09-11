@@ -33,9 +33,10 @@ of pack --explain --slice "…" --role explorer   # dry-run; no write
 of handoff --packet …   # or of spawn
 of collect --wave N
 of integrate --wave N   # if SPEC cites docs/plans/…: Mode A patch those docs or Mode B write work/scratch/leader/DOCS_SYNC.md and ask to promote
+of resume               # execute printed next same turn; report is not a stop (`DriveAfterIntegrate`)
 of doctor               # docs_sync stale|pending is WARN, not a close gate (`PlanDocSync`)
 of phase <next>     # when regime is phase, or empty wave after --done-when-closed
-of next-wave        # do not --recompute the prior wave
+of next-wave        # do not --recompute the prior wave; ordinary next-wave is not a consent ask
 of wave list
 of wave show
 of status --json

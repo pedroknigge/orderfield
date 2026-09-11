@@ -6,7 +6,7 @@ If `.orderfield/ORDER.json` exists, run `of resume` and do the printed `next`. D
 
 If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
 
-0. **Open field auto-continues.** If `.orderfield/ORDER.json` exists and `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken.
+0. **Open field auto-continues.** If `.orderfield/ORDER.json` exists and `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. After collect+integrate, that is still next-wave/pack/spawn — a status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken.
 1. If `.orderfield/ORDER.json` exists, `of resume` first (continue in-flight; do not re-init). Then read ORDER.
 2. If you are the leader, do not implement the slice. Pack and delegate.
 3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
@@ -197,6 +197,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`; gc before close; not FAIL; not a close gate; #181) | documented |
 | 0.7.101 doctor leftover root ORDER.json SKEW names `migrate required` (FAIL); sibling fields without CLOSE are hygiene WARN (`DoctorSkew`; #182) | documented |
 | 0.8.1 cited plan-doc sync (`PlanDocSync`; Mode A patch or Mode B `DOCS_SYNC.md` + ask; doctor/close WARN on stale; #188) | documented |
+| 0.8.2 after collect+integrate, execute printed `next` same turn (`DriveAfterIntegrate`; report is not a stop; ordinary next-wave is not a consent ask; #191) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
