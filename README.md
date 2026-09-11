@@ -96,7 +96,7 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not** the trusted install path — it follows whatever the skills CLI resolves and does not create the `of` CLI.
+Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
 release_tag=v0.8.3
@@ -154,7 +154,7 @@ Python 3.11+ (3.9 and 3.10 are end-of-life; `scripts/of.py` refuses older interp
 
 </details>
 
-Host skill discovery only — unpinned; **not** the trusted path; does **not** create the `of` CLI:
+Host skill discovery only — unpinned; **not the trusted path**; does **not** create the `of` CLI:
 
 ```bash
 npx skills add pedroknigge/orderfield -g -y --full-depth -s '*' -a '*'
