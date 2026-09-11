@@ -1,6 +1,6 @@
 {
   "id": "recovery/doctor-one-pass-skew",
-  "description": "One of doctor pass names ACTIVE stub skew and aged in-flight packs; version skew already on doctor",
+  "description": "One of doctor pass names leftover root ORDER.json migrate required, open siblings no CLOSE, and aged in-flight packs; version skew already on doctor",
   "fixture": "recovery_doctor_one_pass",
   "tags": ["recovery", "doctor", "active", "packed-age"],
   "steps": [
@@ -12,6 +12,9 @@
         "active",
         "SKEW",
         ".orderfield/ORDER.json",
+        "migrate       required",
+        "of migrate",
+        "no CLOSE",
         "packed_age",
         "worker",
         "past 7d SLA",

@@ -1503,6 +1503,45 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("stub          none", r.stdout)
         self.assertNotIn("SKEW", r.stdout)
 
+    def test_open_siblings_without_close_are_advisory(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "first", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        created = run_of(
+            self.tmp, "new", "--mission", "second abandoned epic", "--phase", "build"
+        )
+        self.assertEqual(created.returncode, 0, created.stderr)
+        from of.field import DoctorSkew, list_field_homes
+
+        homes = list_field_homes(self.tmp)
+        self.assertGreaterEqual(len(homes), 2)
+        rows = DoctorSkew.open_without_close(self.tmp)
+        self.assertEqual(len(rows), len(homes))
+        lines, warn = DoctorSkew.open_siblings(self.tmp)
+        self.assertTrue(warn)
+        joined = "\n".join(lines)
+        self.assertIn("no CLOSE", joined)
+        self.assertIn("of fields", joined)
+        for fid, _home in rows:
+            self.assertIn(fid, joined)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn("no CLOSE", r.stdout)
+        self.assertIn(DoctorSkew.OPEN_NOTE, r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("migrate       required", r.stdout)
+
+    def test_single_open_field_is_not_sibling_hygiene(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "only", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        lines, warn = of.DoctorSkew.open_siblings(self.tmp)
+        self.assertFalse(warn)
+        self.assertEqual(lines, [])
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        ok", r.stdout)
+        self.assertNotIn("no CLOSE", r.stdout)
+
     def test_leftover_stub_fails_doctor(self) -> None:
         of.eval_setup_recovery_active_field_pointer(self.tmp)
         r = self._doctor()
@@ -1510,6 +1549,8 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("SKEW", r.stdout)
         self.assertIn("stub", r.stdout)
         self.assertIn(".orderfield/ORDER.json", r.stdout)
+        self.assertIn("migrate       required", r.stdout)
+        self.assertIn("of migrate", r.stdout)
         self.assertIn("doctor        FAIL", r.stdout)
         self.assertNotIn("missing (of init", r.stdout)
 
@@ -1551,8 +1592,10 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("checkout", r.stdout)
         self.assertIn("SKEW", r.stdout)
         self.assertIn(".orderfield/ORDER.json", r.stdout)
+        self.assertIn("migrate       required", r.stdout)
         self.assertIn("packed_age", r.stdout)
         self.assertIn("worker", r.stdout)
+        self.assertIn("no CLOSE", r.stdout)
         self.assertIn("doctor        FAIL", r.stdout)
         self.assertNotIn("PICK --field", r.stdout)
 
@@ -1583,8 +1626,10 @@ class DoctorOnePassSkew(unittest.TestCase):
         joined = "\n".join(lines)
         self.assertTrue(skewed)
         self.assertIn("SKEW", joined)
+        self.assertIn("migrate       required", joined)
         self.assertIn("packed_age", joined)
         self.assertIn("worker", joined)
+        self.assertIn("no CLOSE", joined)
 
     def test_closed_sibling_historical_skew_does_not_fail_active(self) -> None:
         of.eval_setup_recovery_doctor_closed_historical(self.tmp)
@@ -1612,6 +1657,7 @@ class DoctorOnePassSkew(unittest.TestCase):
         self.assertIn("doctor        ok", r.stdout)
         self.assertNotIn("doctor        FAIL", r.stdout)
         self.assertIn("stub          none", r.stdout)
+        self.assertNotIn("no CLOSE", r.stdout)
         self.assertIn("historical", r.stdout)
         self.assertIn("order_rev; closed", r.stdout)
         self.assertIn(DoctorSkew.HISTORICAL_NOTE, r.stdout)

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.100. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.7.101. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.100`
+**Status:** Shipped · **Current release line:** `0.7.101`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.7.101 — doctor leftover-root migrate + open-sibling CLOSE
+
+- `of doctor` prints `migrate required` on leftover root `ORDER.json` SKEW (FAIL; `of migrate`). Two or more sibling homes open without CLOSE.json print `open N fields no CLOSE` as hygiene WARN (not FAIL). One open field stays quiet. Audit OVER / fat scratch stays WARN (0.7.100). Reuses `DoctorSkew` / `list_field_homes`. Proof: `DoctorOnePassSkew` / `SkillDoctorOpenHygiene` / `recovery/doctor-one-pass-skew`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.100 — doctor / close warn on audit OVER
 

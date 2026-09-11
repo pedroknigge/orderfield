@@ -3277,13 +3277,15 @@ class DoctorSkew:
     """One-pass doctor: skill VERSION, ACTIVE pointer, stale packs.
 
     Reuses SkillVersionSkew, ActiveField, list_field_homes, field_is_open,
-    PackedAge, and packet_is_stale. Read-path only. No new schema. No
-    new CLI flag.
+    PackedAge, RootStub, and packet_is_stale. Read-path only. No new
+    schema. No new CLI flag.
 
     Skill VERSION mismatch is advisory (WARN / exit 0). Closed-field
     historical pack skew (retained order_rev / packed_age vs the final
-    ORDER) is informational — not FAIL. Open-field, schema, lock,
-    symlink, ACTIVE/stub, and kernel failures still FAIL (exit 2).
+    ORDER) is informational — not FAIL. Two or more sibling homes open
+    without CLOSE.json are hygiene WARN (not FAIL). Open-field, schema,
+    lock, symlink, ACTIVE/stub (leftover root ORDER.json needs
+    ``of migrate``), and kernel failures still FAIL (exit 2).
 
     Version skew already lived on doctor (0.7.10). ACTIVE pointer and
     packed-age lived on fields/status/resume. Closed vs open already
@@ -3293,6 +3295,10 @@ class DoctorSkew:
 
     HISTORICAL_NOTE = (
         "closed-field historical packs are informational (not field FAIL)"
+    )
+    OPEN_NOTE = (
+        "sibling fields without CLOSE are hygiene "
+        "(not field FAIL; of fields; of close | of gc --archive-field)"
     )
 
     @staticmethod
@@ -3411,14 +3417,43 @@ class DoctorSkew:
                 lines.append(f"  active        {fid}  ok")
         stub = DoctorSkew.leftover_stub(root)
         if stub is not None:
+            rel = field_rel(root, stub)
             lines.append(
-                f"  stub          {field_rel(root, stub)}  SKEW  "
+                f"  stub          {rel}  SKEW  "
                 f"({RootStub.MIGRATE_HINT})"
+            )
+            lines.append(
+                f"  migrate       required  {rel}  SKEW  "
+                f"({RootStub.MIGRATE_HINT}; not a silent delete)"
             )
             skewed = True
         else:
             lines.append("  stub          none")
         return lines, skewed
+
+    @staticmethod
+    def open_without_close(root: Path) -> list[tuple[str, Path]]:
+        """Live homes that are still open and have no CLOSE.json."""
+        rows: list[tuple[str, Path]] = []
+        for fid, home, order in list_field_homes(root):
+            if field_is_open(order) and not (home / "CLOSE.json").is_file():
+                rows.append((fid, home))
+        return rows
+
+    @staticmethod
+    def open_siblings(root: Path) -> tuple[list[str], bool]:
+        """Two or more open homes without CLOSE. Advisory; not FAIL."""
+        rows = DoctorSkew.open_without_close(root)
+        if len(rows) < 2:
+            return [], False
+        ids = [fid for fid, _home in rows]
+        shown = ", ".join(ids[:8])
+        extra = f" +{len(ids) - 8}" if len(ids) > 8 else ""
+        return [
+            f"  open          {len(rows)} fields  no CLOSE  "
+            f"({shown}{extra}; of fields)",
+            f"  note          {DoctorSkew.OPEN_NOTE}",
+        ], True
 
     @staticmethod
     def packs(
@@ -3514,7 +3549,11 @@ class DoctorSkew:
     ) -> tuple[list[str], bool]:
         active_lines, active_skew = DoctorSkew.active(root)
         pack_lines, pack_skew = DoctorSkew.packs(root, now=now)
-        return active_lines + pack_lines, active_skew or pack_skew
+        open_lines, _open_warn = DoctorSkew.open_siblings(root)
+        return (
+            active_lines + pack_lines + open_lines,
+            active_skew or pack_skew,
+        )
 
 
 class WaveRoster:
