@@ -6,6 +6,8 @@ Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the le
 
 Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md).
 
+In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood stays Partial (C-153). Do not invent case studies. Reviewer path: [docs/external-brief.md](../docs/external-brief.md#how-a-reviewer-re-runs-the-proof).
+
 ## Auto-report (HITL)
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. This is self-telemetry of the kernel/skill/CLI/docs/install — not a helpdesk and not a ticket against the consumer working tree. Consumer `git origin` is out of scope forever. A fork of amarilla-platform cannot receive these issues. Use `of issue`. Not a one-wave constraint.

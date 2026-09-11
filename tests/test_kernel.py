@@ -20,6 +20,7 @@ from test_packaging import (  # noqa: E402,F401
     AdapterDetectHonesty,
     PackagingBumpDiscipline,
     ReadmeProductSurface,
+    FieldEvidenceHonesty,
     SkillFrontmatterQuotedGate,
     SkillHarnessAsk,
     SkillLeaderInitiative,

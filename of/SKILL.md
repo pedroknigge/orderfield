@@ -25,7 +25,7 @@ After a successful `of phase`, `of next-wave` is the next step. The just-integra
 
 Claim shipped is mechanical: run `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` and `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Pair with quote-PULSE while flying. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Not a second checklist. After a wave, **must ask** consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Self-praise is not review. Not a new close gate. Follow the sibling.
 
-Published claims stay ≤98% honest. After skill/docs edits: `python3 docs/audit/check-claims.py` (also inside `validate-skill.sh`). Follow the sibling.
+Published claims stay ≤98% honest. After skill/docs edits: `python3 docs/audit/check-claims.py` (also inside `validate-skill.sh`). In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood stays Partial (C-153). Do not invent case studies. Follow the sibling.
 
 One VERSION and one GitHub release tag per proven invariant. Packaging-only, docs-only, and 10-tags/day die (`python3 scripts/check_packaging_bump.py`). Current CHANGELOG heading needs `**Proof:**`. Follow the sibling [PUBLISH.md](../PUBLISH.md).
 
