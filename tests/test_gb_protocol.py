@@ -63,7 +63,7 @@ class StayOnRunSkill(unittest.TestCase):
         self.assertIn("## Auto-report (HITL)", skill)
         self.assertIn("of issue", skill)
         self.assertIn("pedroknigge/orderfield", skill)
-        self.assertIn("You ask HITL, then `of issue`", skill)
+        self.assertIn("You ask HITL, then `of issue --confirm`", skill)
         ver = VERSION.read_text(encoding="utf-8").strip()
         front = skill.split("\n---", 1)[0]
         self.assertIn(f'version: "{ver}"', front)
