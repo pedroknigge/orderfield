@@ -265,7 +265,7 @@ def detect_adapters() -> dict[str, str | None]:
 
 
 class AdapterDetect:
-    """PATH inventory. Not authentication. Not readiness.
+    """PATH inventory. Not authentication. Not credentials or session authority. Not readiness.
 
     present = binary on PATH (or OF_AGENT for generic). missing = not found.
     auth/ready stay not-verified. PATH is not a login.

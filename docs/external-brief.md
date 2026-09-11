@@ -93,7 +93,8 @@ These are not missing features. Do not invent kernel to close them. Record: [out
 - **Disobedient leader.** Product files are not locked. A leader can write the tree without `of pack`. Role obedience and metric truth stay protocol.
 - **Leader session theater.** A leader can still say “we shipped” in chat. Disk wins: `of contrast` + `CLOSE.json`. Not a supervisor.
 - **Writes outside `of`.** Direct edits to ORDER, packets, residuals, or product paths bypass the CLI. The kernel validates what is routed through `of`.
-- **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`).
+- **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`). Worktree/process bounds are honesty surfaces, not a security guarantee.
+- **Detect ≠ auth.** `of detect` / `of doctor` PATH inventory is not credentials or session authority (C-015). A binary on PATH is not a login.
 - **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Optional `residual.usage` is provenance when a child copies harness facts; `EfficiencySignal` may propose a model-tier ask. Do not add cost ceilings (`SCOPE-COST`). Design: [efficiency-signal.md](efficiency-signal.md).
 - **Publish / merge process.** No `of merge`. Independent GitHub approval is human merge practice (`SCOPE-REVIEW`). Test C is harness QA, not kernel CI (`SCOPE-TESTC`).
 
@@ -152,6 +153,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies | `ClaimsHonestyGate`; `python3 docs/audit/check-claims.py` |
 | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below | `ReadmeProductSurface` |
 | In-repo lab is re-runnable; external field dogfood stays Partial | C-153; `FieldEvidenceHonesty` |
+| Detect/doctor PATH ≠ credentials or session authority; worktree/process bounds are honesty surfaces, not a security guarantee | C-015 / C-016 Partial; `HardnessDetectAuthWorktree` |
 
 ## Deliberately reserved
 

@@ -547,7 +547,7 @@ def cmd_gc(args: argparse.Namespace) -> None:
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
-    """Local prereqs. PATH presence is not auth or readiness."""
+    """Local prereqs. PATH presence is not auth, credentials, session authority, or readiness."""
     failed = False
     py = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     py_ok = sys.version_info[:2] >= PYTHON_FLOOR
@@ -640,7 +640,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
     detected = detect_adapters()
     picked = pick_adapter(None, None)
-    print("adapters  (PATH is not auth or readiness)")
+    print("adapters  (PATH is not auth, credentials, or session authority; not readiness)")
     for row in AdapterDetect.inventory(detected, picked):
         found = detected.get(str(row["name"]))
         if found:
