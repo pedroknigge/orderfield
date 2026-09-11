@@ -27,6 +27,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillModelCatalogConsult,
     ModelCatalogHonesty,
     SkillAntiDoneTheater,
+    SkillPlanDocSync,
     SkillEvaluatorPacket,
     SkillOrcaWorkerTeardown,
     SkillProductionMode,
@@ -64,6 +65,7 @@ from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
     CliFieldResidual,
     DoctorAuditPressure,
+    DoctorPlanDocSync,
     DoctorOnePassSkew,
     DoctorSkillVersionSkew,
     DoctorWorktreeLeftover,
@@ -111,6 +113,7 @@ from test_kernel_spec import (  # noqa: E402,F401
 )
 
 from test_kernel_regime import (  # noqa: E402,F401
+    PlanDocSyncUnit,
     RunbookPathGate,
     ThresholdStopSpawn,
 )

@@ -47,6 +47,7 @@ Format: UTC timestamp, one space, what you are doing in ten words or fewer. Appe
 - Reason, read the repo, use tools, explore, fail, and correct.
 - Write artifacts into your scratch directory.
 - Write product files only when the slice names exclusive paths.
+- Write project findings (bugs, "review later", open questions, debt) to an owned plan/debt/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done`. Do not leave them as chat.
 - Load your own skills if they do not change the role identity.
 
 Product comments are short and factual, not the field diary.

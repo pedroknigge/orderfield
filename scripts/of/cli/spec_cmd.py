@@ -43,7 +43,12 @@ from of.field import (
     utc_now,
     wave_dir,
 )
-from of.regime import DoneWhenLint, done_when_closed, mark_done_when_closed
+from of.regime import (
+    DoneWhenLint,
+    PlanDocSync,
+    done_when_closed,
+    mark_done_when_closed,
+)
 from of.pack import (
     PACKET_IDENTITY_FIELDS,
     CloseEvidence,
@@ -381,6 +386,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             PacketRevStale.emit_note(live_n, wave)
         snapshot_session(root, "spec")
         discard_disposable_ingest(root, ingest_source)
+        if identity:
+            PlanDocSync.emit(root, order)
     counts = requirement_counts(data)
     print(
         f"requirements  {counts['total']} total  "
@@ -1114,6 +1121,7 @@ def cmd_close(args: argparse.Namespace) -> None:
     state = load_state(root)
     checklist = CloseChecklist.document(root, order, state)
     AuditPressure.emit(root)
+    PlanDocSync.emit(root, order)
     if getattr(args, "checklist", False):
         blocked = CloseChecklist.emit(checklist, machine=True)
         emit_event(
@@ -2251,6 +2259,86 @@ def eval_setup_recovery_doctor_advisory(root: Path) -> None:
     EvalInvariantSetup.require_ok(init, "init")
 
 
+class PlanDocSyncEval:
+    """Cited plan doc stale vs last integrate. #188.
+
+    Reuses PlanDocSync / RunbookPath.PATH_RE. Eval/unittest writer only.
+    """
+
+    PLAN = "docs/plans/active/money.md"
+    CHILD = "planner"
+    CONSTRAINT = "keep docs/plans/active/money.md honest after each wave"
+
+    @staticmethod
+    def write_plan(root: Path) -> Path:
+        plan = Path(root) / PlanDocSyncEval.PLAN
+        plan.parent.mkdir(parents=True, exist_ok=True)
+        plan.write_text("# Money plan\nNow cut.\n", encoding="utf-8")
+        return plan
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        PlanDocSyncEval.write_plan(root)
+        brief = Path(root) / "BRIEF.md"
+        brief.write_text(
+            "Amarilla money plan. Living surface: "
+            f"{PlanDocSyncEval.PLAN}\n",
+            encoding="utf-8",
+        )
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "money plan now cut",
+            "--phase",
+            "explore",
+            "--source-file",
+            str(brief),
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        patched = eval_run_of(
+            root,
+            "patch",
+            "--constraints-add",
+            PlanDocSyncEval.CONSTRAINT,
+        )
+        EvalInvariantSetup.require_ok(patched, "patch")
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "now cut invoicing from the living plan",
+            "--role",
+            "explorer",
+            "--child-id",
+            PlanDocSyncEval.CHILD,
+        )
+        EvalInvariantSetup.require_ok(packed, "pack")
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            PlanDocSyncEval.CHILD,
+            evidence=(
+                "now cut landed; plan prose at "
+                f"{PlanDocSyncEval.PLAN} was not rewritten"
+            ),
+        )
+        collected = eval_run_of(root, "collect", "--wave", "1")
+        EvalInvariantSetup.require_ok(collected, "collect")
+        integrated = eval_run_of(root, "integrate", "--wave", "1")
+        EvalInvariantSetup.require_ok(integrated, "integrate")
+        # Same-second mtimes would look fresh; the stale case needs a
+        # cited plan older than last integrate.
+        plan = Path(root) / PlanDocSyncEval.PLAN
+        older = plan.stat().st_mtime - 120
+        os.utime(plan, (older, older))
+
+
+@_register_eval_fixture("recovery_plan_doc_sync")
+def eval_setup_recovery_plan_doc_sync(root: Path) -> None:
+    """Cited docs/plans path stale after integrate. Doctor/close WARN."""
+    PlanDocSyncEval.setup(root)
+
+
 @_register_eval_fixture("recovery_doctor_one_pass")
 def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""
@@ -2945,6 +3033,9 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillSurfaceCore",
     "tests.test_kernel.SkillProductionMode",
     "tests.test_kernel.RunbookPathGate",
+    "tests.test_kernel.PlanDocSyncUnit",
+    "tests.test_kernel.DoctorPlanDocSync",
+    "tests.test_kernel.SkillPlanDocSync",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.SkillEvaluatorPacket",
     "tests.test_kernel.PackagingBumpDiscipline",

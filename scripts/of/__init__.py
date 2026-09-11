@@ -320,6 +320,7 @@ from of.pack import (
 
 from of.regime import (
     DoneWhenLint,
+    PlanDocSync,
     RunbookPath,
     REGIMES,
     RESERVED_REGIMES,
@@ -444,6 +445,8 @@ from of.cli import (
     eval_setup_recovery_doctor_advisory,
     eval_setup_recovery_doctor_one_pass,
     eval_setup_recovery_doctor_closed_historical,
+    eval_setup_recovery_plan_doc_sync,
+    PlanDocSyncEval,
     eval_setup_recovery_verify_build,
     eval_write_done_residual,
     format_agents_note,
@@ -659,6 +662,7 @@ __all__ = [
     'DoneWhenLint',
     'PhaseDigest',
     'IntegrationDigest',
+    'PlanDocSync',
     'RunbookPath',
     'done_when_closed',
     'done_when_for',
@@ -706,6 +710,8 @@ __all__ = [
     'eval_setup_recovery_doctor_advisory',
     'eval_setup_recovery_doctor_one_pass',
     'eval_setup_recovery_doctor_closed_historical',
+    'eval_setup_recovery_plan_doc_sync',
+    'PlanDocSyncEval',
     'eval_setup_recovery_verify_build',
     'eval_write_done_residual',
     'existing_integration_report',

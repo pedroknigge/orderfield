@@ -140,6 +140,7 @@ from of.pack import (
 from of.regime import (
     RUNTIME_OWNERSHIP,
     IntegrationDigest,
+    PlanDocSync,
     closed_phases,
     done_when_closed,
     done_when_for,
@@ -603,6 +604,11 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         audit_lines, audit_warn = AuditPressure.doctor_lines(root)
         for line in audit_lines:
             print(line)
+    docs_warn = False
+    if has_order:
+        docs_lines, docs_warn = PlanDocSync.doctor_lines(root)
+        for line in docs_lines:
+            print(line)
     wt_lines, wt_warn = DoctorSkew.worktrees(root) if has_order else ([], False)
     for line in wt_lines:
         print(line)
@@ -688,7 +694,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
-    if skill_skew or wt_warn or open_warn or audit_warn:
+    if skill_skew or wt_warn or open_warn or audit_warn or docs_warn:
         print("doctor        WARN")
         return
     print("doctor        ok")

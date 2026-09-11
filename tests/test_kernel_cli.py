@@ -1801,6 +1801,87 @@ class DoctorAuditPressure(unittest.TestCase):
         self.assertNotIn("of close refused: audit", r.stderr)
 
 
+class DoctorPlanDocSync(unittest.TestCase):
+    """Cited plan docs stale vs last integrate: doctor/close WARN, not FAIL."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-docs-sync-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_plan_doc_sync(self.tmp)
+
+    def test_doctor_warns_when_cited_plan_is_stale(self) -> None:
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("docs_sync", r.stdout)
+        self.assertIn("stale", r.stdout)
+        self.assertIn(of.PlanDocSync.NOTE_STALE, r.stdout)
+        self.assertIn("DOCS_SYNC.md", r.stdout)
+        self.assertIn("mode A", r.stdout)
+        self.assertIn("mode B", r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+
+    def test_close_checklist_is_advisory_not_a_gate(self) -> None:
+        r = run_of(self.tmp, "close", "--checklist")
+        self.assertIn(of.PlanDocSync.NOTE_STALE, r.stdout)
+        self.assertIn("DOCS_SYNC.md", r.stdout)
+        self.assertNotIn("of close refused: docs_sync", r.stderr)
+
+    def test_dump_clears_stale_to_pending_ask(self) -> None:
+        dump = of.PlanDocSync.dump_path(self.tmp)
+        dump.parent.mkdir(parents=True, exist_ok=True)
+        dump.write_text("# dump\nNow cut landed.\n", encoding="utf-8")
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("docs_sync", r.stdout)
+        self.assertIn("pending", r.stdout)
+        self.assertIn(of.PlanDocSync.NOTE_DUMPED, r.stdout)
+        self.assertNotIn("docs_sync     stale", r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+
+    def test_fresh_plan_mtime_is_quiet(self) -> None:
+        plan = self.tmp / of.PlanDocSyncEval.PLAN
+        plan.write_text("# Money plan\nNow cut landed.\n", encoding="utf-8")
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("docs_sync     stale", r.stdout)
+        self.assertNotIn(of.PlanDocSync.NOTE_STALE, r.stdout)
+
+    def test_findings_without_a_doc_path_are_advisory(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-docs-findings-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "findings only", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "map later review items",
+            "--role",
+            "explorer",
+            "--child-id",
+            "finder",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        from of.cli.spec_cmd import EvalInvariantSetup
+
+        EvalInvariantSetup.write_bound_residual(
+            tmp,
+            "finder",
+            evidence="we should review the ledger later; open question on fees",
+        )
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        r = run_of(tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("docs_sync     findings", r.stdout)
+        self.assertIn(of.PlanDocSync.NOTE_FINDINGS, r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+
+
 class DoctorWorktreeLeftover(unittest.TestCase):
     """Leftover of-worktree records are doctor WARN. No Orca process poll."""
 
@@ -1918,6 +1999,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("PASS recovery/process-death-resume", r.stdout)
         self.assertIn("PASS recovery/packed-age-watchdog", r.stdout)
         self.assertIn("PASS recovery/doctor-one-pass-skew", r.stdout)
+        self.assertIn("PASS recovery/plan-doc-sync", r.stdout)
         self.assertIn("PASS recovery/doctor-closed-historical", r.stdout)
         self.assertIn("PASS recovery/partial-integrate-in-flight", r.stdout)
         self.assertIn("PASS recovery/adversarial-dual-truth", r.stdout)
@@ -1948,6 +2030,7 @@ class OfEvalRecovery(unittest.TestCase):
         self.assertIn("process-death-resume", r.stdout)
         self.assertIn("packed-age-watchdog", r.stdout)
         self.assertIn("doctor-one-pass-skew", r.stdout)
+        self.assertIn("plan-doc-sync", r.stdout)
         self.assertIn("doctor-closed-historical", r.stdout)
         self.assertIn("partial-integrate-in-flight", r.stdout)
         self.assertIn("adversarial-dual-truth", r.stdout)

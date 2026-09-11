@@ -1304,6 +1304,41 @@ class SkillAuditPressure(unittest.TestCase):
         self.assertIn("class AuditPressure:", source)
 
 
+class SkillPlanDocSync(unittest.TestCase):
+    """SKILL teaches Mode A patch vs Mode B dump+ask for cited plan docs."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_modes_and_findings(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("docs/plans", table)
+        self.assertIn("mode a", table)
+        self.assertIn("mode b", table)
+        self.assertIn("docs_sync.md", table)
+        self.assertIn("ask", table)
+        self.assertIn("plandocsync", table)
+        self.assertIn("not a close gate", table)
+        self.assertIn("project finding", table)
+        alias_fold = alias.casefold()
+        self.assertIn("docs/plans", alias_fold)
+        self.assertIn("mode a", alias_fold)
+        self.assertIn("mode b", alias_fold)
+        self.assertIn("docs_sync.md", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("plandocsync", appendix_fold)
+        self.assertIn("mode a", appendix_fold)
+        self.assertIn("mode b", appendix_fold)
+        self.assertIn("docs_sync.md", appendix_fold)
+        self.assertIn("project finding", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PlanDocSync:", source)
+
+
 class SkillRevStaleUnpack(unittest.TestCase):
     """SKILL teaches rev-stale dead child → UNPACK --FORCE, not spawn."""
 

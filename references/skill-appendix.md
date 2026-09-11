@@ -152,6 +152,13 @@ If the consumer tree has no §20 / Apéndice A tables, do not invent product Gat
 
 `checklist → of contrast` / `of close` / residual. Do not invent a parallel checklist.
 
+**Plan-doc sync.** When SPEC / ORIGIN / handoff / constraints name project plan docs (`docs/plans/…`), those files are living surfaces. After `of integrate`, `of spec --amend`, and `of close --checklist`:
+
+- **Mode A — continuous:** patch the named docs (child `owns_path` when a slice writes them).
+- **Mode B — dump then ask:** write `.orderfield/work/scratch/leader/DOCS_SYNC.md` and **ask** the human to promote into the repo.
+
+`of doctor` / close print `docs_sync stale|pending|findings` (`PlanDocSync`) when cited paths are mtime-stale vs last integrate, or a residual names an open project finding without a dump. Not a close gate. Not a CMS. Residual `proposed_patch.docs_sync` may be `pending|done` (no new schema). `of learn` is OF-runtime, not product plan sync. Project findings ("review later") must land in a named plan/debt/findings doc or the dump — not chat vapor. Proof: `of eval recovery/plan-doc-sync`.
+
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
@@ -440,6 +447,7 @@ Use the minimum. Explorer + adversary already prove the principle. After a wave,
 | Wave packets | `.orderfield/waves/NNN/packets/` |
 | Residuals | `.orderfield/waves/NNN/residuals/` |
 | Slave scratch | `.orderfield/work/scratch/<child_id>/` |
+| Plan-doc sync dump | `.orderfield/work/scratch/leader/DOCS_SYNC.md` — Mode B ledger; ask to promote. `PlanDocSync` |
 | Protocol learnings | `~/.cache/orderfield/learnings.json` (`OF_LEARNINGS`); field pin `.orderfield/learnings/*.json` with `kind=protocol`. Not SPEC. |
 | Field learnings | `.orderfield/learnings/*.json` with `kind=field` — this ORDER only; `gc` drops when inapplicable |
 | Slave doctrine | `.orderfield/SLAVE.md` — a field copy kept in sync from this skill's `SLAVE.md` at init/pack/handoff/spawn. Prompts reference it **repo-relative**, so a child in a container, sandbox, or another host can read it; the skill's absolute path is only the fallback when the field copy is missing. `--inline` pastes it instead. |

@@ -196,6 +196,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.99 successful close is terminal (`CloseProof` / `ActiveField.release_closed`; not ACTIVE / pulse not ALIVE / `spawn_blocked` cleared; `recovery/post-close-terminal`; #180) | documented |
 | 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`; gc before close; not FAIL; not a close gate; #181) | documented |
 | 0.7.101 doctor leftover root ORDER.json SKEW names `migrate required` (FAIL); sibling fields without CLOSE are hygiene WARN (`DoctorSkew`; #182) | documented |
+| 0.8.1 cited plan-doc sync (`PlanDocSync`; Mode A patch or Mode B `DOCS_SYNC.md` + ask; doctor/close WARN on stale; #188) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

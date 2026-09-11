@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.7.101. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.1. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.7.101`
+**Status:** Shipped · **Current release line:** `0.8.1`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.1 — plan-doc sync (cited docs stay living, or dump + ask)
+
+- When SPEC / constraints cite plan docs (`docs/plans/…`), `of doctor` / close / integrate / amend print `docs_sync stale|pending|findings` if those files are older than last integrate (`PlanDocSync`). Mode A patch the named docs; Mode B write `work/scratch/leader/DOCS_SYNC.md` and ask to promote. Project findings are not chat. WARN, not FAIL, not a close gate. Reuses `RunbookPath.PATH_RE` / `AuditPressure`. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / schema / supervisor. Not a new regime.
 
 ## 0.7.101 — doctor leftover-root migrate + open-sibling CLOSE
 

@@ -1713,5 +1713,22 @@ class ThresholdStopSpawn(unittest.TestCase):
         self.assertIsNone(state_after.get("blocked_at_order_rev"))
 
 
+class PlanDocSyncUnit(unittest.TestCase):
+    """Cited plan paths vs last integrate. Advisory, not a CMS."""
+
+    def test_planish_named_and_ignores_unrelated(self) -> None:
+        self.assertTrue(of.PlanDocSync.planish("docs/plans/active/money.md"))
+        self.assertTrue(of.PlanDocSync.planish("docs/debt.md"))
+        self.assertTrue(of.PlanDocSync.planish("docs/findings.md"))
+        self.assertFalse(of.PlanDocSync.planish("docs/architecture.md"))
+        self.assertFalse(of.PlanDocSync.planish("docs/ops/runbook.md"))
+        self.assertFalse(of.PlanDocSync.planish("/etc/passwd.md"))
+        self.assertEqual(
+            of.PlanDocSync.named("keep docs/plans/active/money.md honest"),
+            ["docs/plans/active/money.md"],
+        )
+        self.assertEqual(of.PlanDocSync.named("the runbook is ready"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
