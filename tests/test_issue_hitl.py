@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
+import of.cli.ops as ops  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 SKILL = ROOT / "SKILL.md"
@@ -88,7 +89,7 @@ class HitlIssueFileSurface(unittest.TestCase):
         self.assertIn("never posts", skill)
         self.assertIn("ISSUE.md", skill)
         self.assertIn("Search open issues first", skill)
-        self.assertIn("You ask HITL, then `of issue`", skill)
+        self.assertIn("You ask HITL, then `of issue --confirm`", skill)
         self.assertIn(".orderfield/work/scratch/leader", skill)
         self.assertIn(".orderfield/work/scratch/<child_id>/", skill)
         self.assertNotIn("`of issue` does not exist", skill)
@@ -166,6 +167,105 @@ class Issue001Pair(unittest.TestCase):
         self.assertIn("Confirm creates; refuse / edit-later / silence does not", skill)
         slave = SLAVE.read_text(encoding="utf-8")
         self.assertIn("Confirm creates; refuse / edit-later / silence does not", slave)
+
+
+class IssueConfirmLock(unittest.TestCase):
+    """#193: mutating of issue create is a real HITL lock, not dry-run theater."""
+
+    def test_flag_unlocks_and_non_tty_refuses(self) -> None:
+        self.assertTrue(ops.IssueConfirm.allowed(confirm=True, tty=False))
+        self.assertFalse(ops.IssueConfirm.allowed(confirm=False, tty=False))
+
+    def test_tty_yes_unlocks_no_and_eof_refuse(self) -> None:
+        self.assertTrue(
+            ops.IssueConfirm.allowed(confirm=False, tty=True, prompt=lambda _: "yes")
+        )
+        self.assertTrue(
+            ops.IssueConfirm.allowed(confirm=False, tty=True, prompt=lambda _: "Y")
+        )
+        self.assertFalse(
+            ops.IssueConfirm.allowed(confirm=False, tty=True, prompt=lambda _: "n")
+        )
+        self.assertFalse(
+            ops.IssueConfirm.allowed(confirm=False, tty=True, prompt=lambda _: "")
+        )
+
+        def boom(_: str) -> str:
+            raise EOFError
+
+        self.assertFalse(ops.IssueConfirm.allowed(confirm=False, tty=True, prompt=boom))
+
+    def test_create_without_confirm_is_blocked_before_gh(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-hitl-lock-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(
+            tmp,
+            "issue",
+            "--title",
+            "docs lie in glossary",
+            "--body",
+            "kernel sold dry-run as HITL",
+            "--label",
+            "bug",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("--confirm", r.stderr)
+        self.assertIn("--dry-run is not HITL", r.stderr)
+        self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_dry_run_is_not_hitl_and_does_not_need_confirm(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-hitl-dry-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(
+            tmp,
+            "issue",
+            "--title",
+            "docs lie in glossary",
+            "--body",
+            "preview only",
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run argv:", r.stdout)
+        self.assertNotIn("https://github.com/", r.stdout)
+
+
+class SkillIssueConfirm(unittest.TestCase):
+    """SKILL / /of teach the real gate. Dry-run is not HITL."""
+
+    @staticmethod
+    def hitl_block(text: str) -> str:
+        if "## Auto-report (HITL)" not in text:
+            return text
+        rest = text.split("## Auto-report (HITL)", 1)[1]
+        nxt = rest.find("\n## ")
+        return rest if nxt < 0 else rest[:nxt]
+
+    def test_core_alias_appendix_teach_confirm_not_dry_run(self) -> None:
+        skill = SKILL.read_text(encoding="utf-8")
+        alias = ALIAS.read_text(encoding="utf-8")
+        appendix = APPENDIX.read_text(encoding="utf-8")
+        for body, name in (
+            (skill, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            self.assertIn("--confirm", body, name)
+            self.assertIn("dry-run", body.lower(), name)
+            fold = body.casefold()
+            self.assertIn("not hitl", fold, name)
+            hitl = self.hitl_block(body).casefold()
+            self.assertNotIn("running it **is** the send", hitl, name)
+            self.assertNotIn("kernel never prompts on stdin", hitl, name)
+        table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertIn("--confirm", table)
+        self.assertIn("TTY", table)
+        self.assertIn("not HITL", table)
+        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        self.assertIn("class IssueConfirm:", source)
 
 
 class SkillIssueBodyFileLeader(unittest.TestCase):

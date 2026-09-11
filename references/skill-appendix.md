@@ -24,20 +24,20 @@ If unsure, draft + HITL, default to *not* posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
-- Confirm → create (`of issue` without `--dry-run` after HITL; running it **is** the send).
+- Confirm → create (`of issue --confirm` after HITL, or answer yes on a TTY). `--dry-run` is preview only — **not HITL**.
 - Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
 
 Both sides are the contract. Auto-post, yolo post, and posting from a child are forbidden.
 
-`of issue` always targets `--repo pedroknigge/orderfield`. It works with no ORDER. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate, do not invent a token, do not post to consumer origin. The kernel never prompts on stdin — HITL stays the leader/human.
+`of issue` always targets `--repo pedroknigge/orderfield`. It works with no ORDER. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate, do not invent a token, do not post to consumer origin. Create without `--confirm` on a non-TTY refuses. A TTY may prompt `[y/N]`; `--confirm` skips the prompt after human yes.
 
 ```bash
 of issue --search
 of issue --title "…" --body "…" --label bug --dry-run
-of issue --title "…" --body-file .orderfield/work/scratch/leader/ISSUE.md --label enhancement
+of issue --title "…" --body-file .orderfield/work/scratch/leader/ISSUE.md --label enhancement --confirm
 ```
 
-A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`: title, body, labels `bug` or `enhancement`, evidence paths) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue`. A leader HITL draft uses the same primitive: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). `--body-file` refuses `/tmp`, `.orderfield/scratch/`, and the scratch root itself, and names `.orderfield/work/scratch/<child_id>/`.
+A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`: title, body, labels `bug` or `enhancement`, evidence paths) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue --confirm`. A leader HITL draft uses the same primitive: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). `--body-file` refuses `/tmp`, `.orderfield/scratch/`, and the scratch root itself, and names `.orderfield/work/scratch/<child_id>/`.
 
 Search open issues first (`of issue --search`); skip duplicates. Do not file secrets, tokens, private transcripts, or field-internal residuals (those stay on disk: residual → integrate). One draft or issue per distinct finding; not a diary. Child procedure: [SLAVE.md](SLAVE.md).
 
@@ -422,8 +422,8 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not claim shipped / closed / done on a field without running `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` plus `residual empty`. If either proof row fails or that `speak` line is not quoted, you may not claim shipped. Mechanical — not your judgment. Pair with quote-PULSE while residual is MISSING.
 - Do not close on self-praise. After a wave, ask consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Not a new close gate. Not after ordinary integrate/next-wave. Not `of merge`.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
-- Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates; refuse / edit-later / silence does not.
-- Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue` (omit `--dry-run`) to `pedroknigge/orderfield`.
+- Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL.
+- Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue --confirm` to `pedroknigge/orderfield`.
 - Do not auto-report Orderfield defects to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
 
 ## Roles (identities, not job titles)

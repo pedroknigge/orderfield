@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.3
+
+`of issue` create is a real HITL lock. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.2 notes.
+
+- **Reuse table (design-first):** `--dry-run` already previews `gh` argv and does not post. `OF_CHILD` already refuses child submit. `UpdateAsk.maybe_prompt` already owns TTY y/N (stdin+stdout isatty, y/yes, EOF = no). The remaining gap is a confused deputy that treats omit-dry-run as HITL and publishes with the operator `gh` (`#193`).
+- **Reuse, not a supervisor:** `IssueConfirm` requires `--confirm` after human yes, or a TTY yes, before any create spawn. `--search` stays a read. Dry-run never mutates and is not HITL. No new CLI verb / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `--confirm` or TTY yes, and that dry-run is not HITL. Children still draft or `--dry-run` only.
+- **Proof:** `IssueConfirmLock` (flag unlocks; non-TTY refuses; TTY yes/no/EOF; create without `--confirm` dies before `gh`; dry-run never mutates). `IssueCli` submit still requires `--confirm`. `SkillIssueConfirm`. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.3; skill/alias description preview `v0.8.3 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.2 notes.
+
 ## 0.8.2
 
 After collect+integrate, idle + actionable `next` is not a stop. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.1 notes.

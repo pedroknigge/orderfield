@@ -444,9 +444,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="auto-report of kernel defects; never consumer origin",
         description=(
             "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
-            "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post. "
-            "Omitting --dry-run submits via gh (logged-in account). "
-            "OF_CHILD cannot submit. Kernel never prompts on stdin."
+            "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post "
+            "(dry-run is not HITL). Create requires --confirm after human yes, or a TTY yes. "
+            "OF_CHILD cannot submit. --search is a read (no confirm)."
         ),
     )
     s.add_argument("--title", help="issue title (create)")
@@ -467,7 +467,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--dry-run",
         action="store_true",
-        help="print gh argv; do not post",
+        help="print gh argv; do not post (not HITL)",
+    )
+    s.add_argument(
+        "--confirm",
+        action="store_true",
+        help="HITL lock for create after human yes; TTY yes also unlocks. Dry-run is not HITL",
     )
     s.add_argument(
         "--search",

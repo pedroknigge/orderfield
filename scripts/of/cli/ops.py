@@ -2475,6 +2475,66 @@ def _refuse_child_issue_submit() -> None:
     )
 
 
+class IssueConfirm:
+    """HITL lock for mutating `of issue` create. Dry-run and search are not HITL.
+
+    Reuse: UpdateAsk.maybe_prompt already owns TTY y/N (stdin+stdout isatty,
+    y/yes, EOF = no). --dry-run already previews argv. OF_CHILD already
+    blocks children. The remaining gap is a confused deputy that treats
+    omit-dry-run as HITL. --confirm is the headless token after human yes;
+    TTY yes is the interactive path. No new verb / schema / supervisor.
+    """
+
+    REFUSE = (
+        "of issue create refused without HITL "
+        "(pass --confirm after human yes, or answer yes on a TTY; "
+        "--dry-run is not HITL)"
+    )
+    PROMPT = "Create GitHub issue on pedroknigge/orderfield? [y/N] "
+    YES = frozenset({"y", "yes"})
+
+    @staticmethod
+    def is_tty() -> bool:
+        return bool(
+            getattr(sys.stdin, "isatty", lambda: False)()
+            and getattr(sys.stdout, "isatty", lambda: False)()
+        )
+
+    @staticmethod
+    def yes(answer: object) -> bool:
+        return str(answer or "").strip().lower() in IssueConfirm.YES
+
+    @staticmethod
+    def allowed(
+        *,
+        confirm: bool,
+        tty: bool | None = None,
+        prompt: Any = None,
+    ) -> bool:
+        if confirm:
+            return True
+        if tty is None:
+            tty = IssueConfirm.is_tty()
+        if not tty:
+            return False
+        ask = prompt if prompt is not None else input
+        try:
+            answer = ask(IssueConfirm.PROMPT)
+        except EOFError:
+            return False
+        return IssueConfirm.yes(answer)
+
+    @staticmethod
+    def require(
+        *,
+        confirm: bool,
+        tty: bool | None = None,
+        prompt: Any = None,
+    ) -> None:
+        if not IssueConfirm.allowed(confirm=confirm, tty=tty, prompt=prompt):
+            _issue_die(IssueConfirm.REFUSE)
+
+
 def _print_gh_stdout(proc: subprocess.CompletedProcess[str]) -> None:
     out = proc.stdout or ""
     if out:
@@ -2663,7 +2723,7 @@ def _load_issue_body_file(raw: str) -> str:
 
 
 def cmd_issue(args: argparse.Namespace) -> None:
-    """Auto-report of kernel defects; never consumer origin. Always pedroknigge/orderfield. No ORDER. Never prompts stdin."""
+    """Auto-report of kernel defects; never consumer origin. Always pedroknigge/orderfield. No ORDER. Create requires --confirm or TTY yes."""
     search = getattr(args, "search", None)
     dry_run = bool(getattr(args, "dry_run", False))
     if search is not None:
@@ -2732,6 +2792,7 @@ def cmd_issue(args: argparse.Namespace) -> None:
         _issue_preview(argv, action="create", dry_run=True)
         return
 
+    IssueConfirm.require(confirm=bool(getattr(args, "confirm", False)))
     gh_bin = _require_gh()
     _require_gh_auth(gh_bin)
     argv[0] = gh_bin
