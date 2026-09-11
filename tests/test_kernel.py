@@ -62,6 +62,7 @@ from test_adapter_resume import (  # noqa: E402,F401
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
     CliFieldResidual,
+    DoctorAuditPressure,
     DoctorOnePassSkew,
     DoctorSkillVersionSkew,
     DoctorWorktreeLeftover,

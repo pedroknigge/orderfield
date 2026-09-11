@@ -1219,6 +1219,37 @@ class SkillResumeRecompute(unittest.TestCase):
         self.assertIn("class IntegrationDigest:", source)
 
 
+class SkillAuditPressure(unittest.TestCase):
+    """SKILL teaches gc / shrink before close when audit is OVER."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_gc_before_close(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("audit over", table)
+        self.assertIn("of gc --audit", table)
+        self.assertIn("before", table)
+        self.assertIn("of close", table)
+        self.assertIn("not fail", table)
+        self.assertIn("not a close gate", table)
+        alias_fold = alias.casefold()
+        self.assertIn("audit", alias_fold)
+        self.assertIn("over", alias_fold)
+        self.assertIn("of gc --audit", alias_fold)
+        self.assertIn("before close", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("auditpressure", appendix_fold)
+        self.assertIn("of gc --audit", appendix_fold)
+        self.assertIn("before close", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "retain.py").read_text(encoding="utf-8")
+        self.assertIn("class AuditPressure:", source)
+
+
 class SkillRevStaleUnpack(unittest.TestCase):
     """SKILL teaches rev-stale dead child → UNPACK --FORCE, not spawn."""
 
