@@ -2,7 +2,8 @@
 """ISSUE-006..009 / ISSUE-002 / ISSUE-003 / GH-001: of issue CLI.
 
 ISSUE-003: --title/--search are stripped, length-capped, and redact_text'd
-before argv construction so dry-run preview and real gh share one value.
+before use so dry-run preview and the real path share one value.
+--search query is a local filter (Issues list API); not gh --search (#198).
 """
 from __future__ import annotations
 
@@ -66,7 +67,11 @@ if cmd[:2] == ["issue", "list"]:
     if fail == "list":
         sys.stderr.write("HTTP 500: list failed\n")
         sys.exit(1)
-    print("99\tOPEN\tfake duplicate")
+    # Real gh --search uses Search API: empty stdout + exit 0 (#198).
+    if "--search" in cmd:
+        sys.exit(0)
+    print("99\tOPEN\tglossary bound fake duplicate\tdocumentation")
+    print("198\tOPEN\tof issue --search returns empty\tbug")
     sys.exit(0)
 sys.stderr.write("unexpected: " + " ".join(cmd) + "\n")
 sys.exit(2)
@@ -407,7 +412,8 @@ class IssueCli(unittest.TestCase):
         argv = lists[0]["argv"]
         self.assertEqual(argv[argv.index("--repo") + 1], REPO)
         self.assertEqual(argv[argv.index("--state") + 1], "open")
-        self.assertEqual(argv[argv.index("--search") + 1], "glossary")
+        self.assertNotIn("--search", argv)
+        self.assertEqual(argv[argv.index("--limit") + 1], str(ops.IssueList.LIMIT))
 
     def test_search_dry_run_does_not_invoke_gh(self) -> None:
         r = self.issue("issue", "--search", "glossary", "--dry-run")
@@ -890,8 +896,8 @@ class IssueCli(unittest.TestCase):
         self.assertEqual(load_log(self.log), [])
 
     def test_issue_003_search_strip_same_in_dry_run_and_submit(self) -> None:
-        query = "  glossary-bound  "
-        expected = "glossary-bound"
+        query = "  glossary  "
+        expected = "glossary"
         dry = self.issue("issue", "--search", query, "--dry-run")
         self.assertEqual(dry.returncode, 0, dry.stderr)
         self.assertIn(expected, dry.stdout)
@@ -902,9 +908,9 @@ class IssueCli(unittest.TestCase):
         ]
         self.assertEqual(len(lists), 1, load_log(self.log))
         argv = lists[0]["argv"]
-        got = argv[argv.index("--search") + 1]
-        self.assertEqual(got, expected)
-        self.assertIn(got, dry.stdout)
+        self.assertNotIn("--search", argv)
+        self.assertIn(f"filter: {expected}", dry.stdout)
+        self.assertIn("glossary bound", submit.stdout)
 
     def test_issue_003_search_secret_redacted_same_in_dry_run_and_submit(self) -> None:
         secret = self._ghp()
@@ -913,7 +919,7 @@ class IssueCli(unittest.TestCase):
         dry = self.issue("issue", "--search", query, "--dry-run")
         self.assertEqual(dry.returncode, 0, dry.stderr)
         self.assertNotIn(secret, dry.stdout + dry.stderr)
-        self.assertIn(expected, dry.stdout)
+        self.assertIn(f"filter: {expected}", dry.stdout)
         submit = self.issue("issue", "--search", query)
         self.assertEqual(submit.returncode, 0, submit.stderr)
         self.assertNotIn(secret, submit.stdout + submit.stderr)
@@ -923,8 +929,9 @@ class IssueCli(unittest.TestCase):
         ]
         self.assertEqual(len(lists), 1, load_log(self.log))
         argv = lists[0]["argv"]
-        got = argv[argv.index("--search") + 1]
-        self.assertEqual(got, expected)
+        self.assertNotIn("--search", argv)
+        self.assertIn("no matching open issues", submit.stdout)
+        self.assertIn(expected, submit.stdout)
 
     def test_issue_003_search_oversize_refused(self) -> None:
         huge = "x" * 40_000
@@ -983,6 +990,117 @@ class IssueCli(unittest.TestCase):
         argv = creates[0]["argv"]
         self.assertEqual(argv[argv.index("--title") + 1], expected)
         self.assertNotIn(email, self.log.read_text(encoding="utf-8"))
+
+
+class IssueSearchList(unittest.TestCase):
+    """#198: --search must list open issues via Issues API + local filter.
+
+    gh issue list --search uses Search API and can return empty + exit 0
+    while gh issue list --state open shows the same rows.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-issue-search-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.bindir = self.tmp / "bin"
+        self.bindir.mkdir()
+        self.log = self.tmp / "gh.jsonl"
+        gh = self.bindir / "gh"
+        gh.write_text(f"#!{sys.executable}\n{FAKE_GH}", encoding="utf-8")
+        gh.chmod(0o755)
+        self.gh_env = {"OF_GH_LOG": str(self.log), "OF_GH_AUTH": "1"}
+
+    def issue(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            *args,
+            env_extra=self.gh_env,
+            path=str(self.bindir),
+        )
+
+    def listed_argv(self) -> list[str]:
+        rows = [
+            row for row in load_log(self.log) if row["argv"][:2] == ["issue", "list"]
+        ]
+        self.assertEqual(len(rows), 1, load_log(self.log))
+        return rows[0]["argv"]
+
+    def test_search_query_prints_matching_open_issue(self) -> None:
+        r = self.issue("issue", "--search", "bug")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("198", r.stdout)
+        self.assertIn("of issue --search returns empty", r.stdout)
+        self.assertNotIn("glossary bound", r.stdout)
+        argv = self.listed_argv()
+        self.assertNotIn("--search", argv)
+        self.assertEqual(argv[argv.index("--repo") + 1], REPO)
+        self.assertEqual(argv[argv.index("--state") + 1], "open")
+        self.assertEqual(argv[argv.index("--limit") + 1], str(ops.IssueList.LIMIT))
+
+    def test_empty_search_lists_all_open(self) -> None:
+        r = self.issue("issue", "--search")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("glossary bound fake duplicate", r.stdout)
+        self.assertIn("of issue --search returns empty", r.stdout)
+        self.assertNotIn("--search", self.listed_argv())
+
+    def test_no_match_prints_useful_empty(self) -> None:
+        r = self.issue("issue", "--search", "no-such-issue-xyz")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("no matching open issues", r.stdout)
+        self.assertIn(REPO, r.stdout)
+        self.assertIn("no-such-issue-xyz", r.stdout)
+        self.assertNotIn("glossary bound", r.stdout)
+
+    def test_select_filters_casefold(self) -> None:
+        blob = (
+            "99\tOPEN\tglossary bound fake duplicate\tdocumentation\n"
+            "198\tOPEN\tof issue --search returns empty\tbug\n"
+        )
+        self.assertIn("198", ops.IssueList.select(blob, "BUG"))
+        self.assertNotIn("99", ops.IssueList.select(blob, "BUG"))
+        self.assertIn("99", ops.IssueList.select(blob, ""))
+        self.assertIn("198", ops.IssueList.select(blob, ""))
+
+    def test_dry_run_is_list_api_plus_filter(self) -> None:
+        r = self.issue("issue", "--search", "  glossary-bound  ", "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"gh issue list --repo {REPO}", r.stdout)
+        self.assertIn("--state open", r.stdout)
+        self.assertIn("--limit", r.stdout)
+        self.assertNotIn(" --search ", f" {r.stdout} ")
+        self.assertIn("filter: glossary-bound", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
+
+class SkillIssueSearch(unittest.TestCase):
+    """SKILL / /of teach --search lists open issues (query filters)."""
+
+    def test_core_alias_appendix_teach_search_lists_open(self) -> None:
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
+        appendix = (ROOT / "references" / "skill-appendix.md").read_text(
+            encoding="utf-8"
+        )
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        for body, name in (
+            (skill, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+            (slave, "SLAVE.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("--search", body, name)
+            self.assertIn("open issue", fold, name)
+            self.assertRegex(
+                fold,
+                r"empty|omitted|lists all|query filter",
+                msg=name,
+            )
+        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class IssueList:", source)
 
 
 if __name__ == "__main__":

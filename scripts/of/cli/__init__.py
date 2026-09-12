@@ -446,7 +446,8 @@ def build_parser() -> argparse.ArgumentParser:
             "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
             "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post "
             "(dry-run is not HITL). Create requires --confirm after human yes, or a TTY yes. "
-            "OF_CHILD cannot submit. --search is a read (no confirm)."
+            "OF_CHILD cannot submit. --search is a read (no confirm; "
+            "empty lists all open; query filters the open list)."
         ),
     )
     s.add_argument("--title", help="issue title (create)")
@@ -480,7 +481,7 @@ def build_parser() -> argparse.ArgumentParser:
         const="",
         default=None,
         metavar="QUERY",
-        help="list open issues on pedroknigge/orderfield (duplicate check)",
+        help="list open issues on pedroknigge/orderfield (empty=all; query filters)",
     )
     s.set_defaults(func=cmd_issue)
 

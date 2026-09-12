@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.4. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.5. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.4` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -119,6 +119,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.
 - 0.8.4 `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`). Spawn speaks and records `operator_actions`. Conservative + allowlist stay quiet. Proof: `OperatorActionAudit` / `SkillOperatorAction`. No new CLI / supervisor.
+- 0.8.5 `of issue --search [QUERY]` lists open issues via Issues list API + local filter (`IssueList`). Empty/omitted = all open. Search API `--search` is not used (`#198`). Proof: `IssueSearchList` / `SkillIssueSearch`. No new CLI / supervisor.
 
 ## Contract boundaries
 

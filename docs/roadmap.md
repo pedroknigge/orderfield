@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.4. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.5. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.4`
+**Status:** Shipped · **Current release line:** `0.8.5`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.5 — of issue --search lists open issues
+
+- `of issue --search [QUERY]` lists open issues on `pedroknigge/orderfield` via the Issues list API and a local filter. Empty or omitted lists all open. `gh --search` (Search API) is not used — that path returned empty + exit 0 while `gh issue list --state open` showed rows (`#198`). Proof: `IssueSearchList` / `SkillIssueSearch`. No new CLI verb / schema / supervisor. Not a new regime.
 
 ## 0.8.4 — yolo + inherit are audited operator actions
 
