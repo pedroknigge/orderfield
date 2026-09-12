@@ -30,6 +30,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillAntiDoneTheater,
     SkillPlanDocSync,
     SkillDriveAfterIntegrate,
+    SkillCheckoutAutoContinueHonesty,
     SkillEvaluatorPacket,
     SkillOrcaWorkerTeardown,
     SkillProductionMode,

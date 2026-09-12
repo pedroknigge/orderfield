@@ -203,6 +203,14 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Recover:** Expand the prior request into `.orderfield/ingest.md` and `of spec --revise-file .orderfield/ingest.md`. If the field was already open, the go-ahead was steer — `of resume` and execute `next`. Revert a deictic amendment with `--revise-file` of the real brief.
 
+## Cloned an open field and an agent continued it
+
+**Symptom:** After clone/checkout (`git clone` / a copied tree / a cloud checkout), the leader runs `of resume` and executes `next` without asking.
+
+**Meaning:** An open `.orderfield/` (`spec_closed` false) plus an installed skill (HOME dest copies under `~/.agents` / `~/.claude` / `~/.cursor` …) is rule 0. Operator risk, not an escape. Auto-continue is the contract, not a checkout bug. The kernel does not offer a silent skip.
+
+**Recover:** Explicit `pause` / `stop` / `wait on the field` / `cancel the mission`, or `of close` when the field is yours to close. Leave `.orderfield/` out of the clone when you do not want the next agent to continue. Do **not** invent `OF_NO_AUTO_CONTINUE` / a checkout mode / a silent escape. Do **not** gut rule 0.
+
 ## Pack refused: unowned requirements
 
 **Symptom:** `of pack` dies with `binding requirements are unowned`.
