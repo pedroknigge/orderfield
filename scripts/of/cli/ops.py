@@ -2682,7 +2682,16 @@ def _issue_scratch_rel_ok(rel: Path) -> bool:
     if rest[0] != "work" or rest[1] != "scratch" or not _issue_id_ok(rest[2]):
         return False
     if len(rest) == 4:
-        return rest[3] == ISSUE_DRAFT_NAME
+        name = rest[3]
+        if name == ISSUE_DRAFT_NAME:
+            return True
+        # Leader HITL drafts live in this tree; basename is the same id
+        # class as issues/<slug>.md (ISSUE.md already matched above).
+        return (
+            rest[2] == "leader"
+            and name.endswith(".md")
+            and _issue_id_ok(name[:-3])
+        )
     slug = rest[4]
     return (
         rest[3] == "issues"

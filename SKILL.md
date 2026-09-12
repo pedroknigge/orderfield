@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.7 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.8 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; --body-file leader ISSUE.md or ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.7"
+  version: "0.8.8"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -78,7 +78,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | cited `docs/plans/…` or a project finding | **Mode A** patch or **Mode B** `DOCS_SYNC.md` + ask. `PlanDocSync` doctor WARN. Not a close gate. |
 | any residual MISSING (`running`) | `of status` / `of resume` already print the live `PULSE` (child heartbeat + spawn stream-json / grok `streaming-json` on the same scratch) + a `speak` line — quote one `PULSE` line to the user and do not claim done; no manual `of pulse`. A leftover residual from a prior collect refuse does not hide a started-only re-spawn — stay `running` + speak until that spawn settles |
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
-| leader HITL `of issue` | after human yes: `--confirm` or TTY y/N. `--dry-run` is **not HITL**. Non-TTY without `--confirm` refuses. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `…/leader/ISSUE.md`). Children never post. |
+| leader HITL `of issue` | after human yes: `--confirm` or TTY y/N. `--dry-run` is **not HITL**. Non-TTY without `--confirm` refuses. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `…/leader/ISSUE.md` or `ISSUE-*.md`; child: `ISSUE.md` / `issues/<slug>.md`). Children never post. |
 | status/resume says `PACKED` / `next SPAWN` | packets exist but no spawn record and no scratch activity; `of spawn` or `of handoff`. Do not HOLD as if ALIVE. `spawned` counts spawn metadata, not packs |
 | `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. yolo is never implied. inherit forwards the parent env. Conservative + allowlist stay defaults. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. Table: appendix + adapters.md |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
@@ -113,7 +113,7 @@ Both sides are the contract. Auto-post, yolo post, and posting from a child are 
 
 `of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: logged-in account (`gh auth`). Do not impersonate. Non-TTY create without `--confirm` refuses.
 
-A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue --confirm`. A leader HITL draft uses the same tree: `.orderfield/work/scratch/leader/ISSUE.md` (or the child's existing path). `--body-file` refuses anything else and names `.orderfield/work/scratch/<child_id>/`.
+A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue --confirm`. A leader HITL draft lives under `.orderfield/work/scratch/leader/` (`ISSUE.md` or `ISSUE-*.md`, same id class as `issues/<slug>.md`) or the child's existing `ISSUE.md` / `issues/<slug>.md`. `--body-file` refuses anything else and names `.orderfield/work/scratch/<child_id>/`.
 
 Search open issues first (`of issue --search [QUERY]`; empty=all; query filters). Skip duplicates. Do not file secrets, tokens, private transcripts, or field-internal residuals. One draft or issue per distinct finding. Child procedure: [SLAVE.md](SLAVE.md). Commands and classifier detail: [references/skill-appendix.md](references/skill-appendix.md).
 
