@@ -797,17 +797,40 @@ class SpawnFinalization(unittest.TestCase):
         self.assertFalse(events[-1]["ok"])
         self.assertEqual(events[-1]["exit"], 3)
 
-    def test_ok_exit_is_finalized(self) -> None:
+    def test_ok_exit_without_residual_is_done_without_residual(self) -> None:
         packet = self.pack("ok")
         okay = self.tmp / "ok.py"
         write_script(okay, "print('fine')\n")
         proc = self.spawn(packet, f"{sys.executable} {okay}", "--json")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         meta = self.meta("ok")
-        self.assertEqual(meta["outcome"], "ok")
-        self.assertTrue(meta["ok"])
+        self.assertEqual(meta["outcome"], of.SpawnRecord.ENDED_WITHOUT_RESIDUAL)
+        self.assertFalse(meta["ok"])
+        self.assertFalse(meta["residual_present"])
         self.assertEqual(meta["exit"], 0)
         self.assertIn("ended_at", meta)
+        event = self.spawn_events(proc)[-1]
+        self.assertFalse(event["ok"])
+        self.assertEqual(event["outcome"], of.SpawnRecord.ENDED_WITHOUT_RESIDUAL)
+
+    def test_ok_exit_with_valid_residual_stays_ok(self) -> None:
+        packet = self.pack("landed")
+        pkt = load_json(self.tmp / ".orderfield/waves/001/packets/landed.json")
+        residual = load_json(DONE)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = pkt[key]
+        residual["status"] = "blocked"
+        dest = self.tmp / str(pkt["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        okay = self.tmp / "ok.py"
+        write_script(okay, "print('fine')\n")
+        proc = self.spawn(packet, f"{sys.executable} {okay}", "--json")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        meta = self.meta("landed")
+        self.assertEqual(meta["outcome"], of.SpawnRecord.OK)
+        self.assertTrue(meta["ok"])
+        self.assertTrue(meta["residual_present"])
         self.assertTrue(self.spawn_events(proc)[-1]["ok"])
 
     def test_no_started_only_metadata_survives(self) -> None:

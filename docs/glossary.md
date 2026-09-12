@@ -82,7 +82,7 @@ Optional residual key. Adapter resume/continue reads this only (`AdapterResume`)
 
 ## denied_actions
 
-Optional residual list of harness-reported refused tools. Conservative `agy` spawn copies nonempty `denied_actions` from the `--output-format json` envelope (`AgyDeniedActions`). Missing or empty is omit — not approval. `yolo` does not copy. Not a trust change.
+Optional residual list of harness-reported refused tools. Conservative `agy` spawn copies nonempty `denied_actions` from the `--output-format json` envelope (`AgyDeniedActions`). Missing or empty is omit — not approval. `yolo` does not copy. Not a trust change. Host-hook `Write` names (`HostWriteDenial`) do not count as `metrics.tool_failures` for `escalate_up` — they are a host deny, not a slice failure.
 
 **OutputSchema.** Spawn table for residual-schema flags. Codex `--output-schema` and agy `--json-schema` reuse `residual.codex.schema.json` (type unions unique; `usage` is `[object,null]`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Not a second schema stack.
 

@@ -2736,6 +2736,81 @@ def eval_setup_recovery_process_death(root: Path) -> None:
     ProcessDeathResume.setup(root)
 
 
+class SpawnEndedWithoutResidualEval:
+    """Settled spawn, no residual, fresh PULSE. Not ALIVE. #200."""
+
+    CHILD = "worker"
+    MISSION = "ended spawn without residual"
+    REQ = "ENDED-001"
+    PULSE = "host Write denied the residual"
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            SpawnEndedWithoutResidualEval.MISSION,
+            "--phase",
+            "build",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        added = eval_run_of(
+            root,
+            "spec",
+            "--add",
+            SpawnEndedWithoutResidualEval.REQ,
+            "--text",
+            "child must write a schema-valid residual",
+        )
+        EvalInvariantSetup.require_ok(added, "spec add")
+        eval_pack_child(
+            root,
+            SpawnEndedWithoutResidualEval.CHILD,
+            "app/worker.py",
+            SpawnEndedWithoutResidualEval.REQ,
+            "Write app/worker.py and the residual",
+        )
+        scratch = (
+            root
+            / ".orderfield"
+            / "work"
+            / "scratch"
+            / SpawnEndedWithoutResidualEval.CHILD
+        )
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text(
+            SpawnEndedWithoutResidualEval.PULSE + "\n", encoding="utf-8"
+        )
+        dest = (
+            root
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "spawns"
+            / f"{SpawnEndedWithoutResidualEval.CHILD}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(
+            dest,
+            {
+                "child_id": SpawnEndedWithoutResidualEval.CHILD,
+                "adapter": "cursor",
+                "started_at": utc_now(),
+                "ended_at": utc_now(),
+                "outcome": "done_without_residual",
+                "ok": False,
+                "exit": 0,
+                "residual_present": False,
+            },
+        )
+
+
+@_register_eval_fixture("recovery_spawn_ended_without_residual")
+def eval_setup_recovery_spawn_ended_without_residual(root: Path) -> None:
+    SpawnEndedWithoutResidualEval.setup(root)
+
+
 @_register_eval_fixture("recovery_multi_day_resume")
 def eval_setup_recovery_multi_day_resume(root: Path) -> None:
     """Aged wave-2 in-flight + stale session.json. Resume must reconstruct."""

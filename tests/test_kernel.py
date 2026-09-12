@@ -86,6 +86,7 @@ from test_kernel_field import (  # noqa: E402,F401
     ResumeRecoveryBrief,
     DriveAfterIntegrateProof,
     InFlightVisibility,
+    SpawnEndedWithoutResidual,
     MidEpicHandoffPacket,
     StatusReportJson,
     WaveRosterListShow,

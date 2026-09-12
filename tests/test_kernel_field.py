@@ -3833,5 +3833,146 @@ class PackedOnlyNotAlive(unittest.TestCase):
         self.assertEqual(doc["next"], "hold")
 
 
+class SpawnEndedWithoutResidual(unittest.TestCase):
+    """#200: ended spawn without a valid residual is not ok / ALIVE."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-ended-residual-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "ended spawn without residual",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str = "worker") -> dict:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "write the residual the host hook blocked",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / f"{child_id}.json"
+        )
+
+    def _plant_settled(
+        self,
+        child_id: str = "worker",
+        *,
+        outcome: str = "done_without_residual",
+        pulse: str = "host Write denied residual",
+    ) -> dict:
+        pkt = self._pack(child_id)
+        dest = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps(
+                {
+                    "child_id": child_id,
+                    "adapter": "cursor",
+                    "started_at": of.utc_now(),
+                    "ended_at": of.utc_now(),
+                    "outcome": outcome,
+                    "ok": False,
+                    "exit": 0,
+                    "residual_present": False,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / child_id
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text(pulse + "\n", encoding="utf-8")
+        return pkt
+
+    def test_outcome_for_classifies_exit_zero(self) -> None:
+        self.assertEqual(of.SpawnRecord.outcome_for(0, True), ("ok", True))
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(0, False),
+            (of.SpawnRecord.ENDED_WITHOUT_RESIDUAL, False),
+        )
+        self.assertEqual(of.SpawnRecord.outcome_for(2, False), ("nonzero_exit", False))
+
+    def test_host_write_name_matcher(self) -> None:
+        self.assertTrue(of.HostWriteDenial.is_write("Write"))
+        self.assertTrue(
+            of.HostWriteDenial.is_write("Write(.orderfield/work/residuals/w.json)")
+        )
+        self.assertFalse(of.HostWriteDenial.is_write("rewrite"))
+        self.assertFalse(of.HostWriteDenial.is_write("Bash"))
+
+    def test_settled_missing_residual_is_not_alive(self) -> None:
+        pkt = self._plant_settled()
+        now = time.time()
+        self.assertEqual(
+            of.child_pulse_verdict(self.tmp, pkt, now),
+            of.SpawnRecord.ENDED_WITHOUT_RESIDUAL,
+        )
+        self.assertFalse(of.SpawnRecord.unsettled(self.tmp, pkt))
+        self.assertTrue(of.SpawnRecord.flying(self.tmp, pkt))
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn(of.SpawnRecord.ENDED_WITHOUT_RESIDUAL, status.stdout)
+        self.assertNotIn("ALIVE", status.stdout)
+        self.assertIn("in_flight   1", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(
+            doc["in_flight_detail"][0]["pulse"],
+            of.SpawnRecord.ENDED_WITHOUT_RESIDUAL,
+        )
+        pulse = run_of(self.tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn(of.SpawnRecord.ENDED_WITHOUT_RESIDUAL, pulse.stdout)
+        self.assertNotIn("-> ALIVE", pulse.stdout)
+        resume = run_of(self.tmp, "resume")
+        self.assertIn(of.SpawnRecord.ENDED_WITHOUT_RESIDUAL, resume.stdout)
+        self.assertNotIn("pulse=ALIVE", resume.stdout)
+
+    def test_legacy_ok_without_residual_is_not_alive(self) -> None:
+        pkt = self._plant_settled(outcome="ok")
+        self.assertEqual(
+            of.child_pulse_verdict(self.tmp, pkt, time.time()),
+            of.SpawnRecord.ENDED_WITHOUT_RESIDUAL,
+        )
+
+    def test_open_spawn_may_still_be_alive(self) -> None:
+        pkt = self._pack("live")
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "live.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps({"child_id": "live", "started_at": of.utc_now()}, indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "live"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("still running\n", encoding="utf-8")
+        self.assertEqual(of.child_pulse_verdict(self.tmp, pkt, time.time()), "ALIVE")
+
+    def test_salvage_then_collect_clears_flight(self) -> None:
+        self._plant_settled()
+        write_bound_residual(self.tmp, "worker")
+        collected = run_of(self.tmp, "collect")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        status = run_of(self.tmp, "status")
+        self.assertIn("in_flight   0", status.stdout)
+        self.assertNotIn("ALIVE", status.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

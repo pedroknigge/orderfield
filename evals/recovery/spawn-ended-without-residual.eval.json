@@ -1,0 +1,62 @@
+{
+  "id": "recovery/spawn-ended-without-residual",
+  "description": "Settled spawn without a schema-valid residual is done_without_residual, not ok/ALIVE. Fresh PULSE scratch mtime after ended_at is not liveness. Open spawn (no ended_at) is out of scope here. #200.",
+  "fixture": "recovery_spawn_ended_without_residual",
+  "tags": ["recovery", "spawn", "pulse", "status", "residual", "denied_actions"],
+  "steps": [
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   1",
+        "done_without_residual",
+        "worker",
+        "host Write denied the residual"
+      ],
+      "stdout_not_contains": [
+        "ALIVE",
+        "in_flight   0"
+      ]
+    },
+    {
+      "run": "status",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"kind\": \"status\"",
+        "\"in_flight\": 1",
+        "\"worker\"",
+        "\"done_without_residual\""
+      ],
+      "stdout_not_contains": [
+        "\"pulse\": \"ALIVE\""
+      ]
+    },
+    {
+      "run": "pulse",
+      "exit": 0,
+      "stdout_contains": [
+        "running     1 in-flight",
+        "worker",
+        "done_without_residual",
+        "host Write denied the residual"
+      ],
+      "stdout_not_contains": [
+        "-> ALIVE",
+        "in_flight   0 — idle"
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "status        in-flight",
+        "done_without_residual",
+        "host Write denied the residual"
+      ],
+      "stdout_not_contains": [
+        "pulse=ALIVE"
+      ]
+    }
+  ]
+}

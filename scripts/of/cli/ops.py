@@ -906,7 +906,13 @@ class InFlightSignal:
     started-only spawn — is still running. Not a supervisor."""
 
     CHROME = "residual MISSING; harness chrome is not the field"
-    ORDER = ("ALIVE", "QUIET", "STALE", SpawnRecord.LABEL)
+    ORDER = (
+        "ALIVE",
+        "QUIET",
+        "STALE",
+        SpawnRecord.ENDED_WITHOUT_RESIDUAL,
+        SpawnRecord.LABEL,
+    )
     # Turn-end directive: the PULSE lines are already printed above, so the
     # leader quotes one to the user instead of running `of pulse` by hand.
     SPEAK = "quote a PULSE line above to the user; do not claim done while running"

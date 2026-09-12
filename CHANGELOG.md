@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.7
+
+Ended spawn without a schema-valid residual is not a healthy `ok` / ALIVE flight. Host Write denials are not `escalate_up`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.6 notes.
+
+- **Reuse table (design-first):** `SpawnRecord` already owns spawn meta / `unsettled` / `flying`. `cmd_spawn` `finalize` already writes `outcome` + `ended_at` + `residual_present` + `ok`. `child_pulse_verdict` / `InFlightSignal` already own ALIVE/QUIET/STALE/PACKED. `_select_regime` already hard-fails on `metrics.tool_failures`. `residual.denied_actions` already exists. The remaining gap is harness `result success` with no valid residual looking `ok` + ALIVE from leftover PULSE mtime, then `escalate_up` on host Write denials (`#200`).
+- **Reuse, not a supervisor:** `SpawnRecord.outcome_for` classifies exit 0 without a schema-valid residual as `done_without_residual` (`ok=false`). `child_pulse_verdict` returns that label when the spawn has `ended_at`/`outcome` and the residual is missing — leftover PULSE mtime is not ALIVE. Open spawn (no `ended_at`) may still be ALIVE. `HostWriteDenial` skips the tool_failures hard-fail when `denied_actions` name Write; field residuals and real tool_failures still escalate. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `done_without_residual`, salvage-then-collect or `--force-spawn`, and that host Write denials are not PATCH THEN NEXT-WAVE.
+- **Proof:** `SpawnEndedWithoutResidual` (pulse/status not ALIVE; open spawn still ALIVE; salvage collect). `SpawnFinalization` exit-0 without residual. `DecideRegimeShipped` Write denials vs real tool_failures. `SkillSpawnEndedSignal`. `recovery/spawn-ended-without-residual`. No new C-ID (honesty cap; C-028 / C-152).
+- Packaging: VERSION 0.8.7; skill/alias description preview `v0.8.7 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.6 notes.
+
 ## 0.8.6
 
 Cursor `--model-tier` without `--model` refuses pack/spawn. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.5 notes.
