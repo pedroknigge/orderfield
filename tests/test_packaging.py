@@ -2365,6 +2365,39 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("never silent", hero)
 
 
+class SkillCursorTierRefuse(unittest.TestCase):
+    """SKILL / /of teach cursor tier-only refuses; pass --model; no invented alias."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_cursor_tier_refuse(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("cursor", table)
+        self.assertIn("refuses", table)
+        self.assertIn("--model", table)
+        self.assertIn("no alias", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("cursor", fold, name)
+            self.assertIn("refuses", fold, name)
+            self.assertIn("--model", fold, name)
+            self.assertIn("no", fold, name)
+            self.assertIn("alias", fold, name)
+        self.assertIn("recovery/cursor-tier-model", appendix)
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("TIER_NEED_MODEL", source)
+        self.assertIn("require_named_model", source)
+
+
 class SkillOperatorAction(unittest.TestCase):
     """SKILL / /of teach yolo + inherit as audited operator actions."""
 

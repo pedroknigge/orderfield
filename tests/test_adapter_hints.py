@@ -9,7 +9,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -100,12 +102,36 @@ class AdapterHintsUnit(unittest.TestCase):
         self.assertEqual(of.AdapterHints.spawn_model("claude", cheap), "haiku")
         self.assertIsNone(of.AdapterHints.spawn_model("codex", cheap))
         self.assertEqual(of.AdapterHints.spawn_model("codex", named), "gpt-5-mini")
+        self.assertIsNone(of.AdapterHints.spawn_model("cursor", cheap))
+        self.assertEqual(of.AdapterHints.spawn_model("cursor", named), "gpt-5-mini")
         self.assertIsNone(of.AdapterHints.spawn_model("grok", cheap))
         self.assertEqual(of.AdapterHints.spawn_model("grok", named), "gpt-5-mini")
         self.assertIsNone(of.AdapterHints.spawn_model("agy", cheap))
         self.assertEqual(of.AdapterHints.spawn_model("agy", named), "gpt-5-mini")
         self.assertIsNone(of.AdapterHints.spawn_model("orca", named))
         self.assertIsNone(of.AdapterHints.spawn_model("qwen", named))
+
+    def test_cursor_tier_only_refuses_named_model_or_alias_ok(self) -> None:
+        cheap = {"adapter_hints": {"tier": "cheap"}}
+        frontier = {"adapter_hints": {"tier": "frontier"}}
+        named = {"adapter_hints": {"tier": "frontier", "model": "grok-4.6"}}
+        with patch("sys.stderr", new=StringIO()) as err:
+            with self.assertRaises(SystemExit):
+                of.AdapterHints.require_named_model("cursor", cheap, verb="spawn")
+            self.assertIn("no cheap alias", err.getvalue())
+        with patch("sys.stderr", new=StringIO()) as err:
+            with self.assertRaises(SystemExit):
+                of.AdapterHints.spawn_flags("cursor", frontier)
+            text = err.getvalue()
+            self.assertIn("no frontier alias", text)
+            self.assertIn("pass --model", text)
+        self.assertEqual(
+            of.AdapterHints.spawn_flags("cursor", named),
+            ["--model", "grok-4.6"],
+        )
+        of.AdapterHints.require_named_model("claude", frontier, verb="pack")
+        of.AdapterHints.require_named_model("grok", cheap, verb="spawn")
+        of.AdapterHints.require_named_model(None, frontier, verb="pack")
 
     def test_apply_patch_refuses_tier_without_consent(self) -> None:
         order: dict = {}
@@ -250,12 +276,59 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         out = self._spawn_argv("tieronly", "codex")
         self.assertNotIn("--model", out)
-        out = self._spawn_argv("tieronly", "cursor")
-        self.assertNotIn("--model", out)
         out = self._spawn_argv("tieronly", "grok")
         self.assertNotIn("--model", out)
         out = self._spawn_argv("tieronly", "agy")
         self.assertNotIn("--model", out)
+
+    def test_cursor_tier_only_refuses_spawn_named_model_passes(self) -> None:
+        r = self._pack("tieronly", "synthesizer", "--model-tier", "frontier")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        pkt = ".orderfield/waves/001/packets/tieronly.json"
+        refused = run_of(
+            self.tmp, "spawn", "--adapter", "cursor", "--packet", pkt, "--dry-run"
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("no frontier alias", refused.stderr)
+        self.assertIn("pass --model", refused.stderr)
+        self.assertIn("refusing spawn", refused.stderr)
+        claude = self._spawn_argv("tieronly", "claude")
+        self.assertIn("--model", claude)
+        self.assertIn("opus", claude)
+        r = self._pack(
+            "named",
+            "synthesizer",
+            "--model-tier",
+            "frontier",
+            "--model",
+            "grok-4.6",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = self._spawn_argv("named", "cursor")
+        self.assertIn("--model", out)
+        self.assertIn("grok-4.6", out)
+
+    def test_cursor_harness_pack_tier_only_refuses(self) -> None:
+        pinned = run_of(self.tmp, "patch", "--harness", "cursor")
+        self.assertEqual(pinned.returncode, 0, pinned.stderr)
+        r = self._pack("pinned", "implementer", "--model-tier", "frontier")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no frontier alias", r.stderr)
+        self.assertIn("pass --model", r.stderr)
+        self.assertFalse(packet_path(self.tmp, "pinned").is_file())
+        ok = self._pack(
+            "okcursor",
+            "implementer",
+            "--model-tier",
+            "frontier",
+            "--model",
+            "grok-4.6",
+        )
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        self.assertEqual(
+            load_json(packet_path(self.tmp, "okcursor"))["adapter_hints"],
+            {"tier": "frontier", "model": "grok-4.6"},
+        )
 
     def test_patch_tier_without_consent_dies(self) -> None:
         r = run_of(self.tmp, "patch", "--model-tier", "cheap")
@@ -289,6 +362,7 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertIn("agy,claude,codex,cursor,grok", r.stdout)
         self.assertIn("task-create has no --model", r.stdout)
         self.assertIn("cheap=haiku", r.stdout)
+        self.assertIn("refuse      cursor tier-only", r.stdout)
         self.assertIn("catalog", r.stdout)
         self.assertIn("model-catalog.md", r.stdout)
         self.assertIn("not budget.tokens", r.stdout)
@@ -364,6 +438,22 @@ class AdapterHintsArgv(unittest.TestCase):
             bare = self.argv(adapter, packet)
             self.assertNotIn("--model", bare, adapter)
             self.assertEqual(self.argv(adapter, hinted), bare, adapter)
+
+    def test_cursor_tier_only_argv_dies_named_passes(self) -> None:
+        hinted = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"tier": "frontier"},
+        }
+        named = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"tier": "frontier", "model": "grok-4.6"},
+        }
+        with self.assertRaises(SystemExit):
+            self.argv("cursor", hinted)
+        argv = self.argv("cursor", named)
+        self.assertEqual(argv[argv.index("--model") + 1], "grok-4.6")
 
 
 if __name__ == "__main__":

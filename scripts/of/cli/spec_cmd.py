@@ -1630,6 +1630,20 @@ def eval_setup_recovery_budget_seconds(root: Path) -> None:
     EvalInvariantSetup.require_ok(init, "init")
 
 
+@_register_eval_fixture("recovery_cursor_tier_model")
+def eval_setup_recovery_cursor_tier_model(root: Path) -> None:
+    """Empty explore field. Pack/spawn steps prove cursor tier-only refuse."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval cursor tier-only model refuse",
+        "--phase",
+        "explore",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+
+
 @_register_eval_fixture("recovery_efficiency_signal")
 def eval_setup_recovery_efficiency_signal(root: Path) -> None:
     """Two cheap failures + harness usage on disk. Propose uptier; no ledger."""

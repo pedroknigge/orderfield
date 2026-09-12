@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.6
+
+Cursor `--model-tier` without `--model` refuses pack/spawn. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.5 notes.
+
+- **Reuse table (design-first):** `AdapterHints.spawn_model` / `spawn_flags` already own consented `--model` argv. Claude already maps cheap→haiku / frontier→opus. Grok/agy/codex stay documented no-op. The catalog has no Cursor frontier row. The remaining gap is a consented Cursor tier that omitted `--model` and spawned QUIET with no log (#199).
+- **Reuse, not a router:** `AdapterHints.TIER_NEED_MODEL` / `require_named_model` refuse cursor tier-only at spawn (and at pack when `ORDER.harness` is cursor). Named `--model` still passes. Do not invent a Cursor frontier alias. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach Cursor has no cheap/frontier alias; pass `--model NAME`; do not wait QUIET with no log.
+- **Proof:** `AdapterHintsCli` / `AdapterHintsArgv` / `AdapterHintsUnit` (cursor refuse; named model passes; claude still maps; grok/codex no-op). `SkillCursorTierRefuse`. `recovery/cursor-tier-model`. No new C-ID (honesty cap; C-131).
+- Packaging: VERSION 0.8.6; skill/alias description preview `v0.8.6 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.5 notes.
+
 ## 0.8.5
 
 `of issue --search` lists open issues (empty/omitted = all; query filters). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.4 notes.

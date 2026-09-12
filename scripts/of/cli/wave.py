@@ -617,6 +617,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
         pack_model=getattr(args, "model", None),
     )
     if hints:
+        AdapterHints.require_named_model(
+            str(order.get("harness") or "") or None,
+            hints,
+            verb="pack",
+        )
         packet["adapter_hints"] = hints
     if order.get("spec_ref"):
         packet["spec_ref"] = order["spec_ref"]
