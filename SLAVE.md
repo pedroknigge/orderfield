@@ -42,7 +42,7 @@ Append one line to `.orderfield/work/scratch/<child_id>/PULSE` when you start, a
 2026-08-30T17:23:00Z reading src/domain, mapping invariants
 ```
 
-Format: UTC timestamp, one space, what you are doing in ten words or fewer. Append on milestones (start, sub-task switch, long command) — not a diary. `of spawn` may also append harness stream-json / JSON event lines to this same file; do not treat them as a second diary. `of status` / `of resume` / `of pulse` print the last 1–3 lines under `running` while your residual is MISSING. The leader surfaces one of those lines to the human; they do not grade the wording. This is still activity evidence for `of pulse`, which combines per-child scratch mtimes with a shared-repo product mtime; it is not process health or per-child write attribution. A long read-only stretch with no heartbeat can look stale from outside.
+Format: UTC timestamp, one space, what you are doing in ten words or fewer. Append on milestones (start, sub-task switch, long command) — not a diary. `of spawn` may also append harness stream-json / JSON event lines to this same file; do not treat them as a second diary. `of status` / `of resume` / `of pulse` print the last 1–3 lines under `running` while your residual is MISSING. The leader surfaces one of those lines to the human; they do not grade the wording. This is still activity evidence for `of pulse`, which combines per-child scratch mtimes with a shared-repo product mtime; it is not process health or per-child write attribution. After spawn `ended_at`, leftover `PULSE` mtime is not ALIVE (`done_without_residual` if the residual is still missing). A long read-only stretch with no heartbeat can look stale from outside.
 
 ## You may
 

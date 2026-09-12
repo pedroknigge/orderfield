@@ -411,7 +411,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="read-only child activity heuristic (shared-repo mtimes are wave context)",
         description=(
             "Read-only activity heuristic. shared-repo mtimes are wave context; "
-            "child verdicts use packet/scratch mtimes; exits 2 on STALE."
+            "child verdicts use packet/scratch mtimes; ALIVE requires an open "
+            "spawn (no ended_at); a settled spawn without a residual is "
+            "done_without_residual; exits 2 on STALE."
         ),
     )
     s.add_argument("--wave", type=int)

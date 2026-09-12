@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.6` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.7` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -156,7 +156,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; compact prompt ORDER view (id/rev/mission/phase/spec_ref); continuation note when scratch nonempty |
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
-| `cmd_pulse` | Child verdict from packet/scratch only; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
+| `cmd_pulse` | Child verdict from packet/scratch only; ALIVE requires an open spawn; leftover PULSE after `ended_at` is `done_without_residual`; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
 | `cmd_detect` | PATH inventory via `AdapterDetect`: present / missing / `auth=not-verified` / `honesty: PATH≠auth (Partial)`. Not login. Not credentials or session authority. Not readiness. |
 | `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/credentials/session authority/ready; missing dests silent. Adapters section reuses `AdapterDetect` labels. `balance` prints `AdapterBalance` (unknown unless a published payload is already in hand). |
 | `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |

@@ -271,7 +271,7 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         self.assertNotEqual(collected.returncode, 0)
         self.assertIn("pending/unavailable", collected.stdout)
         self.assertIn(
-            "spawned adapter=agy trust=conservative outcome=ok",
+            "spawned adapter=agy trust=conservative outcome=done_without_residual",
             collected.stdout,
         )
         self.assertIn("denied_actions=command(npm test)", collected.stdout)

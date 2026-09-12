@@ -176,7 +176,10 @@ class ApprovedDesignFixes(unittest.TestCase):
         self.assertIn("already has a spawn in flight", r.stderr)
         r2 = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, "--force-spawn", env={"OF_AGENT": str(agent)})
         self.assertEqual(r2.returncode, 0, r2.stderr)
-        self.assertEqual(json.loads((spawns / "c.json").read_text())["outcome"], "ok")
+        self.assertEqual(
+            json.loads((spawns / "c.json").read_text())["outcome"],
+            "done_without_residual",
+        )
 
     @unittest.skipUnless(os.name == "posix", "process groups")
     def test_timeout_kills_the_whole_process_group(self) -> None:

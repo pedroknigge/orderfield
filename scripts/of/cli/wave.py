@@ -61,6 +61,7 @@ from of.field import (
     spec_path,
     utc_now,
     wave_dir,
+    SpawnRecord,
 )
 
 from of.spec import (
@@ -1123,9 +1124,13 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             state = load_state(root)
             state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
             save_state(state, root)
+    outcome, ok = SpawnRecord.outcome_for(
+        proc.returncode,
+        SpawnRecord.residual_valid(root, packet, residual_abs),
+    )
     finalize(
-        "ok" if proc.returncode == 0 else "nonzero_exit",
-        ok=proc.returncode == 0,
+        outcome,
+        ok=ok,
         exit=proc.returncode,
         log=str(log_path),
         residual_present=residual_abs.exists(),
@@ -1137,10 +1142,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         child_id=child_id,
         exit=proc.returncode,
         outcome=meta["outcome"],
-        ok=proc.returncode == 0,
+        ok=ok,
         **OperatorAction.event_fields(operator_actions),
     )
-    print(f"exit={proc.returncode} log={log_path}")
+    print(f"exit={proc.returncode} outcome={meta['outcome']} log={log_path}")
 
 
 def cmd_collect(args: argparse.Namespace) -> None:

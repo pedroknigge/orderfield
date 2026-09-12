@@ -3061,6 +3061,8 @@ class SpawnRecord:
     """Read-path: waves/<n>/spawns/<id>.json. Presence is spawned, not health."""
 
     LABEL = "PACKED"
+    OK = "ok"
+    ENDED_WITHOUT_RESIDUAL = "done_without_residual"
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path:
@@ -3100,8 +3102,17 @@ class SpawnRecord:
         return packed
 
     @staticmethod
+    def settled(meta: dict[str, Any] | None) -> bool:
+        """Ended spawn: outcome or ended_at. Not a process poll."""
+        if not isinstance(meta, dict) or meta.get("dry_run"):
+            return False
+        if "outcome" in meta:
+            return True
+        return bool(str(meta.get("ended_at") or "").strip())
+
+    @staticmethod
     def unsettled_at(path: Path) -> bool:
-        """Started-only spawn meta: no outcome yet. Not a process poll."""
+        """Started-only spawn meta: no outcome/ended_at yet. Not a process poll."""
         if not path.is_file():
             return False
         try:
@@ -3110,11 +3121,37 @@ class SpawnRecord:
             return False
         if not isinstance(data, dict) or data.get("dry_run"):
             return False
-        return "outcome" not in data
+        return not SpawnRecord.settled(data)
 
     @staticmethod
     def unsettled(root: Path, packet: dict[str, Any]) -> bool:
         return SpawnRecord.unsettled_at(SpawnRecord.path(root, packet))
+
+    @staticmethod
+    def residual_valid(
+        root: Path, packet: dict[str, Any], path: Path
+    ) -> bool:
+        """Schema-valid residual file bound to this packet. Existence is not enough."""
+        if not path.is_file():
+            return False
+        try:
+            data = load_json(path)
+        except (OSError, SystemExit, ValueError, TypeError):
+            return False
+        from of.pack import validate_residual_for_packet
+
+        return not validate_residual_for_packet(data, packet, root)
+
+    @staticmethod
+    def outcome_for(
+        returncode: int | None, residual_valid: bool
+    ) -> tuple[str, bool]:
+        """Harness exit 0 without a valid residual is not a healthy ok flight."""
+        if returncode == 0 and residual_valid:
+            return SpawnRecord.OK, True
+        if returncode == 0:
+            return SpawnRecord.ENDED_WITHOUT_RESIDUAL, False
+        return "nonzero_exit", False
 
     @staticmethod
     def flying(root: Path, packet: dict[str, Any]) -> bool:
@@ -3787,7 +3824,16 @@ def child_pulse_verdict(
     now: float,
     stale_minutes: float = PULSE_STALE_MINUTES,
 ) -> str:
-    """Pulse verdict: spawn/scratch evidence. Packed-only is PACKED, not ALIVE."""
+    """Pulse verdict: spawn/scratch evidence. Packed-only is PACKED, not ALIVE.
+
+    ALIVE requires an open spawn (no outcome/ended_at). After the spawn
+    settles, leftover PULSE scratch mtime is not liveness.
+    """
+    from of.pack import packet_residual_missing
+
+    meta = SpawnRecord.load(root, packet)
+    if SpawnRecord.settled(meta) and packet_residual_missing(root, packet):
+        return SpawnRecord.ENDED_WITHOUT_RESIDUAL
     signals: list[float] = []
     started = SpawnRecord.started_ts(root, packet)
     if started is not None:

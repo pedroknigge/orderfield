@@ -2365,6 +2365,40 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("never silent", hero)
 
 
+class SkillSpawnEndedSignal(unittest.TestCase):
+    """SKILL teaches done_without_residual and host Write ≠ escalate_up. #200."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_ended_spawn_signal(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("done_without_residual", table)
+        self.assertIn("not a healthy", table)
+        self.assertIn("alive", table)
+        self.assertIn("denied_actions", table)
+        self.assertIn("write", table)
+        self.assertIn("escalate_up", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("done_without_residual", fold, name)
+            self.assertIn("ended_at", fold, name)
+            self.assertIn("write", fold, name)
+        self.assertIn("recovery/spawn-ended-without-residual", appendix)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("ENDED_WITHOUT_RESIDUAL", source)
+        regime = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class HostWriteDenial:", regime)
+
+
 class SkillCursorTierRefuse(unittest.TestCase):
     """SKILL / /of teach cursor tier-only refuses; pass --model; no invented alias."""
 

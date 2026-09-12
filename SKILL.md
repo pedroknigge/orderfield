@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.6 — Leader-owned disk plan. Hosts load this core; appendix before pack/spawn/contrast/close. /orderfield or /of, resume, or a multi-slice disk brief. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask consent for adversary/verifier review before close; never silent. Before pack: model-catalog, cheap vs frontier, same-harness vs mix playbook (detect+doctor PATH≠auth). Mid-mission: doctor balance unknown; ask before rebalance. Spawn --resume only with residual.session_id; never invent/--continue. of issue create needs --confirm or TTY yes; dry-run is not HITL. yolo+inherit are audited operator actions (ask). Install: SHA-256 pin then first close. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.7 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.6"
+  version: "0.8.7"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -40,6 +40,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
+| spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage then `of collect`, or `--force-spawn`. Host `denied_actions` Write are not `escalate_up`. Open spawn (no `ended_at`) may still be ALIVE |
 | `of collect` prints `MISSING` | residual is pending/unavailable. Quote known adapter / trust / outcome and actual `denied_actions`. “permissions may be involved for conservative `<adapter>` headless mode” is a possibility, not proof; conservative children may still write scratch and residual files |
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; type unions unique, `usage` is `[object,null]`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |

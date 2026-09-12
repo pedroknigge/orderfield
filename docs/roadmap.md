@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.6. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.7. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.6`
+**Status:** Shipped · **Current release line:** `0.8.7`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.7 — ended spawn without residual is not ok/ALIVE
+
+- Harness `result success` with no schema-valid residual is `done_without_residual`, not a healthy `ok`. Pulse ALIVE requires an open spawn (`ended_at` absent). Leftover PULSE mtime after process exit is not ALIVE. Host `denied_actions` Write do not `escalate_up` via `tool_failures` (`HostWriteDenial`). Field residuals and real tool_failures still escalate. Reuses `SpawnRecord` / `child_pulse_verdict` / `_select_regime`. Proof: `SpawnEndedWithoutResidual` / `SkillSpawnEndedSignal` / `recovery/spawn-ended-without-residual`. No new CLI verb / schema / supervisor. Not a new regime. `#200`.
 
 ## 0.8.6 — Cursor tier-only model refuse
 

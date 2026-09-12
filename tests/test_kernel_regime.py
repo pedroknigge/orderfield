@@ -467,6 +467,35 @@ class DecideRegimeShipped(unittest.TestCase):
         self.assertIn("constraints", reason)
         self.assertNotIn("not scale_out", reason)
 
+    def test_host_write_denials_do_not_escalate_on_tool_failures(self) -> None:
+        residual = load_json(DONE)
+        residual["metrics"]["tool_failures"] = 2
+        residual["denied_actions"] = ["Write(.orderfield/work/residuals/w.json)"]
+        self.assertTrue(of.HostWriteDenial.masks(residual))
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertNotEqual(regime, "escalate_up")
+        self.assertNotIn("tool failures", reason)
+
+    def test_tool_failures_without_write_denials_still_escalate(self) -> None:
+        residual = load_json(DONE)
+        residual["metrics"]["tool_failures"] = 2
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("tool failures over threshold", reason)
+        residual["denied_actions"] = ["Bash(git status)"]
+        self.assertFalse(of.HostWriteDenial.masks(residual))
+        regime2, reason2 = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime2, "escalate_up")
+        self.assertIn("tool failures over threshold", reason2)
+
+    def test_field_residual_still_escalates_with_write_denials(self) -> None:
+        residual = load_json(THRESHOLD)
+        residual["metrics"]["tool_failures"] = 2
+        residual["denied_actions"] = ["Write"]
+        regime, reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("constraints", reason)
+
 
 class ResidualValidation(unittest.TestCase):
     def test_rejects_malformed_metric_types_and_ranges(self) -> None:

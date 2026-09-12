@@ -751,6 +751,43 @@ def hold_if_partial_in_flight(
     return regime, reason
 
 
+class HostWriteDenial:
+    """Host-hook Write denials are not product tool_failures.
+
+    Reuse residual.denied_actions (same list spawn meta already records).
+    Write / Write(.orderfield/…) is a host hook, not a slice failure.
+    Field residuals (mission/phase/…) still escalate. Real tool_failures
+    without Write denials still escalate. Not a supervisor.
+    """
+
+    KEY = "denied_actions"
+    TOOL = "write"
+    REASON = "host Write denials are not tool_failures"
+
+    @staticmethod
+    def names(residual: dict[str, Any] | None) -> list[str]:
+        if not isinstance(residual, dict):
+            return []
+        raw = residual.get(HostWriteDenial.KEY)
+        if not isinstance(raw, list):
+            return []
+        return [str(item).strip() for item in raw if str(item).strip()]
+
+    @staticmethod
+    def is_write(name: str) -> bool:
+        text = str(name or "").strip()
+        if not text:
+            return False
+        head = text.split("(", 1)[0].split(":", 1)[0].split()[0]
+        return head.casefold() == HostWriteDenial.TOOL
+
+    @staticmethod
+    def masks(residual: dict[str, Any] | None) -> bool:
+        return any(
+            HostWriteDenial.is_write(name) for name in HostWriteDenial.names(residual)
+        )
+
+
 def _select_regime(
     order: dict[str, Any],
     state: dict[str, Any],
@@ -782,7 +819,8 @@ def _select_regime(
             mission_hits += 1
         metrics = res.get("metrics") or {}
         if metrics.get("tool_failures", 0) >= th.get("tool_failures", 2):
-            hard_fail = True
+            if not HostWriteDenial.masks(res):
+                hard_fail = True
         max_div = max(max_div, float(metrics.get("divergence") or 0))
         max_unc = max(max_unc, float(metrics.get("uncertainty") or 0))
 
