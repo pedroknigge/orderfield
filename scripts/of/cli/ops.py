@@ -2544,6 +2544,62 @@ def _print_gh_stdout(proc: subprocess.CompletedProcess[str]) -> None:
         sys.stdout.write(out if out.endswith("\n") else out + "\n")
 
 
+class IssueList:
+    """Open-issue roster for duplicate check. Issues list API + local filter.
+
+    ``gh issue list --search`` uses Search API and can return empty + exit 0
+    while ``gh issue list --state open`` shows the same rows (#198).
+    """
+
+    REPO = ISSUE_FEEDBACK_REPO
+    STATE = "open"
+    LIMIT = 1000  # gh issue list max; one Issues-API page
+    EMPTY = "no matching open issues on {repo}"
+    EMPTY_FOR = "no matching open issues on {repo} for {query}"
+
+    @staticmethod
+    def argv(*, gh_bin: str = "gh") -> list[str]:
+        return [
+            gh_bin,
+            "issue",
+            "list",
+            "--repo",
+            IssueList.REPO,
+            "--state",
+            IssueList.STATE,
+            "--limit",
+            str(IssueList.LIMIT),
+        ]
+
+    @staticmethod
+    def matches(line: str, query: str) -> bool:
+        if not query:
+            return True
+        return query.casefold() in line.casefold()
+
+    @staticmethod
+    def select(stdout: str, query: str) -> str:
+        lines = [ln for ln in (stdout or "").splitlines() if ln.strip()]
+        if query:
+            lines = [ln for ln in lines if IssueList.matches(ln, query)]
+        return "\n".join(lines)
+
+    @staticmethod
+    def empty_message(query: str) -> str:
+        if query:
+            return IssueList.EMPTY_FOR.format(
+                repo=IssueList.REPO, query=repr(query)
+            )
+        return IssueList.EMPTY.format(repo=IssueList.REPO)
+
+    @staticmethod
+    def speak(stdout: str, query: str) -> str:
+        selected = IssueList.select(stdout, query)
+        if selected:
+            return selected if selected.endswith("\n") else selected + "\n"
+        return IssueList.empty_message(query) + "\n"
+
+
 def issue_create_argv(
     *,
     title: str,
@@ -2569,24 +2625,22 @@ def issue_create_argv(
     return argv
 
 
-def issue_list_argv(*, query: str, gh_bin: str = "gh") -> list[str]:
-    argv = [
-        gh_bin,
-        "issue",
-        "list",
-        "--repo",
-        ISSUE_FEEDBACK_REPO,
-        "--state",
-        "open",
-    ]
-    if query:
-        argv.extend(["--search", query])
-    return argv
+def issue_list_argv(*, query: str = "", gh_bin: str = "gh") -> list[str]:
+    """List-API argv. ``query`` is filtered after spawn, not passed to gh."""
+    return IssueList.argv(gh_bin=gh_bin)
 
 
-def _issue_preview(argv: list[str], *, action: str, dry_run: bool) -> None:
+def _issue_preview(
+    argv: list[str],
+    *,
+    action: str,
+    dry_run: bool,
+    filter_query: str = "",
+) -> None:
     print("dry-run argv:")
     print(argv_preview(argv))
+    if action == "search" and filter_query:
+        print(f"filter: {filter_query}")
     emit_event(
         "issue",
         action=action,
@@ -2736,9 +2790,11 @@ def cmd_issue(args: argparse.Namespace) -> None:
             max_chars=ISSUE_SEARCH_MAX_CHARS,
             allow_empty=True,
         )
-        argv = issue_list_argv(query=query, gh_bin="gh")
+        argv = IssueList.argv(gh_bin="gh")
         if dry_run:
-            _issue_preview(argv, action="search", dry_run=True)
+            _issue_preview(
+                argv, action="search", dry_run=True, filter_query=query
+            )
             return
         gh_bin = _require_gh()
         _require_gh_auth(gh_bin)
@@ -2746,7 +2802,7 @@ def cmd_issue(args: argparse.Namespace) -> None:
         proc = _spawn_gh(argv)
         if proc.returncode != 0:
             _issue_die(_gh_err("gh issue list failed", proc))
-        _print_gh_stdout(proc)
+        sys.stdout.write(IssueList.speak(proc.stdout or "", query))
         emit_event(
             "issue",
             action="search",

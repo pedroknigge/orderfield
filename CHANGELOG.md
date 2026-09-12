@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.5
+
+`of issue --search` lists open issues (empty/omitted = all; query filters). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.4 notes.
+
+- **Reuse table (design-first):** `cmd_issue` / `issue_list_argv` / `_spawn_gh` already list `pedroknigge/orderfield`. `--search` stayed a read. The remaining gap is forwarding the query to `gh issue list --search` (Search API), which returns empty + exit 0 while `gh issue list --state open` (Issues list API) shows the same rows (`#198`).
+- **Reuse, not a supervisor:** `IssueList` always lists via `--state open --limit` and filters TSV in-process (case-insensitive). Empty query prints all open. No match prints `no matching open issues`. Query is never sent to gh `--search`. No new CLI verb / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / SLAVE teach `--search [QUERY]` lists open issues; empty or omitted = all; a query filters that list.
+- **Proof:** `IssueSearchList` (query prints matches; empty lists all; no-match line; argv is list API not `--search`; dry-run shows `filter:`). `SkillIssueSearch`. `IssueCli` search still redacts. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.5; skill/alias description preview `v0.8.5 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.4 notes.
+
 ## 0.8.4
 
 `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.3 notes.

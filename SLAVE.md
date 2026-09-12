@@ -78,7 +78,7 @@ Do NOT auto-report:
 
 If unsure, draft + HITL, default to *not* posting.
 
-1. Search open issues on `pedroknigge/orderfield` first (`of issue --search`). Skip duplicates.
+1. Search open issues on `pedroknigge/orderfield` first (`of issue --search [QUERY]`). Empty or omitted lists all open; a query filters that list. Skip duplicates.
 2. **Never post.** `OF_CHILD` is set, spawn is headless, or this session cannot ask the human — so you cannot get confirmation. Confirm creates; refuse / edit-later / silence does not. A child never reaches confirm. Non-dry-run `of issue` (even with `--confirm`) is refused. `--dry-run` is not HITL.
 3. Write one draft per distinct finding under your scratch: `ISSUE.md` or `issues/<slug>.md`. Include title, body, labels `bug` or `enhancement`, and evidence paths. Not a diary. You may also run `of issue --dry-run` (prints argv; does not post).
 4. Name the draft in the residual `result_ref` / evidence. The leader asks the human, then `of issue --confirm`.
