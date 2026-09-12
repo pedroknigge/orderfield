@@ -201,6 +201,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.3 `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`; dry-run is not HITL; #193) | documented |
 | 0.8.4 `OF_TRUST=yolo` + `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`; not silent defaults) | documented |
 | 0.8.5 `of issue --search` lists open issues via Issues list API + local filter (`IssueList`; empty=all; `#198`) | documented |
+| 0.8.6 Cursor `--model-tier` without `--model` refuses pack/spawn (`AdapterHints.TIER_NEED_MODEL`; no invented alias) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

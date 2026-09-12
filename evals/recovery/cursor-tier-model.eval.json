@@ -1,0 +1,120 @@
+{
+  "id": "recovery/cursor-tier-model",
+  "description": "Cursor has no cheap/frontier alias. Pack --model-tier frontier then spawn --adapter cursor dies before QUIET/no-log. Named --model passes. Claude still maps frontier→opus. Grok/codex stay no-op. Pinned cursor harness refuses pack without --model.",
+  "fixture": "recovery_cursor_tier_model",
+  "tags": ["recovery", "gate", "spawn", "hints", "cursor"],
+  "steps": [
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "synthesize the frontier brief",
+        "--role",
+        "synthesizer",
+        "--child-id",
+        "synth",
+        "--model-tier",
+        "frontier"
+      ],
+      "exit": 0,
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/packets/synth.json",
+          "contains": ["\"tier\": \"frontier\""],
+          "not_contains": ["\"model\""]
+        }
+      ]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "cursor",
+        "--packet",
+        ".orderfield/waves/001/packets/synth.json",
+        "--dry-run"
+      ],
+      "exit": 1,
+      "stderr_contains": [
+        "no frontier alias",
+        "pass --model",
+        "refusing spawn"
+      ],
+      "stderr_not_contains": ["QUIET for", "haiku"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "claude",
+        "--packet",
+        ".orderfield/waves/001/packets/synth.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": ["--model", "opus"]
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "grok",
+        "--packet",
+        ".orderfield/waves/001/packets/synth.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": ["dry-run argv"],
+      "stdout_not_contains": ["--model"]
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "named cursor frontier",
+        "--role",
+        "synthesizer",
+        "--child-id",
+        "named",
+        "--model-tier",
+        "frontier",
+        "--model",
+        "grok-4.6"
+      ],
+      "exit": 0
+    },
+    {
+      "run": "spawn",
+      "args": [
+        "--adapter",
+        "cursor",
+        "--packet",
+        ".orderfield/waves/001/packets/named.json",
+        "--dry-run"
+      ],
+      "exit": 0,
+      "stdout_contains": ["--model", "grok-4.6"]
+    },
+    {
+      "run": "patch",
+      "args": ["--harness", "cursor"],
+      "exit": 0
+    },
+    {
+      "run": "pack",
+      "args": [
+        "--slice",
+        "pinned cursor must name a model",
+        "--role",
+        "implementer",
+        "--child-id",
+        "pinned",
+        "--model-tier",
+        "frontier"
+      ],
+      "exit": 1,
+      "stderr_contains": ["no frontier alias", "pass --model", "refusing pack"],
+      "file_missing": [".orderfield/waves/001/packets/pinned.json"]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.5. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.6. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.5` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.6` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -59,7 +59,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - `of worktree` is an opt-in detached git worktree helper; honesty surface, not a security guarantee; it does not spawn, kill, or supervise children
 - Runtime ownership is reserved: `scale_up`, `scale_across`, token budgets, `local_budget_pct`, and inherited depth are not measured; `decide_regime` never selects reserved regimes from accounting
 - `--requires-tool` capability gate
-- Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one; Claude maps cheap→haiku / frontier→opus. Grok/agy: named model before `-p`; no invented tier aliases. Orca task-create / qwen / opencode / generic stay no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli`. Not a router.
+- Optional per-task model hints (`AdapterHints`): `of patch --model-hints field|wave|off` plus `of pack --model-tier` / `--model`. Spawn passes `--model` for claude/codex/cursor/grok/agy when the packet names one; Claude maps cheap→haiku / frontier→opus. Cursor has no cheap/frontier alias (catalog: no frontier row); tier-only refuses pack/spawn (`TIER_NEED_MODEL`). Grok/agy: named model before `-p`; no invented tier aliases; tier-only is no-op. Orca task-create / qwen / opencode / generic stay no-op. No consent → no hint → no silent switch. Proof: `AdapterHintsCli` / `recovery/cursor-tier-model`. Not a router.
 - Efficiency signal (`EfficiencySignal`): quality × optional `residual.usage`. Status/resume/doctor may propose uptier/downtier. Ask only. `budget.tokens` stays reserved. Proof: `recovery/efficiency-signal`. Design: [efficiency-signal.md](../../efficiency-signal.md).
 - Spec fidelity: ingest via `--source` / `--source-file` into `.orderfield/SPEC.md` (never a product-root `PROMPT.md`; leftover ingest/`prompt.md` is discarded). Requirement ids are `PREFIX-001`; PREFIX must not contain `-` (`DL-LOSS-001` dies). A deictic go-ahead (`dale` / `do it` / `as discussed`) prints an advisory note and still writes SPEC — expand the prior request; on an open field it is steer (`next`), not `--amend`. New requests are `of spec --amend` (original stays, IDs continue). `of spec --add ID` leaves the ID visible in SPEC.md (appends a dated binding line if missing; original brief stays; refreshes `spec_hash`). `--supersede` drops a requirement; `--revise-file` archives to `spec-log` (`of gc` permanently unlinks those snapshots after 30 days; not a restorable dump). Extract is a conservative index (`LEASE`/`AUDIT`/`IDEMP`/`TIMEOUT`/`HEALTH`/`VERSION`/`HTTP`/`CLI` + SPEC line range). Extract joins backslash-continued CLI lines. `spec_hash` is checked against file bytes. `of contrast` is the close gate: MISSING / DELIVERED / VERIFIED_INTERNAL / VERIFIED_CONTRACT / PAIR / FAILED (cites `SPEC.md:N`). One `ContrastReport` document: human one-pager + machine JSON. Public-surface requirements cannot close on VERIFIED_INTERNAL; timeout / idempotency / health / version IDs are VERIFIED_CONTRACT (`ContractSurface`); pair-shaped IDs (including webhook HMAC + replay) need `--both-sides` (`WebhookPair`). Slice `done` ≠ SPEC closed. Verifier `done` needs identifying evidence. `phase --force` to deliver still requires SPEC close.
 - Reference-load `SLAVE.md` (repo-relative field copy; `--inline` opt-in). Product comments are short and factual, not the field diary. Do not pack a whole phase as one slice. Whole-phase slogans die at pack (`SliceLint`, `slice.phase`) with a split/constraints fix path. Oversized-slice note stays advisory (do not refuse ≥800). `of pack --explain` dry-runs that lint and does not write. Proof: `recovery/packet-sizing-lint` / `recovery/packet-sizing-explain`.
@@ -120,6 +120,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.
 - 0.8.4 `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`). Spawn speaks and records `operator_actions`. Conservative + allowlist stay quiet. Proof: `OperatorActionAudit` / `SkillOperatorAction`. No new CLI / supervisor.
 - 0.8.5 `of issue --search [QUERY]` lists open issues via Issues list API + local filter (`IssueList`). Empty/omitted = all open. Search API `--search` is not used (`#198`). Proof: `IssueSearchList` / `SkillIssueSearch`. No new CLI / supervisor.
+- 0.8.6 Cursor `--model-tier` without `--model` refuses pack/spawn (`AdapterHints.TIER_NEED_MODEL`). No invented frontier alias. Named `--model` still passes. Proof: `AdapterHintsCli` / `SkillCursorTierRefuse` / `recovery/cursor-tier-model`. No new CLI / supervisor.
 
 ## Contract boundaries
 

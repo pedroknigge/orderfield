@@ -593,9 +593,12 @@ class AdapterHints:
 
     Not a model router, not a process supervisor, not a catalog of every
     provider id. Claude gets stable harness aliases for a tier. Codex,
-    Cursor, Grok, and agy pass ``--model`` only when the packet names one.
-    Orca ``task-create`` has no model flag — hint stays on disk, spawn
-    no-ops. No invented cheap/frontier ids for grok/agy.
+    Grok, and agy pass ``--model`` only when the packet names one
+    (tier-only is no-op). Cursor has no cheap/frontier alias (catalog
+    has no frontier row) — a consented tier without ``--model`` refuses
+    so spawn cannot go QUIET with no log. Orca ``task-create`` has no
+    model flag — hint stays on disk, spawn no-ops. No invented
+    cheap/frontier ids for cursor/grok/agy.
     """
 
     TIERS = ("cheap", "frontier")
@@ -604,6 +607,9 @@ class AdapterHints:
     TIER_ALIASES = {
         "claude": {"cheap": "haiku", "frontier": "opus"},
     }
+    # Cursor CLI without --model after a consented tier hangs QUIET
+    # (no log, no residual). Do not invent a frontier alias.
+    TIER_NEED_MODEL = frozenset({"cursor"})
     ROLE_TIER = {
         "explorer": "cheap",
         "synthesizer": "cheap",
@@ -752,11 +758,51 @@ class AdapterHints:
         return aliases.get(tier)
 
     @staticmethod
+    def hints_of(packet_or_hints: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(packet_or_hints, dict):
+            return None
+        nested = packet_or_hints.get("adapter_hints")
+        if isinstance(nested, dict):
+            return nested
+        if "tier" in packet_or_hints or "model" in packet_or_hints:
+            return packet_or_hints
+        return None
+
+    @staticmethod
+    def require_named_model(
+        adapter: str | None,
+        packet_or_hints: dict[str, Any] | None,
+        *,
+        verb: str = "spawn",
+    ) -> None:
+        """Refuse cursor tier-only. Named model or a documented alias is enough.
+
+        Catalog has no cursor frontier row. Do not invent one. Claude
+        aliases stay. Grok/agy/codex stay documented no-op.
+        """
+        if not adapter or adapter not in AdapterHints.TIER_NEED_MODEL:
+            return
+        hints = AdapterHints.hints_of(packet_or_hints)
+        if not isinstance(hints, dict):
+            return
+        if AdapterHints.spawn_model(adapter, {"adapter_hints": hints}):
+            return
+        tier = str(hints.get("tier") or "").strip()
+        if not tier:
+            return
+        die(
+            f"{adapter} has no {tier} alias; pass --model NAME "
+            f"(catalog: no {adapter} {tier} row). "
+            f"refusing {verb} that would omit --model"
+        )
+
+    @staticmethod
     def spawn_flags(adapter: str, packet: dict[str, Any]) -> list[str]:
         name = AdapterHints.spawn_model(adapter, packet)
-        if not name:
-            return []
-        return ["--model", name]
+        if name:
+            return ["--model", name]
+        AdapterHints.require_named_model(adapter, packet, verb="spawn")
+        return []
 
     @staticmethod
     def format_line(hints: Any) -> str:
@@ -783,6 +829,7 @@ class AdapterHints:
             "no-op       orca (task-create has no --model), "
             "opencode, qwen, generic",
             "aliases     claude cheap=haiku frontier=opus",
+            "refuse      cursor tier-only (no alias; pass --model)",
             "default     off (of patch --model-hints field|wave)",
         ]
 

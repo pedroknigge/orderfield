@@ -112,7 +112,7 @@ packet even without a field write. No write → spawn argv is unchanged.
 |---|---|
 | claude | `--model` (tier aliases cheap=`haiku`, frontier=`opus`, or the named model) |
 | codex | `--model NAME` when the packet names one; tier-only is no-op |
-| cursor | `--model NAME` when the packet names one; tier-only is no-op |
+| cursor | `--model NAME` when the packet names one; no cheap/frontier alias (catalog: no frontier row); tier-only **refuses** |
 | grok | `--model NAME` when the packet names one; before `-p`; tier-only is no-op |
 | agy | `--model NAME` when the packet names one; flags before `-p`; tier-only is no-op |
 | orca | no-op (`task-create` has no `--model`; hint stays on disk) |
@@ -238,6 +238,9 @@ agent -p --output-format stream-json \
 
 `--force` only under `OF_TRUST=yolo`. `OF_TRUST=plan` adds `--mode plan`.
 `auto-edit`/`auto` stay conservative: Cursor has no accept-edits flag.
+Consented `adapter_hints` with a named model add `--model NAME`. Cursor has
+no cheap/frontier alias (catalog: no frontier row); a consented tier
+without `--model` refuses before launch. Do not invent an alias.
 
 Cursor has no reliable `--append-system-prompt`. Default render/handoff is **reference-load**: the prompt points at the absolute `SLAVE.md` path (use `--inline` only when the child cannot read that path).
 
