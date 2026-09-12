@@ -36,6 +36,7 @@ from of.field import (
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
     child_pulse_verdict,
+    CollectReady,
     SpawnRecord,
     PYTHON_FLOOR,
     REDACTED,
@@ -991,6 +992,7 @@ class DriveAfterIntegrate:
             "next-wave",
             "pack",
             "collect",
+            CollectReady.ACTION,
             "integrate --recompute",
             "patch then next-wave",
         }
@@ -1037,6 +1039,7 @@ class DriveAfterIntegrate:
             covering=covering,
             stale=stale,
             spec_closed=bool(order.get("spec_closed")),
+            collected=CollectReady.of(root, packets, load_session(root)),
         )
         return action, flying
 
@@ -1405,6 +1408,7 @@ class HandoffReport:
             children_stale=all_stale,
             children_packed=any_packed,
             spec_closed=bool(order.get("spec_closed")),
+            collected=CollectReady.of(root, packets, load_session(root)),
         )
         return action, verdicts, resume_next_lines(action)
 
@@ -1856,6 +1860,7 @@ def resume_next_lines(action: str) -> list[str]:
             PacketRevStale.DETAIL,
         ),
         "collect": ("COLLECT", "all residuals landed; run collect"),
+        CollectReady.ACTION: (CollectReady.LABEL, CollectReady.DETAIL),
         "next-wave": ("NEXT-WAVE", "wave is closed or stale; run next-wave"),
         "integrate --recompute": (
             "INTEGRATE --RECOMPUTE",
@@ -2147,14 +2152,15 @@ def cmd_resume(args: argparse.Namespace) -> None:
         verdicts[cid] = child_pulse_verdict(root, pkt, now)
     any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
     all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
+    session = load_session(root)
     nxt = next_legal_action(
         state, flying, packets,
         integrated=integrated, covering=covering, stale=stale,
         children_stale=all_stale,
         children_packed=any_packed,
         spec_closed=bool(order.get("spec_closed")),
+        collected=CollectReady.of(root, packets, session),
     )
-    session = load_session(root)
     print(f"id            {order['id']}")
     try:
         home_rel = field_home(root).resolve().relative_to(root.resolve())

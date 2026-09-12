@@ -204,6 +204,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.6 Cursor `--model-tier` without `--model` refuses pack/spawn (`AdapterHints.TIER_NEED_MODEL`; no invented alias) | documented |
 | 0.8.7 ended spawn without residual is `done_without_residual` not ok/ALIVE; host Write denials are not `escalate_up` (`HostWriteDenial`; `#200`) | documented |
 | 0.8.8 `of issue --body-file` accepts leader `ISSUE.md` / `ISSUE-*.md` under `.orderfield/work/scratch/leader/` (`_issue_scratch_rel_ok`; `#201`) | documented |
+| 0.8.9 after successful `of collect` (`ok=N invalid=0 missing=0`), resume/status `next` is INTEGRATE not COLLECT (`CollectReady`; `#204`) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

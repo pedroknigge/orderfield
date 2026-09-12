@@ -1435,6 +1435,33 @@ class SkillPlanDocSync(unittest.TestCase):
         self.assertIn("class PlanDocSync:", source)
 
 
+class SkillCollectNextIntegrate(unittest.TestCase):
+    """After successful collect, printed next is INTEGRATE. #204."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_integrate_after_collect(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("resume next `integrate`", table)
+        alias_fold = alias.casefold()
+        self.assertIn("next is integrate", alias_fold)
+        self.assertIn("not collect", alias_fold)
+        self.assertIn("do not collect again", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("next=integrate", appendix_fold)
+        self.assertIn("do not collect again", appendix_fold)
+        self.assertIn("collectready", appendix_fold)
+        self.assertIn("invalid=0", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("class CollectReady:", source)
+        self.assertIn("ACTION = \"integrate\"", source)
+
+
 class SkillDriveAfterIntegrate(unittest.TestCase):
     """After integrate, execute next same turn. Report is not a stop. #191."""
 
