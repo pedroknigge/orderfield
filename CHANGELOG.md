@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.8
+
+`of issue --body-file` accepts documented leader HITL drafts under `.orderfield/work/scratch/leader/` (`ISSUE.md` or `ISSUE-*.md`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.7 notes.
+
+- **Reuse table (design-first):** `_issue_scratch_rel_ok` / `_load_issue_body_file` already own the canonical non-symlink scratch gate. Child paths stay `ISSUE.md` or `issues/<slug>.md`. The remaining gap is a leader draft named `ISSUE-of-issue-search.md` dying while skill docs point at the `leader/` tree (`#201`).
+- **Reuse, not a whitelist lie:** widen the existing depth-4 check for `child_id=leader` so any `.md` whose stem passes `_issue_id_ok` (same class as `issues/<slug>.md`) is accepted. External / scratch-root / symlink / child `ISSUE-*.md` stay refused. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / `--help` teach leader `ISSUE.md` or `ISSUE-*.md` and child `ISSUE.md` / `issues/<slug>.md`.
+- **Proof:** `IssueCli` accepts `.orderfield/work/scratch/leader/ISSUE-of-issue-search.md`; child `ISSUE-*.md` still refused; existing `ISSUE.md` / `issues/<slug>.md` stay valid. `SkillIssueBodyFileLeader`. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.8; skill/alias description preview `v0.8.8 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.7 notes.
+
 ## 0.8.7
 
 Ended spawn without a schema-valid residual is not a healthy `ok` / ALIVE flight. Host Write denials are not `escalate_up`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.6 notes.

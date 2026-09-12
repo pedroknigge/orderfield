@@ -287,6 +287,12 @@ class SkillIssueBodyFileLeader(unittest.TestCase):
             "--body-file .orderfield/work/scratch/leader/ISSUE.md",
             appendix,
         )
+        for body, name in (
+            (skill, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            self.assertIn("ISSUE-*.md", body, name)
 
 
 class PackedPromptCarriesSlave(unittest.TestCase):

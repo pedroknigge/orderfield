@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.7. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.8. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.7` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.8` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -122,6 +122,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.5 `of issue --search [QUERY]` lists open issues via Issues list API + local filter (`IssueList`). Empty/omitted = all open. Search API `--search` is not used (`#198`). Proof: `IssueSearchList` / `SkillIssueSearch`. No new CLI / supervisor.
 - 0.8.6 Cursor `--model-tier` without `--model` refuses pack/spawn (`AdapterHints.TIER_NEED_MODEL`). No invented frontier alias. Named `--model` still passes. Proof: `AdapterHintsCli` / `SkillCursorTierRefuse` / `recovery/cursor-tier-model`. No new CLI / supervisor.
 - 0.8.7 ended spawn without a schema-valid residual is `done_without_residual` (not `ok` / not ALIVE from leftover PULSE). Host Write `denied_actions` do not `escalate_up` on tool_failures (`HostWriteDenial`). Proof: `SpawnEndedWithoutResidual` / `SkillSpawnEndedSignal` / `recovery/spawn-ended-without-residual`. No new CLI / supervisor.
+- 0.8.8 `of issue --body-file` accepts leader `ISSUE.md` / `ISSUE-*.md` under `.orderfield/work/scratch/leader/` (`_issue_scratch_rel_ok`; `#201`). Child paths stay `ISSUE.md` / `issues/<slug>.md`. Proof: `IssueCli` / `SkillIssueBodyFileLeader`. No new CLI / supervisor.
 
 ## Contract boundaries
 

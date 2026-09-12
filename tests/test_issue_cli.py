@@ -193,6 +193,7 @@ class IssueCli(unittest.TestCase):
         *,
         child: str = "leader",
         slug: str | None = None,
+        name: str | None = None,
     ) -> str:
         if slug:
             path = (
@@ -211,7 +212,7 @@ class IssueCli(unittest.TestCase):
                 / "work"
                 / "scratch"
                 / child
-                / "ISSUE.md"
+                / (name or "ISSUE.md")
             )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
@@ -263,6 +264,7 @@ class IssueCli(unittest.TestCase):
         self.assertIn("--body", help_out.stdout)
         self.assertIn("--body-file", help_out.stdout)
         self.assertIn(ops.ISSUE_BODY_FILE_UNDER, help_out.stdout)
+        self.assertIn("ISSUE-*.md", help_out.stdout)
         self.assertIn("--label", help_out.stdout)
         self.assertIn("--search", help_out.stdout)
         self.assertIn("kernel defects", help_out.stdout)
@@ -585,6 +587,30 @@ class IssueCli(unittest.TestCase):
         self.assertIn("dry-run argv:", r.stdout)
         self.assertEqual(load_log(self.log), [])
 
+    def test_body_file_accepts_leader_issue_hyphen_name(self) -> None:
+        rel = self.write_draft(
+            "leader named draft\n",
+            child="leader",
+            name="ISSUE-of-issue-search.md",
+        )
+        self.assertEqual(
+            rel,
+            ".orderfield/work/scratch/leader/ISSUE-of-issue-search.md",
+        )
+        r = self.issue(
+            "issue",
+            "--title",
+            "leader named",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run argv:", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
     def test_body_file_reject_names_canonical_location(self) -> None:
         cases = (
             ".orderfield/scratch/ISSUE.md",
@@ -622,7 +648,22 @@ class IssueCli(unittest.TestCase):
         )
         self.assertTrue(
             ops._issue_scratch_rel_ok(
+                Path(".orderfield/work/scratch/leader/ISSUE-of-issue-search.md")
+            )
+        )
+        self.assertTrue(
+            ops._issue_scratch_rel_ok(
                 Path(".orderfield/work/scratch/e1/issues/wal-crash.md")
+            )
+        )
+        self.assertTrue(
+            ops._issue_scratch_rel_ok(
+                Path(".orderfield/work/scratch/e1/ISSUE.md")
+            )
+        )
+        self.assertFalse(
+            ops._issue_scratch_rel_ok(
+                Path(".orderfield/work/scratch/e1/ISSUE-of-issue-search.md")
             )
         )
         self.assertFalse(
@@ -726,6 +767,29 @@ class IssueCli(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dry-run argv:", r.stdout)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_body_file_rejects_child_issue_hyphen_name(self) -> None:
+        rel = self.write_draft(
+            "child named draft\n",
+            child="e1",
+            name="ISSUE-of-issue-search.md",
+        )
+        r = self.issue(
+            "issue",
+            "--title",
+            "child named",
+            "--body-file",
+            rel,
+            "--label",
+            "bug",
+            "--dry-run",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("canonical", r.stderr)
+        self.assertIn(ops.ISSUE_BODY_FILE_UNDER, r.stderr)
+        self.assertIn(rel, r.stderr)
         self.assertEqual(load_log(self.log), [])
 
     def test_create_nonzero_is_issue_error_and_not_retried(self) -> None:

@@ -21,12 +21,12 @@ The chat can die. ORDER stays. A child residual cannot rewrite the mission, the 
 `of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.8.7</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.8</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.7-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.8-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -99,8 +99,8 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
-release_tag=v0.8.7
-release_version=0.8.7
+release_tag=v0.8.8
+release_version=0.8.8
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"

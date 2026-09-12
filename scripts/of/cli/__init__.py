@@ -459,7 +459,9 @@ def build_parser() -> argparse.ArgumentParser:
         dest="body_file",
         help=(
             "canonical scratch draft under "
-            ".orderfield/work/scratch/<child_id>/"
+            ".orderfield/work/scratch/<child_id>/ "
+            "(leader: ISSUE.md or ISSUE-*.md; "
+            "child: ISSUE.md or issues/<slug>.md)"
         ),
     )
     s.add_argument(
