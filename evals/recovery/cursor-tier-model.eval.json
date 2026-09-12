@@ -96,6 +96,16 @@
       "stdout_contains": ["--model", "grok-4.6"]
     },
     {
+      "run": "unpack",
+      "args": ["--force", "--child-id", "synth"],
+      "exit": 0
+    },
+    {
+      "run": "unpack",
+      "args": ["--force", "--child-id", "named"],
+      "exit": 0
+    },
+    {
       "run": "patch",
       "args": ["--harness", "cursor"],
       "exit": 0
