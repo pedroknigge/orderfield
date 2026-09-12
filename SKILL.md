@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.9 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.10 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.9"
+  version: "0.8.10"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -23,7 +23,7 @@ Product surface: [README.md](README.md) leads with authority (anyone can persist
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
 
-The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-process field lock for `MUTATING_COMMANDS`, pack caps, canonical packet identity, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail. It does not lock product files.
+The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-process field lock for `MUTATING_COMMANDS`, pack caps, canonical packet identity, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail. Does not lock product files.
 
 ## What to type next
 

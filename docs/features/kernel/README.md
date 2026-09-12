@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.9. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.10. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.9` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.10` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -124,6 +124,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.7 ended spawn without a schema-valid residual is `done_without_residual` (not `ok` / not ALIVE from leftover PULSE). Host Write `denied_actions` do not `escalate_up` on tool_failures (`HostWriteDenial`). Proof: `SpawnEndedWithoutResidual` / `SkillSpawnEndedSignal` / `recovery/spawn-ended-without-residual`. No new CLI / supervisor.
 - 0.8.8 `of issue --body-file` accepts leader `ISSUE.md` / `ISSUE-*.md` under `.orderfield/work/scratch/leader/` (`_issue_scratch_rel_ok`; `#201`). Child paths stay `ISSUE.md` / `issues/<slug>.md`. Proof: `IssueCli` / `SkillIssueBodyFileLeader`. No new CLI / supervisor.
 - 0.8.9 after successful `of collect` (`ok=N invalid=0 missing=0`), resume/status `next` is INTEGRATE (`CollectReady`; `#204`). Before collect and after integrate stay COLLECT / NEXT-WAVE. Proof: `ResumeAfterIntegrate.test_next_is_integrate_after_successful_collect` / `SkillCollectNextIntegrate`. No new CLI / supervisor.
+- 0.8.10 `of gc` / `of retain` resolve `PHASES` when a stored learning carries `phase` (`#205`). Empty-field gc never reached that guard. Proof: `LearningApplicablePhase` / `EpisodicRetention.test_gc_and_retain_survive_field_learning_with_phase`. No new CLI / supervisor.
 
 ## Contract boundaries
 
