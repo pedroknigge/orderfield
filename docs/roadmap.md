@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.8. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.9. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.8`
+**Status:** Shipped · **Current release line:** `0.8.9`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.9 — next is INTEGRATE after a successful collect
+
+- `next_legal_action` stayed on COLLECT after `of collect` returned `ok=N invalid=0 missing=0` because `integrated` is only `report.json` (`#204`). `CollectReady` reuses `session.last_cmd=collect` plus residual completeness. Before collect and after integrate stay COLLECT / NEXT-WAVE. Proof: `ResumeAfterIntegrate.test_next_is_integrate_after_successful_collect` / `SkillCollectNextIntegrate`. No new CLI verb / schema / supervisor. Not a new regime.
 
 ## 0.8.8 — issue --body-file accepts leader ISSUE-*.md
 

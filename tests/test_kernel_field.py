@@ -732,6 +732,47 @@ class ResumeAfterIntegrate(unittest.TestCase):
         after = run_of(self.tmp, "resume")
         self.assertIn("next\n  NEXT-WAVE", after.stdout)
 
+    def test_next_is_integrate_after_successful_collect(self) -> None:
+        write_bound_residual(self.tmp, "c1")
+        before = run_of(self.tmp, "resume")
+        self.assertEqual(before.returncode, 0, before.stderr)
+        self.assertIn("next\n  COLLECT", before.stdout)
+        self.assertIn("all residuals landed; run collect", before.stdout)
+        collected = run_of(self.tmp, "collect")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertIn("invalid=0", collected.stdout)
+        self.assertIn("missing=0", collected.stdout)
+        after = run_of(self.tmp, "resume")
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn("next\n  INTEGRATE\n", after.stdout)
+        self.assertIn(of.CollectReady.DETAIL, after.stdout)
+        self.assertNotIn("next\n  COLLECT", after.stdout)
+        self.assertNotIn("INTEGRATE --RECOMPUTE", after.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("INTEGRATE", status.stdout)
+        self.assertIn(of.CollectReady.DETAIL, status.stdout)
+        self.assertNotIn("COLLECT", status.stdout)
+        self.assertNotIn("INTEGRATE --RECOMPUTE", status.stdout)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        done = run_of(self.tmp, "resume")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("next\n  NEXT-WAVE", done.stdout)
+        self.assertNotIn("next\n  INTEGRATE\n", done.stdout)
+        self.assertNotIn("next\n  COLLECT", done.stdout)
+
+    def test_next_stays_collect_when_collect_is_invalid(self) -> None:
+        dest = write_bound_residual(self.tmp, "c1")
+        dest.write_text("{}\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect")
+        self.assertNotEqual(collected.returncode, 0, collected.stdout)
+        self.assertIn("INVALID", collected.stdout)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  COLLECT", resumed.stdout)
+        self.assertNotIn("next\n  INTEGRATE\n", resumed.stdout)
+
     def test_all_stale_packets_point_at_unpack_force_not_hold(self) -> None:
         r = run_of(self.tmp, "patch", "--mission", "a different field")
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -776,6 +817,11 @@ class DriveAfterIntegrateProof(unittest.TestCase):
         self.assertTrue(
             of.DriveAfterIntegrate.applies(
                 spec_closed=False, flying=[], action="collect"
+            )
+        )
+        self.assertTrue(
+            of.DriveAfterIntegrate.applies(
+                spec_closed=False, flying=[], action=of.CollectReady.ACTION
             )
         )
         self.assertFalse(
@@ -3548,6 +3594,14 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         self.assertEqual(
             of.next_legal_action(idle, [], landed, integrated=True),
             "next-wave",
+        )
+        self.assertEqual(
+            of.next_legal_action(idle, [], landed),
+            "collect",
+        )
+        self.assertEqual(
+            of.next_legal_action(idle, [], landed, collected=True),
+            of.CollectReady.ACTION,
         )
         self.assertEqual(
             of.next_legal_action(

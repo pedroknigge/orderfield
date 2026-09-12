@@ -3848,6 +3848,47 @@ def child_pulse_verdict(
     return pulse_verdict(now - max(signals), stale_minutes)
 
 
+class CollectReady:
+    """Successful collect (ok=N invalid=0 missing=0) selects INTEGRATE.
+
+    Collect already writes ``session.last_cmd=collect``. That receipt plus
+    every packet residual present and valid is the gate. Failed collect
+    still stamps last_cmd, so residual completeness is required. A later
+    pack/checkpoint resets last_cmd and returns next to COLLECT.
+    """
+
+    ACTION = "integrate"
+    LABEL = "INTEGRATE"
+    DETAIL = "residuals collected; run integrate"
+
+    @staticmethod
+    def of(
+        root: Path,
+        packets: list[dict[str, Any]],
+        session: dict[str, Any] | None = None,
+    ) -> bool:
+        if str((session or {}).get("last_cmd") or "") != "collect":
+            return False
+        return CollectReady.residuals_complete(root, packets)
+
+    @staticmethod
+    def residuals_complete(root: Path, packets: list[dict[str, Any]]) -> bool:
+        if not packets:
+            return False
+        from of.pack import try_load_packet_residual, validate_residual_for_packet
+
+        for pkt in packets:
+            try:
+                data = try_load_packet_residual(root, pkt)
+            except SystemExit:
+                return False
+            if not isinstance(data, dict):
+                return False
+            if validate_residual_for_packet(data, pkt, root):
+                return False
+        return True
+
+
 def next_legal_action(
     state: dict[str, Any],
     flying: list[dict[str, Any]],
@@ -3859,6 +3900,7 @@ def next_legal_action(
     children_stale: bool = False,
     children_packed: bool = False,
     spec_closed: bool = False,
+    collected: bool = False,
 ) -> str:
     if spec_closed:
         return "closed"
@@ -3883,6 +3925,8 @@ def next_legal_action(
             if not covering:
                 return "integrate --recompute"
             return "next-wave"
+        if collected:
+            return CollectReady.ACTION
         return "collect"
     return "pack"
 

@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.9
+
+After a successful `of collect` (`ok=N invalid=0 missing=0`), printed `next` is INTEGRATE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.8 notes.
+
+- **Reuse table (design-first):** `next_legal_action` already owns status/resume `next`. Collect already writes `session.last_cmd=collect` and validates residuals (`validate_residual_for_packet`). `integrated` is already `report.json`. The remaining gap is idle packets after a clean collect still selecting COLLECT (`#204`), so auto-continue re-runs the command it just finished.
+- **Reuse, not a receipt file:** `CollectReady` treats `last_cmd=collect` plus every packet residual present and valid as the INTEGRATE gate. Failed collect still stamps last_cmd, so residual completeness is required. Before collect and after integrate stay COLLECT / NEXT-WAVE. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach resume `next=INTEGRATE` after a successful collect — run `of integrate --wave N`; do not collect again.
+- **Proof:** `ResumeAfterIntegrate.test_next_is_integrate_after_successful_collect` (before=COLLECT; after collect=INTEGRATE on resume/status; after integrate=NEXT-WAVE). `test_next_stays_collect_when_collect_is_invalid`. `test_next_legal_action_handoff` collected flag. `SkillCollectNextIntegrate`. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.9; skill/alias description preview `v0.8.9 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.8 notes.
+
 ## 0.8.8
 
 `of issue --body-file` accepts documented leader HITL drafts under `.orderfield/work/scratch/leader/` (`ISSUE.md` or `ISSUE-*.md`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.7 notes.
