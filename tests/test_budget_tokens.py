@@ -441,6 +441,22 @@ class JsonStderrContract(unittest.TestCase):
 
     def test_live_spawn_json_stderr_is_all_events(self) -> None:
         pkt = self._pack("livej")
+        packet = json.loads(
+            (self.tmp / ".orderfield/waves/001/packets/livej.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        residual = json.loads(
+            (ROOT / "assets" / "fixtures" / "residual.done.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        residual["status"] = "blocked"
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         agent = self.tmp / "ok.sh"
         agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         agent.chmod(0o755)
@@ -456,7 +472,10 @@ class JsonStderrContract(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         events = parse_json_stderr(self, r.stderr)
-        self.assertTrue(any(e.get("event") == "spawn" and e.get("ok") for e in events))
+        spawn = [e for e in events if e.get("event") == "spawn"]
+        self.assertTrue(spawn, r.stderr)
+        self.assertTrue(spawn[-1].get("ok"), spawn[-1])
+        self.assertEqual(spawn[-1].get("outcome"), "ok")
         self.assertNotIn("spawn exit=", r.stderr)
 
     def test_nonzero_spawn_json_emits_spawn_exit_not_prose(self) -> None:
