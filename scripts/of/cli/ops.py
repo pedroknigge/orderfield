@@ -690,7 +690,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         ok=not failed,
         ok_field=not failed,
         ok_skills=not skill_skew,
-        leftover_worktrees=len(DoctorSkew.recorded_worktrees(root))
+        leftover_worktrees=len(DoctorSkew.orphaned_worktrees(root))
         if has_order
         else 0,
         audit_over=audit_warn,

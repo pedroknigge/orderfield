@@ -16,6 +16,7 @@ from of.field import (
     FIELD_SPEC_MD,
     PULSE_STALE_MINUTES,
     AuditPressure,
+    DoctorSkew,
     FieldSignal,
     NestedField,
     PackedAge,
@@ -1122,6 +1123,7 @@ def cmd_close(args: argparse.Namespace) -> None:
     checklist = CloseChecklist.document(root, order, state)
     AuditPressure.emit(root)
     PlanDocSync.emit(root, order)
+    DoctorSkew.emit_teardown(root)
     if getattr(args, "checklist", False):
         blocked = CloseChecklist.emit(checklist, machine=True)
         emit_event(
