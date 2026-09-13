@@ -1645,6 +1645,24 @@ class EpisodicRetention(unittest.TestCase):
         self.assertIn("dump", r.stdout)
         self.assertFalse((old_wave / "residuals" / "c1.json").exists())
 
+    def test_gc_and_retain_survive_field_learning_with_phase(self) -> None:
+        """#205: same-order field learning stamps phase; empty-field gc missed this."""
+        learned = run_of(self.tmp, "learn", "--field", "explore used a phase stamp")
+        self.assertEqual(learned.returncode, 0, learned.stderr)
+        items = [
+            load_json(path)
+            for path in (self.tmp / ".orderfield" / "learnings").glob("*.json")
+        ]
+        self.assertTrue(any(item.get("phase") == "explore" for item in items))
+        retained = run_of(self.tmp, "retain")
+        self.assertEqual(retained.returncode, 0, retained.stderr)
+        self.assertNotIn("NameError", retained.stderr)
+        self.assertIn("keep", retained.stdout)
+        for verb in (("gc",), ("gc", "--audit")):
+            ran = run_of(self.tmp, *verb)
+            self.assertEqual(ran.returncode, 0, ran.stderr)
+            self.assertNotIn("NameError", ran.stderr)
+
     def test_gc_dumps_logs_after_seven_days(self) -> None:
         logs = self.tmp / ".orderfield" / "waves" / "001" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
@@ -1767,6 +1785,41 @@ class EpisodicRetention(unittest.TestCase):
 
     def test_gc_is_mutating(self) -> None:
         self.assertIn("gc", of.MUTATING_COMMANDS)
+
+
+class LearningApplicablePhase(unittest.TestCase):
+    """#205: a learning with phase must resolve PHASES (empty-field gc missed this)."""
+
+    def test_retain_imports_field_phases(self) -> None:
+        self.assertEqual(of.retain.PHASES, of.field.PHASES)
+
+    def test_current_phase_stays_applicable(self) -> None:
+        ok, why = of.retain.learning_applicable(
+            {"kind": "field", "order_id": "ord_ab", "phase": "explore"},
+            {"id": "ord_ab", "phase": "explore"},
+        )
+        self.assertTrue(ok)
+        self.assertEqual(why, "applicable")
+
+    def test_closed_prior_phase_is_inapplicable(self) -> None:
+        ok, why = of.retain.learning_applicable(
+            {"kind": "field", "order_id": "ord_ab", "phase": "explore"},
+            {
+                "id": "ord_ab",
+                "phase": "build",
+                "done_when_closed_phases": ["explore"],
+            },
+        )
+        self.assertFalse(ok)
+        self.assertEqual(why, "inapplicable-phase")
+
+    def test_unknown_phase_string_does_not_crash(self) -> None:
+        ok, why = of.retain.learning_applicable(
+            {"kind": "field", "order_id": "ord_ab", "phase": "not-a-phase"},
+            {"id": "ord_ab", "phase": "explore"},
+        )
+        self.assertTrue(ok)
+        self.assertEqual(why, "applicable")
 
 
 class ArtifactMigrations(unittest.TestCase):

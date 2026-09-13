@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.10
+
+`of gc` and `of retain` no longer die with `NameError: name 'PHASES' is not defined` when a stored learning carries `phase`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.9 notes.
+
+- **Reuse table (design-first):** `PHASES` already lives on `of.field`. `learning_applicable` already owns the phase-applicability guard. `of learn --field` already stamps `phase` when ORDER.phase is in that list. `_plan_home_learnings` already calls the guard. The remaining gap is the import (`#205`). Empty-field gc stays green because the guard only fires when `phase` is present — that is why the bug survived.
+- **Reuse, not a helper pile:** add `PHASES` to the existing `from of.field import (...)` list in `retain.py`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix already teach `of gc --audit` before close. No new verb. Version lockstep only.
+- **Proof:** `LearningApplicablePhase` (import + current/closed/unknown phase). `EpisodicRetention.test_gc_and_retain_survive_field_learning_with_phase` (`of learn --field` stamps `phase`; `of retain` / `of gc` / `of gc --audit` stay 0). No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.10; skill/alias description preview `v0.8.10 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.9 notes.
+
 ## 0.8.9
 
 After a successful `of collect` (`ok=N invalid=0 missing=0`), printed `next` is INTEGRATE. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.8 notes.
