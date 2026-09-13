@@ -2018,7 +2018,7 @@ class DoctorWorktreeLeftover(unittest.TestCase):
         emit = inspect.getsource(of.DoctorSkew.emit_teardown)
         self.assertIn("print", emit)
         self.assertNotIn("subprocess", emit)
-        self.assertNotIn("worker-stop", emit)
+        self.assertNotIn("orchestration", emit)
 
 
 class QwenHarnessEnum(unittest.TestCase):
