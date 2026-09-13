@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.11
+
+After collect or abandon, opt-in of-worktrees and Orca Host panes must be torn down. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.10 notes.
+
+- **Reuse table (design-first):** `of worktree remove --child-id` already exists. `DoctorSkew.worktrees` already warns on leftover records. `SkillOrcaWorkerTeardown` already teaches `worker-stop` then `worker-release`. `SpawnRecord.flying` already names settled vs in-flight. The remaining gap is Host project panes (`#210`): `worker-stop` closes only the coordinator-owned agent terminal; current `orca` CLI tears down Host rows with `orca worktree rm` and leftover tabs with `orca terminal close --tab`.
+- **Reuse, not a supervisor:** `DoctorSkew.orphaned_worktrees` warns only when a recorded tree's child is settled or gone. Successful `of collect` / `of unpack` / `of close` print `next of worktree remove --child-id` when a record remains. No new CLI / schema / process supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Kernel does not call `orca` or auto-kill panes.
+- **Skill drives the cut:** SKILL / `/of` / appendix / adapters / SLAVE teach collect/abandon teardown: stop+release, then `of worktree remove` if add was used, then `orca worktree rm` / `terminal close --tab` for Host. Prefer `--worktree current`.
+- **Proof:** `DoctorWorktreeLeftover` (flying recorded tree is not WARN; settled/unpacked is orphaned + collect/unpack `next`). `SkillOrcaWorkerTeardown` names `orca worktree rm` and `terminal close --tab`. C-045 extended. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.11; skill/alias description preview `v0.8.11 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.10 notes.
+
 ## 0.8.10
 
 `of gc` and `of retain` no longer die with `NameError: name 'PHASES' is not defined` when a stored learning carries `phase`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.9 notes.

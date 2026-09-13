@@ -276,9 +276,10 @@ Interactive `worker-start` is a start↔stop/release pair. The skill opens worke
 | `orca orchestration worker-start …` | after residual + `of collect`, or on abandon: `worker-stop --dispatch <id>` then `worker-release --dispatch <id>` |
 | settle / success | **release** (default). `worker-retain` only when the user asked to debug |
 | accounting | `orca orchestration worker-list` (succeeded + `terminal=retained` is a leak) |
-| `of worktree add` (opt-in) | `of worktree remove --child-id <id>` when the slice closes — `worker-stop` does not delete worktrees |
+| `of worktree add` (opt-in) | after collect or abandon: `of worktree remove --child-id <id>` — `worker-stop` does not delete worktrees or Host panes |
+| Orca-created child worktree (`--worktree new-child` / `orca worktree create`) | `orca worktree rm --worktree id:<repoId>::<path> --force` (current `orca` CLI). Leftover tabs: `orca terminal close --terminal <handle> --tab`. Prefer `--worktree current` |
 
-Never leave retained unless the user asked. `of doctor` may warn on leftover **recorded** `of worktree` entries. It does not poll Orca processes.
+Never leave retained unless the user asked. `of doctor` / close WARN when a recorded `of worktree` is orphaned vs a settled child. It does not poll Orca processes or close Host panes.
 
 Mapping:
 
@@ -417,7 +418,7 @@ Default: every child in the same repo sees `.orderfield/` (shared field, scratch
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree.
 
-When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Opt-in helper: `of worktree add --child-id <id>` creates a detached worktree outside the project; `of worktree remove` drops it. Spawn does not create worktrees. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.
+When the leader is also working in the same git repo, slaves use their own `git worktree` (or equivalent), not the leader's dirty tree. Opt-in helper: `of worktree add --child-id <id>` creates a detached worktree outside the project; `of worktree remove --child-id <id>` drops it after collect or abandon. Spawn does not create worktrees. Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field. Install inside the worktree (`pnpm install --frozen-lockfile` or the repo's equivalent). Remove the worktree when the slice closes. An Orca Host grey project row is a leftover Orca worktree: `orca worktree rm --worktree id:<repoId>::<path> --force` (verified against current `orca` CLI; `worker-stop` / `worker-release` close only the coordinator-owned agent terminal). Leftover tabs: `orca terminal close --terminal <handle> --tab`. Prefer `--worktree current` unless isolation is required. If **all** children need this, put it in `ORDER.constraints` via `of patch --constraints-add`, not in every `--slice`.
 
 ## Phasing and PATH
 

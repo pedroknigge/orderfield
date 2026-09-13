@@ -30,7 +30,7 @@ If the leader is also working in the same git repo:
 - Use your own `git worktree` (or equivalent). Do not work in the leader's dirty tree.
 - Do not symlink the leader's `node_modules` (or other toolchain) into the worktree — that measures the leader's pre-refactor deps, not the field.
 - Install inside the worktree (`pnpm install --frozen-lockfile` or this repo's equivalent).
-- Remove the worktree when the slice closes. The leader (not you) stops and releases Orca workers started for the slice. `worker-stop` does not delete this worktree — you still remove it.
+- Remove the worktree when the slice closes. The leader (not you) stops and releases Orca workers started for the slice, then closes leftover Host panes (`orca worktree rm` / `terminal close --tab`). `worker-stop` does not delete this worktree or Host rows — you still remove the of-worktree.
 
 If **all** children need this, it belongs in `ORDER.constraints` (`of patch --constraints-add`), not pasted into every `--slice`. The Orca leader still `worker-stop`s then `worker-release`s dispatches it started; that is not your residual.
 

@@ -1884,7 +1884,7 @@ class DoctorPlanDocSync(unittest.TestCase):
 
 
 class DoctorWorktreeLeftover(unittest.TestCase):
-    """Leftover of-worktree records are doctor WARN. No Orca process poll."""
+    """Orphaned of-worktrees vs settled children are doctor WARN. No Orca poll."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-wt-"))
@@ -1895,6 +1895,20 @@ class DoctorWorktreeLeftover(unittest.TestCase):
     def _doctor(self) -> subprocess.CompletedProcess[str]:
         return run_of(self.tmp, "doctor", extra_env={"HOME": str(self.home)})
 
+    def _record(self, child_id: str = "c1") -> None:
+        of.save_worktrees(
+            self.tmp,
+            {
+                "trees": {
+                    child_id: {
+                        "path": f"/tmp/of-{child_id}",
+                        "added_at": "2026-09-09T00:00:00Z",
+                        "head": "deadbeef",
+                    }
+                }
+            },
+        )
+
     def test_recorded_worktrees_are_advisory_warn(self) -> None:
         init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(init.returncode, 0, init.stderr)
@@ -1902,44 +1916,109 @@ class DoctorWorktreeLeftover(unittest.TestCase):
         self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
         self.assertIn("doctor        ok", clean.stdout)
         self.assertNotIn("worktrees     ", clean.stdout)
-        of.save_worktrees(
-            self.tmp,
-            {
-                "trees": {
-                    "c1": {
-                        "path": "/tmp/of-c1",
-                        "added_at": "2026-09-09T00:00:00Z",
-                        "head": "deadbeef",
-                    }
-                }
-            },
-        )
+        self._record()
         lines, warn = of.DoctorSkew.worktrees(self.tmp)
         self.assertTrue(warn)
         joined = "\n".join(lines)
-        self.assertIn("1 recorded", joined)
+        self.assertIn("1 orphaned", joined)
         self.assertIn("c1", joined)
-        self.assertIn("of worktree list", joined)
+        self.assertIn("of worktree remove --child-id", joined)
         self.assertIn("not a process manager", joined)
         r = self._doctor()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("doctor        WARN", r.stdout)
-        self.assertIn("worktrees     1 recorded", r.stdout)
+        self.assertIn("worktrees     1 orphaned", r.stdout)
         self.assertIn("c1", r.stdout)
         self.assertIn("not a process manager", r.stdout)
         self.assertNotIn("doctor        FAIL", r.stdout)
         self.assertNotIn("worker-stop", r.stdout)
         self.assertNotIn("orca orchestration", r.stdout)
 
+    def test_flying_recorded_worktree_is_not_orphaned(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self._record("c1")
+        self.assertEqual(of.DoctorSkew.orphaned_worktrees(self.tmp), [])
+        lines, warn = of.DoctorSkew.worktrees(self.tmp)
+        self.assertFalse(warn)
+        self.assertEqual(lines, [])
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("worktrees     ", r.stdout)
+        self.assertIn("doctor        ok", r.stdout)
+
+    def test_settled_recorded_worktree_is_orphaned(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "c1")
+        self._record("c1")
+        self.assertEqual(of.DoctorSkew.orphaned_worktrees(self.tmp), ["c1"])
+        collect = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collect.returncode, 0, collect.stderr)
+        self.assertIn("next         of worktree remove --child-id c1", collect.stdout)
+        self.assertIn("Orca Host: orca worktree rm", collect.stdout)
+        self.assertIn("not a supervisor", collect.stdout)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn("worktrees     1 orphaned", r.stdout)
+
+    def test_unpack_prints_worktree_remove(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self._record("c1")
+        unpacked = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertEqual(unpacked.returncode, 0, unpacked.stderr)
+        self.assertIn("next         of worktree remove --child-id c1", unpacked.stdout)
+        self.assertIn("Orca Host: orca worktree rm", unpacked.stdout)
+
     def test_doctor_does_not_poll_orca_binaries(self) -> None:
         import inspect
 
         body = inspect.getsource(of.DoctorSkew.worktrees)
         body += inspect.getsource(of.DoctorSkew.recorded_worktrees)
+        body += inspect.getsource(of.DoctorSkew.orphaned_worktrees)
         self.assertIn("load_worktrees", body)
         self.assertNotIn("orca", body.casefold())
         self.assertNotIn("worker-list", body)
         self.assertNotIn("subprocess", body)
+        emit = inspect.getsource(of.DoctorSkew.emit_teardown)
+        self.assertIn("print", emit)
+        self.assertNotIn("subprocess", emit)
+        self.assertNotIn("worker-stop", emit)
 
 
 class QwenHarnessEnum(unittest.TestCase):
