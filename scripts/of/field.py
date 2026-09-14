@@ -3566,19 +3566,71 @@ class DoctorSkew:
         return sorted(str(cid) for cid in trees if str(cid).strip())
 
     @staticmethod
-    def worktrees(root: Path) -> tuple[list[str], bool]:
-        """Leftover of-worktree records. Advisory; not a host process poll."""
+    def orphaned_worktrees(root: Path) -> list[str]:
+        """Recorded of-worktrees whose children are settled or gone.
+
+        Flying children (started-only spawn or residual MISSING) keep a
+        recorded tree on purpose. Advisory; not a host process poll.
+        """
         ids = DoctorSkew.recorded_worktrees(root)
+        if not ids:
+            return []
+        _wave, packets = DoctorSkew.wave_packets(field_home(root))
+        by_id = {
+            str(pkt.get("child_id") or "").strip(): pkt
+            for pkt in packets
+            if str(pkt.get("child_id") or "").strip()
+        }
+        orphaned: list[str] = []
+        for cid in ids:
+            pkt = by_id.get(cid)
+            if pkt is None or not SpawnRecord.flying(root, pkt):
+                orphaned.append(cid)
+        return orphaned
+
+    @staticmethod
+    def worktrees(root: Path) -> tuple[list[str], bool]:
+        """Orphaned of-worktree records vs settled children. Advisory."""
+        ids = DoctorSkew.orphaned_worktrees(root)
         if not ids:
             return [], False
         shown = ", ".join(ids[:8])
         extra = f" +{len(ids) - 8}" if len(ids) > 8 else ""
         return [
-            f"  worktrees     {len(ids)} recorded  "
-            f"({shown}{extra}; of worktree list; remove when slice closes)",
-            "  note          leftover of-worktrees are advisory "
-            "(not field FAIL; not a process manager)",
+            f"  worktrees     {len(ids)} orphaned  "
+            f"({shown}{extra}; of worktree remove --child-id <id>)",
+            "  note          leftover of-worktrees after settle are advisory "
+            "(not field FAIL; not a process manager; not a host poll)",
         ], True
+
+    @staticmethod
+    def emit_teardown(
+        root: Path, child_ids: list[str] | None = None
+    ) -> bool:
+        """Print of-worktree remove next after collect/abandon/close.
+
+        Teaching only. Does not remove trees, poll a host, or kill panes.
+        """
+        recorded = set(DoctorSkew.recorded_worktrees(root))
+        if child_ids is None:
+            ids = DoctorSkew.orphaned_worktrees(root)
+        else:
+            ids = [
+                cid
+                for cid in child_ids
+                if str(cid).strip() and str(cid).strip() in recorded
+            ]
+        if not ids:
+            return False
+        for cid in ids:
+            print(f"next         of worktree remove --child-id {cid}")
+        print(
+            "note         leftover of-worktree after settle; "
+            "worker-stop does not delete it or Host panes; "
+            "Orca Host: orca worktree rm --worktree id:<repo>::<path> "
+            "--force (not a supervisor)"
+        )
+        return True
 
     @staticmethod
     def field(

@@ -177,7 +177,7 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Symptom:** leader and child share a dirty tree.
 
-**Recover:** `of worktree add --child-id <id>` creates a **detached** worktree *outside* the project (git refuses nested worktrees). It does not spawn, kill, or supervise the child. Install inside that worktree; do not symlink `node_modules` or `.orderfield`. `of worktree remove --child-id <id>` drops it when the slice closes. Spawn never calls this helper. `of doctor` warns on leftover recorded entries (advisory; not FAIL; not an Orca process poll).
+**Recover:** `of worktree add --child-id <id>` creates a **detached** worktree *outside* the project (git refuses nested worktrees). It does not spawn, kill, or supervise the child. Install inside that worktree; do not symlink `node_modules` or `.orderfield`. After collect or abandon, `of worktree remove --child-id <id>` drops it. Spawn never calls this helper. `of doctor` / close WARN when a recorded entry is orphaned vs a settled child (advisory; not FAIL; not an Orca process poll).
 
 ## Orca worker retain leak
 
@@ -185,7 +185,7 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Meaning:** The interactive skill taught `worker-start` without teardown. `of spawn --adapter orca` is one-shot `task-create`, not this leak. `worker-stop` does not delete worktrees or tabs.
 
-**Recover:** After residual + `of collect` (and on abandon): `orca orchestration worker-stop --dispatch <id>` then `orca orchestration worker-release --dispatch <id>`. Default is release. Retain only when debugging. If `of worktree add` was used, `of worktree remove --child-id <id>`. Orderfield does not auto-kill Orca processes. If an OrcaDev project sidebar stays green after release, that is upstream.
+**Recover:** After residual + `of collect` (and on abandon): `orca orchestration worker-stop --dispatch <id>` then `orca orchestration worker-release --dispatch <id>`. Default is release. Retain only when debugging. If `of worktree add` was used, `of worktree remove --child-id <id>`. Host project panes survive stop/release — `orca worktree rm --worktree id:<repoId>::<path> --force` for an Orca-created child worktree; leftover tabs: `orca terminal close --terminal <handle> --tab`. Prefer `--worktree current`. Orderfield does not auto-kill Orca processes. If an OrcaDev project sidebar stays green after `worktree rm`, that is upstream.
 
 ## SPEC / `PROMPT.md` / hash mismatch
 

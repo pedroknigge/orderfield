@@ -40,6 +40,7 @@ class SkillSurface:
         "fresh-context review packet",
         "worker-stop",
         "worker-release",
+        "orca worktree rm",
         "**Stay-on-the-run.**",
     )
 

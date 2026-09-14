@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.10 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.11 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release+Host/worktree rm after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.10"
+  version: "0.8.11"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -52,7 +52,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | empty current wave (no packets), `done_when` closed | `of phase <next>` — nothing to integrate; do not `--force`. Packets still require integrate |
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` plus `--add-dir <field-home>` and the exact Git common dir. Missing / malformed / non-Git records refuse before launch; remove then re-add the child worktree. No record → existing argv. |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
-| after Orca `worker-start` / `of worktree add` | MUST `worker-stop` then `worker-release` after collect or abandon; never leave retained unless asked; `of worktree remove` if add was used. `worker-list` accounts. Not a supervisor. |
+| after Orca `worker-start` / `of worktree add` | After collect/abandon: MUST `worker-stop` then `worker-release`; MUST `of worktree remove --child-id` if add was used. Host panes: `orca worktree rm` (+ `terminal close --tab`). Prefer `--worktree current`. Not a supervisor. |
 | after wave, before close | **must ask** consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. Not a new close gate. Not after ordinary integrate. Not `of merge`. C-080 stays Partial. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
@@ -129,6 +129,6 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 
-**Read the appendix** for steps 0–7 (resume, field or nothing, cut, pack, spawn, pulse, collect/integrate, contrast, patch, phase), Forbidden, Roles, Where things live, and interactive-harness transport (Orca `worker-start` ↔ `worker-stop` / `worker-release`).
+**Read the appendix** for steps 0–7, Forbidden, Roles, Where things live, and Orca start↔stop/release plus Host `worktree rm`.
 
 Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, sibling fields, and close-is-proof walkthroughs live in the appendix.

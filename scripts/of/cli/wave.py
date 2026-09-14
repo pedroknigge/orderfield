@@ -61,6 +61,7 @@ from of.field import (
     spec_path,
     utc_now,
     wave_dir,
+    DoctorSkew,
     SpawnRecord,
 )
 
@@ -754,6 +755,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     max_c = int(order.get("caps", {}).get("max_children", 4))
     print(f"unpacked {child_id} wave={wave}")
     print(f"children_spawned={state['children_spawned']} / {max_c}")
+    DoctorSkew.emit_teardown(root, [child_id])
 
 
 def cmd_render(args: argparse.Namespace) -> None:
@@ -1214,4 +1216,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
     print(f"wave={wave} ok={ok} invalid={bad} missing={lost} total={len(packets)}")
     if bad or lost:
         raise SystemExit(2)
+    DoctorSkew.emit_teardown(
+        root,
+        [str(pkt.get("child_id") or "").strip() for pkt in packets],
+    )
 
