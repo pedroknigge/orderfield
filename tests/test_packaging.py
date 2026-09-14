@@ -2024,6 +2024,30 @@ class SkillContractSurface(unittest.TestCase):
         self.assertIn("contractsurface", appendix_fold.replace(" ", ""))
 
 
+class SkillRequirementSurface(unittest.TestCase):
+    """SKILL teaches of spec --surface ID reclassify; not --supersede."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_reclassify(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of spec --surface internal", table)
+        self.assertIn("never public", table)
+        self.assertIn("supersede", table)
+        alias_fold = alias.casefold()
+        self.assertIn("of spec --surface internal", alias_fold)
+        self.assertIn("never public", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("of spec --surface internal", appendix_fold)
+        self.assertIn("never public", appendix_fold)
+        self.assertIn("supersede", appendix_fold)
+
+
 class SkillLearnLengthAdvisory(unittest.TestCase):
     """SKILL teaches of learn length is advisory like pack --slice."""
 

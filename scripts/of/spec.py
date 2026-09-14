@@ -677,6 +677,58 @@ def requirement_surface(item: dict[str, Any]) -> str:
     return "contract"
 
 
+class RequirementSurface:
+    """Leader-set public vs internal close surface. Default is contract.
+
+    ``requirement_surface`` is the oracle. This class owns the audited
+    reclassify path (``of spec --surface internal ID``) so a mis-declared
+    default-contract ID can be corrected without ``--supersede``. WAL
+    records REQUIREMENTS.json. ``ContractSurface`` still cannot hide.
+    Not a new verb. Not ``of gate``.
+    """
+
+    VALUES = frozenset({"contract", "internal"})
+    NEED_ID = (
+        "--surface requires --add ID --text … or "
+        "of spec --surface {contract,internal} ID"
+    )
+    IDS_ONLY = "requirement IDs are only valid with --surface {contract,internal}"
+    ADD_NO_IDS = (
+        "do not pass IDs with --add; --surface applies to the new requirement"
+    )
+    CANNOT_HIDE = (
+        "{id} is a public-surface shape (ContractSurface); "
+        "--surface internal cannot hide it"
+    )
+
+    @staticmethod
+    def parse(raw: Any) -> str:
+        wanted = str(raw or "").strip().lower()
+        if wanted in RequirementSurface.VALUES:
+            return wanted
+        return ""
+
+    @staticmethod
+    def apply(item: dict[str, Any], wanted: str) -> tuple[str, str, bool]:
+        """Set explicit surface. Returns (old, new, wrote). Dies if hide."""
+        if wanted not in RequirementSurface.VALUES:
+            die("of spec --surface expects contract or internal")
+        rid = str(item.get("id") or "")
+        old = requirement_surface(item)
+        probe = dict(item)
+        probe["surface"] = wanted
+        new = requirement_surface(probe)
+        if wanted == "internal" and new != "internal":
+            die(RequirementSurface.CANNOT_HIDE.format(id=rid))
+        if old == new and str(item.get("surface") or "") == wanted:
+            return old, new, False
+        if old == new:
+            return old, new, False
+        item["surface"] = wanted
+        item["surface"] = requirement_surface(item)
+        return old, requirement_surface(item), True
+
+
 def requirement_close_ok(item: dict[str, Any]) -> bool:
     """True when this binding requirement may participate in SPEC close."""
     status = str(item.get("status") or "unowned")

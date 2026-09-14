@@ -79,6 +79,7 @@ from of.spec import (
     requirement_is_pair,
     requirement_source_cite,
     requirement_surface,
+    RequirementSurface,
     save_requirements,
     snapshot_spec,
     SpecDiff,
@@ -136,6 +137,19 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             + "/".join(ledger_edits)
             + "; amend or revise first, then edit requirements in a second command"
         )
+    surface_arg = RequirementSurface.parse(getattr(args, "surface", None))
+    req_ids = [
+        str(x).strip()
+        for x in (getattr(args, "req_ids", None) or [])
+        if str(x).strip()
+    ]
+    add_id_early = getattr(args, "add", None)
+    if req_ids and not surface_arg:
+        die(RequirementSurface.IDS_ONLY)
+    if surface_arg and add_id_early and req_ids:
+        die(RequirementSurface.ADD_NO_IDS)
+    if surface_arg and not add_id_early and not req_ids:
+        die(RequirementSurface.NEED_ID)
     ingest_source: Path | None = None
     if amend_file or amend_text:
         if amend_file:
@@ -301,6 +315,18 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             print(f"spec        bound {rid} in {FIELD_SPEC_MD}")
         data.setdefault("requirements", []).append(added)
         changed = True
+    if surface_arg and not add_id:
+        for raw_id in req_ids:
+            rid = require_req_id(raw_id)
+            item = find_requirement(data, rid)
+            if item is None:
+                die(f"unknown requirement {rid}")
+            old, new, wrote = RequirementSurface.apply(item, surface_arg)
+            if wrote:
+                changed = True
+                print(f"surface     {rid} {old} -> {new}")
+            else:
+                print(f"surface     {rid} {new} (unchanged)")
     both_sides = bool(getattr(args, "both_sides", False))
     for rid in getattr(args, "verified_internal", None) or []:
         item = find_requirement(data, require_req_id(rid))
@@ -427,7 +453,8 @@ class ContrastReport:
 
     NEXT_BLOCKED = (
         "pack gaps, or of spec --verified-contract ID [--both-sides] "
-        "after exercising the public surface (not only unit tests)"
+        "after exercising the public surface (not only unit tests), "
+        "or of spec --surface internal ID when the requirement was never public"
     )
     NEXT_RESOLVED = "done belongs to the slice; closed belongs to the SPEC (of close)"
     SKIP_LINE = "CLOSE SKIP (no SPEC; legacy field)"
@@ -624,7 +651,8 @@ class ContrastDiff:
             "{id} is unverified. Internal close is of spec --verified-internal {id}."
         ),
         "VERIFIED_INTERNAL": (
-            "{id} is VERIFIED_INTERNAL only. That is not the public contract."
+            "{id} is VERIFIED_INTERNAL only. That is not the public contract. "
+            "If it was never public: of spec --surface internal {id}."
         ),
         "PAIR": (
             "{id} is pair-shaped; both sides are unchecked. "
@@ -3181,6 +3209,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillWebhookReplayPair",
     "tests.test_kernel.ContractSurfaceGate",
     "tests.test_kernel.SkillContractSurface",
+    "tests.test_kernel.RequirementSurfaceReclassify",
+    "tests.test_kernel.SkillRequirementSurface",
     "tests.test_kernel.CloseEvidenceGate",
     "tests.test_kernel.SkillCloseEvidence",
     "tests.test_kernel.SkillLivingMap",

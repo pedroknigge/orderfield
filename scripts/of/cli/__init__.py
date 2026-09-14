@@ -957,7 +957,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--surface",
         choices=("contract", "internal"),
-        help="with --add: public surface vs internal-only",
+        help="with --add, or ID: public surface vs internal-only (reclassify)",
+    )
+    s.add_argument(
+        "req_ids",
+        nargs="*",
+        metavar="ID",
+        help="requirement IDs to reclassify with --surface (without --add)",
     )
     s.add_argument(
         "--failed",

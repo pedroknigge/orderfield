@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.11 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release+Host/worktree rm after collect. Claims ≤98% honest. Harness name alone is not a trigger."
+description: "v0.8.12 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release+Host/worktree rm after collect. Claims ≤98% honest. Harness name alone is not a trigger."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.11"
+  version: "0.8.12"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -57,6 +57,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
+| never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score matches ≤98%; no theater on SKILL / `/of` / README. In-repo lab: `of eval --strict --kernel`. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
