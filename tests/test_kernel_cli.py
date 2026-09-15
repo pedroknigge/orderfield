@@ -2021,6 +2021,132 @@ class DoctorWorktreeLeftover(unittest.TestCase):
         self.assertNotIn("orchestration", emit)
 
 
+class DoctorOverBudgetSpawn(unittest.TestCase):
+    """#213: doctor WARNs over-budget open spawn. Not a supervisor."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-ob-"))
+        self.home = Path(tempfile.mkdtemp(prefix="of-doctor-ob-home-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def _doctor(self) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, "doctor", extra_env={"HOME": str(self.home)})
+
+    def _plant(self, child_id: str = "late", **extra: object) -> None:
+        dest = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "spawns"
+            / f"{child_id}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        data: dict[str, object] = {
+            "child_id": child_id,
+            "started_at": "2018-01-01T00:00:00Z",
+        }
+        data.update(extra)
+        dest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+    def test_doctor_warns_dead_without_metadata(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "late",
+            "--seconds",
+            "60",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self._plant("late")
+        lines, warn = of.DoctorSkew.over_budget(self.tmp)
+        self.assertTrue(warn)
+        joined = "\n".join(lines)
+        self.assertIn(of.SpawnRecord.OVER_BUDGET, joined)
+        self.assertIn(of.SpawnRecord.DEAD_WITHOUT_METADATA, joined)
+        self.assertIn("pid=none", joined)
+        self.assertIn(of.DoctorSkew.OVER_NOTE, joined)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn(of.SpawnRecord.DEAD_WITHOUT_METADATA, r.stdout)
+        self.assertIn("not a supervisor", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+
+    def test_doctor_names_unbounded_live_pid(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "late",
+            "--seconds",
+            "60",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self._plant("late", pid=os.getpid())
+        lines, warn = of.DoctorSkew.over_budget(self.tmp)
+        self.assertTrue(warn)
+        joined = "\n".join(lines)
+        self.assertIn(of.SpawnRecord.UNBOUNDED, joined)
+        self.assertIn(f"pid={os.getpid()}", joined)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn(of.SpawnRecord.UNBOUNDED, r.stdout)
+
+    def test_settled_spawn_is_not_over_budget(self) -> None:
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "late",
+            "--seconds",
+            "60",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self._plant(
+            "late",
+            outcome="ok",
+            ended_at="2018-01-01T00:02:00Z",
+        )
+        lines, warn = of.DoctorSkew.over_budget(self.tmp)
+        self.assertFalse(warn)
+        self.assertEqual(lines, [])
+
+    def test_doctor_does_not_kill_or_watch(self) -> None:
+        import inspect
+
+        body = inspect.getsource(of.DoctorSkew.over_budget)
+        self.assertIn("SpawnRecord.over_budget", body)
+        self.assertNotIn("SIGKILL", body)
+        self.assertNotIn("terminate", body)
+        self.assertNotIn("watchdog", body.casefold())
+        spawn = inspect.getsource(of.SpawnRecord.over_budget)
+        self.assertIn("Signal", spawn)
+        self.assertNotIn("SIGKILL", spawn)
+        self.assertNotIn("os.killpg", spawn)
+
+
 class QwenHarnessEnum(unittest.TestCase):
     def test_order_schema_harness_enum_matches_adapter_order(self) -> None:
         enum = load_json(ORDER_SCHEMA)["properties"]["harness"]["enum"]

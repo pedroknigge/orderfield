@@ -58,7 +58,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |
 | `operator_action` | Spawn selected `OF_TRUST=yolo` and/or `OF_SPAWN_ENV=inherit` (audited operator action; not a silent default) |
-| `spawn_in_flight` | `--force-spawn` overrides a started-only spawn record |
+| `spawn_in_flight` | `--force-spawn` overrides a started-only spawn whose recorded pid is not running |
 | `spawn_exit` | Child process nonzero exit (`exit` field) |
 | `process_kill` | Process-group / child kill hit `OSError` (not already-gone) |
 | `cleanup` | Scratch `rmdir` hit `OSError` other than empty/missing |

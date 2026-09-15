@@ -758,7 +758,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--force-spawn",
         action="store_true",
-        help="bypass spawn_blocked after escalate_up",
+        help=(
+            "bypass spawn_blocked after escalate_up; override a started-only "
+            "spawn only when its recorded pid is not running"
+        ),
     )
     s.add_argument(
         "--force-tool",

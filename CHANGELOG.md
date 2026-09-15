@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.13
+
+`--force-spawn` can no longer clone a LIVE child. The spawn record stores pid, and the flag refuses while that process is running. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.12 notes.
+
+- **Reuse table (design-first):** `SpawnRecord` already owns `waves/<n>/spawns/<id>.json`, `started_at`, and `unsettled` / `flying`. `cmd_spawn` already refuses a second start unless `--force-spawn`. `_proc_starttime` / the LEARN-002 spawn registry already exist for pid reuse. `DoctorSkew` already composes advisory WARN (worktrees, audit). The remaining gap is no pid on the spawn record, so the leader cannot test "dead" before overriding (`#213`).
+- **Reuse, not a supervisor:** `SpawnRecord.stamp_pid` writes `pid` + `starttime` at Popen. `SpawnRecord.live_pid` is signal-0 plus starttime (registry fallback only when pid is missing). `--force-spawn` refuses a live pid; dead or missing-and-not-found-live may override. `DoctorSkew.over_budget` / status `over_budget=` name an open spawn past `started_at + budget.seconds` as `unbounded` vs `dead-without-metadata`. No kill, no watchdog, no new CLI / schema / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach the guarded force-spawn path and the over-budget signal. The in-flight refuse no longer invites `--force-spawn` as the remedy for an unverifiable dead child.
+- **Proof:** `SpawnPidLiveness` (record stores pid; force-spawn refuses live / allows dead / allows missing-and-gone; status names over_budget). `DoctorOverBudgetSpawn` (WARN `dead-without-metadata` / `unbounded`; settled is silent; no SIGKILL). `SkillForceSpawnPid`. C-152 extended. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.13; skill/alias description preview `v0.8.13 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.12 notes.
+
 ## 0.8.12
 
 A requirement's surface can be corrected after `--add`. `--supersede` is not the reclassify path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.11 notes.
