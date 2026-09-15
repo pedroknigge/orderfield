@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.14
+
+`--owns-path` does not isolate git HEAD or the index. A second implementer in the same wave without a recorded worktree is no longer silent. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.13 notes.
+
+- **Reuse table (design-first):** `cmd_pack` already refuses overlapping `--owns-path` and requires `--owns-path` for a second implementer. `load_worktrees` / `of worktree add --child-id` already record isolation. `emit_wave_warning` already prints pack notes (`owns_path_prior`). The remaining gap is two implementers with disjoint files sharing one HEAD/index (`#214`).
+- **Reuse, not a supervisor:** `SharedWorktree` warns `shared_worktree` when a second `--role implementer` is packed and any named implementer lacks a recorded worktree. Packet is still written (series stays legal). Recorded trees for every named implementer stay quiet. No new CLI / schema / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Spawn branch recording stayed optional and was not added.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach two worktrees or series next to the multi-implementer example. Disjoint `--owns-path` is not enough.
+- **Proof:** `SharedWorktreePack` (second implementer warns; recorded trees skip; first implementer silent; packet still written). `SkillSharedWorktree`. C-050 extended. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.14; skill/alias description preview `v0.8.14 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.13 notes.
+
 ## 0.8.13
 
 `--force-spawn` can no longer clone a LIVE child. The spawn record stores pid, and the flag refuses while that process is running. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.12 notes.

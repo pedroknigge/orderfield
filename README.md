@@ -213,8 +213,9 @@ of init --mission "decidable architecture for a pricing tool" --phase explore \
 of spec --add CLI-001 --surface contract --text "the CLI prints a price table"
 of pack --slice "map pricing models, do not choose the phase" --role explorer \
   --child-id explorer --owns-requirement CLI-001
-# second implementer in the same wave needs disjoint --owns-path
+# second implementer: disjoint --owns-path is not enough (one HEAD/index)
 # of pack --role implementer --owns-path src/http.py --owns-requirement HTTP-001
+# of worktree add --child-id <id> for each, or run them in series
 of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
 # no OF_AGENT set -> handoff mode: paste .orderfield/waves/001/prompts/explorer.md into any agent.
 # The child writes the residual, echoing the packet identity. Simulated here:
@@ -363,7 +364,7 @@ Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process 
 | `wave` | `list` / `show [N]`: multi-wave roster; `*` is `state.wave`. Read-path only |
 | `detect` | list harness CLIs on PATH (present/missing; PATH≠auth) |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies; disjoint paths are not a second worktree — pack warns `shared_worktree` unless each implementer has `of worktree add` or they run in series). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds `children_spawned` |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
