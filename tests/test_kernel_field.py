@@ -4161,14 +4161,7 @@ class SpawnPidLiveness(unittest.TestCase):
             "--adapter",
             "generic",
             "--packet",
-            str(
-                self.tmp
-                / ".orderfield"
-                / "waves"
-                / "001"
-                / "packets"
-                / "pidchild.json"
-            ),
+            ".orderfield/waves/001/packets/pidchild.json",
             extra_env={"OF_AGENT": str(agent)},
         )
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -4184,16 +4177,13 @@ class SpawnPidLiveness(unittest.TestCase):
     def test_force_spawn_refuses_live_pid(self) -> None:
         self._pack("live")
         path = self._spawn_meta("live", pid=os.getpid())
-        pkt = (
-            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "live.json"
-        )
         r = run_of(
             self.tmp,
             "spawn",
             "--adapter",
             "generic",
             "--packet",
-            str(pkt),
+            ".orderfield/waves/001/packets/live.json",
             "--force-spawn",
             extra_env={"OF_AGENT": str(self._agent())},
         )
@@ -4212,16 +4202,13 @@ class SpawnPidLiveness(unittest.TestCase):
         dead.kill()
         dead.wait(timeout=5)
         self._spawn_meta("gone", pid=pid)
-        pkt = (
-            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "gone.json"
-        )
         r = run_of(
             self.tmp,
             "spawn",
             "--adapter",
             "generic",
             "--packet",
-            str(pkt),
+            ".orderfield/waves/001/packets/gone.json",
             "--force-spawn",
             extra_env={"OF_AGENT": str(self._agent())},
         )
@@ -4234,21 +4221,13 @@ class SpawnPidLiveness(unittest.TestCase):
     def test_force_spawn_allows_missing_pid_when_gone(self) -> None:
         self._pack("orphan")
         self._spawn_meta("orphan")
-        pkt = (
-            self.tmp
-            / ".orderfield"
-            / "waves"
-            / "001"
-            / "packets"
-            / "orphan.json"
-        )
         blocked = run_of(
             self.tmp,
             "spawn",
             "--adapter",
             "generic",
             "--packet",
-            str(pkt),
+            ".orderfield/waves/001/packets/orphan.json",
             extra_env={"OF_AGENT": str(self._agent())},
         )
         self.assertNotEqual(blocked.returncode, 0)
@@ -4261,7 +4240,7 @@ class SpawnPidLiveness(unittest.TestCase):
             "--adapter",
             "generic",
             "--packet",
-            str(pkt),
+            ".orderfield/waves/001/packets/orphan.json",
             "--force-spawn",
             extra_env={"OF_AGENT": str(self._agent())},
         )
