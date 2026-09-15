@@ -3162,6 +3162,181 @@ class SpawnRecord:
 
         return packet_residual_missing(root, packet)
 
+    OVER_BUDGET = "over_budget"
+    UNBOUNDED = "unbounded"
+    DEAD_WITHOUT_METADATA = "dead-without-metadata"
+
+    @staticmethod
+    def pid_of(meta: dict[str, Any] | None) -> int | None:
+        if not isinstance(meta, dict):
+            return None
+        raw = meta.get("pid")
+        if raw is None or raw == "":
+            return None
+        try:
+            pid = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return pid if pid > 1 else None
+
+    @staticmethod
+    def starttime_of(meta: dict[str, Any] | None) -> str | None:
+        if not isinstance(meta, dict):
+            return None
+        raw = meta.get("starttime")
+        if raw is None:
+            return None
+        text = str(raw).strip()
+        return text or None
+
+    @staticmethod
+    def pid_label(meta: dict[str, Any] | None) -> str:
+        pid = SpawnRecord.pid_of(meta)
+        return str(pid) if pid is not None else "none"
+
+    @staticmethod
+    def proc_alive(pid: int, starttime: str | None = None) -> bool:
+        """Signal-0 plus starttime match. Not a supervisor; does not kill."""
+        try:
+            pid_n = int(pid)
+        except (TypeError, ValueError):
+            return False
+        if pid_n <= 1:
+            return False
+        try:
+            os.kill(pid_n, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            live_start = _proc_starttime(pid_n)
+            if (
+                starttime is not None
+                and live_start is not None
+                and str(live_start) != str(starttime)
+            ):
+                return False
+            return True
+        except OSError:
+            return False
+        live_start = _proc_starttime(pid_n)
+        if (
+            starttime is not None
+            and live_start is not None
+            and str(live_start) != str(starttime)
+        ):
+            return False
+        return True
+
+    @staticmethod
+    def registry_live_pid(child_id: str) -> int | None:
+        """Reuse LEARN-002 registry when the spawn record omitted pid."""
+        cid = str(child_id or "").strip()
+        if not cid:
+            return None
+        try:
+            items = _load_spawn_registry_unlocked(spawn_registry_path())
+        except OSError:
+            return None
+        for item in items:
+            if str(item.get("child_id") or "").strip() != cid:
+                continue
+            try:
+                pid = int(item.get("pid") or 0)
+            except (TypeError, ValueError):
+                continue
+            recorded = item.get("starttime")
+            start = str(recorded).strip() if recorded is not None else None
+            if SpawnRecord.proc_alive(pid, start or None):
+                return pid
+        return None
+
+    @staticmethod
+    def live_pid(meta: dict[str, Any] | None) -> int | None:
+        """Recorded pid if still that process; else registry for missing pid."""
+        pid = SpawnRecord.pid_of(meta)
+        if pid is not None:
+            if SpawnRecord.proc_alive(pid, SpawnRecord.starttime_of(meta)):
+                return pid
+            return None
+        if not isinstance(meta, dict):
+            return None
+        return SpawnRecord.registry_live_pid(str(meta.get("child_id") or ""))
+
+    @staticmethod
+    def stamp_pid(path: Path, meta: dict[str, Any], pid: int) -> None:
+        """Write pid + starttime onto started-only spawn meta. Not a schema."""
+        try:
+            pid_n = int(pid)
+        except (TypeError, ValueError):
+            return
+        if pid_n <= 1:
+            return
+        meta["pid"] = pid_n
+        start = _proc_starttime(pid_n)
+        if start is not None:
+            meta["starttime"] = start
+        dump_json(path, meta)
+
+    @staticmethod
+    def live_refuse_message(
+        child_id: str, meta: dict[str, Any], path: Path, live: int
+    ) -> str:
+        return (
+            f"{child_id} still has a live spawn pid={live} since "
+            f"{meta.get('started_at')} ({path}). "
+            "--force-spawn refuses while that process is running."
+        )
+
+    @staticmethod
+    def in_flight_message(
+        child_id: str, meta: dict[str, Any], path: Path
+    ) -> str:
+        return (
+            f"{child_id} already has a spawn in flight since "
+            f"{meta.get('started_at')} ({path}) "
+            f"pid={SpawnRecord.pid_label(meta)}. "
+            "Wait for it."
+        )
+
+    @staticmethod
+    def over_budget(
+        meta: dict[str, Any] | None,
+        packet: dict[str, Any],
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any] | None:
+        """Open spawn past started_at + budget.seconds. Signal, not a kill."""
+        if SpawnRecord.settled(meta) or not isinstance(meta, dict):
+            return None
+        if meta.get("dry_run"):
+            return None
+        started = parse_utc(meta.get("started_at"))
+        if started is None:
+            return None
+        try:
+            budget_s = int((packet.get("budget") or {}).get("seconds") or 0)
+        except (TypeError, ValueError):
+            budget_s = 0
+        if budget_s <= 0:
+            return None
+        clock = now if now is not None else time.time()
+        if clock < started + budget_s:
+            return None
+        live = SpawnRecord.live_pid(meta)
+        recorded = SpawnRecord.pid_of(meta)
+        kind = (
+            SpawnRecord.UNBOUNDED
+            if live is not None
+            else SpawnRecord.DEAD_WITHOUT_METADATA
+        )
+        return {
+            "child_id": str(meta.get("child_id") or packet.get("child_id") or "?"),
+            "kind": kind,
+            "pid": live if live is not None else recorded,
+            "budget_s": budget_s,
+            "age_s": int(clock - started),
+        }
+
 
 class FieldSignal:
     """Read-path honesty: empty waves + age is abandoned, not a fake deliver.
@@ -3602,6 +3777,44 @@ class DoctorSkew:
             "  note          leftover of-worktrees after settle are advisory "
             "(not field FAIL; not a process manager; not a host poll)",
         ], True
+
+    OVER_NOTE = (
+        "over-budget open spawn is advisory "
+        "(not a supervisor; kernel does not kill)"
+    )
+
+    @staticmethod
+    def over_budget(
+        root: Path, *, now: float | None = None
+    ) -> tuple[list[str], bool]:
+        """Open spawn past started_at + budget.seconds. Advisory; not FAIL."""
+        from of.pack import packed_children
+
+        try:
+            state = load_state(root)
+            wave = int(state.get("wave") or 1)
+        except (OSError, SystemExit, TypeError, ValueError):
+            return [], False
+        packets = packed_children(root, wave)
+        lines: list[str] = []
+        for pkt in packets:
+            row = SpawnRecord.over_budget(
+                SpawnRecord.load(root, pkt), pkt, now=now
+            )
+            if row is None:
+                continue
+            pid = row.get("pid")
+            pid_s = "none" if pid is None else str(pid)
+            age = fmt_age(float(row.get("age_s") or 0))
+            lines.append(
+                f"  spawn         {row['child_id']}  {SpawnRecord.OVER_BUDGET}  "
+                f"{row['kind']}  pid={pid_s}  started {age} ago "
+                f"budget={row['budget_s']}s"
+            )
+        if not lines:
+            return [], False
+        lines.append(f"  note          {DoctorSkew.OVER_NOTE}")
+        return lines, True
 
     @staticmethod
     def emit_teardown(

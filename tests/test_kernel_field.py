@@ -4081,5 +4081,232 @@ class SpawnEndedWithoutResidual(unittest.TestCase):
         self.assertNotIn("ALIVE", status.stdout)
 
 
+class SpawnPidLiveness(unittest.TestCase):
+    """#213: spawn record stores pid; force-spawn refuses a live process."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-spawn-pid-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "spawn pid liveness",
+            "--phase",
+            "build",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str = "worker", seconds: int = 600) -> dict:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "record pid then refuse a live force-spawn",
+            "--role",
+            "explorer",
+            "--child-id",
+            child_id,
+            "--seconds",
+            str(seconds),
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return load_json(
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "packets"
+            / f"{child_id}.json"
+        )
+
+    def _agent(self) -> Path:
+        agent = self.tmp / "ok.sh"
+        agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        agent.chmod(0o755)
+        return agent
+
+    def _spawn_meta(self, child_id: str, **extra: object) -> Path:
+        dest = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "spawns"
+            / f"{child_id}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        data = {"child_id": child_id, "started_at": of.utc_now()}
+        data.update(extra)
+        dest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        return dest
+
+    def test_proc_alive_self_and_dead(self) -> None:
+        self.assertTrue(of.SpawnRecord.proc_alive(os.getpid()))
+        dead = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"]
+        )
+        pid = int(dead.pid)
+        dead.kill()
+        dead.wait(timeout=5)
+        self.assertFalse(of.SpawnRecord.proc_alive(pid))
+        self.assertFalse(of.SpawnRecord.proc_alive(1))
+
+    def test_spawn_record_stores_pid(self) -> None:
+        pkt = self._pack("pidchild")
+        agent = self._agent()
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            str(
+                self.tmp
+                / ".orderfield"
+                / "waves"
+                / "001"
+                / "packets"
+                / "pidchild.json"
+            ),
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        meta = of.SpawnRecord.load(self.tmp, pkt)
+        self.assertIsNotNone(meta)
+        assert meta is not None
+        pid = of.SpawnRecord.pid_of(meta)
+        self.assertIsNotNone(pid)
+        assert pid is not None
+        self.assertGreater(pid, 1)
+        self.assertIn("started_at", meta)
+
+    def test_force_spawn_refuses_live_pid(self) -> None:
+        self._pack("live")
+        path = self._spawn_meta("live", pid=os.getpid())
+        pkt = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "live.json"
+        )
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            str(pkt),
+            "--force-spawn",
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn(f"still has a live spawn pid={os.getpid()}", r.stderr)
+        self.assertIn(str(path), r.stderr)
+        self.assertIn("refuses while that process is running", r.stderr)
+        self.assertNotIn("override a dead one", r.stderr)
+
+    def test_force_spawn_allows_dead_pid(self) -> None:
+        self._pack("gone")
+        dead = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"]
+        )
+        pid = int(dead.pid)
+        dead.kill()
+        dead.wait(timeout=5)
+        self._spawn_meta("gone", pid=pid)
+        pkt = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "gone.json"
+        )
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            str(pkt),
+            "--force-spawn",
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        meta = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "gone.json"
+        )
+        self.assertIn(meta.get("outcome"), ("ok", "done_without_residual"))
+
+    def test_force_spawn_allows_missing_pid_when_gone(self) -> None:
+        self._pack("orphan")
+        self._spawn_meta("orphan")
+        pkt = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "packets"
+            / "orphan.json"
+        )
+        blocked = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            str(pkt),
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn("already has a spawn in flight", blocked.stderr)
+        self.assertIn("Wait for it.", blocked.stderr)
+        self.assertNotIn("override a dead one", blocked.stderr)
+        r = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            str(pkt),
+            "--force-spawn",
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_over_budget_names_dead_vs_unbounded(self) -> None:
+        packet = {"child_id": "worker", "budget": {"seconds": 60}}
+        dead = {
+            "child_id": "worker",
+            "started_at": "2018-01-01T00:00:00Z",
+        }
+        row = of.SpawnRecord.over_budget(dead, packet)
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["kind"], of.SpawnRecord.DEAD_WITHOUT_METADATA)
+        live = dict(dead)
+        live["pid"] = os.getpid()
+        row = of.SpawnRecord.over_budget(live, packet)
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["kind"], of.SpawnRecord.UNBOUNDED)
+        settled = dict(dead)
+        settled["outcome"] = "ok"
+        settled["ended_at"] = of.utc_now()
+        self.assertIsNone(of.SpawnRecord.over_budget(settled, packet))
+        fresh = {
+            "child_id": "worker",
+            "started_at": of.utc_now(),
+        }
+        self.assertIsNone(of.SpawnRecord.over_budget(fresh, packet))
+
+    def test_status_names_over_budget(self) -> None:
+        self._pack("late", seconds=60)
+        self._spawn_meta("late", started_at="2018-01-01T00:00:00Z")
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("over_budget=dead-without-metadata", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(
+            doc["in_flight_detail"][0]["over_budget"],
+            of.SpawnRecord.DEAD_WITHOUT_METADATA,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -174,6 +174,8 @@ class ApprovedDesignFixes(unittest.TestCase):
         r = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, env={"OF_AGENT": str(agent)})
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("already has a spawn in flight", r.stderr)
+        self.assertIn("Wait for it.", r.stderr)
+        self.assertNotIn("override a dead one", r.stderr)
         r2 = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", pkt, "--force-spawn", env={"OF_AGENT": str(agent)})
         self.assertEqual(r2.returncode, 0, r2.stderr)
         self.assertEqual(

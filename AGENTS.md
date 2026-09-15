@@ -208,6 +208,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.10 `of gc` / `of retain` import `PHASES` so a stored learning with `phase` does not NameError (`#205`) | documented |
 | 0.8.11 after collect/abandon: `of worktree remove` + Orca Host `worktree rm` / `terminal close --tab`; doctor/close WARN on orphaned vs settled (`DoctorSkew.orphaned_worktrees`; `#210`) | documented |
 | 0.8.12 `of spec --surface internal ID` reclassifies a mis-declared requirement (`RequirementSurface`; `#211`); `--surface` without `--add` or ID refuses; contrast teaches the path | documented |
+| 0.8.13 spawn record stores pid; `--force-spawn` refuses a live pid; doctor/status name `over_budget` open spawn (`SpawnRecord` / `DoctorSkew`; `#213`) | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

@@ -614,6 +614,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     wt_lines, wt_warn = DoctorSkew.worktrees(root) if has_order else ([], False)
     for line in wt_lines:
         print(line)
+    ob_lines, ob_warn = DoctorSkew.over_budget(root) if has_order else ([], False)
+    for line in ob_lines:
+        print(line)
 
     schema_ok = 0
     schema_fail: list[str] = []
@@ -698,7 +701,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     if failed:
         print("doctor        FAIL")
         raise SystemExit(2)
-    if skill_skew or wt_warn or open_warn or audit_warn or docs_warn:
+    if skill_skew or wt_warn or open_warn or audit_warn or docs_warn or ob_warn:
         print("doctor        WARN")
         return
     print("doctor        ok")
@@ -950,7 +953,7 @@ class InFlightSignal:
     @staticmethod
     def child_row(root: Path, pkt: dict[str, Any], verdict: str) -> dict[str, Any]:
         cid = str(pkt.get("child_id") or "?")
-        return {
+        row: dict[str, Any] = {
             "child_id": cid,
             "pulse": verdict,
             "residual": "MISSING",
@@ -958,13 +961,21 @@ class InFlightSignal:
             "parked_reason": parked_reason(root, pkt),
             "progress": PulseProgress.lines(root, pkt),
         }
+        over = SpawnRecord.over_budget(SpawnRecord.load(root, pkt), pkt)
+        if over is not None:
+            row["over_budget"] = over["kind"]
+        return row
 
     @staticmethod
     def child_line(row: dict[str, Any]) -> str:
         cid = str(row.get("child_id") or "?")
         pulse = str(row.get("pulse") or "")
         parked = str(row.get("parked_reason") or "")
-        return f"  {cid}  pulse={pulse}  residual=MISSING  parked={parked}"
+        extra = ""
+        kind = str(row.get("over_budget") or "").strip()
+        if kind:
+            extra = f"  over_budget={kind}"
+        return f"  {cid}  pulse={pulse}  residual=MISSING  parked={parked}{extra}"
 
     @staticmethod
     def progress_lines(row: dict[str, Any]) -> list[str]:
@@ -1268,6 +1279,11 @@ class StatusReport:
                     for item in (row.get("progress") or [])
                     if str(item).strip()
                 ],
+                **(
+                    {"over_budget": str(row.get("over_budget"))}
+                    if str(row.get("over_budget") or "").strip()
+                    else {}
+                ),
             }
             for row in (doc.get("in_flight_detail") or [])
             if isinstance(row, dict)

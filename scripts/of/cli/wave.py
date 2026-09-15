@@ -377,6 +377,7 @@ def run_child(
     env: dict[str, str],
     timeout_s: float | None,
     on_stdout_line: Callable[[str], None] | None = None,
+    on_start: Callable[["subprocess.Popen[str]"], None] | None = None,
 ) -> "subprocess.CompletedProcess[str]":
     """subprocess.run with a process group and no stdin.
 
@@ -397,6 +398,8 @@ def run_child(
     if os.name == "posix":
         kwargs["start_new_session"] = True
     proc = subprocess.Popen(argv, **kwargs)
+    if on_start is not None:
+        on_start(proc)
     out_chunks: list[str] = []
     err_chunks: list[str] = []
 
@@ -954,16 +957,19 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if meta_path.is_file() and not args.dry_run:
         prior = load_json(meta_path)
         if isinstance(prior, dict) and "outcome" not in prior and not prior.get("dry_run"):
+            live = SpawnRecord.live_pid(prior)
+            if live is not None:
+                die(SpawnRecord.live_refuse_message(child_id, prior, meta_path, live))
             if not args.force_spawn:
-                die(
-                    f"{child_id} already has a spawn in flight since "
-                    f"{prior.get('started_at')} ({meta_path}). "
-                    "Wait for it, or --force-spawn to override a dead one."
-                )
+                die(SpawnRecord.in_flight_message(child_id, prior, meta_path))
             emit_wave_warning(
                 "spawn_in_flight",
-                f"overriding in-flight spawn record {meta_path}",
-                plain=f"of: note — overriding in-flight spawn record {meta_path}",
+                f"overriding in-flight spawn record {meta_path} "
+                f"(recorded pid={SpawnRecord.pid_label(prior)} not running)",
+                plain=(
+                    f"of: note — overriding in-flight spawn record {meta_path} "
+                    f"(recorded pid={SpawnRecord.pid_label(prior)} not running)"
+                ),
             )
 
     def finalize(outcome: str, **extra: Any) -> None:
@@ -1050,7 +1056,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
 
     try:
         proc = run_child(
-            argv, root, child_env, timeout_s, on_stdout_line=on_stdout_line
+            argv,
+            root,
+            child_env,
+            timeout_s,
+            on_stdout_line=on_stdout_line,
+            on_start=lambda child: SpawnRecord.stamp_pid(
+                meta_path, meta, int(getattr(child, "pid", 0) or 0)
+            ),
         )
     except FileNotFoundError:
         write_log("", f"binary not found: {argv[0]}")

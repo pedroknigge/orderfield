@@ -2425,6 +2425,41 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("never silent", hero)
 
 
+class SkillForceSpawnPid(unittest.TestCase):
+    """SKILL teaches force-spawn pid liveness and over-budget signal. #213."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_force_spawn_pid(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("force-spawn", table)
+        self.assertIn("pid", table)
+        self.assertIn("refuses", table)
+        self.assertIn("over_budget", table)
+        self.assertIn("unbounded", table)
+        self.assertIn("dead-without-metadata", table)
+        self.assertIn("not a supervisor", table)
+        self.assertNotIn("override a dead one", core.casefold())
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("force-spawn", fold, name)
+            self.assertIn("pid", fold, name)
+            self.assertIn("over_budget", fold, name)
+            self.assertIn("not a supervisor", fold, name)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("def live_pid", source)
+        self.assertIn("DEAD_WITHOUT_METADATA", source)
+
+
 class SkillSpawnEndedSignal(unittest.TestCase):
     """SKILL teaches done_without_residual and host Write ≠ escalate_up. #200."""
 
