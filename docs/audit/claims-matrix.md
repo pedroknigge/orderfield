@@ -16,7 +16,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.11`
+**Code rev:** VERSION `0.8.12`
 
 ## Summary
 
@@ -358,6 +358,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] 0.8.9: after successful `of collect` (`ok=N invalid=0 missing=0`), resume/status `next` is INTEGRATE not COLLECT (`CollectReady`; #204); `ResumeAfterIntegrate.test_next_is_integrate_after_successful_collect` / `SkillCollectNextIntegrate`; no new C-ID (honesty cap)
 - [x] 0.8.10: `of gc` / `of retain` import `PHASES` so a stored learning with `phase` does not NameError (`#205`); `LearningApplicablePhase` / `EpisodicRetention.test_gc_and_retain_survive_field_learning_with_phase`; no new C-ID (honesty cap)
 - [x] C-045 0.8.11: after collect/abandon, `of worktree remove --child-id` plus Orca Host `worktree rm` / `terminal close --tab`; doctor/close WARN on orphaned vs settled (`DoctorSkew.orphaned_worktrees`; #210); `DoctorWorktreeLeftover` / `SkillOrcaWorkerTeardown`; no new C-ID (honesty cap)
+- [x] 0.8.12: `of spec --surface internal ID` reclassifies a mis-declared requirement (`RequirementSurface`; #211); `--surface` without `--add` or ID refuses; contrast teaches the path; `--supersede` still drops coverage; `RequirementSurfaceReclassify` / `SkillRequirementSurface`; no new C-ID (honesty cap)
 - [x] C-025 docs honesty: clone/checkout of open `.orderfield/` + installed skill auto-continues; operator risk, not an escape; rule 0 stays; `SkillCheckoutAutoContinueHonesty`; no new C-ID; no VERSION bump
 - [x] C-152 0.7.70: packed-only is not ALIVE; `SpawnRecord` + status/resume `spawned` from spawn meta; `PACKED` + `next SPAWN`; pulse stays authoritative
 - [x] C-153 docs honesty: in-repo lab proof is re-runnable; external multi-agent field dogfood stays Partial; `FieldEvidenceHonesty`; no invented case studies; no VERSION bump

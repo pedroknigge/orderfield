@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.12
+
+A requirement's surface can be corrected after `--add`. `--supersede` is not the reclassify path. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.11 notes.
+
+- **Reuse table (design-first):** `requirement_surface` / `ContractSurface` already own the close-surface oracle. `--surface {contract,internal}` already exists on `of spec` (applied only on `--add`). `ContrastReport.NEXT_BLOCKED` / `ContrastDiff.FLAG_LINE` already name the public-contract path. WAL already records REQUIREMENTS.json. The remaining gap is a default-`contract` ID that was never public: `--surface` later is silently ignored, and `--supersede` shrinks coverage (`#211`).
+- **Reuse, not a new verb:** `RequirementSurface.apply` reclassifies an existing ID via `of spec --surface internal ID` (and `contract`). `--surface` without `--add` or ID refuses. `ContractSurface` still cannot hide. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `of spec --surface internal ID` when the requirement was never public. Contrast `next` and `--diff` name that path. Not `--supersede`.
+- **Proof:** `RequirementSurfaceReclassify` (reclassify keeps coverage and closes; silent-ignore gone; ContractSurface hide refused). Contrast `next` / `--diff` teach `--surface internal`. `SkillRequirementSurface`. No new C-ID (honesty cap).
+- Packaging: VERSION 0.8.12; skill/alias description preview `v0.8.12 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.11 notes.
+
 ## 0.8.11
 
 After collect or abandon, opt-in of-worktrees and Orca Host panes must be torn down. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.10 notes.

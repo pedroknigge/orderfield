@@ -634,6 +634,138 @@ class SpecFidelity(unittest.TestCase):
         self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
         self.assertIn("RESOLVED", contrast.stdout)
 
+
+class RequirementSurfaceReclassify(unittest.TestCase):
+    """of spec --surface ID reclassifies; silent ignore is gone. #211"""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-surface-reclass-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _add(self, rid: str, text: str, *extra: str) -> None:
+        added = run_of(self.tmp, "spec", "--add", rid, "--text", text, *extra)
+        self.assertEqual(added.returncode, 0, added.stderr)
+
+    def _item(self, rid: str) -> dict:
+        data = load_json(self.tmp / ".orderfield" / "REQUIREMENTS.json")
+        return next(row for row in data["requirements"] if row.get("id") == rid)
+
+    def test_reclassify_internal_keeps_coverage_and_closes(self) -> None:
+        self._add("E1-004", "write characterization tests for the store")
+        self.assertEqual(of.requirement_surface(self._item("E1-004")), "contract")
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "tests",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-requirement",
+            "E1-004",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        marked = run_of(self.tmp, "spec", "--verified-internal", "E1-004")
+        self.assertEqual(marked.returncode, 0, marked.stderr)
+        blocked = run_of(self.tmp, "contrast")
+        self.assertEqual(blocked.returncode, 2, blocked.stdout)
+        self.assertIn("VERIFIED_INTERNAL", blocked.stdout)
+        self.assertIn("--surface internal", blocked.stdout)
+        self.assertIn("never public", blocked.stdout)
+        silent = run_of(
+            self.tmp, "spec", "--verified-internal", "E1-004", "--surface", "internal"
+        )
+        self.assertNotEqual(silent.returncode, 0)
+        self.assertIn("--surface requires", silent.stderr)
+        self.assertEqual(of.requirement_surface(self._item("E1-004")), "contract")
+        fixed = run_of(self.tmp, "spec", "--surface", "internal", "E1-004")
+        self.assertEqual(fixed.returncode, 0, fixed.stderr)
+        self.assertIn("E1-004", fixed.stdout)
+        self.assertIn("contract -> internal", fixed.stdout)
+        item = self._item("E1-004")
+        self.assertEqual(item.get("surface"), "internal")
+        self.assertEqual(of.requirement_surface(item), "internal")
+        after = run_of(self.tmp, "contrast")
+        self.assertEqual(after.returncode, 0, after.stdout)
+        self.assertIn("RESOLVED", after.stdout)
+        self.assertIn("1/1", after.stdout)
+        self.assertIn('"superseded": 0', after.stdout)
+        self.assertIn('"total": 1', after.stdout)
+
+    def test_surface_without_add_or_id_refuses(self) -> None:
+        self._add("ALG-001", "use an in-memory index for lookups")
+        bare = run_of(self.tmp, "spec", "--surface", "internal")
+        self.assertNotEqual(bare.returncode, 0)
+        self.assertIn("--surface requires", bare.stderr)
+        stray = run_of(self.tmp, "spec", "ALG-001")
+        self.assertNotEqual(stray.returncode, 0)
+        self.assertIn("only valid with --surface", stray.stderr)
+        self.assertEqual(of.requirement_surface(self._item("ALG-001")), "contract")
+
+    def test_contractsurface_still_cannot_hide(self) -> None:
+        self._add("VERSION-009", "GET /version must return 200")
+        refused = run_of(self.tmp, "spec", "--surface", "internal", "VERSION-009")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("cannot hide", refused.stderr)
+        self.assertEqual(of.requirement_surface(self._item("VERSION-009")), "contract")
+
+    def test_unknown_id_refuses(self) -> None:
+        missing = run_of(self.tmp, "spec", "--surface", "internal", "ALG-099")
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("unknown requirement", missing.stderr)
+
+    def test_diff_teaches_reclassify(self) -> None:
+        self._add("E1-005", "read the code and classify data vs conclusion")
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "classify",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-requirement",
+            "E1-005",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        marked = run_of(self.tmp, "spec", "--verified-internal", "E1-005")
+        self.assertEqual(marked.returncode, 0, marked.stderr)
+        diff = run_of(self.tmp, "contrast", "--diff")
+        self.assertEqual(diff.returncode, 2, diff.stdout)
+        self.assertIn("of spec --surface internal E1-005", diff.stdout)
+        self.assertIn("never public", diff.stdout)
+
+
+class SpecFidelityRest(unittest.TestCase):
+    """Remainder of SpecFidelity after the #211 insert."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-spec-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.brief = self.tmp / "brief.md"
+        self.brief.write_text(
+            "\n".join(
+                [
+                    "# LedgerLab",
+                    "",
+                    "## Rules",
+                    "- amount_minor is a signed integer; no floats",
+                    "- same idempotency key with a different payload must fail",
+                    "",
+                    "```",
+                    "python -m ledgerlab init --store PATH",
+                    "python -m ledgerlab reverse --store PATH --tx-id TX_ID",
+                    "```",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
     def test_extract_joins_backslash_continuations(self) -> None:
         text = "\n".join(
             [

@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.11. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.12. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.11` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.12` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -126,6 +126,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.9 after successful `of collect` (`ok=N invalid=0 missing=0`), resume/status `next` is INTEGRATE (`CollectReady`; `#204`). Before collect and after integrate stay COLLECT / NEXT-WAVE. Proof: `ResumeAfterIntegrate.test_next_is_integrate_after_successful_collect` / `SkillCollectNextIntegrate`. No new CLI / supervisor.
 - 0.8.10 `of gc` / `of retain` resolve `PHASES` when a stored learning carries `phase` (`#205`). Empty-field gc never reached that guard. Proof: `LearningApplicablePhase` / `EpisodicRetention.test_gc_and_retain_survive_field_learning_with_phase`. No new CLI / supervisor.
 - 0.8.11 after collect or abandon, tear down opt-in of-worktrees and teach Orca Host `worktree rm` / `terminal close --tab`. `DoctorSkew.orphaned_worktrees` WARNs only vs settled children (`#210`). Proof: `DoctorWorktreeLeftover` / `SkillOrcaWorkerTeardown`. No new CLI / supervisor.
+- 0.8.12 `of spec --surface internal ID` reclassifies a mis-declared default-contract requirement (`RequirementSurface`; `#211`). `--surface` without `--add` or ID refuses. `--supersede` is not the path. Contrast `next` / `--diff` teach it. Proof: `RequirementSurfaceReclassify` / `SkillRequirementSurface`. No new CLI / supervisor.
 
 ## Contract boundaries
 
