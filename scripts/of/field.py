@@ -1569,9 +1569,11 @@ def register_spawned_child(
                 continue
             if recorded >= cutoff:
                 kept.append(existing)
-        dump_bytes(
-            path,
-            json_payload_bytes({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]}),
+        # write_text, not dump_bytes: Popen already started the child.
+        # File+dir fsync races LEARN-002 exec (same pid, OF_CHILD stripped).
+        path.write_text(
+            json.dumps({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]}),
+            encoding="utf-8",
         )
     except OSError:
         return
