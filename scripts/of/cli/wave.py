@@ -76,6 +76,7 @@ from of.spec import (
 )
 
 from of.pack import (
+    SharedWorktree,
     SliceLint,
     canonical_packet_rel,
     canonical_residual_rel,
@@ -520,6 +521,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 + ", ".join(unbounded)
                 + " without owns_paths; cannot prove disjoint write sets. "
                 "of unpack or pack the first child with --owns-path"
+            )
+        missing = SharedWorktree.unsheltered(root, child_id, implementers)
+        if missing:
+            emit_wave_warning(
+                SharedWorktree.KIND,
+                SharedWorktree.note(missing),
+                plain=f"note: {SharedWorktree.note(missing)}",
             )
     if owns_paths:
         conflict = same_wave_owns_path_conflict(live, child_id, owns_paths)

@@ -2425,6 +2425,40 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("never silent", hero)
 
 
+class SkillSharedWorktree(unittest.TestCase):
+    """SKILL teaches two worktrees or series; disjoint owns-path is not enough. #214."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_shared_worktree(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("shared_worktree", table)
+        self.assertIn("owns-path", table)
+        self.assertIn("worktree add", table)
+        self.assertIn("series", table)
+        self.assertIn("head/index", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("shared_worktree", fold, name)
+            self.assertIn("owns-path", fold, name)
+            self.assertIn("worktree add", fold, name)
+            self.assertIn("series", fold, name)
+        self.assertIn("disjoint `--owns-path` is not enough", appendix.casefold())
+        self.assertIn("of worktree add --child-id", appendix)
+        source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
+        self.assertIn("class SharedWorktree", source)
+        self.assertIn('KIND = "shared_worktree"', source)
+
+
 class SkillForceSpawnPid(unittest.TestCase):
     """SKILL teaches force-spawn pid liveness and over-budget signal. #213."""
 
