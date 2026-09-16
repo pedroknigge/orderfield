@@ -16,6 +16,10 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 - **Reuse, not a supervisor:** `SharedWorktree` warns `shared_worktree` when a second `--role implementer` is packed and any named implementer lacks a recorded worktree. Packet is still written (series stays legal). Recorded trees for every named implementer stay quiet. No new CLI / schema / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Spawn branch recording stayed optional and was not added.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach two worktrees or series next to the multi-implementer example. Disjoint `--owns-path` is not enough.
 - **Proof:** `SharedWorktreePack` (second implementer warns; recorded trees skip; first implementer silent; packet still written). `SkillSharedWorktree`. C-050 extended. No new C-ID (honesty cap).
+- **Reuse table (collect home hint):** `validate_schema` already refuses extra keys with `unexpected properties: […]`. `proposed_patch` is already the only residual object with `additionalProperties: true`. SLAVE already names `proposed_patch.docs_sync`. The remaining gap is an opaque refuse when a child puts `docs_sync` on `residual` (`#215`).
+- **Reuse, not a new verb:** `SchemaHomeHint` walks the same public schema: a declared property elsewhere wins (`notes` → `proposed_patch.notes`, `tokens` → `usage.tokens`); otherwise a descendant `additionalProperties: true` object is the home (`docs_sync` → `proposed_patch.docs_sync`). Same `INVALID` line; no auto-normalize; no new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SLAVE / appendix / troubleshooting name the home. Do not hand-edit; append a note and re-spawn the same packet.
+- **Proof:** `ResidualSchemaContracts.test_misplaced_docs_sync_names_proposed_patch_home` (and notes / tokens / unhinted metrics / collect INVALID). `SkillResidualHomeHint`. C-139 extended. No new C-ID (honesty cap).
 - Packaging: VERSION 0.8.14; skill/alias description preview `v0.8.14 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.13 notes.
 
 ## 0.8.13

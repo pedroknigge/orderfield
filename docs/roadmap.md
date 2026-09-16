@@ -17,6 +17,7 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 ## 0.8.14 — shared worktree warn for a second implementer
 
 - Two implementers with disjoint `--owns-path` still share one git HEAD and one index. `SharedWorktree` warns `shared_worktree` when a second `--role implementer` is packed and no `of worktree add` is recorded for the unsheltered children. Packet is still written — isolate with two worktrees or run in series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. C-050. No new CLI verb / schema / supervisor. Not a new regime. `#214`.
+- Collect unexpected residual keys name the legal home (`SchemaHomeHint`; `#215`). `docs_sync` on `residual` prints `did you mean …proposed_patch.docs_sync?`. Declared siblings (`notes`, `tokens`) use the same walk. No auto-normalize. Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. C-139. No new CLI verb / schema / supervisor.
 
 ## 0.8.13 — force-spawn refuses a live recorded pid
 

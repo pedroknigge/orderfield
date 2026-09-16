@@ -1997,13 +1997,82 @@ def _schema_types(value: Any) -> set[str]:
     return kinds
 
 
+class SchemaHomeHint:
+    """Name the legal home when additionalProperties refuses a key.
+
+    Reuses the same public-schema walk as validate_schema. Declared
+    properties win; otherwise an additionalProperties:true descendant
+    (residual.proposed_patch) is the open object. No new schema.
+    """
+
+    @staticmethod
+    def index(
+        schema: dict[str, Any], prefix: str
+    ) -> tuple[dict[str, list[str]], list[str]]:
+        declared: dict[str, list[str]] = {}
+        open_paths: list[str] = []
+
+        def walk(node: Any, path: str) -> None:
+            if not isinstance(node, dict):
+                return
+            if node.get("additionalProperties") is True:
+                open_paths.append(path)
+            props = node.get("properties")
+            if isinstance(props, dict):
+                for key, child in props.items():
+                    child_path = f"{path}.{key}"
+                    declared.setdefault(str(key), []).append(child_path)
+                    walk(child, child_path)
+            items = node.get("items")
+            if isinstance(items, dict):
+                walk(items, f"{path}[]")
+
+        walk(schema, prefix)
+        return declared, open_paths
+
+    @staticmethod
+    def for_extras(
+        extras: list[str],
+        path: str,
+        root: dict[str, Any],
+        root_path: str,
+    ) -> str:
+        declared, open_paths = SchemaHomeHint.index(root, root_path)
+        homes: list[str] = []
+        for key in extras:
+            named = [home for home in declared.get(key, []) if home != f"{path}.{key}"]
+            if named:
+                homes.extend(named)
+                continue
+            nearby = [
+                home
+                for home in open_paths
+                if home == path or home.startswith(f"{path}.")
+            ]
+            homes.extend(f"{home}.{key}" for home in nearby)
+        uniq: list[str] = []
+        seen: set[str] = set()
+        for home in homes:
+            if home not in seen:
+                seen.add(home)
+                uniq.append(home)
+        if not uniq:
+            return ""
+        return "did you mean " + ", ".join(uniq) + "?"
+
+
 def validate_schema(
     value: Any,
     schema: dict[str, Any],
     path: str = "$",
+    *,
+    _root: dict[str, Any] | None = None,
+    _root_path: str | None = None,
 ) -> list[str]:
     """Validate the Draft 2020-12 subset used by the public schemas."""
     errs: list[str] = []
+    root = schema if _root is None else _root
+    root_path = path if _root_path is None else _root_path
     declared = schema.get("type")
     allowed = {declared} if isinstance(declared, str) else set(declared or [])
     actual = _schema_types(value)
@@ -2041,7 +2110,15 @@ def validate_schema(
         item_schema = schema.get("items")
         if isinstance(item_schema, dict):
             for index, item in enumerate(value):
-                errs.extend(validate_schema(item, item_schema, f"{path}[{index}]"))
+                errs.extend(
+                    validate_schema(
+                        item,
+                        item_schema,
+                        f"{path}[{index}]",
+                        _root=root,
+                        _root_path=root_path,
+                    )
+                )
     if isinstance(value, dict):
         properties = schema.get("properties") or {}
         for key in schema.get("required") or []:
@@ -2050,11 +2127,23 @@ def validate_schema(
         if schema.get("additionalProperties") is False:
             extras = sorted(set(value) - set(properties))
             if extras:
-                errs.append(f"{path} has unexpected properties: {extras}")
+                msg = f"{path} has unexpected properties: {extras}"
+                hint = SchemaHomeHint.for_extras(extras, path, root, root_path)
+                if hint:
+                    msg = f"{msg} — {hint}"
+                errs.append(msg)
         for key, child in value.items():
             child_schema = properties.get(key)
             if isinstance(child_schema, dict):
-                errs.extend(validate_schema(child, child_schema, f"{path}.{key}"))
+                errs.extend(
+                    validate_schema(
+                        child,
+                        child_schema,
+                        f"{path}.{key}",
+                        _root=root,
+                        _root_path=root_path,
+                    )
+                )
     return errs
 
 

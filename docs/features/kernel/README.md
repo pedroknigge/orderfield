@@ -128,7 +128,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.11 after collect or abandon, tear down opt-in of-worktrees and teach Orca Host `worktree rm` / `terminal close --tab`. `DoctorSkew.orphaned_worktrees` WARNs only vs settled children (`#210`). Proof: `DoctorWorktreeLeftover` / `SkillOrcaWorkerTeardown`. No new CLI / supervisor.
 - 0.8.12 `of spec --surface internal ID` reclassifies a mis-declared default-contract requirement (`RequirementSurface`; `#211`). `--surface` without `--add` or ID refuses. `--supersede` is not the path. Contrast `next` / `--diff` teach it. Proof: `RequirementSurfaceReclassify` / `SkillRequirementSurface`. No new CLI / supervisor.
 - 0.8.13 spawn record stores `pid`; `--force-spawn` refuses while that pid is running; `of doctor` / `of status` name `over_budget` (`unbounded` vs `dead-without-metadata`). Signal, not a supervisor (`#213`). Proof: `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid`. No new CLI / supervisor.
-- 0.8.14 a second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; `#214`). Disjoint `--owns-path` is not a second HEAD/index. Two worktrees or series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. No new CLI / supervisor.
+- 0.8.14 a second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; `#214`). Disjoint `--owns-path` is not a second HEAD/index. Two worktrees or series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. Collect unexpected keys name the legal home (`SchemaHomeHint`; `#215`: `docs_sync` → `proposed_patch.docs_sync`). Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. No new CLI / supervisor.
 
 ## Contract boundaries
 
