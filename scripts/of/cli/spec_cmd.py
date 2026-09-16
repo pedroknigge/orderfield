@@ -14,6 +14,7 @@ from typing import Any
 from of.field import (
     FIELD_SPEC_MD,
     AuditPressure,
+    ClosedScratch,
     DoctorSkew,
     NestedField,
     WaveRoster,
@@ -1161,9 +1162,11 @@ def cmd_close(args: argparse.Namespace) -> None:
         return
     if CloseProof.complete(root, order):
         print("close       already spec_closed")
+        ClosedScratch.emit(ClosedScratch.wipe(root))
         return
     repaired = bool(order.get("spec_closed"))
     CloseProof.stamp(root, order)
+    wiped = ClosedScratch.wipe(root)
     returned = NestedField.return_active(root, order)
     snapshot_session(root, "close")
     emit_event(
@@ -1177,12 +1180,14 @@ def cmd_close(args: argparse.Namespace) -> None:
         written=True,
         residual_empty=True,
         in_flight=0,
+        scratch_wiped=wiped,
     )
     label = "REPAIRED" if repaired else "CLOSED"
     print(
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    ClosedScratch.emit(wiped)
     if returned:
         print(NestedField.format_return_line(returned))
 

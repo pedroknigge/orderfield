@@ -687,6 +687,8 @@ class PostCloseTerminal(unittest.TestCase):
         closed = run_of(self.tmp, "close")
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertIn("CLOSED", closed.stdout)
+        self.assertIn(of.ClosedScratch.NOTE, closed.stdout)
+        self.assertFalse((scratch / "PULSE").exists())
         self.assertIsNone(of.ActiveField.read(self.tmp))
         self.assertFalse(of.load_state(self.tmp).get("spawn_blocked"))
         pulse = run_of(self.tmp, "pulse")
@@ -757,6 +759,77 @@ class PostCloseTerminal(unittest.TestCase):
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertEqual(of.ActiveField.read(self.tmp), parent)
         self.assertNotEqual(of.ActiveField.read(self.tmp), child)
+
+
+class ClosedScratchWipe(unittest.TestCase):
+    """Successful of close wipes work/scratch. SAT-002 closed-ephemeral on the stamp."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-closed-scratch-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _close_ready(self) -> None:
+        PostCloseTerminal._close_ready(self, "wipe scratch on close")
+
+    def test_close_wipes_scratch_media_and_wave_logs(self) -> None:
+        self._close_ready()
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "apply-media"
+        npm = scratch / "node_modules" / "pkg"
+        npm.mkdir(parents=True, exist_ok=True)
+        (npm / "index.js").write_text("bloat\n", encoding="utf-8")
+        media = scratch / "media"
+        media.mkdir(parents=True, exist_ok=True)
+        (media / "clip.mp4").write_bytes(b"x" * 64)
+        log = self.tmp / ".orderfield" / "waves" / "001" / "logs" / "apply-media.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("spawn transcript\n", encoding="utf-8")
+        residual = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "residuals"
+            / "apply-media.json"
+        )
+        closed = run_of(self.tmp, "close")
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("CLOSED", closed.stdout)
+        self.assertIn(of.ClosedScratch.NOTE, closed.stdout)
+        self.assertFalse(npm.exists())
+        self.assertFalse(media.exists())
+        self.assertFalse(log.exists())
+        self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").is_file())
+        self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
+        self.assertTrue(residual.is_file())
+
+    def test_checklist_does_not_wipe(self) -> None:
+        self._close_ready()
+        fat = (
+            self.tmp
+            / ".orderfield"
+            / "work"
+            / "scratch"
+            / "apply-media"
+            / "blob.bin"
+        )
+        fat.parent.mkdir(parents=True, exist_ok=True)
+        fat.write_bytes(b"x" * 32)
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertTrue(fat.is_file())
+        self.assertNotIn(of.ClosedScratch.NOTE, listed.stdout)
+
+    def test_already_closed_wipes_leftover_scratch(self) -> None:
+        self._close_ready()
+        first = run_of(self.tmp, "close")
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        leftover = self.tmp / ".orderfield" / "work" / "scratch" / "old-child"
+        leftover.mkdir(parents=True)
+        (leftover / "note.md").write_text("older kernel leftover\n", encoding="utf-8")
+        again = run_of(self.tmp, "close")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("already spec_closed", again.stdout)
+        self.assertIn(of.ClosedScratch.NOTE, again.stdout)
+        self.assertFalse(leftover.exists())
 
 
 class RootStubAmbiguous(unittest.TestCase):

@@ -425,6 +425,53 @@ class AuditPressure:
         return True
 
 
+class ClosedScratch:
+    """Wipe this field's work/scratch after a successful close.
+
+    SAT-002 already dumps closed-field scratch on `of gc` (`closed-ephemeral`).
+    Close applies that dump immediately so media/node_modules do not linger.
+    Wave logs/spawns/prompts use the same ephemeral dirs `_plan_home_waves`
+    already classifies as dump when closed. No new verb. Contract files stay.
+    """
+
+    NOTE = "wiped work/scratch (closed-ephemeral)"
+    EPHEMERAL_WAVE_SUBS = ("logs", "spawns", "prompts")
+
+    @staticmethod
+    def wipe(root: Path, home: Path | None = None) -> int:
+        home = home or field_home(root)
+        n = ClosedScratch._wipe_children(home / "work" / "scratch")
+        waves = home / "waves"
+        if waves.is_dir() and not waves.is_symlink():
+            for wdir in waves.iterdir():
+                if not wdir.is_dir() or wdir.is_symlink():
+                    continue
+                for sub in ClosedScratch.EPHEMERAL_WAVE_SUBS:
+                    n += ClosedScratch._wipe_children(wdir / sub)
+        return n
+
+    @staticmethod
+    def _wipe_children(path: Path) -> int:
+        if not path.is_dir() or path.is_symlink():
+            return 0
+        n = 0
+        for child in list(path.iterdir()):
+            if child.is_symlink():
+                continue
+            try:
+                _safe_unlink(child)
+            except OSError:
+                continue
+            n += 1
+        return n
+
+    @staticmethod
+    def emit(wiped: int) -> None:
+        if wiped <= 0:
+            return
+        print(f"scratch     {ClosedScratch.NOTE}  n={wiped}")
+
+
 def _plan_home_learnings(
     root: Path, home: Path, order: dict[str, Any]
 ) -> list[dict[str, str]]:
@@ -1289,6 +1336,7 @@ class FieldRetain:
     print_plan = staticmethod(print_retention_plan)
     audit = staticmethod(print_audit_block)
     pressure = AuditPressure
+    closed_scratch = ClosedScratch
     drop_home = staticmethod(drop_field_home)
     maybe_safe = staticmethod(maybe_safe_gc)
     keep_field = staticmethod(record_keep_field)

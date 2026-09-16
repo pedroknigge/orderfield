@@ -131,6 +131,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.14 a second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; `#214`). Disjoint `--owns-path` is not a second HEAD/index. Two worktrees or series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. No new CLI / supervisor.
 - 0.8.15 collect unexpected keys name the legal home (`SchemaHomeHint`; `#215`: `docs_sync` → `proposed_patch.docs_sync`). Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. No new CLI / supervisor.
 - 0.8.15 `validate_schema` enforces public-schema `anyOf` / `maxLength` / `patternProperties` (`SchemaSubsetHonesty`; C-030). Empty `adapter_hints` and a 257-char `denied_actions` item cannot collect. Not a JSON Schema engine. No new CLI / supervisor.
+- 0.8.15 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor.
 
 ## Contract boundaries
 
