@@ -33,6 +33,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
 | [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
+| [SECURITY.md](SECURITY.md) | Scope + how to report a vulnerability |
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
