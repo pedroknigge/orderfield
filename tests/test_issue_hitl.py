@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
-import of.cli.ops as ops  # noqa: E402
+import of.cli.issue_cmd as ops  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 SKILL = ROOT / "SKILL.md"
@@ -264,8 +264,12 @@ class SkillIssueConfirm(unittest.TestCase):
         self.assertIn("--confirm", table)
         self.assertIn("TTY", table)
         self.assertIn("not HITL", table)
-        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        source = (ROOT / "scripts" / "of" / "cli" / "issue_cmd.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("class IssueConfirm:", source)
+        self.assertIn("issue_cmd.py", appendix)
+        self.assertIn("issue_cmd.py", alias)
 
 
 class SkillIssueBodyFileLeader(unittest.TestCase):

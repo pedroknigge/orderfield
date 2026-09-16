@@ -10,7 +10,7 @@ In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood
 
 ## Auto-report (HITL)
 
-Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. This is self-telemetry of the kernel/skill/CLI/docs/install — not a helpdesk and not a ticket against the consumer working tree. Consumer `git origin` is out of scope forever. A fork of amarilla-platform cannot receive these issues. Use `of issue`. Not a one-wave constraint.
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. This is self-telemetry of the kernel/skill/CLI/docs/install — not a helpdesk and not a ticket against the consumer working tree. Consumer `git origin` is out of scope forever. A fork of amarilla-platform cannot receive these issues. Use `of issue`. HITL lives in `scripts/of/cli/issue_cmd.py` (not `ops.py`). Same verbs. Not a one-wave constraint.
 
 Auto-report ONLY if the failure is Orderfield's:
 

@@ -169,6 +169,19 @@ class NoDuplicateCliDefs(unittest.TestCase):
         unused = sorted(name for name in imported if name not in used)
         self.assertEqual(unused, [], f"ops.py imports it never uses: {unused}")
 
+    def test_ops_has_no_leftover_issue_defs(self) -> None:
+        """C-055: issue HITL lives in issue_cmd; ops must not keep a copy."""
+        ops = (SCRIPTS / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        issue = (SCRIPTS / "of" / "cli" / "issue_cmd.py").read_text(encoding="utf-8")
+        for needle in (
+            "def cmd_issue",
+            "class IssueConfirm:",
+            "class IssueList:",
+            "ISSUE_FEEDBACK_REPO",
+        ):
+            self.assertNotIn(needle, ops, needle)
+            self.assertIn(needle, issue, needle)
+
 
 if __name__ == "__main__":
     unittest.main()
