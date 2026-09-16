@@ -143,7 +143,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed |
 | `ORDER.harness` / `ORDER.backlog` | First-class fields (not prose constraints) |
 | `validate_residual` | Reject malformed metric types/ranges before regime selection |
-| `validate_public_schema` / `dump_json` | Runtime/public-schema parity and durable atomic JSON replacement |
+| `validate_public_schema` / `dump_json` | Runtime/public-schema parity (Draft 2020-12 subset: type/const/enum/minLength/maxLength/pattern/minimum/maximum/minItems/uniqueItems/items/required/additionalProperties/properties/patternProperties/anyOf) and durable atomic JSON replacement |
 | `field_lock` / `MUTATING_COMMANDS` | Cross-process serialization of kernel mutations; OS releases dead owners |
 | `packet_digest` / `require_registered_packet` / `require_packet_artifact_paths` | Immutable packet identity, exact live revision, canonical paths, and symlink rejection |
 | `validate_residual_for_packet` | Residual identity binding and existing in-project `done.result_ref` |

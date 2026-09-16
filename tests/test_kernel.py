@@ -61,6 +61,7 @@ from test_agy_denied_actions import (  # noqa: E402,F401
     AgyDeniedActionsSpawn,
     ResidualDeniedActionsSchema,
 )
+from test_schema_subset import SchemaSubsetHonesty  # noqa: E402,F401
 from test_adapter_resume import (  # noqa: E402,F401
     AdapterResumeGate,
     AdapterResumeSkill,
