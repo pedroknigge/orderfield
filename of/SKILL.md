@@ -73,7 +73,7 @@ agy residual schema: `of spawn --adapter agy` passes `--json-schema` to `residua
 
 Adapter resume/continue: `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. Follow the sibling.
 
-Leader HITL `--body-file` is `.orderfield/work/scratch/leader/ISSUE.md` or `ISSUE-*.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). Refuse names `.orderfield/work/scratch/<child_id>/`. `of issue --search [QUERY]` lists open issues (empty or omitted = all open; a query filters that list). Follow the sibling.
+Leader HITL `--body-file` is `.orderfield/work/scratch/leader/ISSUE.md` or `ISSUE-*.md` (or the child's existing `ISSUE.md` / `issues/<slug>.md`). Refuse names `.orderfield/work/scratch/<child_id>/`. `of issue --search [QUERY]` lists open issues (empty or omitted = all open; a query filters that list). HITL lives in `scripts/of/cli/issue_cmd.py`. Follow the sibling.
 
 If status/resume prints `efficiency propose …`, ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never invent token spend. Follow the sibling [docs/efficiency-signal.md](../docs/efficiency-signal.md).
 

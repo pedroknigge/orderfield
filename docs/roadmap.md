@@ -14,12 +14,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.8.15 — collect unexpected keys name the legal home; schema subset; close wipes work/scratch; spawn claim lock + MUTATING_COMMANDS honesty
+## 0.8.15 — collect unexpected keys name the legal home; schema subset; close wipes work/scratch; spawn claim lock + MUTATING_COMMANDS honesty; HITL issue_cmd
 
 - Collect unexpected residual keys name the legal home (`SchemaHomeHint`; `#215`). `docs_sync` on `residual` prints `did you mean …proposed_patch.docs_sync?`. Declared siblings (`notes`, `tokens`) use the same walk. No auto-normalize. Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. C-139. No new CLI verb / schema / supervisor. Not a new regime.
 - `validate_schema` implements the Draft 2020-12 keywords the public schemas already use (`packet.adapter_hints` `anyOf`; residual `denied_actions` `maxLength` 256; state `path_index` `patternProperties`). `schema_unknown_keywords` fails a future unimplemented keyword. Not a JSON Schema engine. Proof: `SchemaSubsetHonesty`. C-030. No new CLI verb / schema / supervisor. Not a new regime.
 - Successful `of close` wipes this field's `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`). Same `closed-ephemeral` dump `of gc` already plans. `--checklist` does not wipe. Contract files stay. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI verb / schema / supervisor. Not a new regime.
 - Concurrent `of spawn` of the same child serializes the started-only claim under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). Architecture / README / principles quote `mutating_commands_prose()` so `gc` is inside the lock set. Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI verb / schema / supervisor. Not a new regime.
+- Second `#219` lean cut after `eval_cmd`. `IssueConfirm` / `IssueList` / `cmd_issue` move out of `ops.py` into `cli/issue_cmd.py`. Same verbs. Status/resume/doctor stay on `ops`. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. C-055. No new CLI verb / schema / supervisor. Not a new regime. `#219`.
 
 ## 0.8.14 — shared worktree warn for a second implementer
 

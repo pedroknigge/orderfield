@@ -1,7 +1,7 @@
 """Public CLI package: parser + dispatch; commands live in sibling modules.
 
 Public entry remains `scripts/of.py` (`from of.cli import main`).
-Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd.
+Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
 """
 from __future__ import annotations
 
@@ -28,13 +28,11 @@ from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.ops import (
-    ISSUE_LABELS,
     cmd_checkpoint,
     cmd_detect,
     cmd_doctor,
     cmd_fields,
     cmd_gc,
-    cmd_issue,
     cmd_learn,
     cmd_migrate,
     cmd_pulse,
@@ -88,6 +86,10 @@ from of.cli.spec_cmd import (
     ContrastReport,
     EvaluatorPacket,
     print_contrast_report,
+)
+from of.cli.issue_cmd import (
+    ISSUE_LABELS,
+    cmd_issue,
 )
 from of.cli.eval_cmd import (
     EVAL_FIXTURES,
