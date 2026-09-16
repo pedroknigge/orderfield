@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.15. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.16. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.15` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.16` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -130,10 +130,10 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.13 spawn record stores `pid`; `--force-spawn` refuses while that pid is running; `of doctor` / `of status` name `over_budget` (`unbounded` vs `dead-without-metadata`). Signal, not a supervisor (`#213`). Proof: `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid`. No new CLI / supervisor.
 - 0.8.14 a second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; `#214`). Disjoint `--owns-path` is not a second HEAD/index. Two worktrees or series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. No new CLI / supervisor.
 - 0.8.15 collect unexpected keys name the legal home (`SchemaHomeHint`; `#215`: `docs_sync` → `proposed_patch.docs_sync`). Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. No new CLI / supervisor.
-- 0.8.15 `validate_schema` enforces public-schema `anyOf` / `maxLength` / `patternProperties` (`SchemaSubsetHonesty`; C-030). Empty `adapter_hints` and a 257-char `denied_actions` item cannot collect. Not a JSON Schema engine. No new CLI / supervisor.
-- 0.8.15 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor.
-- 0.8.15 concurrent `of spawn` claims `waves/<n>/spawns/<id>.json` under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()` is the lock-set source of truth (`gc` is inside). Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI / supervisor.
-- 0.8.15 HITL `of issue` lives in `cli/issue_cmd.py` (`IssueConfirm` / `IssueList` / `cmd_issue`). `ops.py` has no leftover copies. Same verbs. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI / supervisor. `#219`.
+- 0.8.16 `validate_schema` enforces public-schema `anyOf` / `maxLength` / `patternProperties` (`SchemaSubsetHonesty`; C-030). Empty `adapter_hints` and a 257-char `denied_actions` item cannot collect. Not a JSON Schema engine. No new CLI / supervisor. `#223`. Landed after the v0.8.15 tag.
+- 0.8.16 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor. `#224`.
+- 0.8.16 concurrent `of spawn` claims `waves/<n>/spawns/<id>.json` under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()` is the lock-set source of truth (`gc` is inside). Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI / supervisor. `#225`.
+- 0.8.16 HITL `of issue` lives in `cli/issue_cmd.py` (`IssueConfirm` / `IssueList` / `cmd_issue`). `ops.py` has no leftover copies. Same verbs. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI / supervisor. `#226`. Relates `#219`.
 
 ## Contract boundaries
 

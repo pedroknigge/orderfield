@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.15 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release+Host/worktree rm after collect."
+description: "v0.8.16 — Leader-owned disk plan. Appendix before pack/spawn/contrast/close. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. After wave: ask adversary/verifier before close. Before pack: catalog, cheap vs frontier, same-harness vs mix (detect+doctor PATH≠auth). Spawn --resume only with residual.session_id. of issue: --confirm or TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release+Host/worktree rm after collect."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.15"
+  version: "0.8.16"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
