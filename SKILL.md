@@ -15,7 +15,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names every kernel verb — that is 100% of the product surface.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names the field-run verbs. Lab `eval` stays in the appendix. Core + appendix is 100% of the product surface.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
 
@@ -61,9 +61,9 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
-| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score matches ≤98%; no theater on SKILL / `/of` / README. In-repo lab: `of eval --strict --kernel`. External dogfood stays Partial (C-153). Do not invent case studies. |
+| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score matches ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
-| multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed. Proof: `of eval recovery/multi-wave-close-checklist` |
+| multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | child says the field is wrong | `of patch …` then `of next-wave` |
@@ -72,10 +72,10 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — full verb table; Gate A before `--role implementer`; never invent supervisor / bot org / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`. Walk: [docs/long-mission.md](docs/long-mission.md) |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
-| session says CLOSED, `--tokens`, or unpack a reporter | `of eval recovery/adversarial-dual-truth` — disk wins; `--tokens` dies; collect/integrate a reporter. Never `of pack --tokens` N>0 |
+| session says CLOSED, `--tokens`, or unpack a reporter | disk wins; `--tokens` dies; collect/integrate a reporter. Never `of pack --tokens` N>0 |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256 pin: README / PUBLISH. Unpinned npx is not trusted. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
-| multi-harness residual / deep skill dest lost `residual.codex` | `of eval recovery/multi-harness-residual` — Claude/Codex/Cursor share one residual; Codex argv still names the schema |
+| multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
 | cited `docs/plans/…` or a project finding | **Mode A default** when owns_path covered; else **Mode B** dump+ask. `PlanDocSync` WARN. Not a close gate. |

@@ -2037,7 +2037,6 @@ class CloseChecklistProof(unittest.TestCase):
     def test_skill_teaches_checklist(self) -> None:
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("of close --checklist", skill)
-        self.assertIn("recovery/multi-wave-close-checklist", skill)
         self.assertIn("do not claim shipped", skill)
         self.assertIn("mechanical", skill.casefold())
         self.assertIn("quote the printed `speak` line", skill)
@@ -2045,6 +2044,10 @@ class CloseChecklistProof(unittest.TestCase):
             "do not claim shipped unless contrast RESOLVED and residual empty",
             skill,
         )
+        appendix = (ROOT / "references" / "skill-appendix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("recovery/multi-wave-close-checklist", appendix)
 
 
 class EvaluatorPacketProof(unittest.TestCase):
@@ -2233,8 +2236,11 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
 
     def test_skill_names_the_corpus(self) -> None:
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("recovery/adversarial-dual-truth", skill)
         self.assertIn("of pack --tokens", skill)
+        appendix = (ROOT / "references" / "skill-appendix.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("recovery/adversarial-dual-truth", appendix)
 
 
 if __name__ == "__main__":
