@@ -962,23 +962,23 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         meta["model_hint"] = model_name
     meta_path = wdir / "spawns" / f"{child_id}.json"
     log_path = wdir / "logs" / f"{child_id}.log"
-    if meta_path.is_file() and not args.dry_run:
-        prior = load_json(meta_path)
-        if isinstance(prior, dict) and "outcome" not in prior and not prior.get("dry_run"):
-            live = SpawnRecord.live_pid(prior)
-            if live is not None:
-                die(SpawnRecord.live_refuse_message(child_id, prior, meta_path, live))
-            if not args.force_spawn:
-                die(SpawnRecord.in_flight_message(child_id, prior, meta_path))
-            emit_wave_warning(
-                "spawn_in_flight",
-                f"overriding in-flight spawn record {meta_path} "
-                f"(recorded pid={SpawnRecord.pid_label(prior)} not running)",
-                plain=(
-                    f"of: note — overriding in-flight spawn record {meta_path} "
-                    f"(recorded pid={SpawnRecord.pid_label(prior)} not running)"
-                ),
-            )
+    prior = SpawnRecord.claim_started(
+        root,
+        meta_path,
+        meta,
+        force=bool(args.force_spawn),
+        dry_run=bool(args.dry_run),
+    )
+    if prior is not None:
+        emit_wave_warning(
+            "spawn_in_flight",
+            f"overriding in-flight spawn record {meta_path} "
+            f"(recorded pid={SpawnRecord.pid_label(prior)} not running)",
+            plain=(
+                f"of: note — overriding in-flight spawn record {meta_path} "
+                f"(recorded pid={SpawnRecord.pid_label(prior)} not running)"
+            ),
+        )
 
     def finalize(outcome: str, **extra: Any) -> None:
         """Every spawn outcome lands here: never leave started-only metadata."""
@@ -988,8 +988,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if "exit" not in meta:
             meta["exit"] = extra.get("exit")
         dump_json(meta_path, meta)
-
-    dump_json(meta_path, meta)
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={residual_rel}")
     if args.dry_run:
