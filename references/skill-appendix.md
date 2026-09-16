@@ -4,7 +4,7 @@ Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the le
 
 **Read this appendix before pack, spawn, contrast, or close.** The core table names every kernel verb; these sections are how you run them. A turn that claims those verbs without the `of` commands is still a broken run.
 
-Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md).
+Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md). Subtract first: same capability with less code. No new API to look busy.
 
 In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood stays Partial (C-153). Do not invent case studies. Reviewer path: [docs/external-brief.md](../docs/external-brief.md#how-a-reviewer-re-runs-the-proof).
 

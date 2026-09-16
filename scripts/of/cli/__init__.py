@@ -1,7 +1,7 @@
 """Public CLI package: parser + dispatch; commands live in sibling modules.
 
 Public entry remains `scripts/of.py` (`from of.cli import main`).
-Command groups: init_cmd, ops, wave, field_cmd, spec_cmd.
+Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd.
 """
 from __future__ import annotations
 
@@ -78,21 +78,24 @@ from of.cli.field_cmd import (
     cmd_phase,
 )
 from of.cli.spec_cmd import (
-    EVAL_FIXTURES,
-    EVAL_UNITTEST_MODULES,
     cmd_close,
     cmd_contrast,
-    cmd_eval,
     cmd_spec,
     cmd_spec_diff,
-    discover_recovery_eval_specs,
-    eval_pack_child,
-    eval_run_of,
     CloseChecklist,
     CloseProof,
     ContrastDiff,
     ContrastReport,
     EvaluatorPacket,
+    print_contrast_report,
+)
+from of.cli.eval_cmd import (
+    EVAL_FIXTURES,
+    EVAL_UNITTEST_MODULES,
+    cmd_eval,
+    discover_recovery_eval_specs,
+    eval_pack_child,
+    eval_run_of,
     eval_setup_recovery_active_field_pointer,
     eval_setup_recovery_atomic_close,
     eval_setup_recovery_beacon_amnesia,
@@ -136,7 +139,6 @@ from of.cli.spec_cmd import (
     DriveAfterIntegrateEval,
     eval_setup_recovery_verify_build,
     eval_write_done_residual,
-    print_contrast_report,
     run_recovery_eval_spec,
 )
 

@@ -68,6 +68,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 ## When it is theater
 
 - VERSION bump plus one obvious feature.
+- A rewrite or new verb when subtract/split would do the same with less code.
 - One ordinary subagent, or work a skill on this agent already covers.
 - Opening a field because a harness name was mentioned.
 - Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.

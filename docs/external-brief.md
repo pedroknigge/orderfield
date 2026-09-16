@@ -109,7 +109,7 @@ bash scripts/validate-skill.sh
 python3 scripts/check_unused_imports.py
 ```
 
-`--strict --kernel` is every `evals/recovery/*.eval.json` plus the unittest modules in `EVAL_UNITTEST_MODULES` (`scripts/of/cli/spec_cmd.py`). A fail is a kernel regression. Index: [evals/README.md](../evals/README.md).
+`--strict --kernel` is every `evals/recovery/*.eval.json` plus the unittest modules in `EVAL_UNITTEST_MODULES` (`scripts/of/cli/eval_cmd.py`). A fail is a kernel regression. Index: [evals/README.md](../evals/README.md).
 
 This is **in-repo lab proof**. External dogfood stays Partial (C-153). Do not invent case studies.
 

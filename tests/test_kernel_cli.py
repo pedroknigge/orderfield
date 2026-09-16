@@ -1864,7 +1864,7 @@ class DoctorPlanDocSync(unittest.TestCase):
             "finder",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
-        from of.cli.spec_cmd import EvalInvariantSetup
+        from of.cli.eval_cmd import EvalInvariantSetup
 
         EvalInvariantSetup.write_bound_residual(
             tmp,
