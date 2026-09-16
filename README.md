@@ -47,6 +47,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
 | The implementer says the wave is done | Ask consent for a fresh-context review packet (`adversary` / `verifier`) before close. Never silent. Self-praise is not review. Contrast still required. Not a new close gate. |
 | A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
+| Adding lines looks like progress | Code is a liability. Think DELETE, not add. Same capability with less code. No new verb. |
 
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
@@ -71,10 +72,11 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 - One ordinary subagent, or work a skill on this agent already covers.
 - Opening a field because a harness name was mentioned.
 - Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
+- More kernel for the same capability.
 
 A field that only adds startup tax is theater. First productive write is not the finish.
 
-Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.”
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.” Undisclosed vulnerabilities: [SECURITY.md](SECURITY.md) (private advisory; not a public `of issue`).
 
 ---
 
@@ -417,6 +419,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
 | [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |
 | [PUBLISH.md](PUBLISH.md) | Publish gate |
+| [SECURITY.md](SECURITY.md) | Scope + how to report a vulnerability |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 Vocabulary: [docs/glossary.md](docs/glossary.md). One-pager for a serious reader: [docs/external-brief.md](docs/external-brief.md). Compared-to (planning-with-files, Orca, Agent Teams, LangGraph, Grok Bot): [above](#compared-to). Haken analogy (slaving-by-contract through `of`, not a science claim, not a jail): [references/principles.md](references/principles.md).

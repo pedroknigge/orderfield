@@ -27,6 +27,10 @@ How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH
 
 Do not invent a second physics (no new regimes without an explicit product decision). Prefer patching the field over hand-editing `.orderfield/ORDER.json`.
 
+Code is a liability. Think DELETE, not add. Same capability with less code. No new verb for that principle.
+
+Vulnerability reports: [SECURITY.md](SECURITY.md). Public `of issue` is not that path.
+
 ## How to release
 
 Follow [PUBLISH.md](PUBLISH.md). One VERSION per real cut. One VERSION and one GitHub release tag per proven user-facing or kernel invariant. Bump the validated version surfaces with the cut, land through protected `main`, then tag. Packaging-only, docs-only, or cosmetic lockstep (VERSION / skill preview / `install.sh` DEFAULT_VERSION / CHANGELOG `Packaging:` / `Docs:` line with no `**Proof:**` bullet on the current heading) fails `scripts/check_packaging_bump.py` (`PackagingBumpDiscipline`). Eval-only guards prefer no bump. Do not open a packaging-only release while another kernel/evals PR is in flight. Anti-pattern: 10 tags/day.

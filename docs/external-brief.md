@@ -38,7 +38,7 @@ Short form: [PRINCIPLES.md](../PRINCIPLES.md). Contract: [references/principles.
 
 ## Threat model
 
-A lab reviewer asks what a disobedient process can do. The kernel is a cooperative contract, not an OS jail and not `RUNTIME_OWNERSHIP`. Cite the proof, not the slogan.
+A lab reviewer asks what a disobedient process can do. The kernel is a cooperative contract, not an OS jail and not `RUNTIME_OWNERSHIP`. Cite the proof, not the slogan. How to report a vulnerability: [SECURITY.md](../SECURITY.md).
 
 ### What a disobedient child cannot do (through `of`)
 
