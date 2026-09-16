@@ -100,6 +100,14 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 **Recover:** Give disjoint `--owns-path` values, or `of unpack` the colliding child. Cross-wave reuse of a path is allowed and prints `consider continuing <child>`.
 
+## Two implementers, one branch
+
+**Symptom:** pack prints `note: two implementers share one git HEAD/index` / `shared_worktree`, or two children's commits land on one branch.
+
+**Meaning:** `--owns-path` does not isolate HEAD or the index. Two implementers in one worktree share the branch pointer and staging area.
+
+**Recover:** `of worktree add --child-id` for each implementer before spawn, or run them in series (collect the first before spawning the second). Disjoint paths stay required; they are not a substitute for two worktrees.
+
 ## Verifier residual refused
 
 **Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, or `rollback`.

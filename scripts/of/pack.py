@@ -21,6 +21,7 @@ from of.field import (
     field_is_file,
     json_events_enabled,
     load_json,
+    load_worktrees,
     of_dir,
     order_path,
     physical_artifact_path,
@@ -545,6 +546,64 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
             )
         packets.append(packet)
     return packets
+
+
+class SharedWorktree:
+    """Two implementers share one HEAD/index unless recorded worktrees isolate them.
+
+    ``--owns-path`` is a file write-set. A git worktree has one HEAD and one
+    index. Pack still writes; this is advisory like ``owns_path_prior``.
+    """
+
+    KIND = "shared_worktree"
+    FIX = (
+        "of worktree add --child-id <id> for each implementer, "
+        "or run them in series"
+    )
+
+    @staticmethod
+    def recorded_ids(root: Path) -> set[str]:
+        trees = load_worktrees(root).get("trees") or {}
+        return {str(cid).strip() for cid in trees if str(cid).strip()}
+
+    @staticmethod
+    def missing_ids(root: Path, child_ids: list[str]) -> list[str]:
+        recorded = SharedWorktree.recorded_ids(root)
+        seen: set[str] = set()
+        out: list[str] = []
+        for cid in child_ids:
+            name = str(cid or "").strip() or "?"
+            if name in seen:
+                continue
+            seen.add(name)
+            if name not in recorded:
+                out.append(name)
+        return out
+
+    @staticmethod
+    def note(missing: list[str]) -> str:
+        who = ", ".join(missing) if missing else "?"
+        return (
+            "two implementers share one git HEAD/index; "
+            "disjoint --owns-path is not enough. "
+            f"no worktree recorded for {who}. "
+            f"{SharedWorktree.FIX}."
+        )
+
+    @staticmethod
+    def unsheltered(
+        root: Path, child_id: str, implementers: list[dict[str, Any]]
+    ) -> list[str]:
+        """Child ids that lack a recorded worktree when a second implementer packs.
+
+        Empty means first implementer, or every named implementer already has
+        ``of worktree add``. Packet is still written either way.
+        """
+        if not implementers:
+            return []
+        ids = [str(p.get("child_id") or "?") for p in implementers]
+        ids.append(str(child_id or "?"))
+        return SharedWorktree.missing_ids(root, ids)
 
 
 def posix_owns_path(text: str) -> str:

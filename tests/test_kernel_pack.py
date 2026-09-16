@@ -1898,6 +1898,95 @@ class PathOwnership(unittest.TestCase):
         self.assertIn("consider continuing imp1", second.stderr)
 
 
+class SharedWorktreePack(unittest.TestCase):
+    """#214 — two implementers share HEAD/index; disjoint owns-path is not enough."""
+
+    def setUp(self) -> None:
+        from of.field import clear_field_home
+
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-shared-wt-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(clear_field_home)
+        clear_field_home()
+        (self.tmp / "src").mkdir()
+        (self.tmp / "src" / "a.py").write_text("# a\n", encoding="utf-8")
+        (self.tmp / "src" / "b.py").write_text("# b\n", encoding="utf-8")
+        r = run_of(self.tmp, "init", "--mission", "shared worktree", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, child_id: str, path: str) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            f"implement {child_id}",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+            "--owns-path",
+            path,
+        )
+
+    def _record(self, *child_ids: str) -> None:
+        dest = self.tmp / ".orderfield" / "work" / "worktrees.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        trees = {
+            cid: {
+                "path": f"/tmp/of-{cid}",
+                "added_at": "2026-09-15T00:00:00Z",
+                "head": "deadbeef",
+            }
+            for cid in child_ids
+        }
+        dest.write_text(json.dumps({"trees": trees}, indent=2) + "\n", encoding="utf-8")
+
+    def test_second_implementer_without_worktree_warns(self) -> None:
+        first = self._pack("imp1", "src/a.py")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertNotIn("shared_worktree", first.stderr)
+        self.assertNotIn("HEAD/index", first.stderr)
+        second = self._pack("imp2", "src/b.py")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertTrue(packet_path(self.tmp, "imp2").is_file())
+        self.assertIn("HEAD/index", second.stderr)
+        self.assertIn("disjoint --owns-path is not enough", second.stderr)
+        self.assertIn("no worktree recorded for imp1, imp2", second.stderr)
+        self.assertIn("of worktree add", second.stderr)
+        self.assertIn("series", second.stderr)
+
+    def test_recorded_worktrees_skip_warning(self) -> None:
+        self.assertEqual(self._pack("imp1", "src/a.py").returncode, 0)
+        self._record("imp1", "imp2")
+        second = self._pack("imp2", "src/b.py")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertNotIn("HEAD/index", second.stderr)
+        self.assertNotIn("shared_worktree", second.stderr)
+        self.assertTrue(packet_path(self.tmp, "imp2").is_file())
+
+    def test_partial_record_still_warns(self) -> None:
+        self.assertEqual(self._pack("imp1", "src/a.py").returncode, 0)
+        self._record("imp1")
+        second = self._pack("imp2", "src/b.py")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("no worktree recorded for imp2", second.stderr)
+        self.assertNotIn("imp1, imp2", second.stderr)
+
+    def test_unit_unsheltered_empty_for_first(self) -> None:
+        self.assertEqual(of.SharedWorktree.unsheltered(self.tmp, "imp1", []), [])
+        self.assertEqual(
+            of.SharedWorktree.missing_ids(self.tmp, ["imp1", "imp2"]),
+            ["imp1", "imp2"],
+        )
+        self._record("imp1", "imp2")
+        self.assertEqual(
+            of.SharedWorktree.unsheltered(
+                self.tmp, "imp2", [{"child_id": "imp1", "role": "implementer"}]
+            ),
+            [],
+        )
+
+
 class PackContinuationOwnsRequirement(unittest.TestCase):
     """#54 — continue a child that already owns a binding ID while others stay unowned."""
 
