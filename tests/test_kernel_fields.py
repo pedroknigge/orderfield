@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
-from of.cli.spec_cmd import EvalInvariantSetup  # noqa: E402
+from of.cli.eval_cmd import EvalInvariantSetup  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 
