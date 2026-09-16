@@ -1401,7 +1401,7 @@ class SkillAuditPressure(unittest.TestCase):
 
 
 class SkillPlanDocSync(unittest.TestCase):
-    """SKILL teaches Mode A patch vs Mode B dump+ask for cited plan docs."""
+    """SKILL teaches Mode A default vs Mode B dump+ask for cited plan docs."""
 
     @staticmethod
     def table(skill: str) -> str:
@@ -1413,26 +1413,92 @@ class SkillPlanDocSync(unittest.TestCase):
         appendix = SkillSurface.appendix(ROOT)
         table = self.table(core).casefold()
         self.assertIn("docs/plans", table)
-        self.assertIn("mode a", table)
+        self.assertIn("mode a default", table)
+        self.assertIn("owns_path", table)
         self.assertIn("mode b", table)
-        self.assertIn("docs_sync.md", table)
         self.assertIn("ask", table)
         self.assertIn("plandocsync", table)
         self.assertIn("not a close gate", table)
         self.assertIn("project finding", table)
         alias_fold = alias.casefold()
         self.assertIn("docs/plans", alias_fold)
-        self.assertIn("mode a", alias_fold)
+        self.assertIn("mode a default", alias_fold)
         self.assertIn("mode b", alias_fold)
         self.assertIn("docs_sync.md", alias_fold)
+        self.assertIn("same turn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("plandocsync", appendix_fold)
-        self.assertIn("mode a", appendix_fold)
+        self.assertIn("mode a default", appendix_fold)
+        self.assertIn("same turn", appendix_fold)
         self.assertIn("mode b", appendix_fold)
         self.assertIn("docs_sync.md", appendix_fold)
         self.assertIn("project finding", appendix_fold)
+        self.assertIn("not a consent ask", appendix_fold)
         source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
         self.assertIn("class PlanDocSync:", source)
+
+
+class SkillPstackCherries(unittest.TestCase):
+    """Appendix + SLAVE teach pstack-shaped pack/plan cherries. Skill-only."""
+
+    FORBIDDEN_CLONE = (
+        "orch.ts",
+        "frontier.json",
+        "preferences.md",
+        "of merge",
+        "budget.tokens",
+    )
+
+    def test_appendix_slave_teach_five_cuts(self) -> None:
+        appendix = SkillSurface.appendix(ROOT)
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        alias = SkillSurface.alias(ROOT)
+        appendix_fold = appendix.casefold()
+        slave_fold = slave.casefold()
+        self.assertIn("throughput checkpoint", appendix_fold)
+        for bullet in (
+            "Blocking first steps",
+            "Independent workstreams",
+            "Shared mutable state",
+            "Smallest safe decomposition",
+        ):
+            self.assertIn(bullet, appendix, bullet)
+        self.assertIn("`--owns-path`", appendix)
+        self.assertIn("path independence is not dependency independence", appendix_fold)
+        for field in (
+            "GOAL",
+            "SCOPE",
+            "CONTEXT",
+            "ACCEPTANCE",
+            "VERIFY",
+            "TIMEBOX",
+            "FORBIDDEN",
+            "REPORT",
+        ):
+            self.assertIn(field, appendix, field)
+            self.assertIn(field, slave, field)
+        self.assertIn("budget.seconds", appendix)
+        self.assertIn("never `budget.tokens`", appendix_fold)
+        self.assertIn("file/SPEC pointers, never the parent transcript", appendix)
+        self.assertIn("done-because-of", appendix_fold)
+        self.assertIn("done-because-of", slave_fold)
+        self.assertIn("Files · Build · You see", appendix)
+        self.assertIn("Files · Build · You see", slave)
+        self.assertIn("ten-live-lanes", appendix_fold)
+        self.assertIn("`act` / `consider` / `noted` / `dismissed`", appendix)
+        self.assertIn("`act` / `consider` / `noted` / `dismissed`", slave)
+        self.assertIn("escalate_up", appendix)
+        self.assertIn("escalate_up", slave)
+        self.assertIn("proposed_patch.notes", appendix)
+        self.assertIn("mode a default", appendix_fold)
+        self.assertIn("mode a default", alias.casefold())
+        self.assertIn("constraints-add", appendix_fold)
+        self.assertIn("of learn --protocol", appendix)
+        for needle in self.FORBIDDEN_CLONE:
+            self.assertNotIn(needle, slave)
+        self.assertNotIn("orch.ts", appendix)
+        self.assertNotIn("frontier.json", appendix)
+        self.assertNotIn("preferences.md", appendix)
 
 
 class SkillCollectNextIntegrate(unittest.TestCase):

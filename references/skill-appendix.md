@@ -157,16 +157,41 @@ If the consumer tree has no §20 / Apéndice A tables, do not invent product Gat
 
 **Plan-doc sync.** When SPEC / ORIGIN / handoff / constraints name project plan docs (`docs/plans/…`), those files are living surfaces. After `of integrate`, `of spec --amend`, and `of close --checklist`:
 
-- **Mode A — continuous:** patch the named docs (child `owns_path` when a slice writes them).
-- **Mode B — dump then ask:** write `.orderfield/work/scratch/leader/DOCS_SYNC.md` and **ask** the human to promote into the repo.
+| When | Do |
+|---|---|
+| Child `owns_path` covered a cited `docs/plans/…` | **Mode A default** — patch those docs **same turn** (auto-continue). Not a consent ask. |
+| Cited path was not owned, or promotion needs a human | **Mode B** — `.orderfield/work/scratch/leader/DOCS_SYNC.md` + **ask** |
+| Residual names an open project finding | named plan/debt/findings path or the dump; `proposed_patch.docs_sync` `pending\|done` |
 
-`of doctor` / close print `docs_sync stale|pending|findings` (`PlanDocSync`) when cited paths are mtime-stale vs last integrate, or a residual names an open project finding without a dump. Not a close gate. Not a CMS. Residual `proposed_patch.docs_sync` may be `pending|done` (no new schema). `of learn` is OF-runtime, not product plan sync. Project findings ("review later") must land in a named plan/debt/findings doc or the dump — not chat vapor. Proof: `of eval recovery/plan-doc-sync`.
+`of doctor` / close print `docs_sync stale|pending|findings` (`PlanDocSync`) when cited paths are mtime-stale vs last integrate, or a residual names an open project finding without a dump. Not a close gate. Not a CMS. `of learn` is OF-runtime, not product plan sync. Proof: `of eval recovery/plan-doc-sync`.
 
 **You should be better.** First productive write is not the finish; `of contrast` clean is. A field that only adds startup tax is theater.
 
 Sources: documentation-manager adversary feedback (field correction + when-pays) and the prior grok-build critique (principle sane, ritual expensive).
 
 ### 3. Pack. Do not dump history
+
+**Before `of pack` (throughput checkpoint).** Name these four; a dimension that does not apply keeps `n/a: <reason>`:
+
+- **Blocking first steps** — gates that must finish before same-wave fan-out (DAG first; `domain → store` is not parallel).
+- **Independent workstreams** — disjoint `--owns-path` / `--owns-requirement` only. Same-wave overlap dies; path independence is not dependency independence.
+- **Shared mutable state** — HEAD/index, schemas, one file two writers. Split first (`of worktree add` or series). Serialize only for a real invariant.
+- **Smallest safe decomposition** — one child when the write set is one, or why. Do not pack a whole phase. Recurring lessons go in `of patch --constraints-add` / `of learn --protocol`, not more SKILL prose.
+
+**Slice fields (packet template).** `--slice` / handoff / SLAVE carry the brief — not an orch inbox. CONTEXT is file/SPEC pointers, never the parent transcript.
+
+| Field | Maps to |
+|---|---|
+| GOAL | `--slice` one sentence |
+| SCOPE | `--owns-path` / `--owns-requirement` |
+| CONTEXT | `spec_ref` + paths; never parent chat |
+| ACCEPTANCE | one done-because-of fact + a real-surface exercise (prove-it; blast-radius one-fact) |
+| VERIFY | commands / artifact the child names in residual |
+| TIMEBOX | `budget.seconds` only. Never `budget.tokens` / `--tokens` |
+| FORBIDDEN | ORDER.constraints + packet `workspace.forbidden` |
+| REPORT | residual shape in SLAVE (`status` / `result_ref` / `residual` / `metrics`) |
+
+**Evidence-box (one checkable unit per child/wave).** Files · Build · You see · Verify (artifact). Not essays. Not PR-lane / ten-live-lanes / audit-tick ceremony.
 
 ```bash
 python3 <skill>/scripts/of.py pack \
@@ -442,6 +467,15 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 | `verifier` | turn "done" into "ready" | widen scope |
 
 Use the minimum. Explorer + adversary already prove the principle. After a wave, a fresh-context `adversary` and/or `verifier` packet is the independent review (council shape). **Must ask** consent; never silent. Implementer self-praise is not review. Not a new close gate.
+
+`--role adversary` / `--role verifier` residuals bucket findings `act` / `consider` / `noted` / `dismissed` so they write back cleanly — no new schema:
+
+| Bucket | Write-back |
+|---|---|
+| act | `proposed_patch` (`constraints+` / `docs_sync`) or `status=threshold` + `wants_to_change` (`escalate_up`) when the field is wrong |
+| consider | `proposed_patch.notes` |
+| noted | `residual.evidence` |
+| dismissed | `residual.evidence` plus the reason |
 
 ## Where things live
 

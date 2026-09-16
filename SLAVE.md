@@ -13,7 +13,7 @@ Do the slice. Do not rewrite the mission. If the packet is not enough: `status=t
 5. Your scratch directory: `.orderfield/work/scratch/<child_id>/` (you may write there). Packet `owns_paths` (if present) are the exclusive product paths for this slice; the packet may list them in `workspace.writable_by_slaves` alongside scratch. Disjoint `owns_paths` do not isolate git HEAD or the index — use the recorded `of worktree`, or do not move a sibling's branch.
 6. This document.
 
-Do not ask for the parent's history. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. Internal unit tests are VERIFIED_INTERNAL. If SPEC names a CLI/HTTP/file/exit code, timeout, idempotency, health (`/health`), or version (`/version` or a release header) ID, exercise that surface; pair-shaped requirements (including webhook HMAC + replay and idempotency) need both sides. Timeout / health / idempotency / version cannot close on VERIFIED_INTERNAL. The field does not close until `of contrast` is resolved (VERIFIED_CONTRACT on public surfaces).
+Do not ask for the parent's history. CONTEXT is file/SPEC pointers, never the parent transcript. If the packet has `spec_ref`, SPEC.md **does** exist for you even when the slice is short. The slice is cut from SPEC + ORDER together. Before the residual, contrast Intent (SPEC) vs Delivered (your files) vs missing. Invariants, CLI, schemas, types, exit codes, and deliverables in SPEC outrank a compressed mission. Internal unit tests are VERIFIED_INTERNAL. If SPEC names a CLI/HTTP/file/exit code, timeout, idempotency, health (`/health`), or version (`/version` or a release header) ID, exercise that surface; pair-shaped requirements (including webhook HMAC + replay and idempotency) need both sides. Timeout / health / idempotency / version cannot close on VERIFIED_INTERNAL. The field does not close until `of contrast` is resolved (VERIFIED_CONTRACT on public surfaces).
 
 **Session cut.** If your scratch directory is nonempty and the residual at `residual_path` is missing, you are **in-flight**. Continue the same slice from scratch. Do not restart. Do not re-init. The packet you were given is still the packet. Residual MISSING is still running — harness chrome saying done is not a residual.
 
@@ -84,6 +84,16 @@ If unsure, draft + HITL, default to *not* posting.
 4. Name the draft in the residual `result_ref` / evidence. The leader asks the human, then `of issue --confirm`.
 
 Do not file secrets, tokens, private transcripts, or field-internal residuals (those stay on disk: residual → integrate). Do not submit `of issue` without `--dry-run`. Do not impersonate, invent a token, or file to the consumer working-tree origin — the target is always `pedroknigge/orderfield`.
+
+## Packet template
+
+The slice should name these. CONTEXT is pointers only. TIMEBOX is `budget.seconds` (never tokens).
+
+GOAL / SCOPE / CONTEXT / ACCEPTANCE / VERIFY / TIMEBOX / FORBIDDEN / REPORT
+
+ACCEPTANCE is one done-because-of fact plus a real-surface exercise. Evidence-box for this wave: Files · Build · You see · Verify (artifact). One checkable unit — not an essay.
+
+`--role adversary` / `--role verifier`: bucket each finding `act` / `consider` / `noted` / `dismissed`. Act writes `proposed_patch` or `escalate_up` (`status=threshold` + `wants_to_change`). Consider → `proposed_patch.notes`. Noted / dismissed → `evidence` (dismissed names why). `docs_sync` stays under `proposed_patch`. No new keys.
 
 ## How your turn ends
 
