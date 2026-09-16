@@ -23,7 +23,7 @@ Code is a liability. Think DELETE, not add. Same capability with less code.
 
 Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (SHA-256 pin → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
 
-Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER by itself.
+Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER.
 
 The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-process field lock for `MUTATING_COMMANDS`, pack caps, canonical packet identity, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail. Does not lock product files.
 
@@ -65,7 +65,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed. Proof: `of eval recovery/multi-wave-close-checklist` |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
-| what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked. recovery/post-close-terminal |
+| what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | child says the field is wrong | `of patch …` then `of next-wave` |
 | several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `of fields --json` — open packs across homes; `of status --json` stays one field |
@@ -86,7 +86,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. yolo is never implied. inherit forwards the parent env. Conservative + allowlist stay defaults. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. Table: appendix + adapters.md |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
 
-Those verbs without `of` in the same turn are a broken run.
+Those verbs without `of` same turn are a broken run.
 
 ## When to use
 

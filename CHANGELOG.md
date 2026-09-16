@@ -10,7 +10,7 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## 0.8.15
 
-`of collect` names the legal home when a residual puts `docs_sync` (or `notes`, `tokens`) on the wrong object. `validate_schema` now also enforces the `anyOf` / `maxLength` / `patternProperties` keywords the public schemas already use. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.14 notes.
+`of collect` names the legal home when a residual puts `docs_sync` (or `notes`, `tokens`) on the wrong object. `validate_schema` now also enforces the `anyOf` / `maxLength` / `patternProperties` keywords the public schemas already use. Successful `of close` wipes `work/scratch` so a CLOSED field does not keep media/`node_modules` bloat. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.14 notes.
 
 - **Reuse table (design-first):** `validate_schema` already refuses extra keys with `unexpected properties: […]`. `proposed_patch` is already the only residual object with `additionalProperties: true`. SLAVE already names `proposed_patch.docs_sync`. The remaining gap is an opaque refuse when a child puts `docs_sync` on `residual` (`#215`).
 - **Reuse, not a new verb:** `SchemaHomeHint` walks the same public schema: a declared property elsewhere wins (`notes` → `proposed_patch.notes`, `tokens` → `usage.tokens`); otherwise a descendant `additionalProperties: true` object is the home (`docs_sync` → `proposed_patch.docs_sync`). Same `INVALID` line; no auto-normalize; no new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
@@ -20,6 +20,11 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 - **Reuse, not a JSON Schema engine:** add `maxLength` next to `minLength`, `anyOf` as "at least one subschema matches", and `patternProperties` as "matching keys validate". `schema_unknown_keywords` walks public schemas so a future keyword cannot land as dual-truth. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`. Subtracting the keywords would shrink the claimed contract; enforcing the subset in use is the smaller honest fix.
 - **Skill drives the cut:** SKILL / `/of` already teach public-schema enforcement. Version lockstep only.
 - **Proof:** `SchemaSubsetHonesty` (public schemas use only implemented keywords; empty `adapter_hints` fails `anyOf`; 257-char `denied_actions` item fails `maxLength`; `patternProperties` rejects a matching key; `validate_residual` / `validate_packet` refuse). C-030 extended. No new C-ID (honesty cap).
+- **Reuse table (design-first):** SAT-002 already dumps closed-field scratch/logs/spawns/prompts on `of gc` (`closed-ephemeral`). `AuditPressure` already WARNs on fat scratch before close (not a gate). `_safe_unlink` already owns the delete. The remaining gap is the stamp leaving `work/scratch` until someone remembers `of gc`.
+- **Reuse, not a new verb:** `ClosedScratch.wipe` runs after a successful stamp (and on `already spec_closed`) and unlinks this field's `work/scratch` children plus `waves/*/logs|spawns|prompts`. `--checklist` and refused close do not wipe. Contract files stay. Older ORDER fields stay workable; `of close` again or `of gc` cleans leftover scratch. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach wipe-on-close next to the close-is-proof row. `of gc --audit` before close stays the pre-close WARN.
+- **Proof:** `ClosedScratchWipe` (media/`node_modules` + wave logs gone; residual/CLOSE/ORDER stay; `--checklist` does not wipe; already-closed wipes leftover). `PostCloseTerminal` leftover PULSE is gone after close. `SkillClosedScratch`. C-084 extended. No new C-ID (honesty cap).
+- Architecture: `MUTATING_COMMANDS` lists `gc` (code since 0.7.3 / SAT-006). Spawn lock race was not a verified bug — skipped.
 - Packaging: VERSION 0.8.15; skill/alias description preview `v0.8.15 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.14 notes.
 
 ## 0.8.14

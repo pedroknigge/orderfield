@@ -1369,6 +1369,32 @@ class SkillResumeRecompute(unittest.TestCase):
         self.assertIn("class IntegrationDigest:", source)
 
 
+class SkillClosedScratch(unittest.TestCase):
+    """SKILL teaches successful close wipes work/scratch."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_wipe_on_close(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("wipes scratch", table)
+        self.assertIn("successful close", table)
+        alias_fold = alias.casefold()
+        self.assertIn("wipes", alias_fold)
+        self.assertIn("work/scratch", alias_fold)
+        self.assertIn("closed-ephemeral", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("closedscratch", appendix_fold)
+        self.assertIn("work/scratch", appendix_fold)
+        self.assertIn("closed-ephemeral", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "retain.py").read_text(encoding="utf-8")
+        self.assertIn("class ClosedScratch:", source)
+
+
 class SkillAuditPressure(unittest.TestCase):
     """SKILL teaches gc / shrink before close when audit is OVER."""
 
