@@ -16,7 +16,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.13`
+**Code rev:** VERSION `0.8.14`
 
 ## Summary
 
@@ -117,7 +117,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-047 | SPEC.md is the current brief; product-root prompt.md discarded; contrast is a close gate; webhook HMAC + replay is PAIR (`WebhookPair` + `--both-sides`); timeout / idempotency / health / version are VERIFIED_CONTRACT (`ContractSurface`) | SKILL / architecture / SLAVE / README | `write_spec` / `requirement_close_ok` / `WebhookPair` / `ContractSurface` / `cmd_contrast` / `cmd_close` | `scripts/of/spec.py` / `scripts/of/cli/spec_cmd.py` | `WebhookPair` / `ContractSurface` / `cmd_spec` | — | critical | OK | keep; webhook PAIR 0.7.78; ContractSurface 0.7.80; version 0.7.88 |
 | C-048 | `of pack` without `--owns-requirement` is refused while binding IDs are unowned | README / SKILL / troubleshooting | `cmd_pack` dies on unowned when packet owns none | `scripts/of/cli/wave.py` / `tests/test_kernel_spec.py` | `cmd_pack` | — | critical | OK | keep |
 | C-049 | Extract joins backslash-continued CLI lines | CHANGELOG / kernel feature / troubleshooting | `join_continued_lines` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `join_continued_lines` | — | critical | OK | keep |
-| C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
+| C-050 | Same-wave `--owns-path` overlap dies; second implementer needs `--owns-path`; disjoint paths are not a second worktree (`SharedWorktree` warns `shared_worktree`); not a file lock | SKILL / SLAVE / README / principles | `cmd_pack` overlap + `copy_workspace_with_owns` + `SharedWorktree` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` / `SharedWorktreePack` | — | critical | OK | keep; shared HEAD 0.8.14 |
 | C-051 | Verifier `done` requires identifying evidence + nonempty `result_ref`; any `status=done` also needs artifact SHA + rollback command (`CloseEvidence`); `phase --force` to deliver still runs SPEC close | SKILL / SLAVE / troubleshooting | `verifier_done_errors` / `CloseEvidence` / `phase_deliver_errors` | `scripts/of/pack.py` / `scripts/of/regime.py` | `VerifierEvidence` / `CloseEvidenceGate` | — | critical | OK | keep; CloseEvidence 0.7.81 |
 | C-052 | REQUIREMENTS is an index over SPEC; contrast cites `SPEC.md:N`; extract precision over recall | SKILL / principles / CHANGELOG | `extract_requirements_from_spec` | `scripts/of/spec.py` / `tests/test_kernel_spec.py` | `SemanticExtract` | — | critical | OK | keep |
 | C-053 | Kernel internals split into field/spec/pack/regime/cli; public CLI stays; protocol unchanged vs 0.5.7 | architecture | package `scripts/of/` + shim entry | `scripts/of.py` / `scripts/of/` | `main` | — | critical | OK | keep; 0.6 form |
@@ -360,6 +360,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-045 0.8.11: after collect/abandon, `of worktree remove --child-id` plus Orca Host `worktree rm` / `terminal close --tab`; doctor/close WARN on orphaned vs settled (`DoctorSkew.orphaned_worktrees`; #210); `DoctorWorktreeLeftover` / `SkillOrcaWorkerTeardown`; no new C-ID (honesty cap)
 - [x] 0.8.12: `of spec --surface internal ID` reclassifies a mis-declared requirement (`RequirementSurface`; #211); `--surface` without `--add` or ID refuses; contrast teaches the path; `--supersede` still drops coverage; `RequirementSurfaceReclassify` / `SkillRequirementSurface`; no new C-ID (honesty cap)
 - [x] C-152 0.8.13: spawn record stores pid; `--force-spawn` refuses a live pid; doctor/status name `over_budget` (`unbounded` vs `dead-without-metadata`; not a supervisor; #213); `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid`; no new C-ID (honesty cap)
+- [x] C-050 0.8.14: second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; #214); disjoint `--owns-path` is not a second HEAD/index; two worktrees or series; `SharedWorktreePack` / `SkillSharedWorktree`; no new C-ID (honesty cap)
 - [x] C-025 docs honesty: clone/checkout of open `.orderfield/` + installed skill auto-continues; operator risk, not an escape; rule 0 stays; `SkillCheckoutAutoContinueHonesty`; no new C-ID; no VERSION bump
 - [x] C-152 0.7.70: packed-only is not ALIVE; `SpawnRecord` + status/resume `spawned` from spawn meta; `PACKED` + `next SPAWN`; pulse stays authoritative
 - [x] C-153 docs honesty: in-repo lab proof is re-runnable; external multi-agent field dogfood stays Partial; `FieldEvidenceHonesty`; no invented case studies; no VERSION bump

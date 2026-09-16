@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.13` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.14` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -164,7 +164,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); honesty surface, not a security guarantee; not a process manager; not hooked from spawn |
 | `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`; webhook HMAC + replay via `WebhookPair`; timeout / idempotency / health / version via `ContractSurface`). `of contrast --diff` is the `ContrastDiff` narrative of those facts (RESOLVED is not CLOSED). `of close --checklist` is contrast + residual empty (`CloseChecklist`) plus `speak_line` (do not claim shipped unless RESOLVED and residual empty); leaders must quote that `speak` line before claiming shipped (protocol); write path refuses residual MISSING. Living map: checklist → of contrast / of close / residual (Prod§7 `ContractSurface`; Prod§11 `/version` / release header `ContractSurface` + residual `CloseEvidence`; Prod§15 `RunbookPath` in `done_when`; ship `CloseChecklist`). Not a second checklist |
-| `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock |
+| `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock; `SharedWorktree` warns when a second implementer lacks a recorded worktree |
 | `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
 | `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
 | `argv_preview` / `redact_text` / `ArgvRedact` | Secrets and escalated approval flags stripped from spawn previews and logs; long `--output-schema` / `--json-schema` / path tokens keep a basename so a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor`) still names `residual.codex.schema.json` |

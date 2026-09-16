@@ -178,14 +178,16 @@ python3 <skill>/scripts/of.py pack \
 
 `--out` is optional. When set, it accepts the logical `.orderfield/waves/…` path **or** the physical `.orderfield/fields/<id>/waves/…` path `of pack` prints. Omit `--out` to write that same location.
 
-`max_children` (default 4) is the parallel cap **in one wave**. `max_across_per_wave` is reserved leftover math; it does **not** serialize implementers. Pack multiple implementers in the **same** build wave when write sets are disjoint:
+`max_children` (default 4) is the parallel cap **in one wave**. `max_across_per_wave` is reserved leftover math; it does **not** serialize implementers. Pack multiple implementers in the **same** build wave when write sets are disjoint **and** each has its own git worktree (or they run in series):
 
 ```bash
 of pack --role implementer --child-id state --owns-path src/store.py --owns-requirement LEASE-001
 of pack --role implementer --child-id http --owns-path src/http_api.py --owns-requirement HTTP-001
+of worktree add --child-id state
+of worktree add --child-id http
 ```
 
-Same-wave overlapping `--owns-path` dies. A second implementer in the wave **must** pass `--owns-path`. Cross-wave reuse of a path prints a note (`consider continuing <child>`) — not a lock. If the next work is the same files, that child is in-flight: continue from scratch; do not pack a sibling.
+**Disjoint `--owns-path` is not enough.** `--owns-path` is a file write-set. A git worktree has one HEAD and one index, shared by every process in it. Two implementers with disjoint files still overwrite each other's branch and staged files. Pack warns `shared_worktree` when a second `--role implementer` is packed and no `of worktree add` is recorded for the unsheltered children. Isolate with `of worktree add --child-id` for each, or spawn them in series (collect the first before the second starts). Same-wave overlapping `--owns-path` still dies. A second implementer in the wave **must** pass `--owns-path`. Cross-wave reuse of a path prints a note (`consider continuing <child>`) — not a lock. If the next work is the same files, that child is in-flight: continue from scratch; do not pack a sibling.
 
 **Path independence ≠ dependency independence.** Same-wave implementers need disjoint write sets **and** no unresolved hard dependency on another in-flight packet. A DAG slice (`domain → store → cli`) is not parallelizable just because paths differ — pack for the **width** of independent work, not `max_children`. Example: `state machine + HTTP + docs` may share a wave; `domain → store → (cli | http)` does not.
 
@@ -420,7 +422,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not treat `ORDER.origin` as spawn authority or as `session.json`. Do not fetch or dump harness transcripts; origin is a pointer. Fetch stays in harness-specific resume skills.
 - Do not write `PROMPT.md` / `prompt.md` at the project root. The contract is `.orderfield/SPEC.md`. New requests are `of spec --amend`.
 - Do not ingest a deictic go-ahead as SPEC. Expand the prior request, or resume and execute `next`.
-- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path`. `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid. A chat-dump residual cannot collect. `status=done` close evidence without `artifact_sha:` (sha256 of `result_ref`) and `rollback:` a command cannot collect (`CloseEvidence`).
+- Do not skip pack and implement in the leader tree. Extracted requirements that nobody owns do not govern the product. `of pack --owns-requirement ID`. Second implementer in a wave needs `--owns-path` **and** two worktrees or series (`shared_worktree`). `of contrast` before close. `phase --force` to `deliver` cannot skip SPEC close. Verifier `done` with empty or slogan evidence is invalid. A chat-dump residual cannot collect. `status=done` close evidence without `artifact_sha:` (sha256 of `result_ref`) and `rollback:` a command cannot collect (`CloseEvidence`).
 - Do not claim shipped / closed / done on a field without running `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` plus `residual empty`. If either proof row fails or that `speak` line is not quoted, you may not claim shipped. Mechanical — not your judgment. Pair with quote-PULSE while residual is MISSING.
 - Do not close on self-praise. After a wave, ask consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Not a new close gate. Not after ordinary integrate/next-wave. Not `of merge`.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.

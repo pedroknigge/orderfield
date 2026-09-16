@@ -21,12 +21,12 @@ The chat can die. ORDER stays. A child residual cannot rewrite the mission, the 
 `of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.8.13</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.14</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.13-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.14-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -100,8 +100,8 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
-release_tag=v0.8.13
-release_version=0.8.13
+release_tag=v0.8.14
+release_version=0.8.14
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -214,8 +214,9 @@ of init --mission "decidable architecture for a pricing tool" --phase explore \
 of spec --add CLI-001 --surface contract --text "the CLI prints a price table"
 of pack --slice "map pricing models, do not choose the phase" --role explorer \
   --child-id explorer --owns-requirement CLI-001
-# second implementer in the same wave needs disjoint --owns-path
+# second implementer: disjoint --owns-path is not enough (one HEAD/index)
 # of pack --role implementer --owns-path src/http.py --owns-requirement HTTP-001
+# of worktree add --child-id <id> for each, or run them in series
 of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
 # no OF_AGENT set -> handoff mode: paste .orderfield/waves/001/prompts/explorer.md into any agent.
 # The child writes the residual, echoing the packet identity. Simulated here:
@@ -364,7 +365,7 @@ Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process 
 | `wave` | `list` / `show [N]`: multi-wave roster; `*` is `state.wave`. Read-path only |
 | `detect` | list harness CLIs on PATH (present/missing; PATH≠auth) |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies; disjoint paths are not a second worktree — pack warns `shared_worktree` unless each implementer has `of worktree add` or they run in series). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds `children_spawned` |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |
