@@ -14,9 +14,10 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.8.15 — collect unexpected keys name the legal home
+## 0.8.15 — collect unexpected keys name the legal home; schema subset enforces anyOf / maxLength
 
 - Collect unexpected residual keys name the legal home (`SchemaHomeHint`; `#215`). `docs_sync` on `residual` prints `did you mean …proposed_patch.docs_sync?`. Declared siblings (`notes`, `tokens`) use the same walk. No auto-normalize. Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. C-139. No new CLI verb / schema / supervisor. Not a new regime.
+- `validate_schema` implements the Draft 2020-12 keywords the public schemas already use (`packet.adapter_hints` `anyOf`; residual `denied_actions` `maxLength` 256; state `path_index` `patternProperties`). `schema_unknown_keywords` fails a future unimplemented keyword. Not a JSON Schema engine. Proof: `SchemaSubsetHonesty`. C-030. No new CLI verb / schema / supervisor. Not a new regime.
 
 ## 0.8.14 — shared worktree warn for a second implementer
 

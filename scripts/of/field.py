@@ -88,6 +88,31 @@ PUBLIC_SCHEMA_FILES = (
     "requirements.schema.json",
     "learning.schema.json",
 )
+# Draft 2020-12 keywords validate_schema enforces. Public schemas may
+# also carry annotations. A keyword outside both sets is dual-truth.
+SCHEMA_APPLICATORS = frozenset(
+    {
+        "type",
+        "const",
+        "enum",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "minimum",
+        "maximum",
+        "minItems",
+        "uniqueItems",
+        "items",
+        "required",
+        "additionalProperties",
+        "properties",
+        "patternProperties",
+        "anyOf",
+    }
+)
+SCHEMA_ANNOTATIONS = frozenset(
+    {"$schema", "$id", "title", "description", "default"}
+)
 REDACTED = "<redacted>"
 APPROVAL_REDACTED = "<approval>"
 SECRET_FLAG_NAMES = {
@@ -2087,6 +2112,9 @@ def validate_schema(
         minimum = schema.get("minLength")
         if isinstance(minimum, int) and len(value) < minimum:
             errs.append(f"{path} must contain at least {minimum} characters")
+        maximum = schema.get("maxLength")
+        if isinstance(maximum, int) and len(value) > maximum:
+            errs.append(f"{path} must contain at most {maximum} characters")
         pattern = schema.get("pattern")
         if isinstance(pattern, str) and re.search(pattern, value) is None:
             errs.append(f"{path} must match pattern {pattern!r}")
@@ -2144,7 +2172,77 @@ def validate_schema(
                         _root_path=root_path,
                     )
                 )
+        pattern_properties = schema.get("patternProperties")
+        if isinstance(pattern_properties, dict):
+            for key, child in value.items():
+                for pattern, child_schema in pattern_properties.items():
+                    if not isinstance(child_schema, dict):
+                        continue
+                    if re.search(pattern, key) is None:
+                        continue
+                    errs.extend(
+                        validate_schema(
+                            child,
+                            child_schema,
+                            f"{path}.{key}",
+                            _root=root,
+                            _root_path=root_path,
+                        )
+                    )
+    any_of = schema.get("anyOf")
+    if isinstance(any_of, list) and any_of:
+        saw_option = False
+        matched = False
+        for option in any_of:
+            if not isinstance(option, dict):
+                continue
+            saw_option = True
+            if not validate_schema(
+                value, option, path, _root=root, _root_path=root_path
+            ):
+                matched = True
+                break
+        if saw_option and not matched:
+            errs.append(f"{path} must match at least one anyOf schema")
     return errs
+
+
+def schema_unknown_keywords(schema: Any, path: str = "$") -> list[str]:
+    """Keywords in a public schema that validate_schema does not enforce."""
+    if isinstance(schema, list):
+        found: list[str] = []
+        for index, item in enumerate(schema):
+            found.extend(schema_unknown_keywords(item, f"{path}[{index}]"))
+        return found
+    if not isinstance(schema, dict):
+        return []
+    found = []
+    for key, child in schema.items():
+        if key not in SCHEMA_APPLICATORS and key not in SCHEMA_ANNOTATIONS:
+            found.append(f"{path}.{key}")
+        if key == "properties" and isinstance(child, dict):
+            for prop, prop_schema in child.items():
+                found.extend(
+                    schema_unknown_keywords(
+                        prop_schema, f"{path}.properties.{prop}"
+                    )
+                )
+        elif key == "patternProperties" and isinstance(child, dict):
+            for pattern, prop_schema in child.items():
+                found.extend(
+                    schema_unknown_keywords(
+                        prop_schema, f"{path}.patternProperties.{pattern}"
+                    )
+                )
+        elif key == "items" and isinstance(child, dict):
+            found.extend(schema_unknown_keywords(child, f"{path}.items"))
+        elif key == "anyOf" and isinstance(child, list):
+            found.extend(schema_unknown_keywords(child, f"{path}.anyOf"))
+        elif key == "additionalProperties" and isinstance(child, dict):
+            found.extend(
+                schema_unknown_keywords(child, f"{path}.additionalProperties")
+            )
+    return found
 
 
 @lru_cache(maxsize=32)
