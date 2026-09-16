@@ -219,22 +219,29 @@ FIELD_SPEC_MD = ".orderfield/SPEC.md"
 FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
 FIELD_SPEC_LOG = ".orderfield/spec-log"
 FIELD_LOCK_WAIT_SECONDS = 10.0
-MUTATING_COMMANDS = {
+# Source of truth for the CLI field.lock wrapper. Docs must quote this order.
+MUTATING_COMMANDS_ORDER = (
     "init",
     "new",
+    "pack",
+    "unpack",
+    "collect",
     "integrate",
     "phase",
     "patch",
     "next-wave",
     "migrate",
-    "close",
-    "pack",
-    "unpack",
-    "collect",
     "spec",
     "checkpoint",
+    "close",
     "gc",
-}
+)
+MUTATING_COMMANDS = frozenset(MUTATING_COMMANDS_ORDER)
+
+
+def mutating_commands_prose() -> str:
+    """Stable lock-set list for architecture / README / principles."""
+    return ", ".join(f"`{name}`" for name in MUTATING_COMMANDS_ORDER)
 OF_FIELD_ENV = "OF_FIELD"
 OF_CHILD_ENV = "OF_CHILD"
 OF_SPAWN_REGISTRY_ENV = "OF_SPAWN_REGISTRY"
@@ -1562,6 +1569,8 @@ def register_spawned_child(
                 continue
             if recorded >= cutoff:
                 kept.append(existing)
+        # write_text, not dump_bytes: Popen already started the child.
+        # File+dir fsync races LEARN-002 exec (same pid, OF_CHILD stripped).
         path.write_text(
             json.dumps({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]}),
             encoding="utf-8",
@@ -3463,6 +3472,46 @@ class SpawnRecord:
         if start is not None:
             meta["starttime"] = start
         dump_json(path, meta)
+
+    @staticmethod
+    def claim_started(
+        root: Path,
+        path: Path,
+        meta: dict[str, Any],
+        *,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> dict[str, Any] | None:
+        """Serialize the started-only spawn claim.
+
+        Holds field.lock only for the check+write. Writes live via dump_bytes
+        so WAL inherit does not delete waves/<n>/spawns/<id>.json (not a
+        snapshot rel). Not a supervisor. Not the CLI MUTATING_COMMANDS wrapper.
+        """
+        overridden: dict[str, Any] | None = None
+        with field_lock(root, "spawn"):
+            if path.is_file() and not dry_run:
+                prior = load_json(path)
+                if (
+                    isinstance(prior, dict)
+                    and "outcome" not in prior
+                    and not prior.get("dry_run")
+                ):
+                    live = SpawnRecord.live_pid(prior)
+                    cid = str(
+                        meta.get("child_id") or prior.get("child_id") or "?"
+                    )
+                    if live is not None:
+                        die(
+                            SpawnRecord.live_refuse_message(
+                                cid, prior, path, live
+                            )
+                        )
+                    if not force:
+                        die(SpawnRecord.in_flight_message(cid, prior, path))
+                    overridden = prior
+            dump_bytes(path, json_payload_bytes(meta))
+        return overridden
 
     @staticmethod
     def live_refuse_message(

@@ -132,6 +132,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.15 collect unexpected keys name the legal home (`SchemaHomeHint`; `#215`: `docs_sync` → `proposed_patch.docs_sync`). Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. No new CLI / supervisor.
 - 0.8.15 `validate_schema` enforces public-schema `anyOf` / `maxLength` / `patternProperties` (`SchemaSubsetHonesty`; C-030). Empty `adapter_hints` and a 257-char `denied_actions` item cannot collect. Not a JSON Schema engine. No new CLI / supervisor.
 - 0.8.15 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor.
+- 0.8.15 concurrent `of spawn` claims `waves/<n>/spawns/<id>.json` under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()` is the lock-set source of truth (`gc` is inside). Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI / supervisor.
 
 ## Contract boundaries
 

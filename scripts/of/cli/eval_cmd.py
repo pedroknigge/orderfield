@@ -2062,6 +2062,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillHarnessMixPlaybook",
     "tests.test_kernel.SkillEfficiencyMixPlaybook",
     "tests.test_kernel.AdapterBalanceUnit",
+    "tests.test_kernel.MutatingCommandsHonesty",
+    "tests.test_kernel.SpawnLockRace",
 )
 
 
