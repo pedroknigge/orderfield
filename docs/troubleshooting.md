@@ -108,6 +108,14 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 **Recover:** `of worktree add --child-id` for each implementer before spawn, or run them in series (collect the first before spawning the second). Disjoint paths stay required; they are not a substitute for two worktrees.
 
+## Residual unexpected property
+
+**Symptom:** collect prints `INVALID` with `unexpected properties: ['docs_sync']` (or `notes`, `tokens`, …).
+
+**Meaning:** The key is real, but it is on the wrong object. `docs_sync` / `notes` belong under `residual.proposed_patch`; `tokens` belongs under `usage`. The refuse now names the key and the home (`did you mean residual.proposed_patch.docs_sync?`).
+
+**Recover:** Append the home to `scratch/<child>/notes.md` and re-spawn the same packet. Do not hand-edit the residual JSON.
+
 ## Verifier residual refused
 
 **Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, or `rollback`.

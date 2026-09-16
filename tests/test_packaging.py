@@ -2200,6 +2200,22 @@ class SkillDoctorOpenHygiene(unittest.TestCase):
         self.assertIn("warn", appendix_fold)
 
 
+class SkillResidualHomeHint(unittest.TestCase):
+    """SLAVE / appendix name proposed_patch as the docs_sync home."""
+
+    def test_slave_and_appendix_name_docs_sync_home(self) -> None:
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        self.assertIn("proposed_patch.docs_sync", slave)
+        self.assertIn("not on `residual`".casefold(), slave)
+        self.assertIn("collect names that home", slave)
+        appendix = SkillSurface.appendix(ROOT).casefold()
+        self.assertIn("schemahomehint", appendix.replace(" ", "").replace("`", ""))
+        self.assertIn("did you mean", appendix)
+        self.assertIn("proposed_patch.docs_sync", appendix)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("class SchemaHomeHint:", source)
+
+
 class SkillCollectConservativeDiagnostic(unittest.TestCase):
     """Missing residual diagnostics report facts, not universal inability."""
 

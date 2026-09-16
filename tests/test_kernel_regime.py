@@ -565,6 +565,81 @@ class ResidualSchemaContracts(unittest.TestCase):
         self.assertTrue(errs)
         self.assertTrue(any("unexpected properties" in err for err in errs), errs)
 
+    def test_misplaced_docs_sync_names_proposed_patch_home(self) -> None:
+        residual = load_json(DONE)
+        residual["residual"]["docs_sync"] = "done"
+        errs = of.validate_residual(residual)
+        self.assertTrue(errs)
+        joined = " ".join(errs)
+        self.assertIn("unexpected properties", joined)
+        self.assertIn("docs_sync", joined)
+        self.assertIn("proposed_patch.docs_sync", joined)
+        self.assertIn("did you mean", joined)
+        legal = load_json(DONE)
+        legal["residual"]["proposed_patch"] = {"docs_sync": "done"}
+        self.assertEqual(of.validate_residual(legal), [])
+
+    def test_misplaced_notes_names_declared_proposed_patch_home(self) -> None:
+        residual = load_json(DONE)
+        residual["residual"]["notes"] = "move me"
+        errs = of.validate_residual(residual)
+        joined = " ".join(errs)
+        self.assertIn("notes", joined)
+        self.assertIn("proposed_patch.notes", joined)
+        self.assertIn("did you mean", joined)
+
+    def test_misplaced_tokens_names_usage_home(self) -> None:
+        residual = load_json(DONE)
+        residual["tokens"] = 1
+        errs = of.validate_residual(residual)
+        joined = " ".join(errs)
+        self.assertIn("tokens", joined)
+        self.assertIn("usage.tokens", joined)
+
+    def test_metrics_unknown_key_stays_unhinted(self) -> None:
+        residual = load_json(DONE)
+        residual["metrics"]["bogus"] = 1
+        errs = of.validate_residual(residual)
+        joined = " ".join(errs)
+        self.assertIn("unexpected properties", joined)
+        self.assertIn("bogus", joined)
+        self.assertNotIn("did you mean", joined)
+
+    def test_collect_refuses_docs_sync_on_residual_root_with_home(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-res-docs-sync-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "architecture for a pricing tool",
+            "--phase",
+            "explore",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "name the docs_sync home",
+            "--role",
+            "explorer",
+            "--child-id",
+            "docs-sync-child",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        dest = write_bound_residual(tmp, "docs-sync-child")
+        residual = load_json(dest)
+        residual["residual"]["docs_sync"] = "pending"
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertNotEqual(collected.returncode, 0, collected.stdout)
+        output = collected.stdout + collected.stderr
+        self.assertIn("INVALID", output)
+        self.assertIn("docs_sync", output)
+        self.assertIn("proposed_patch.docs_sync", output)
+        self.assertIn("did you mean", output)
+
     def test_collect_accepts_residual_with_document_v(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-res-v-"))
         self.addCleanup(shutil.rmtree, tmp, True)
