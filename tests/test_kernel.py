@@ -29,6 +29,7 @@ from test_packaging import (  # noqa: E402,F401
     ModelCatalogHonesty,
     SkillAntiDoneTheater,
     SkillPlanDocSync,
+    SkillPstackCherries,
     SkillDriveAfterIntegrate,
     SkillCheckoutAutoContinueHonesty,
     SkillEvaluatorPacket,

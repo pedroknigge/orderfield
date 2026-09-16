@@ -42,6 +42,11 @@ class SkillSurface:
         "worker-release",
         "orca worktree rm",
         "**Stay-on-the-run.**",
+        "throughput checkpoint",
+        "GOAL",
+        "Files · Build · You see",
+        "`act` / `consider` / `noted` / `dismissed`",
+        "Mode A default",
     )
 
     @staticmethod
