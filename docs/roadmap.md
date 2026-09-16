@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.14. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.15. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.14`
+**Status:** Shipped · **Current release line:** `0.8.15`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.15 — collect unexpected keys name the legal home
+
+- Collect unexpected residual keys name the legal home (`SchemaHomeHint`; `#215`). `docs_sync` on `residual` prints `did you mean …proposed_patch.docs_sync?`. Declared siblings (`notes`, `tokens`) use the same walk. No auto-normalize. Proof: `ResidualSchemaContracts` / `SkillResidualHomeHint`. C-139. No new CLI verb / schema / supervisor. Not a new regime.
 
 ## 0.8.14 — shared worktree warn for a second implementer
 
