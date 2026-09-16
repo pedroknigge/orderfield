@@ -15,9 +15,11 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names every kernel verb — that is 100% of the product surface. A turn that claims those verbs without the `of` commands in the same turn is a broken run.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names every kernel verb — that is 100% of the product surface.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
+
+Code is a liability. Think DELETE, not add. Same capability with less code.
 
 Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (SHA-256 pin → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
 

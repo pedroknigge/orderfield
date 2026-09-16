@@ -20,6 +20,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | [SKILL.md](../SKILL.md) | Leader procedure (`/orderfield`, `/of`) |
 | [SLAVE.md](../SLAVE.md) | Child contract (also copied to `.orderfield/SLAVE.md`) |
 | [references/principles.md](../references/principles.md) | Haken invariants |
+| [SECURITY.md](../SECURITY.md) | Scope + how to report a vulnerability |
 
 ## Kernel CLI
 
