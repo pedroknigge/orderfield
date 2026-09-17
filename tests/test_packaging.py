@@ -1785,6 +1785,11 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         )
         self.assertIn("class DriveAfterIntegrate:", source)
         self.assertIn("report is not a stop", source)
+        wave = (ROOT / "scripts" / "of" / "cli" / "wave.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("def _emit_drive_after_spawn(", wave)
+        self.assertIn("DriveAfterIntegrate.emit_from_disk", wave)
 
     def test_consent_gates_still_ask(self) -> None:
         core = SkillSurface.core(ROOT)
@@ -2872,6 +2877,34 @@ class SkillSharedWorktree(unittest.TestCase):
         source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
         self.assertIn("class SharedWorktree", source)
         self.assertIn('KIND = "shared_worktree"', source)
+
+
+class SkillDeadStartedOnlyForce(unittest.TestCase):
+    """SKILL teaches dead started-only HOLD → SPAWN --FORCE. #242."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_dead_started_only_force(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("spawn --force", table)
+        self.assertIn("started-only", table)
+        self.assertIn("do not pack", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("spawn --force", fold, name)
+            self.assertIn("started-only", fold, name)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("class DeadStartedOnly:", source)
+        self.assertIn("SPAWN --FORCE", source)
 
 
 class SkillForceSpawnPid(unittest.TestCase):

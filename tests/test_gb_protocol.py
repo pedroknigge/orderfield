@@ -82,6 +82,14 @@ class ResumeHandoffGuidance(unittest.TestCase):
         lines = of.resume_next_lines("hold")
         self.assertEqual(lines[0], "HOLD")
         self.assertIn("continue existing packets", lines[1])
+        self.assertNotIn("--force-spawn", lines[1])
+
+    def test_dead_started_only_hold_names_force_spawn(self) -> None:
+        lines = of.DeadStartedOnly.next_lines()
+        self.assertEqual(lines[0], of.DeadStartedOnly.LABEL)
+        self.assertEqual(lines[1], of.DeadStartedOnly.DETAIL)
+        self.assertIn("--force-spawn", lines[1])
+        self.assertIn("do not pack", lines[1])
 
     def test_spawn_names_packed_only(self) -> None:
         lines = of.resume_next_lines("spawn")

@@ -3609,6 +3609,37 @@ class SpawnRecord:
         }
 
 
+class DeadStartedOnly:
+    """Started-only + live_pid is None. HOLD detail names SPAWN --FORCE.
+
+    Read-path guidance. Does not stamp outcome. Not a supervisor.
+    Same pattern as PacketRevStale → UNPACK --FORCE: named force next
+    on the existing packet. Machine next stays HOLD (do not invent PACK).
+    """
+
+    ACTION = "hold"
+    LABEL = "HOLD"
+    DETAIL = (
+        "started-only pid gone; of spawn --force-spawn on the same packet; "
+        "do not pack"
+    )
+
+    @staticmethod
+    def of(root: Path, flying: list[dict[str, Any]]) -> bool:
+        for pkt in flying:
+            if not isinstance(pkt, dict):
+                continue
+            if not SpawnRecord.unsettled(root, pkt):
+                continue
+            if SpawnRecord.live_pid(SpawnRecord.load(root, pkt)) is None:
+                return True
+        return False
+
+    @staticmethod
+    def next_lines() -> list[str]:
+        return [DeadStartedOnly.LABEL, DeadStartedOnly.DETAIL]
+
+
 class FieldSignal:
     """Read-path honesty: empty waves + age is abandoned, not a fake deliver.
 
