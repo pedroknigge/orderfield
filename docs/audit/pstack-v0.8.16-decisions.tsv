@@ -1,0 +1,14 @@
+ts	phase	decision	why	evidence	result
+2026-09-17T03:00:00Z	frame	audit only, no kernel patch, no VERSION bump	laziness and subtract. the deliverable is a cited verdict	user_query success criteria	scope locked
+2026-09-17T03:01:00Z	frame	done predicate is PR plus suite plus file:line plus proven/unproven labels	figure-it-out Phase A. rigor is gates not try-harder	docs/audit/pstack-v0.8.16.md Frame	predicate written
+2026-09-17T03:02:00Z	scope	delta is v0.8.15 b275c0ab to v0.8.16 184d7eba (#223 to #226 plus #228 lockstep)	#227 is the 0.8.15 tip, not this cut	git log v0.8.15..v0.8.16	5 commits, 38 files
+2026-09-17T03:10:00Z	explore	fan out four read-only explorers on #223 #224 #225 #226+invariants	guard context. keep citations in the lead thread	Task agents bc-46c5fb8a bc-72ecb5e2 bc-4637da2e bc-84ece0cf	summaries, then re-read files
+2026-09-17T03:12:00Z	proof	object-form additionalProperties is not enforced	blast-radius one fact for #223	one-shot validate_schema PACKED vs enum schema returned []	NOT ENFORCED
+2026-09-17T03:12:30Z	proof	CloseChecklist.flying misses started-only re-spawn	model the domain. two flying predicates	one-shot leftover residual + started-only spawn. CloseChecklist [] vs SpawnRecord True	MISMATCH CONFIRMED
+2026-09-17T03:12:45Z	proof	--confirm is a boolean token	HITL blast radius	IssueConfirm.allowed(confirm=True, tty=False) is True	proven
+2026-09-17T03:13:00Z	proof	stolen mission/spec_closed stay off ORDER. constraints+ appends	README slogan vs apply_patches	apply_patches on stolen keys. constraints=['keep-a','child-added']	append-only on + keys
+2026-09-17T03:14:00Z	verify	run CI trio plus unused-imports plus packaging bump	prove it works on the real suite	/tmp/of-unittest.log /tmp/of-eval.log /tmp/of-validate-skill.log	1088 OK, evals 49/0, validate-skill OK
+2026-09-17T03:15:00Z	verify	published v0.8.16 tarball and install.sh match SHA256SUMS	install pin integrity, cheap	gh release download. sha256 match. tarball VERSION 0.8.16	MATCH
+2026-09-17T03:16:00Z	judgment	verdict ship-with-caveats, zero Critical	default close/collect/spawn holds. Medium gaps are real and cited	docs/audit/pstack-v0.8.16.md Executive verdict	ship-with-caveats
+2026-09-17T03:16:30Z	judgment	do not implement Medium fixes in this PR	user said report-only unless a one-line Critical with tests	user_query anti-jobs	report only
+2026-09-17T03:17:00Z	scope	do not re-score SCOPE-SIGN / SCOPE-SANDBOX / C-080 / C-153 as kernel Critical	out-of-scope.md already owns those	docs/audit/out-of-scope.md	cleared, not findings
