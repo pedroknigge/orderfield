@@ -721,5 +721,41 @@ class LearningLengthAdvisory(unittest.TestCase):
         self.assertEqual(caught.exception.code, 1)
 
 
+class ChildForgeLeaderVerbs(unittest.TestCase):
+    """OF_CHILD cannot of patch / of close / of integrate. Medium 4."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-child-forge-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        _isolate_spawn_registry(self, self.tmp)
+        r = run_of(self.tmp, "init", "--mission", "child forge verbs")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_patch_close_integrate_refuse_when_of_child_set(self) -> None:
+        env = {"OF_CHILD": "kernel"}
+        patch = run_of(
+            self.tmp, "patch", "--mission", "stolen by child", env_extra=env
+        )
+        self.assertNotEqual(patch.returncode, 0, patch.stdout + patch.stderr)
+        self.assertIn("of: error: child-forge:", patch.stderr)
+        self.assertIn("of patch", patch.stderr)
+        self.assertIn("OF_CHILD=kernel", patch.stderr)
+        order = json.loads(
+            (self.tmp / ".orderfield" / "ORDER.json").read_text(encoding="utf-8")
+        )
+        self.assertNotEqual(order["mission"], "stolen by child")
+
+        closed = run_of(self.tmp, "close", env_extra=env)
+        self.assertNotEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("of: error: child-forge:", closed.stderr)
+        self.assertIn("of close", closed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+        integ = run_of(self.tmp, "integrate", "--apply", env_extra=env)
+        self.assertNotEqual(integ.returncode, 0, integ.stdout + integ.stderr)
+        self.assertIn("of: error: child-forge:", integ.stderr)
+        self.assertIn("of integrate", integ.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

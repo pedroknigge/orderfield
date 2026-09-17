@@ -12,5 +12,6 @@
   "spawn_blocked": true,
   "spec_closed": false,
   "constraint_must_remain": "slaves do not mutate ORDER",
-  "done_when_must_remain": "of contrast RESOLVED then of close"
+  "done_when_must_remain": "of contrast RESOLVED then of close",
+  "appended_constraint": "must name the invoice currency on the order"
 }

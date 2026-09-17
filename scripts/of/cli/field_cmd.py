@@ -24,6 +24,7 @@ from of.field import (
     SpawnRecord,
     physical_field_rel,
     print_owned_unverified,
+    refuse_child_forge,
     remove_constraint,
     require_public_schema,
     residuals_without_verification_stamps,
@@ -110,6 +111,7 @@ def _emit_drive_after_integrate(
 
 
 def cmd_integrate(args: argparse.Namespace) -> None:
+    refuse_child_forge("of integrate")
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)
@@ -393,6 +395,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
 
 
 def cmd_patch(args: argparse.Namespace) -> None:
+    refuse_child_forge("of patch")
     root = find_root()
     order = load_order(root)
     changed = False
