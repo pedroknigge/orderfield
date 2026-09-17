@@ -27,6 +27,7 @@ class SkillSurface:
         "references/skill-appendix.md",
         "## What to type next",
         "Read the appendix",
+        "Never chain pack|spawn|next-wave",
     )
     APPENDIX_MARKERS = (
         "## Mandatory leader process",
@@ -50,6 +51,7 @@ class SkillSurface:
         "Mode A default",
         "Wave-end / pre-close surplus",
         "not auto-promote",
+        "One mutating verb per invocation",
         "## Lab / eval",
         "of eval --strict --kernel",
         "recovery/adversarial-dual-truth",

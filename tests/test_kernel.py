@@ -32,6 +32,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillPlanDocSync,
     SkillPstackCherries,
     SkillWaveEndTriage,
+    SkillPackSpawnChain,
     SkillArtifactProve,
     SkillDriveAfterIntegrate,
     SkillEscalateUnblock,
@@ -75,6 +76,7 @@ from test_adapter_resume import (  # noqa: E402,F401
 )
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
+    SpawnPacketRequired,
     CliFieldResidual,
     DoctorAuditPressure,
     DoctorPlanDocSync,

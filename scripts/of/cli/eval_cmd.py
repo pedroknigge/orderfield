@@ -2060,6 +2060,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillEscalateUnblock",
     "tests.test_kernel.SkillDriveAfterIntegrate",
     "tests.test_kernel.SkillWaveEndTriage",
+    "tests.test_kernel.SkillPackSpawnChain",
+    "tests.test_kernel.SpawnPacketRequired",
     "tests.test_kernel.SkillCheckoutAutoContinueHonesty",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.SkillEvaluatorPacket",
