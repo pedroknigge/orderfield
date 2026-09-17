@@ -870,6 +870,57 @@ class DriveAfterIntegrateProof(unittest.TestCase):
         self.assertEqual(replay.returncode, 0, replay.stderr)
         self.assertIn(self.SPEAK, replay.stderr)
 
+    def test_spawn_speak_collect_when_residual_landed(self) -> None:
+        write_bound_residual(self.tmp, "c1")
+        agent = self.tmp / "ok.sh"
+        agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        agent.chmod(0o755)
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/c1.json",
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertIn("COLLECT", spawned.stderr)
+        self.assertIn(self.SPEAK, spawned.stderr)
+
+    def test_spawn_no_speak_while_sibling_flying(self) -> None:
+        packed = run_of(
+            self.tmp, "pack", "--slice", "s2", "--role", "explorer", "--child-id", "c2"
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "c1")
+        agent = self.tmp / "ok.sh"
+        agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        agent.chmod(0o755)
+        spawned = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/c1.json",
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertNotIn(self.SPEAK, spawned.stderr)
+        dry = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/c2.json",
+            "--dry-run",
+            extra_env={"OF_AGENT": str(agent)},
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertNotIn(self.SPEAK, dry.stderr)
+
     def test_flying_keeps_pulse_speak_not_drive_speak(self) -> None:
         resumed = run_of(self.tmp, "resume")
         self.assertEqual(resumed.returncode, 0, resumed.stderr)

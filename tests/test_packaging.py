@@ -1785,6 +1785,11 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         )
         self.assertIn("class DriveAfterIntegrate:", source)
         self.assertIn("report is not a stop", source)
+        wave = (ROOT / "scripts" / "of" / "cli" / "wave.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("def _emit_drive_after_spawn(", wave)
+        self.assertIn("DriveAfterIntegrate.emit_from_disk", wave)
 
     def test_consent_gates_still_ask(self) -> None:
         core = SkillSurface.core(ROOT)
