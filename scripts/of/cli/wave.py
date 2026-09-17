@@ -353,8 +353,30 @@ class SpawnResidual:
         return SpawnResidual.from_event(extract_json_object(text))
 
     @staticmethod
+    def harness_refuse_hint(text: str) -> str | None:
+        """Name a small harness refuse so schema noise is not the headline (#249)."""
+        low = (text or "").casefold()
+        if "requires --effort" in low or (
+            "invalid model selection" in low and "--effort" in low
+        ):
+            return (
+                "harness refused argv: agy --model requires --effort "
+                "(available: low, medium, high)"
+            )
+        if "print timeout after" in low or "print-timeout" in low and "partial" in low:
+            return (
+                "harness print-timeout expired with turn in progress "
+                "(partial output; not a clean residual)"
+            )
+        return None
+
+    @staticmethod
     def refuse_line(extracted: dict[str, Any], errs: list[str]) -> str:
         detail = "; ".join(errs)
+        blob = f"{extracted!r} {detail}"
+        hint = SpawnResidual.harness_refuse_hint(blob)
+        if hint:
+            return hint + " — " + detail
         status = extracted.get("status")
         prefix = "invalid residual extracted from stdout; not written: "
         if status in StreamJson.STATUSES:
@@ -1141,6 +1163,11 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             residual_rel,
         )
         if not residual_abs.exists():
+            hint = SpawnResidual.harness_refuse_hint(
+                f"{proc.stdout or ''}\n{proc.stderr or ''}"
+            )
+            if hint:
+                print(hint)
             print(f"no residual yet. log={log_path}")
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
     if reported_sid and residual_abs.is_file():

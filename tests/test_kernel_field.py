@@ -1282,6 +1282,70 @@ class PulseActivity(unittest.TestCase):
         self.assertIn("next", r.stdout)
         self.assertIn(of.DriveAfterIntegrate.SPEAK, r.stdout)
 
+    def test_live_pid_old_mtime_is_quiet_not_stale(self) -> None:
+        """#245: live spawn pid + old mtime stays QUIET (exit 0), not STALE."""
+        self._pack()
+        self._mark_spawned()
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        )
+        pkt = load_json(pkt_path)
+        spawn_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "c1.json"
+        )
+        meta = load_json(spawn_path)
+        of.SpawnRecord.stamp_pid(spawn_path, meta, os.getpid())
+        old = 1577836800
+        pkt["packed_at"] = "2020-01-01T00:00:00Z"
+        pkt["packet_hash"] = of.packet_digest(pkt)
+        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
+        os.utime(pkt_path, (old, old))
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "c1"
+        scratch.mkdir(parents=True, exist_ok=True)
+        pulse = scratch / "PULSE"
+        pulse.write_text("old\n", encoding="utf-8")
+        os.utime(pulse, (old, old))
+        now = time.time()
+        verdict = of.child_pulse_verdict(self.tmp, pkt, now)
+        self.assertEqual(verdict, "QUIET")
+        self.assertEqual(of.pulse_verdict(31 * 60, live_pid=os.getpid()), "QUIET")
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("QUIET", r.stdout)
+        self.assertNotIn("STALE", r.stdout)
+        self.assertIn(f"pid={os.getpid()}", r.stdout)
+
+    def test_dead_pid_old_mtime_stays_stale(self) -> None:
+        """#245: dead pid + old mtime may still be STALE."""
+        self._pack()
+        self._mark_spawned()
+        pkt_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c1.json"
+        )
+        pkt = load_json(pkt_path)
+        spawn_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "c1.json"
+        )
+        meta = load_json(spawn_path)
+        dead = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"]
+        )
+        pid = int(dead.pid)
+        dead.kill()
+        dead.wait(timeout=5)
+        of.SpawnRecord.stamp_pid(spawn_path, meta, pid)
+        old = 1577836800
+        pkt["packed_at"] = "2020-01-01T00:00:00Z"
+        pkt["packet_hash"] = of.packet_digest(pkt)
+        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
+        os.utime(pkt_path, (old, old))
+        now = time.time()
+        verdict = of.child_pulse_verdict(self.tmp, pkt, now)
+        self.assertEqual(verdict, "STALE")
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("STALE", r.stdout)
+
     def test_repo_scan_ignores_orderfield_writes(self) -> None:
         found = of.repo_newest_mtime(self.tmp)
         self.assertIsNone(found)  # only .orderfield exists, and it is excluded

@@ -2334,8 +2334,12 @@ def pulse_once(
             signals.append((packed_ts, "packed (no writes yet)"))
         freshest_ts, freshest_src = max(signals, key=lambda s: s[0])
         age = now - freshest_ts
+        meta = SpawnRecord.load(root, pkt)
+        live = SpawnRecord.live_pid(meta)
         verdict = child_pulse_verdict(root, pkt, now, stale_minutes)
         line = f"    -> {verdict} (freshest evidence {fmt_age(age)} ago: {freshest_src})"
+        if live is not None:
+            line += f" pid={live}"
         if verdict == "STALE":
             exit_code = 2
             line += f"\n       signal only, not an action. of unpack --child-id {child} releases it (scratch kept)."

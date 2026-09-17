@@ -425,7 +425,9 @@ class AdapterHintsArgv(unittest.TestCase):
         }
         agy = self.argv("agy", agy_pkt)
         self.assertEqual(agy[agy.index("--model") + 1], "gemini-3.5-flash-medium")
+        self.assertEqual(agy[agy.index("--effort") + 1], "medium")
         self.assertLess(agy.index("--model"), agy.index("-p"))
+        self.assertLess(agy.index("--effort"), agy.index("-p"))
 
     def test_grok_agy_without_consent_stay_unchanged(self) -> None:
         packet = {"child_id": "c1", "budget": {"seconds": 60}}
@@ -455,6 +457,56 @@ class AdapterHintsArgv(unittest.TestCase):
         argv = self.argv("cursor", named)
         self.assertEqual(argv[argv.index("--model") + 1], "grok-4.6")
 
+class AgyEffortArgv(unittest.TestCase):
+    """#249: agy --model requires --effort; --print-timeout follows budget.seconds."""
+
+    def argv(self, packet: dict) -> list:
+        return of.build_spawn_argv(
+            "agy", "PROMPT", packet, Path("/tmp/of-residual.json"), dry_run=True
+        )
+
+    def test_model_emits_default_medium_effort(self) -> None:
+        packet = {
+            "child_id": "c1",
+            "budget": {"seconds": 3300},
+            "adapter_hints": {"model": "gemini-3.8-flash"},
+        }
+        argv = self.argv(packet)
+        self.assertEqual(argv[argv.index("--model") + 1], "gemini-3.8-flash")
+        self.assertEqual(argv[argv.index("--effort") + 1], "medium")
+        self.assertEqual(argv[argv.index("--print-timeout") + 1], "55m")
+        self.assertLess(argv.index("--effort"), argv.index("-p"))
+        self.assertLess(argv.index("--print-timeout"), argv.index("-p"))
+
+    def test_packet_effort_high_passes(self) -> None:
+        packet = {
+            "child_id": "c1",
+            "budget": {"seconds": 90},
+            "adapter_hints": {"model": "gemini-3.8-flash", "effort": "high"},
+        }
+        argv = self.argv(packet)
+        self.assertEqual(argv[argv.index("--effort") + 1], "high")
+        self.assertEqual(argv[argv.index("--print-timeout") + 1], "1m30s")
+
+    def test_unknown_effort_dies_before_spawn(self) -> None:
+        packet = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"model": "gemini-3.8-flash", "effort": "turbo"},
+        }
+        with self.assertRaises(SystemExit):
+            self.argv(packet)
+
+    def test_harness_refuse_hint_names_effort(self) -> None:
+        from of.cli.wave import SpawnResidual
+
+        hint = SpawnResidual.harness_refuse_hint(
+            'error: invalid model selection (--model "gemini-3.8-flash" --effort ""): '
+            "--model gemini-3.8-flash requires --effort (available: low, medium, high)"
+        )
+        self.assertIsNotNone(hint)
+        assert hint is not None
+        self.assertIn("requires --effort", hint)
 
 if __name__ == "__main__":
     unittest.main()

@@ -3269,12 +3269,23 @@ def repo_newest_mtime(root: Path) -> tuple[float, str] | None:
 SESSION_PULSE_VERDICTS = frozenset({"ALIVE", "QUIET", "STALE"})
 
 
-def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES) -> str:
+def pulse_verdict(
+    age_seconds: float,
+    stale_minutes: float = PULSE_STALE_MINUTES,
+    *,
+    live_pid: int | None = None,
+) -> str:
     """ALIVE / QUIET / STALE from activity-evidence age. STALE is a signal,
-    never an action: the kernel does not kill or unpack on it."""
+    never an action: the kernel does not kill or unpack on it.
+
+    A live spawn pid keeps QUIET even when mtime is old — STALE is for
+    dead-and-quiet children only (#245).
+    """
     if age_seconds < PULSE_QUIET_SECONDS:
         return "ALIVE"
     if age_seconds < stale_minutes * 60:
+        return "QUIET"
+    if live_pid is not None:
         return "QUIET"
     return "STALE"
 
@@ -4418,7 +4429,11 @@ def child_pulse_verdict(
             signals.append(scratch[0])
     if not signals:
         return SpawnRecord.LABEL
-    return pulse_verdict(now - max(signals), stale_minutes)
+    return pulse_verdict(
+        now - max(signals),
+        stale_minutes,
+        live_pid=SpawnRecord.live_pid(meta),
+    )
 
 
 class CollectReady:
