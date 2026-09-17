@@ -76,6 +76,7 @@ from of.spec import (
 )
 
 from of.pack import (
+    CodexNullOmit,
     SharedWorktree,
     SliceLint,
     canonical_packet_rel,
@@ -330,16 +331,40 @@ class SpawnResidual:
     """Land residual from stream/stdout. Same extract as the success path."""
 
     @staticmethod
+    def from_event(event: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Reuse StreamJson unwrap, then the raw object if it has status."""
+        if not isinstance(event, dict):
+            return None
+        unwrapped = StreamJson.residual(event)
+        if isinstance(unwrapped, dict):
+            return unwrapped
+        if "status" in event:
+            return event
+        return None
+
+    @staticmethod
     def payload(
         last_residual: dict[str, Any] | None, stdout: Any
     ) -> dict[str, Any] | None:
-        if isinstance(last_residual, dict) and "status" in last_residual:
-            return last_residual
+        found = SpawnResidual.from_event(last_residual)
+        if found is not None:
+            return found
         text = stdout if isinstance(stdout, str) else ""
-        extracted = extract_json_object(text)
-        if isinstance(extracted, dict) and "status" in extracted:
-            return extracted
-        return None
+        return SpawnResidual.from_event(extract_json_object(text))
+
+    @staticmethod
+    def refuse_line(extracted: dict[str, Any], errs: list[str]) -> str:
+        detail = "; ".join(errs)
+        status = extracted.get("status")
+        prefix = "invalid residual extracted from stdout; not written: "
+        if status in StreamJson.STATUSES:
+            return prefix + detail
+        return (
+            prefix
+            + f"stdout JSON is a harness envelope (status={status!r}); "
+            + "no residual in structured_output/result/result_json/output; "
+            + detail
+        )
 
     @staticmethod
     def write(
@@ -351,14 +376,14 @@ class SpawnResidual:
     ) -> None:
         if dest.exists() or not extracted:
             return
-        errs = validate_residual_for_packet(extracted, packet, root)
+        viewed = CodexNullOmit.for_residual(extracted)
+        if not isinstance(viewed, dict):
+            viewed = extracted
+        errs = validate_residual_for_packet(viewed, packet, root)
         if errs:
-            print(
-                "invalid residual extracted from stdout; not written: "
-                + "; ".join(errs)
-            )
+            print(SpawnResidual.refuse_line(extracted, errs))
             return
-        dump_json(dest, extracted, skip_dir_fsync=True)
+        dump_json(dest, viewed, skip_dir_fsync=True)
         print(f"residual extracted from stdout -> {rel}")
 
 

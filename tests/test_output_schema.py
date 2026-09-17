@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -12,8 +16,35 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
+from of.cli.wave import SpawnResidual  # noqa: E402
 
 CODEX_RESIDUAL_SCHEMA = ROOT / "schemas" / "residual.codex.schema.json"
+DONE = ROOT / "assets" / "fixtures" / "residual.done.json"
+OF_PY = SCRIPTS / "of.py"
+
+
+def run_of(
+    cwd: Path,
+    *args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    env.setdefault(
+        "OF_LEARNINGS",
+        str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
+    )
+    env.pop("OF_TRUST", None)
+    env.pop("OF_ADAPTER", None)
+    env.pop("OF_AGENT", None)
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        [sys.executable, str(OF_PY), *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env=env,
+    )
 
 
 class OutputSchemaArgv(unittest.TestCase):
@@ -112,6 +143,167 @@ class OutputSchemaExtract(unittest.TestCase):
             {"type": "result", "structured_output": json.dumps(body)}
         )
         self.assertEqual(wrapped, body)
+        self.assertEqual(SpawnResidual.from_event(envelope), body)
+        self.assertEqual(
+            SpawnResidual.payload(None, json.dumps(envelope)),
+            body,
+        )
+
+
+class SpawnResidualExtract(unittest.TestCase):
+    """Invalid stdout extract names $.path. Codex-null optionals are omit."""
+
+    def test_refuse_line_names_schema_path_and_envelope(self) -> None:
+        incomplete = {"status": "done"}
+        errs = of.validate_residual(incomplete)
+        line = SpawnResidual.refuse_line(incomplete, errs)
+        self.assertIn("invalid residual extracted from stdout", line)
+        self.assertIn("$.result_ref", line)
+        self.assertIn("$.residual", line)
+        self.assertIn("$.metrics", line)
+        self.assertNotIn("harness envelope", line)
+        envelope = {
+            "conversation_id": "agy-1",
+            "status": "SUCCESS",
+            "usage": {"total_tokens": 12},
+            "error": {"message": "schema"},
+        }
+        env_errs = of.validate_residual(envelope)
+        env_line = SpawnResidual.refuse_line(envelope, env_errs)
+        self.assertIn("harness envelope (status='SUCCESS')", env_line)
+        self.assertIn("structured_output", env_line)
+        self.assertTrue(
+            any(err.startswith("$.") for err in env_errs),
+            env_errs,
+        )
+
+    def test_agy_envelope_without_residual_names_path(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-extract-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "agy extract", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "map extract",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        envelope = {
+            "conversation_id": "agy-1",
+            "status": "SUCCESS",
+            "usage": {"total_tokens": 12},
+            "error": None,
+        }
+        fake = bindir / "agy"
+        fake.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json\n"
+            f"print(json.dumps({envelope!r}))\n",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        spawned = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "agy",
+            "--packet",
+            ".orderfield/waves/001/packets/e1.json",
+            extra_env={
+                "PATH": f"{bindir}:{os.environ.get('PATH', '/usr/bin')}",
+                "OF_TRUST": "conservative",
+            },
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr + spawned.stdout)
+        self.assertIn("invalid residual extracted from stdout", spawned.stdout)
+        self.assertIn("harness envelope (status='SUCCESS')", spawned.stdout)
+        self.assertIn("$.status", spawned.stdout)
+        self.assertFalse(
+            (tmp / ".orderfield/waves/001/residuals/e1.json").is_file(),
+            spawned.stdout,
+        )
+
+    def test_agy_structured_output_with_codex_nulls_lands(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-agy-nulls-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "agy nulls", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "map nulls",
+            "--role",
+            "explorer",
+            "--child-id",
+            "n1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        packet = json.loads(
+            (tmp / ".orderfield/waves/001/packets/n1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        residual = json.loads(DONE.read_text(encoding="utf-8"))
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        notes = tmp / ".orderfield/work/scratch/n1/notes.md"
+        notes.parent.mkdir(parents=True, exist_ok=True)
+        notes.write_text("agy notes\n", encoding="utf-8")
+        residual["result_ref"] = ".orderfield/work/scratch/n1/notes.md"
+        residual["role"] = "explorer"
+        residual["v"] = None
+        residual["usage"] = {"tokens": None, "model": None}
+        of.CloseEvidence.stamp(
+            residual,
+            notes,
+            rollback="git checkout -- .orderfield/work/scratch/n1/notes.md",
+        )
+        envelope = {
+            "conversation_id": "agy-1",
+            "status": "SUCCESS",
+            "structured_output": residual,
+        }
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        fake = bindir / "agy"
+        fake.write_text(
+            "#!/usr/bin/env python3\n"
+            + textwrap.dedent(
+                f"""
+                print({json.dumps(json.dumps(envelope))})
+                """
+            ).lstrip("\n"),
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        spawned = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "agy",
+            "--packet",
+            ".orderfield/waves/001/packets/n1.json",
+            extra_env={
+                "PATH": f"{bindir}:{os.environ.get('PATH', '/usr/bin')}",
+                "OF_TRUST": "conservative",
+            },
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr + spawned.stdout)
+        self.assertIn("residual extracted from stdout", spawned.stdout)
+        dest = tmp / ".orderfield/waves/001/residuals/n1.json"
+        self.assertTrue(dest.is_file(), spawned.stdout)
+        landed = json.loads(dest.read_text(encoding="utf-8"))
+        self.assertEqual(landed["status"], "done")
+        self.assertNotIn("v", landed)
+        self.assertEqual(landed.get("usage"), {})
 
 
 class OutputSchemaRedact(unittest.TestCase):
@@ -145,15 +337,19 @@ class OutputSchemaSkill(unittest.TestCase):
         self.assertIn("omit", folded)
         self.assertIn("claude", folded)
         self.assertIn("residual.codex", folded)
+        self.assertIn("$.path", table)
+        self.assertIn("codex-null", folded)
         skill_fold = skill.casefold()
         self.assertIn("--json-schema", skill_fold)
         self.assertIn("inline", skill_fold)
         self.assertIn("stream-json", skill_fold)
+        self.assertIn("$.path", skill)
         alias_fold = alias.casefold()
         self.assertIn("--json-schema", alias_fold)
         self.assertIn("agy", alias_fold)
         self.assertIn("omit", alias_fold)
         self.assertIn("claude", alias_fold)
+        self.assertIn("$.path", alias)
 
 
 if __name__ == "__main__":

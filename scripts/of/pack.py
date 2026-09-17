@@ -14,6 +14,7 @@ from of.field import (
     PHASES,
     PROTOCOL_WRITABLE_KEY,
     ROLE_CONTRACTS,
+    _load_public_schema,
     _read_json_object,
     die,
     emit_event,
@@ -342,18 +343,71 @@ def validate_packet(packet: Any) -> list[str]:
     return errs
 
 
+class CodexNullOmit:
+    """Treat Codex-required-null optional fields as omit.
+
+    ``residual.codex.schema.json`` requires every property and uses
+    ``[type, null]`` for fields the public schema leaves optional.
+    Structured output (agy ``--json-schema``, Codex ``--output-schema``)
+    fills those with null. That is omit, not a new residual key and not
+    a loosened public contract. Required public fields stay typed.
+    """
+
+    @staticmethod
+    def apply(value: Any, schema: Any) -> Any:
+        if not isinstance(schema, dict):
+            return value
+        item_schema = schema.get("items")
+        if isinstance(value, list) and isinstance(item_schema, dict):
+            return [CodexNullOmit.apply(item, item_schema) for item in value]
+        if not isinstance(value, dict):
+            return value
+        properties = schema.get("properties") or {}
+        required = set(schema.get("required") or [])
+        out: dict[str, Any] = {}
+        for key, child in value.items():
+            child_schema = properties.get(key) if isinstance(properties, dict) else None
+            if (
+                child is None
+                and key not in required
+                and isinstance(child_schema, dict)
+                and "null" not in CodexNullOmit.types_of(child_schema)
+            ):
+                continue
+            if isinstance(child_schema, dict):
+                out[key] = CodexNullOmit.apply(child, child_schema)
+            else:
+                out[key] = child
+        return out
+
+    @staticmethod
+    def types_of(schema: dict[str, Any]) -> set[str]:
+        declared = schema.get("type")
+        if isinstance(declared, str):
+            return {declared}
+        return set(declared or [])
+
+    @staticmethod
+    def for_residual(res: Any) -> Any:
+        schema = _load_public_schema("residual.schema.json")
+        if not isinstance(schema, dict):
+            return res
+        return CodexNullOmit.apply(res, schema)
+
+
 def validate_residual(res: Any) -> list[str]:
-    errs = validate_public_schema(res, "residual.schema.json", "residual file")
-    if not isinstance(res, dict):
+    viewed = CodexNullOmit.for_residual(res)
+    errs = validate_public_schema(viewed, "residual.schema.json", "$")
+    if not isinstance(viewed, dict):
         return errs
-    rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+    rem = viewed.get("residual") if isinstance(viewed.get("residual"), dict) else {}
     wants = rem.get("wants_to_change")
-    if res.get("status") == "threshold":
+    if viewed.get("status") == "threshold":
         if not isinstance(wants, list) or not wants:
             errs.append("threshold requires non-empty wants_to_change")
         if not rem.get("evidence"):
             errs.append("threshold requires evidence")
-    metrics = res.get("metrics")
+    metrics = viewed.get("metrics")
     if not isinstance(metrics, dict):
         errs.append("metrics must be an object")
         return errs
@@ -377,7 +431,7 @@ def validate_residual(res: Any) -> list[str]:
             errs.append("metrics.tool_failures must be a non-negative integer")
     if "novelty" in metrics and not isinstance(metrics["novelty"], bool):
         errs.append("metrics.novelty must be a boolean")
-    errs.extend(ResidualQuality.errors(res))
+    errs.extend(ResidualQuality.errors(viewed))
     return errs
 
 
@@ -393,7 +447,7 @@ def validate_residual_for_packet(
         for key in PACKET_IDENTITY_FIELDS:
             if res.get(key) != packet.get(key):
                 errs.append(
-                    f"residual.{key} must match canonical packet {packet.get(key)!r}"
+                    f"$.{key} must match canonical packet {packet.get(key)!r}"
                 )
     if res.get("status") == "done":
         result_ref = res.get("result_ref")

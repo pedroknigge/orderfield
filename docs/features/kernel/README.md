@@ -134,6 +134,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.16 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor. `#224`.
 - 0.8.16 concurrent `of spawn` claims `waves/<n>/spawns/<id>.json` under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()` is the lock-set source of truth (`gc` is inside). Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI / supervisor. `#225`.
 - 0.8.16 HITL `of issue` lives in `cli/issue_cmd.py` (`IssueConfirm` / `IssueList` / `cmd_issue`). `ops.py` has no leftover copies. Same verbs. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI / supervisor. `#226`. Relates `#219`.
+- 0.8.16 invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). Codex-null optional fields are omit (`CodexNullOmit`; inverse of `CodexStrictSchema.nullable`). Extra keys still fail. Reuses `validate_schema` / `StreamJson.residual`. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. No new CLI / supervisor. `#232`.
 
 ## Contract boundaries
 
