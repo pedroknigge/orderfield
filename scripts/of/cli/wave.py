@@ -77,6 +77,7 @@ from of.spec import (
 
 from of.pack import (
     CodexNullOmit,
+    OwnsPathCoverage,
     SharedWorktree,
     SliceLint,
     canonical_packet_rel,
@@ -607,6 +608,16 @@ def cmd_pack(args: argparse.Namespace) -> None:
                     f"consider continuing {other} if this is the same slice."
                 ),
             )
+    for kind, message in OwnsPathCoverage.notes(
+        role=str(args.role),
+        slice_text=slice_text,
+        owns=owns_paths,
+    ):
+        emit_wave_warning(
+            kind,
+            message,
+            plain=f"of: note — {message}",
+        )
     order_view: dict[str, Any] = {
         "id": order["id"],
         "rev": order["rev"],

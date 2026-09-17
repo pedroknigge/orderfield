@@ -104,9 +104,17 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 **Symptom:** pack dies with `owns_path … overlaps … in wave N` or `wave already has an implementer`.
 
-**Meaning:** Two implementers in the same wave must have disjoint product paths. The first may omit `--owns-path`; a second must pass it. This is pack exclusivity, not a file lock.
+**Meaning:** Two implementers in the same wave must have disjoint product paths. The first may omit `--owns-path` (pack WARNs `owns_path_empty`); a second must pass it. This is pack exclusivity, not a file lock.
 
 **Recover:** Give disjoint `--owns-path` values, or `of unpack` the colliding child. Cross-wave reuse of a path is allowed and prints `consider continuing <child>`.
+
+## Pack `--owns-path` incomplete vs `--slice`
+
+**Symptom:** pack prints `of: note —` / `owns_path_incomplete` / `owns_path_empty`, or the child escalates / touches zero product files while the slice named tests or components.
+
+**Meaning:** `--owns-path` is the write set. Slash-containing paths in `--slice` that sit outside that set are unowned. Implementer with empty `--owns-path` is the same footgun. Distinct from collect-time zero owned writes (`OwnedWrite` / #251 / #252). Parallel ark-check of sibling WIP is project-harness noise — not an OF cut.
+
+**Recover:** `of unpack --child-id <id>` then `of pack --owns-path PATH` (repeatable) covering every path `--slice` names. The packet was still written.
 
 ## Two implementers, one branch
 

@@ -604,6 +604,82 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
     return packets
 
 
+class OwnsPathCoverage:
+    """Pack ``--owns-path`` vs ``--slice`` named paths. Advisory; pack still writes.
+
+    Complements collect-time zero-write refuse (``OwnedWrite`` / #251 / #252).
+    This is pack-time: incomplete write set vs slice deliverables.
+    """
+
+    EMPTY_KIND = "owns_path_empty"
+    KIND = "owns_path_incomplete"
+    FIX = (
+        "of unpack --child-id <id> then of pack --owns-path PATH "
+        "(repeatable) covering every path --slice names"
+    )
+    _SKIP_PREFIXES = (".orderfield/",)
+    # Slash-containing repo-relative tokens. URLs fail the lookbehind.
+    _TOKEN_RE = re.compile(
+        r"(?<![:/\w.])(?:\./)?((?:[A-Za-z_][\w.-]*/)+[A-Za-z_][\w.-]*)"
+    )
+
+    @staticmethod
+    def slice_paths(text: str) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for match in OwnsPathCoverage._TOKEN_RE.finditer(str(text or "")):
+            path = posix_owns_path(match.group(1).rstrip(".,;:)]}\"'"))
+            if not path or path in seen or "/" not in path:
+                continue
+            if path.startswith(OwnsPathCoverage._SKIP_PREFIXES):
+                continue
+            seen.add(path)
+            out.append(path)
+        return out
+
+    @staticmethod
+    def uncovered(slice_text: str, owns: list[str]) -> list[str]:
+        owned = [posix_owns_path(item) for item in owns if str(item).strip()]
+        return [
+            named
+            for named in OwnsPathCoverage.slice_paths(slice_text)
+            if not any(owns_paths_overlap(named, mine) for mine in owned)
+        ]
+
+    @staticmethod
+    def notes(
+        *, role: str, slice_text: str, owns: list[str]
+    ) -> list[tuple[str, str]]:
+        owned = [posix_owns_path(item) for item in owns if str(item).strip()]
+        named = OwnsPathCoverage.slice_paths(slice_text)
+        if str(role or "") == "implementer" and not owned:
+            extra = f" slice names {', '.join(named[:6])}." if named else ""
+            return [
+                (
+                    OwnsPathCoverage.EMPTY_KIND,
+                    "implementer pack has empty --owns-path "
+                    f"({OwnsPathCoverage.EMPTY_KIND}); "
+                    "child may escalate or touch zero product files."
+                    f"{extra} {OwnsPathCoverage.FIX}.",
+                )
+            ]
+        if not owned:
+            return []
+        missing = OwnsPathCoverage.uncovered(slice_text, owned)
+        if not missing:
+            return []
+        who = ", ".join(missing[:8])
+        return [
+            (
+                OwnsPathCoverage.KIND,
+                f"--owns-path does not cover slice path {who} "
+                f"({OwnsPathCoverage.KIND}); "
+                "child may escalate or leave tests/components unowned. "
+                f"{OwnsPathCoverage.FIX}.",
+            )
+        ]
+
+
 class SharedWorktree:
     """Two implementers share one HEAD/index unless recorded worktrees isolate them.
 

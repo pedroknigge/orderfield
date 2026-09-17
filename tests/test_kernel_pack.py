@@ -1991,6 +1991,181 @@ class SharedWorktreePack(unittest.TestCase):
         )
 
 
+class OwnsPathCoveragePack(unittest.TestCase):
+    """#257 — pack WARNs when owns-path misses slice paths or implementer is empty.
+
+    Complements OwnedWrite (#251 / #252 collect-time zero writes). This is
+    pack-time only. Packet is still written.
+    """
+
+    def setUp(self) -> None:
+        from of.field import clear_field_home
+
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-owns-cov-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.addCleanup(clear_field_home)
+        clear_field_home()
+        (self.tmp / "src" / "app" / "hooks").mkdir(parents=True)
+        (self.tmp / "src" / "app" / "hooks" / "usePathname.ts").write_text(
+            "export {}\n", encoding="utf-8"
+        )
+        (self.tmp / "tests").mkdir()
+        (self.tmp / "tests" / "usePathname.test.ts").write_text(
+            "test('ok', () => {})\n", encoding="utf-8"
+        )
+        r = run_of(
+            self.tmp, "init", "--mission", "owns-path coverage", "--phase", "build"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_slice_paths_skip_urls_and_protocol(self) -> None:
+        self.assertEqual(
+            of.OwnsPathCoverage.slice_paths(
+                "implement src/app/hooks/usePathname.ts and "
+                "tests/usePathname.test.ts; see https://github.com/foo/bar "
+                "and .orderfield/ORDER.json plus C1/usePathname"
+            ),
+            [
+                "src/app/hooks/usePathname.ts",
+                "tests/usePathname.test.ts",
+                "C1/usePathname",
+            ],
+        )
+        self.assertEqual(of.OwnsPathCoverage.slice_paths("state machine"), [])
+
+    def test_uncovered_uses_owns_overlap(self) -> None:
+        slice_text = (
+            "implement src/app/hooks/usePathname.ts and "
+            "tests/usePathname.test.ts"
+        )
+        self.assertEqual(
+            of.OwnsPathCoverage.uncovered(slice_text, ["src/app"]),
+            ["tests/usePathname.test.ts"],
+        )
+        self.assertEqual(
+            of.OwnsPathCoverage.uncovered(
+                slice_text, ["src/app", "tests/usePathname.test.ts"]
+            ),
+            [],
+        )
+
+    def test_notes_implementer_empty_and_explorer_silent(self) -> None:
+        empty = of.OwnsPathCoverage.notes(
+            role="implementer",
+            slice_text="implement src/foo.py",
+            owns=[],
+        )
+        self.assertEqual(len(empty), 1)
+        self.assertEqual(empty[0][0], of.OwnsPathCoverage.EMPTY_KIND)
+        self.assertIn("src/foo.py", empty[0][1])
+        self.assertIn("of unpack", empty[0][1])
+        self.assertEqual(
+            of.OwnsPathCoverage.notes(
+                role="explorer",
+                slice_text="map src/foo.py",
+                owns=[],
+            ),
+            [],
+        )
+
+    def test_implementer_empty_owns_path_warns_and_writes(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "state machine",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertTrue(packet_path(self.tmp, "imp1").is_file())
+        self.assertIn("owns_path_empty", packed.stderr + packed.stdout)
+        self.assertIn("empty --owns-path", packed.stderr)
+        self.assertIn("of unpack", packed.stderr)
+
+    def test_incomplete_slice_path_warns_and_writes(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement src/app/hooks/usePathname.ts and "
+            "tests/usePathname.test.ts",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "src/app",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertTrue(packet_path(self.tmp, "imp1").is_file())
+        self.assertIn("owns_path_incomplete", packed.stderr + packed.stdout)
+        self.assertIn("tests/usePathname.test.ts", packed.stderr)
+        self.assertNotIn("src/app/hooks/usePathname.ts", packed.stderr)
+        self.assertIn("of unpack", packed.stderr)
+
+    def test_covered_slice_is_silent(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement src/app/hooks/usePathname.ts",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "src/app",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertNotIn("owns_path_incomplete", packed.stderr)
+        self.assertNotIn("owns_path_empty", packed.stderr)
+
+    def test_explorer_without_owns_path_is_silent(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map src/app/hooks/usePathname.ts",
+            "--role",
+            "explorer",
+            "--child-id",
+            "exp1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertNotIn("owns_path_incomplete", packed.stderr)
+        self.assertNotIn("owns_path_empty", packed.stderr)
+
+    def test_json_warning_kind(self) -> None:
+        proc = run_of(
+            self.tmp,
+            "--json",
+            "pack",
+            "--slice",
+            "implement tests/usePathname.test.ts",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "src/app",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        events = [
+            json.loads(line) for line in proc.stderr.splitlines() if line.strip()
+        ]
+        warns = [
+            row
+            for row in events
+            if row.get("event") == "warning"
+            and row.get("kind") == of.OwnsPathCoverage.KIND
+        ]
+        self.assertTrue(warns, proc.stderr)
+        self.assertIn("tests/usePathname.test.ts", warns[0]["message"])
+
+
 class PackContinuationOwnsRequirement(unittest.TestCase):
     """#54 — continue a child that already owns a binding ID while others stay unowned."""
 

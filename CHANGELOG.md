@@ -10,7 +10,7 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## 0.8.20
 
-Kernel + skill work that landed on main after the published v0.8.19 tag (`4ebb4d5`, #250) while still claiming 0.8.19 lockstep: implementer / `--owns-path` `status=done` with zero owned writes cannot collect (`OwnedWrite`; `#251`). `escalate_up` unblock is one `of patch --<flag>` (`rev` must exceed N) then `of next-wave` (`EscalateUnblock`; `#254`). Mid-flight `of patch` while spawned children fly refuses HOLD (`PacketRevStale.refuse_patch`; `#253`). Never chain pack|spawn|next-wave (`#255`). Live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`; `#256`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.19 notes.
+Kernel + skill work that landed on main after the published v0.8.19 tag (`4ebb4d5`, #250) while still claiming 0.8.19 lockstep: implementer / `--owns-path` `status=done` with zero owned writes cannot collect (`OwnedWrite`; `#251`). `escalate_up` unblock is one `of patch --<flag>` (`rev` must exceed N) then `of next-wave` (`EscalateUnblock`; `#254`). Mid-flight `of patch` while spawned children fly refuses HOLD (`PacketRevStale.refuse_patch`; `#253`). Never chain pack|spawn|next-wave (`#255`). Live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`; `#256`). Pack WARNs `owns_path_empty` / `owns_path_incomplete` when `--owns-path` misses `--slice` paths (`OwnsPathCoverage`; `#257`). After wave settle (`in_flight=0` + printed `next`), auto-continue that next — no poke (`#263`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.19 notes.
 
 - **Reuse table (design-first):** `CloseEvidence` already requires artifact SHA + rollback. Collect already validates identity and `result_ref`. The remaining gap is implementer / `--owns-path` `status=done` with zero writes under those paths (`#251`).
 - **Reuse, not a new verb:** `OwnedWrite` is collect INVALID `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` skip. Artifact mtime, not status prose. No `of prove`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
@@ -36,7 +36,11 @@ Kernel + skill work that landed on main after the published v0.8.19 tag (`4ebb4d
 - **Reuse, not a new verb:** skill/hot-path only. `in_flight=0` + printed `next` → execute that next. HITL only on kernel refuse, stored consent no, or named init-time asks. Learnings after close only. Forbidden: bare ok/dale as keepalive. No `of continue`. No supervisor. No `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach auto-continue after wave; no poke. Core stays under the 20KB cap.
 - **Proof:** `SkillWaveSettleAutoContinue` + `SkillSurface` pointers/markers lock the teaching. Packaging skill-size gate. No VERSION bump. No new C-ID (honesty cap). `#263`.
-- Packaging: VERSION 0.8.20; skill/alias description preview `v0.8.20 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.19 notes. These five cuts merged after the v0.8.19 tag.
+- **Reuse table (design-first):** `--owns-path` / `owns_paths_overlap` already isolate same-wave writers. `SliceLint` / `SharedWorktree` already WARN without refusing. Collect-time zero owned writes is `#251` / `#252` (`OwnedWrite`) — do not reimplement. The remaining gap is pack-time incomplete `--owns-path` vs `--slice` deliverables (`#257`).
+- **Reuse, not a new verb:** `OwnsPathCoverage` extracts slash-containing slice tokens and WARNs `owns_path_incomplete` / implementer `owns_path_empty`. Packet still written. Explorer without `--owns-path` stays silent. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`. No VERSION bump (`#257` batches on 0.8.20).
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `--owns-path` must cover every path `--slice` names. Parallel ark-check noise is project harness — note only.
+- **Proof:** `OwnsPathCoveragePack` / `SkillOwnsPathCoverage`. C-050 extended. No new C-ID (honesty cap). `#257`.
+- Packaging: VERSION 0.8.20; skill/alias description preview `v0.8.20 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.19 notes. These five cuts merged after the v0.8.19 tag. `#263` and `#257` batch here (no bump).
 
 ## 0.8.19
 
