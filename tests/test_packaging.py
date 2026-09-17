@@ -1790,12 +1790,11 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         core = SkillSurface.core(ROOT)
         table = self.table(core).casefold()
         self.assertIn("init / first wave", table)
+        self.assertIn("after wave, before close", table)
         self.assertIn("must ask", table)
         self.assertIn("of close --checklist", table)
         self.assertIn("same-harness", table)
-        self.assertIn("must ask", table)
         self.assertIn("must propose", table)
-        self.assertNotIn("after wave, before close", table)
 
 
 class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
@@ -2688,7 +2687,6 @@ class SkillEvaluatorPacket(unittest.TestCase):
     ASK = "At the end, run fresh-context adversary + verifier (both)?"
     OLD_ASK = "Run adversary + verifier before close?"
     XOR = (
-        "after wave, before close",
         "and/or `--role verifier`",
         "adversary or verifier or close",
         "pick one role",
@@ -2829,14 +2827,15 @@ class SkillEvaluatorPacket(unittest.TestCase):
     def test_xor_end_of_wave_menu_fails_teaching(self) -> None:
         fake = (
             "## What to type next\n"
-            "| after wave, before close | pick adversary or verifier or close |\n"
+            "| leftover learn | `--protocol` / `--promote` |\n"
             "| ask | `of pack --role adversary` and/or `--role verifier` |\n"
             "| menu | pick one role |\n"
+            "| close | adversary or verifier or close |\n"
             "## When to use\n"
         )
         errs = self.xor_errors(fake, "fake.md")
         self.assertTrue(errs, errs)
-        self.assertTrue(any("after wave, before close" in e for e in errs), errs)
+        self.assertTrue(any("and/or `--role verifier`" in e for e in errs), errs)
         self.assertTrue(any("adversary or verifier or close" in e for e in errs), errs)
         self.assertTrue(any("pick one role" in e for e in errs), errs)
 
