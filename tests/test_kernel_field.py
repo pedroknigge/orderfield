@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import io
 import json
 import math
 import os
@@ -43,6 +44,7 @@ def run_of(
     cwd: Path,
     *args: str,
     extra_env: dict[str, str] | None = None,
+    timeout: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     # hermetic: the suite must never hit the network for the update notice
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
@@ -58,6 +60,7 @@ def run_of(
         capture_output=True,
         text=True,
         env=env,
+        timeout=timeout,
     )
 
 
@@ -1252,6 +1255,32 @@ class PulseActivity(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("idle", r.stdout)
         self.assertNotIn("harness chrome", r.stdout)
+
+    def test_pulse_once_distinguishes_idle_from_alive(self) -> None:
+        order = of.load_order(self.tmp)
+        state = of.load_state(self.tmp)
+        with contextlib.redirect_stdout(io.StringIO()):
+            code, idle = of.pulse_once(self.tmp, order, state, 1, 30.0)
+        self.assertEqual(code, 0)
+        self.assertTrue(idle)
+        self._pack()
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "c1"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("now working\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            code, idle = of.pulse_once(self.tmp, order, state, 1, 30.0)
+        self.assertEqual(code, 0)
+        self.assertFalse(idle)
+
+    def test_watch_idle_exits_after_one_tick(self) -> None:
+        """--watch + no flying children → one idle line, exit, no second tick."""
+        r = run_of(self.tmp, "pulse", "--watch", "--interval", "5", timeout=3)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        idle = "in_flight   0 — idle (nothing to watch)"
+        self.assertEqual(r.stdout.count(idle), 1, r.stdout)
+        self.assertNotIn("--- watching", r.stdout)
+        self.assertIn("next", r.stdout)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, r.stdout)
 
     def test_repo_scan_ignores_orderfield_writes(self) -> None:
         found = of.repo_newest_mtime(self.tmp)
