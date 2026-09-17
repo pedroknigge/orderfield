@@ -252,7 +252,7 @@ Opened as landable slices (P0 first). Parent boards fleet from these.
 | Cut | Issue | Title |
 |---|---|---|
 | parent | [#239](https://github.com/pedroknigge/orderfield/issues/239) | P0: stall/latency — child dispatch + silent death (audit 2026-09-17) |
-| P0-1 | [#241](https://github.com/pedroknigge/orderfield/issues/241) | spawn success prints exit=0 and stops; reuse DriveAfterIntegrate next=COLLECT |
+| P0-1 | [#241](https://github.com/pedroknigge/orderfield/issues/241) / kernel [PR #246](https://github.com/pedroknigge/orderfield/pull/246) | spawn success prints exit=0 and stops; reuse DriveAfterIntegrate next=COLLECT |
 | P0-2 | [#242](https://github.com/pedroknigge/orderfield/issues/242) | dead started-only spawn says Wait for it / HOLD forever |
 | P0-3 | [#243](https://github.com/pedroknigge/orderfield/issues/243) | pulse --watch never exits when in_flight=0 |
 | P1-1 | [#244](https://github.com/pedroknigge/orderfield/issues/244) | SKILL pre-pack consults add wall-clock before first child |
