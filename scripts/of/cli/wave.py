@@ -1192,6 +1192,29 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         **OperatorAction.event_fields(operator_actions),
     )
     print(f"exit={proc.returncode} outcome={meta['outcome']} log={log_path}")
+    _emit_drive_after_spawn(root, order, load_state(root), int(wave))
+
+
+def _emit_drive_after_spawn(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+    wave: int,
+) -> None:
+    """Idle + residuals landed: print next COLLECT. Do not collect here."""
+    if json_events_enabled():
+        return
+    from of.cli.ops import DriveAfterIntegrate
+
+    DriveAfterIntegrate.emit_from_disk(
+        root,
+        order,
+        state,
+        wave,
+        key_width=12,
+        file=sys.stderr,
+        with_next=True,
+    )
 
 
 def cmd_collect(args: argparse.Namespace) -> None:
