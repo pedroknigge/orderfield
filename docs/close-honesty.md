@@ -19,6 +19,8 @@ Before 0.7.7 a leader could narrate CLOSED while done-when stayed open. Atomic c
 
 If those two columns disagree, the session is lying. Re-run `of contrast`. Read `.orderfield/CLOSE.json` (or the field-home copy). Do not patch the story.
 
+A published schedule that says FACTIBLE / D CUMPLE while labeled beds overlap is the same split. Check the artifact bytes, not D. Fail ⇒ INFACTIBLE or ROMPE. `SkillArtifactProve`.
+
 ## What the disk is
 
 - **Contrast** prints a human one-pager (`CLOSE BLOCKED` exit 2, or `RESOLVED` exit 0) and one machine JSON object from the same `ContrastReport` document. `--json` / `OF_JSON=1` repeats those facts on the `contrast` event. Slice `done` is not SPEC closed.

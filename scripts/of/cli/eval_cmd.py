@@ -2051,6 +2051,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.DoctorPlanDocSync",
     "tests.test_kernel.SkillPlanDocSync",
     "tests.test_kernel.SkillPstackCherries",
+    "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",
     "tests.test_kernel.SkillDriveAfterIntegrate",
     "tests.test_kernel.SkillWaveEndTriage",

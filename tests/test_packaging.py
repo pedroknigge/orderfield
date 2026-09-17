@@ -27,6 +27,7 @@ from living_map import (  # noqa: E402
     SkillRunbookPath,
 )
 from skill_surface import SkillSurface  # noqa: E402
+from skill_artifact_prove import SkillArtifactProve as ArtifactProve  # noqa: E402
 
 
 def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
@@ -1541,6 +1542,102 @@ class SkillPstackCherries(unittest.TestCase):
         self.assertNotIn("preferences.md", appendix)
 
 
+class SkillArtifactProve(unittest.TestCase):
+    """Published artifact before FACTIBLE. CUMPLE+bed-overlap fails. No of prove."""
+
+    CLEAN = """required_window: 08:00-12:00
+
+| id | bed | start | end |
+| P07 | R1 | 08:00 | 10:00 |
+| P15 | R2 | 09:30 | 11:00 |
+
+## A
+FACTIBLE
+
+## D
+CUMPLE
+
+## F
+occupancy 08:00-12:00
+08:00-10:00 R1 P07
+09:30-11:00 R2 P15
+"""
+
+    HONEST_FAIL = """required_window: 08:00-12:00
+
+| id | bed | start | end |
+| P07 | R1 | 08:00 | 10:00 |
+| P15 | R1 | 09:30 | 11:00 |
+
+## A
+INFACTIBLE
+
+## D
+ROMPE bed R1 P07 and P15
+
+## F
+occupancy 08:00-12:00
+09:30-10:00 R1 P07 and P15
+"""
+
+    def test_core_alias_appendix_teach_published_check(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        self.assertEqual(
+            ArtifactProve.teaching_errors(core, alias, appendix),
+            [],
+        )
+        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertIn("FACTIBLE", table)
+        self.assertIn("published", table.casefold())
+        self.assertIn("skill_artifact_prove.py", appendix)
+        self.assertNotRegex(core, r"(?<![Nn]ot )`of prove`")
+
+    def test_cumple_with_bed_overlap_fails(self) -> None:
+        fixture = (ROOT / ArtifactProve.FIXTURE).read_text(encoding="utf-8")
+        rows = ArtifactProve.parse_rows(fixture)
+        self.assertEqual(
+            ArtifactProve.overlaps(rows),
+            [("P07", "P15", "R1")],
+        )
+        errors = ArtifactProve.claim_errors(fixture)
+        self.assertTrue(
+            any("overlap" in err for err in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("occupancy" in err for err in errors),
+            errors,
+        )
+
+    def test_teaching_page_without_published_duty_fails(self) -> None:
+        fake = (
+            "## What to type next\n"
+            "| Disk says | You type |\n"
+            "| claim FACTIBLE | D said CUMPLE |\n"
+            "## When to use\n"
+        )
+        errs = ArtifactProve.teaching_errors(fake, fake, fake)
+        self.assertTrue(errs, errs)
+        self.assertTrue(any("published" in e.casefold() for e in errs), errs)
+
+    def test_clean_schedule_and_honest_fail_pass(self) -> None:
+        self.assertEqual(ArtifactProve.claim_errors(self.CLEAN), [])
+        self.assertEqual(ArtifactProve.claim_errors(self.HONEST_FAIL), [])
+
+    def test_script_refuses_overlap_fixture(self) -> None:
+        proc = run(
+            ROOT,
+            sys.executable,
+            str(ROOT / "scripts" / "skill_artifact_prove.py"),
+            str(ROOT / ArtifactProve.FIXTURE),
+        )
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("overlap", proc.stderr.casefold())
+        self.assertNotIn("of prove", proc.stderr.casefold())
+
+
 class SkillCollectNextIntegrate(unittest.TestCase):
     """After successful collect, printed next is INTEGRATE. #204."""
 
@@ -1692,10 +1789,11 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
     def test_consent_gates_still_ask(self) -> None:
         core = SkillSurface.core(ROOT)
         table = self.table(core).casefold()
+        self.assertIn("init / first wave", table)
         self.assertIn("after wave, before close", table)
-        self.assertLess(table.index("must ask"), table.index("of close --checklist"))
-        self.assertIn("same-harness", table)
         self.assertIn("must ask", table)
+        self.assertIn("of close --checklist", table)
+        self.assertIn("same-harness", table)
         self.assertIn("must propose", table)
 
 
@@ -2584,41 +2682,162 @@ class SkillCodexWorktreeSpawn(unittest.TestCase):
 
 
 class SkillEvaluatorPacket(unittest.TestCase):
-    """After a wave, ask consent for a fresh-context review packet before close."""
+    """Store both-roles end intent at start; pack only if stored yes."""
+
+    ASK = "At the end, run fresh-context adversary + verifier (both)?"
+    OLD_ASK = "Run adversary + verifier before close?"
+    XOR = (
+        "and/or `--role verifier`",
+        "adversary or verifier or close",
+        "pick one role",
+        "pick adversary or verifier",
+    )
 
     @staticmethod
     def table(skill: str) -> str:
         return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
 
-    def test_core_alias_appendix_ask_before_close(self) -> None:
+    @staticmethod
+    def xor_errors(text: str, rel: str) -> list[str]:
+        errors: list[str] = []
+        for needle in SkillEvaluatorPacket.XOR:
+            if needle.casefold() in text.casefold() or needle in text:
+                errors.append(f"{rel} still has XOR menu {needle!r}")
+        return errors
+
+    @staticmethod
+    def timing_errors(text: str, rel: str) -> list[str]:
+        errors: list[str] = []
+        if SkillEvaluatorPacket.OLD_ASK in text:
+            errors.append(f"{rel} still has start-pack ask {SkillEvaluatorPacket.OLD_ASK!r}")
+        if "Yes → pack+spawn both" in text:
+            errors.append(f"{rel} packs on start Yes")
+        return errors
+
+    def test_core_alias_appendix_ask_at_start_both_roles(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
-        table = self.table(core).casefold()
-        ask_at = table.index("ask")
-        close_at = table.index("of close")
-        self.assertLess(ask_at, close_at)
+        table = self.table(core)
+        table_fold = table.casefold()
+        init_row = next(
+            line
+            for line in table.splitlines()
+            if "init / first wave" in line.casefold()
+        )
+        self.assertIn("must ask", init_row.casefold())
+        self.assertIn("do not pack/spawn", init_row)
+        self.assertIn("of close --checklist", init_row)
         self.assertIn("fresh-context review packet", table)
-        self.assertIn("never silent", table)
+        self.assertIn(self.ASK, table)
+        self.assertNotIn(self.OLD_ASK, table)
+        self.assertIn("two packs", table)
+        self.assertIn("two children", table)
+        self.assertIn("pack+spawn both", table)
+        self.assertIn("stored yes", table.casefold())
+        self.assertIn("stored no", table.casefold())
+        self.assertIn("not the review-role ask", table_fold)
+        self.assertIn("never silent", table_fold)
+        self.assertIn("both", table_fold)
         self.assertIn("--role adversary", table)
         self.assertIn("--role verifier", table)
-        self.assertIn("self-praise", table)
-        self.assertIn("not a new close gate", table)
+        self.assertIn("--done-when-mission", table)
+        self.assertIn("after close", table_fold)
+        self.assertIn("of learn", table)
+        self.assertIn("self-praise", table_fold)
+        self.assertIn("not a new close gate", table_fold)
+        self.assertEqual(self.xor_errors(table, "SKILL.md table"), [])
+        self.assertEqual(self.timing_errors(table, "SKILL.md table"), [])
         alias_fold = alias.casefold()
         self.assertIn("fresh-context review packet", alias_fold)
+        self.assertIn(self.ASK.casefold(), alias_fold)
+        self.assertNotIn(self.OLD_ASK, alias)
+        self.assertIn("do not pack/spawn", alias_fold)
+        self.assertIn("two packs", alias_fold)
+        self.assertIn("two children", alias_fold)
+        self.assertIn("pack+spawn both", alias_fold)
+        self.assertIn("stored yes", alias_fold)
         self.assertIn("never silent", alias_fold)
+        self.assertIn("init / first wave", alias_fold)
+        self.assertIn("both", alias_fold)
         self.assertIn("adversary", alias_fold)
         self.assertIn("verifier", alias_fold)
         self.assertIn("must ask", alias_fold)
+        self.assertIn("of learn", alias_fold)
+        self.assertIn("not the review-role ask", alias_fold)
+        self.assertEqual(self.xor_errors(alias, "of/SKILL.md"), [])
+        self.assertEqual(self.timing_errors(alias, "of/SKILL.md"), [])
         appendix_fold = appendix.casefold()
         self.assertIn("fresh-context review packet", appendix_fold)
+        self.assertIn(self.ASK.casefold(), appendix_fold)
+        self.assertNotIn(self.OLD_ASK, appendix)
+        self.assertIn("do not pack/spawn", appendix_fold)
+        self.assertIn("two packs", appendix_fold)
+        self.assertIn("two children", appendix_fold)
+        self.assertIn("pack+spawn both", appendix_fold)
+        self.assertIn("stored yes", appendix_fold)
         self.assertIn("never silent", appendix_fold)
+        self.assertIn("init / first wave", appendix_fold)
+        self.assertIn("of learn", appendix_fold)
+        self.assertIn("not the review-role ask", appendix_fold)
         self.assertIn("self-praise is not review", appendix_fold)
         self.assertIn("not a new close gate", appendix_fold)
+        self.assertEqual(
+            self.xor_errors(appendix, "references/skill-appendix.md"),
+            [],
+        )
+        self.assertEqual(
+            self.timing_errors(appendix, "references/skill-appendix.md"),
+            [],
+        )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        hero = readme[: readme.index("## Install")].casefold()
-        self.assertIn("fresh-context review packet", hero)
-        self.assertIn("never silent", hero)
+        hero = readme[: readme.index("## Install")]
+        hero_fold = hero.casefold()
+        self.assertIn("fresh-context review packet", hero_fold)
+        self.assertIn(self.ASK, hero)
+        self.assertNotIn(self.OLD_ASK, hero)
+        self.assertIn("do not pack/spawn", hero_fold)
+        self.assertIn("two packs", hero_fold)
+        self.assertIn("pack+spawn both", hero_fold)
+        self.assertIn("stored yes", hero_fold)
+        self.assertIn("never silent", hero_fold)
+        self.assertIn("init / first wave", hero_fold)
+        self.assertIn("both", hero_fold)
+        self.assertIn("not the review-role ask", hero_fold)
+        self.assertEqual(self.xor_errors(hero, "README.md hero"), [])
+        self.assertEqual(self.timing_errors(hero, "README.md hero"), [])
+        speak_src = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn(self.ASK, speak_src)
+        self.assertNotIn(self.OLD_ASK, speak_src)
+        self.assertIn("stored yes: pack+spawn both", speak_src)
+        self.assertIn("stored no:", speak_src)
+
+    def test_start_yes_must_not_pack(self) -> None:
+        fake = (
+            "## What to type next\n"
+            f"| init / first wave plan | {self.ASK} Yes → pack+spawn both |\n"
+            "## When to use\n"
+        )
+        errs = self.timing_errors(fake, "fake.md")
+        self.assertTrue(errs, errs)
+        self.assertTrue(any("packs on start Yes" in e for e in errs), errs)
+
+    def test_xor_end_of_wave_menu_fails_teaching(self) -> None:
+        fake = (
+            "## What to type next\n"
+            "| leftover learn | `--protocol` / `--promote` |\n"
+            "| ask | `of pack --role adversary` and/or `--role verifier` |\n"
+            "| menu | pick one role |\n"
+            "| close | adversary or verifier or close |\n"
+            "## When to use\n"
+        )
+        errs = self.xor_errors(fake, "fake.md")
+        self.assertTrue(errs, errs)
+        self.assertTrue(any("and/or `--role verifier`" in e for e in errs), errs)
+        self.assertTrue(any("adversary or verifier or close" in e for e in errs), errs)
+        self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
 class SkillSharedWorktree(unittest.TestCase):
