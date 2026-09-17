@@ -38,6 +38,7 @@ from of.field import (
     PULSE_STALE_MINUTES,
     child_pulse_verdict,
     CollectReady,
+    DeadStartedOnly,
     SpawnRecord,
     PYTHON_FLOOR,
     _read_json_object,
@@ -1423,7 +1424,9 @@ class HandoffReport:
             spec_closed=bool(order.get("spec_closed")),
             collected=CollectReady.of(root, packets, load_session(root)),
         )
-        return action, verdicts, resume_next_lines(action)
+        return action, verdicts, resume_next_lines(
+            action, root=root, flying=flying
+        )
 
     @staticmethod
     def flying_row(
@@ -1857,7 +1860,18 @@ def cmd_validate(args: argparse.Namespace) -> None:
     print(f"OK {kind} {path}")
 
 
-def resume_next_lines(action: str) -> list[str]:
+def resume_next_lines(
+    action: str,
+    *,
+    root: Path | None = None,
+    flying: list[Any] | None = None,
+) -> list[str]:
+    if (
+        action == DeadStartedOnly.ACTION
+        and root is not None
+        and DeadStartedOnly.of(root, flying or [])
+    ):
+        return DeadStartedOnly.next_lines()
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
@@ -2214,7 +2228,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if flying:
         print(InFlightSignal.speak_line(key_width=14))
     print("next")
-    for line in resume_next_lines(nxt):
+    for line in resume_next_lines(nxt, root=root, flying=flying):
         print(f"  {line}")
     DriveAfterIntegrate.emit(
         spec_closed=bool(order.get("spec_closed")),
