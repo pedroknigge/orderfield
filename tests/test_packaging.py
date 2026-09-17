@@ -2683,12 +2683,15 @@ class SkillCodexWorktreeSpawn(unittest.TestCase):
 
 
 class SkillEvaluatorPacket(unittest.TestCase):
-    """Ask both review roles at field start; run at end; no XOR close menu."""
+    """Default-propose both review roles; exclusive-or menus fail teaching."""
 
+    ASK = "Run adversary + verifier before close?"
     XOR = (
         "after wave, before close",
         "and/or `--role verifier`",
         "adversary or verifier or close",
+        "pick one role",
+        "pick adversary or verifier",
     )
 
     @staticmethod
@@ -2717,12 +2720,17 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("must ask", init_row.casefold())
         self.assertIn("of close --checklist", init_row)
         self.assertIn("fresh-context review packet", table)
+        self.assertIn(self.ASK, table)
+        self.assertIn("two packs", table)
+        self.assertIn("two children", table)
+        self.assertIn("neither wrote the slice", table)
+        self.assertIn("pack+spawn both", table)
+        self.assertIn("opt-out is close", table.casefold())
         self.assertIn("never silent", table_fold)
         self.assertIn("both", table_fold)
         self.assertIn("--role adversary", table)
         self.assertIn("--role verifier", table)
         self.assertIn("--done-when-mission", table)
-        self.assertIn("do not re-ask", table)
         self.assertIn("after close", table_fold)
         self.assertIn("of learn", table)
         self.assertIn("self-praise", table_fold)
@@ -2730,20 +2738,28 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertEqual(self.xor_errors(table, "SKILL.md table"), [])
         alias_fold = alias.casefold()
         self.assertIn("fresh-context review packet", alias_fold)
+        self.assertIn(self.ASK.casefold(), alias_fold)
+        self.assertIn("two packs", alias_fold)
+        self.assertIn("two children", alias_fold)
+        self.assertIn("pack+spawn both", alias_fold)
+        self.assertIn("opt-out is close", alias_fold)
         self.assertIn("never silent", alias_fold)
         self.assertIn("init / first wave", alias_fold)
         self.assertIn("both", alias_fold)
         self.assertIn("adversary", alias_fold)
         self.assertIn("verifier", alias_fold)
         self.assertIn("must ask", alias_fold)
-        self.assertIn("do not re-ask", alias_fold)
         self.assertIn("of learn", alias_fold)
         self.assertEqual(self.xor_errors(alias, "of/SKILL.md"), [])
         appendix_fold = appendix.casefold()
         self.assertIn("fresh-context review packet", appendix_fold)
+        self.assertIn(self.ASK.casefold(), appendix_fold)
+        self.assertIn("two packs", appendix_fold)
+        self.assertIn("two children", appendix_fold)
+        self.assertIn("pack+spawn both", appendix_fold)
+        self.assertIn("opt-out is close", appendix_fold)
         self.assertIn("never silent", appendix_fold)
         self.assertIn("init / first wave", appendix_fold)
-        self.assertIn("do not re-ask", appendix_fold)
         self.assertIn("of learn", appendix_fold)
         self.assertIn("self-praise is not review", appendix_fold)
         self.assertIn("not a new close gate", appendix_fold)
@@ -2752,23 +2768,37 @@ class SkillEvaluatorPacket(unittest.TestCase):
             [],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        hero = readme[: readme.index("## Install")].casefold()
-        self.assertIn("fresh-context review packet", hero)
-        self.assertIn("never silent", hero)
-        self.assertIn("init / first wave", hero)
-        self.assertIn("both", hero)
+        hero = readme[: readme.index("## Install")]
+        hero_fold = hero.casefold()
+        self.assertIn("fresh-context review packet", hero_fold)
+        self.assertIn(self.ASK, hero)
+        self.assertIn("two packs", hero_fold)
+        self.assertIn("pack+spawn both", hero_fold)
+        self.assertIn("opt-out is close", hero_fold)
+        self.assertIn("never silent", hero_fold)
+        self.assertIn("init / first wave", hero_fold)
+        self.assertIn("both", hero_fold)
         self.assertEqual(self.xor_errors(hero, "README.md hero"), [])
+        speak_src = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(self.ASK, speak_src)
+        self.assertIn("pack+spawn both", speak_src)
+        self.assertNotIn("do not re-ask", speak_src)
 
     def test_xor_end_of_wave_menu_fails_teaching(self) -> None:
         fake = (
             "## What to type next\n"
             "| after wave, before close | pick adversary or verifier or close |\n"
             "| ask | `of pack --role adversary` and/or `--role verifier` |\n"
+            "| menu | pick one role |\n"
             "## When to use\n"
         )
         errs = self.xor_errors(fake, "fake.md")
         self.assertTrue(errs, errs)
         self.assertTrue(any("after wave, before close" in e for e in errs), errs)
+        self.assertTrue(any("adversary or verifier or close" in e for e in errs), errs)
+        self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
 class SkillSharedWorktree(unittest.TestCase):

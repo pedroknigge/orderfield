@@ -312,7 +312,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-143 0.7.83: multi-harness mix playbook (when mix vs roles on one harness; claude/codex/cursor/grok/agy; bind pack/spawn/collect/contrast/close/doctor + detect consent); `SkillHarnessMix`; no new C-ID (honesty cap)
 - [x] C-132/C-143 0.7.84: long-task efficiency mix from honest signals only; `AdapterBalance` unknown unless published payload in hand; never invent; `SkillEfficiencyMix`; no new C-ID (honesty cap)
 - [x] C-080 0.7.85: skill/kernel teach a fresh-context review packet (`adversary`/`verifier`); ask consent; never silent; not a close gate; not `of merge`; C-080 stays Partial (honesty cap)
-- [x] C-080 0.8.16: ask both review roles at init / first wave; store on `--done-when-mission` / `--constraints-add`; run both at end (no XOR re-ask); after close ask `of learn` / `--promote`; `SkillEvaluatorPacket`; C-080 stays Partial (honesty cap)
+- [x] C-080 0.8.16: ask both review roles at init / first wave (two packs / two children); "Run adversary + verifier before close?"; yes pack+spawn both / no contrast→close; XOR menus fail `SkillEvaluatorPacket`; C-080 stays Partial (honesty cap)
 - [x] C-045 0.7.86: Orca `worker-start` ↔ `worker-stop` then `worker-release` after collect/abandon; leftover of-worktree doctor WARN; no process supervisor; `SkillOrcaWorkerTeardown` / `DoctorWorktreeLeftover`; no new C-ID (honesty cap)
 - [x] C-045 0.7.90: native Codex spawn binds recorded worktree + field/Git writable roots or refuses before launch; `CodexRecordedWorktree` / `SkillCodexWorktreeSpawn`; no new C-ID (honesty cap)
 - [x] C-009/C-015 0.7.60: `AdapterDetect` present / missing / PATH≠auth on detect + doctor; never claim login from PATH; no new C-ID (honesty cap)
