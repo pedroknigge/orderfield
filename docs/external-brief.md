@@ -47,6 +47,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; `constraints+` appends on leader `--apply`; replace keys stay off; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
 | Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
 | Caption close (no artifact SHA / no rollback command) | `status=done` cannot collect | `CloseEvidenceGate` |
+| Implementer / owns-path `done` with zero owned writes | collect INVALID `owned_write_missing` | `OwnedWriteGate` |
 | Chat-dump residual (transcript in `evidence` / `notes`) | collect/integrate refuse; wave report is `{status, wants, uncertainty}` | `recovery/wave-report-quality-gate` |
 | Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |

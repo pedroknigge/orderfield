@@ -118,6 +118,7 @@ def write_bound_residual(
         json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
         encoding="utf-8",
     )
+    of.OwnedWrite.ensure(root, packet)
     return destination
 
 

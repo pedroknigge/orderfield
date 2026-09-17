@@ -140,13 +140,13 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
 | `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |
 | `cmd_unpack` | Release packed child that never reported; refunds `children_spawned` |
-| `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed |
+| `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed. Implementer / owns-path `status=done` with zero writes under owns-path or the recorded worktree since spawn is INVALID (`OwnedWrite`) |
 | `ORDER.harness` / `ORDER.backlog` | First-class fields (not prose constraints) |
 | `validate_residual` | Reject malformed metric types/ranges before regime selection |
 | `validate_public_schema` / `dump_json` | Runtime/public-schema parity (Draft 2020-12 subset: type/const/enum/minLength/maxLength/pattern/minimum/maximum/minItems/uniqueItems/items/required/additionalProperties/properties/patternProperties/anyOf) and durable atomic JSON replacement |
 | `field_lock` / `MUTATING_COMMANDS` | Cross-process serialization of kernel mutations; OS releases dead owners |
 | `packet_digest` / `require_registered_packet` / `require_packet_artifact_paths` | Immutable packet identity, exact live revision, canonical paths, and symlink rejection |
-| `validate_residual_for_packet` | Residual identity binding and existing in-project `done.result_ref` |
+| `validate_residual_for_packet` | Residual identity binding, existing in-project `done.result_ref`, `CloseEvidence`, and implementer / owns-path owned write since spawn (`OwnedWrite`) |
 | `integration_input_digest` / `reconcile_integration_state` | Idempotent replay and interrupted-state repair; changed inputs use `--recompute` |
 | `phase_transition_errors` / `wave_transition_errors` | Sequential closed phase movement and complete current-digest wave movement; empty waves skip the phase integrate requirement |
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; parked agents + `agents_note`; optional `--summary` |

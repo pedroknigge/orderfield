@@ -25,6 +25,7 @@ from of.field import (
     load_worktrees,
     of_dir,
     order_path,
+    parse_utc,
     physical_artifact_path,
     physical_field_rel,
     protocol_learning_lines,
@@ -466,6 +467,7 @@ def validate_residual_for_packet(
             )
     errs.extend(verifier_done_errors(res, packet, root))
     errs.extend(CloseEvidence.errors(res, root))
+    errs.extend(OwnedWrite.errors(res, packet, root))
     return errs
 
 
@@ -1047,6 +1049,173 @@ class CloseEvidence:
                     "close evidence rollback is a caption; name a command"
                 )
         return errs
+
+
+class OwnedWrite:
+    """Implementer / owns-path done residual must write owned files.
+
+    Artifact mtime, not status prose. Reuses ``owns_paths``, recorded
+    worktree, spawn ``started_at``, and residual ``status``. Explorer /
+    adversary / verifier without ``owns_paths`` skip. Not ``of prove``.
+    Not a supervisor. Not ``RUNTIME_OWNERSHIP``.
+    """
+
+    KIND = "owned_write_missing"
+    SUCCESS = frozenset({"done"})
+    SKIP_DIR_NAMES = frozenset(
+        {
+            ".git",
+            ".orderfield",
+            "__pycache__",
+            ".mypy_cache",
+            "node_modules",
+            ".venv",
+            "venv",
+        }
+    )
+
+    @staticmethod
+    def applies(res: Any, packet: dict[str, Any]) -> bool:
+        if not isinstance(res, dict) or not isinstance(packet, dict):
+            return False
+        if str(res.get("status") or "") not in OwnedWrite.SUCCESS:
+            return False
+        role = str(packet.get("role") or "")
+        return role == "implementer" or bool(packet_owns_paths(packet))
+
+    @staticmethod
+    def since(root: Path, packet: dict[str, Any]) -> float:
+        child = str(packet.get("child_id") or "")
+        wave = packet.get("wave")
+        if child and isinstance(wave, int) and not isinstance(wave, bool) and wave >= 1:
+            meta = wave_dir(wave, root) / "spawns" / f"{child}.json"
+            if meta.is_file():
+                data = _read_json_object(meta) or {}
+                started = parse_utc((data or {}).get("started_at"))
+                if started is not None:
+                    return started
+        if child and isinstance(wave, int) and not isinstance(wave, bool) and wave >= 1:
+            packed = wave_dir(wave, root) / "packets" / f"{child}.json"
+            if packed.is_file():
+                return packed.stat().st_mtime
+        return 0.0
+
+    @staticmethod
+    def bases(root: Path, packet: dict[str, Any]) -> list[Path]:
+        out: list[Path] = []
+        seen: set[Path] = set()
+        child = str(packet.get("child_id") or "")
+        recorded = (load_worktrees(root).get("trees") or {}).get(child)
+        if isinstance(recorded, dict) and recorded.get("path"):
+            tree = Path(str(recorded["path"]))
+            try:
+                resolved = tree.resolve()
+            except OSError:
+                resolved = tree
+            if tree.exists() and resolved not in seen:
+                out.append(tree)
+                seen.add(resolved)
+        try:
+            root_resolved = root.resolve()
+        except OSError:
+            root_resolved = root
+        if root_resolved not in seen:
+            out.append(root)
+        return out
+
+    @staticmethod
+    def targets(root: Path, packet: dict[str, Any]) -> list[Path]:
+        owns = packet_owns_paths(packet)
+        bases = OwnedWrite.bases(root, packet)
+        if owns:
+            return [base / rel for base in bases for rel in owns]
+        return [base for base in bases if base.resolve() != root.resolve()]
+
+    @staticmethod
+    def _skip(path: Path) -> bool:
+        return any(part in OwnedWrite.SKIP_DIR_NAMES for part in path.parts)
+
+    @staticmethod
+    def files_since(path: Path, since: float) -> list[str]:
+        if not path.exists() or path.is_symlink() or OwnedWrite._skip(path):
+            return []
+        if path.is_file():
+            try:
+                if path.stat().st_mtime >= since:
+                    return [str(path)]
+            except OSError:
+                return []
+            return []
+        if not path.is_dir():
+            return []
+        hits: list[str] = []
+        try:
+            children = path.rglob("*")
+        except OSError:
+            return []
+        for child in children:
+            if child.is_symlink() or not child.is_file() or OwnedWrite._skip(child):
+                continue
+            try:
+                if child.stat().st_mtime >= since:
+                    hits.append(str(child))
+            except OSError:
+                continue
+        return hits
+
+    @staticmethod
+    def writes(root: Path, packet: dict[str, Any]) -> list[str]:
+        since = OwnedWrite.since(root, packet)
+        found: list[str] = []
+        for target in OwnedWrite.targets(root, packet):
+            found.extend(OwnedWrite.files_since(target, since))
+        return found
+
+    @staticmethod
+    def errors(res: Any, packet: dict[str, Any], root: Path) -> list[str]:
+        if not OwnedWrite.applies(res, packet):
+            return []
+        targets = OwnedWrite.targets(root, packet)
+        if not targets:
+            return []
+        if OwnedWrite.writes(root, packet):
+            return []
+        owned = packet_owns_paths(packet) or ["<worktree>"]
+        return [
+            f"{OwnedWrite.KIND}: status=done wrote 0 files under "
+            f"{', '.join(owned)} since spawn"
+        ]
+
+    @staticmethod
+    def ensure(root: Path, packet: dict[str, Any]) -> list[Path]:
+        """Fixture helper: touch owned paths so a done residual can collect."""
+        written: list[Path] = []
+        owns = packet_owns_paths(packet)
+        if owns:
+            for base in OwnedWrite.bases(root, packet):
+                for rel in owns:
+                    dest = base / rel
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    if dest.is_dir():
+                        dest = dest / ".owned_write"
+                    if dest.is_file():
+                        dest.touch()
+                    else:
+                        dest.write_text("# owned write\n", encoding="utf-8")
+                    written.append(dest)
+            return written
+        for base in OwnedWrite.bases(root, packet):
+            try:
+                if base.resolve() == root.resolve():
+                    continue
+            except OSError:
+                if base == root:
+                    continue
+            dest = base / ".owned_write"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text("# owned write\n", encoding="utf-8")
+            written.append(dest)
+        return written
 
 
 def verifier_done_errors(

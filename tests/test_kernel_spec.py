@@ -111,6 +111,7 @@ def write_bound_residual(
         json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
         encoding="utf-8",
     )
+    of.OwnedWrite.ensure(root, packet)
     return destination
 
 
@@ -1381,6 +1382,132 @@ class CloseEvidenceGate(unittest.TestCase):
         residual = load_json(DONE)
         self.assertEqual(of.validate_residual(residual), [])
         self.assertTrue(of.CloseEvidence.errors(residual, self.tmp))
+
+
+class OwnedWriteGate(unittest.TestCase):
+    """Implementer done + empty owns-path since spawn cannot collect. #251."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-owned-write-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "owned write", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _pack(self, *, role: str, child_id: str, owns_path: str | None = None) -> None:
+        args = [
+            "pack",
+            "--slice",
+            f"{role} {child_id}",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        ]
+        if owns_path:
+            args.extend(["--owns-path", owns_path])
+        packed = run_of(self.tmp, *args)
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _spawn_meta(self, child_id: str) -> None:
+        path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "child_id": child_id,
+                    "adapter": "claude",
+                    "started_at": of.utc_now(),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def _write_done(self, child_id: str, *, ensure: bool = False) -> None:
+        packet = load_json(packet_path(self.tmp, child_id))
+        residual = bound_residual(self.tmp, child_id)
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        if ensure:
+            of.OwnedWrite.ensure(self.tmp, packet)
+
+    def test_implementer_done_empty_owns_path_is_invalid(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        self._write_done("imp")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertIn("owned_write_missing", blob)
+        self.assertIn("src/mod.py", blob)
+
+    def test_implementer_done_one_owned_write_collects(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        self._write_done("imp", ensure=True)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertIn("OK", collected.stdout)
+        self.assertNotIn("owned_write_missing", collected.stdout + collected.stderr)
+
+    def test_explorer_done_without_owns_path_skips(self) -> None:
+        self._pack(role="explorer", child_id="ex")
+        self._spawn_meta("ex")
+        self._write_done("ex")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+
+    def test_implementer_without_owns_path_or_worktree_skips(self) -> None:
+        self._pack(role="implementer", child_id="solo")
+        self._spawn_meta("solo")
+        self._write_done("solo")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+
+    def test_threshold_skips_the_gate(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        packet = load_json(packet_path(self.tmp, "imp"))
+        residual = load_json(THRESHOLD)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        residual["residual"]["wants_to_change"] = ["constraints"]
+        residual["residual"]["evidence"] = "need a constraint, no owned write"
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertNotIn("owned_write_missing", collected.stdout + collected.stderr)
+
+    def test_worktree_write_counts_without_owns_path(self) -> None:
+        self._pack(role="implementer", child_id="wt")
+        self._spawn_meta("wt")
+        tree = self.tmp.parent / f"{self.tmp.name}-of-wt"
+        tree.mkdir()
+        self.addCleanup(shutil.rmtree, tree, True)
+        of.save_worktrees(
+            self.tmp,
+            {
+                "trees": {
+                    "wt": {
+                        "path": str(tree),
+                        "added_at": of.utc_now(),
+                        "head": "-",
+                    }
+                }
+            },
+        )
+        self._write_done("wt")
+        empty = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
+        self.assertIn("owned_write_missing", empty.stdout + empty.stderr)
+        (tree / "landed.py").write_text("ok\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 
 
 class ForceDeliverSpec(unittest.TestCase):
