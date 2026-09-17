@@ -8,6 +8,28 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.19
+
+Stall cuts + agy argv honesty on the 0.8.18 line: `pulse --watch` exits when idle (`#243`); pulse does not call STALE while `SpawnRecord.live_pid` is set (`#245`); SKILL pre-pack catalog/cheap-frontier/same-harness ask is once per field (`#244`); agy `--model` emits `--effort` and `--print-timeout` follows `budget.seconds` (`#249`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.18 notes.
+
+- **Reuse table (design-first):** `pulse_once` already prints idle when `in_flight=0`. `DriveAfterIntegrate` / `resume_next_lines` already own idle `next` + speak. The remaining gap is `cmd_pulse --watch` sleeping forever because idle and ALIVE both returned exit 0 (`#243`).
+- **Reuse, not a supervisor:** `pulse_once` returns `(exit_code, idle)`. Watch prints idle + `next` and returns — no sleep. Skill still says do not run `of pulse` by hand. No `of watch`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / README teach `--watch` exits when idle (not the product path). Core stays under the 20KB cap.
+- **Proof:** `PulseActivity.test_watch_idle_exits_after_one_tick` (`--watch` + no flying children → one idle line, process exits, no second tick). `test_pulse_once_distinguishes_idle_from_alive`. No new C-ID (honesty cap). `#243`.
+- **Reuse table (design-first):** `pulse_verdict` / `child_pulse_verdict` already age scratch+spawn mtime into ALIVE/QUIET/STALE. `SpawnRecord.live_pid` already knows a live child. The remaining gap is STALE while the pid is still alive (`#245`).
+- **Reuse, not a supervisor:** when `live_pid` is set, verdict stays QUIET (pulse prints `pid=`); dead+old mtime can stay STALE. Do not kill. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** pulse stay-on-run prose keeps STALE as signal-only; live pid is not a handoff theater cue.
+- **Proof:** `PulseActivity.test_live_pid_old_mtime_is_quiet_not_stale` / `test_dead_pid_old_mtime_stays_stale`. No new C-ID (honesty cap). `#245`.
+- **Reuse table (design-first):** `ORDER.harness` / `of patch --model-hints` already store the answer. Adversary+verifier ask is already once at init (`#235`). The remaining gap is re-asking catalog/cheap-frontier/same-harness on every replan wave (`#244`).
+- **Reuse, not a new verb:** docs/skill only. Ask **once per field** (init / first pack). Later waves: only on efficiency propose or an explicit harness change. `SkillHarnessAsk` still finds the ask once. No `of gate`. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / README teach once/field. Core stays under the 20KB cap.
+- **Proof:** `SkillHarnessAsk` (ask once). Packaging skill-size gate. `#244`.
+- **Reuse table (design-first):** `AdapterHints.spawn_flags` already emits `--model` for agy. `budget.seconds` already clocks spawn. The remaining gap is agy rejecting `--model` without `--effort`, and the 5m default `--print-timeout` ignoring the packet (`#249`).
+- **Reuse, not a new verb:** emit `--effort` (default `medium`, or `adapter_hints.effort`; unknown dies before spawn) with `--model`; derive `--print-timeout` from `budget.seconds`. Surface harness refuse clearly when stdout names the argv refuse. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** adapters reference teaches `--model`+`--effort` and packet-clock `--print-timeout`.
+- **Proof:** `AgyEffortArgv` (default medium; packet effort; unknown dies; refuse hint). `AdapterHintsArgv.test_grok_agy_named_model_precedes_dash_p`. `#249`.
+- Packaging: VERSION 0.8.19; skill/alias description preview `v0.8.19 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.18 notes.
+
 ## 0.8.18
 
 `of learn --list` reads the protocol store when no ACTIVE/open field is bound. Two or more closed fields are not a `--field` refuse. Stall cuts that landed on main after the published v0.8.17 tag (`6149f197`, #237) while VERSION was still 0.8.17: spawn prints `next COLLECT` via `DriveAfterIntegrate` (#246; already recorded under ## 0.8.17); dead started-only HOLD names `SPAWN --FORCE` (#247; no heading of its own). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.17 notes.

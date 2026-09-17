@@ -21,12 +21,12 @@ The chat can die. ORDER stays. A child residual cannot replace the mission, the 
 `of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.8.18</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.19</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.18-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.19-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -43,7 +43,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | The harness says done, but the public surface is not proven | Close is proof (`of contrast` / `CLOSE.json`). Tests alone are not enough. |
 | Chat compacted, or the session died | The contract remains under `.orderfield/`. |
 | A multi-role wave needs cheap and frontier workers | The plan consults the [model catalog](docs/model-catalog.md), then proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
-| A wave could mix CLIs or stay on one without asking | The leader asks same-harness roles on one harness vs multi-harness mix before pack. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
+| A wave could mix CLIs or stay on one without asking | The leader asks same-harness vs multi-harness mix once per field (init/first pack). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
 | A multi-slice field is about to start | At init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store on `done_when`. Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Contrast still required. Not a new close gate. |
 | A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
@@ -102,8 +102,8 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
-release_tag=v0.8.18
-release_version=0.8.18
+release_tag=v0.8.19
+release_version=0.8.19
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -250,7 +250,7 @@ of status
 
 Returning session: `of resume` first (ORDER exists → continue in-flight; do **not** re-init). The live wave is reconstructed from `state.wave` plus packets/residuals — stale `session.json` does not win. A unique open field prints `auto_continue yes` even when `OF_SESSION_ID` differs from `ORDER.origin.session_id` (origin is provenance, not authority). A clone or checkout of an open `.orderfield/` plus those HOME dest skill copies is the same auto-continue — operator risk, not an escape. Optional `of checkpoint --summary "…"` stores a one-screen leader note. Resume does not auto-spawn or dump logs. `of init` without `--force` dies while a field exists (`recovery/multi-day-resume`, `recovery/process-death-resume`).
 
-While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. Each child verdict uses only its packet time and scratch mtime (including the contract-required heartbeat); the newest shared-repo product mtime is displayed separately as wave context. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision. Pulse does not mutate ORDER, state, session, or wave artifacts; update-notice throttling may write its user cache.
+While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. `--watch` exits when idle (prints next; do not sleep) — not the product path; quote PULSE on status/resume. Each child verdict uses only its packet time and scratch mtime (including the contract-required heartbeat); the newest shared-repo product mtime is displayed separately as wave context. It is not process health or per-child product-write attribution. Exit 2 on STALE so scripts can alert; STALE is only a signal, and releasing a dead child remains a human/leader `of unpack` decision. Pulse does not mutate ORDER, state, session, or wave artifacts; update-notice throttling may write its user cache.
 
 `of status` / `of resume` / `of pulse` ask once a day (one stderr line) when a newer release exists than the installed VERSION. `of doctor` prints the same ask and, on a TTY, prompts; on yes it runs `install.sh --global --from-release` (GitHub tag + SHA256SUMS). Never a silent auto-update. Silent offline; `OF_NO_UPDATE_CHECK=1` turns it off.
 

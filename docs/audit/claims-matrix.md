@@ -16,7 +16,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.18`
+**Code rev:** VERSION `0.8.19`
+
+- [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); no new C-ID (honesty cap)
+
 
 ## Summary
 

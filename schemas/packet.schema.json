@@ -115,6 +115,11 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        },
+        "effort": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "agy only: required with --model (default medium when omitted on argv)."
         }
       }
     },

@@ -421,7 +421,11 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     s.add_argument("--wave", type=int)
-    s.add_argument("--watch", action="store_true", help="refresh until Ctrl+C")
+    s.add_argument(
+        "--watch",
+        action="store_true",
+        help="refresh while children fly; exit when idle (not the product path)",
+    )
     s.add_argument("--interval", type=int, default=30, help="seconds between refreshes")
     s.add_argument(
         "--stale-min",
