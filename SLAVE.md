@@ -49,7 +49,7 @@ Format: UTC timestamp, one space, what you are doing in ten words or fewer. Appe
 - Reason, read the repo, use tools, explore, fail, and correct.
 - Write artifacts into your scratch directory.
 - Write product files only when the slice names exclusive paths.
-- Write project findings (bugs, "review later", open questions, debt) to an owned plan/debt/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done`. Do not leave them as chat.
+- Write project findings (bugs, "review later", open questions, debt) to an owned plan/debt/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done`. Do not leave them as chat. Leftover field `of learn` notes and reportable errors are for the leader's wave-end / pre-close ask — write them into residual / scratch (`ISSUE.md`, `DOCS_SYNC.md`) so that ask has evidence. Do not expect auto-promote.
 - Load your own skills if they do not change the role identity.
 
 Product comments are short and factual, not the field diary. Prefer the same capability with less code. Think DELETE, not add. Code is a liability.
@@ -59,7 +59,7 @@ Product comments are short and factual, not the field diary. Prefer the same cap
 - Mutate `.orderfield/ORDER.json`, `.orderfield/state.json`, or `.orderfield/session.json`.
 - Change mission, phase, or constraints.
 - Spawn grandchildren unless the packet has `allow_nested: true`.
-- Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). `of patch` / `of close` / `of integrate` refuse `OF_CHILD` the same way. Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
+- Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). `of patch` / `of close` / `of integrate` refuse `OF_CHILD` the same way. Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader` and die with the field unless the leader triages them at wave-end.
 - Return a thinking diary as the result. Do not paste a chat transcript into `residual.evidence` or `proposed_patch.notes`. Structured evidence (counts, paths, shas) may exceed 4000 chars; stay under 40 lines.
 - Treat workspace as a lock, or invent `of claim` / file leases.
 - Post a GitHub issue (`of issue --confirm`, `of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.

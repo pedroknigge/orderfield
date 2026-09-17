@@ -65,7 +65,7 @@ The next packet carries the dated `## Amendment N` block and the patched constra
 
 ## 4. Close is proof
 
-Slice `done` is not SPEC closed. Contrast RESOLVED **and** residual empty, then one stamp. Empty residual on the live wave is the honest end of flying — not the close. `of close --checklist` is that proof; it does not stamp.
+Slice `done` is not SPEC closed. Contrast RESOLVED **and** residual empty, then one stamp. Empty residual on the live wave is the honest end of flying — not the close. `of close --checklist` is that proof; it does not stamp. Same turn: leftover field `of learn` notes and reportable errors are a HITL ask (appendix **Wave-end / pre-close surplus**) — not auto-promote-all, not a close gate.
 
 ```bash
 of spec --verified-contract ID

@@ -1554,6 +1554,80 @@ class SkillCollectNextIntegrate(unittest.TestCase):
         self.assertIn("ACTION = \"integrate\"", source)
 
 
+class SkillWaveEndTriage(unittest.TestCase):
+    """Wave-end / pre-close surplus: ask, do not auto-promote leftovers."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_slave_teach_wave_end_triage(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        table = self.table(core).casefold()
+        self.assertIn("after wave, before close", table)
+        self.assertIn("of learn", table)
+        self.assertIn("--protocol", table)
+        self.assertIn("--promote", table)
+        self.assertIn("docs/plans", table)
+        self.assertIn("of issue", table)
+        self.assertIn("plandocsync", table)
+        self.assertIn("not auto-promote", table)
+        self.assertIn("not a new close gate", table)
+        self.assertIn("must ask", table)
+        alias_fold = alias.casefold()
+        self.assertIn("wave-end / pre-close surplus", alias_fold)
+        self.assertIn("not auto-promote-all", alias_fold)
+        self.assertIn("of learn", alias_fold)
+        self.assertIn("--protocol", alias_fold)
+        self.assertIn("--promote", alias_fold)
+        self.assertIn("of issue", alias_fold)
+        self.assertIn("plandocsync", alias_fold)
+        self.assertIn("not a close gate", alias_fold)
+        self.assertIn("must ask", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("wave-end / pre-close surplus", appendix_fold)
+        self.assertIn("not auto-promote-all", appendix_fold)
+        self.assertIn("of learn --list", appendix_fold)
+        self.assertIn("--protocol", appendix_fold)
+        self.assertIn("--promote", appendix_fold)
+        self.assertIn("docs/plans", appendix_fold)
+        self.assertIn("of issue", appendix_fold)
+        self.assertIn("mode a", appendix_fold)
+        self.assertIn("mode b", appendix_fold)
+        self.assertIn("driveafterintegrate", appendix_fold)
+        self.assertIn("not a close gate", appendix_fold)
+        self.assertIn("not a new verb", appendix_fold)
+        self.assertIn("chat vapor", appendix_fold)
+        slave_fold = slave.casefold()
+        self.assertIn("wave-end", slave_fold)
+        self.assertIn("do not expect auto-promote", slave_fold)
+        self.assertIn("issue.md", slave_fold)
+        self.assertIn("docs_sync.md", slave_fold)
+        self.assertIn("die with the field", slave_fold)
+        self.assertNotIn("of triage", core.casefold())
+        self.assertNotIn("of triage", appendix_fold)
+        self.assertNotIn("auto-promote-all kernel", appendix_fold)
+        self.assertIn("Wave-end / pre-close surplus", SkillSurface.APPENDIX_MARKERS)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+
+    def test_does_not_claim_kernel_auto_promote_or_close_gate(self) -> None:
+        appendix = SkillSurface.appendix(ROOT)
+        core = SkillSurface.core(ROOT)
+        for body, name in (
+            (core, "SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+            (SkillSurface.alias(ROOT), "of/SKILL.md"),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("doctor warns unpromoted", fold, name)
+            self.assertNotIn("close refuses unpromoted", fold, name)
+            self.assertNotIn("of learn --promote-all", fold, name)
+            self.assertIn("not auto-promote", fold, name)
+
+
 class SkillDriveAfterIntegrate(unittest.TestCase):
     """After integrate, execute next same turn. Report is not a stop. #191."""
 

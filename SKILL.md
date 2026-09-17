@@ -25,7 +25,7 @@ Product surface: [README.md](README.md) leads with authority (anyone can persist
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER.
 
-The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-process field lock for `MUTATING_COMMANDS`, pack caps, canonical packet identity, residual binding, integration replay, guarded transitions, spawn blocking, and the closed regime menu when work goes through `of`. Role obedience, workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail. Does not lock product files.
+The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock for `MUTATING_COMMANDS`, pack caps, residual binding, and the closed regime menu when work goes through `of`. Role obedience, ownership, same-harness choice, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail. Does not lock product files.
 
 ## What to type next
 
@@ -55,7 +55,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a cross-proce
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` plus `--add-dir <field-home>` and the exact Git common dir. Missing / malformed / non-Git records refuse before launch; remove then re-add the child worktree. No record → existing argv. |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor. |
-| after wave, before close | **must ask** consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. Not a new close gate. Not after ordinary integrate. Not `of merge`. C-080 stays Partial. |
+| after wave, before close | **must ask** (1) consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. C-080 stays Partial. (2) leftover field `of learn` + reportable errors — `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. Not auto-promote. Not a new close gate. Not after ordinary integrate. Not `of merge`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
@@ -132,6 +132,6 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 
-**Read the appendix** for steps 0–7, Forbidden, Roles, Where things live, and Orca start↔stop/release plus Host `worktree rm`.
+**Read the appendix** for steps 0–7, Forbidden, Roles, paths, and Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, sibling fields, and close-is-proof walkthroughs live in the appendix.
+Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, and close-is-proof: appendix.

@@ -47,6 +47,8 @@ class SkillSurface:
         "Files · Build · You see",
         "`act` / `consider` / `noted` / `dismissed`",
         "Mode A default",
+        "Wave-end / pre-close surplus",
+        "not auto-promote",
     )
 
     @staticmethod
