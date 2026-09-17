@@ -67,7 +67,7 @@ Conservative agy spawn: if the harness JSON named refused tools, read `residual.
 
 Missing collect residual: `MISSING` means pending/unavailable. The diagnostic shows known adapter / trust / outcome and actual `denied_actions`. “permissions may be involved for conservative `<adapter>` headless mode” is a possibility, not proof; conservative children may still write scratch and residual files. Follow the sibling.
 
-agy residual schema: `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; type unions unique, `usage` is `[object,null]`). Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery. Follow the sibling.
+agy residual schema: `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; `usage` `[object,null]` once). Codex-null optionals are omit. Invalid stdout extract names `$.path` + constraint. Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Do not fake a path. Qwen omit: structured_output tool, not residual delivery. Follow the sibling.
 
 `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions, not silent defaults. **Must ask** the human first. Never invent. Spawn prints `operator action: yolo|inherit`. yolo is never implied; inherit forwards the parent env. Conservative + allowlist stay the defaults. `OF_TRUST=plan` maps cursor `--mode plan`, agy `--mode plan`, grok `--sandbox read-only`. `auto-edit`/`auto` stay conservative where the harness has no accept-edits flag. Claude `auto` stays `acceptEdits` (classifier auto is account/model gated). Follow the sibling table.
 
