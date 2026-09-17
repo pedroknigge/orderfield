@@ -202,6 +202,8 @@ Sources: documentation-manager adversary feedback (field correction + when-pays)
 
 **Evidence-box (one checkable unit per child/wave).** Files · Build · You see · Verify (artifact). Not essays. Not PR-lane / ten-live-lanes / audit-tick ceremony.
 
+**Published artifact before FACTIBLE / close.** Missions that publish a cronograma / invariant table: after schedule/staff land, before FACTIBLE or `of close`, run a deterministic check on the **published** bytes (RESULT B columns or owned schedule JSON) — not memory, not D prose. In-repo oracle: `python3 <skill>/scripts/skill_artifact_prove.py <published>` (not `of prove`). Failure ⇒ A INFACTIBLE or D ROMPE; do not CUMPLE-wash. Self-attack F must cover the required occupancy window (not a 2-line "no conflict"). Verifier / adversary packets read those bytes. Each schedule/staff/invariant unit greens before the next wave synthesizes RESULT. Proof: `SkillArtifactProve`.
+
 ```bash
 python3 <skill>/scripts/of.py pack \
   --slice "map pricing models, do not decide the phase" \
@@ -461,6 +463,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not claim shipped / closed / done on a field without running `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` plus `residual empty`. If either proof row fails or that `speak` line is not quoted, you may not claim shipped. Mechanical — not your judgment. Pair with quote-PULSE while residual is MISSING.
 - Do not close on self-praise. After a wave, ask consent for a fresh-context review packet (`adversary` / `verifier`) before close; never silent. Not a new close gate. Not after ordinary integrate/next-wave. Not `of merge`.
 - Do not leave unpromoted field `of learn` notes or reportable errors as chat vapor at wave-end / before close. **Must ask** — promote OF-runtime (`--protocol` / `--promote`), write product findings (PlanDocSync Mode A/B), keep field-only, or discard; defects → `of issue` HITL. Not auto-promote-all. Not a close gate. Appendix **Wave-end / pre-close surplus**.
+- Do not claim FACTIBLE / D CUMPLE from memory or D prose. Check the published artifact. Fail ⇒ INFACTIBLE or ROMPE. F must cover the occupancy window.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
 - Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL.
 - Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue --confirm` to `pedroknigge/orderfield`.

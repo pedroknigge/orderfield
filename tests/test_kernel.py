@@ -31,6 +31,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillPlanDocSync,
     SkillPstackCherries,
     SkillWaveEndTriage,
+    SkillArtifactProve,
     SkillDriveAfterIntegrate,
     SkillCheckoutAutoContinueHonesty,
     SkillEvaluatorPacket,

@@ -43,6 +43,7 @@ class SkillSurface:
         "orca worktree rm",
         "**Stay-on-the-run.**",
         "throughput checkpoint",
+        "published artifact",
         "GOAL",
         "Files · Build · You see",
         "`act` / `consider` / `noted` / `dismissed`",

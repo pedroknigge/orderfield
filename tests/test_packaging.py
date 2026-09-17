@@ -27,6 +27,7 @@ from living_map import (  # noqa: E402
     SkillRunbookPath,
 )
 from skill_surface import SkillSurface  # noqa: E402
+from skill_artifact_prove import SkillArtifactProve as ArtifactProve  # noqa: E402
 
 
 def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
@@ -1539,6 +1540,102 @@ class SkillPstackCherries(unittest.TestCase):
         self.assertNotIn("orch.ts", appendix)
         self.assertNotIn("frontier.json", appendix)
         self.assertNotIn("preferences.md", appendix)
+
+
+class SkillArtifactProve(unittest.TestCase):
+    """Published artifact before FACTIBLE. CUMPLE+bed-overlap fails. No of prove."""
+
+    CLEAN = """required_window: 08:00-12:00
+
+| id | bed | start | end |
+| P07 | R1 | 08:00 | 10:00 |
+| P15 | R2 | 09:30 | 11:00 |
+
+## A
+FACTIBLE
+
+## D
+CUMPLE
+
+## F
+occupancy 08:00-12:00
+08:00-10:00 R1 P07
+09:30-11:00 R2 P15
+"""
+
+    HONEST_FAIL = """required_window: 08:00-12:00
+
+| id | bed | start | end |
+| P07 | R1 | 08:00 | 10:00 |
+| P15 | R1 | 09:30 | 11:00 |
+
+## A
+INFACTIBLE
+
+## D
+ROMPE bed R1 P07 and P15
+
+## F
+occupancy 08:00-12:00
+09:30-10:00 R1 P07 and P15
+"""
+
+    def test_core_alias_appendix_teach_published_check(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        self.assertEqual(
+            ArtifactProve.teaching_errors(core, alias, appendix),
+            [],
+        )
+        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertIn("FACTIBLE", table)
+        self.assertIn("published", table.casefold())
+        self.assertIn("skill_artifact_prove.py", appendix)
+        self.assertNotRegex(core, r"(?<![Nn]ot )`of prove`")
+
+    def test_cumple_with_bed_overlap_fails(self) -> None:
+        fixture = (ROOT / ArtifactProve.FIXTURE).read_text(encoding="utf-8")
+        rows = ArtifactProve.parse_rows(fixture)
+        self.assertEqual(
+            ArtifactProve.overlaps(rows),
+            [("P07", "P15", "R1")],
+        )
+        errors = ArtifactProve.claim_errors(fixture)
+        self.assertTrue(
+            any("overlap" in err for err in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("occupancy" in err for err in errors),
+            errors,
+        )
+
+    def test_teaching_page_without_published_duty_fails(self) -> None:
+        fake = (
+            "## What to type next\n"
+            "| Disk says | You type |\n"
+            "| claim FACTIBLE | D said CUMPLE |\n"
+            "## When to use\n"
+        )
+        errs = ArtifactProve.teaching_errors(fake, fake, fake)
+        self.assertTrue(errs, errs)
+        self.assertTrue(any("published" in e.casefold() for e in errs), errs)
+
+    def test_clean_schedule_and_honest_fail_pass(self) -> None:
+        self.assertEqual(ArtifactProve.claim_errors(self.CLEAN), [])
+        self.assertEqual(ArtifactProve.claim_errors(self.HONEST_FAIL), [])
+
+    def test_script_refuses_overlap_fixture(self) -> None:
+        proc = run(
+            ROOT,
+            sys.executable,
+            str(ROOT / "scripts" / "skill_artifact_prove.py"),
+            str(ROOT / ArtifactProve.FIXTURE),
+        )
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("overlap", proc.stderr.casefold())
+        self.assertNotIn("of prove", proc.stderr.casefold())
 
 
 class SkillCollectNextIntegrate(unittest.TestCase):

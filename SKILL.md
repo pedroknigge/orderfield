@@ -17,11 +17,11 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names the field-run verbs. Lab `eval` stays in the appendix. Core + appendix is 100% of the product surface.
 
-The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close. If one agent already fits, do not open a field.
+The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
 Code is a liability. Think DELETE, not add. Same capability with less code.
 
-Product surface: [README.md](README.md) leads with authority (anyone can persist a plan; only the leader may change it), then typical problems. Mid-flight H2 sits before Install (SHA-256 pin → first close). Compared-to includes planning-with-files: [README.md](README.md#compared-to).
+Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
 Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER.
 
@@ -56,6 +56,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor. |
 | after wave, before close | **must ask** (1) consent for a fresh-context review packet (`of pack --role adversary` and/or `--role verifier`) that did not write the slice. Never silent. On yes → pack + spawn. On no → `of contrast` → `of close --checklist`. Self-praise is not review. C-080 stays Partial. (2) leftover field `of learn` + reportable errors — `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. Not auto-promote. Not a new close gate. Not after ordinary integrate. Not `of merge`. |
+| FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
@@ -95,7 +96,7 @@ Those verbs without `of` same turn are a broken run.
 - Multiple slices or writers need explicit ownership, or multiple harnesses must coordinate.
 - `.orderfield/ORDER.json` already exists in the repo.
 
-A harness name alone is not a trigger. If the task fits one agent, one ordinary subagent, or one skill, do not open a field. Skill beats child. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
+A harness name alone is not a trigger. One agent or one skill is enough: do not open a field. Skill beats child. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
 
 ## Auto-report (HITL)
 
