@@ -1001,10 +1001,18 @@ def eval_setup_recovery_post_close_terminal(root: Path) -> None:
     pkt = load_json(wave_dir(1, root) / "packets" / "imp1.json")
     meta = SpawnRecord.path(root, pkt)
     meta.parent.mkdir(parents=True, exist_ok=True)
-    dump_json(meta, {"child_id": "imp1", "started_at": utc_now()})
+    dump_json(
+        meta,
+        {
+            "child_id": "imp1",
+            "started_at": utc_now(),
+            "ended_at": utc_now(),
+            "outcome": "ok",
+        },
+    )
     scratch = root / ".orderfield" / "work" / "scratch" / "imp1"
     scratch.mkdir(parents=True, exist_ok=True)
-    (scratch / "PULSE").write_text("apply-media still writing\n", encoding="utf-8")
+    (scratch / "PULSE").write_text("apply-media leftover after settle\n", encoding="utf-8")
 
 
 @_register_eval_fixture("recovery_skip_explore")

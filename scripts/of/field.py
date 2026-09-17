@@ -3263,6 +3263,9 @@ def repo_newest_mtime(root: Path) -> tuple[float, str] | None:
     return newest_mtime(root, PULSE_PRUNE_DIRS | {".orderfield"})
 
 
+SESSION_PULSE_VERDICTS = frozenset({"ALIVE", "QUIET", "STALE"})
+
+
 def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES) -> str:
     """ALIVE / QUIET / STALE from activity-evidence age. STALE is a signal,
     never an action: the kernel does not kill or unpack on it."""
@@ -3271,6 +3274,18 @@ def pulse_verdict(age_seconds: float, stale_minutes: float = PULSE_STALE_MINUTES
     if age_seconds < stale_minutes * 60:
         return "QUIET"
     return "STALE"
+
+
+def session_pulse_verdicts(raw: Any) -> dict[str, str] | None:
+    """session.pulse_verdicts enum only. PACKED / done_without_residual stay on pulse."""
+    if not isinstance(raw, dict) or not raw:
+        return None
+    kept = {
+        str(cid): str(verdict)
+        for cid, verdict in raw.items()
+        if str(verdict) in SESSION_PULSE_VERDICTS
+    }
+    return kept or None
 
 
 class SpawnRecord:
@@ -4331,8 +4346,11 @@ def snapshot_session(
     kept = summary if summary is not None else prev.get("summary")
     if isinstance(kept, str) and kept.strip():
         data["summary"] = kept.strip()
-    verdicts = pulse_verdicts if pulse_verdicts is not None else prev.get("pulse_verdicts")
-    if isinstance(verdicts, dict) and verdicts:
+    raw_verdicts = (
+        pulse_verdicts if pulse_verdicts is not None else prev.get("pulse_verdicts")
+    )
+    verdicts = session_pulse_verdicts(raw_verdicts)
+    if verdicts:
         data["pulse_verdicts"] = verdicts
     require_public_schema(data, "session.schema.json", "session")
     dump_json(session_path(root), data)

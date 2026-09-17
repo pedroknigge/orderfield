@@ -684,6 +684,10 @@ class PostCloseTerminal(unittest.TestCase):
         self.assertEqual(pre.returncode, 0, pre.stdout + pre.stderr)
         self.assertIn("ALIVE", pre.stdout)
         self.assertIn("apply-media", pre.stdout)
+        settled = of.SpawnRecord.load(self.tmp, pkt) or {}
+        settled["outcome"] = "ok"
+        settled["ended_at"] = of.utc_now()
+        of.dump_json(meta, settled)
         closed = run_of(self.tmp, "close")
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertIn("CLOSED", closed.stdout)

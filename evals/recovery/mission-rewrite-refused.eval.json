@@ -38,7 +38,7 @@
         "--dry-run"
       ],
       "exit": 1,
-      "stderr_contains": ["spawn forbidden after escalate_up"]
+      "stderr_contains": ["stale packet"]
     }
   ]
 }

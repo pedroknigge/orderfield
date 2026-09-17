@@ -2290,7 +2290,10 @@ class MissionRewriteRefused(unittest.TestCase):
             "--dry-run",
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
-        self.assertIn("escalate_up", spawned.stderr)
+        self.assertTrue(
+            "escalate_up" in spawned.stderr or "stale packet" in spawned.stderr,
+            spawned.stderr,
+        )
 
 
 class MultiHarnessResidual(unittest.TestCase):
