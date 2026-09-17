@@ -23,7 +23,7 @@ Code is a liability. Think DELETE, not add. Same capability with less code.
 
 Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
-Children move inside the packet. Threshold blocks spawn that wave; ORDER stays.
+Children stay in the packet. Threshold blocks spawn that wave.
 
 The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock for `MUTATING_COMMANDS`, pack caps, residual binding, and the closed regime menu when work goes through `of`. Role obedience, ownership, same-harness choice, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
@@ -63,7 +63,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
-| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. Lab proof: appendix. External dogfood stays Partial (C-153). |
+| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
@@ -88,7 +88,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. yolo is never implied. inherit forwards the parent env. Conservative + allowlist stay defaults. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. Table: appendix + adapters.md |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
 
-Those verbs without `of` same turn are broken.
+Verbs without `of` same turn are broken.
 
 ## When to use
 
@@ -107,14 +107,14 @@ Auto-report ONLY if the failure is Orderfield's: invalid schema / WAL incoherent
 
 Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate).
 
-If unsure, draft + HITL, default to *not* posting.
+If unsure, draft + HITL; default not posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
 - Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**.
 - Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
 
-Both sides are the contract. Auto-post, yolo post, and posting from a child are forbidden. Confirm creates; refuse / edit-later / silence does not.
+Both sides are the contract. Auto-post, yolo post, and child posts are forbidden. Confirm creates; refuse / edit-later / silence does not.
 
 `of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: logged-in account (`gh auth`). Do not impersonate. Non-TTY create without `--confirm` refuses.
 
