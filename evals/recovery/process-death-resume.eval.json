@@ -18,7 +18,7 @@
         "parked_reason scratch_active",
         "next",
         "HOLD",
-        "continue existing packets; do not repack"
+        "started-only pid gone; of spawn --force-spawn on the same packet; do not pack"
       ],
       "stdout_not_contains": [
         "field         closed",

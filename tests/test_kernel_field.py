@@ -3869,6 +3869,8 @@ class ResumeAfterProcessDeath(unittest.TestCase):
         self.assertIn(f"  {death.CHILD}", out)
         self.assertIn("    residual    MISSING", out)
         self.assertIn("next\n  HOLD", out)
+        self.assertIn(of.DeadStartedOnly.DETAIL, out)
+        self.assertIn("--force-spawn", out)
         self.assertNotIn("signal        abandoned", out)
         self.assertNotIn("foreign field", out)
         self.assertNotIn("no ORDER", out)
@@ -4268,6 +4270,66 @@ class SpawnPidLiveness(unittest.TestCase):
             self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "gone.json"
         )
         self.assertIn(meta.get("outcome"), ("ok", "done_without_residual"))
+
+    def test_resume_names_force_spawn_when_started_only_pid_gone(self) -> None:
+        self._pack("gone")
+        dead = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"]
+        )
+        pid = int(dead.pid)
+        dead.kill()
+        dead.wait(timeout=5)
+        self._spawn_meta("gone", pid=pid)
+        pkt = {
+            "child_id": "gone",
+            "wave": 1,
+        }
+        self.assertTrue(of.SpawnRecord.unsettled(self.tmp, pkt))
+        self.assertIsNone(
+            of.SpawnRecord.live_pid(of.SpawnRecord.load(self.tmp, pkt))
+        )
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  HOLD", resumed.stdout)
+        self.assertIn(of.DeadStartedOnly.DETAIL, resumed.stdout)
+        self.assertIn("--force-spawn", resumed.stdout)
+        self.assertNotIn("next\n  PACK", resumed.stdout)
+        meta = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "gone.json"
+        )
+        self.assertNotIn("outcome", meta)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn(of.DeadStartedOnly.DETAIL, status.stdout)
+        self.assertIn("--force-spawn", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["next"], "hold")
+        self.assertEqual(doc["next_label"], of.DeadStartedOnly.LABEL)
+        self.assertEqual(doc["next_detail"], of.DeadStartedOnly.DETAIL)
+
+    def test_live_pid_hold_does_not_name_force_spawn(self) -> None:
+        self._pack("live")
+        self._spawn_meta("live", pid=os.getpid())
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  HOLD", resumed.stdout)
+        self.assertIn("continue existing packets; do not repack", resumed.stdout)
+        self.assertNotIn("--force-spawn", resumed.stdout)
+        self.assertNotIn("SPAWN --FORCE", resumed.stdout)
+        forced = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/live.json",
+            "--force-spawn",
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertNotEqual(forced.returncode, 0)
+        self.assertIn("refuses while that process is running", forced.stderr)
 
     def test_force_spawn_allows_missing_pid_when_gone(self) -> None:
         self._pack("orphan")
