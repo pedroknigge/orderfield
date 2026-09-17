@@ -1997,7 +1997,7 @@ class SkillPatchRevStaleFlying(unittest.TestCase):
         self.assertIn("of patch", appendix_fold)
         self.assertIn("refuse_patch", appendix_fold)
         self.assertIn("hold", appendix_fold)
-        self.assertIn("constraints before first pack", appendix_fold)
+        self.assertIn("before the first pack", appendix_fold)
         source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
         self.assertIn("def refuse_patch(", source)
         self.assertIn("PATCH_REFUSE_KIND", source)
