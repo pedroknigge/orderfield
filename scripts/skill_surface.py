@@ -49,6 +49,10 @@ class SkillSurface:
         "Mode A default",
         "Wave-end / pre-close surplus",
         "not auto-promote",
+        "## Lab / eval",
+        "of eval --strict --kernel",
+        "recovery/adversarial-dual-truth",
+        "recovery/multi-wave-close-checklist",
     )
 
     @staticmethod

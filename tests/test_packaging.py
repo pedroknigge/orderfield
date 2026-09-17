@@ -840,6 +840,11 @@ class FieldEvidenceHonesty(unittest.TestCase):
     EVAL = "of eval --strict --kernel"
     PARTIAL = "external dogfood stays partial (c-153)"
     NO_INVENT = "do not invent case studies"
+    LAB_SURFACES = (
+        "references/skill-appendix.md",
+        "README.md",
+        "docs/external-brief.md",
+    )
 
     @staticmethod
     def surfaces() -> dict[str, str]:
@@ -857,9 +862,18 @@ class FieldEvidenceHonesty(unittest.TestCase):
         for rel, text in self.surfaces().items():
             folded = text.casefold()
             self.assertIn(self.LAB, folded, rel)
-            self.assertIn(self.EVAL, text, rel)
             self.assertIn(self.PARTIAL, folded, rel)
             self.assertIn(self.NO_INVENT, folded, rel)
+            if rel in self.LAB_SURFACES:
+                self.assertIn(self.EVAL, text, rel)
+
+    def test_hot_path_does_not_teach_eval_as_next(self) -> None:
+        """Lean-audit: kernel eval stays; SKILL/alias do not teach it as next."""
+        core = SkillSurface.core(ROOT)
+        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertNotIn("of eval", table)
+        self.assertNotIn("of eval", SkillSurface.alias(ROOT))
+        self.assertIn(self.EVAL, SkillSurface.appendix(ROOT))
 
     def test_claims_matrix_keeps_external_dogfood_partial(self) -> None:
         matrix = (ROOT / "docs" / "audit" / "claims-matrix.md").read_text(
@@ -2808,11 +2822,16 @@ class SkillSurfaceCore(unittest.TestCase):
             "of contrast",
             "of close --checklist",
             "of issue",
+            "of eval --strict --kernel",
             "**Stay-on-the-run.**",
             "## Forbidden",
             "Do not pack a whole phase as one slice",
         ):
             self.assertIn(needle, leader, needle)
+        core_table = SkillSurface.core(ROOT).split("## What to type next", 1)[1].split(
+            "## When to use", 1
+        )[0]
+        self.assertNotIn("of eval", core_table)
 
     def test_install_copies_appendix(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-skill-surface-"))

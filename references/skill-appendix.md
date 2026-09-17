@@ -2,7 +2,7 @@
 
 Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the leader procedure — not a second contract and not a second skill.
 
-**Read this appendix before pack, spawn, contrast, or close.** The core table names every kernel verb; these sections are how you run them. A turn that claims those verbs without the `of` commands is still a broken run.
+**Read this appendix before pack, spawn, contrast, or close.** The core table names the field-run verbs; these sections are how you run them. Lab `eval` lives here, not on the SKILL/`/of` hot path. A turn that claims field-run verbs without the `of` commands is still a broken run.
 
 Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md). Subtract first: same capability with less code. No new API to look busy.
 
@@ -130,7 +130,7 @@ Official phases: `explore | cut | build | verify | deliver`.
 
 #### Production mode
 
-Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is every kernel verb. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md). Reserved keys stay reserved in `scripts/of/regime.py`.
+Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is the field-run table. Lab `eval` is appendix, not a production next-step. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md). Reserved keys stay reserved in `scripts/of/regime.py`.
 
 **Gate A before features.** Do not pack `--role implementer` (or a net-new feature slice) until Gate A is clear. No `of gate`. No second checklist.
 
@@ -486,6 +486,18 @@ Use the minimum. Explorer + adversary already prove the principle. After a wave,
 | consider | `proposed_patch.notes` |
 | noted | `residual.evidence` |
 | dismissed | `residual.evidence` plus the reason |
+
+## Lab / eval
+
+`of eval` still ships. It is recovery-fixture proof, not a status/resume `next` and not a field-run verb. Lean-audit: absence from session `last_cmd` does not prove a read-only verb unused — keep it discoverable here. Kernel + tests stay. Index: [evals/README.md](../evals/README.md).
+
+```bash
+of eval --list
+of eval --strict --kernel
+of eval recovery/multi-wave-close-checklist
+of eval recovery/adversarial-dual-truth
+of eval recovery/multi-harness-residual
+```
 
 ## Where things live
 
