@@ -772,7 +772,7 @@ class ReadmeProductSurface(unittest.TestCase):
             "A child finds something the plan missed.",
             "sibling fields",
             "cheap vs frontier",
-            "A child residual cannot rewrite",
+            "A child residual cannot replace",
         ):
             self.assertIn(needle, hero)
         install_block = text[install:text.index("## Uninstall")]

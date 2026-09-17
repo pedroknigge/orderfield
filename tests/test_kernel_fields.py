@@ -684,6 +684,10 @@ class PostCloseTerminal(unittest.TestCase):
         self.assertEqual(pre.returncode, 0, pre.stdout + pre.stderr)
         self.assertIn("ALIVE", pre.stdout)
         self.assertIn("apply-media", pre.stdout)
+        settled = of.SpawnRecord.load(self.tmp, pkt) or {}
+        settled["outcome"] = "ok"
+        settled["ended_at"] = of.utc_now()
+        of.dump_json(meta, settled)
         closed = run_of(self.tmp, "close")
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertIn("CLOSED", closed.stdout)
@@ -783,6 +787,29 @@ class ClosedScratchWipe(unittest.TestCase):
         log = self.tmp / ".orderfield" / "waves" / "001" / "logs" / "apply-media.log"
         log.parent.mkdir(parents=True, exist_ok=True)
         log.write_text("spawn transcript\n", encoding="utf-8")
+        spawn = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "spawns"
+            / "apply-media.json"
+        )
+        spawn.parent.mkdir(parents=True, exist_ok=True)
+        spawn.write_text(
+            json.dumps({"child_id": "apply-media", "outcome": "ok"}) + "\n",
+            encoding="utf-8",
+        )
+        prompt = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "prompts"
+            / "apply-media.md"
+        )
+        prompt.parent.mkdir(parents=True, exist_ok=True)
+        prompt.write_text("closed-ephemeral prompt\n", encoding="utf-8")
         residual = (
             self.tmp
             / ".orderfield"
@@ -798,6 +825,9 @@ class ClosedScratchWipe(unittest.TestCase):
         self.assertFalse(npm.exists())
         self.assertFalse(media.exists())
         self.assertFalse(log.exists())
+        self.assertFalse(spawn.exists())
+        self.assertFalse(prompt.exists())
+        self.assertFalse(scratch.exists())
         self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").is_file())
         self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
         self.assertTrue(residual.is_file())
@@ -830,6 +860,51 @@ class ClosedScratchWipe(unittest.TestCase):
         self.assertIn("already spec_closed", again.stdout)
         self.assertIn(of.ClosedScratch.NOTE, again.stdout)
         self.assertFalse(leftover.exists())
+
+
+class CloseChecklistFlying(unittest.TestCase):
+    """Started-only spawn dominates leftover residual for of close. Medium 1."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-close-fly-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_started_only_plus_leftover_residual_refuses_close(self) -> None:
+        PostCloseTerminal._close_ready(self, "leftover residual started-only")
+        pkt = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "apply-media.json"
+        )
+        self.assertFalse(of.SpawnRecord.flying(self.tmp, pkt))
+        state = of.load_state(self.tmp)
+        self.assertEqual(of.CloseChecklist.flying(self.tmp, state), [])
+        ready = of.CloseChecklist.document(self.tmp, of.load_order(self.tmp), state)
+        self.assertTrue(ready["residual_empty"], ready)
+
+        spawns = self.tmp / ".orderfield" / "waves" / "001" / "spawns"
+        spawns.mkdir(parents=True, exist_ok=True)
+        (spawns / "apply-media.json").write_text(
+            json.dumps(
+                {
+                    "child_id": "apply-media",
+                    "adapter": "codex",
+                    "started_at": of.utc_now(),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.assertTrue(of.SpawnRecord.unsettled(self.tmp, pkt))
+        self.assertTrue(of.SpawnRecord.flying(self.tmp, pkt))
+        flying = of.CloseChecklist.flying(self.tmp, of.load_state(self.tmp))
+        self.assertEqual(flying, ["apply-media"])
+        blocked = of.CloseChecklist.document(self.tmp, of.load_order(self.tmp))
+        self.assertFalse(blocked["residual_empty"], blocked)
+        self.assertIn("apply-media", blocked["in_flight_ids"])
+        closed = run_of(self.tmp, "close")
+        self.assertNotEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("of close refused", closed.stderr)
+        self.assertIn("apply-media", closed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
 
 
 class RootStubAmbiguous(unittest.TestCase):

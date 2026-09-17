@@ -2265,9 +2265,9 @@ class MissionRewriteRefused(unittest.TestCase):
         self.assertEqual(after["phase"], self.expected["phase"])
         self.assertEqual(after["mission"], before["mission"])
         self.assertEqual(after["phase"], before["phase"])
-        self.assertEqual(after["constraints"], before["constraints"])
         self.assertEqual(after["done_when"], before["done_when"])
         self.assertIn(self.expected["constraint_must_remain"], after["constraints"])
+        self.assertIn(self.expected["appended_constraint"], after["constraints"])
         self.assertIn(self.expected["done_when_must_remain"], after["done_when"])
         self.assertFalse(after.get("spec_closed"))
         for stolen in (
@@ -2290,7 +2290,10 @@ class MissionRewriteRefused(unittest.TestCase):
             "--dry-run",
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
-        self.assertIn("escalate_up", spawned.stderr)
+        self.assertTrue(
+            "escalate_up" in spawned.stderr or "stale packet" in spawned.stderr,
+            spawned.stderr,
+        )
 
 
 class MultiHarnessResidual(unittest.TestCase):

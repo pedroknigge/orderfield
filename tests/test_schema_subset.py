@@ -50,6 +50,27 @@ class SchemaSubsetHonesty(unittest.TestCase):
             [],
         )
 
+    def test_object_form_additional_properties_rejects_packed_pulse_verdict(
+        self,
+    ) -> None:
+        schema = _load_schema("session.schema.json")["properties"]["pulse_verdicts"]
+        self.assertEqual(
+            of.validate_schema({"child": "ALIVE"}, schema, "pulse"), []
+        )
+        self.assertEqual(
+            of.validate_schema({"child": "QUIET"}, schema, "pulse"), []
+        )
+        self.assertEqual(
+            of.validate_schema({"child": "STALE"}, schema, "pulse"), []
+        )
+        toy = {"additionalProperties": {"enum": ["ALIVE", "QUIET", "STALE"]}}
+        self.assertEqual(of.validate_schema({"child": "ALIVE"}, toy, "pulse"), [])
+        errs = of.validate_schema({"child": "PACKED"}, schema, "pulse")
+        self.assertTrue(any("must be one of" in err for err in errs), errs)
+        self.assertTrue(any("ALIVE" in err for err in errs), errs)
+        toy_errs = of.validate_schema({"child": "PACKED"}, toy, "pulse")
+        self.assertTrue(any("must be one of" in err for err in toy_errs), toy_errs)
+
     def test_pattern_properties_validates_matching_keys(self) -> None:
         schema = {
             "type": "object",

@@ -20,7 +20,7 @@ Trust `.orderfield/CLOSE.json`. Do not trust a transcript that says CLOSED.
 
 ## Invariants
 
-1. **Residual empty is required.** `of close` dies while any packed child across waves has a MISSING residual. `--checklist` exit 2 names the flying IDs. Flying is not closed. Empty means `CloseChecklist.flying` is `[]` — not “the live wave looks quiet.” Proof: `recovery/multi-wave-close-checklist`.
+1. **Residual empty is required.** `of close` dies while any packed child across waves is `SpawnRecord.flying` (MISSING residual, or a started-only spawn that dominates a leftover residual). `--checklist` exit 2 names the flying IDs. Flying is not closed. Empty means `CloseChecklist.flying` is `[]` — not “the live wave looks quiet.” Proof: `recovery/multi-wave-close-checklist`; leftover + started-only: `CloseChecklistFlying`.
 2. **Residual empty is not sufficient.** The end of flying is not SPEC closed. Contrast must still be RESOLVED, then the stamp. A stack of `status=done` residuals is still open. Proof: same eval plus [external-brief.md#long-task-residual-theater](external-brief.md#long-task-residual-theater).
 3. **Contrast RESOLVED is required.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests. `/version` or a release header is the same `ContractSurface` shape as `/health`. VERIFIED_CONTRACT, then RESOLVED, then `of close`. Proof: `recovery/contrast-close-contract`.
 4. **One stamp, three facts.** Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` together. Flags and the proof file cannot diverge. There is no `--soft`. Soft is a reason you did **not** close. Proof: `recovery/atomic-close-flag-lag`. Templates: [close-honesty.md](close-honesty.md).
@@ -28,7 +28,7 @@ Trust `.orderfield/CLOSE.json`. Do not trust a transcript that says CLOSED.
 6. **Slice `done` is not SPEC closed.** `status=done` plus `result_ref` closes a slice. Chat-dump and slogan evidence cannot collect. Done close evidence must name `artifact_sha` (sha256 of `result_ref`) and `rollback:` a command — not captions (`CloseEvidence`). `integrate --apply` may set `done_when_closed` from a residual; `of close` still needs RESOLVED and residual empty. Production-mode / day-90 `done_when` must name a repo-relative runbook path before the stamp (`RunbookPath`). Proof: `recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`, `recovery/done-when-lint`.
 7. **The trail survives archive.** `of gc --archive-field` keeps `CLOSE.json` under `.orderfield/archive/<id>/`. `--drop-field` dies while the proof exists unless `--force --reason`. Proof: `recovery/closed-field-archive`.
 8. **Nested close is not merge.** Close of an `of new --parent` field returns `.orderfield/ACTIVE` to the epic. Not `of merge`. Proof: `recovery/nested-field-lifecycle`.
-9. **Closed is terminal.** After a successful stamp the field must not stay the live ACTIVE surface. `of pulse` must not report `ALIVE` when nothing is in flight or the field is closed. `spawn_blocked` clears (or is irrelevant). Status/doctor treat the home as closed, not a spawn surface. The stamp also wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; the same `closed-ephemeral` dump `of gc` already plans). Contract files stay. Proof: `recovery/post-close-terminal`.
+9. **Closed is terminal.** After a successful stamp the field must not stay the live ACTIVE surface. `of pulse` must not report `ALIVE` when nothing is in flight or the field is closed. `spawn_blocked` clears (or is irrelevant). Status/doctor treat the home as closed, not a spawn surface. After a successful stamp, wipe `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; the same `closed-ephemeral` dump `of gc` already plans). Wipe is not a WAL snapshot name. Contract files stay. Proof: `recovery/post-close-terminal` (ACTIVE / pulse / `CLOSE.json`). Wipe proof: `ClosedScratchWipe`.
 
 ## What this is not
 
@@ -49,5 +49,6 @@ These already exist. This page does not add a fixture.
 | Archive keeps the trail | `recovery/closed-field-archive` |
 | Nested close returns ACTIVE | `recovery/nested-field-lifecycle` |
 | Closed field is not ACTIVE / pulse ALIVE / spawn_blocked | `recovery/post-close-terminal` |
+| After a successful stamp, wipe scratch / spawns / prompts | `ClosedScratchWipe` |
 
 Re-run: [external-brief.md](external-brief.md#how-a-reviewer-re-runs-the-proof). Walk the verbs: [long-mission.md](long-mission.md).
