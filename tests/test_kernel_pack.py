@@ -577,6 +577,9 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
 
         self.assertEqual(spawned.returncode, 0, spawned.stderr)
         self.assertIn("invalid residual extracted from stdout", spawned.stdout)
+        self.assertIn("$.result_ref", spawned.stdout)
+        self.assertIn("$.residual", spawned.stdout)
+        self.assertIn("$.metrics", spawned.stdout)
         self.assertFalse(
             (
                 self.tmp

@@ -108,6 +108,14 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 **Recover:** `of worktree add --child-id` for each implementer before spawn, or run them in series (collect the first before spawning the second). Disjoint paths stay required; they are not a substitute for two worktrees.
 
+## Spawn residual extract refused
+
+**Symptom:** `of spawn` prints `invalid residual extracted from stdout; not written:` plus `$.path` constraints (and sometimes `stdout JSON is a harness envelope (status='SUCCESS')`).
+
+**Meaning:** Headless stdout JSON was not a schema-valid residual. The refuse names the failing path (`$.status`, `$.usage.tokens`, unexpected `error`). Codex-null optional fields (`v`, `usage.tokens`) are omit — they are not a refuse. A SUCCESS / error envelope without `structured_output` / `result` / `result_json` / `output` is not a residual.
+
+**Recover:** Re-spawn so the child writes `packet.residual_path` or emits a residual-shaped object (status `done`/`blocked`/`threshold`). Do not hand-edit a leftover extract. Do not loosen the public residual contract.
+
 ## Residual unexpected property
 
 **Symptom:** collect prints `INVALID` with `unexpected properties: ['docs_sync']` (or `notes`, `tokens`, …).

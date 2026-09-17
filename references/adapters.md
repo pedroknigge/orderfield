@@ -315,7 +315,9 @@ agy --json-schema schemas/residual.codex.schema.json \
 `--json-schema` accepts a schema file path (agy CLI). Spawn reuses the same
 `residual.codex.schema.json` Codex already uses (`OutputSchema`). Flags
 **must** precede `-p`. `StreamJson.residual` reads `structured_output` on
-that envelope when the child did not write the residual file.
+that envelope when the child did not write the residual file. Invalid
+extract names `$.path` + constraint (`SpawnResidual.refuse_line`).
+Codex-null optional fields are omit (`CodexNullOmit`).
 
 Consented `adapter_hints` with a named model insert `--model NAME` before `-p`
 (agy CLI `--model`; unknown slugs fail loudly — do not invent a cheap/frontier

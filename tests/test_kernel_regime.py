@@ -673,6 +673,35 @@ class ResidualSchemaContracts(unittest.TestCase):
         self.assertNotIn("unexpected properties", output)
         self.assertNotIn("INVALID", output)
 
+    def test_codex_null_optional_fields_are_omit_not_a_new_contract(self) -> None:
+        residual = load_json(DONE)
+        residual["v"] = None
+        residual["usage"] = {"tokens": None, "model": None}
+        residual["residual"]["proposed_patch"] = {
+            "constraints+": None,
+            "done_when+": None,
+            "notes": None,
+            "done_when_closed": None,
+            "requirements_verified": None,
+            "requirements_failed": None,
+        }
+        self.assertEqual(of.validate_residual(residual), [])
+        viewed = of.CodexNullOmit.for_residual(residual)
+        self.assertNotIn("v", viewed)
+        self.assertEqual(viewed.get("usage"), {})
+        extra = json.loads(json.dumps(residual))
+        extra["error"] = None
+        errs = of.validate_residual(extra)
+        self.assertTrue(any("unexpected properties" in err for err in errs), errs)
+        self.assertTrue(any("$.error" in err or "error" in err for err in errs), errs)
+
+    def test_required_null_names_json_path(self) -> None:
+        residual = load_json(DONE)
+        residual["status"] = None
+        errs = of.validate_residual(residual)
+        self.assertTrue(errs)
+        self.assertTrue(any(err.startswith("$.status") for err in errs), errs)
+
     def test_codex_schema_preserves_nullable_optional_values(self) -> None:
         schema = load_json(CODEX_RESIDUAL_SCHEMA)
         done = load_json(DONE)
