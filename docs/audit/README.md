@@ -15,6 +15,8 @@ A cut, a resume, a different model — code still wins. The results do not have 
 | [recovery-test-a-quarry.md](recovery-test-a-quarry.md) | Test A — dirty wave (0.5.3) → minor friction |
 | [recovery-test-b-beacon.md](recovery-test-b-beacon.md) | Test B — leader amnesia sim (0.5.4) → clean |
 | [recovery-test-c-harness-kill.md](recovery-test-c-harness-kill.md) | Test C — real process kill (optional harness QA) |
+| [pstack-v0.8.16.md](pstack-v0.8.16.md) | Adversarial design review of tag v0.8.16 (report only) |
+| [p0-stall-latency.md](p0-stall-latency.md) | P0 TIME/STALLS audit (2026-09-17): hang catalog + lean cuts; no VERSION bump |
 
 Honesty gate: `python3 docs/audit/check-claims.py` (duplicate C-IDs fail; advertised truth score matches the table and stays ≤98%; critical Contradicted fails; marketing theater on SKILL / `/of` / README fails). Wired into `validate-skill.sh`. Test C stays optional harness QA, not kernel CI.
 
