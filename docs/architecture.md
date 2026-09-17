@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.17` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.18` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -159,7 +159,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_pulse` | Child verdict from packet/scratch only; ALIVE requires an open spawn; leftover PULSE after `ended_at` is `done_without_residual`; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |
 | `cmd_detect` | PATH inventory via `AdapterDetect`: present / missing / `auth=not-verified` / `honesty: PATH≠auth (Partial)`. Not login. Not credentials or session authority. Not readiness. |
 | `cmd_doctor` | Local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew, ACTIVE pointer/stub, stale packs in one pass; PATH ≠ auth/credentials/session authority/ready; missing dests silent. Adapters section reuses `AdapterDetect` labels. `balance` prints `AdapterBalance` (unknown unless a published payload is already in hand). |
-| `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). Resume lists both; render injects ≤8 protocol lines; not SPEC |
+| `cmd_learn` | Protocol lessons (user cache + field pin) vs field lessons (this ORDER). `--list` without a bound field reads the protocol store (0 open + 2+ closed is not a `--field` refuse). Resume lists both; render injects ≤8 protocol lines; not SPEC |
 | `cmd_retain` / `cmd_gc` | Walk every field home; 7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; `gc` is locked; never copies transcripts. `--archive-field` moves a closed home to `.orderfield/archive/<id>/` and keeps `CLOSE.json`. `--drop-field` dies while `CLOSE.json` exists unless `--force --reason`. Orphan packed children (`OrphanPacked`) dump on explicit `gc` with `gc-stamp.json` `orphans[]`; resume auto-gc skips packets |
 | `cmd_migrate` | Versioned rewrite of pre-0.4.2 packets/state and protocol writable aliases; does not invent integration hashes or rename `SLAVE.md` |
 | `cmd_worktree` | Opt-in detached git worktree helper (`add`/`remove`/`list`); honesty surface, not a security guarantee; not a process manager; not hooked from spawn |

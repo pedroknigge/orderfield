@@ -44,7 +44,7 @@ of resume         # parent epic
 3. `.orderfield/ACTIVE` if that id still has a home
 4. Unique nested home — a leftover top-level ORDER stub is ignored once `fields/<id>/` exists
 5. Unique open home
-6. Else: roster, `PICK --field | of new`, exit 2 (`resume` / `status` / `pulse`)
+6. Else: roster, `PICK --field | of new`, exit 2 (`resume` / `status` / `pulse`). `learn` returns None when no open home remains so `--list` can read the protocol store.
 
 `of new`, `of init`, and `--field` / `OF_FIELD` update ACTIVE. The pointer is tree-level (`.orderfield/ACTIVE`), not a field-home WAL file.
 

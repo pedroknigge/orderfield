@@ -8,6 +8,20 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.18
+
+`of learn --list` reads the protocol store when no ACTIVE/open field is bound. Two or more closed fields are not a `--field` refuse. Stall cuts that landed on main after the published v0.8.17 tag (`6149f197`, #237) while VERSION was still 0.8.17: spawn prints `next COLLECT` via `DriveAfterIntegrate` (#246; already recorded under ## 0.8.17); dead started-only HOLD names `SPAWN --FORCE` (#247; no heading of its own). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.17 notes.
+
+- **Reuse table (design-first):** `bind_active_field` already returns None for `resume` / `status` / `pulse` / `fields` / `gc` / `retain` when the home is not unique. `cmd_learn --list` already calls `list_learnings(None)` when no ORDER is bound and prints the protocol store. The remaining gap is `learn` dying on 2+ closed homes (`#231`).
+- **Reuse, not a new verb:** when `open_homes` is empty, `learn` takes the same allow-None path. `--list` / `--list --all` succeed. `--field` still binds one closed ORDER. Two or more open fields without ACTIVE/explicit still die. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `--list` after close without `--field` when every field is closed.
+- **Proof:** `LearnListClosedFields` (2+ closed + 0 open → `--list` / `--list --all` exit 0 and print the protocol text; 2+ open still exit 2). C-056 extended. No new C-ID (honesty cap). `#231`.
+- **Reuse table (design-first):** `SpawnRecord.flying` / `live_pid` already distinguish started-only from leftover residual. `PacketRevStale` already names `UNPACK --FORCE` on identity-stale. Resume stayed HOLD / continue-packets when the host died mid-`run_child` and `live_pid` is None (`#242`).
+- **Reuse, not a new verb:** `DeadStartedOnly` is read-path guidance. HOLD detail names `of spawn --force-spawn` on the same packet. Do not stamp outcome on the resume read path. Live pid still refuses `--force-spawn`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix fold dead started-only into the existing force-spawn row. Status prints HOLD — `of spawn --force-spawn`, not a `SPAWN --FORCE` machine next.
+- **Proof:** `SpawnPidLiveness.test_resume_names_force_spawn_when_started_only_pid_gone` / `test_live_pid_hold_does_not_name_force_spawn`. `ResumeHandoffGuidance.test_dead_started_only_hold_names_force_spawn`. `SkillDeadStartedOnlyForce`. `#247`. Closes `#242`.
+- Packaging: VERSION 0.8.18; skill/alias description preview `v0.8.18 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.17 notes.
+
 ## 0.8.17
 
 Kernel + skill work that landed on main after the published v0.8.16 tag (`184d7eba`, #228) while still claiming 0.8.16 lockstep: pstack Mediums 1–5 dual-truth honesty (`CloseChecklist.flying`, object-form `additionalProperties`, wipe-after-stamp docs, `refuse_child_forge` on patch/close/integrate, `constraints+` README honesty) (#234). Invalid stdout residual extract names `$.path`; `CodexNullOmit` for optional nulls (#236; Closes #232). Wave-end / pre-close surplus triage for leftover learnings and reportable errors (#229). Demote `of eval` from SKILL / `/of` hot path (appendix Lab / eval only) (#230). Prove the published artifact before FACTIBLE (`SkillArtifactProve`); adversary+verifier consent is stored at mission START, not XOR at close (#235). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.16 notes.

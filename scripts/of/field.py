@@ -1120,7 +1120,8 @@ def bind_active_field(
 
     Order: explicit `--field` / OF_FIELD, origin session, `.orderfield/ACTIVE`,
     then unique home. A leftover top-level ORDER stub is ignored for auto-bind
-    when `fields/<id>/` homes exist.
+    when `fields/<id>/` homes exist. `learn` returns None when no open home
+    remains so `--list` can read the protocol store (2+ closed is not ambiguous).
     """
     explicit = (field_id or os.environ.get(OF_FIELD_ENV) or "").strip() or None
     homes = list_field_homes(root)
@@ -1161,6 +1162,8 @@ def bind_active_field(
     if len(open_homes) == 1:
         return _activate_field_home(root, open_homes[0][1], cmd)
     if cmd in {"resume", "status", "pulse", "fields", "gc", "retain"}:
+        return None
+    if cmd == "learn" and not open_homes:
         return None
     die_field_roster(
         homes,

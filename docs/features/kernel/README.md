@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.17. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.18. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.17` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.18` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -140,6 +140,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.17 demote `of eval` from SKILL / `/of` hot path. Kernel `of eval` + tests stay. Appendix `## Lab / eval` keeps the lab command. Proof: `FieldEvidenceHonesty` / `SkillSurfaceCore`. No new CLI / supervisor. `#230`.
 - 0.8.17 before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor. `#235`.
 - 0.8.17 at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store; do not pack/spawn. Stored yes → pack+spawn both before close. Stored no → contrast → `of close --checklist`. XOR / start-Yes pack fail teaching. After close: `of learn` / `--promote`, not the review-role ask. `EvaluatorPacket` speak names the stored-end run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor. `#235`.
+- 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse). 2+ open still dies. Reuses `bind_active_field` allow-None + `list_learnings(None)`. Proof: `LearnListClosedFields`. No new CLI / supervisor. `#231`.
 
 ## Contract boundaries
 
