@@ -786,10 +786,10 @@ def cmd_contrast(args: argparse.Namespace) -> None:
 class EvaluatorPacket:
     """Fresh-context review packet status. Not a close gate.
 
-    Consent is both roles, not XOR. Default-propose two packs / two
-    children. Checklist prints whether those packets exist. Reuses
-    WaveRoster roles. No new role, no of merge, no supervisor.
-    CloseChecklist.ok stays contrast + residual.
+    Consent is stored at start (both roles, not XOR). Pack/spawn only
+    at the configured end. Checklist prints whether those packets
+    exist. Reuses WaveRoster roles. No new role, no of merge, no
+    supervisor. CloseChecklist.ok stays contrast + residual.
     """
 
     KIND = "evaluator"
@@ -799,8 +799,7 @@ class EvaluatorPacket:
     STATUS_IN_FLIGHT = "in-flight"
     ASK_NEXT = "of pack --role adversary and --role verifier"
     SPEAK_ASK = (
-        "Run adversary + verifier before close? yes pack+spawn both; "
-        "no contrast then close --checklist"
+        "stored yes: pack+spawn both; stored no: contrast then close --checklist"
     )
     SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
     SPEAK_LANDED = "review packet landed; self-praise is not review"
