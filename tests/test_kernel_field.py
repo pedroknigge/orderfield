@@ -4249,7 +4249,7 @@ class SpawnPidLiveness(unittest.TestCase):
         self.assertNotIn("outcome", meta)
         status = run_of(self.tmp, "status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertIn("SPAWN --FORCE", status.stdout)
+        self.assertIn(of.DeadStartedOnly.DETAIL, status.stdout)
         self.assertIn("--force-spawn", status.stdout)
         machine = run_of(self.tmp, "status", "--json")
         self.assertEqual(machine.returncode, 0, machine.stderr)
