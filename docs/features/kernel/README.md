@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.16. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.17. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.16` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.17` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -134,9 +134,12 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.16 successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; same `closed-ephemeral` dump as `of gc`). `--checklist` does not wipe. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI / supervisor. `#224`.
 - 0.8.16 concurrent `of spawn` claims `waves/<n>/spawns/<id>.json` under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()` is the lock-set source of truth (`gc` is inside). Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI / supervisor. `#225`.
 - 0.8.16 HITL `of issue` lives in `cli/issue_cmd.py` (`IssueConfirm` / `IssueList` / `cmd_issue`). `ops.py` has no leftover copies. Same verbs. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI / supervisor. `#226`. Relates `#219`.
-- 0.8.16 invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). Codex-null optional fields are omit (`CodexNullOmit`; inverse of `CodexStrictSchema.nullable`). Extra keys still fail. Reuses `validate_schema` / `StreamJson.residual`. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. No new CLI / supervisor. `#232`.
-- 0.8.16 skill+eval: before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor.
-- 0.8.16 skill+eval: at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store; do not pack/spawn. Stored yes → pack+spawn both before close. Stored no → contrast → `of close --checklist`. XOR / start-Yes pack fail teaching. After close: `of learn` / `--promote`, not the review-role ask. `EvaluatorPacket` speak names the stored-end run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor.
+- 0.8.17 pstack Mediums 1–5: `CloseChecklist.flying` is `SpawnRecord.flying`; object-form `additionalProperties` (`PACKED` fails `pulse_verdicts`); wipe after stamp; `refuse_child_forge` on patch/close/integrate; `constraints+` append only on leader apply. Proof: `CloseChecklistFlying` / `SchemaSubsetHonesty` / `ClosedScratchWipe` / `ChildForgeLeaderVerbs` / `MissionRewriteRefused`. No new CLI / supervisor. `#234`.
+- 0.8.17 invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). Codex-null optional fields are omit (`CodexNullOmit`; inverse of `CodexStrictSchema.nullable`). Extra keys still fail. Reuses `validate_schema` / `StreamJson.residual`. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. No new CLI / supervisor. `#236`. Closes `#232`.
+- 0.8.17 wave-end / pre-close surplus triage (leftover `of learn` + reportable errors; ask promote/protocol/docs/discard). Not auto-promote. Not a close gate. Proof: `SkillWaveEndTriage`. No new CLI / supervisor. `#229`.
+- 0.8.17 demote `of eval` from SKILL / `/of` hot path. Kernel `of eval` + tests stay. Appendix `## Lab / eval` keeps the lab command. Proof: `FieldEvidenceHonesty` / `SkillSurfaceCore`. No new CLI / supervisor. `#230`.
+- 0.8.17 before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor. `#235`.
+- 0.8.17 at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store; do not pack/spawn. Stored yes → pack+spawn both before close. Stored no → contrast → `of close --checklist`. XOR / start-Yes pack fail teaching. After close: `of learn` / `--promote`, not the review-role ask. `EvaluatorPacket` speak names the stored-end run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor. `#235`.
 
 ## Contract boundaries
 

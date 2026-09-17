@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.16. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.17. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,19 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.16`
+**Status:** Shipped · **Current release line:** `0.8.17`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.17 — pstack Mediums; $.path extract; wave-end triage; eval off hot path; published-artifact prove
+
+Landed on main after the published v0.8.16 tag (`184d7eba`, #228) while still claiming 0.8.16 lockstep.
+
+- pstack Mediums 1–5 dual-truth: `CloseChecklist.flying` is `SpawnRecord.flying`; object-form `additionalProperties` (`PACKED` fails `pulse_verdicts`); wipe after a successful stamp; `refuse_child_forge` on patch/close/integrate; README `constraints+` append only on leader `integrate --apply`. Proof: `CloseChecklistFlying` / `SchemaSubsetHonesty` / `ClosedScratchWipe` / `ChildForgeLeaderVerbs` / `MissionRewriteRefused`. No new CLI verb / schema / supervisor. Not a new regime. `#234`.
+- Invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). `CodexNullOmit` drops public-schema-optional nulls (not a loosened contract). Extra keys still fail. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. C-147. No new CLI verb / schema / supervisor. Not a new regime. `#236`. Closes `#232`.
+- Wave-end / pre-close surplus: leftover field `of learn` + reportable errors — ask `--protocol` / `--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL. Not auto-promote. Not a close gate. Proof: `SkillWaveEndTriage`. No new CLI verb. Not a new regime. `#229`.
+- Demote `of eval` from SKILL / `/of` hot path. Kernel `of eval` + tests + CI stay. Appendix `## Lab / eval` keeps the lab command. Proof: `FieldEvidenceHonesty` / `SkillSurfaceCore`. C-150 / C-153. No new CLI verb. Not a new regime. `#230`.
+- Before FACTIBLE / `of close` on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. At init store both-roles end intent; pack only if stored yes; XOR / start-Yes pack fail. Proof: `SkillArtifactProve` / `SkillEvaluatorPacket`. C-121 / C-151 / C-080. No `of prove`. Not a new close gate. Not a new regime. `#235`.
 
 ## 0.8.16 — schema subset; close wipes work/scratch; spawn claim lock + MUTATING_COMMANDS honesty; HITL issue_cmd
 
@@ -22,8 +32,6 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 - Successful `of close` wipes this field's `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`). Same `closed-ephemeral` dump `of gc` already plans. `--checklist` does not wipe. Contract files stay. Proof: `ClosedScratchWipe` / `SkillClosedScratch`. C-084. No new CLI verb / schema / supervisor. Not a new regime. `#224`.
 - Concurrent `of spawn` of the same child serializes the started-only claim under `field.lock` (`SpawnRecord.claim_started`; live `dump_bytes`, not WAL). Architecture / README / principles quote `mutating_commands_prose()` so `gc` is inside the lock set. Proof: `SpawnLockRace` / `MutatingCommandsHonesty`. No new CLI verb / schema / supervisor. Not a new regime. `#225`.
 - Second `#219` lean cut after `eval_cmd`. `IssueConfirm` / `IssueList` / `cmd_issue` move out of `ops.py` into `cli/issue_cmd.py`. Same verbs. Status/resume/doctor stay on `ops`. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. C-055. No new CLI verb / schema / supervisor. Not a new regime. `#226`. Relates `#219`.
-- Before FACTIBLE / `of close` on a mission that publishes schedule+invariants, the leader runs a deterministic check on the **published** artifact (not memory, not D). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. Proof: `SkillArtifactProve`. No `of prove`. No new CLI verb / schema / supervisor. Not a new regime.
-- Review-role consent: at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store `--done-when-mission`. Do not pack/spawn at start. Stored yes → pack+spawn both before close (not XOR). Stored no → contrast → `of close --checklist`. After close, ask `of learn` / `--promote`, not the review-role ask. Exclusive-or / start-Yes pack fail `SkillEvaluatorPacket`. Not a new close gate. No new CLI verb. Not a new regime.
 
 ## 0.8.15 — collect unexpected keys name the legal home
 
