@@ -136,6 +136,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.16 HITL `of issue` lives in `cli/issue_cmd.py` (`IssueConfirm` / `IssueList` / `cmd_issue`). `ops.py` has no leftover copies. Same verbs. Proof: `NoDuplicateCliDefs.test_ops_has_no_leftover_issue_defs` / `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI / supervisor. `#226`. Relates `#219`.
 - 0.8.16 invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). Codex-null optional fields are omit (`CodexNullOmit`; inverse of `CodexStrictSchema.nullable`). Extra keys still fail. Reuses `validate_schema` / `StreamJson.residual`. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. No new CLI / supervisor. `#232`.
 - 0.8.16 skill+eval: before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor.
+- 0.8.16 skill+eval: ask both `--role adversary` and `--role verifier` at init / first wave; store; run at end; no XOR close menu. After close: `of learn` / `--promote`. `EvaluatorPacket` speak names the stored run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor.
 
 ## Contract boundaries
 

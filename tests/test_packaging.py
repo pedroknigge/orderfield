@@ -1789,11 +1789,13 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
     def test_consent_gates_still_ask(self) -> None:
         core = SkillSurface.core(ROOT)
         table = self.table(core).casefold()
-        self.assertIn("after wave, before close", table)
-        self.assertLess(table.index("must ask"), table.index("of close --checklist"))
+        self.assertIn("init / first wave", table)
+        self.assertIn("must ask", table)
+        self.assertIn("of close --checklist", table)
         self.assertIn("same-harness", table)
         self.assertIn("must ask", table)
         self.assertIn("must propose", table)
+        self.assertNotIn("after wave, before close", table)
 
 
 class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
@@ -2681,41 +2683,92 @@ class SkillCodexWorktreeSpawn(unittest.TestCase):
 
 
 class SkillEvaluatorPacket(unittest.TestCase):
-    """After a wave, ask consent for a fresh-context review packet before close."""
+    """Ask both review roles at field start; run at end; no XOR close menu."""
+
+    XOR = (
+        "after wave, before close",
+        "and/or `--role verifier`",
+        "adversary or verifier or close",
+    )
 
     @staticmethod
     def table(skill: str) -> str:
         return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
 
-    def test_core_alias_appendix_ask_before_close(self) -> None:
+    @staticmethod
+    def xor_errors(text: str, rel: str) -> list[str]:
+        errors: list[str] = []
+        for needle in SkillEvaluatorPacket.XOR:
+            if needle.casefold() in text.casefold() or needle in text:
+                errors.append(f"{rel} still has XOR menu {needle!r}")
+        return errors
+
+    def test_core_alias_appendix_ask_at_start_both_roles(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
-        table = self.table(core).casefold()
-        ask_at = table.index("ask")
-        close_at = table.index("of close")
-        self.assertLess(ask_at, close_at)
+        table = self.table(core)
+        table_fold = table.casefold()
+        init_row = next(
+            line
+            for line in table.splitlines()
+            if "init / first wave" in line.casefold()
+        )
+        self.assertIn("must ask", init_row.casefold())
+        self.assertIn("of close --checklist", init_row)
         self.assertIn("fresh-context review packet", table)
-        self.assertIn("never silent", table)
+        self.assertIn("never silent", table_fold)
+        self.assertIn("both", table_fold)
         self.assertIn("--role adversary", table)
         self.assertIn("--role verifier", table)
-        self.assertIn("self-praise", table)
-        self.assertIn("not a new close gate", table)
+        self.assertIn("--done-when-mission", table)
+        self.assertIn("do not re-ask", table)
+        self.assertIn("after close", table_fold)
+        self.assertIn("of learn", table)
+        self.assertIn("self-praise", table_fold)
+        self.assertIn("not a new close gate", table_fold)
+        self.assertEqual(self.xor_errors(table, "SKILL.md table"), [])
         alias_fold = alias.casefold()
         self.assertIn("fresh-context review packet", alias_fold)
         self.assertIn("never silent", alias_fold)
+        self.assertIn("init / first wave", alias_fold)
+        self.assertIn("both", alias_fold)
         self.assertIn("adversary", alias_fold)
         self.assertIn("verifier", alias_fold)
         self.assertIn("must ask", alias_fold)
+        self.assertIn("do not re-ask", alias_fold)
+        self.assertIn("of learn", alias_fold)
+        self.assertEqual(self.xor_errors(alias, "of/SKILL.md"), [])
         appendix_fold = appendix.casefold()
         self.assertIn("fresh-context review packet", appendix_fold)
         self.assertIn("never silent", appendix_fold)
+        self.assertIn("init / first wave", appendix_fold)
+        self.assertIn("do not re-ask", appendix_fold)
+        self.assertIn("of learn", appendix_fold)
         self.assertIn("self-praise is not review", appendix_fold)
         self.assertIn("not a new close gate", appendix_fold)
+        self.assertEqual(
+            self.xor_errors(appendix, "references/skill-appendix.md"),
+            [],
+        )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         hero = readme[: readme.index("## Install")].casefold()
         self.assertIn("fresh-context review packet", hero)
         self.assertIn("never silent", hero)
+        self.assertIn("init / first wave", hero)
+        self.assertIn("both", hero)
+        self.assertEqual(self.xor_errors(hero, "README.md hero"), [])
+
+    def test_xor_end_of_wave_menu_fails_teaching(self) -> None:
+        fake = (
+            "## What to type next\n"
+            "| after wave, before close | pick adversary or verifier or close |\n"
+            "| ask | `of pack --role adversary` and/or `--role verifier` |\n"
+            "## When to use\n"
+        )
+        errs = self.xor_errors(fake, "fake.md")
+        self.assertTrue(errs, errs)
+        self.assertTrue(any("after wave, before close" in e for e in errs), errs)
 
 
 class SkillSharedWorktree(unittest.TestCase):
