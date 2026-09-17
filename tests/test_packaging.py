@@ -2359,6 +2359,32 @@ class SkillLearnLengthAdvisory(unittest.TestCase):
         self.assertIn("learning.lines", appendix)
 
 
+class SkillLearnListClosedFields(unittest.TestCase):
+    """SKILL teaches of learn --list after close without --field."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_list_without_open_field(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of learn", table)
+        self.assertIn("--list", table)
+        self.assertIn("protocol if no open field", table)
+        alias_fold = alias.casefold()
+        self.assertIn("of learn --list", alias_fold)
+        self.assertIn("protocol store", alias_fold)
+        self.assertIn("no active/open field", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("of learn --list", appendix_fold)
+        self.assertIn("protocol store", appendix_fold)
+        self.assertIn("no active/open field", appendix_fold)
+        self.assertIn("do not require `--field`", appendix)
+
+
 class SkillDoctorClosedHistorical(unittest.TestCase):
     """SKILL teaches closed-field historical packs are informational."""
 

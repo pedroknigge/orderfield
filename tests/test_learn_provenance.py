@@ -721,6 +721,84 @@ class LearningLengthAdvisory(unittest.TestCase):
         self.assertEqual(caught.exception.code, 1)
 
 
+class LearnListClosedFields(unittest.TestCase):
+    """#231 — of learn --list with 2+ closed and 0 open reads the protocol store."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-learn-list-closed-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "protocol-learnings.json"
+        os.environ["OF_LEARNINGS"] = str(self.cache)
+        self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        self._prev_field = os.environ.pop("OF_FIELD", None)
+        self._prev_session = os.environ.pop("OF_SESSION_ID", None)
+        self.addCleanup(self._restore_env)
+        _isolate_spawn_registry(self, self.tmp)
+
+    def _restore_env(self) -> None:
+        if self._prev_field is None:
+            os.environ.pop("OF_FIELD", None)
+        else:
+            os.environ["OF_FIELD"] = self._prev_field
+        if self._prev_session is None:
+            os.environ.pop("OF_SESSION_ID", None)
+        else:
+            os.environ["OF_SESSION_ID"] = self._prev_session
+
+    def _close_all_homes(self) -> None:
+        of_dir = self.tmp / ".orderfield"
+        homes: list[Path] = []
+        fields = of_dir / "fields"
+        if fields.is_dir():
+            homes.extend(
+                path
+                for path in fields.iterdir()
+                if (path / "ORDER.json").is_file()
+            )
+        if (of_dir / "ORDER.json").is_file():
+            homes.append(of_dir)
+        for home in homes:
+            path = home / "ORDER.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["spec_closed"] = True
+            path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        active = of_dir / "ACTIVE"
+        if active.is_file():
+            active.unlink()
+
+    def test_list_succeeds_when_all_fields_closed(self) -> None:
+        first = run_of(self.tmp, "init", "--mission", "closed-alpha")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        second = run_of(self.tmp, "new", "--mission", "closed-beta")
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        proto = run_of(
+            self.tmp, "learn", "--protocol", "cross-project lesson after close"
+        )
+        self.assertEqual(proto.returncode, 0, proto.stderr)
+        self._close_all_homes()
+        homes = list((self.tmp / ".orderfield" / "fields").iterdir())
+        self.assertGreaterEqual(len(homes), 2, homes)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertEqual(listed.returncode, 0, listed.stderr + listed.stdout)
+        self.assertNotIn("multiple fields", listed.stderr)
+        self.assertIn("cross-project lesson after close", listed.stdout)
+        listed_all = run_of(self.tmp, "learn", "--list", "--all")
+        self.assertEqual(listed_all.returncode, 0, listed_all.stderr + listed_all.stdout)
+        self.assertIn("cross-project lesson after close", listed_all.stdout)
+
+    def test_list_still_refuses_when_two_open_fields(self) -> None:
+        first = run_of(self.tmp, "init", "--mission", "open-alpha")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        second = run_of(self.tmp, "new", "--mission", "open-beta")
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        active = self.tmp / ".orderfield" / "ACTIVE"
+        if active.is_file():
+            active.unlink()
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertEqual(listed.returncode, 2, listed.stderr + listed.stdout)
+        self.assertIn("multiple fields", listed.stderr + listed.stdout)
+
+
 class ChildForgeLeaderVerbs(unittest.TestCase):
     """OF_CHILD cannot of patch / of close / of integrate. Medium 4."""
 
