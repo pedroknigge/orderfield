@@ -3090,6 +3090,39 @@ class SkillDeadStartedOnlyForce(unittest.TestCase):
         self.assertIn("SPAWN --FORCE", source)
 
 
+class SkillLiveQuietStuck(unittest.TestCase):
+    """SKILL teaches live pid + long QUIET + no residual → HITL next. #256."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_live_quiet_stuck(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("quiet past stale", table)
+        self.assertIn("hitl", table)
+        self.assertIn("force-spawn", table)
+        self.assertIn("switch adapter", table)
+        self.assertIn("do not claim done", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("quiet past stale", fold, name)
+            self.assertIn("force-spawn", fold, name)
+            self.assertIn("switch adapter", fold, name)
+            self.assertIn("do not claim done", fold, name)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("class LiveQuietStuck:", source)
+        self.assertIn("do not claim done", source)
+        self.assertNotIn("SIGKILL", source.split("class LiveQuietStuck:", 1)[1].split("class FieldSignal:", 1)[0])
+
+
 class SkillForceSpawnPid(unittest.TestCase):
     """SKILL teaches force-spawn pid liveness and over-budget signal. #213."""
 

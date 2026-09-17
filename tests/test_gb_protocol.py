@@ -92,6 +92,15 @@ class ResumeHandoffGuidance(unittest.TestCase):
         self.assertIn("--force-spawn", lines[1])
         self.assertIn("do not pack", lines[1])
 
+    def test_live_quiet_stuck_hold_names_hitl(self) -> None:
+        lines = of.LiveQuietStuck.next_lines()
+        self.assertEqual(lines[0], of.LiveQuietStuck.LABEL)
+        self.assertEqual(lines[1], of.LiveQuietStuck.DETAIL)
+        self.assertIn("--force-spawn", lines[1])
+        self.assertIn("switch adapter", lines[1])
+        self.assertIn("do not claim done", lines[1])
+        self.assertNotIn("SIGKILL", lines[1])
+
     def test_spawn_names_packed_only(self) -> None:
         lines = of.resume_next_lines("spawn")
         self.assertEqual(lines[0], "SPAWN")

@@ -3279,7 +3279,8 @@ def pulse_verdict(
     never an action: the kernel does not kill or unpack on it.
 
     A live spawn pid keeps QUIET even when mtime is old — STALE is for
-    dead-and-quiet children only (#245).
+    dead-and-quiet children only (#245). Live + long QUIET + no residual
+    is a named HOLD next (`LiveQuietStuck`; #256), not a kill.
     """
     if age_seconds < PULSE_QUIET_SECONDS:
         return "ALIVE"
@@ -3589,8 +3590,10 @@ class SpawnRecord:
         packet: dict[str, Any],
         *,
         now: float | None = None,
+        age_s: float | None = None,
     ) -> dict[str, Any] | None:
-        """Open spawn past started_at + budget.seconds. Signal, not a kill."""
+        """Open spawn past started_at + budget.seconds, or live + idle
+        past pulse-stale. Signal, not a kill."""
         if SpawnRecord.settled(meta) or not isinstance(meta, dict):
             return None
         if meta.get("dry_run"):
@@ -3602,12 +3605,19 @@ class SpawnRecord:
             budget_s = int((packet.get("budget") or {}).get("seconds") or 0)
         except (TypeError, ValueError):
             budget_s = 0
-        if budget_s <= 0:
-            return None
         clock = now if now is not None else time.time()
-        if clock < started + budget_s:
-            return None
+        budget_hit = budget_s > 0 and clock >= started + budget_s
         live = SpawnRecord.live_pid(meta)
+        # #256: live + activity past pulse-stale is idle-forever, even
+        # inside a large budget.seconds. Dead+old stays budget-only
+        # (DeadStartedOnly / STALE). Signal, not a kill.
+        idle_forever = (
+            live is not None
+            and age_s is not None
+            and float(age_s) >= PULSE_STALE_MINUTES * 60
+        )
+        if not budget_hit and not idle_forever:
+            return None
         recorded = SpawnRecord.pid_of(meta)
         kind = (
             SpawnRecord.UNBOUNDED
@@ -3652,6 +3662,52 @@ class DeadStartedOnly:
     @staticmethod
     def next_lines() -> list[str]:
         return [DeadStartedOnly.LABEL, DeadStartedOnly.DETAIL]
+
+
+class LiveQuietStuck:
+    """live_pid + activity past pulse-stale + no residual. HOLD names HITL.
+
+    Complementary to #245 (QUIET not STALE while live) and DeadStartedOnly
+    (pid gone). Read-path guidance. Does not kill. Does not stamp outcome.
+    Machine next stays HOLD (do not invent PACK / HANDOFF).
+    """
+
+    ACTION = "hold"
+    LABEL = "HOLD"
+    DETAIL = (
+        "live pid QUIET past stale; ask HITL to stop the hung process "
+        "then of spawn --force-spawn or switch adapter; do not claim done"
+    )
+
+    @staticmethod
+    def of(
+        root: Path,
+        flying: list[dict[str, Any]],
+        *,
+        now: float | None = None,
+        stale_minutes: float = PULSE_STALE_MINUTES,
+    ) -> bool:
+        from of.pack import packet_residual_missing
+
+        clock = now if now is not None else time.time()
+        stale_s = float(stale_minutes) * 60
+        for pkt in flying:
+            if not isinstance(pkt, dict):
+                continue
+            if not SpawnRecord.unsettled(root, pkt):
+                continue
+            if SpawnRecord.live_pid(SpawnRecord.load(root, pkt)) is None:
+                continue
+            if not packet_residual_missing(root, pkt):
+                continue
+            age = child_pulse_age(root, pkt, clock)
+            if age is not None and age >= stale_s:
+                return True
+        return False
+
+    @staticmethod
+    def next_lines() -> list[str]:
+        return [LiveQuietStuck.LABEL, LiveQuietStuck.DETAIL]
 
 
 class FieldSignal:
@@ -4103,7 +4159,8 @@ class DoctorSkew:
     def over_budget(
         root: Path, *, now: float | None = None
     ) -> tuple[list[str], bool]:
-        """Open spawn past started_at + budget.seconds. Advisory; not FAIL."""
+        """Open spawn past budget.seconds, or live + idle past pulse-stale.
+        Advisory; not FAIL."""
         from of.pack import packed_children
 
         try:
@@ -4113,9 +4170,13 @@ class DoctorSkew:
             return [], False
         packets = packed_children(root, wave)
         lines: list[str] = []
+        clock = now if now is not None else time.time()
         for pkt in packets:
             row = SpawnRecord.over_budget(
-                SpawnRecord.load(root, pkt), pkt, now=now
+                SpawnRecord.load(root, pkt),
+                pkt,
+                now=clock,
+                age_s=child_pulse_age(root, pkt, clock),
             )
             if row is None:
                 continue
@@ -4402,6 +4463,24 @@ def snapshot_session(
     return data
 
 
+def child_pulse_age(
+    root: Path, packet: dict[str, Any], now: float
+) -> float | None:
+    """Seconds since freshest spawn/scratch evidence. None = packed-only."""
+    signals: list[float] = []
+    started = SpawnRecord.started_ts(root, packet)
+    if started is not None:
+        signals.append(started)
+    scratch_rel = packet.get("scratch_dir")
+    if scratch_rel:
+        scratch = newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
+        if scratch:
+            signals.append(scratch[0])
+    if not signals:
+        return None
+    return now - max(signals)
+
+
 def child_pulse_verdict(
     root: Path,
     packet: dict[str, Any],
@@ -4418,19 +4497,11 @@ def child_pulse_verdict(
     meta = SpawnRecord.load(root, packet)
     if SpawnRecord.settled(meta) and packet_residual_missing(root, packet):
         return SpawnRecord.ENDED_WITHOUT_RESIDUAL
-    signals: list[float] = []
-    started = SpawnRecord.started_ts(root, packet)
-    if started is not None:
-        signals.append(started)
-    scratch_rel = packet.get("scratch_dir")
-    if scratch_rel:
-        scratch = newest_mtime(root / physical_field_rel(root, str(scratch_rel)))
-        if scratch:
-            signals.append(scratch[0])
-    if not signals:
+    age = child_pulse_age(root, packet, now)
+    if age is None:
         return SpawnRecord.LABEL
     return pulse_verdict(
-        now - max(signals),
+        age,
         stale_minutes,
         live_pid=SpawnRecord.live_pid(meta),
     )
