@@ -48,6 +48,7 @@ class StayOnRunSkill(unittest.TestCase):
         self.assertIn("not a daemon", skill)
         self.assertIn("not a 5-minute kernel loop", skill)
         self.assertIn("`of pulse --watch`", skill)
+        self.assertIn("exits when idle", skill)
         self.assertIn("not a process supervisor", skill)
 
     def test_skill_when_pays_names_the_pick(self) -> None:

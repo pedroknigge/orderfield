@@ -2259,8 +2259,12 @@ def pulse_once(
     state: dict[str, Any],
     wave: int,
     stale_minutes: float,
-) -> int:
-    """One read-only activity screen. Exit 2 when any child is STALE.
+) -> tuple[int, bool]:
+    """One read-only activity screen.
+
+    Returns ``(exit_code, idle)``. ``idle`` is True when ``in_flight=0``
+    (open idle or closed). Exit 2 when any flying child is STALE.
+    Idle and ALIVE both used to return 0 — watch could not stop.
 
     Child verdicts use only packet and scratch activity. The newest shared-repo
     product mtime is shown separately as wave context, never child evidence.
@@ -2276,7 +2280,7 @@ def pulse_once(
     )
     if order.get("spec_closed"):
         print("in_flight   0 — closed (not a live spawn surface)")
-        return 0
+        return 0, True
     pdir = wave_dir(wave, root) / "packets"
     flying: list[tuple[Path, dict[str, Any]]] = []
     if pdir.is_dir():
@@ -2286,7 +2290,7 @@ def pulse_once(
                 flying.append((f, pkt))
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
-        return 0
+        return 0, True
     print(InFlightSignal.count_banner(len(flying)))
     now = time.time()
     repo = repo_newest_mtime(root)
@@ -2343,7 +2347,7 @@ def pulse_once(
             age_s=int(age),
             wave=wave,
         )
-    return exit_code
+    return exit_code, False
 
 
 def cmd_pulse(args: argparse.Namespace) -> None:
@@ -2371,8 +2375,23 @@ def cmd_pulse(args: argparse.Namespace) -> None:
         order = load_order(root)
         state = load_state(root)
         wave = int(args.wave or state.get("wave") or 1)
-        code = pulse_once(root, order, state, wave, stale_minutes)
+        code, idle = pulse_once(root, order, state, wave, stale_minutes)
         if not getattr(args, "watch", False):
+            raise SystemExit(code)
+        if idle:
+            # Do not sleep. Print next and return — watch is not a supervisor.
+            action, flying = DriveAfterIntegrate.action_of(
+                root, order, state, wave
+            )
+            if not DriveAfterIntegrate.emit(
+                spec_closed=bool(order.get("spec_closed")),
+                flying=flying,
+                action=action,
+                with_next=True,
+            ):
+                label, detail = resume_next_lines(action)
+                extra = f" — {detail}" if detail else ""
+                print(f"{'next'.ljust(12)}{label}{extra}")
             raise SystemExit(code)
         print(f"--- watching activity (every {interval}s, Ctrl+C to stop) ---")
         sys.stdout.flush()
