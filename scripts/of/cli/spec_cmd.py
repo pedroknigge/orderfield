@@ -17,6 +17,7 @@ from of.field import (
     ClosedScratch,
     DoctorSkew,
     NestedField,
+    SpawnRecord,
     WaveRoster,
     die,
     dump_json,
@@ -28,12 +29,15 @@ from of.field import (
     find_root,
     load_order,
     load_state,
+    refuse_child_forge,
     save_order,
     save_state,
     sha256_text,
     snapshot_session,
     spec_path,
     utc_now,
+    wave_dir,
+    _read_json_object,
 )
 from of.regime import (
     DoneWhenLint,
@@ -901,9 +905,10 @@ class EvaluatorPacket:
 class CloseChecklist:
     """Proof checklist for multi-wave close. Contrast + residual empty.
 
-    Reuses ContrastReport + WaveRoster. No second ledger, no supervisor.
-    `of close --checklist` is the dry-run; the write path refuses the same gaps.
-    EvaluatorPacket is printed here as ask-only status — not part of ok.
+    Reuses ContrastReport + SpawnRecord.flying (started-only dominates leftover residual).
+    No second ledger, no supervisor. `of close --checklist` is the dry-run;
+    the write path refuses the same gaps. EvaluatorPacket is printed here as
+    ask-only status — not part of ok.
     """
 
     KIND = "checklist"
@@ -920,15 +925,27 @@ class CloseChecklist:
 
     @staticmethod
     def flying(root: Path, state: dict[str, Any]) -> list[str]:
-        live = WaveRoster.live_wave(state)
+        """Packed children that are SpawnRecord.flying. Started-only dominates leftover residual."""
         ids: list[str] = []
+        seen: set[str] = set()
         for n in WaveRoster.numbers(root, state):
-            facts = WaveRoster.facts(root, n, live)
-            for child in facts["children"]:
-                if child.get("status") == "in-flight":
-                    cid = str(child.get("child_id") or "").strip()
-                    if cid:
-                        ids.append(cid)
+            pdir = wave_dir(int(n), root) / "packets"
+            if not pdir.is_dir():
+                continue
+            try:
+                paths = sorted(pdir.glob("*.json"))
+            except OSError:
+                continue
+            for path in paths:
+                pkt = _read_json_object(path)
+                if not isinstance(pkt, dict):
+                    continue
+                cid = str(pkt.get("child_id") or path.stem).strip()
+                if not cid or cid in seen:
+                    continue
+                if SpawnRecord.flying(root, pkt):
+                    seen.add(cid)
+                    ids.append(cid)
         return ids
 
     @staticmethod
@@ -1131,6 +1148,7 @@ class CloseProof:
 
 def cmd_close(args: argparse.Namespace) -> None:
     """Stamp SPEC closed. Refused while contrast is OPEN or residual MISSING."""
+    refuse_child_forge("of close")
     root = find_root()
     order = load_order(root)
     require_spec_intact(root, order)

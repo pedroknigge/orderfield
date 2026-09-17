@@ -59,7 +59,7 @@ Product comments are short and factual, not the field diary. Prefer the same cap
 - Mutate `.orderfield/ORDER.json`, `.orderfield/state.json`, or `.orderfield/session.json`.
 - Change mission, phase, or constraints.
 - Spawn grandchildren unless the packet has `allow_nested: true`.
-- Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
+- Run `of learn --protocol` or `of learn --promote` (spawn sets `OF_CHILD`; those flags refuse). `of patch` / `of close` / `of integrate` refuse `OF_CHILD` the same way. Field notes (`of learn TEXT`) may exist; they cannot stamp `source=leader`.
 - Return a thinking diary as the result. Do not paste a chat transcript into `residual.evidence` or `proposed_patch.notes`. Structured evidence (counts, paths, shas) may exceed 4000 chars; stay under 40 lines.
 - Treat workspace as a lock, or invent `of claim` / file leases.
 - Post a GitHub issue (`of issue --confirm`, `of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.

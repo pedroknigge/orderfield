@@ -398,6 +398,7 @@ def eval_setup_recovery_mission_rewrite(root: Path) -> None:
             "mission": expected["stolen_mission"],
             "phase": expected["stolen_phase"],
             "constraints": [expected["stolen_constraint"]],
+            "constraints+": [expected["appended_constraint"]],
             "done_when": [expected["stolen_done_when"]],
             "spec_closed": True,
         },

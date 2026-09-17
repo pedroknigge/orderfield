@@ -1697,12 +1697,13 @@ def persist_learning_source() -> str:
 
 
 def refuse_child_forge(action: str) -> None:
-    """--protocol / --promote are leader-only. Public CLI shape."""
+    """Leader-only verbs. OF_CHILD cannot forge protocol or ORDER through of."""
     cid = spawned_child_id()
     if not cid:
         return
+    label = action if action.startswith("of ") else f"of learn {action}"
     die(
-        f"of learn {action} refused while {OF_CHILD_ENV}={cid} (leader-only)",
+        f"{label} refused while {OF_CHILD_ENV}={cid} (leader-only)",
         kind="child-forge",
     )
 
@@ -2161,7 +2162,8 @@ def validate_schema(
         for key in schema.get("required") or []:
             if key not in value:
                 errs.append(f"{path}.{key} is required")
-        if schema.get("additionalProperties") is False:
+        additional = schema.get("additionalProperties")
+        if additional is False:
             extras = sorted(set(value) - set(properties))
             if extras:
                 msg = f"{path} has unexpected properties: {extras}"
@@ -2169,6 +2171,8 @@ def validate_schema(
                 if hint:
                     msg = f"{msg} — {hint}"
                 errs.append(msg)
+        extra_schema = additional if isinstance(additional, dict) else None
+        pattern_properties = schema.get("patternProperties")
         for key, child in value.items():
             child_schema = properties.get(key)
             if isinstance(child_schema, dict):
@@ -2181,7 +2185,23 @@ def validate_schema(
                         _root_path=root_path,
                     )
                 )
-        pattern_properties = schema.get("patternProperties")
+            elif extra_schema is not None:
+                matched_pattern = False
+                if isinstance(pattern_properties, dict):
+                    matched_pattern = any(
+                        isinstance(pat, str) and re.search(pat, key) is not None
+                        for pat in pattern_properties
+                    )
+                if not matched_pattern:
+                    errs.extend(
+                        validate_schema(
+                            child,
+                            extra_schema,
+                            f"{path}.{key}",
+                            _root=root,
+                            _root_path=root_path,
+                        )
+                    )
         if isinstance(pattern_properties, dict):
             for key, child in value.items():
                 for pattern, child_schema in pattern_properties.items():

@@ -44,7 +44,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 
 | Move | What dies | Proof |
 |---|---|---|
-| Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
+| Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; `constraints+` appends on leader `--apply`; replace keys stay off; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
 | Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
 | Caption close (no artifact SHA / no rollback command) | `status=done` cannot collect | `CloseEvidenceGate` |
 | Chat-dump residual (transcript in `evidence` / `notes`) | collect/integrate refuse; wave report is `{status, wants, uncertainty}` | `recovery/wave-report-quality-gate` |
@@ -72,6 +72,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | New child packs with no claim while IDs stay unowned | `cmd_pack` dies (`unowned`; `--owns-requirement`) | same eval; `scripts/of/cli/wave.py` `already_owns` gate |
 | Same-wave `--owns-path` overlap | `same_wave_owns_path_conflict` dies (`overlaps`) | same eval; `scripts/of/pack.py` |
 | `of learn --protocol` / `--promote` while spawn registry / `OF_CHILD` says child | `refuse_child_forge` (`kind=child-forge`) | `scripts/of/field.py`; `tests/test_learn_provenance.py` (LEARN-001 / LEARN-002) |
+| `of patch` / `of close` / `of integrate` while `OF_CHILD` says child | `refuse_child_forge` (`kind=child-forge`) | `scripts/of/cli/field_cmd.py` / `scripts/of/cli/spec_cmd.py`; `ChildForgeLeaderVerbs` |
 | `of issue` create/submit from a child session | `_refuse_child_issue_submit` (leader-only after HITL) | `scripts/of/cli/issue_cmd.py`; `tests/test_issue_cli.py` / `tests/test_issue_hitl.py` (ISSUE-002) |
 
 A disjoint second owner still packs. That success step is in the exclusivity eval so a broken “second pack always dies” gate fails too.

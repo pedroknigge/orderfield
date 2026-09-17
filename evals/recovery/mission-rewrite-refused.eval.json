@@ -17,6 +17,7 @@
         "mission     keep the pricing architecture",
         "phase       explore",
         "slaves do not mutate ORDER",
+        "must name the invoice currency on the order",
         "of contrast RESOLVED then of close",
         "spawn_blocked True",
         "last_regime escalate_up"

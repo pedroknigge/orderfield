@@ -10,7 +10,7 @@
 
 Anyone can persist a plan. Only the leader may change it.
 
-The chat can die. ORDER stays. A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
+The chat can die. ORDER stays. A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 
 **After `/clear`, without a leader-owned field**
 
@@ -32,7 +32,7 @@ The chat can die. ORDER stays. A child residual cannot rewrite the mission, the 
 
 # Typical problems → what Orderfield does
 
-Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
+Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 
 | Problem | Orderfield |
 |---|---|
@@ -56,7 +56,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 - The brief and the steps are still on disk after a compacted chat, a token cut, or a model switch.
 - A mid-run error becomes an amend, a patch, or a residual, and the next packet already carries it.
 - Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Prod§15 day-90 runbook path lives in `done_when` before close. Not a second checklist. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
-- A child residual cannot rewrite the mission, the phase, the constraints, or done-when.
+- A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 - Two writers on one mission have exclusive owners (requirement or path).
 
 ## When to reach for it
