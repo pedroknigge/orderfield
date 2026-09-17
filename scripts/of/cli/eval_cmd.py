@@ -2053,6 +2053,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillPstackCherries",
     "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",
+    "tests.test_kernel.EscalateUnblockNext",
+    "tests.test_kernel.SkillEscalateUnblock",
     "tests.test_kernel.SkillDriveAfterIntegrate",
     "tests.test_kernel.SkillWaveEndTriage",
     "tests.test_kernel.SkillCheckoutAutoContinueHonesty",

@@ -4436,6 +4436,117 @@ def child_pulse_verdict(
     )
 
 
+class EscalateUnblock:
+    """Named next after escalate_up. Rev gate stays. Not a supervisor.
+
+    Idle + blocked + ORDER.rev not past blocked_at_order_rev: one
+    ``of patch --<flag>`` + expected rev, then next-wave. After a legal
+    bump, next is next-wave. Spawned children still flying: HOLD /
+    collect-then-patch — do not of patch mid-flight (#253/#258).
+    Packed-only leftover (no spawn record) may still patch.
+    """
+
+    ACTION = "patch then next-wave"
+    LABEL = "PATCH THEN NEXT-WAVE"
+    DEFAULT_FLAG = "--constraints-add"
+    WANT_FLAGS = (
+        ("constraints", "--constraints-add"),
+        ("done_when", "--done-when"),
+        ("mission", "--mission"),
+    )
+
+    @staticmethod
+    def launched_flying(root: Path, flying: list[Any]) -> bool:
+        for pkt in flying:
+            if isinstance(pkt, dict) and SpawnRecord.present(root, pkt):
+                return True
+        return False
+
+    @staticmethod
+    def already_bumped(state: dict[str, Any], order_rev: int | None) -> bool:
+        blocked = state.get("blocked_at_order_rev")
+        if blocked is None or order_rev is None:
+            return False
+        try:
+            return int(order_rev) > int(blocked)
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
+    def flag_of(wants: list[str]) -> str:
+        have = set(wants)
+        for key, flag in EscalateUnblock.WANT_FLAGS:
+            if key in have:
+                return flag
+        return EscalateUnblock.DEFAULT_FLAG
+
+    @staticmethod
+    def wants_of(root: Path, state: dict[str, Any]) -> list[str]:
+        from of.regime import current_wave_report
+
+        try:
+            report = current_wave_report(root, state)
+        except SystemExit:
+            return []
+        if not isinstance(report, dict):
+            return []
+        wants: list[str] = []
+        for item in report.get("residuals") or []:
+            if not isinstance(item, dict):
+                continue
+            raw = item.get("wants") or []
+            if isinstance(raw, list):
+                wants.extend(str(x) for x in raw if x)
+        return wants
+
+    @staticmethod
+    def patch_phrase(flag: str, blocked: int | None) -> str:
+        rev = "blocked_at_order_rev" if blocked is None else str(blocked)
+        return f"of patch {flag} (rev must exceed {rev}) then of next-wave"
+
+    @staticmethod
+    def blocked_rev(state: dict[str, Any] | None) -> int | None:
+        if not state:
+            return None
+        raw = state.get("blocked_at_order_rev")
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def detail(
+        root: Path | None,
+        state: dict[str, Any] | None,
+        flying: list[Any] | None = None,
+    ) -> str:
+        flag = EscalateUnblock.DEFAULT_FLAG
+        blocked = EscalateUnblock.blocked_rev(state)
+        if root is not None and state is not None:
+            flag = EscalateUnblock.flag_of(EscalateUnblock.wants_of(root, state))
+        phrase = EscalateUnblock.patch_phrase(flag, blocked)
+        if root is not None and EscalateUnblock.launched_flying(root, flying or []):
+            return (
+                f"continue existing packets; collect then {phrase}; "
+                "do not of patch while flying; rewrite: of unpack --force "
+                "--child-id <id> then of patch"
+            )
+        return phrase
+
+    @staticmethod
+    def next_lines(
+        root: Path | None = None,
+        state: dict[str, Any] | None = None,
+        flying: list[Any] | None = None,
+    ) -> list[str]:
+        detail = EscalateUnblock.detail(root, state, flying)
+        if root is not None and EscalateUnblock.launched_flying(root, flying or []):
+            return ["HOLD", detail]
+        return [EscalateUnblock.LABEL, detail]
+
+
 class CollectReady:
     """Successful collect (ok=N invalid=0 missing=0) selects INTEGRATE.
 
@@ -4489,11 +4600,17 @@ def next_legal_action(
     children_packed: bool = False,
     spec_closed: bool = False,
     collected: bool = False,
+    order_rev: int | None = None,
+    spawned_flying: bool = False,
 ) -> str:
     if spec_closed:
         return "closed"
     if state.get("spawn_blocked"):
-        return "patch then next-wave"
+        if spawned_flying:
+            return "hold"
+        if EscalateUnblock.already_bumped(state, order_rev):
+            return "next-wave"
+        return EscalateUnblock.ACTION
     if packets and stale:
         # Identity-stale + still flying: spawn/handoff refuse (PacketRevStale).
         # Pulse STALE without a rev bump stays HANDOFF below.

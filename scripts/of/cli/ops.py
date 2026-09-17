@@ -83,6 +83,7 @@ from of.field import (
     maybe_notify_update,
     UpdateAsk,
     newest_mtime,
+    EscalateUnblock,
     next_legal_action,
     of_dir,
     order_path,
@@ -1049,6 +1050,8 @@ class DriveAfterIntegrate:
             stale=stale,
             spec_closed=bool(order.get("spec_closed")),
             collected=CollectReady.of(root, packets, load_session(root)),
+            order_rev=int(order.get("rev") or 0),
+            spawned_flying=EscalateUnblock.launched_flying(root, flying),
         )
         return action, flying
 
@@ -1061,6 +1064,8 @@ class DriveAfterIntegrate:
         key_width: int = 12,
         file: Any = None,
         with_next: bool = False,
+        root: Path | None = None,
+        state: dict[str, Any] | None = None,
     ) -> bool:
         if not DriveAfterIntegrate.applies(
             spec_closed=spec_closed,
@@ -1070,7 +1075,9 @@ class DriveAfterIntegrate:
             return False
         dest = file if file is not None else sys.stdout
         if with_next:
-            label, detail = resume_next_lines(action)
+            label, detail = resume_next_lines(
+                action, root=root, flying=flying, state=state
+            )
             extra = f" — {detail}" if detail else ""
             print(f"{'next'.ljust(key_width)}{label}{extra}", file=dest)
         print(DriveAfterIntegrate.speak_line(key_width=key_width), file=dest)
@@ -1095,6 +1102,8 @@ class DriveAfterIntegrate:
             key_width=key_width,
             file=file,
             with_next=with_next,
+            root=root,
+            state=state,
         )
 
 
@@ -1423,9 +1432,11 @@ class HandoffReport:
             children_packed=any_packed,
             spec_closed=bool(order.get("spec_closed")),
             collected=CollectReady.of(root, packets, load_session(root)),
+            order_rev=int(order.get("rev") or 0),
+            spawned_flying=EscalateUnblock.launched_flying(root, flying),
         )
         return action, verdicts, resume_next_lines(
-            action, root=root, flying=flying
+            action, root=root, flying=flying, state=state
         )
 
     @staticmethod
@@ -1780,6 +1791,8 @@ def cmd_status(args: argparse.Namespace) -> None:
             action=str(status_doc.get("next") or ""),
             key_width=12,
             with_next=True,
+            root=root,
+            state=state,
         )
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
@@ -1865,6 +1878,7 @@ def resume_next_lines(
     *,
     root: Path | None = None,
     flying: list[Any] | None = None,
+    state: dict[str, Any] | None = None,
 ) -> list[str]:
     if (
         action == DeadStartedOnly.ACTION
@@ -1872,6 +1886,11 @@ def resume_next_lines(
         and DeadStartedOnly.of(root, flying or [])
     ):
         return DeadStartedOnly.next_lines()
+    if state and state.get("spawn_blocked") and action in (
+        EscalateUnblock.ACTION,
+        "hold",
+    ):
+        return EscalateUnblock.next_lines(root, state, flying)
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
@@ -1894,9 +1913,9 @@ def resume_next_lines(
             "wave report digest drifted; of integrate --wave N --recompute",
         ),
         "pack": ("PACK", "no packets on this wave; pack slices"),
-        "patch then next-wave": (
-            "PATCH THEN NEXT-WAVE",
-            "spawn blocked after escalate_up; patch ORDER then next-wave",
+        EscalateUnblock.ACTION: (
+            EscalateUnblock.LABEL,
+            EscalateUnblock.detail(None, None, None),
         ),
         "closed": (
             "CLOSED",
@@ -2187,6 +2206,8 @@ def cmd_resume(args: argparse.Namespace) -> None:
         children_packed=any_packed,
         spec_closed=bool(order.get("spec_closed")),
         collected=CollectReady.of(root, packets, session),
+        order_rev=int(order.get("rev") or 0),
+        spawned_flying=EscalateUnblock.launched_flying(root, flying),
     )
     print(f"id            {order['id']}")
     try:
@@ -2228,7 +2249,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if flying:
         print(InFlightSignal.speak_line(key_width=14))
     print("next")
-    for line in resume_next_lines(nxt, root=root, flying=flying):
+    for line in resume_next_lines(nxt, root=root, flying=flying, state=state):
         print(f"  {line}")
     DriveAfterIntegrate.emit(
         spec_closed=bool(order.get("spec_closed")),
@@ -2392,8 +2413,12 @@ def cmd_pulse(args: argparse.Namespace) -> None:
                 flying=flying,
                 action=action,
                 with_next=True,
+                root=root,
+                state=state,
             ):
-                label, detail = resume_next_lines(action)
+                label, detail = resume_next_lines(
+                    action, root=root, flying=flying, state=state
+                )
                 extra = f" — {detail}" if detail else ""
                 print(f"{'next'.ljust(12)}{label}{extra}")
             raise SystemExit(code)

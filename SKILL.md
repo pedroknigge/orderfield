@@ -23,7 +23,7 @@ Code is a liability. Think DELETE, not add. Same capability with less code.
 
 Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
-Children move freely *inside* the packet. A threshold residual blocks more spawn in that wave; it does not mutate ORDER.
+Children move inside the packet. Threshold blocks spawn that wave; ORDER stays.
 
 The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock for `MUTATING_COMMANDS`, pack caps, residual binding, and the closed regime menu when work goes through `of`. Role obedience, ownership, same-harness choice, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
@@ -63,14 +63,14 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. Not a health monitor / timeout supervisor / version server |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
-| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score matches ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
+| kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. Lab proof: appendix. External dogfood stays Partial (C-153). |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` in the same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE while residual MISSING |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
-| child says the field is wrong | `of patch …` then `of next-wave` |
-| several unmatched open fields | attach `--field` (writes `.orderfield/ACTIVE`), or `of new` |
-| several siblings, need flying packs | `of fields` / `of fields --json` — open packs across homes; `of status --json` stays one field |
+| escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
+| several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
+| several siblings, need flying packs | `of fields` / `--json` — open packs across homes; `of status --json` is one field |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — full verb table; Gate A before `--role implementer`; never invent supervisor / bot org / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge`. Walk: [docs/long-mission.md](docs/long-mission.md) |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
@@ -88,7 +88,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. yolo is never implied. inherit forwards the parent env. Conservative + allowlist stay defaults. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. Table: appendix + adapters.md |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
 
-Those verbs without `of` same turn are a broken run.
+Those verbs without `of` same turn are broken.
 
 ## When to use
 
