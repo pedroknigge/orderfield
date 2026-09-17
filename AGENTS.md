@@ -216,6 +216,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.17 pstack Mediums 1–5 dual-truth (`CloseChecklist.flying`, object-form `additionalProperties`, wipe-after-stamp docs, `refuse_child_forge` on patch/close/integrate, `constraints+` README honesty; `#234`); invalid stdout extract names `$.path` + `CodexNullOmit` (`#236`; Closes `#232`); wave-end surplus triage (`SkillWaveEndTriage`; `#229`); demote `of eval` from SKILL / `/of` hot path (`#230`); prove published artifact before FACTIBLE (`SkillArtifactProve`) + store adversary+verifier consent at START (`SkillEvaluatorPacket`; `#235`). Landed on main after the v0.8.16 tag | documented |
 | 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse); `LearnListClosedFields`; `#231` | documented |
 | OwnedWrite: implementer / `--owns-path` `status=done` with zero writes under owns-path or recorded worktree since spawn cannot collect (`OwnedWriteGate`; `#251`). No VERSION bump | documented |
+| PacketRevStale mid-flight `of patch` while a spawned child flies refuses (`refuse_patch`; named next HOLD); packed-only still warns; `#253`. No VERSION bump | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

@@ -28,6 +28,10 @@ Stall cuts + agy argv honesty on the 0.8.18 line: `pulse --watch` exits when idl
 - **Reuse, not a new verb:** emit `--effort` (default `medium`, or `adapter_hints.effort`; unknown dies before spawn) with `--model`; derive `--print-timeout` from `budget.seconds`. Surface harness refuse clearly when stdout names the argv refuse. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** adapters reference teaches `--model`+`--effort` and packet-clock `--print-timeout`.
 - **Proof:** `AgyEffortArgv` (default medium; packet effort; unknown dies; refuse hint). `AdapterHintsArgv.test_grok_agy_named_model_precedes_dash_p`. `#249`.
+- **Reuse table (design-first):** `ORDER.rev` already bumps on every successful `of patch`. `PacketRevStale` already names `UNPACK --FORCE` after identity-stale + flying. `of spec --add` / `--amend` already `emit_note` when packed children exist. The remaining gap is `of patch` succeeding mid-flight and staling every launched packet (`#253`).
+- **Reuse, not a new verb:** `PacketRevStale.refuse_patch` dies when `SpawnRecord.present` and `flying`. Named next is HOLD. Packed-only leftover still patches and warns. No `--confirm`. No VERSION bump (daily PackagingBump). No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach mid-flight `of patch` refuses (HOLD) and constraints before first pack.
+- **Proof:** `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. No new C-ID (honesty cap). `#253`.
 - Packaging: VERSION 0.8.19; skill/alias description preview `v0.8.19 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.18 notes.
 
 ## 0.8.18

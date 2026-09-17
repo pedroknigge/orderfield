@@ -1305,9 +1305,16 @@ class PacketRevStale:
     ACTION = "unpack --force"
     LABEL = "UNPACK --FORCE"
     WARN_KIND = "order_rev_stale"
+    PATCH_REFUSE_KIND = "patch_rev_stale_flying"
+    PATCH_NEXT = "hold"
     DETAIL = (
         "ORDER.rev staled every packet; of unpack --force --child-id <id> "
         "(scratch kept); or of next-wave; do not spawn"
+    )
+    PATCH_DETAIL = (
+        "of patch refused: flying spawn(s) would PacketRevStale every packet; "
+        "next: HOLD — continue existing packets. constraints before first pack. "
+        "rewrite: UNPACK --FORCE — of unpack --force --child-id <id> then of patch"
     )
 
     @staticmethod
@@ -1330,6 +1337,38 @@ class PacketRevStale:
             )
             return
         print(f"of: note — {msg}", file=sys.stderr)
+
+    @staticmethod
+    def launched_flying(root: Path, wave: int) -> list[dict[str, Any]]:
+        """Spawned + still flying. Packed-only leftover is not this tax."""
+        return [
+            pkt
+            for pkt in packed_children(root, wave)
+            if SpawnRecord.present(root, pkt) and SpawnRecord.flying(root, pkt)
+        ]
+
+    @staticmethod
+    def patch_refuse_msg(count: int, wave: int) -> str:
+        n = int(count)
+        w = int(wave)
+        return (
+            f"flying spawn(s) in wave {w}: {n}; "
+            "ORDER.rev bump PacketRevStales every packet. "
+            "next: HOLD — continue existing packets. "
+            "constraints before first pack. "
+            "rewrite: UNPACK --FORCE — of unpack --force --child-id <id> "
+            "then of patch"
+        )
+
+    @staticmethod
+    def refuse_patch(root: Path, wave: int) -> None:
+        flying = PacketRevStale.launched_flying(root, wave)
+        if not flying:
+            return
+        die(
+            PacketRevStale.patch_refuse_msg(len(flying), wave),
+            kind=PacketRevStale.PATCH_REFUSE_KIND,
+        )
 
 
 def complete_stale_wave_recoverable(
