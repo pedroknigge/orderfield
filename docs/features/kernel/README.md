@@ -142,6 +142,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.17 before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor. `#235`.
 - 0.8.17 at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store; do not pack/spawn. Stored yes → pack+spawn both before close. Stored no → contrast → `of close --checklist`. XOR / start-Yes pack fail teaching. After close: `of learn` / `--promote`, not the review-role ask. `EvaluatorPacket` speak names the stored-end run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor. `#235`.
 - 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse). 2+ open still dies. Reuses `bind_active_field` allow-None + `list_learnings(None)`. Proof: `LearnListClosedFields`. No new CLI / supervisor. `#231`.
+- After 0.8.19: implementer / `--owns-path` `status=done` with zero writes under owns-path or the recorded worktree since spawn cannot collect (`OwnedWrite`). Explorer / adversary / verifier without `--owns-path` skip. Artifact mtime, not status prose. No `of prove`. No VERSION bump. Proof: `OwnedWriteGate` / `SkillOwnedWrite`. `#251`.
 
 ## Contract boundaries
 

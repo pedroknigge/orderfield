@@ -79,6 +79,7 @@ def write_bound_residual(
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+    of.OwnedWrite.ensure(root, packet)
     return destination
 
 
