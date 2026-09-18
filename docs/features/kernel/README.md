@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.20. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.21. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.20` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.21` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -121,7 +121,8 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.20 mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD). Packed-only leftover still warns. Constraints before first pack. Proof: `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. `#253`.
 - 0.8.20 never chain pack|spawn|next-wave; one mutating verb per invocation; first pack stdout line is `--packet`. Proof: `SkillPackSpawnChain` / `SpawnPacketRequired`. `#255`.
 - 0.8.20 live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`). Pulse stays QUIET. Do not kill. Proof: `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `SkillLiveQuietStuck`. `#256`.
-- 0.8.20 pack WARNs when `--owns-path` does not cover slash-containing `--slice` paths (`owns_path_incomplete`) or an implementer omits `--owns-path` (`owns_path_empty`). Packet still written. Complements collect-time `OwnedWrite` (#251 / #252). Proof: `OwnsPathCoveragePack` / `SkillOwnsPathCoverage`. No new CLI / supervisor. `#257`.
+- 0.8.21 after wave settle (`in_flight=0` + printed `next`), execute that next; no poke; HITL only on kernel refuse / stored consent no / named init-time asks (`SkillWaveSettleAutoContinue`). Proof: `SkillWaveSettleAutoContinue` / `SkillSurface`. `#263`.
+- 0.8.21 pack WARNs when `--owns-path` does not cover slash-containing `--slice` paths (`owns_path_incomplete`) or an implementer omits `--owns-path` (`owns_path_empty`). Packet still written. Complements collect-time `OwnedWrite` (#251 / #252). Proof: `OwnsPathCoveragePack` / `SkillOwnsPathCoverage`. No new CLI / supervisor. `#257`.
 - 0.8.1 cited plan docs (`docs/plans/…`) stale vs last integrate print `docs_sync` WARN (`PlanDocSync`). Mode A patch or Mode B dump + ask. Not a close gate. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / supervisor.
 - 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.
