@@ -2082,6 +2082,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AdapterBalanceUnit",
     "tests.test_kernel.MutatingCommandsHonesty",
     "tests.test_kernel.SpawnLockRace",
+    "tests.test_kernel.PatchRevStaleFlying",
+    "tests.test_kernel.SkillPatchRevStaleFlying",
 )
 
 

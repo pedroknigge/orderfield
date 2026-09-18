@@ -1973,6 +1973,36 @@ class SkillRevStaleUnpack(unittest.TestCase):
         self.assertIn("class PacketRevStale:", source)
 
 
+class SkillPatchRevStaleFlying(unittest.TestCase):
+    """SKILL teaches mid-flight of patch refuse → HOLD. #253."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_patch_while_flying_hold(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("of patch", table)
+        self.assertIn("refuses", table)
+        self.assertIn("hold", table)
+        self.assertIn("constraints before first pack", table)
+        alias_fold = alias.casefold()
+        self.assertIn("of patch", alias_fold)
+        self.assertIn("refuses", alias_fold)
+        self.assertIn("hold", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("of patch", appendix_fold)
+        self.assertIn("refuse_patch", appendix_fold)
+        self.assertIn("hold", appendix_fold)
+        self.assertIn("before the first pack", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
+        self.assertIn("def refuse_patch(", source)
+        self.assertIn("PATCH_REFUSE_KIND", source)
+
+
 class SkillPostCloseTerminal(unittest.TestCase):
     """SKILL teaches successful close is terminal. #180."""
 

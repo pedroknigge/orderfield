@@ -4095,6 +4095,85 @@ class RevStaleDeadChild(unittest.TestCase):
         self.assertNotIn("can no longer be re-spawned", added.stderr)
 
 
+class PatchRevStaleFlying(unittest.TestCase):
+    """#253: of patch while a spawned child flies refuses; named next HOLD."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-patch-rev-stale-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _init_pack(self, *, spawn: bool) -> None:
+        r = run_of(
+            self.tmp, "init", "--mission", "patch while flying", "--phase", "build"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        added = run_of(
+            self.tmp, "spec", "--add", "PCH-001", "--text", "first slice"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement first",
+            "--role",
+            "implementer",
+            "--child-id",
+            "flyer",
+            "--owns-requirement",
+            "PCH-001",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        if spawn:
+            dest = (
+                self.tmp
+                / ".orderfield"
+                / "waves"
+                / "001"
+                / "spawns"
+                / "flyer.json"
+            )
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(
+                json.dumps(
+                    {"child_id": "flyer", "started_at": of.utc_now()},
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+    def test_patch_while_spawned_flying_refuses_and_names_hold(self) -> None:
+        self._init_pack(spawn=True)
+        before = load_json(self.tmp / ".orderfield" / "ORDER.json")["rev"]
+        patched = run_of(
+            self.tmp, "patch", "--constraints-add", "late constraint"
+        )
+        self.assertNotEqual(patched.returncode, 0, patched.stdout)
+        err = patched.stderr
+        self.assertIn(of.PacketRevStale.PATCH_REFUSE_KIND, err)
+        self.assertIn("next: HOLD", err)
+        self.assertIn("UNPACK --FORCE", err)
+        self.assertIn("constraints before first pack", err.casefold())
+        after = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(after["rev"], before)
+        self.assertNotIn("late constraint", after.get("constraints") or [])
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  HOLD", resumed.stdout)
+        self.assertNotIn("next\n  UNPACK --FORCE", resumed.stdout)
+
+    def test_packed_only_patch_warns_and_lands(self) -> None:
+        self._init_pack(spawn=False)
+        patched = run_of(
+            self.tmp, "patch", "--constraints-add", "packed leftover ok"
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        self.assertIn("stales 1 packet(s) in wave 1", patched.stderr)
+        order = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertIn("packed leftover ok", order.get("constraints") or [])
+
+
 class ResumeAfterProcessDeath(unittest.TestCase):
     """Spawn-host death leftovers: resume reconstructs wave 1. of eval --kernel."""
 

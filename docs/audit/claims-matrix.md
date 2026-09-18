@@ -19,6 +19,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Code rev:** VERSION `0.8.19`
 
 - [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); no new C-ID (honesty cap)
+- [x] #253: mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD); packed-only still warns; no VERSION bump; no new C-ID (honesty cap)
 
 
 ## Summary
@@ -351,6 +352,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-034/C-035 0.7.95: resume names `INTEGRATE --RECOMPUTE` on digest drift; `IntegrationDigest` omits spawn-owned residual keys; `#168`; `SkillResumeRecompute`; no new C-ID (honesty cap)
 - [x] 0.7.97: one VERSION / GitHub tag per proven invariant (`PackagingBump`; current heading needs `**Proof:**`; docs-only / unproven fail; anti 10-tags/day); `PackagingBumpDiscipline`; no new C-ID (honesty cap)
 - [x] 0.7.98: identity-stale + flying prints `UNPACK --FORCE` not spawn; `of spec --add` / `--amend` warns that the rev bump stales N packet(s) (`PacketRevStale`; #178); `RevStaleDeadChild` / `SkillRevStaleUnpack`; no new C-ID (honesty cap)
+- [x] #253: mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD); packed-only leftover still warns; `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`; no VERSION bump; no new C-ID (honesty cap)
 - [x] C-091 0.7.99: successful close is terminal (`CloseProof` + `ActiveField.release_closed` + pulse/status/doctor); not ACTIVE / not ALIVE / `spawn_blocked` cleared; `recovery/post-close-terminal`; no new C-ID (honesty cap)
 - [x] C-084/C-111 0.7.100: doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`; #181); not FAIL; not a close gate; `DoctorAuditPressure` / `SkillAuditPressure`; no new C-ID (honesty cap)
 - [x] C-111 0.7.101: leftover root ORDER.json SKEW names `migrate required` (FAIL); sibling fields without CLOSE are hygiene WARN; `#182`; `DoctorOnePassSkew` / `SkillDoctorOpenHygiene`; no new C-ID (honesty cap)

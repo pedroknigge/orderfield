@@ -41,6 +41,7 @@ from of.pack import (
     die_on_stale_packets,
     enforce_wave_child_caps,
     packed_children,
+    PacketRevStale,
     reconcile_children_spawned,
     require_packet_residual,
     truncate_slice,
@@ -524,6 +525,10 @@ def cmd_patch(args: argparse.Namespace) -> None:
             changed = True
     if not changed:
         die("nothing to patch")
+    state = load_state(root)
+    wave = int(state.get("wave") or 1)
+    PacketRevStale.refuse_patch(root, wave)
+    live_n = len(packed_children(root, wave))
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)
     write_phase_md(root, order)
@@ -549,6 +554,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
         print(json.dumps(summary, indent=2, ensure_ascii=False))
     # last line, so `... | tail -1` always answers "did it land, at what rev"
     print(f"rev={order['rev']}")
+    PacketRevStale.emit_note(live_n, wave)
 
 
 def cmd_next_wave(args: argparse.Namespace) -> None:

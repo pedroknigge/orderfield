@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: "v0.8.19 — Leader-owned disk plan. /orderfield or /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denied_actions are not escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE. Checklist → of contrast / of close / residual. Init: store end review. After close: of learn / --list. Before first pack: catalog, cheap vs frontier, same-harness vs mix once/field. Spawn --resume only with residual.session_id. of issue: --confirm/TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256 pin. Orca: stop+release after collect."
+description: "v0.8.19 — Leader disk plan. /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denials ≠ escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE; mid-flight patch refuses HOLD. Checklist → contrast / close / residual. Init: store end review. After close: learn/--list. Before first pack: constraints; catalog, cheap vs frontier, harness mix once/field. Spawn --resume needs residual.session_id. of issue: --confirm/TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256. Orca: stop+release after collect."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
@@ -49,7 +49,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | status=done residual | `artifact_sha:` + `rollback:` (`CloseEvidence`). Implementer/`--owns-path` needs a write under owns-path/worktree since spawn (`OwnedWrite`). Do not trust status. Not `of prove` |
 | residuals landed | collect+integrate → resume next `INTEGRATE` same turn. Report is not a stop. Do not wait for ok/pulse. Not a consent ask |
 | resume next `INTEGRATE --RECOMPUTE` | `of integrate --wave N --recompute` — report digest drifted; do not next-wave. Spawn `session_id` / `denied_actions` after integrate are not drift |
-| resume next `UNPACK --FORCE` | `of unpack --force --child-id <id>` — ORDER.rev staled packets; do not spawn. Spec `--add`/`--amend` warns |
+| resume next `UNPACK --FORCE` | `of unpack --force` — ORDER.rev stale; do not spawn. Mid-flight `of patch` refuses (HOLD). Constraints before first pack |
 | after successful `of phase` | `of next-wave` — just-integrated wave stays eligible; do not `--recompute` the prior wave |
 | empty current wave (no packets), `done_when` closed | `of phase <next>` — nothing to integrate; do not `--force`. Packets still require integrate |
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` plus `--add-dir <field-home>` and the exact Git common dir. Missing / malformed / non-Git records refuse before launch; remove then re-add the child worktree. No record → existing argv. |
