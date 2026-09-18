@@ -32,6 +32,10 @@ Stall cuts + agy argv honesty on the 0.8.18 line: `pulse --watch` exits when idl
 - **Reuse, not a new verb:** `PacketRevStale.refuse_patch` dies when `SpawnRecord.present` and `flying`. Named next is HOLD. Packed-only leftover still patches and warns. No `--confirm`. No VERSION bump (daily PackagingBump). No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach mid-flight `of patch` refuses (HOLD) and constraints before first pack.
 - **Proof:** `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. No new C-ID (honesty cap). `#253`.
+- **Reuse table (design-first):** `of spawn --packet` is already required. Pack already prints the packet path as the first stdout line. Tool-call discipline already requires the `of` verbs. The remaining gap is a leader `of pack && of spawn` (or `next-wave`) in one shell so a failing/partial/multi-line pack drops `--packet` or hits the wrong wave (`#255`).
+- **Reuse, not a mega-command:** skill teaching only. Never chain pack|spawn|next-wave; one mutating verb per invocation; parse the first pack stdout line as `--packet`. Argparse already names required `--packet` — no louder kernel line. No VERSION bump. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / `SkillSurface` markers teach the same wording. Core stays under the 20KB cap.
+- **Proof:** `SkillPackSpawnChain` (core/alias/appendix; no `of pack-and-spawn`). `SpawnPacketRequired` (spawn without `--packet` still names the flag). `SkillSurfaceCore`. No new C-ID (honesty cap). `#255`.
 - Packaging: VERSION 0.8.19; skill/alias description preview `v0.8.19 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.18 notes.
 
 ## 0.8.18

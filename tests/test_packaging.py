@@ -1783,6 +1783,63 @@ class SkillEscalateUnblock(unittest.TestCase):
         self.assertIn("ORDER.rev must exceed blocked_at_order_rev", wave)
 
 
+class SkillPackSpawnChain(unittest.TestCase):
+    """Never chain pack|spawn|next-wave in one shell. #255.
+
+    Reuse (design-first; written before the wording cut):
+
+    | Existing | Already covers | This cut |
+    |---|---|---|
+    | `spawn --packet` required | argparse names `--packet` | lock teaching; no louder kernel |
+    | pack first stdout line | `print(out_physical_rel)` | parse that line; do not `&&` |
+    | Tool-call discipline | same-turn `of` verbs | one mutating verb per invocation |
+    | SkillSurface core/appendix | hosts load the core | needles + packaging test |
+
+    Net-new surface: none. No mega-command. No VERSION bump (0.8.20 is #258).
+    Same turn may still pack then spawn as separate `of` processes.
+    """
+
+    CHAIN = "Never chain pack|spawn|next-wave"
+    VERB = "one mutating verb per invocation"
+    PACKET = "--packet"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_forbid_shell_chaining(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        self.assertIn(self.CHAIN, core)
+        self.assertIn(self.VERB, core)
+        self.assertIn("First pack line", core)
+        self.assertIn(self.PACKET, core)
+        alias_fold = alias.casefold()
+        self.assertIn("never chain pack|spawn|next-wave", alias_fold)
+        self.assertIn(self.VERB, alias_fold)
+        self.assertIn("first pack stdout line", alias_fold)
+        self.assertIn(self.PACKET, alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("never chain", appendix_fold)
+        self.assertIn("of pack && of spawn", appendix)
+        self.assertIn(self.VERB, appendix_fold)
+        self.assertIn("first stdout line", appendix_fold)
+        self.assertIn("no packet bound", appendix_fold)
+        self.assertIn("no mega-command", appendix_fold)
+        self.assertIn(self.CHAIN, SkillSurface.CORE_POINTERS)
+        self.assertIn("One mutating verb per invocation", SkillSurface.APPENDIX_MARKERS)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("of pack-and-spawn", fold, name)
+            self.assertNotIn("of chain", fold, name)
+
+
 class SkillDriveAfterIntegrate(unittest.TestCase):
     """After integrate, execute next same turn. Report is not a stop. #191."""
 

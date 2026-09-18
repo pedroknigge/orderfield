@@ -2436,5 +2436,18 @@ class MultiHarnessResidual(unittest.TestCase):
         self.assertTrue(dest.is_file())
 
 
+class SpawnPacketRequired(unittest.TestCase):
+    """of spawn without --packet already refuses. Lock, do not rewrite. #255."""
+
+    def test_spawn_without_packet_names_required_flag(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-spawn-no-packet-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(tmp, "spawn", "--adapter", "generic")
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        blob = (r.stderr + r.stdout).casefold()
+        self.assertIn("--packet", blob)
+        self.assertIn("required", blob)
+
+
 if __name__ == "__main__":
     unittest.main()
