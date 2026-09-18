@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.19. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.20. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.19` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.20` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -115,8 +115,12 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.7.99 successful close is terminal: not ACTIVE, pulse not ALIVE, `spawn_blocked` cleared. Proof: `PostCloseTerminal` / `recovery/post-close-terminal`. Nested return-to-parent stays. No new CLI / supervisor.
 - 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`); `of gc --audit` before close. Not FAIL. Not a close gate. Proof: `DoctorAuditPressure` / `SkillAuditPressure`. No new CLI / supervisor.
 - 0.7.101 leftover root ORDER.json SKEW prints `migrate required` (FAIL); two or more sibling homes open without CLOSE.json are hygiene WARN. Proof: `DoctorOnePassSkew` / `SkillDoctorOpenHygiene` / `recovery/doctor-one-pass-skew`. No new CLI / supervisor.
-- 0.8.19 pulse `--watch` exits when idle (`#243`); no STALE while `live_pid` (`#245`); SKILL pre-pack ask once/field (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`; `#256`). Proof: `PulseActivity` watch/idle + live_pid tests; `SkillHarnessAsk`; `AgyEffortArgv`; `SpawnPidLiveness.test_resume_names_live_quiet_stuck`; `SkillLiveQuietStuck`. No new CLI / supervisor. Same 0.6 line.
-- #253 mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD). Packed-only leftover still warns. Constraints before first pack. Proof: `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. No VERSION bump. No new CLI / supervisor.
+- 0.8.19 pulse `--watch` exits when idle (`#243`); no STALE while `live_pid` (`#245`); SKILL pre-pack ask once/field (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`). Proof: `PulseActivity` watch/idle + live_pid tests; `SkillHarnessAsk`; `AgyEffortArgv`. No new CLI / supervisor. Same 0.6 line.
+- 0.8.20 implementer / `--owns-path` `status=done` with zero writes under owns-path or the recorded worktree since spawn cannot collect (`OwnedWrite`). Explorer / adversary / verifier without `--owns-path` skip. Proof: `OwnedWriteGate` / `SkillOwnedWrite`. `#251`.
+- 0.8.20 after `escalate_up`, printed `next` names one `of patch --<flag>` (`rev` must exceed N) then `of next-wave` (`EscalateUnblock`). Flying spawned: HOLD / collect then patch. Proof: `EscalateUnblockNext` / `SkillEscalateUnblock`. `#254`.
+- 0.8.20 mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD). Packed-only leftover still warns. Constraints before first pack. Proof: `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. `#253`.
+- 0.8.20 never chain pack|spawn|next-wave; one mutating verb per invocation; first pack stdout line is `--packet`. Proof: `SkillPackSpawnChain` / `SpawnPacketRequired`. `#255`.
+- 0.8.20 live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`). Pulse stays QUIET. Do not kill. Proof: `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `SkillLiveQuietStuck`. `#256`.
 - 0.8.1 cited plan docs (`docs/plans/…`) stale vs last integrate print `docs_sync` WARN (`PlanDocSync`). Mode A patch or Mode B dump + ask. Not a close gate. Proof: `DoctorPlanDocSync` / `SkillPlanDocSync` / `recovery/plan-doc-sync`. No new CLI / supervisor.
 - 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.
@@ -143,7 +147,6 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.17 before FACTIBLE / close on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. F covers the occupancy window. CUMPLE-with-bed-overlap fixture fails. Proof: `SkillArtifactProve`. No `of prove`. No new CLI / supervisor. `#235`.
 - 0.8.17 at init ask once "At the end, run fresh-context adversary + verifier (both)?" Store; do not pack/spawn. Stored yes → pack+spawn both before close. Stored no → contrast → `of close --checklist`. XOR / start-Yes pack fail teaching. After close: `of learn` / `--promote`, not the review-role ask. `EvaluatorPacket` speak names the stored-end run. Proof: `SkillEvaluatorPacket` / `EvaluatorPacketProof`. Not a new close gate. No new CLI / supervisor. `#235`.
 - 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse). 2+ open still dies. Reuses `bind_active_field` allow-None + `list_learnings(None)`. Proof: `LearnListClosedFields`. No new CLI / supervisor. `#231`.
-- After 0.8.19: implementer / `--owns-path` `status=done` with zero writes under owns-path or the recorded worktree since spawn cannot collect (`OwnedWrite`). Explorer / adversary / verifier without `--owns-path` skip. Artifact mtime, not status prose. No `of prove`. No VERSION bump. Proof: `OwnedWriteGate` / `SkillOwnedWrite`. `#251`.
 
 ## Contract boundaries
 

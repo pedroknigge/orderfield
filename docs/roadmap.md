@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.19. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.20. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,19 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.19`
+**Status:** Shipped · **Current release line:** `0.8.20`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.20 — OwnedWrite; EscalateUnblock; mid-flight patch refuse; never-chain; LiveQuietStuck
+
+Landed on main after the published v0.8.19 tag (`4ebb4d5`, #250) while still claiming 0.8.19 lockstep.
+
+- Implementer / `--owns-path` `status=done` with zero writes under owns-path or the recorded worktree since spawn cannot collect (`OwnedWrite`). Explorer / adversary / verifier without `--owns-path` skip. Proof: `OwnedWriteGate` / `SkillOwnedWrite`. `#251`.
+- After `escalate_up`, printed `next` names one `of patch --<flag>` (`rev` must exceed N) then `of next-wave` (`EscalateUnblock`). Flying spawned: HOLD / collect then patch. Proof: `EscalateUnblockNext` / `SkillEscalateUnblock`. `#254`.
+- Mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD). Packed-only leftover still warns. Proof: `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. `#253`.
+- Never chain pack|spawn|next-wave; one mutating verb per invocation; first pack stdout line is `--packet`. Proof: `SkillPackSpawnChain` / `SpawnPacketRequired`. `#255`.
+- Live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`). Pulse stays QUIET. Do not kill. Proof: `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `SkillLiveQuietStuck`. `#256`.
 
 ## 0.8.18 — learn --list without an open field
 

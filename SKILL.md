@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.19 — Leader disk plan. /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denials ≠ escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE; mid-flight patch refuses HOLD. Checklist → contrast / close / residual. Init: store end review. After close: learn/--list. Before first pack: constraints; catalog, cheap vs frontier, harness mix once/field. Spawn --resume needs residual.session_id. of issue: --confirm/TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256. Orca: stop+release after collect."
+description: "v0.8.20 — Leader disk plan. /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denials ≠ escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE; mid-flight patch refuses HOLD. Checklist → contrast / close / residual. Init: store end review. After close: learn/--list. Before first pack: constraints; catalog, cheap vs frontier, harness mix once/field. Spawn --resume needs residual.session_id. of issue: --confirm/TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256. Orca: stop+release after collect."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.19"
+  version: "0.8.20"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
