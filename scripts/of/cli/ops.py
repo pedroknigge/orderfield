@@ -24,6 +24,7 @@ from of_adapters import (
     AdapterHints,
     OperatorAction,
     HostMcp,
+    SpawnAdapterMissing,
     detect_adapters,
     pick_adapter,
 )
@@ -660,6 +661,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         else:
             hint = "set OF_AGENT" if row["name"] == "generic" else "not on PATH"
             print(AdapterDetect.doctor_line(row, version="-", hint=hint))
+    if SpawnAdapterMissing.of(AdapterDetect.inventory(detected, picked)):
+        print(f"  next          {SpawnAdapterMissing.LABEL}")
+        print(f"  {SpawnAdapterMissing.DETAIL}")
     print("trust")
     print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
     print(f"  profiles      {', '.join(TRUST_PROFILES)}")
@@ -1913,7 +1917,8 @@ def resume_next_lines(
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
             "SPAWN",
-            "packed children have no spawn record; of spawn / of handoff — do not wait as if running",
+            "packed children have no spawn record; of spawn if detect present; "
+            "of handoff --packet is not a spawned child wave — do not wait as if running",
         ),
         "handoff": (
             "HANDOFF",

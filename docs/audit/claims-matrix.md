@@ -18,7 +18,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Auditor:** documentation-manager
 **Code rev:** VERSION `0.8.21`
 
-- [x] 0.8.21: wave-settle auto-continue no poke (`#263`; `SkillWaveSettleAutoContinue`; C-025); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`); no new C-ID (honesty cap)
+- [x] 0.8.21: wave-settle auto-continue no poke (`#263`; `SkillWaveSettleAutoContinue`; C-025); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`); present:none HOLD / second-pack WARN + implicit spawn refuse (`SpawnAdapterMissing`; `#273`); no new C-ID (honesty cap)
 - [x] 0.8.20: OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); live pid + long QUIET names HITL HOLD (`LiveQuietStuck`; `#256`); no new C-ID (honesty cap)
 - [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); no new C-ID (honesty cap)
 
@@ -81,7 +81,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | C-006 | Grok headless `-p`; `--always-approve` only under `OF_TRUST=yolo` | adapters / CHANGELOG | grok argv + `YOLO_FLAGS` | `scripts/of_adapters.py` | `build_spawn_argv` / `trust_flags` | — | critical | OK | patched; 0.6.7 trust |
 | C-007 | Codex `exec`; `--dangerously-bypass-approvals-and-sandbox` only under `OF_TRUST=yolo` (never `--full-auto`) | adapters / CHANGELOG | codex argv + `YOLO_FLAGS` | `scripts/of_adapters.py` | `build_spawn_argv` / `trust_flags` | — | critical | OK | patched; 0.6.7 trust |
 | C-008 | `install.sh` symlinks `of` to **installed** skill copy | CHANGELOG / adapters | `of_bin_dirs` / link to dest `scripts/of.py` | `install.sh` | | — | critical | OK | keep |
-| C-009 | Detect lists harness CLIs on PATH as present/missing plus `honesty: PATH≠auth (Partial)`; never `auth=ok` | README / adapters / SKILL | `AdapterDetect` / `cmd_detect` / doctor adapters | `scripts/of_adapters.py` / `scripts/of/cli/ops.py` | `AdapterDetect` / `cmd_detect` | — | normal | OK | 0.7.60 |
+| C-009 | Detect lists harness CLIs on PATH as present/missing plus `honesty: PATH≠auth (Partial)`; never `auth=ok`; present:none names HOLD, WARNs a second pack, and refuses implicit spawn (`SpawnAdapterMissing`) | README / adapters / SKILL | `AdapterDetect` / `SpawnAdapterMissing` / `cmd_detect` / doctor adapters | `scripts/of_adapters.py` / `scripts/of/cli/ops.py` / `scripts/of/cli/wave.py` | `AdapterDetect` / `SpawnAdapterMissing` / `cmd_detect` | — | normal | OK | 0.7.60; #273 |
 | C-010 | Pack is cap surface (`max_children`, `spawn_blocked`) | SKILL | `cmd_pack` / `spawn_is_blocked` | `scripts/of/cli/wave.py` / `scripts/of/pack.py` | `cmd_pack` | — | critical | OK | keep |
 | C-011 | PATH via install → installed skill `of` | README.md | `install.sh` of symlink | `install.sh` | | — | critical | OK | keep |
 | C-012 | Cursor prompt is reference-load | adapters.md | `render_prompt` | `scripts/of/pack.py` | `render_prompt` | — | critical | OK | keep |

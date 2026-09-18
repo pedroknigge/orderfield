@@ -2036,6 +2036,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.ModelCatalogHonesty",
     "tests.test_kernel.AdapterDetectHonesty",
     "tests.test_kernel.AdapterDetectCli",
+    "tests.test_kernel.SpawnAdapterMissingGate",
+    "tests.test_kernel.SkillSpawnAdapterMissing",
     "tests.test_kernel.StreamJsonParse",
     "tests.test_kernel.PulseProgressAppend",
     "tests.test_kernel.StreamJsonSpawn",

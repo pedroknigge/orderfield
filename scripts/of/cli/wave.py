@@ -22,6 +22,7 @@ from of_adapters import (
     AdapterResume,
     AgyDeniedActions,
     CodexWorktree,
+    SpawnAdapterMissing,
     StreamJson,
     build_spawn_argv,
     missing_tools,
@@ -549,6 +550,12 @@ def cmd_pack(args: argparse.Namespace) -> None:
     ]
     owns_paths = require_owns_paths(root, owns_paths_raw) if owns_paths_raw else []
     live = packed_children(root, int(wave))
+    for kind, message in SpawnAdapterMissing.pack_notes(len(live)):
+        emit_wave_warning(
+            kind,
+            message,
+            plain=f"of: note — {message}",
+        )
     implementers = [p for p in live if p.get("role") == "implementer"]
     if args.role == "implementer" and implementers:
         if not owns_paths:
@@ -918,6 +925,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if blocked:
         die(why)
     adapter = pick_adapter(args.adapter, order.get("harness"))
+    SpawnAdapterMissing.refuse_implicit_spawn(
+        explicit=getattr(args, "adapter", None),
+        picked=adapter,
+    )
     child_id = require_child_id(packet.get("child_id"), "packet child_id")
     wave = packet.get("wave") or state["wave"]
     profile = resolve_trust_profile()

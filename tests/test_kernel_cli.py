@@ -1312,6 +1312,181 @@ class AdapterDetectCli(unittest.TestCase):
         self.assertNotIn("auth=ok", r.stdout)
 
 
+class SpawnAdapterMissingGate(unittest.TestCase):
+    """Zero-adapter host cannot look like a successful multi-agent spawn wave. #273."""
+
+    def _empty_env(self, tmp: Path) -> dict[str, str]:
+        bindir = tmp / "empty-bin"
+        bindir.mkdir()
+        env = os.environ.copy()
+        env["PATH"] = str(bindir)
+        env["HOME"] = str(tmp / "home")
+        env["OF_NO_UPDATE_CHECK"] = "1"
+        env["OF_LEARNINGS"] = str(tmp / "learnings.json")
+        env.pop("OF_ADAPTER", None)
+        env.pop("OF_AGENT", None)
+        (tmp / "home").mkdir()
+        return env
+
+    def _init(self, tmp: Path, env: dict[str, str]) -> None:
+        init = subprocess.run(
+            [sys.executable, str(OF_PY), "init", "--mission", "m", "--phase", "explore"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+
+    def _pack(
+        self,
+        tmp: Path,
+        env: dict[str, str],
+        child_id: str,
+        role: str = "explorer",
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "pack",
+                "--slice",
+                f"map {child_id}",
+                "--role",
+                role,
+                "--child-id",
+                child_id,
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+    def test_refuse_only_silent_generic_fallthrough(self) -> None:
+        empty = of.AdapterDetect.inventory(
+            {name: None for name in of.ADAPTER_ORDER}, "generic"
+        )
+        self.assertTrue(of.SpawnAdapterMissing.of(empty))
+        with self.assertRaises(SystemExit):
+            of.SpawnAdapterMissing.refuse_implicit_spawn(
+                explicit=None, picked="generic", rows=empty
+            )
+        of.SpawnAdapterMissing.refuse_implicit_spawn(
+            explicit="claude", picked="claude", rows=empty
+        )
+        of.SpawnAdapterMissing.refuse_implicit_spawn(
+            explicit="generic", picked="generic", rows=empty
+        )
+        self.assertEqual(of.SpawnAdapterMissing.pack_notes(0, rows=empty), [])
+        notes = of.SpawnAdapterMissing.pack_notes(1, rows=empty)
+        self.assertEqual(notes[0][0], of.SpawnAdapterMissing.KIND)
+
+    def test_none_present_and_detect_names_hold(self) -> None:
+        detected = {name: None for name in of.ADAPTER_ORDER}
+        self.assertTrue(of.AdapterDetect.none_present(
+            of.AdapterDetect.inventory(detected, "generic")
+        ))
+        detected["claude"] = "/tmp/claude"
+        self.assertFalse(of.AdapterDetect.none_present(
+            of.AdapterDetect.inventory(detected, "claude")
+        ))
+        tmp = Path(tempfile.mkdtemp(prefix="of-detect-none-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = self._empty_env(tmp)
+        proc = subprocess.run(
+            [sys.executable, str(OF_PY), "detect"],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("present: none", proc.stdout)
+        self.assertIn("next: HOLD", proc.stdout)
+        self.assertIn(of.SpawnAdapterMissing.DETAIL, proc.stdout)
+        self.assertNotIn("mode=handoff", proc.stdout)
+
+    def test_second_pack_and_implicit_spawn_refuse(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-zero-adapter-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = self._empty_env(tmp)
+        self._init(tmp, env)
+        first = self._pack(tmp, env, "e1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        pkt1 = tmp / ".orderfield" / "waves" / "001" / "packets" / "e1.json"
+        self.assertTrue(pkt1.is_file(), first.stdout)
+        second = self._pack(tmp, env, "e2")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn(of.SpawnAdapterMissing.KIND, second.stderr)
+        self.assertIn(of.SpawnAdapterMissing.PACK_WARN, second.stderr)
+        pkt2 = tmp / ".orderfield" / "waves" / "001" / "packets" / "e2.json"
+        self.assertTrue(pkt2.is_file(), second.stdout)
+        implicit2 = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--packet",
+                ".orderfield/waves/001/packets/e2.json",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertNotEqual(implicit2.returncode, 0, implicit2.stdout)
+        self.assertNotIn("mode=handoff", implicit2.stdout)
+        implicit = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--packet",
+                ".orderfield/waves/001/packets/e1.json",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertNotEqual(implicit.returncode, 0, implicit.stdout)
+        self.assertIn(of.SpawnAdapterMissing.SPAWN_REFUSE, implicit.stderr)
+        self.assertNotIn("mode=handoff", implicit.stdout)
+        self.assertNotIn("mode=handoff", implicit.stderr)
+        spawn_dir = tmp / ".orderfield" / "waves" / "001" / "spawns"
+        self.assertFalse(
+            spawn_dir.exists() and any(spawn_dir.iterdir()),
+            "implicit spawn must not write spawn metadata",
+        )
+
+    def test_explicit_generic_stays_paste_handoff(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-generic-explicit-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        env = self._empty_env(tmp)
+        self._init(tmp, env)
+        first = self._pack(tmp, env, "g1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        spawned = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "spawn",
+                "--adapter",
+                "generic",
+                "--packet",
+                ".orderfield/waves/001/packets/g1.json",
+            ],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stderr)
+        self.assertIn("mode=handoff", spawned.stdout)
+        self.assertNotIn("ok=True", spawned.stdout)
+
+
 class DoctorCommand(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-doctor-"))

@@ -4,7 +4,7 @@ Each harness has different headless flags. Mixing them silently escalates trust.
 
 Spawn, wait, kill, share translate through `scripts/of_adapters.py`. Detect order, reference-load vs inline, kernel vs harness for Qwen.
 
-`of spawn --adapter <name>` matches this file. PATH is not login.
+`of spawn --adapter <name>` matches this file. PATH is not login. `of detect` present:none is HOLD (`SpawnAdapterMissing`): a second pack WARNs and implicit spawn refuses. Explicit `--adapter generic` without `OF_AGENT` stays paste-handoff. Handoff-to-self is not a spawned child wave.
 
 A cut, a resume, a different model — the argv table still holds. The results do not have to change.
 

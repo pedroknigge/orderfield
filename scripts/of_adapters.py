@@ -557,6 +557,17 @@ class AdapterDetect:
         return [str(row["name"]) for row in rows if row.get("status") == status]
 
     @staticmethod
+    def present_names(
+        rows: list[dict[str, Any]] | None = None,
+    ) -> list[str]:
+        rows = AdapterDetect.inventory() if rows is None else rows
+        return AdapterDetect.names(rows, AdapterDetect.PRESENT)
+
+    @staticmethod
+    def none_present(rows: list[dict[str, Any]] | None = None) -> bool:
+        return not AdapterDetect.present_names(rows)
+
+    @staticmethod
     def detect_lines(rows: list[dict[str, Any]] | None = None) -> list[str]:
         rows = AdapterDetect.inventory() if rows is None else rows
         lines: list[str] = []
@@ -571,10 +582,13 @@ class AdapterDetect:
             )
         present = AdapterDetect.names(rows, AdapterDetect.PRESENT)
         missing = AdapterDetect.names(rows, AdapterDetect.MISSING)
-        lines.append(f"present: {','.join(present) or '-'}")
+        lines.append(f"present: {','.join(present) or 'none'}")
         lines.append(f"missing: {','.join(missing) or '-'}")
         lines.append(f"honesty: {AdapterDetect.HONESTY} (Partial)")
         lines.append(f"default: {picked}")
+        if SpawnAdapterMissing.of(rows):
+            lines.append(f"next: {SpawnAdapterMissing.LABEL}")
+            lines.append(SpawnAdapterMissing.DETAIL)
         return lines
 
     @staticmethod
@@ -586,6 +600,81 @@ class AdapterDetect:
             f"version={version}{extra}  "
             f"auth={row['auth']}  ready={row['ready']}"
         )
+
+
+class SpawnAdapterMissing:
+    """Zero PATH adapters and no OF_AGENT. Named next, not silent handoff.
+
+    Implicit ``of spawn`` (pick fell to generic) refuses. Explicit
+    ``--adapter generic`` / ``OF_ADAPTER=generic`` stays the paste path.
+    A second ``of pack`` in the wave WARNs (pack is also Agent/handoff).
+    Detect names HOLD. Handoff-to-self is not a spawned child wave.
+    Not a supervisor.
+    """
+
+    KIND = "spawn_adapter_missing"
+    ACTION = "hold"
+    LABEL = "HOLD"
+    DETAIL = (
+        "no adapter on PATH; of detect then install a CLI or "
+        "OF_AGENT=... --adapter generic; of handoff --packet is "
+        "same-session or native Agent — not a spawned child wave"
+    )
+    PACK_WARN = (
+        "no adapter on PATH (spawn_adapter_missing); a second packed "
+        "child cannot spawn. of detect then install a CLI or "
+        "OF_AGENT=... --adapter generic. of handoff --packet is "
+        "same-session or native Agent — not a spawned child wave"
+    )
+    SPAWN_REFUSE = (
+        "no adapter on PATH; HOLD: of detect then install a CLI or "
+        "OF_AGENT=... --adapter generic. implicit spawn is not "
+        "handoff-to-self. of spawn --adapter generic is the paste "
+        "path; of handoff --packet is same-session or native Agent — "
+        "not a spawned child wave"
+    )
+
+    @staticmethod
+    def of(rows: list[dict[str, Any]] | None = None) -> bool:
+        return AdapterDetect.none_present(rows)
+
+    @staticmethod
+    def next_lines() -> list[str]:
+        return [SpawnAdapterMissing.LABEL, SpawnAdapterMissing.DETAIL]
+
+    @staticmethod
+    def explicit_generic(explicit: str | None) -> bool:
+        if (explicit or "").strip() == "generic":
+            return True
+        return (os.environ.get("OF_ADAPTER") or "").strip() == "generic"
+
+    @staticmethod
+    def pack_notes(
+        already: int, rows: list[dict[str, Any]] | None = None
+    ) -> list[tuple[str, str]]:
+        if already < 1 or not SpawnAdapterMissing.of(rows):
+            return []
+        return [(SpawnAdapterMissing.KIND, SpawnAdapterMissing.PACK_WARN)]
+
+    @staticmethod
+    def refuse_implicit_spawn(
+        *,
+        explicit: str | None,
+        picked: str,
+        rows: list[dict[str, Any]] | None = None,
+    ) -> None:
+        if not SpawnAdapterMissing.of(rows):
+            return
+        if SpawnAdapterMissing.explicit_generic(explicit):
+            return
+        if (explicit or "").strip():
+            return
+        env = (os.environ.get("OF_ADAPTER") or "").strip()
+        if env and env != "generic":
+            return
+        if picked != "generic":
+            return
+        die(SpawnAdapterMissing.SPAWN_REFUSE)
 
 
 class AdapterBalance:

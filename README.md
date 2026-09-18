@@ -319,7 +319,7 @@ of spawn --adapter generic --packet PACKET.json
 # paste it into any agent; the child writes the residual JSON
 ```
 
-If `of detect` finds nothing, the default adapter **is** generic.
+If `of detect` finds nothing (`present: none`), implicit spawn **refuses** and a second pack WARNs (`SpawnAdapterMissing` / HOLD). Explicit `--adapter generic` without `OF_AGENT` stays the paste-handoff path. That is same-session, not a spawned child wave. Cloud hosts with no CLI are single-session only.
 
 Every adapter (generic included) honours `OF_TRUST` — `conservative` (default) adds no escalation flag anywhere; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` is the only bypass and is never implied. `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`), not silent defaults — spawn speaks and records them; the skill must ask first. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). agy/grok spawn isolate host global MCP by default (`HostMcp`); `OF_SPAWN_MCP=inherit` opts in (ask). `of pulse` prints `cpu=` on `no writes yet` when a live pid exists. Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
 
