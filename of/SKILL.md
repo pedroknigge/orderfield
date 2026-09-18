@@ -47,7 +47,7 @@ Webhook HMAC signature + replay is pair-shaped: accept a valid delivery AND reje
 
 Timeout, idempotency, health, and version IDs are public-surface VERIFIED_CONTRACT (not closable on VERIFIED_INTERNAL). Idempotency stays PAIR (`--both-sides`). Timeout/health/version: exercise the bound / `/health` / `/version` or a release header at the surface. `ContractSurface` names the shapes. A mis-declared default-contract ID that was never public is `of spec --surface internal ID` (WAL records REQUIREMENTS) — not `--supersede` (that shrinks coverage). `--surface` without `--add` or ID refuses. Not a health monitor. Not a timeout supervisor. Not a version server. Follow the sibling.
 
-`status=done` close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions. `CloseEvidence`. Collect refuses a missing or mismatched hash and a slogan rollback. Slice done is still not SPEC closed. Follow the sibling.
+`status=done` needs `artifact_sha:` + `rollback:` (`CloseEvidence`); implementer/`--owns-path` also a write under owns-path/worktree since spawn (`OwnedWrite`). Do not trust status. Not `of prove`. Follow the sibling.
 
 Production mode: the sibling appendix **Production mode** names Gate A before `--role implementer`. Use the full verb table. Prod§15: name a repo-relative runbook path in `done_when` before close; close refuse without it. Never invent a process supervisor, bot org, `RUNTIME_OWNERSHIP`, `--tokens`, or `of merge`. Follow the sibling.
 

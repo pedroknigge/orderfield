@@ -2315,6 +2315,32 @@ class SkillCloseEvidence(unittest.TestCase):
         self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
 
 
+class SkillOwnedWrite(unittest.TestCase):
+    """SKILL teaches implementer done needs an owned write. Do not trust status."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_name_owned_write(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("ownedwrite", table.replace(" ", "").replace("`", ""))
+        self.assertIn("do not trust status", table)
+        self.assertIn("not `of prove`", table)
+        alias_fold = alias.casefold()
+        self.assertIn("ownedwrite", alias_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("do not trust status", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("ownedwrite", appendix_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("owned_write_missing", appendix_fold)
+        self.assertIn("do not cumple-wash", appendix_fold)
+        self.assertIn("do not trust status", appendix_fold)
+        self.assertIn("not `of prove`", appendix_fold)
+
+
 class SkillContractSurface(unittest.TestCase):
     """SKILL teaches timeout / idempotency / health / version as VERIFIED_CONTRACT."""
 

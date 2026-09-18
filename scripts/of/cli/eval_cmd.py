@@ -38,6 +38,7 @@ from of.field import (
 from of.pack import (
     PACKET_IDENTITY_FIELDS,
     CloseEvidence,
+    OwnedWrite,
     packet_digest,
 )
 from of.cli.spec_cmd import CloseProof
@@ -161,6 +162,8 @@ class EvalInvariantSetup:
         dest = root / str(packet["residual_path"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         dump_json(dest, residual)
+        if status == "done":
+            OwnedWrite.ensure(root, packet)
 
     @staticmethod
     def setup_pack_exclusivity(root: Path) -> None:
@@ -2069,7 +2072,9 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.RequirementSurfaceReclassify",
     "tests.test_kernel.SkillRequirementSurface",
     "tests.test_kernel.CloseEvidenceGate",
+    "tests.test_kernel.OwnedWriteGate",
     "tests.test_kernel.SkillCloseEvidence",
+    "tests.test_kernel.SkillOwnedWrite",
     "tests.test_kernel.SkillLivingMap",
     "tests.test_kernel.LivingMapGate",
     "tests.test_kernel.SkillHarnessMixPlaybook",

@@ -180,6 +180,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 ## 0.7.81 — close evidence requires artifact SHA + rollback
 
 - `status=done` residual close evidence must name `artifact_sha` (sha256 of `result_ref` bytes) and `rollback:` a command (`CloseEvidence`). Captions and mismatched hashes cannot collect. Threshold/blocked skip. No new schema key. Not a second close doctrine. Proof: `CloseEvidenceGate` / `SkillCloseEvidence`. Not a new CLI. Not a new regime.
+- Implementer / `--owns-path` `status=done` with zero writes under owns-path or the recorded worktree since spawn cannot collect (`OwnedWrite`). Explorer / adversary / verifier without `--owns-path` skip. Artifact mtime, not status prose. No `of prove`. Proof: `OwnedWriteGate` / `SkillOwnedWrite`. `#251`. Not a new CLI. Not a new regime.
 
 ## 0.7.80 — timeout / idempotency / health as VERIFIED_CONTRACT
 

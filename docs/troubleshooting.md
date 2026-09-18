@@ -43,7 +43,7 @@ of integrate --wave N
 
 **Symptom:** collect reports `must match canonical packet` or `done result_ref must be an existing path under the project`.
 
-**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of those bytes) and `rollback:` a command (`CloseEvidence`); captions and mismatched hashes die.
+**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of those bytes) and `rollback:` a command (`CloseEvidence`); captions and mismatched hashes die. Implementer / `--owns-path` `status=done` must also write at least one file under those paths or the recorded worktree since spawn (`OwnedWrite`); collect names `owned_write_missing` when the tree is empty. Explorer / adversary / verifier without `--owns-path` may touch zero product files.
 
 ## Missing residual / collect exit 2
 
