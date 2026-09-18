@@ -2147,6 +2147,39 @@ class DoctorOverBudgetSpawn(unittest.TestCase):
         self.assertNotIn("SIGKILL", spawn)
         self.assertNotIn("os.killpg", spawn)
 
+    def test_doctor_names_idle_forever_within_budget(self) -> None:
+        """#256: live + pulse-stale age WARNs unbounded inside a large budget."""
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field, do not choose the phase",
+            "--role",
+            "explorer",
+            "--child-id",
+            "hung",
+            "--seconds",
+            "7200",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        started = time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 31 * 60)
+        )
+        self._plant("hung", pid=os.getpid(), started_at=started)
+        lines, warn = of.DoctorSkew.over_budget(self.tmp)
+        self.assertTrue(warn)
+        joined = "\n".join(lines)
+        self.assertIn(of.SpawnRecord.UNBOUNDED, joined)
+        self.assertIn(f"pid={os.getpid()}", joined)
+        r = self._doctor()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertIn(of.SpawnRecord.UNBOUNDED, r.stdout)
+        self.assertIn("not a supervisor", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+
 
 class QwenHarnessEnum(unittest.TestCase):
     def test_order_schema_harness_enum_matches_adapter_order(self) -> None:

@@ -40,6 +40,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillEvaluatorPacket,
     SkillOrcaWorkerTeardown,
     SkillForceSpawnPid,
+    SkillLiveQuietStuck,
     SkillProductionMode,
     SkillSurfaceCore,
     SkillContractSurface,

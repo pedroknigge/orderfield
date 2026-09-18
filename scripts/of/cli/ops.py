@@ -36,9 +36,11 @@ from of.field import (
     PROTOCOL_WRITABLE_KEY,
     PUBLIC_SCHEMA_FILES,
     PULSE_STALE_MINUTES,
+    child_pulse_age,
     child_pulse_verdict,
     CollectReady,
     DeadStartedOnly,
+    LiveQuietStuck,
     SpawnRecord,
     PYTHON_FLOOR,
     _read_json_object,
@@ -960,7 +962,13 @@ class InFlightSignal:
             "parked_reason": parked_reason(root, pkt),
             "progress": PulseProgress.lines(root, pkt),
         }
-        over = SpawnRecord.over_budget(SpawnRecord.load(root, pkt), pkt)
+        now = time.time()
+        over = SpawnRecord.over_budget(
+            SpawnRecord.load(root, pkt),
+            pkt,
+            now=now,
+            age_s=child_pulse_age(root, pkt, now),
+        )
         if over is not None:
             row["over_budget"] = over["kind"]
         return row
@@ -1891,6 +1899,12 @@ def resume_next_lines(
         "hold",
     ):
         return EscalateUnblock.next_lines(root, state, flying)
+    if (
+        action == LiveQuietStuck.ACTION
+        and root is not None
+        and LiveQuietStuck.of(root, flying or [])
+    ):
+        return LiveQuietStuck.next_lines()
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (

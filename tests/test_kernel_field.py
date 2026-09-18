@@ -4642,6 +4642,7 @@ class SpawnPidLiveness(unittest.TestCase):
         self.assertIn("continue existing packets; do not repack", resumed.stdout)
         self.assertNotIn("--force-spawn", resumed.stdout)
         self.assertNotIn("SPAWN --FORCE", resumed.stdout)
+        self.assertNotIn(of.LiveQuietStuck.DETAIL, resumed.stdout)
         forced = run_of(
             self.tmp,
             "spawn",
@@ -4709,6 +4710,22 @@ class SpawnPidLiveness(unittest.TestCase):
         }
         self.assertIsNone(of.SpawnRecord.over_budget(fresh, packet))
 
+    def test_over_budget_idle_forever_within_budget(self) -> None:
+        """#256: live + pulse-stale age is unbounded even inside budget."""
+        packet = {"child_id": "hung", "budget": {"seconds": 7200}}
+        live = {
+            "child_id": "hung",
+            "started_at": of.utc_now(),
+            "pid": os.getpid(),
+        }
+        self.assertIsNone(of.SpawnRecord.over_budget(live, packet))
+        row = of.SpawnRecord.over_budget(live, packet, age_s=31 * 60)
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["kind"], of.SpawnRecord.UNBOUNDED)
+        dead = {"child_id": "hung", "started_at": of.utc_now()}
+        self.assertIsNone(of.SpawnRecord.over_budget(dead, packet, age_s=31 * 60))
+
     def test_status_names_over_budget(self) -> None:
         self._pack("late", seconds=60)
         self._spawn_meta("late", started_at="2018-01-01T00:00:00Z")
@@ -4722,6 +4739,72 @@ class SpawnPidLiveness(unittest.TestCase):
             doc["in_flight_detail"][0]["over_budget"],
             of.SpawnRecord.DEAD_WITHOUT_METADATA,
         )
+
+    def test_resume_names_live_quiet_stuck(self) -> None:
+        """#256: live pid + old activity + no residual names HITL HOLD."""
+        self._pack("hung", seconds=7200)
+        self._spawn_meta(
+            "hung",
+            pid=os.getpid(),
+            started_at="2018-01-01T00:00:00Z",
+        )
+        pkt = {"child_id": "hung", "wave": 1}
+        self.assertTrue(of.SpawnRecord.unsettled(self.tmp, pkt))
+        self.assertIsNotNone(
+            of.SpawnRecord.live_pid(of.SpawnRecord.load(self.tmp, pkt))
+        )
+        self.assertTrue(
+            of.LiveQuietStuck.of(self.tmp, [load_json(
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "hung.json"
+            )])
+        )
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  HOLD", resumed.stdout)
+        self.assertIn(of.LiveQuietStuck.DETAIL, resumed.stdout)
+        self.assertNotIn("continue existing packets; do not repack", resumed.stdout)
+        self.assertNotIn("next\n  PACK", resumed.stdout)
+        self.assertNotIn("next\n  HANDOFF", resumed.stdout)
+        pulse = run_of(self.tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stdout + pulse.stderr)
+        self.assertIn("QUIET", pulse.stdout)
+        self.assertNotIn("STALE", pulse.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn(of.LiveQuietStuck.DETAIL, status.stdout)
+        self.assertIn("over_budget=unbounded", status.stdout)
+        machine = run_of(self.tmp, "status", "--json")
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        doc = json.loads(machine.stdout.strip().splitlines()[0])
+        self.assertEqual(doc["next"], "hold")
+        self.assertEqual(doc["next_label"], of.LiveQuietStuck.LABEL)
+        self.assertEqual(doc["next_detail"], of.LiveQuietStuck.DETAIL)
+        self.assertEqual(
+            doc["in_flight_detail"][0]["over_budget"],
+            of.SpawnRecord.UNBOUNDED,
+        )
+        forced = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            ".orderfield/waves/001/packets/hung.json",
+            "--force-spawn",
+            extra_env={"OF_AGENT": str(self._agent())},
+        )
+        self.assertNotEqual(forced.returncode, 0)
+        self.assertIn("refuses while that process is running", forced.stderr)
+
+    def test_live_quiet_stuck_does_not_kill(self) -> None:
+        import inspect
+
+        body = inspect.getsource(of.LiveQuietStuck)
+        body += inspect.getsource(of.SpawnRecord.over_budget)
+        self.assertNotIn("SIGKILL", body)
+        self.assertNotIn("os.killpg", body)
+        self.assertNotIn("terminate", body)
+        self.assertIn("do not claim done", of.LiveQuietStuck.DETAIL)
 
 
 if __name__ == "__main__":

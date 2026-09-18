@@ -47,7 +47,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 
 ## 0.8.13 — force-spawn refuses a live recorded pid
 
-- Spawn metadata stores `pid` + `starttime` at launch. `--force-spawn` refuses while that process is running; dead or missing-and-not-found-live may override. `of doctor` / `of status` name an open spawn past `started_at + budget.seconds` as `over_budget` (`unbounded` vs `dead-without-metadata`). Signal, not a supervisor. Proof: `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid`. No new CLI verb / schema / supervisor. Not a new regime. `#213`.
+- Spawn metadata stores `pid` + `starttime` at launch. `--force-spawn` refuses while that process is running; dead or missing-and-not-found-live may override. `of doctor` / `of status` name an open spawn past `started_at + budget.seconds` (or live + idle past pulse-stale) as `over_budget` (`unbounded` vs `dead-without-metadata`). Live pid + QUIET past stale + no residual keeps pulse QUIET and HOLD names HITL `--force-spawn` or switch adapter (`LiveQuietStuck`). Signal, not a supervisor. Proof: `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid` / `SkillLiveQuietStuck`. No new CLI verb / schema / supervisor. Not a new regime. `#213` / `#256`.
 
 ## 0.8.12 — spec --surface reclassifies an existing ID
 
