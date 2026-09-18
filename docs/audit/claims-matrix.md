@@ -16,10 +16,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.19`
+**Code rev:** VERSION `0.8.20`
 
-- [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`; `#256`); no new C-ID (honesty cap)
-- [x] #253: mid-flight `of patch` while a spawned child flies refuses (`PacketRevStale.refuse_patch`; named next HOLD); packed-only still warns; no VERSION bump; no new C-ID (honesty cap)
+- [x] 0.8.20: OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); live pid + long QUIET names HITL HOLD (`LiveQuietStuck`; `#256`); no new C-ID (honesty cap)
+- [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); no new C-ID (honesty cap)
 
 
 ## Summary
@@ -369,7 +369,7 @@ If any **critical Contradicted** exists, CI **must** fail. Advertised truth scor
 - [x] C-045 0.8.11: after collect/abandon, `of worktree remove --child-id` plus Orca Host `worktree rm` / `terminal close --tab`; doctor/close WARN on orphaned vs settled (`DoctorSkew.orphaned_worktrees`; #210); `DoctorWorktreeLeftover` / `SkillOrcaWorkerTeardown`; no new C-ID (honesty cap)
 - [x] 0.8.12: `of spec --surface internal ID` reclassifies a mis-declared requirement (`RequirementSurface`; #211); `--surface` without `--add` or ID refuses; contrast teaches the path; `--supersede` still drops coverage; `RequirementSurfaceReclassify` / `SkillRequirementSurface`; no new C-ID (honesty cap)
 - [x] C-152 0.8.13: spawn record stores pid; `--force-spawn` refuses a live pid; doctor/status name `over_budget` (`unbounded` vs `dead-without-metadata`; not a supervisor; #213); `SpawnPidLiveness` / `DoctorOverBudgetSpawn` / `SkillForceSpawnPid`; no new C-ID (honesty cap)
-- [x] C-152 0.8.19: live pid + QUIET past stale + no residual names HITL HOLD (`LiveQuietStuck`; `#256`); pulse stays QUIET (`#245`); `over_budget` also `unbounded` on live + idle past pulse-stale; `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `SkillLiveQuietStuck`; no new C-ID (honesty cap)
+- [x] C-152 0.8.20: live pid + QUIET past stale + no residual names HITL HOLD (`LiveQuietStuck`; `#256`); pulse stays QUIET (`#245`); `over_budget` also `unbounded` on live + idle past pulse-stale; `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `SkillLiveQuietStuck`; no new C-ID (honesty cap)
 - [x] C-050 0.8.14: second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; #214); disjoint `--owns-path` is not a second HEAD/index; two worktrees or series; `SharedWorktreePack` / `SkillSharedWorktree`; no new C-ID (honesty cap)
 - [x] C-139 0.8.15: collect unexpected keys name the legal home (`SchemaHomeHint`; #215); `ResidualSchemaContracts` / `SkillResidualHomeHint`; no new C-ID (honesty cap)
 - [x] C-030 0.8.16: `validate_schema` enforces public-schema `anyOf` / `maxLength` / `patternProperties`; `schema_unknown_keywords` guards the subset; `SchemaSubsetHonesty`; `#223` after v0.8.15 tag; no new C-ID (honesty cap)

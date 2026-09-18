@@ -8,6 +8,32 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.20
+
+Kernel + skill work that landed on main after the published v0.8.19 tag (`4ebb4d5`, #250) while still claiming 0.8.19 lockstep: implementer / `--owns-path` `status=done` with zero owned writes cannot collect (`OwnedWrite`; `#251`). `escalate_up` unblock is one `of patch --<flag>` (`rev` must exceed N) then `of next-wave` (`EscalateUnblock`; `#254`). Mid-flight `of patch` while spawned children fly refuses HOLD (`PacketRevStale.refuse_patch`; `#253`). Never chain pack|spawn|next-wave (`#255`). Live pid + long QUIET + no residual names HITL HOLD (`LiveQuietStuck`; `#256`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.19 notes.
+
+- **Reuse table (design-first):** `CloseEvidence` already requires artifact SHA + rollback. Collect already validates identity and `result_ref`. The remaining gap is implementer / `--owns-path` `status=done` with zero writes under those paths (`#251`).
+- **Reuse, not a new verb:** `OwnedWrite` is collect INVALID `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` skip. Artifact mtime, not status prose. No `of prove`. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach implementer/`--owns-path` needs a write under owns-path/worktree since spawn.
+- **Proof:** `OwnedWriteGate` / `SkillOwnedWrite`. No new C-ID (honesty cap). `#251`.
+- **Reuse table (design-first):** `escalate_up` already sets `spawn_blocked`. `next-wave` already clears after a legal patch. The remaining gap is resume looping HOLD without naming the unblock (`#254`).
+- **Reuse, not a new verb:** `EscalateUnblock` printed next names `of patch --<flag>` (`rev` must exceed `blocked_at_order_rev`) then `of next-wave`. Flying spawned: HOLD / collect then patch. Packed-only leftover may still patch. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `escalate_up` ≠ stop.
+- **Proof:** `EscalateUnblockNext` / `SkillEscalateUnblock`. No new C-ID (honesty cap). `#254`.
+- **Reuse table (design-first):** `ORDER.rev` already bumps on every successful `of patch`. `PacketRevStale` already names `UNPACK --FORCE` after identity-stale + flying. `of spec --add` / `--amend` already `emit_note` when packed children exist. The remaining gap is `of patch` succeeding mid-flight and staling every launched packet (`#253`).
+- **Reuse, not a new verb:** `PacketRevStale.refuse_patch` dies when `SpawnRecord.present` and `flying`. Named next is HOLD. Packed-only leftover still patches and warns. No `--confirm`. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach mid-flight `of patch` refuses (HOLD) and constraints before first pack.
+- **Proof:** `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. No new C-ID (honesty cap). `#253`.
+- **Reuse table (design-first):** `of spawn --packet` is already required. Pack already prints the packet path as the first stdout line. Tool-call discipline already requires the `of` verbs. The remaining gap is a leader `of pack && of spawn` (or `next-wave`) in one shell so a failing/partial/multi-line pack drops `--packet` or hits the wrong wave (`#255`).
+- **Reuse, not a mega-command:** skill teaching only. Never chain pack|spawn|next-wave; one mutating verb per invocation; parse the first pack stdout line as `--packet`. Argparse already names required `--packet` — no louder kernel line. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix / `SkillSurface` markers teach the same wording. Core stays under the 20KB cap.
+- **Proof:** `SkillPackSpawnChain` (core/alias/appendix; no `of pack-and-spawn`). `SpawnPacketRequired` (spawn without `--packet` still names the flag). `SkillSurfaceCore`. No new C-ID (honesty cap). `#255`.
+- **Reuse table (design-first):** `pulse_verdict` / `#245` already keep `live_pid` QUIET past stale. `SpawnRecord.over_budget` already names `unbounded` vs `dead-without-metadata` past `budget.seconds`. `DeadStartedOnly` already names HOLD when the pid is gone. `--force-spawn` already refuses a live pid. The remaining gap is live pid + long QUIET + no residual looping HOLD / quote-PULSE (`#256`).
+- **Reuse, not a supervisor:** `LiveQuietStuck` is read-path guidance. HOLD detail names HITL: stop the hung process then `of spawn --force-spawn` or switch adapter; do not claim done. `over_budget` also returns `unbounded` when live + activity past pulse-stale, even inside a large budget. Pulse stays QUIET (not STALE). Do not kill. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach live QUIET past stale → ask HITL `--force-spawn` or switch adapter; do not claim done. HOLD follows the printed detail. Core stays under the 20KB cap.
+- **Proof:** `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `test_over_budget_idle_forever_within_budget`. `DoctorOverBudgetSpawn.test_doctor_names_idle_forever_within_budget`. `ResumeHandoffGuidance.test_live_quiet_stuck_hold_names_hitl`. `SkillLiveQuietStuck`. No new C-ID (honesty cap). `#256`.
+- Packaging: VERSION 0.8.20; skill/alias description preview `v0.8.20 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.19 notes. These five cuts merged after the v0.8.19 tag.
+
 ## 0.8.19
 
 Stall cuts + agy argv honesty on the 0.8.18 line: `pulse --watch` exits when idle (`#243`); pulse does not call STALE while `SpawnRecord.live_pid` is set (`#245`); SKILL pre-pack catalog/cheap-frontier/same-harness ask is once per field (`#244`); agy `--model` emits `--effort` and `--print-timeout` follows `budget.seconds` (`#249`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.18 notes.
@@ -28,18 +54,6 @@ Stall cuts + agy argv honesty on the 0.8.18 line: `pulse --watch` exits when idl
 - **Reuse, not a new verb:** emit `--effort` (default `medium`, or `adapter_hints.effort`; unknown dies before spawn) with `--model`; derive `--print-timeout` from `budget.seconds`. Surface harness refuse clearly when stdout names the argv refuse. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** adapters reference teaches `--model`+`--effort` and packet-clock `--print-timeout`.
 - **Proof:** `AgyEffortArgv` (default medium; packet effort; unknown dies; refuse hint). `AdapterHintsArgv.test_grok_agy_named_model_precedes_dash_p`. `#249`.
-- **Reuse table (design-first):** `ORDER.rev` already bumps on every successful `of patch`. `PacketRevStale` already names `UNPACK --FORCE` after identity-stale + flying. `of spec --add` / `--amend` already `emit_note` when packed children exist. The remaining gap is `of patch` succeeding mid-flight and staling every launched packet (`#253`).
-- **Reuse, not a new verb:** `PacketRevStale.refuse_patch` dies when `SpawnRecord.present` and `flying`. Named next is HOLD. Packed-only leftover still patches and warns. No `--confirm`. No VERSION bump (daily PackagingBump). No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
-- **Skill drives the cut:** SKILL / `/of` / appendix teach mid-flight `of patch` refuses (HOLD) and constraints before first pack.
-- **Proof:** `PatchRevStaleFlying` / `SkillPatchRevStaleFlying`. No new C-ID (honesty cap). `#253`.
-- **Reuse table (design-first):** `of spawn --packet` is already required. Pack already prints the packet path as the first stdout line. Tool-call discipline already requires the `of` verbs. The remaining gap is a leader `of pack && of spawn` (or `next-wave`) in one shell so a failing/partial/multi-line pack drops `--packet` or hits the wrong wave (`#255`).
-- **Reuse, not a mega-command:** skill teaching only. Never chain pack|spawn|next-wave; one mutating verb per invocation; parse the first pack stdout line as `--packet`. Argparse already names required `--packet` — no louder kernel line. No VERSION bump. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
-- **Skill drives the cut:** SKILL / `/of` / appendix / `SkillSurface` markers teach the same wording. Core stays under the 20KB cap.
-- **Proof:** `SkillPackSpawnChain` (core/alias/appendix; no `of pack-and-spawn`). `SpawnPacketRequired` (spawn without `--packet` still names the flag). `SkillSurfaceCore`. No new C-ID (honesty cap). `#255`.
-- **Reuse table (design-first):** `pulse_verdict` / `#245` already keep `live_pid` QUIET past stale. `SpawnRecord.over_budget` already names `unbounded` vs `dead-without-metadata` past `budget.seconds`. `DeadStartedOnly` already names HOLD when the pid is gone. `--force-spawn` already refuses a live pid. The remaining gap is live pid + long QUIET + no residual looping HOLD / quote-PULSE (`#256`).
-- **Reuse, not a supervisor:** `LiveQuietStuck` is read-path guidance. HOLD detail names HITL: stop the hung process then `of spawn --force-spawn` or switch adapter; do not claim done. `over_budget` also returns `unbounded` when live + activity past pulse-stale, even inside a large budget. Pulse stays QUIET (not STALE). Do not kill. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
-- **Skill drives the cut:** SKILL / `/of` / appendix teach live QUIET past stale → ask HITL `--force-spawn` or switch adapter; do not claim done. HOLD follows the printed detail. Core stays under the 20KB cap.
-- **Proof:** `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `test_over_budget_idle_forever_within_budget`. `DoctorOverBudgetSpawn.test_doctor_names_idle_forever_within_budget`. `ResumeHandoffGuidance.test_live_quiet_stuck_hold_names_hitl`. `SkillLiveQuietStuck`. No new C-ID (honesty cap). `#256`.
 - Packaging: VERSION 0.8.19; skill/alias description preview `v0.8.19 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.18 notes.
 
 ## 0.8.18
