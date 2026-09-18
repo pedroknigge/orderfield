@@ -165,7 +165,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.7.67 SKILL.md short core + `references/skill-appendix.md` (`SkillSurface`; hosts load the core; appendix is the rest of the procedure) | documented |
 | 0.7.68 mechanical anti-done-theater (`CloseChecklist.speak_line` on `--checklist`; contrast RESOLVED + residual empty before claiming shipped; pair with quote-PULSE) | documented |
 | 0.7.69 Claude `-p` + stream-json emits `--verbose` (`StreamJson`; #131; cursor/codex unchanged) | documented |
-| 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD) | documented |
+| 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD; `#274` pulse/resume name not spawned) | documented |
 | 0.7.71 grok `--output-format streaming-json` + spawn metadata finalize (`StreamJson`; `SpawnResidual`; `ChildIO`; #133) | documented |
 | 0.7.72 `of issue --body-file` names canonical `.orderfield/work/scratch/<child_id>/` (`_issue_scratch_rel_ok`; leader draft `…/leader/ISSUE.md`; #134) | documented |
 | 0.7.73 Codex residual schema `usage.type` is `["object","null"]` once (`CodexStrictSchema`; #135) | documented |
@@ -217,7 +217,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse); `LearnListClosedFields`; `#231` | documented |
 | 0.8.19 stall `#243`+`#245`+`#244` + agy `#249`. Landed as the published v0.8.19 tag | documented |
 | 0.8.20 OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); LiveQuietStuck HITL HOLD (`#256`). Landed on main after the v0.8.19 tag | documented |
-| 0.8.21 wave-settle auto-continue (`#263`); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`); agy/grok isolate host MCP (`HostMcp`; `#269`); present:none HOLD / second-pack WARN + implicit spawn refuse (`SpawnAdapterMissing`; `#273`). Landed on main after the v0.8.20 tag | documented |
+| 0.8.21 wave-settle auto-continue (`#263`); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`); agy/grok isolate host MCP (`HostMcp`; `#269`); present:none HOLD / second-pack WARN + implicit spawn refuse (`SpawnAdapterMissing`; `#273`); pulse/resume packed-never-spawned is `not spawned` not flying (`InFlightSignal`; `#274`). Landed on main after the v0.8.20 tag | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

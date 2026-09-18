@@ -91,7 +91,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | *(kernel unittest)* | — | spawn stream-json / JSON streams feed the same PULSE; residual extract reused (`StreamJsonParse`; `StreamJsonSpawn`; `StreamJsonPulseSkill`) |
 | *(kernel unittest)* | — | grok `--output-format streaming-json` residual extract + spawn metadata finalize on exit/timeout/missing binary (`GrokAdapterSpawn`) |
 | *(kernel unittest)* | — | conservative agy spawn copies nonempty `denied_actions` into residual; yolo does not; missing residual is not invented (`AgyDeniedActionsParse`; `AgyDeniedActionsSpawn`; `AgyDeniedActionsSkill`) |
-| *(kernel unittest)* | — | pack without spawn: status/resume `spawned 0`, `PACKED` not ALIVE, `next SPAWN`; pulse agrees (`PackedOnlyNotAlive`) |
+| *(kernel unittest)* | — | pack without spawn: status/resume `spawned 0`, `PACKED` / `not spawned` not ALIVE, `next SPAWN`; pulse agrees; spawned-no-residual stays `running` (`PackedOnlyNotAlive`) |
 | *(kernel unittest)* | — | one VERSION per real cut; one VERSION / GitHub tag per proven invariant; packaging-only and docs-only / unproven current CHANGELOG sections fail (`PackagingBumpDiscipline`; `scripts/check_packaging_bump.py`) |
 | *(kernel unittest)* | — | skill `description` / `compatibility` frontmatter is YAML-quoted; unquoted em dash / colons die (`SkillFrontmatterQuotedGate`) |
 | *(kernel unittest)* | — | N=4 handoff pack→collect stays under 30s (disk-thrash smoke, not an SLO); docs/performance.md has no soft-warn table (`PackCollectWallClock`) |

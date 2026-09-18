@@ -915,10 +915,15 @@ class PulseProgress:
 
 
 class InFlightSignal:
-    """Read-path banner: residual MISSING — or a leftover residual under a
-    started-only spawn — is still running. Not a supervisor."""
+    """Read-path banner: residual MISSING under a spawn is still running.
+
+    Packed-only (no spawn record / no scratch) is not spawned — not a
+    live child. Not a supervisor.
+    """
 
     CHROME = "residual MISSING; harness chrome is not the field"
+    PACKED_CHROME = "not spawned; next SPAWN — do not wait as if running"
+    PACKED_KEY = "packed"
     ORDER = (
         "ALIVE",
         "QUIET",
@@ -929,6 +934,17 @@ class InFlightSignal:
     # Turn-end directive: the PULSE lines are already printed above, so the
     # leader quotes one to the user instead of running `of pulse` by hand.
     SPEAK = "quote a PULSE line above to the user; do not claim done while running"
+
+    @staticmethod
+    def packed_only(verdicts: dict[str, str]) -> bool:
+        return bool(verdicts) and all(
+            v == SpawnRecord.LABEL for v in verdicts.values()
+        )
+
+    @staticmethod
+    def speak_applies(verdicts: dict[str, str]) -> bool:
+        """Quote-PULSE is for spawned flying, not packed-never-spawned."""
+        return bool(verdicts) and not InFlightSignal.packed_only(verdicts)
 
     @staticmethod
     def speak_line(*, key: str = "speak", key_width: int = 12) -> str:
@@ -947,16 +963,36 @@ class InFlightSignal:
         return ", ".join(parts)
 
     @staticmethod
+    def chrome(verdicts: dict[str, str]) -> str:
+        if InFlightSignal.packed_only(verdicts):
+            return InFlightSignal.PACKED_CHROME
+        return InFlightSignal.CHROME
+
+    @staticmethod
     def banner(
         verdicts: dict[str, str],
         *,
-        key: str = "running",
+        key: str | None = None,
         key_width: int = 12,
     ) -> str:
-        return f"{key.ljust(key_width)}{InFlightSignal.tally(verdicts)} — {InFlightSignal.CHROME}"
+        if key is None:
+            key = (
+                InFlightSignal.PACKED_KEY
+                if InFlightSignal.packed_only(verdicts)
+                else "running"
+            )
+        return (
+            f"{key.ljust(key_width)}{InFlightSignal.tally(verdicts)} — "
+            f"{InFlightSignal.chrome(verdicts)}"
+        )
 
     @staticmethod
-    def count_banner(n: int, *, key_width: int = 12) -> str:
+    def count_banner(
+        n: int, *, packed_only: bool = False, key_width: int = 12
+    ) -> str:
+        if packed_only:
+            fake = {str(i): SpawnRecord.LABEL for i in range(max(n, 1))}
+            return InFlightSignal.banner(fake, key_width=key_width)
         return f"{'running'.ljust(key_width)}{n} in-flight — {InFlightSignal.CHROME}"
 
     @staticmethod
@@ -1798,7 +1834,12 @@ def cmd_status(args: argparse.Namespace) -> None:
     session = load_session(root)
     status_doc = StatusReport.document(root, order, state, packets, flying, session)
     StatusReport.emit_running(status_doc)
-    if flying:
+    status_verdicts = {
+        str(row.get("child_id") or "?"): str(row.get("pulse") or "")
+        for row in (status_doc.get("in_flight_detail") or [])
+        if isinstance(row, dict)
+    }
+    if InFlightSignal.speak_applies(status_verdicts):
         print(InFlightSignal.speak_line(key_width=12))
     else:
         DriveAfterIntegrate.emit(
@@ -1917,7 +1958,8 @@ def resume_next_lines(
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
             "SPAWN",
-            "packed children have no spawn record; of spawn if detect present; "
+            "not spawned; packed children have no spawn record / no live pid; "
+            "of spawn if detect present; "
             "of handoff --packet is not a spawned child wave — do not wait as if running",
         ),
         "handoff": (
@@ -1986,6 +2028,8 @@ def parked_reason(root: Path, packet: dict[str, Any]) -> str:
     """Why an in-flight child is parked (Eve-style resumable agent handle)."""
     if scratch_nonempty(root, packet):
         return "scratch_active"
+    if not SpawnRecord.present(root, packet):
+        return "not_spawned"
     return "awaiting_residual"
 
 
@@ -2014,11 +2058,13 @@ def print_resume_in_flight(
         cid = str(pkt.get("child_id") or "?")
         role = str(pkt.get("role") or "?")
         scratch = "present" if scratch_nonempty(root, pkt) else "missing"
+        reason = parked_reason(root, pkt)
         print(f"  {cid}")
-        print("    residual    MISSING")
+        extra = " (not spawned)" if reason == "not_spawned" else ""
+        print(f"    residual    MISSING{extra}")
         print(f"    role        {role}")
         print(f"    scratch     {scratch}")
-        print(f"    parked_reason {parked_reason(root, pkt)}")
+        print(f"    parked_reason {reason}")
         if verdicts and cid in verdicts:
             print(f"    pulse       {verdicts[cid]}")
         for line in PulseProgress.lines(root, pkt):
@@ -2262,14 +2308,20 @@ def cmd_resume(args: argparse.Namespace) -> None:
         order, open_field_count=open_n
     )
     print(f"auto_continue {ac_label} — {ac_detail}")
-    print(f"status        {'in-flight' if flying else 'idle'}")
+    if not flying:
+        status = "idle"
+    elif InFlightSignal.packed_only(verdicts):
+        status = "packed (not spawned)"
+    else:
+        status = "in-flight"
+    print(f"status        {status}")
     print(f"in_flight     {len(flying)}")
     PackedAge.emit(flying, now=now, key_width=14)
     if flying:
         print(InFlightSignal.banner(verdicts, key_width=14))
     print_resume_completed(root, completed)
     print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
-    if flying:
+    if InFlightSignal.speak_applies(verdicts):
         print(InFlightSignal.speak_line(key_width=14))
     print("next")
     for line in resume_next_lines(nxt, root=root, flying=flying, state=state):
@@ -2335,8 +2387,19 @@ def pulse_once(
     if not flying:
         print("in_flight   0 — idle (nothing to watch)")
         return 0, True
-    print(InFlightSignal.count_banner(len(flying)))
     now = time.time()
+    pulse_verdicts = {
+        str(pkt.get("child_id") or "?"): child_pulse_verdict(
+            root, pkt, now, stale_minutes
+        )
+        for _f, pkt in flying
+    }
+    print(
+        InFlightSignal.count_banner(
+            len(flying),
+            packed_only=InFlightSignal.packed_only(pulse_verdicts),
+        )
+    )
     repo = repo_newest_mtime(root)
     exit_code = 0
     for pkt_file, pkt in flying:
@@ -2380,8 +2443,19 @@ def pulse_once(
         age = now - freshest_ts
         meta = SpawnRecord.load(root, pkt)
         live = SpawnRecord.live_pid(meta)
-        verdict = child_pulse_verdict(root, pkt, now, stale_minutes)
-        line = f"    -> {verdict} (freshest evidence {fmt_age(age)} ago: {freshest_src})"
+        verdict = pulse_verdicts.get(child) or child_pulse_verdict(
+            root, pkt, now, stale_minutes
+        )
+        if verdict == SpawnRecord.LABEL:
+            line = (
+                f"    -> {verdict} (not spawned; freshest evidence "
+                f"{fmt_age(age)} ago: {freshest_src})"
+            )
+        else:
+            line = (
+                f"    -> {verdict} (freshest evidence "
+                f"{fmt_age(age)} ago: {freshest_src})"
+            )
         if live is not None:
             line += f" pid={live}"
             if "no writes yet" in freshest_src:

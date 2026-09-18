@@ -399,7 +399,8 @@ class SessionCutResume(unittest.TestCase):
         self._pack("c1", "map pricing models, do not choose the phase")
         r = run_of(self.tmp, "resume")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("status        in-flight", r.stdout)
+        self.assertIn("status        packed (not spawned)", r.stdout)
+        self.assertNotIn("status        in-flight", r.stdout)
         self.assertIn("field         open", r.stdout)
         self.assertIn("auto_continue yes", r.stdout)
         self.assertIn("interleaved chats", r.stdout)
@@ -410,10 +411,11 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("explorer", r.stdout)
         self.assertIn("map pricing models", r.stdout)
         self.assertIn("scratch     missing", r.stdout)
-        self.assertIn(of.InFlightSignal.speak_line(key_width=14), r.stdout)
-        self.assertIn("do not claim done while running", r.stdout)
+        self.assertNotIn(of.InFlightSignal.speak_line(key_width=14), r.stdout)
+        self.assertNotIn("do not claim done while running", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
         self.assertIn("next\n  SPAWN", r.stdout)
+        self.assertIn("not spawned", r.stdout)
         self.assertIn("packed children have no spawn record", r.stdout)
         self.assertNotIn("auto-spawn", r.stdout.lower())
         self.assertNotRegex(r.stdout.lower(), r"\blogs\b")
@@ -546,8 +548,10 @@ class SessionCutResume(unittest.TestCase):
         r = run_of(self.tmp, "status")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("in_flight   1", r.stdout)
-        self.assertIn(of.InFlightSignal.speak_line(key_width=12), r.stdout)
-        self.assertIn("do not claim done while running", r.stdout)
+        self.assertIn("packed      1 PACKED", r.stdout)
+        self.assertIn("not spawned", r.stdout)
+        self.assertNotIn(of.InFlightSignal.speak_line(key_width=12), r.stdout)
+        self.assertNotIn("do not claim done while running", r.stdout)
         self.assertNotIn("liveness", r.stdout.lower())
         self._drop_residual(DONE)
         r2 = run_of(self.tmp, "status")
@@ -932,8 +936,21 @@ class DriveAfterIntegrateProof(unittest.TestCase):
         resumed = run_of(self.tmp, "resume")
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         self.assertIn("next\n  SPAWN", resumed.stdout)
+        self.assertIn("not spawned", resumed.stdout)
         self.assertNotIn(self.SPEAK, resumed.stdout)
-        self.assertIn(of.InFlightSignal.SPEAK, resumed.stdout)
+        self.assertNotIn(of.InFlightSignal.SPEAK, resumed.stdout)
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "c1.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps({"child_id": "c1", "started_at": of.utc_now()}, indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
+        flying = run_of(self.tmp, "resume")
+        self.assertEqual(flying.returncode, 0, flying.stderr)
+        self.assertIn("status        in-flight", flying.stdout)
+        self.assertNotIn(self.SPEAK, flying.stdout)
+        self.assertIn(of.InFlightSignal.SPEAK, flying.stdout)
 
 
 class EscalateUnblockNext(unittest.TestCase):
@@ -3173,9 +3190,11 @@ class StatusReportJson(unittest.TestCase):
         human = run_of(tmp, "status")
         self.assertEqual(human.returncode, 0, human.stderr)
         self.assertIn("in_flight   1", human.stdout)
-        self.assertIn("running     1 PACKED", human.stdout)
-        self.assertIn("residual MISSING", human.stdout)
-        self.assertIn("harness chrome is not the field", human.stdout)
+        self.assertIn("packed      1 PACKED", human.stdout)
+        self.assertIn("not spawned", human.stdout)
+        self.assertIn("next SPAWN", human.stdout)
+        self.assertNotIn("running     1 PACKED", human.stdout)
+        self.assertNotIn("harness chrome is not the field", human.stdout)
         self.assertIn("pulse=PACKED", human.stdout)
         self.assertIn("SPAWN", human.stdout)
         self.assertNotIn("{", human.stdout)
@@ -3349,21 +3368,26 @@ class InFlightVisibility(unittest.TestCase):
         self.assertEqual(of.PulseProgress.lines(tmp, pkt), [])
         status = run_of(tmp, "status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertIn("running     1 PACKED", status.stdout)
-        self.assertIn(of.InFlightSignal.CHROME, status.stdout)
+        self.assertIn("packed      1 PACKED", status.stdout)
+        self.assertIn(of.InFlightSignal.PACKED_CHROME, status.stdout)
+        self.assertNotIn(of.InFlightSignal.CHROME, status.stdout)
         self.assertNotIn("progress", status.stdout)
         machine = run_of(tmp, "status", "--json")
         self.assertEqual(machine.returncode, 0, machine.stderr)
         doc = json.loads(machine.stdout.strip().splitlines()[0])
         self.assertEqual(doc["in_flight_detail"][0]["progress"], [])
         self.assertEqual(doc["in_flight_detail"][0]["residual"], "MISSING")
+        self.assertEqual(doc["in_flight_detail"][0]["parked_reason"], "not_spawned")
         resume = run_of(tmp, "resume")
         self.assertEqual(resume.returncode, 0, resume.stderr)
-        self.assertIn("status        in-flight", resume.stdout)
-        self.assertIn(of.InFlightSignal.CHROME, resume.stdout)
+        self.assertIn("status        packed (not spawned)", resume.stdout)
+        self.assertNotIn("status        in-flight", resume.stdout)
+        self.assertIn(of.InFlightSignal.PACKED_CHROME, resume.stdout)
+        self.assertNotIn(of.InFlightSignal.CHROME, resume.stdout)
         pulse = run_of(tmp, "pulse")
         self.assertEqual(pulse.returncode, 0, pulse.stderr)
-        self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
+        self.assertIn(of.InFlightSignal.count_banner(1, packed_only=True), pulse.stdout)
+        self.assertNotIn(of.InFlightSignal.count_banner(1), pulse.stdout)
         self.assertNotIn("progress:", pulse.stdout)
 
     def test_pulse_progress_tails_last_three(self) -> None:
@@ -4242,7 +4266,7 @@ class ResumeAfterProcessDeath(unittest.TestCase):
 
 
 class PackedOnlyNotAlive(unittest.TestCase):
-    """#132: pack without spawn is PACKED, not spawned/ALIVE. of eval --kernel."""
+    """#132 / #274: pack without spawn is PACKED / not spawned, not flying."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-packed-only-"))
@@ -4256,6 +4280,31 @@ class PackedOnlyNotAlive(unittest.TestCase):
             "build",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_inflight_signal_distinguishes_packed_from_spawned(self) -> None:
+        packed = {"a": of.SpawnRecord.LABEL, "b": of.SpawnRecord.LABEL}
+        self.assertTrue(of.InFlightSignal.packed_only(packed))
+        self.assertFalse(of.InFlightSignal.speak_applies(packed))
+        banner = of.InFlightSignal.banner(packed)
+        self.assertIn("packed", banner)
+        self.assertIn("not spawned", banner)
+        self.assertIn(of.InFlightSignal.PACKED_CHROME, banner)
+        self.assertNotIn(of.InFlightSignal.CHROME, banner)
+        self.assertIn(
+            of.InFlightSignal.count_banner(2, packed_only=True),
+            banner,
+        )
+        spawned = {"a": "ALIVE"}
+        self.assertFalse(of.InFlightSignal.packed_only(spawned))
+        self.assertTrue(of.InFlightSignal.speak_applies(spawned))
+        running = of.InFlightSignal.banner(spawned)
+        self.assertIn("running", running)
+        self.assertIn(of.InFlightSignal.CHROME, running)
+        self.assertNotIn(of.InFlightSignal.PACKED_CHROME, running)
+        mixed = {"a": of.SpawnRecord.LABEL, "b": "ALIVE"}
+        self.assertFalse(of.InFlightSignal.packed_only(mixed))
+        self.assertTrue(of.InFlightSignal.speak_applies(mixed))
+        self.assertIn(of.InFlightSignal.CHROME, of.InFlightSignal.banner(mixed))
 
     def _pack(self, child_id: str, role: str = "implementer") -> None:
         packed = run_of(
@@ -4281,27 +4330,45 @@ class PackedOnlyNotAlive(unittest.TestCase):
         self.assertNotIn("spawned     2 /", status.stdout)
         self.assertIn("in_flight   2", status.stdout)
         self.assertIn("PACKED", status.stdout)
+        self.assertIn("not spawned", status.stdout)
+        self.assertIn(of.InFlightSignal.PACKED_CHROME, status.stdout)
+        self.assertNotIn(of.InFlightSignal.CHROME, status.stdout)
         self.assertNotIn("ALIVE", status.stdout)
         self.assertIn("SPAWN", status.stdout)
         self.assertNotIn("HOLD — continue existing packets; do not repack", status.stdout)
+        self.assertNotIn(of.InFlightSignal.SPEAK, status.stdout)
         machine = run_of(self.tmp, "status", "--json")
         self.assertEqual(machine.returncode, 0, machine.stderr)
         doc = json.loads(machine.stdout.strip().splitlines()[0])
         self.assertEqual(doc["spawned"], 0)
         self.assertEqual(doc["in_flight"], 2)
         self.assertEqual(doc["next"], "spawn")
+        self.assertIn("not spawned", doc["next_detail"])
         pulses = {row["child_id"]: row["pulse"] for row in doc["in_flight_detail"]}
         self.assertEqual(pulses["explorer_a"], "PACKED")
         self.assertEqual(pulses["implementer_b"], "PACKED")
+        reasons = {
+            row["child_id"]: row["parked_reason"] for row in doc["in_flight_detail"]
+        }
+        self.assertEqual(reasons["explorer_a"], "not_spawned")
+        self.assertEqual(reasons["implementer_b"], "not_spawned")
         resume = run_of(self.tmp, "resume")
         self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("status        packed (not spawned)", resume.stdout)
+        self.assertNotIn("status        in-flight", resume.stdout)
         self.assertIn("next\n  SPAWN", resume.stdout)
+        self.assertIn("not spawned", resume.stdout)
         self.assertNotIn("next\n  HOLD", resume.stdout)
+        self.assertNotIn(of.InFlightSignal.SPEAK, resume.stdout)
         pulse = run_of(self.tmp, "pulse")
         self.assertEqual(pulse.returncode, 0, pulse.stderr)
         self.assertIn("PACKED", pulse.stdout)
+        self.assertIn("not spawned", pulse.stdout)
+        self.assertIn(of.InFlightSignal.count_banner(2, packed_only=True), pulse.stdout)
+        self.assertNotIn(of.InFlightSignal.count_banner(2), pulse.stdout)
         self.assertNotIn("-> ALIVE", pulse.stdout)
         self.assertIn("packed (no writes yet)", pulse.stdout)
+        self.assertNotIn(of.InFlightSignal.CHROME, pulse.stdout)
 
     def test_spawn_record_restores_alive_and_hold(self) -> None:
         self._pack("worker")
@@ -4329,11 +4396,28 @@ class PackedOnlyNotAlive(unittest.TestCase):
         self.assertIn("ALIVE", status.stdout)
         self.assertNotIn("PACKED", status.stdout)
         self.assertIn("HOLD", status.stdout)
+        self.assertIn(of.InFlightSignal.CHROME, status.stdout)
+        self.assertNotIn(of.InFlightSignal.PACKED_CHROME, status.stdout)
+        self.assertIn(of.InFlightSignal.SPEAK, status.stdout)
         machine = run_of(self.tmp, "status", "--json")
         doc = json.loads(machine.stdout.strip().splitlines()[0])
         self.assertEqual(doc["spawned"], 1)
         self.assertEqual(doc["in_flight_detail"][0]["pulse"], "ALIVE")
+        self.assertEqual(doc["in_flight_detail"][0]["parked_reason"], "awaiting_residual")
         self.assertEqual(doc["next"], "hold")
+        resume = run_of(self.tmp, "resume")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        self.assertIn("status        in-flight", resume.stdout)
+        self.assertNotIn("status        packed (not spawned)", resume.stdout)
+        self.assertIn(of.InFlightSignal.CHROME, resume.stdout)
+        self.assertNotIn("not spawned", resume.stdout)
+        pulse = run_of(self.tmp, "pulse")
+        self.assertEqual(pulse.returncode, 0, pulse.stderr)
+        self.assertIn(of.InFlightSignal.count_banner(1), pulse.stdout)
+        self.assertIn("-> ALIVE", pulse.stdout)
+        self.assertIn("spawned (no writes yet)", pulse.stdout)
+        self.assertNotIn("not spawned", pulse.stdout)
+        self.assertNotIn(of.InFlightSignal.PACKED_CHROME, pulse.stdout)
 
 
 class SpawnEndedWithoutResidual(unittest.TestCase):

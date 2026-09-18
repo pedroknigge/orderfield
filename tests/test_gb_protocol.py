@@ -104,11 +104,14 @@ class ResumeHandoffGuidance(unittest.TestCase):
     def test_spawn_names_packed_only(self) -> None:
         lines = of.resume_next_lines("spawn")
         self.assertEqual(lines[0], "SPAWN")
+        self.assertIn("not spawned", lines[1])
         self.assertIn("no spawn record", lines[1])
+        self.assertIn("no live pid", lines[1])
         self.assertIn("of spawn", lines[1])
         self.assertIn("detect present", lines[1])
         self.assertIn("of handoff", lines[1])
         self.assertIn("not a spawned child wave", lines[1])
+        self.assertIn("do not wait as if running", lines[1])
 
     def test_rev_stale_names_unpack_force_not_spawn(self) -> None:
         lines = of.resume_next_lines(of.PacketRevStale.ACTION)
