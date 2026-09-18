@@ -55,6 +55,8 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `learning_long` | Learning text over the advisory char threshold; still stored. Names `work/scratch/leader/<file>.md` plus a short pointer. Chat-dump line count is `error` `learning.lines`, not this warning |
 | `order_rev_stale` | `of spec` identity bump (`--add` / `--amend` / …) will stale N live-wave packets; a child without a residual can no longer be re-spawned |
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
+| `owns_path_empty` | Implementer pack omitted `--owns-path`; packet still written. Names unpack + re-pack fix |
+| `owns_path_incomplete` | `--owns-path` does not cover a slash-containing path named in `--slice`; packet still written. Names unpack + re-pack fix |
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |
 | `operator_action` | Spawn selected `OF_TRUST=yolo` and/or `OF_SPAWN_ENV=inherit` (audited operator action; not a silent default) |

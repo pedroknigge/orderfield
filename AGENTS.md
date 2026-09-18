@@ -217,6 +217,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse); `LearnListClosedFields`; `#231` | documented |
 | 0.8.19 stall `#243`+`#245`+`#244` + agy `#249`. Landed as the published v0.8.19 tag | documented |
 | 0.8.20 OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); LiveQuietStuck HITL HOLD (`#256`). Landed on main after the v0.8.19 tag | documented |
+| 0.8.20 pack WARNs `owns_path_empty` / `owns_path_incomplete` when implementer omits `--owns-path` or `--slice` names a path outside the write set (`OwnsPathCoverage`; `#257`). No VERSION bump | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |

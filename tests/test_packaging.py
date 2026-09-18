@@ -3151,6 +3151,61 @@ class SkillSharedWorktree(unittest.TestCase):
         self.assertIn('KIND = "shared_worktree"', source)
 
 
+class SkillOwnsPathCoverage(unittest.TestCase):
+    """SKILL teaches owns-path must cover every slice-named path. #257.
+
+    Reuse (design-first; written before the wording cut):
+
+    | Existing | Already covers | This cut |
+    |---|---|---|
+    | `--owns-path` / overlap | same-wave exclusive write set | coverage vs `--slice` |
+    | `SharedWorktree` / `SliceLint` | advisory pack WARN | same emit path |
+    | OwnedWrite #251/#252 | collect zero writes | pack-time only |
+    | SkillSurface core/appendix | hosts load the core | needles + packaging test |
+
+    Net-new surface: none. No VERSION bump (0.8.20 is #258).
+    """
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_owns_path_coverage(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("owns-path", table)
+        self.assertIn("covering slice paths", table)
+        self.assertIn("empty owns-path", table)
+        self.assertIn("warns", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("owns-path", fold, name)
+            self.assertIn("slice", fold, name)
+        alias_fold = alias.casefold()
+        self.assertIn("owns_path_empty", alias_fold)
+        self.assertIn("owns_path_incomplete", alias_fold)
+        self.assertIn("every path", alias_fold)
+        self.assertIn("unpack", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("owns_path_empty", appendix_fold)
+        self.assertIn("owns_path_incomplete", appendix_fold)
+        self.assertIn("every path `--slice` names", appendix_fold)
+        self.assertIn("of unpack --child-id", appendix)
+        self.assertIn("#251", appendix)
+        self.assertIn("ark-check", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "pack.py").read_text(encoding="utf-8")
+        self.assertIn("class OwnsPathCoverage", source)
+        self.assertIn('EMPTY_KIND = "owns_path_empty"', source)
+        self.assertIn('KIND = "owns_path_incomplete"', source)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+
+
 class SkillDeadStartedOnlyForce(unittest.TestCase):
     """SKILL teaches dead started-only HOLD → SPAWN --FORCE. #242."""
 
