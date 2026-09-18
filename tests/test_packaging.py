@@ -1678,7 +1678,8 @@ class SkillWaveEndTriage(unittest.TestCase):
         appendix = SkillSurface.appendix(ROOT)
         slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
         table = self.table(core).casefold()
-        self.assertIn("after wave, before close", table)
+        self.assertIn("after close", table)
+        self.assertIn("not between waves", table)
         self.assertIn("of learn", table)
         self.assertIn("--protocol", table)
         self.assertIn("--promote", table)
@@ -1896,11 +1897,99 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         core = SkillSurface.core(ROOT)
         table = self.table(core).casefold()
         self.assertIn("init / first wave", table)
-        self.assertIn("after wave, before close", table)
+        self.assertIn("after close", table)
         self.assertIn("must ask", table)
         self.assertIn("of close --checklist", table)
         self.assertIn("same-harness", table)
         self.assertIn("must propose", table)
+
+
+class SkillWaveSettleAutoContinue(unittest.TestCase):
+    """After wave settles, execute printed next. No poke unless real HITL. #263."""
+
+    SETTLE = "in_flight=0"
+    NEXT = "printed `next`"
+    PATH = "collect/integrate/next-wave/contrast/close"
+    NO_SEGUIMOS = "¿seguimos?"
+    NO_POKE = "no poke"
+    HITL = "hitl only"
+    REFUSE = "kernel refuse"
+    STORED = "stored consent"
+    INIT_ASKS = "named init-time asks"
+    LEARN = "learnings after close"
+    FORBIDDEN = "bare ok/dale"
+    KEEPALIVE = "keepalive"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_wave_settle_no_poke(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(self.SETTLE, table)
+        self.assertIn("printed `next`", self.table(core))
+        self.assertIn(self.PATH, table)
+        self.assertIn(self.NO_SEGUIMOS, table)
+        self.assertIn(self.NO_POKE, table)
+        self.assertIn("do not wait for ok/pulse", table)
+        core_fold = core.casefold()
+        self.assertIn(self.HITL, core_fold)
+        self.assertIn(self.REFUSE, core_fold)
+        self.assertIn(self.STORED, core_fold)
+        self.assertIn(self.INIT_ASKS, core_fold)
+        self.assertIn(self.LEARN, core_fold)
+        self.assertIn(self.FORBIDDEN, core_fold)
+        self.assertIn(self.KEEPALIVE, core_fold)
+        self.assertIn("adversary+verifier at end", core_fold)
+        alias_fold = alias.casefold()
+        self.assertIn(self.SETTLE, alias_fold)
+        self.assertIn(self.PATH, alias_fold)
+        self.assertIn(self.NO_SEGUIMOS, alias_fold)
+        self.assertIn(self.NO_POKE, alias_fold)
+        self.assertIn(self.HITL, alias_fold)
+        self.assertIn(self.REFUSE, alias_fold)
+        self.assertIn(self.FORBIDDEN, alias_fold)
+        self.assertIn(self.KEEPALIVE, alias_fold)
+        self.assertIn("learnings after close", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn(self.SETTLE, appendix_fold)
+        self.assertIn(self.PATH, appendix_fold)
+        self.assertIn(self.NO_SEGUIMOS, appendix_fold)
+        self.assertIn(self.NO_POKE, appendix_fold)
+        self.assertIn(self.HITL, appendix_fold)
+        self.assertIn(self.FORBIDDEN, appendix_fold)
+        self.assertIn(self.KEEPALIVE, appendix_fold)
+        self.assertIn("resume_next_lines", appendix_fold)
+        self.assertIn("driveafterintegrate", appendix_fold)
+        self.assertIn("evaluatorpacket", appendix_fold)
+        self.assertIn("learnings after close", appendix_fold)
+        self.assertNotIn("of continue", table)
+        self.assertNotIn("of continue", alias_fold)
+        self.assertNotIn("of continue", appendix_fold)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        self.assertIn("in_flight=0", SkillSurface.CORE_POINTERS)
+        self.assertIn("HITL only", SkillSurface.CORE_POINTERS)
+        self.assertIn("bare ok/dale", SkillSurface.CORE_POINTERS)
+        self.assertIn("HITL only", SkillSurface.APPENDIX_MARKERS)
+        self.assertIn("bare ok/dale", SkillSurface.APPENDIX_MARKERS)
+        self.assertIn("learnings after close", SkillSurface.APPENDIX_MARKERS)
+
+    def test_does_not_invent_supervisor_or_new_verb(self) -> None:
+        for rel, body in (
+            ("SKILL.md", SkillSurface.core(ROOT)),
+            ("of/SKILL.md", SkillSurface.alias(ROOT)),
+            ("references/skill-appendix.md", SkillSurface.appendix(ROOT)),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("of continue", fold, rel)
+            self.assertNotIn("of poke", fold, rel)
+            self.assertNotIn("of keepalive", fold, rel)
 
 
 class SkillCheckoutAutoContinueHonesty(unittest.TestCase):

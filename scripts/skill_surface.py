@@ -28,6 +28,9 @@ class SkillSurface:
         "## What to type next",
         "Read the appendix",
         "Never chain pack|spawn|next-wave",
+        "in_flight=0",
+        "HITL only",
+        "bare ok/dale",
     )
     APPENDIX_MARKERS = (
         "## Mandatory leader process",
@@ -52,6 +55,9 @@ class SkillSurface:
         "Wave-end / pre-close surplus",
         "not auto-promote",
         "One mutating verb per invocation",
+        "HITL only",
+        "bare ok/dale",
+        "learnings after close",
         "## Lab / eval",
         "of eval --strict --kernel",
         "recovery/adversarial-dual-truth",

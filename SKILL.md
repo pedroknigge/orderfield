@@ -15,7 +15,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table below names the field-run verbs. Lab `eval` stays in the appendix. Core + appendix is 100% of the product surface.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Read the appendix before pack, spawn, contrast, or close.** The table names the field-run verbs. Lab `eval` stays in the appendix.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
@@ -45,7 +45,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` passes `--json-schema` to `residual.codex.schema.json` (same Codex file; `usage` `[object,null]`). Codex-null optionals omit. Invalid extract names `$.path`. Claude omit: inline-only; drops stream-json PULSE. Qwen omit: structured_output tool, not residual delivery |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | `artifact_sha:` + `rollback:` (`CloseEvidence`). Implementer/`--owns-path` needs a write under owns-path/worktree since spawn (`OwnedWrite`). Do not trust status. Not `of prove` |
-| residuals landed | collect+integrate → resume next `INTEGRATE` same turn. Report is not a stop. Do not wait for ok/pulse. Not a consent ask |
+| residuals landed / `in_flight=0` + printed `next` | execute that `next` (collect/integrate/next-wave/contrast/close). collect+integrate → resume next `INTEGRATE` same turn. Do not ask ¿seguimos? / do not wait for ok/pulse. No poke. Report is not a stop. Not a consent ask |
 | resume next `INTEGRATE --RECOMPUTE` | `of integrate --wave N --recompute` — report digest drifted; do not next-wave. Spawn `session_id` / `denied_actions` after integrate are not drift |
 | resume next `UNPACK --FORCE` | `of unpack --force` — ORDER.rev stale; do not spawn. Mid-flight `of patch` refuses (HOLD). Constraints before first pack |
 | after successful `of phase` | `of next-wave` — just-integrated wave stays eligible; do not `--recompute` the prior wave |
@@ -54,7 +54,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor. |
 | init / first wave plan | **must ask** once (store `--done-when-mission`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children). Stored no → contrast → `of close --checklist`. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not after ordinary integrate. |
-| after wave, before close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. Not auto-promote. Not a new close gate. |
+| after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair-shaped: accept valid signature AND reject replay/bad sig at the public surface, then `of spec --verified-contract ID --both-sides`. `WebhookPair` is the oracle. Not a webhook server |
@@ -124,9 +124,9 @@ Run `of` if it is on your PATH (the installer symlinks it to `~/.local/bin/of`).
 
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Past tense after CLI returns. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
-**Anti-done-theater.** Before claiming shipped / closed / done on a field, run `of contrast` and `of close --checklist` in the same turn. Quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` and `residual empty`. If either proof row fails or that `speak` line is not quoted, you may not claim shipped. Mechanical, not your judgment. While residual is MISSING, quote-PULSE still applies; flying is not shipped. Self-praise is not review. Not a new close gate.
+**Anti-done-theater.** Same as the shipped row. Mechanical. Flying is not shipped.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets or printed HOLD detail, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Pause only on explicit `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Resume-without-`next` is a broken run. Clone/checkout + HOME dest skill is the same.
+**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets or printed HOLD detail, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause only on explicit `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Resume-without-`next` is a broken run. Clone/checkout + HOME dest skill is the same.
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 

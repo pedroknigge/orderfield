@@ -32,6 +32,10 @@ Kernel + skill work that landed on main after the published v0.8.19 tag (`4ebb4d
 - **Reuse, not a supervisor:** `LiveQuietStuck` is read-path guidance. HOLD detail names HITL: stop the hung process then `of spawn --force-spawn` or switch adapter; do not claim done. `over_budget` also returns `unbounded` when live + activity past pulse-stale, even inside a large budget. Pulse stays QUIET (not STALE). Do not kill. No new CLI / schema / supervisor / `of merge` / token ceiling / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach live QUIET past stale → ask HITL `--force-spawn` or switch adapter; do not claim done. HOLD follows the printed detail. Core stays under the 20KB cap.
 - **Proof:** `SpawnPidLiveness.test_resume_names_live_quiet_stuck` / `test_over_budget_idle_forever_within_budget`. `DoctorOverBudgetSpawn.test_doctor_names_idle_forever_within_budget`. `ResumeHandoffGuidance.test_live_quiet_stuck_hold_names_hitl`. `SkillLiveQuietStuck`. No new C-ID (honesty cap). `#256`.
+- **Reuse table (design-first):** `DriveAfterIntegrate` / `resume_next_lines` already print idle `next`. EvaluatorPacket is already store-at-start. Wave-end `of learn` already exists. The remaining gap is a leader who waits for ok / `!of pulse` / ¿seguimos? after `in_flight=0` (`#263`).
+- **Reuse, not a new verb:** skill/hot-path only. `in_flight=0` + printed `next` → execute that next. HITL only on kernel refuse, stored consent no, or named init-time asks. Learnings after close only. Forbidden: bare ok/dale as keepalive. No `of continue`. No supervisor. No `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach auto-continue after wave; no poke. Core stays under the 20KB cap.
+- **Proof:** `SkillWaveSettleAutoContinue` + `SkillSurface` pointers/markers lock the teaching. Packaging skill-size gate. No VERSION bump. No new C-ID (honesty cap). `#263`.
 - Packaging: VERSION 0.8.20; skill/alias description preview `v0.8.20 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.19 notes. These five cuts merged after the v0.8.19 tag.
 
 ## 0.8.19
