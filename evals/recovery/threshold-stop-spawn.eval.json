@@ -13,7 +13,13 @@
     {
       "run": "status",
       "exit": 0,
-      "stdout_contains": ["spawn_blocked True", "last_regime escalate_up"]
+      "stdout_contains": [
+        "spawn_blocked True",
+        "last_regime escalate_up",
+        "PATCH THEN NEXT-WAVE",
+        "of patch --constraints-add",
+        "rev must exceed"
+      ]
     },
     {
       "run": "pack",
@@ -57,6 +63,12 @@
       ],
       "exit": 0,
       "stdout_contains": ["must cover invoicing constraints for the target country", "rev="]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["NEXT-WAVE"],
+      "stdout_not_contains": ["PATCH THEN NEXT-WAVE"]
     },
     {
       "run": "next-wave",

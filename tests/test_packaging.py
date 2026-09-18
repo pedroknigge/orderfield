@@ -1739,6 +1739,50 @@ class SkillWaveEndTriage(unittest.TestCase):
             self.assertIn("not auto-promote", fold, name)
 
 
+class SkillEscalateUnblock(unittest.TestCase):
+    """SKILL / /of / appendix teach escalate_up continue recipe. #254."""
+
+    STOP = "≠ stop"
+    REV = "rev must exceed"
+    PATCH = "of patch"
+    NEXT = "next-wave"
+    FLYING = "mid-flight"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_escalate_continue(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("escalate_up", table)
+        self.assertIn(self.STOP, table)
+        self.assertIn(self.REV, table)
+        self.assertIn(self.PATCH, table)
+        self.assertIn(self.NEXT, table)
+        self.assertIn("hold", table)
+        self.assertIn("collect then patch", table)
+        self.assertIn(self.FLYING, table)
+        alias_fold = alias.casefold()
+        self.assertIn("escalate_up", alias_fold)
+        self.assertIn(self.STOP, alias_fold)
+        self.assertIn(self.REV, alias_fold)
+        self.assertIn("no mid-flight", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("escalate_up", appendix_fold)
+        self.assertIn(self.STOP, appendix_fold)
+        self.assertIn("blocked_at_order_rev", appendix_fold)
+        self.assertIn("do not `of patch` mid-flight", appendix)
+        self.assertIn("EscalateUnblockNext", appendix)
+        source = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
+        self.assertIn("class EscalateUnblock:", source)
+        self.assertIn("rev must exceed", source)
+        wave = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("ORDER.rev must exceed blocked_at_order_rev", wave)
+
+
 class SkillDriveAfterIntegrate(unittest.TestCase):
     """After integrate, execute next same turn. Report is not a stop. #191."""
 

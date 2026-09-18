@@ -373,7 +373,7 @@ Regimes: `escalate_up | scale_out | scale_across | scale_up | human | hold | pha
 
 `human` is a stop: the leader does not pack or spawn more children in that wave. That is close-protocol, not kernel `spawn_blocked` (only `escalate_up` sets the lock). After a human wave, run `of next-wave` before packing the next wave. Cap-exhausted `human` already fails pack via `max_children`. `done_when_closed` still needs an explicit `of phase` to move.
 
-Golden rule: **if there is a residual on mission, phase, constraints, done_when, or workspace, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.**
+Golden rule: **if there is a residual on mission, phase, constraints, done_when, or workspace, `integrate` chooses `escalate_up`. Pack and spawn are forbidden in that wave until you patch the field and run `next-wave`.** `escalate_up` ≠ stop the mission. Printed `next` names one `of patch --<flag>` (`--constraints-add` / `--done-when` / `--mission`) plus `rev must exceed blocked_at_order_rev`, then `of next-wave`. After a legal bump, `next` is `NEXT-WAVE`. Spawned children still flying: HOLD / collect then patch — do not `of patch` mid-flight (rewrite: `of unpack --force --child-id <id>` then `of patch`). Packed-only leftover may still patch. The rev gate stays. Proof: `EscalateUnblockNext`.
 
 ### 5b. Contrast loop — original request, not the compressed ORDER
 
@@ -450,7 +450,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not launch explorer and implementer in the same wave.
 - Legacy `scale_across` reports remain readable for recovery, but 0.5.0 does not select new across waves.
 - Do not rewrite the mission because a child asked. That is a residual. It goes to `integrate`.
-- Do not pack or spawn in a wave whose last regime is `escalate_up`. Patch, then `next-wave`.
+- Do not pack or spawn in a wave whose last regime is `escalate_up`. `escalate_up` ≠ stop. Run the printed `of patch --<flag>` (`rev must exceed N`) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight `of patch`.
 - Do not treat harness gates / DAGs / inboxes as ORDER. The harness is a process bus.
 - Do not treat `workspace.writable_by_slaves` as a file lock. The kernel does not enforce it. Colliding product writes are a cut error.
 - Do not treat `local_budget_pct`, packet token budget, or `max_depth` as runtime accounting. They are reserved (no telemetry). `of pack --tokens N` for N>0 is refused. Only packet seconds are enforced as the spawned-process wall-clock (`of spawn --timeout` must match or be omitted), and `max_depth` only gates `--allow-nested` permission. `of migrate` upgrades pre-0.4.2 artifacts; `of worktree` is an opt-in helper, not a process manager. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys.

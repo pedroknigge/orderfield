@@ -76,7 +76,7 @@ of next-wave
 of pack … --force-spawn
 ```
 
-`--force-spawn` bypasses only the spawn lock. It does not bypass stale packet identity or phase/wave transition guards. After `escalate_up`, patch the field so `ORDER.rev` exceeds the recorded blocked revision before `of next-wave`. On a started-only spawn record it also refuses while the recorded pid is still running; dead or missing-and-not-found-live may override. `of doctor` names an open spawn past `started_at + budget.seconds` as `over_budget` — a signal, not a kill.
+`--force-spawn` bypasses only the spawn lock. It does not bypass stale packet identity or phase/wave transition guards. After `escalate_up`, `of resume` / `of status` name one `of patch --<flag>` and `rev must exceed blocked_at_order_rev`, then `of next-wave`. That is not a stop. After the legal bump, printed `next` is `NEXT-WAVE`. Spawned children still flying: HOLD / collect then patch — do not `of patch` mid-flight (rewrite: `of unpack --force --child-id <id>` then `of patch`). Packed-only leftover may still patch. The rev gate stays. On a started-only spawn record it also refuses while the recorded pid is still running; dead or missing-and-not-found-live may override. `of doctor` names an open spawn past `started_at + budget.seconds` as `over_budget` — a signal, not a kill.
 
 ## Integration replay or changed inputs
 

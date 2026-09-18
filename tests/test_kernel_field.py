@@ -449,7 +449,10 @@ class SessionCutResume(unittest.TestCase):
         self.assertIn("spawn_blocked True", r.stdout)
         self.assertIn("last_regime   escalate_up", r.stdout)
         self.assertIn("PATCH THEN NEXT-WAVE", r.stdout)
-        self.assertIn("patch ORDER then next-wave", r.stdout)
+        self.assertIn("of patch --constraints-add", r.stdout)
+        self.assertIn("rev must exceed 1", r.stdout)
+        self.assertIn("then of next-wave", r.stdout)
+        self.assertNotIn("patch ORDER then next-wave", r.stdout)
         self.assertIn("status        idle", r.stdout)
 
     def test_checkpoint_summary_appears(self) -> None:
@@ -931,6 +934,135 @@ class DriveAfterIntegrateProof(unittest.TestCase):
         self.assertIn("next\n  SPAWN", resumed.stdout)
         self.assertNotIn(self.SPEAK, resumed.stdout)
         self.assertIn(of.InFlightSignal.SPEAK, resumed.stdout)
+
+
+class EscalateUnblockNext(unittest.TestCase):
+    """escalate_up next names the 1-action unblock. Rev gate stays. #254."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-escalate-unblock-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _escalate(self) -> None:
+        init = run_of(
+            self.tmp, "init", "--mission", "escalate unblock", "--phase", "explore"
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map the field gap",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "c1", THRESHOLD)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "escalate_up")
+
+    def _mark_spawned(self, child_id: str = "c1") -> None:
+        dest = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps(
+                {
+                    "child_id": child_id,
+                    "started_at": of.utc_now(),
+                    "pid": os.getpid(),
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def test_resume_names_patch_flag_and_expected_rev(self) -> None:
+        self._escalate()
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertTrue(state.get("spawn_blocked"))
+        self.assertEqual(state.get("blocked_at_order_rev"), 1)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("PATCH THEN NEXT-WAVE", resumed.stdout)
+        self.assertIn("of patch --constraints-add", resumed.stdout)
+        self.assertIn("rev must exceed 1", resumed.stdout)
+        self.assertIn("then of next-wave", resumed.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("of patch --constraints-add", status.stdout)
+        self.assertIn("rev must exceed 1", status.stdout)
+        refused = run_of(self.tmp, "next-wave")
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("must exceed blocked_at_order_rev", refused.stderr)
+
+    def test_legal_bump_then_next_wave(self) -> None:
+        self._escalate()
+        patched = run_of(
+            self.tmp,
+            "patch",
+            "--constraints-add",
+            "must cover invoicing constraints for the target country",
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        self.assertIn("rev=2", patched.stdout)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("NEXT-WAVE", resumed.stdout)
+        self.assertNotIn("PATCH THEN NEXT-WAVE", resumed.stdout)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+        self.assertIn("wave=2", nxt.stdout)
+        state = load_json(self.tmp / ".orderfield" / "state.json")
+        self.assertFalse(state.get("spawn_blocked"))
+        self.assertIsNone(state.get("blocked_at_order_rev"))
+
+    def test_spawned_flying_names_hold_not_midflight_patch(self) -> None:
+        self._escalate()
+        self._mark_spawned("c1")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  HOLD", resumed.stdout)
+        self.assertIn("do not of patch while flying", resumed.stdout)
+        self.assertIn("collect then of patch --constraints-add", resumed.stdout)
+        self.assertIn("rev must exceed 1", resumed.stdout)
+        self.assertIn("of unpack --force", resumed.stdout)
+        self.assertNotIn("PATCH THEN NEXT-WAVE", resumed.stdout)
+
+    def test_packed_only_leftover_still_names_patch(self) -> None:
+        init = run_of(
+            self.tmp, "init", "--mission", "partial escalate", "--phase", "explore"
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+        for cid, slice_text in (
+            ("c1", "land the threshold"),
+            ("c2", "still flying packed-only"),
+        ):
+            packed = run_of(
+                self.tmp,
+                "pack",
+                "--slice",
+                slice_text,
+                "--role",
+                "explorer",
+                "--child-id",
+                cid,
+            )
+            self.assertEqual(packed.returncode, 0, packed.stderr)
+        write_bound_residual(self.tmp, "c1", THRESHOLD)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1", "--partial")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "escalate_up")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("PATCH THEN NEXT-WAVE", resumed.stdout)
+        self.assertIn("of patch --constraints-add", resumed.stdout)
+        self.assertNotIn("do not of patch while flying", resumed.stdout)
 
 
 class ConstraintsRm(unittest.TestCase):
@@ -3817,10 +3949,29 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
             of.next_legal_action(idle, [], landed, stale=True),
             "next-wave",
         )
-        blocked = {"wave": 1, "children_spawned": 1, "spawn_blocked": True}
+        blocked = {
+            "wave": 1,
+            "children_spawned": 1,
+            "spawn_blocked": True,
+            "blocked_at_order_rev": 1,
+        }
         self.assertEqual(
             of.next_legal_action(blocked, flying, packets, spec_closed=True),
             "closed",
+        )
+        self.assertEqual(
+            of.next_legal_action(blocked, [], packets, order_rev=1),
+            of.EscalateUnblock.ACTION,
+        )
+        self.assertEqual(
+            of.next_legal_action(blocked, [], packets, order_rev=2),
+            "next-wave",
+        )
+        self.assertEqual(
+            of.next_legal_action(
+                blocked, flying, packets, order_rev=1, spawned_flying=True
+            ),
+            "hold",
         )
 
     def test_child_pulse_verdict_stale(self) -> None:

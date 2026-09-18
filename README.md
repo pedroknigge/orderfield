@@ -286,7 +286,7 @@ Accounting is reserved, not implemented: `budget.seconds` is the only enforced f
 Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.
 
 ```
-  escalate_up   patch the field, then next-wave
+  escalate_up   of patch --<flag> (rev must exceed N), then next-wave — not a stop
   scale_out     same role, more copies
   scale_across  reserved; report compatibility only
   scale_up      reserved; no runtime accounting selects it

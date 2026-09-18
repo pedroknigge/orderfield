@@ -44,7 +44,7 @@ of status --json
 
 While a residual is MISSING, `of status` / `of resume` / `of pulse` print `running` plus the last `PULSE` progress lines. Quote one line to the human each turn while `next=HOLD`. Do not collect. Do not treat harness chrome as the field. `of handoff` without `--packet` is the mid-epic field packet — do not unpack.
 
-A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) is `escalate_up`. Pack and spawn stop until `of patch` then guarded `of next-wave` (`recovery/threshold-stop-spawn`).
+A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) is `escalate_up`. That is not a stop. Printed `next` names one `of patch --<flag>` (`rev must exceed blocked_at_order_rev`) then `of next-wave`. Spawned flying: HOLD / collect then patch — do not `of patch` mid-flight. The rev gate stays (`recovery/threshold-stop-spawn`; `EscalateUnblockNext`).
 
 The child writes a structured residual. A chat dump cannot collect (`recovery/wave-report-quality-gate`).
 
