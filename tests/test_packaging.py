@@ -1930,7 +1930,7 @@ class SkillWaveSettleAutoContinue(unittest.TestCase):
         appendix = SkillSurface.appendix(ROOT)
         table = self.table(core).casefold()
         self.assertIn(self.SETTLE, table)
-        self.assertIn("printed `next`", self.table(core))
+        self.assertIn(self.NEXT, self.table(core))
         self.assertIn(self.PATH, table)
         self.assertIn(self.NO_SEGUIMOS, table)
         self.assertIn(self.NO_POKE, table)
