@@ -174,7 +174,8 @@ SPAWN_ENV_BASE_NAMES = (
     "TMP",
     # kernel: only what a child's own `of` calls need. Not OF_TRUST (nested
     # spawns re-choose their trust), not OF_LEARNINGS / OF_DEBUG / OF_AGENT /
-    # OF_SPAWN_ENV (leader knobs; the cross-repo store path stays private).
+    # OF_SPAWN_ENV / OF_SPAWN_MCP (leader knobs; the cross-repo store path
+    # stays private).
     "OF_FIELD",
     "OF_JSON",
     "OF_NO_UPDATE_CHECK",
@@ -332,6 +333,168 @@ def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, s
         if key in SPAWN_ENV_BASE_NAMES or key in extra or key.startswith(prefixes):
             out[key] = value
     return out
+
+
+# agy/grok headless -p blocks on host global MCP (agy has no --no-mcp).
+# Inverse of OF_SPAWN_ENV=inherit: isolate is the default; inherit opts in.
+SPAWN_MCP_VAR = "OF_SPAWN_MCP"
+HOST_MCP_ADAPTERS = frozenset({"agy", "grok"})
+
+
+class HostMcp:
+    """agy/grok do not load host global MCP by default.
+
+    Default ``isolate`` writes empty MCP configs under packet scratch
+    ``spawn-home/`` and points ``HOME`` (and Windows ``USERPROFILE``) there.
+    Real ``~/.gemini`` / ``~/.grok`` files are symlinked except the MCP
+    configs. ``OF_SPAWN_MCP=inherit`` keeps the host HOME MCP files.
+    Other adapters are ``n/a`` (claude already pulses; do not rewrite HOME).
+    Not a supervisor. Not a fake ``--no-mcp`` argv. Not ``OF_SPAWN_ENV``.
+    """
+
+    ISOLATE = "isolate"
+    INHERIT = "inherit"
+    NA = "n/a"
+    HOST = "host"
+    KIND = "host_mcp"
+    EMPTY_MCP = '{"mcpServers": {}}\n'
+    GROK_ISOLATE_TOML = (
+        "# orderfield HostMcp isolate — host global MCP off\n"
+        "[compat.claude]\n"
+        "mcps = false\n\n"
+        "[compat.cursor]\n"
+        "mcps = false\n"
+    )
+    AGY_MCP_RELS = (
+        ".gemini/config/mcp_config.json",
+        ".gemini/antigravity-cli/mcp_config.json",
+    )
+    OVERLAY_NAMES = frozenset({".gemini", ".grok"})
+    GROK_SKIP_HOME = frozenset({".claude.json"})
+
+    @staticmethod
+    def mode(adapter: str, parent: dict[str, str] | None = None) -> str:
+        if adapter not in HOST_MCP_ADAPTERS:
+            return HostMcp.NA
+        src = os.environ if parent is None else parent
+        raw = (src.get(SPAWN_MCP_VAR) or "").strip().lower()
+        return HostMcp.INHERIT if raw == "inherit" else HostMcp.ISOLATE
+
+    @staticmethod
+    def speak_line(adapter: str, mode: str | None = None) -> str | None:
+        chosen = mode if mode is not None else HostMcp.mode(adapter)
+        if chosen != HostMcp.INHERIT:
+            return None
+        return (
+            f"{SPAWN_MCP_VAR}=inherit: {adapter} will load host global MCP "
+            f"(~/.gemini|~/.grok); isolate is the default"
+        )
+
+    @staticmethod
+    def _link_entry(src: Path, dest: Path) -> None:
+        if dest.exists() or dest.is_symlink():
+            return
+        try:
+            dest.symlink_to(src)
+        except OSError:
+            return
+
+    @staticmethod
+    def _link_tree(src: Path, dest: Path, skip: set[str]) -> None:
+        dest.mkdir(parents=True, exist_ok=True)
+        if dest.is_symlink():
+            raise OSError(f"overlay dir is a symlink: {dest}")
+        if not src.is_dir():
+            return
+        try:
+            entries = list(src.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            if entry.name in skip:
+                continue
+            HostMcp._link_entry(entry, dest / entry.name)
+
+    @staticmethod
+    def _write_file(path: Path, text: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        path.write_text(text, encoding="utf-8")
+
+    @staticmethod
+    def materialize(overlay: Path, real_home: Path) -> None:
+        """Build an isolated HOME. Does not mutate real_home MCP files."""
+        overlay.mkdir(parents=True, exist_ok=True)
+        if overlay.is_symlink():
+            raise OSError(f"overlay home is a symlink: {overlay}")
+        try:
+            home_entries = list(real_home.iterdir())
+        except OSError:
+            home_entries = []
+        skip_home = HostMcp.OVERLAY_NAMES | HostMcp.GROK_SKIP_HOME
+        for entry in home_entries:
+            if entry.name in skip_home:
+                continue
+            HostMcp._link_entry(entry, overlay / entry.name)
+        gemini = real_home / ".gemini"
+        HostMcp._link_tree(gemini, overlay / ".gemini", {"config", "antigravity-cli"})
+        HostMcp._link_tree(
+            gemini / "config", overlay / ".gemini" / "config", {"mcp_config.json"}
+        )
+        HostMcp._link_tree(
+            gemini / "antigravity-cli",
+            overlay / ".gemini" / "antigravity-cli",
+            {"mcp_config.json"},
+        )
+        for rel in HostMcp.AGY_MCP_RELS:
+            HostMcp._write_file(overlay / rel, HostMcp.EMPTY_MCP)
+        HostMcp._link_tree(real_home / ".grok", overlay / ".grok", {"config.toml"})
+        HostMcp._write_file(overlay / ".grok" / "config.toml", HostMcp.GROK_ISOLATE_TOML)
+        cursor = real_home / ".cursor"
+        if cursor.is_dir():
+            HostMcp._link_tree(cursor, overlay / ".cursor", {"mcp.json"})
+
+    @staticmethod
+    def apply(
+        adapter: str,
+        env: dict[str, str],
+        scratch: Path | None,
+        *,
+        home: Path | None = None,
+        parent: dict[str, str] | None = None,
+    ) -> str:
+        """Rewrite HOME for isolate. Returns the applied mcp_mode.
+
+        Mode is taken from ``parent`` (leader env) when given, else ``env``.
+        After ``spawn_env`` the child dict has no ``OF_SPAWN_MCP``.
+        """
+        mode = HostMcp.mode(adapter, parent if parent is not None else env)
+        if mode != HostMcp.ISOLATE:
+            return mode
+        if scratch is None:
+            return HostMcp.HOST
+        raw_home = home or env.get("HOME") or env.get("USERPROFILE")
+        real = Path(raw_home) if raw_home else Path.home()
+        try:
+            real = real.expanduser()
+            if not real.is_dir() or real.resolve() == Path("/"):
+                return HostMcp.HOST
+            overlay = scratch / "spawn-home"
+            HostMcp.materialize(overlay, real)
+        except OSError:
+            return HostMcp.HOST
+        env["HOME"] = str(overlay)
+        if "USERPROFILE" in env:
+            env["USERPROFILE"] = str(overlay)
+        return HostMcp.ISOLATE
+
+    @staticmethod
+    def doctor_lines() -> list[str]:
+        return [
+            "host-mcp      agy/grok isolate host global MCP by default",
+            f"opt-in        {SPAWN_MCP_VAR}=inherit (ask; not a silent default)",
+        ]
 
 
 def which_bin(names: list[str]) -> str | None:

@@ -1477,6 +1477,32 @@ def _proc_starttime(pid: int) -> str | None:
         return None
 
 
+def proc_pcpu(pid: int) -> str | None:
+    """One ``ps`` %CPU sample. Not a supervisor; not a load average."""
+    try:
+        pid_n = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid_n <= 1:
+        return None
+    try:
+        proc = subprocess.run(
+            ["ps", "-p", str(pid_n), "-o", "pcpu="],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    raw = (proc.stdout or "").strip()
+    if not raw:
+        return None
+    try:
+        return f"{float(raw)}%"
+    except ValueError:
+        return None
+
+
 def _proc_sid(pid: int) -> int:
     if not hasattr(os, "getsid"):
         return 0

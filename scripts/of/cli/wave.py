@@ -29,6 +29,7 @@ from of_adapters import (
     resolve_trust_profile,
     spawn_env,
     spawn_env_mode,
+    HostMcp,
     OperatorAction,
 )
 
@@ -139,6 +140,9 @@ class CollectDiagnostic:
         env_mode = str(meta.get("env_mode") or "").strip()
         if env_mode == OperatorAction.INHERIT:
             facts.append("env_mode=inherit")
+        mcp_mode = str(meta.get("mcp_mode") or "").strip()
+        if mcp_mode == HostMcp.INHERIT:
+            facts.append("mcp_mode=inherit")
         if outcome:
             facts.append(f"outcome={outcome}")
         note = f" spawned {' '.join(facts)}" if facts else ""
@@ -961,6 +965,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             speak,
             plain=f"of: note — {speak}",
         )
+    mcp_mode = HostMcp.mode(adapter)
+    mcp_speak = HostMcp.speak_line(adapter, mcp_mode)
+    if mcp_speak:
+        emit_wave_warning(
+            HostMcp.KIND,
+            mcp_speak,
+            plain=f"of: note — {mcp_speak}",
+        )
     ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
@@ -1013,6 +1025,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "dry_run": bool(args.dry_run),
         "trust": profile,
         "env_mode": env_mode,
+        "mcp_mode": mcp_mode,
     }
     OperatorAction.apply_meta(meta)
     model_name = AdapterHints.spawn_model(adapter, packet)
@@ -1098,6 +1111,17 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_env = spawn_env(adapter)
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
+    scratch_rel = packet.get("scratch_dir")
+    scratch_abs = (
+        field_artifact_path(root, str(scratch_rel), "packet scratch_dir")
+        if scratch_rel
+        else None
+    )
+    applied_mcp = HostMcp.apply(
+        adapter, child_env, scratch_abs, parent=os.environ
+    )
+    if applied_mcp != mcp_mode:
+        meta["mcp_mode"] = applied_mcp
     from of.cli.ops import PulseProgress
 
     last_residual: dict[str, Any] | None = None

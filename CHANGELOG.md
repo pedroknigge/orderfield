@@ -10,7 +10,7 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## 0.8.21
 
-Kernel + skill work that landed on main after the published v0.8.20 tag (`522a153e`, #265) while still claiming 0.8.20 lockstep: after wave settle (`in_flight=0` + printed `next`), auto-continue that next — no poke (`SkillWaveSettleAutoContinue`; `#263`). Pack WARNs `owns_path_empty` / `owns_path_incomplete` when `--owns-path` misses `--slice` paths (`OwnsPathCoverage`; `#257`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.20 notes.
+Kernel + skill work that landed on main after the published v0.8.20 tag (`522a153e`, #265) while still claiming 0.8.20 lockstep: after wave settle (`in_flight=0` + printed `next`), auto-continue that next — no poke (`SkillWaveSettleAutoContinue`; `#263`). Pack WARNs `owns_path_empty` / `owns_path_incomplete` when `--owns-path` misses `--slice` paths (`OwnsPathCoverage`; `#257`). agy/grok spawn isolate host global MCP by default (`HostMcp`; `#269`); pulse prints `cpu=` on `no writes yet`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.20 notes.
 
 - **Reuse table (design-first):** `DriveAfterIntegrate` / `resume_next_lines` already print idle `next`. EvaluatorPacket is already store-at-start. Wave-end `of learn` already exists. The remaining gap is a leader who waits for ok / `!of pulse` / ¿seguimos? after `in_flight=0` (`#263`).
 - **Reuse, not a new verb:** skill/hot-path only. `in_flight=0` + printed `next` → execute that next. HITL only on kernel refuse, stored consent no, or named init-time asks. Learnings after close only. Forbidden: bare ok/dale as keepalive. No `of continue`. No supervisor. No `RUNTIME_OWNERSHIP`.
@@ -20,7 +20,11 @@ Kernel + skill work that landed on main after the published v0.8.20 tag (`522a15
 - **Reuse, not a new verb:** `OwnsPathCoverage` extracts slash-containing slice tokens and WARNs `owns_path_incomplete` / implementer `owns_path_empty`. Packet still written. Explorer without `--owns-path` stays silent. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `--owns-path` must cover every path `--slice` names. Parallel ark-check noise is project harness — note only.
 - **Proof:** `OwnsPathCoveragePack` / `SkillOwnsPathCoverage`. C-050 extended. No new C-ID (honesty cap). `#257`.
-- Packaging: VERSION 0.8.21; skill/alias description preview `v0.8.21 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.20 notes. These two cuts merged after the v0.8.20 tag.
+- **Reuse table (design-first):** `spawn_env` / `OperatorAction` already allowlist the child env. `pulse_once` already names `spawned (no writes yet)` + `pid=`. agy has no `--no-mcp`; headless `-p` blocks on host `~/.gemini` / `~/.grok` MCP (`#269`). Pulse cannot tell hung (0% CPU) from starting.
+- **Reuse, not a new verb:** `HostMcp` isolates agy/grok host MCP by default (empty overlay HOME under packet scratch). `OF_SPAWN_MCP=inherit` opts in (ask; speak + `mcp_mode`). `proc_pcpu` is one `ps` sample on `no writes yet`. No `--no-mcp` argv. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach isolate default + inherit opt-in + pulse `cpu=`. Core stays under the 20KB cap.
+- **Proof:** `HostMcpIsolate` / `PulseActivity.test_pulse_no_writes_yet_names_cpu` / `SkillHostMcp`. No new C-ID (honesty cap). `#269`.
+- Packaging: VERSION 0.8.21; skill/alias description preview `v0.8.21 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.20 notes. These two cuts merged after the v0.8.20 tag. `#269` lands on the same line (no VERSION bump).
 
 ## 0.8.20
 

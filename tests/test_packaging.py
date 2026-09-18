@@ -3403,6 +3403,31 @@ class SkillOperatorAction(unittest.TestCase):
         self.assertIn("not silent defaults", source)
 
 
+class SkillHostMcp(unittest.TestCase):
+    """SKILL / /of teach agy/grok host-MCP isolate + pulse cpu= on no writes yet."""
+
+    def test_core_alias_appendix_teach_host_mcp(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = SkillOperatorAction.table(core).casefold()
+        self.assertIn("of_spawn_mcp=inherit", table)
+        self.assertIn("cpu=", table)
+        self.assertIn("no writes yet", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("of_spawn_mcp", fold, name)
+            self.assertIn("isolate", fold, name)
+            self.assertIn("cpu=", fold, name)
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("class HostMcp:", source)
+        self.assertIn("SPAWN_MCP_VAR", source)
+
+
 class SkillSurfaceCore(unittest.TestCase):
     """Always-loaded SKILL.md is a short core. Appendix keeps full procedure."""
 
