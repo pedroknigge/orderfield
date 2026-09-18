@@ -351,9 +351,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             die(f"unknown requirement {rid}")
         if requirement_is_pair(item) and not both_sides:
             die(
-                f"{rid} is pair-shaped (same/different, success/fail, …); "
-                "exercise both sides at the public surface, then "
-                f"of spec --verified-contract {rid} --both-sides"
+                f"{rid} is a PAIR requirement; --verified-contract needs --both-sides "
+                "(exercise both sides at the public surface first)"
             )
         item["status"] = "verified_contract"
         if both_sides:

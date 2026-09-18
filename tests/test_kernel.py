@@ -132,6 +132,7 @@ from test_kernel_spec import (  # noqa: E402,F401
     ContrastDiffNarrative,
     ContrastReportRenderer,
     RequirementSurfaceReclassify,
+    PairVerifiedContractRefuse,
     MultiWaveResidualLoop,
     CloseEvidenceGate,
     OwnedWriteGate,
