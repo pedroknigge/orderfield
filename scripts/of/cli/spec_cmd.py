@@ -407,7 +407,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         if identity:
             PlanDocSync.emit(root, order)
             PlanCoverage.emit(root, order)
-        counts = requirement_counts(data)
+    counts = requirement_counts(data)
     print(
         f"requirements  {counts['total']} total  "
         f"owned {counts['owned']}  verified {counts['verified']}  "
