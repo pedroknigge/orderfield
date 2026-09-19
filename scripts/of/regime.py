@@ -568,6 +568,225 @@ class PlanDocSync:
         return True
 
 
+class PlanCoverage:
+    """Cited plan / SPEC heading IDs must map to a wave/packet.
+
+    Reuses PlanDocSync.cited / resolve. Complements SPEC
+    ``requirement_coverage_errors`` (unowned index IDs): a heading the
+    leader never ``of spec --add``ed is still an orphan here. Advisory.
+    Not a close gate. Not a new verb. Not a CMS.
+    """
+
+    KIND = "plan_cover"
+    STATUS_IDLE = "idle"
+    STATUS_OK = "ok"
+    STATUS_ORPHAN = "orphan"
+    HEADING_RE = re.compile(r"^(#{2,3})\s+(\S.*)$")
+    ID_RE = re.compile(r"\b([A-Z][A-Z0-9]{0,15}-[0-9]{3})\b")
+    NOTE = (
+        "plan_cover orphan — every cited plan / SPEC requirement "
+        "section needs a wave/packet (--owns-requirement or slice id); "
+        "high effort on ORDER, medium on implementer slices "
+        "(not a close gate)"
+    )
+    NEXT = (
+        "pack --owns-requirement ID --owns-path PATH for each orphan "
+        "(vertical slice; do not re-architect)"
+    )
+
+    @staticmethod
+    def sections(text: str) -> list[dict[str, Any]]:
+        """ATX ## / ### headings that carry a requirement ID."""
+        out: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        in_fence = False
+        for raw in str(text or "").splitlines():
+            stripped = raw.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            match = PlanCoverage.HEADING_RE.match(stripped)
+            if not match:
+                continue
+            title = match.group(2).strip()
+            found = PlanCoverage.ID_RE.search(title)
+            if not found:
+                continue
+            rid = found.group(1)
+            if rid in seen:
+                continue
+            seen.add(rid)
+            out.append(
+                {
+                    "id": rid,
+                    "title": title,
+                    "level": len(match.group(1)),
+                }
+            )
+        return out
+
+    @staticmethod
+    def claimed(packet: dict[str, Any]) -> set[str]:
+        ids: set[str] = set()
+        for raw in packet.get("owns_requirements") or []:
+            text = str(raw or "").strip()
+            if PlanCoverage.ID_RE.fullmatch(text):
+                ids.add(text)
+        blob = " ".join(
+            (
+                str(packet.get("slice") or ""),
+                str(packet.get("child_id") or ""),
+            )
+        )
+        ids.update(PlanCoverage.ID_RE.findall(blob))
+        return ids
+
+    @staticmethod
+    def packets(root: Path) -> list[dict[str, Any]]:
+        home = field_home(root)
+        waves = home / "waves"
+        out: list[dict[str, Any]] = []
+        if not waves.is_dir() or waves.is_symlink():
+            return out
+        for child in sorted(waves.iterdir()):
+            pdir = child / "packets"
+            if not child.is_dir() or child.is_symlink() or not pdir.is_dir():
+                continue
+            for path in sorted(pdir.glob("*.json")):
+                if path.is_symlink() or not path.is_file():
+                    continue
+                data = _read_json_object(path)
+                if isinstance(data, dict):
+                    out.append(data)
+        return out
+
+    @staticmethod
+    def plan_texts(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> list[tuple[str, str]]:
+        if order is None:
+            order = load_order(root)
+        rows: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for rel in PlanDocSync.cited(order, root):
+            path = PlanDocSync.resolve(root, rel)
+            if path is None or not path.is_file() or path.is_symlink():
+                continue
+            try:
+                key = str(path.resolve())
+            except OSError:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                rows.append((rel, path.read_text(encoding="utf-8")))
+            except OSError:
+                continue
+        spec = spec_path(root)
+        if field_is_file(spec):
+            try:
+                key = str(spec.resolve())
+            except OSError:
+                key = ""
+            if key and key not in seen:
+                try:
+                    rows.append(
+                        (
+                            field_rel(root, spec),
+                            spec.read_text(encoding="utf-8"),
+                        )
+                    )
+                except OSError:
+                    pass
+        return rows
+
+    @staticmethod
+    def orphans(
+        sections: list[dict[str, Any]], packets: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        claimed: set[str] = set()
+        for packet in packets:
+            claimed.update(PlanCoverage.claimed(packet))
+        return [
+            section
+            for section in sections
+            if str(section.get("id") or "") not in claimed
+        ]
+
+    @staticmethod
+    def document(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        if order is None:
+            order = load_order(root)
+        sections: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for rel, text in PlanCoverage.plan_texts(root, order):
+            for section in PlanCoverage.sections(text):
+                rid = str(section.get("id") or "")
+                if not rid or rid in seen:
+                    continue
+                seen.add(rid)
+                row = dict(section)
+                row["rel"] = rel
+                sections.append(row)
+        packets = PlanCoverage.packets(root)
+        orphans = PlanCoverage.orphans(sections, packets)
+        if not sections:
+            status = PlanCoverage.STATUS_IDLE
+        elif orphans:
+            status = PlanCoverage.STATUS_ORPHAN
+        else:
+            status = PlanCoverage.STATUS_OK
+        note = PlanCoverage.NOTE if status == PlanCoverage.STATUS_ORPHAN else ""
+        return {
+            "status": status,
+            "sections": sections,
+            "orphans": orphans,
+            "orphan_ids": [str(row.get("id") or "") for row in orphans],
+            "hot": status == PlanCoverage.STATUS_ORPHAN,
+            "note": note,
+            "next": PlanCoverage.NEXT if note else "",
+        }
+
+    @staticmethod
+    def doctor_lines(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> tuple[list[str], bool]:
+        doc = PlanCoverage.document(root, order)
+        if not doc["hot"]:
+            return [], False
+        who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
+        line = f"  {PlanCoverage.KIND}     {PlanCoverage.STATUS_ORPHAN}"
+        if who:
+            line += f"  {who}"
+        return (
+            [
+                line,
+                f"  note          {doc['note']}",
+                f"  next          {doc['next']}",
+            ],
+            True,
+        )
+
+    @staticmethod
+    def emit(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        file: Any = None,
+    ) -> bool:
+        doc = PlanCoverage.document(root, order)
+        if not doc.get("hot"):
+            return False
+        print(f"note         {doc['note']}", file=file)
+        print(f"next         {doc['next']}", file=file)
+        return True
+
+
 def done_when_tag(criterion: str) -> str | None:
     """Return the phase a criterion is scoped to, or None when it is global."""
     head, sep, _rest = str(criterion).partition(":")

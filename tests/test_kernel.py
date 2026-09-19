@@ -31,6 +31,7 @@ from test_packaging import (  # noqa: E402,F401
     ModelCatalogHonesty,
     SkillAntiDoneTheater,
     SkillPlanDocSync,
+    SkillPlanFirstOrder,
     SkillPstackCherries,
     SkillWaveEndTriage,
     SkillPackSpawnChain,
@@ -83,6 +84,7 @@ from test_kernel_cli import (  # noqa: E402,F401
     CliFieldResidual,
     DoctorAuditPressure,
     DoctorPlanDocSync,
+    DoctorPlanCoverage,
     DoctorOnePassSkew,
     DoctorSkillVersionSkew,
     DoctorWorktreeLeftover,
@@ -145,6 +147,7 @@ from test_kernel_spec import (  # noqa: E402,F401
 
 from test_kernel_regime import (  # noqa: E402,F401
     PlanDocSyncUnit,
+    PlanCoverageUnit,
     RunbookPathGate,
     ThresholdStopSpawn,
 )

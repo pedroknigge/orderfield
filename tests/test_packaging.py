@@ -1514,6 +1514,48 @@ class SkillPlanDocSync(unittest.TestCase):
         self.assertIn("class PlanDocSync:", source)
 
 
+class SkillPlanFirstOrder(unittest.TestCase):
+    """SKILL teaches high effort on ORDER; medium implementer slices."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_plan_first(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("incoming plan", table)
+        self.assertIn("high effort on order", table)
+        self.assertIn("medium", table)
+        self.assertIn("plan_cover", table)
+        self.assertIn("re-architect", table)
+        self.assertIn("owns-requirement", table)
+        alias_fold = alias.casefold()
+        self.assertIn("high effort on order", alias_fold)
+        self.assertIn("plan_cover", alias_fold)
+        self.assertIn("medium", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("plan_cover", appendix_fold)
+        self.assertIn("high effort on order", appendix_fold)
+        self.assertIn("tracer", appendix_fold)
+        for cherry in (
+            "architect",
+            "sequence-verifiable-units",
+            "encode-lessons-in-structure",
+            "blast-radius",
+            "prove-it-works",
+            "attack-the-premise",
+        ):
+            self.assertIn(cherry, appendix_fold, cherry)
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        self.assertIn("re-architect", slave)
+        self.assertIn("medium", slave)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PlanCoverage:", source)
+
+
 class SkillPstackCherries(unittest.TestCase):
     """Appendix + SLAVE teach pstack-shaped pack/plan cherries. Skill-only."""
 

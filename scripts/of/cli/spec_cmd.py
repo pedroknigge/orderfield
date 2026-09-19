@@ -41,6 +41,7 @@ from of.field import (
 )
 from of.regime import (
     DoneWhenLint,
+    PlanCoverage,
     PlanDocSync,
     done_when_closed,
     mark_done_when_closed,
@@ -405,7 +406,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         discard_disposable_ingest(root, ingest_source)
         if identity:
             PlanDocSync.emit(root, order)
-    counts = requirement_counts(data)
+            PlanCoverage.emit(root, order)
+        counts = requirement_counts(data)
     print(
         f"requirements  {counts['total']} total  "
         f"owned {counts['owned']}  verified {counts['verified']}  "
@@ -1157,6 +1159,7 @@ def cmd_close(args: argparse.Namespace) -> None:
     checklist = CloseChecklist.document(root, order, state)
     AuditPressure.emit(root)
     PlanDocSync.emit(root, order)
+    PlanCoverage.emit(root, order)
     DoctorSkew.emit_teardown(root)
     if getattr(args, "checklist", False):
         blocked = CloseChecklist.emit(checklist, machine=True)

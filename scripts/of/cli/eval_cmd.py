@@ -1237,6 +1237,114 @@ def eval_setup_recovery_plan_doc_sync(root: Path) -> None:
     PlanDocSyncEval.setup(root)
 
 
+class PlanCoverageEval:
+    """Mega-plan heading IDs vs packed owns-requirement. #279.
+
+    HTTP-001 stays unpacked so doctor names plan_cover orphan.
+    Reuses PlanDocSync.cited + pack --owns-requirement. Eval writer only.
+    """
+
+    PLAN = "docs/plans/active/mega.md"
+    FIXTURE = Path("evals") / "fixtures" / "plan-first-mega-plan.md"
+    CONSTRAINT = "keep docs/plans/active/mega.md coverage honest"
+    COVERED = (
+        ("auth", "src/auth.py", "AUTH-001", "Implement AUTH-001 in src/auth.py"),
+        ("store", "src/store.py", "STORE-001", "Implement STORE-001 in src/store.py"),
+        ("cli", "src/cli.py", "CLI-001", "Implement CLI-001 in src/cli.py"),
+    )
+    ORPHAN = "HTTP-001"
+    ORPHAN_PATH = "src/http_api.py"
+    ORPHAN_CHILD = "http"
+    ORPHAN_SLICE = "Implement HTTP-001 in src/http_api.py"
+
+    @staticmethod
+    def fixture_text() -> str:
+        path = kernel_repo_root() / PlanCoverageEval.FIXTURE
+        return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def write_plan(root: Path) -> Path:
+        plan = Path(root) / PlanCoverageEval.PLAN
+        plan.parent.mkdir(parents=True, exist_ok=True)
+        plan.write_text(PlanCoverageEval.fixture_text(), encoding="utf-8")
+        return plan
+
+    @staticmethod
+    def setup(root: Path, *, orphan: bool = True) -> None:
+        PlanCoverageEval.write_plan(root)
+        brief = Path(root) / "BRIEF.md"
+        brief.write_text(
+            "Hospital protocol mega-plan. Living surface: "
+            f"{PlanCoverageEval.PLAN}\n",
+            encoding="utf-8",
+        )
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "plan-first mega-plan coverage",
+            "--phase",
+            "build",
+            "--source-file",
+            str(brief),
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        patched = eval_run_of(
+            root,
+            "patch",
+            "--constraints-add",
+            PlanCoverageEval.CONSTRAINT,
+        )
+        EvalInvariantSetup.require_ok(patched, "patch")
+        for req_id, text in (
+            ("AUTH-001", "login boundary port"),
+            ("STORE-001", "persist occupancy json"),
+            ("CLI-001", "print occupancy exits 0"),
+        ):
+            added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
+            EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        if not orphan:
+            added = eval_run_of(
+                root,
+                "spec",
+                "--add",
+                PlanCoverageEval.ORPHAN,
+                "--text",
+                "public status and health",
+            )
+            EvalInvariantSetup.require_ok(added, "spec add HTTP-001")
+        for child_id, path, req_id, slice_text in PlanCoverageEval.COVERED:
+            eval_pack_child(root, child_id, path, req_id, slice_text)
+        if not orphan:
+            PlanCoverageEval.pack_orphan(root)
+
+    @staticmethod
+    def pack_orphan(root: Path) -> None:
+        added = eval_run_of(
+            root,
+            "spec",
+            "--add",
+            PlanCoverageEval.ORPHAN,
+            "--text",
+            "public status and health",
+        )
+        if added.returncode != 0 and "already" not in (added.stderr or "").lower():
+            EvalInvariantSetup.require_ok(added, "spec add HTTP-001")
+        eval_pack_child(
+            root,
+            PlanCoverageEval.ORPHAN_CHILD,
+            PlanCoverageEval.ORPHAN_PATH,
+            PlanCoverageEval.ORPHAN,
+            PlanCoverageEval.ORPHAN_SLICE,
+        )
+
+
+@_register_eval_fixture("recovery_plan_first_coverage")
+def eval_setup_recovery_plan_first_coverage(root: Path) -> None:
+    """Cited mega-plan with one unpacked heading. Doctor WARNs plan_cover."""
+    PlanCoverageEval.setup(root)
+
+
 class DriveAfterIntegrateEval:
     """Money-plan shape: one wave collect+integrate, idle + NEXT-WAVE."""
 
@@ -2053,8 +2161,11 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillProductionMode",
     "tests.test_kernel.RunbookPathGate",
     "tests.test_kernel.PlanDocSyncUnit",
+    "tests.test_kernel.PlanCoverageUnit",
     "tests.test_kernel.DoctorPlanDocSync",
+    "tests.test_kernel.DoctorPlanCoverage",
     "tests.test_kernel.SkillPlanDocSync",
+    "tests.test_kernel.SkillPlanFirstOrder",
     "tests.test_kernel.SkillPstackCherries",
     "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",

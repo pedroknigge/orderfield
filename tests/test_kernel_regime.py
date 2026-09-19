@@ -1864,5 +1864,44 @@ class PlanDocSyncUnit(unittest.TestCase):
         self.assertEqual(of.PlanDocSync.named("the runbook is ready"), [])
 
 
+class PlanCoverageUnit(unittest.TestCase):
+    """Mega-plan heading IDs vs packets. Orphan fails; full cover is quiet."""
+
+    def test_fixture_sections_skip_meta_headings(self) -> None:
+        text = of.PlanCoverageEval.fixture_text()
+        ids = [row["id"] for row in of.PlanCoverage.sections(text)]
+        self.assertEqual(ids, ["AUTH-001", "STORE-001", "HTTP-001", "CLI-001"])
+        self.assertFalse(any("Why" in row["title"] for row in of.PlanCoverage.sections(text)))
+        self.assertEqual(of.PlanCoverage.sections("## Why this exists\nNo id here.\n"), [])
+
+    def test_orphans_empty_when_every_section_is_packed(self) -> None:
+        sections = of.PlanCoverage.sections(of.PlanCoverageEval.fixture_text())
+        packets = [
+            {"owns_requirements": ["AUTH-001"], "slice": "auth", "child_id": "auth"},
+            {"owns_requirements": ["STORE-001"], "slice": "store", "child_id": "store"},
+            {"owns_requirements": ["HTTP-001"], "slice": "http", "child_id": "http"},
+            {"owns_requirements": ["CLI-001"], "slice": "cli", "child_id": "cli"},
+        ]
+        self.assertEqual(of.PlanCoverage.orphans(sections, packets), [])
+
+    def test_orphans_name_unpacked_heading(self) -> None:
+        sections = of.PlanCoverage.sections(of.PlanCoverageEval.fixture_text())
+        packets = [
+            {"owns_requirements": ["AUTH-001"], "slice": "auth", "child_id": "auth"},
+            {"owns_requirements": ["STORE-001"], "slice": "store", "child_id": "store"},
+            {"owns_requirements": ["CLI-001"], "slice": "cli", "child_id": "cli"},
+        ]
+        orphans = of.PlanCoverage.orphans(sections, packets)
+        self.assertEqual([row["id"] for row in orphans], ["HTTP-001"])
+
+    def test_claimed_reads_slice_id_when_owns_missing(self) -> None:
+        self.assertEqual(
+            of.PlanCoverage.claimed(
+                {"owns_requirements": [], "slice": "Implement HTTP-001", "child_id": "x"}
+            ),
+            {"HTTP-001"},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
