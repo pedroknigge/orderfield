@@ -134,13 +134,13 @@ def write_bound_residual(
     wave: int = 1,
 ) -> Path:
     packet = load_json(packet_path(root, child_id, wave))
+    residual = bound_residual(root, child_id, fixture, wave)
+    of.OwnedWrite.ensure(root, packet)
+    if residual.get("status") == "done":
+        of.CloseEvidence.stamp_proof(residual, packet, root)
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
-        encoding="utf-8",
-    )
-    of.OwnedWrite.ensure(root, packet)
+    destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
     return destination
 
 

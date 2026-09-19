@@ -76,10 +76,11 @@ def write_bound_residual(
     )
     if patch is not None:
         residual["residual"]["proposed_patch"] = patch
+    of.OwnedWrite.ensure(root, packet)
+    of.CloseEvidence.stamp_proof(residual, packet, root)
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
-    of.OwnedWrite.ensure(root, packet)
     return destination
 
 

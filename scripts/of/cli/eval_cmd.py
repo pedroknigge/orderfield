@@ -153,17 +153,18 @@ class EvalInvariantSetup:
         result.parent.mkdir(parents=True, exist_ok=True)
         result.write_text(result_text, encoding="utf-8")
         residual["result_ref"] = result.relative_to(root).as_posix()
-        if status == "done" and attach_close:
-            rem["evidence"] = CloseEvidence.attach(
-                evidence,
-                result,
-                rollback=f"git checkout -- {residual['result_ref']}",
-            )
         dest = root / str(packet["residual_path"])
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dump_json(dest, residual)
         if status == "done":
             OwnedWrite.ensure(root, packet)
+            if attach_close:
+                if CloseEvidence.stamp_proof(residual, packet, root) is None:
+                    rem["evidence"] = CloseEvidence.attach(
+                        evidence,
+                        result,
+                        rollback=f"git checkout -- {residual['result_ref']}",
+                    )
+        dump_json(dest, residual)
 
     @staticmethod
     def setup_pack_exclusivity(root: Path) -> None:
@@ -352,6 +353,8 @@ def eval_setup_recovery_contrast_close(root: Path) -> None:
         "implementer",
         "--child-id",
         "imp1",
+        "--owns-path",
+        "eval/imp1.py",
         "--owns-requirement",
         "ALG-001",
     )
@@ -441,6 +444,8 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
         "implementer",
         "--child-id",
         "imp1",
+        "--owns-path",
+        "eval/imp1.py",
         "--owns-requirement",
         "CLI-001",
     )
@@ -457,6 +462,63 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
             "requirements_verified_contract": ["CLI-001"],
             "spec_closed": True,
             "mission": "child stole the mission",
+        },
+    )
+
+
+@_register_eval_fixture("recovery_close_evidence_product_sha")
+def eval_setup_recovery_close_evidence_product_sha(root: Path) -> None:
+    """Implementer hashes scratch notes and does not change product bytes."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval close evidence product sha",
+        "--phase",
+        "build",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "write src/app.py product bytes",
+        "--role",
+        "implementer",
+        "--child-id",
+        "imp",
+        "--owns-path",
+        "src/app.py",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    packet = load_json(wave_dir(1, root) / "packets" / "imp.json")
+    notes = root / ".orderfield" / "work" / "scratch" / "imp" / "notes.md"
+    notes.parent.mkdir(parents=True, exist_ok=True)
+    notes.write_text("diary, not product\n", encoding="utf-8")
+    residual = load_json(
+        kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
+    )
+    for key in PACKET_IDENTITY_FIELDS:
+        residual[key] = packet[key]
+    residual["result_ref"] = notes.relative_to(root).as_posix()
+    rem = residual.setdefault("residual", {})
+    rem["evidence"] = CloseEvidence.attach(
+        "hashed scratch notes and claimed done",
+        notes,
+        rollback="git checkout -- .orderfield/work/scratch/imp/notes.md",
+    )
+    dest = root / str(packet["residual_path"])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(dest, residual)
+    spawn = wave_dir(1, root) / "spawns" / "imp.json"
+    spawn.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(
+        spawn,
+        {
+            "child_id": "imp",
+            "adapter": "claude",
+            "started_at": utc_now(),
+            OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
         },
     )
 
@@ -598,6 +660,8 @@ class WaveReportQualityEval:
             "implementer",
             "--child-id",
             "imp1",
+            "--owns-path",
+            "eval/imp1.py",
         )
         EvalInvariantSetup.require_ok(packed, "pack")
         WaveReportQualityEval.write_residual(root, dump=dump)
@@ -1260,6 +1324,8 @@ class DriveAfterIntegrateEval:
             "implementer",
             "--child-id",
             "w1",
+            "--owns-path",
+            "eval/w1.py",
         )
         EvalInvariantSetup.require_ok(packed, "pack")
         EvalInvariantSetup.write_bound_residual(
@@ -1865,6 +1931,8 @@ def eval_setup_recovery_multi_harness(root: Path) -> None:
         "implementer",
         "--child-id",
         "imp1",
+        "--owns-path",
+        "eval/imp1.py",
     )
     EvalInvariantSetup.require_ok(packed, "pack")
     EvalInvariantSetup.write_bound_residual(

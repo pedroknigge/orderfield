@@ -32,7 +32,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `CloseEvidence.errors` already SHA-256s a file and refuses captions. `OwnedWrite.errors` already refuses zero writes under a **set** owns-path (`#251`). The remaining dual-truth hole is hashing scratch `notes.md`, skipping empty implementer owns-path, and greeting a `touch` as a write (`#286`).
+- **Reuse, not a new verb:** proof file prefers owns-path / published path over `.orderfield/work/scratch/`. Empty targets + implementer is `owned_write_missing`. Spawn records `owned_sha`; collect compares bytes, not mtime. `COMMAND_RE` drops a bare filename. No `of prove`. No supervisor. `#284` receipts stay a later layer.
+- **Skill drives the cut:** SKILL / `/of` / SLAVE / appendix teach product SHA, empty owns-path refuse, mtime-only is not a write. Core stays under the 20KB cap.
+- **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. C-033 extended. No new C-ID (honesty cap). `#286`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). `#286` landed on the same 0.8.22 line without a VERSION bump.
 
 ## 0.8.21
 

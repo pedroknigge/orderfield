@@ -466,7 +466,7 @@ def validate_residual_for_packet(
                 f"done result_ref must be an existing path under the project: {result_ref!r}"
             )
     errs.extend(verifier_done_errors(res, packet, root))
-    errs.extend(CloseEvidence.errors(res, root))
+    errs.extend(CloseEvidence.errors(res, root, packet))
     errs.extend(OwnedWrite.errors(res, packet, root))
     return errs
 
@@ -991,13 +991,16 @@ class ResidualQuality:
 class CloseEvidence:
     """Done residual close evidence: artifact SHA + rollback command.
 
-    Reuses ``residual.evidence`` (string) and ``result_ref`` (the proof
-    file collect already requires for ``status=done``). Hashes that file
-    and requires the hex plus a rollback command in evidence. Captions
-    alone die. Not a new schema key. Not ``of close`` / ``CLOSE.json``.
-    Not a second close doctrine.
+    Reuses ``residual.evidence`` (string) and ``result_ref``. Explorer /
+    adversary / verifier without ``owns_paths`` still hash ``result_ref``
+    (scratch notes are fine). Implementer / nonempty ``owns_paths`` must
+    hash owned product bytes or a named published artifact — never
+    ``.orderfield/work/scratch/``. Rollback is a verb command, not a
+    filename caption. Not a new schema key. Not ``of prove``. Not
+    ``of close`` / ``CLOSE.json``. #284 receipts are a later layer.
     """
 
+    SCRATCH_PREFIX = ".orderfield/work/scratch/"
     SHA_RE = re.compile(
         r"(?:artifact_sha|sha256)\s*[:=]\s*([0-9a-f]{64})\b",
         re.I,
@@ -1007,7 +1010,6 @@ class CloseEvidence:
         r"(?:"
         r"\b(?:git|rm|mv|cp|of|python|python3|make|cargo|npm|pnpm)\b"
         r"|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+"
-        r"|[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,7}"
         r")",
         re.I,
     )
@@ -1045,6 +1047,77 @@ class CloseEvidence:
         return match.group(1).strip()
 
     @staticmethod
+    def is_scratch_rel(rel: str) -> bool:
+        return posix_owns_path(rel).startswith(CloseEvidence.SCRATCH_PREFIX)
+
+    @staticmethod
+    def is_scratch_path(root: Path, path: Path) -> bool:
+        try:
+            rel = path.resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            return False
+        return CloseEvidence.is_scratch_rel(rel)
+
+    @staticmethod
+    def product_required(res: Any, packet: Any) -> bool:
+        return OwnedWrite.applies(res, packet)
+
+    @staticmethod
+    def _resolve_result_file(res: Any, root: Path) -> Path | None:
+        result_ref = res.get("result_ref") if isinstance(res, dict) else None
+        if not result_ref:
+            return None
+        try:
+            path = safe_relative_path(
+                root, result_ref, "done result_ref", must_exist=False
+            )
+        except SystemExit:
+            return None
+        return path if path.is_file() else None
+
+    @staticmethod
+    def proof_candidates(
+        res: Any, root: Path, packet: Any = None
+    ) -> list[Path]:
+        """Product / published files whose digest may satisfy artifact_sha."""
+        seen: set[Path] = set()
+        out: list[Path] = []
+
+        def add(path: Path) -> None:
+            try:
+                key = path.resolve()
+            except OSError:
+                key = path
+            if key in seen or not path.is_file():
+                return
+            if CloseEvidence.is_scratch_path(root, path):
+                return
+            seen.add(key)
+            out.append(path)
+
+        result_file = CloseEvidence._resolve_result_file(res, root)
+        if result_file is not None:
+            add(result_file)
+        if isinstance(packet, dict):
+            for write in OwnedWrite.writes(root, packet):
+                add(Path(write))
+        return out
+
+    @staticmethod
+    def proof_file(res: Any, root: Path, packet: Any = None) -> Path | None:
+        """File whose bytes artifact_sha must match.
+
+        Explorer without owns-path: ``result_ref`` (scratch OK).
+        Implementer / owns-path: published ``result_ref`` or a changed
+        owned product file. Never scratch when product is required.
+        """
+        result_file = CloseEvidence._resolve_result_file(res, root)
+        if not CloseEvidence.product_required(res, packet):
+            return result_file
+        candidates = CloseEvidence.proof_candidates(res, root, packet)
+        return candidates[0] if candidates else None
+
+    @staticmethod
     def attach(
         evidence: str,
         artifact: Path,
@@ -1060,6 +1133,17 @@ class CloseEvidence:
         return "\n".join(lines)
 
     @staticmethod
+    def strip_stamps(evidence: str) -> str:
+        lines: list[str] = []
+        for line in str(evidence or "").splitlines():
+            if CloseEvidence.SHA_RE.search(line):
+                continue
+            if CloseEvidence.ROLLBACK_RE.match(line):
+                continue
+            lines.append(line)
+        return "\n".join(lines).rstrip()
+
+    @staticmethod
     def stamp(
         residual: dict[str, Any],
         artifact: Path,
@@ -1068,27 +1152,50 @@ class CloseEvidence:
     ) -> None:
         rem = residual.setdefault("residual", {})
         rem["evidence"] = CloseEvidence.attach(
-            str(rem.get("evidence") or ""),
+            CloseEvidence.strip_stamps(str(rem.get("evidence") or "")),
             artifact,
             rollback=rollback,
         )
 
     @staticmethod
-    def errors(res: Any, root: Path) -> list[str]:
+    def stamp_proof(
+        residual: dict[str, Any],
+        packet: dict[str, Any],
+        root: Path,
+        *,
+        rollback: str | None = None,
+    ) -> Path | None:
+        """Fixture helper: stamp SHA of the packet's proof file."""
+        proof = CloseEvidence.proof_file(residual, root, packet)
+        if proof is None:
+            return None
+        try:
+            rel = proof.resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            rel = proof.name
+        CloseEvidence.stamp(
+            residual,
+            proof,
+            rollback=rollback or f"git checkout -- {rel}",
+        )
+        return proof
+
+    @staticmethod
+    def errors(res: Any, root: Path, packet: Any = None) -> list[str]:
         if not isinstance(res, dict) or res.get("status") != "done":
             return []
         rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
         evidence = str(rem.get("evidence") or "")
         errs: list[str] = []
         result_ref = res.get("result_ref")
-        artifact: Path | None = None
+        result_path: Path | None = None
         if result_ref:
             try:
                 path = safe_relative_path(
                     root, result_ref, "done result_ref", must_exist=False
                 )
                 if path.is_file():
-                    artifact = path
+                    result_path = path
                 elif path.exists():
                     errs.append(
                         "done result_ref must be a file for close evidence"
@@ -1096,8 +1203,26 @@ class CloseEvidence:
             except SystemExit:
                 pass
         got = CloseEvidence.parse_sha(evidence)
-        if artifact is not None:
-            want = CloseEvidence.digest(artifact)
+        if CloseEvidence.product_required(res, packet):
+            candidates = CloseEvidence.proof_candidates(res, root, packet)
+            if not candidates:
+                errs.append(
+                    "close evidence artifact_sha must hash owned product "
+                    "or published artifact, not scratch"
+                )
+            elif not got:
+                errs.append(
+                    "close evidence requires artifact_sha "
+                    "(sha256 of owned product)"
+                )
+            else:
+                wants = {CloseEvidence.digest(path) for path in candidates}
+                if got not in wants:
+                    errs.append(
+                        "close evidence artifact sha does not match owned product"
+                    )
+        elif result_path is not None:
+            want = CloseEvidence.digest(result_path)
             if not got:
                 errs.append(
                     "close evidence requires artifact_sha "
@@ -1130,13 +1255,15 @@ class CloseEvidence:
 class OwnedWrite:
     """Implementer / owns-path done residual must write owned files.
 
-    Artifact mtime, not status prose. Reuses ``owns_paths``, recorded
-    worktree, spawn ``started_at``, and residual ``status``. Explorer /
-    adversary / verifier without ``owns_paths`` skip. Not ``of prove``.
-    Not a supervisor. Not ``RUNTIME_OWNERSHIP``.
+    Content change vs spawn ``owned_sha`` snapshot, not mtime-only.
+    Empty targets + implementer is ``owned_write_missing`` (not skip).
+    Explorer / adversary / verifier without ``owns_paths`` skip. Reuses
+    ``owns_paths``, recorded worktree, spawn ``started_at``. Not
+    ``of prove``. Not a supervisor. Not ``RUNTIME_OWNERSHIP``.
     """
 
     KIND = "owned_write_missing"
+    DIGEST_KEY = "owned_sha"
     SUCCESS = frozenset({"done"})
     SKIP_DIR_NAMES = frozenset(
         {
@@ -1212,25 +1339,97 @@ class OwnedWrite:
         return any(part in OwnedWrite.SKIP_DIR_NAMES for part in path.parts)
 
     @staticmethod
-    def files_since(path: Path, since: float) -> list[str]:
+    def rel_key(root: Path, path: Path) -> str:
+        try:
+            return path.resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            return str(path.resolve())
+
+    @staticmethod
+    def _iter_files(path: Path) -> list[Path]:
         if not path.exists() or path.is_symlink() or OwnedWrite._skip(path):
             return []
         if path.is_file():
-            try:
-                if path.stat().st_mtime >= since:
-                    return [str(path)]
-            except OSError:
-                return []
-            return []
+            return [path]
         if not path.is_dir():
             return []
-        hits: list[str] = []
+        hits: list[Path] = []
         try:
             children = path.rglob("*")
         except OSError:
             return []
         for child in children:
             if child.is_symlink() or not child.is_file() or OwnedWrite._skip(child):
+                continue
+            hits.append(child)
+        return hits
+
+    @staticmethod
+    def snapshot(root: Path, packet: dict[str, Any]) -> dict[str, str]:
+        """sha256 of existing owned files before the child runs."""
+        out: dict[str, str] = {}
+        for target in OwnedWrite.targets(root, packet):
+            for path in OwnedWrite._iter_files(target):
+                try:
+                    out[OwnedWrite.rel_key(root, path)] = CloseEvidence.digest(path)
+                except OSError:
+                    continue
+        return out
+
+    @staticmethod
+    def baseline(root: Path, packet: dict[str, Any]) -> dict[str, str] | None:
+        child = str(packet.get("child_id") or "")
+        wave = packet.get("wave")
+        if not (
+            child
+            and isinstance(wave, int)
+            and not isinstance(wave, bool)
+            and wave >= 1
+        ):
+            return None
+        meta = wave_dir(wave, root) / "spawns" / f"{child}.json"
+        if not meta.is_file():
+            return None
+        data = _read_json_object(meta) or {}
+        if OwnedWrite.DIGEST_KEY not in data:
+            return None
+        raw = data.get(OwnedWrite.DIGEST_KEY)
+        if not isinstance(raw, dict):
+            return {}
+        out: dict[str, str] = {}
+        for key, value in raw.items():
+            if isinstance(value, str) and len(value) == 64:
+                out[str(key)] = value.lower()
+        return out
+
+    @staticmethod
+    def files_since(path: Path, since: float) -> list[str]:
+        hits: list[str] = []
+        for child in OwnedWrite._iter_files(path):
+            try:
+                if child.stat().st_mtime >= since:
+                    hits.append(str(child))
+            except OSError:
+                continue
+        return hits
+
+    @staticmethod
+    def files_changed(
+        path: Path,
+        since: float,
+        baseline: dict[str, str] | None,
+        root: Path,
+    ) -> list[str]:
+        hits: list[str] = []
+        for child in OwnedWrite._iter_files(path):
+            try:
+                current = CloseEvidence.digest(child)
+            except OSError:
+                continue
+            if baseline is not None:
+                old = baseline.get(OwnedWrite.rel_key(root, child))
+                if old is None or old != current:
+                    hits.append(str(child))
                 continue
             try:
                 if child.stat().st_mtime >= since:
@@ -1242,9 +1441,10 @@ class OwnedWrite:
     @staticmethod
     def writes(root: Path, packet: dict[str, Any]) -> list[str]:
         since = OwnedWrite.since(root, packet)
+        baseline = OwnedWrite.baseline(root, packet)
         found: list[str] = []
         for target in OwnedWrite.targets(root, packet):
-            found.extend(OwnedWrite.files_since(target, since))
+            found.extend(OwnedWrite.files_changed(target, since, baseline, root))
         return found
 
     @staticmethod
@@ -1253,6 +1453,11 @@ class OwnedWrite:
             return []
         targets = OwnedWrite.targets(root, packet)
         if not targets:
+            if str(packet.get("role") or "") == "implementer":
+                return [
+                    f"{OwnedWrite.KIND}: status=done wrote 0 files under "
+                    f"--owns-path or recorded worktree since spawn"
+                ]
             return []
         if OwnedWrite.writes(root, packet):
             return []
@@ -1264,7 +1469,7 @@ class OwnedWrite:
 
     @staticmethod
     def ensure(root: Path, packet: dict[str, Any]) -> list[Path]:
-        """Fixture helper: touch owned paths so a done residual can collect."""
+        """Fixture helper: write owned product bytes so a done residual can collect."""
         written: list[Path] = []
         owns = packet_owns_paths(packet)
         if owns:
@@ -1274,10 +1479,7 @@ class OwnedWrite:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     if dest.is_dir():
                         dest = dest / ".owned_write"
-                    if dest.is_file():
-                        dest.touch()
-                    else:
-                        dest.write_text("# owned write\n", encoding="utf-8")
+                    dest.write_text("# owned write\n", encoding="utf-8")
                     written.append(dest)
             return written
         for base in OwnedWrite.bases(root, packet):
