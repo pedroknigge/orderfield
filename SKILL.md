@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: "v0.8.22 — Leader disk plan. /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denials ≠ escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE; mid-flight patch refuses HOLD. Checklist → contrast / close / residual. Init: store end review. After close: learn/--list. Before first pack: constraints; catalog, cheap vs frontier, harness mix once/field. Spawn --resume needs residual.session_id. of issue: --confirm/TTY yes; leader ISSUE-*.md. yolo+inherit: ask. Install: SHA-256. Orca: stop+release after collect."
+description: "v0.8.22 — Leader disk plan. /of. In-flight: running + live PULSE + speak; PACKED/spawned=spawn meta (SPAWN≠HOLD). Ended spawn without residual is done_without_residual not ok/ALIVE. Host Write denials ≠ escalate_up. Quote PULSE. INTEGRATE --RECOMPUTE; rev-stale UNPACK --FORCE; mid-flight patch refuses HOLD. Checklist → contrast / close / residual. Init: store end review. After close: learn/--list. Before first pack: constraints; catalog, cheap vs frontier, harness mix once/field. Spawn --resume needs residual.session_id. of issue: TTY or HITL.md+--confirm; ISSUE-*.md. yolo+inherit: ask. Install: SHA-256. Orca: stop+release after collect."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
@@ -81,7 +81,7 @@ The kernel enforces public JSON schemas, atomic writes plus a WAL, a field lock 
 | cited `docs/plans/…` or a project finding | **Mode A default** when owns_path covered; else **Mode B** dump+ask. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse` (`--watch` exits when idle). Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` passes documented `--output-format streaming-json` before `-p`. Residual extract reuses the claude/cursor stdout path (not a qwen omit). Spawn metadata is finalized on exit, timeout, and missing binary (`outcome` + `exit` + `ended_at`) |
-| leader HITL `of issue` | after human yes: `--confirm` or TTY y/N. `--dry-run` is **not HITL**. Non-TTY without `--confirm` refuses. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
+| leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
 | status/resume/pulse says `PACKED` / not spawned / `next SPAWN` | no spawn record / no live pid. `of spawn` if detect present. present:none → HOLD. `of handoff --packet` ≠ spawned child / dogfood. Do not HOLD or quote-PULSE as if running. `spawned` counts spawn metadata |
 | `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` | **must ask**. Audited operator actions, not silent defaults. Spawn prints `operator action`. Never invent. `OF_TRUST=plan` → `--mode plan` / grok `--sandbox read-only`. agy/grok isolate host MCP (`OF_SPAWN_MCP=inherit` opts in — ask). Pulse `cpu=` on `no writes yet`. Appendix. |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Read the appendix:** [references/skill-appendix.md](references/skill-appendix.md) |
@@ -107,12 +107,12 @@ If unsure, draft + HITL; default not posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
-- Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**.
+- Confirm → create (TTY yes or `HITL.md`+`--confirm`). `--dry-run` is **not HITL**.
 - Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
 
 Both sides are the contract. Auto-post, yolo post, and child posts are forbidden. Confirm creates; refuse / edit-later / silence does not.
 
-`of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: logged-in account (`gh auth`). Do not impersonate. Non-TTY create without `--confirm` refuses.
+`of issue` always targets `--repo pedroknigge/orderfield`. Stdlib-only: logged-in account (`gh auth`). Do not impersonate. Bare `--confirm` is not HITL.
 
 A child (`OF_CHILD` set, headless spawn, or any session that cannot ask the human) **never posts**. It writes a draft under its scratch (`ISSUE.md` or `issues/<slug>.md`) or runs `of issue --dry-run`, and names the draft in the residual. You ask HITL, then `of issue --confirm`. A leader HITL draft uses `.orderfield/work/scratch/leader/` (`ISSUE.md` or `ISSUE-*.md`) or the child's existing path. `--body-file` refuses anything else and names `.orderfield/work/scratch/<child_id>/`.
 

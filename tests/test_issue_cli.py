@@ -161,12 +161,20 @@ class IssueCli(unittest.TestCase):
             "OF_GH_AUTH": "1",
         }
 
+    def write_hitl_proof(self, text: str = "yes\n") -> str:
+        return self.write_draft(text, name="HITL.md")
+
     def issue(self, *args: str, **kwargs: object) -> subprocess.CompletedProcess[str]:
         path = kwargs.pop("path", self.gh_path)
         env_extra = dict(self.gh_env)
         extra = kwargs.pop("env_extra", None)
         if extra:
             env_extra.update(extra)  # type: ignore[arg-type]
+        hitl_proof = kwargs.pop("hitl_proof", None)
+        if hitl_proof is None:
+            hitl_proof = "--confirm" in args and "--dry-run" not in args
+        if hitl_proof:
+            self.write_hitl_proof()
         return run_of(
             self.tmp,
             *args,
@@ -310,6 +318,33 @@ class IssueCli(unittest.TestCase):
         self.assertIn("--dry-run is not HITL", r.stderr)
         self.assertEqual(load_log(self.log), [])
         self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_bare_confirm_without_hitl_note_refuses(self) -> None:
+        r = self.issue(*self.create_flags(), hitl_proof=False)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("HITL.md", r.stderr)
+        self.assertIn("bare --confirm is not HITL", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+        self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_confirm_with_hitl_note_no_refuses(self) -> None:
+        self.write_hitl_proof("n\n")
+        r = self.issue(*self.create_flags(), hitl_proof=False)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("HITL.md", r.stderr)
+        self.assertEqual(load_log(self.log), [])
+
+    def test_of_child_with_hitl_note_still_refuses(self) -> None:
+        self.write_hitl_proof()
+        r = self.issue(
+            *self.create_flags(),
+            env_extra={"OF_CHILD": "issue-cli"},
+            hitl_proof=False,
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("OF_CHILD=issue-cli", r.stderr)
+        self.assertEqual(load_log(self.log), [])
 
     def test_dry_run_without_confirm_never_mutates(self) -> None:
         r = self.issue(

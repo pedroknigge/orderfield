@@ -170,11 +170,48 @@ class Issue001Pair(unittest.TestCase):
 
 
 class IssueConfirmLock(unittest.TestCase):
-    """#193: mutating of issue create is a real HITL lock, not dry-run theater."""
+    """#193 / #290: mutating of issue create is HITL, not a bare --confirm flag."""
 
-    def test_flag_unlocks_and_non_tty_refuses(self) -> None:
-        self.assertTrue(ops.IssueConfirm.allowed(confirm=True, tty=False))
+    def test_bare_confirm_non_tty_or_cloud_refuses(self) -> None:
+        self.assertFalse(
+            ops.IssueConfirm.allowed(confirm=True, tty=False, proof=False)
+        )
+        self.assertFalse(
+            ops.IssueConfirm.allowed(
+                confirm=True, tty=True, proof=False, cloud=True
+            )
+        )
         self.assertFalse(ops.IssueConfirm.allowed(confirm=False, tty=False))
+
+    def test_tty_or_human_scratch_proof_allows(self) -> None:
+        self.assertTrue(
+            ops.IssueConfirm.allowed(confirm=True, tty=True, proof=False)
+        )
+        self.assertTrue(
+            ops.IssueConfirm.allowed(confirm=True, tty=False, proof=True)
+        )
+        self.assertTrue(
+            ops.IssueConfirm.allowed(
+                confirm=True, tty=False, proof=True, cloud=True
+            )
+        )
+        self.assertEqual(
+            ops.IssueConfirm.cloud_marker({"CURSOR_AGENT": "1"}),
+            "CURSOR_AGENT",
+        )
+        self.assertIsNone(ops.IssueConfirm.cloud_marker({}))
+
+    def test_proof_ok_reads_leader_hitl_md(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-hitl-proof-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        path = tmp / Path(ops.IssueConfirm.PROOF_REL)
+        path.parent.mkdir(parents=True)
+        path.write_text("yes\n", encoding="utf-8")
+        self.assertTrue(ops.IssueConfirm.proof_ok(root=tmp))
+        path.write_text("n\n", encoding="utf-8")
+        self.assertFalse(ops.IssueConfirm.proof_ok(root=tmp))
+        path.unlink()
+        self.assertFalse(ops.IssueConfirm.proof_ok(root=tmp))
 
     def test_tty_yes_unlocks_no_and_eof_refuse(self) -> None:
         self.assertTrue(
@@ -211,6 +248,28 @@ class IssueConfirmLock(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("of: error: issue:", r.stderr)
         self.assertIn("--confirm", r.stderr)
+        self.assertIn("--dry-run is not HITL", r.stderr)
+        self.assertNotIn("https://github.com/", r.stdout)
+
+    def test_bare_confirm_is_blocked_before_gh(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-hitl-bare-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = run_of(
+            tmp,
+            "issue",
+            "--title",
+            "docs lie in glossary",
+            "--body",
+            "bare confirm is not HITL",
+            "--label",
+            "bug",
+            "--confirm",
+        )
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("of: error: issue:", r.stderr)
+        self.assertIn("--confirm", r.stderr)
+        self.assertIn("HITL.md", r.stderr)
+        self.assertIn("bare --confirm is not HITL", r.stderr)
         self.assertIn("--dry-run is not HITL", r.stderr)
         self.assertNotIn("https://github.com/", r.stdout)
 
@@ -254,6 +313,7 @@ class SkillIssueConfirm(unittest.TestCase):
             (appendix, "references/skill-appendix.md"),
         ):
             self.assertIn("--confirm", body, name)
+            self.assertIn("HITL.md", body, name)
             self.assertIn("dry-run", body.lower(), name)
             fold = body.casefold()
             self.assertIn("not hitl", fold, name)

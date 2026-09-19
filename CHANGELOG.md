@@ -33,6 +33,10 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
 - Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `IssueConfirm` already owns TTY y/N and `--confirm`. `OF_CHILD` already refuses child submit. `--dry-run` already previews argv. Leader scratch already lives at `work/scratch/leader/`. The remaining gap is a confused deputy: cloud/headless can pass `--confirm` without a human utterance (`#290`; cite `#193`).
+- **Reuse, not a new verb:** headless/cloud (`CURSOR_AGENT` or non-TTY) needs a human `HITL.md` (first non-empty line `y`/`yes`) then `--confirm`. Interactive TTY confirm stays. Child still refused. Bare `--confirm` is not HITL. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`. No VERSION bump.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach TTY or `HITL.md`+`--confirm`. Dry-run is not HITL. Core stays under the 20KB cap.
+- **Proof:** `IssueConfirmLock` (bare `--confirm` non-TTY/cloud refuses; TTY or `HITL.md` yes allows; dry-run unchanged). `IssueCli` submit still needs the note; `OF_CHILD` + note still refuses. `SkillIssueConfirm`. No new C-ID (honesty cap). `#290`.
 
 ## 0.8.21
 
