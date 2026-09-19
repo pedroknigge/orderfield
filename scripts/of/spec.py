@@ -252,6 +252,18 @@ class ContractSurface:
             return "VERSION"
         return None
 
+    @staticmethod
+    def hide_cause(item: dict[str, Any]) -> str:
+        """Why ``--surface internal`` cannot hide this ID. Prefix wins, then text."""
+        rid = str(item.get("id") or "")
+        for prefix in ContractSurface.PREFIXES:
+            if rid.startswith(prefix):
+                return f"id prefix {prefix[:-1]}"
+        named = ContractSurface.prefix_for(str(item.get("text") or ""))
+        if named:
+            return f"text cue {named}"
+        return "ContractSurface"
+
 
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
 # Whole-string go-ahead / pointer-to-prior-chat. Advisory only — still writes SPEC.
@@ -697,7 +709,7 @@ class RequirementSurface:
         "do not pass IDs with --add; --surface applies to the new requirement"
     )
     CANNOT_HIDE = (
-        "{id} is a public-surface shape (ContractSurface); "
+        "{id} is a public-surface shape (ContractSurface: {cause}); "
         "--surface internal cannot hide it"
     )
 
@@ -719,7 +731,11 @@ class RequirementSurface:
         probe["surface"] = wanted
         new = requirement_surface(probe)
         if wanted == "internal" and new != "internal":
-            die(RequirementSurface.CANNOT_HIDE.format(id=rid))
+            die(
+                RequirementSurface.CANNOT_HIDE.format(
+                    id=rid, cause=ContractSurface.hide_cause(item)
+                )
+            )
         if old == new and str(item.get("surface") or "") == wanted:
             return old, new, False
         if old == new:

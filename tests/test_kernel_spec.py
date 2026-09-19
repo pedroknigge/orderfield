@@ -592,7 +592,8 @@ class SpecFidelity(unittest.TestCase):
         self.assertIn("VERIFIED_INTERNAL", refused.stderr)
         no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
         self.assertNotEqual(no_pair.returncode, 0)
-        self.assertIn("pair-shaped", no_pair.stderr)
+        self.assertIn("PAIR requirement", no_pair.stderr)
+        self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
             self.tmp, "spec", "--verified-contract", rid, "--both-sides"
         )
@@ -634,6 +635,51 @@ class SpecFidelity(unittest.TestCase):
         self.assertEqual(contrast.returncode, 0, contrast.stdout)
         self.assertIn("VERIFIED_INTERNAL", contrast.stdout)
         self.assertIn("RESOLVED", contrast.stdout)
+
+
+class PairVerifiedContractRefuse(unittest.TestCase):
+    """pair + --verified-contract without --both-sides must refuse. #268"""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-pair-vc-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def _item(self, rid: str) -> dict:
+        data = load_json(self.tmp / ".orderfield" / "REQUIREMENTS.json")
+        return next(row for row in data["requirements"] if row.get("id") == rid)
+
+    def _contract_count(self) -> int:
+        data = load_json(self.tmp / ".orderfield" / "REQUIREMENTS.json")
+        return of.requirement_counts(data)["verified_contract"]
+
+    def test_pair_without_both_sides_refuses_and_does_not_seal(self) -> None:
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "RFI-027",
+            "--text",
+            "same key with a different payload must fail",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        self.assertTrue(of.requirement_is_pair(self._item("RFI-027")))
+        before = self._contract_count()
+        refused = run_of(self.tmp, "spec", "--verified-contract", "RFI-027")
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("RFI-027 is a PAIR requirement", refused.stderr)
+        self.assertIn("needs --both-sides", refused.stderr)
+        self.assertEqual(self._item("RFI-027").get("status"), "unowned")
+        self.assertFalse(self._item("RFI-027").get("pair_checked"))
+        self.assertEqual(self._contract_count(), before)
+        sealed = run_of(
+            self.tmp, "spec", "--verified-contract", "RFI-027", "--both-sides"
+        )
+        self.assertEqual(sealed.returncode, 0, sealed.stderr)
+        self.assertEqual(self._item("RFI-027").get("status"), "verified_contract")
+        self.assertTrue(self._item("RFI-027").get("pair_checked"))
+        self.assertEqual(self._contract_count(), before + 1)
 
 
 class RequirementSurfaceReclassify(unittest.TestCase):
@@ -711,7 +757,16 @@ class RequirementSurfaceReclassify(unittest.TestCase):
         refused = run_of(self.tmp, "spec", "--surface", "internal", "VERSION-009")
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("cannot hide", refused.stderr)
+        self.assertIn("id prefix VERSION", refused.stderr)
         self.assertEqual(of.requirement_surface(self._item("VERSION-009")), "contract")
+
+    def test_contractsurface_hide_names_text_cue(self) -> None:
+        self._add("RFI-032", "requests must timeout after 30s")
+        refused = run_of(self.tmp, "spec", "--surface", "internal", "RFI-032")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("cannot hide", refused.stderr)
+        self.assertIn("text cue TIMEOUT", refused.stderr)
+        self.assertEqual(of.requirement_surface(self._item("RFI-032")), "contract")
 
     def test_unknown_id_refuses(self) -> None:
         missing = run_of(self.tmp, "spec", "--surface", "internal", "ALG-099")
@@ -1002,7 +1057,8 @@ class WebhookPairGate(unittest.TestCase):
         self.assertNotEqual(refused.returncode, 0)
         no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
         self.assertNotEqual(no_pair.returncode, 0)
-        self.assertIn("pair-shaped", no_pair.stderr)
+        self.assertIn("PAIR requirement", no_pair.stderr)
+        self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
             self.tmp, "spec", "--verified-contract", rid, "--both-sides"
         )
@@ -1216,7 +1272,8 @@ class ContractSurfaceGate(unittest.TestCase):
         self.assertTrue(rid.startswith("IDEMP-"), rid)
         no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
         self.assertNotEqual(no_pair.returncode, 0)
-        self.assertIn("pair-shaped", no_pair.stderr)
+        self.assertIn("PAIR requirement", no_pair.stderr)
+        self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
             self.tmp, "spec", "--verified-contract", rid, "--both-sides"
         )
