@@ -118,6 +118,8 @@ class Loop001CollectIntegrate(unittest.TestCase):
             "implementer",
             "--child-id",
             "c1",
+            "--owns-path",
+            "eval/c1.py",
             "--owns-requirement",
             "LOOP-001",
         )
@@ -169,6 +171,8 @@ class IntegrateStdoutIsJson(unittest.TestCase):
             "implementer",
             "--child-id",
             "m1",
+            "--owns-path",
+            "eval/m1.py",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
         dest = write_bound_residual(
@@ -236,7 +240,16 @@ class Dedupe001Constraints(unittest.TestCase):
 
     def test_apply_patches_skips_whitespace_normalized_constraints(self) -> None:
         r = run_of(
-            self.tmp, "pack", "--slice", "d", "--role", "implementer", "--child-id", "d1"
+            self.tmp,
+            "pack",
+            "--slice",
+            "d",
+            "--role",
+            "implementer",
+            "--child-id",
+            "d1",
+            "--owns-path",
+            "eval/d1.py",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         write_bound_residual(

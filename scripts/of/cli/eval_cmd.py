@@ -1928,11 +1928,9 @@ def eval_setup_recovery_multi_harness(root: Path) -> None:
         "--slice",
         "implement the shared residual contract",
         "--role",
-        "implementer",
+        "explorer",
         "--child-id",
         "imp1",
-        "--owns-path",
-        "eval/imp1.py",
     )
     EvalInvariantSetup.require_ok(packed, "pack")
     EvalInvariantSetup.write_bound_residual(

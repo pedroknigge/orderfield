@@ -268,6 +268,8 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
             "implementer",
             "--child-id",
             child_id,
+            "--owns-path",
+            f"eval/{child_id}.py",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
         return packet_path(self.tmp, child_id)
@@ -519,6 +521,8 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
             result,
             rollback=f"git checkout -- {residual['result_ref']}",
         )
+        of.OwnedWrite.ensure(self.tmp, packet)
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
         residual_path.write_text(json.dumps(residual), encoding="utf-8")
 
@@ -2243,6 +2247,8 @@ class PackContinuationOwnsRequirement(unittest.TestCase):
             "implementer",
             "--child-id",
             "alice",
+            "--owns-path",
+            "slice/alice.py",
             "--owns-requirement",
             "ALPHA-001",
         )
