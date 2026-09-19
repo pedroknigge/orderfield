@@ -587,7 +587,7 @@ class QwenAdapter(unittest.TestCase):
         self.assertIn("adapter=qwen", good.stdout)
         preview = good.stdout.split("dry-run argv:", 1)[1].strip().splitlines()[0]
         self.assertIn("--output-format json", preview)
-        self.assertIn("--approval-mode auto-edit", preview)
+        self.assertIn("--approval-mode '<approval>'", preview)
         self.assertNotIn("--yolo", preview)
         self.assertNotIn(" -p ", f" {preview} ")
         self.assertNotIn("--always-approve", preview)

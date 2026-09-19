@@ -478,7 +478,12 @@ class TrustMatrixCli(unittest.TestCase):
                     proc = self.spawn(adapter, profile)
                     self.assertEqual(proc.returncode, 0, proc.stderr)
                     preview = dry_run_preview(proc)
-                    self.assertNotIn("<approval>", preview)
+                    # qwen write-floor `--approval-mode auto-edit` redacts as
+                    # <approval>; conservative `--approval-mode default` does not.
+                    if adapter == "qwen" and profile is None:
+                        self.assertIn("<approval>", preview)
+                    else:
+                        self.assertNotIn("<approval>", preview)
                     for tok in ESCALATION_TOKENS:
                         self.assertNotIn(f" {tok} ", f" {preview} ")
 
@@ -551,7 +556,7 @@ class WriteFloorCli(unittest.TestCase):
             "claude": "--permission-mode acceptEdits",
             "codex": "--sandbox workspace-write",
             "agy": "--mode accept-edits",
-            "qwen": "--approval-mode auto-edit",
+            "qwen": "--approval-mode '<approval>'",
         }
         for adapter, needle in expect.items():
             with self.subTest(adapter=adapter):
