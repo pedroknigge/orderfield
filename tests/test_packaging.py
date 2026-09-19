@@ -1022,6 +1022,41 @@ class AdapterDetectHonesty(unittest.TestCase):
         self.assertIn("login", hero)
 
 
+class SkillSpawnAdapterMissing(unittest.TestCase):
+    """SKILL / alias / appendix teach present:none HOLD. #273."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_zero_adapter_hold(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("present:none", table)
+        self.assertIn("hold", table)
+        self.assertIn("do not pack a second child", table)
+        self.assertIn("handoff-to-self", table)
+        self.assertIn("spawned wave", table)
+        alias_fold = alias.casefold()
+        self.assertIn("present:none", alias_fold)
+        self.assertIn("do not pack a second child", alias_fold)
+        self.assertIn("not a spawned child wave", alias_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("spawnadaptermissing", appendix_fold)
+        self.assertIn("present:none", appendix_fold)
+        self.assertIn("not silent", appendix_fold)
+        self.assertIn("mode=handoff", appendix_fold)
+        self.assertIn("spawned child wave", appendix_fold)
+        self.assertIn("single-session only", appendix_fold)
+        self.assertIn("multi-agent dogfood", appendix_fold)
+        self.assertNotIn("of continue", appendix_fold)
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+
+
 class HardnessDetectAuthWorktree(unittest.TestCase):
     """C-015/C-016 stay Partial: detect ≠ auth; worktree is not a jail."""
 

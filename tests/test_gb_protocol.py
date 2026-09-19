@@ -106,7 +106,9 @@ class ResumeHandoffGuidance(unittest.TestCase):
         self.assertEqual(lines[0], "SPAWN")
         self.assertIn("no spawn record", lines[1])
         self.assertIn("of spawn", lines[1])
+        self.assertIn("detect present", lines[1])
         self.assertIn("of handoff", lines[1])
+        self.assertIn("not a spawned child wave", lines[1])
 
     def test_rev_stale_names_unpack_force_not_spawn(self) -> None:
         lines = of.resume_next_lines(of.PacketRevStale.ACTION)

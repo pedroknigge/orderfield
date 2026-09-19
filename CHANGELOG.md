@@ -10,7 +10,7 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## 0.8.21
 
-Kernel + skill work that landed on main after the published v0.8.20 tag (`522a153e`, #265) while still claiming 0.8.20 lockstep: after wave settle (`in_flight=0` + printed `next`), auto-continue that next — no poke (`SkillWaveSettleAutoContinue`; `#263`). Pack WARNs `owns_path_empty` / `owns_path_incomplete` when `--owns-path` misses `--slice` paths (`OwnsPathCoverage`; `#257`). agy/grok spawn isolate host global MCP by default (`HostMcp`; `#269`); pulse prints `cpu=` on `no writes yet`. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.20 notes.
+Kernel + skill work that landed on main after the published v0.8.20 tag (`522a153e`, #265) while still claiming 0.8.20 lockstep: after wave settle (`in_flight=0` + printed `next`), auto-continue that next — no poke (`SkillWaveSettleAutoContinue`; `#263`). Pack WARNs `owns_path_empty` / `owns_path_incomplete` when `--owns-path` misses `--slice` paths (`OwnsPathCoverage`; `#257`). agy/grok spawn isolate host global MCP by default (`HostMcp`; `#269`); pulse prints `cpu=` on `no writes yet`. Implicit spawn refuses when detect is present:none (`SpawnAdapterMissing`; `#273`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.20 notes.
 
 - **Reuse table (design-first):** `DriveAfterIntegrate` / `resume_next_lines` already print idle `next`. EvaluatorPacket is already store-at-start. Wave-end `of learn` already exists. The remaining gap is a leader who waits for ok / `!of pulse` / ¿seguimos? after `in_flight=0` (`#263`).
 - **Reuse, not a new verb:** skill/hot-path only. `in_flight=0` + printed `next` → execute that next. HITL only on kernel refuse, stored consent no, or named init-time asks. Learnings after close only. Forbidden: bare ok/dale as keepalive. No `of continue`. No supervisor. No `RUNTIME_OWNERSHIP`.
@@ -24,7 +24,11 @@ Kernel + skill work that landed on main after the published v0.8.20 tag (`522a15
 - **Reuse, not a new verb:** `HostMcp` isolates agy/grok host MCP by default (empty overlay HOME under packet scratch). `OF_SPAWN_MCP=inherit` opts in (ask; speak + `mcp_mode`). `proc_pcpu` is one `ps` sample on `no writes yet`. No `--no-mcp` argv. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach isolate default + inherit opt-in + pulse `cpu=`. Core stays under the 20KB cap.
 - **Proof:** `HostMcpIsolate` / `PulseActivity.test_pulse_no_writes_yet_names_cpu` / `SkillHostMcp`. No new C-ID (honesty cap). `#269`.
-- Packaging: VERSION 0.8.21; skill/alias description preview `v0.8.21 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.20 notes. These two cuts merged after the v0.8.20 tag. `#269` lands on the same line (no VERSION bump).
+- **Reuse table (design-first):** `AdapterDetect` already inventories present/missing. `pick_adapter` already falls to generic. `cmd_spawn` already has explicit `--adapter generic` paste-handoff. Resume already names packed-only `SPAWN` (not ALIVE). The remaining gap is present:none silently becoming `mode=handoff` so a multi-child pack looks like a spawned wave (`#273`).
+- **Reuse, not a new verb:** `SpawnAdapterMissing` WARNs a second `of pack` and refuses implicit `of spawn` when detect is present:none. Explicit `--adapter generic` / `OF_ADAPTER=generic` stays the paste path. Detect/doctor print HOLD + named next. Resume SPAWN detail no longer equates handoff with spawn. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach present:none → HOLD; do not pack a second child; handoff-to-self ≠ spawned child / dogfood. Cloud without an adapter is single-session only.
+- **Proof:** `SpawnAdapterMissingGate` / `SkillSpawnAdapterMissing`. No new C-ID (honesty cap). `#273`. Pulse packed-never-spawned dual-truth stays `#274`.
+- Packaging: VERSION 0.8.21; skill/alias description preview `v0.8.21 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.20 notes. These two cuts merged after the v0.8.20 tag. `#269` and `#273` land on the same line (no VERSION bump).
 
 ## 0.8.20
 

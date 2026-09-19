@@ -18,6 +18,7 @@ from test_adapter_hints import AdapterHintsCli  # noqa: E402,F401
 from test_claims_honesty import ClaimsHonestyGate  # noqa: E402,F401
 from test_packaging import (  # noqa: E402,F401
     AdapterDetectHonesty,
+    SkillSpawnAdapterMissing,
     HardnessDetectAuthWorktree,
     PackagingBumpDiscipline,
     ReadmeProductSurface,
@@ -77,6 +78,7 @@ from test_adapter_resume import (  # noqa: E402,F401
 )
 from test_kernel_cli import (  # noqa: E402,F401
     AdapterDetectCli,
+    SpawnAdapterMissingGate,
     SpawnPacketRequired,
     CliFieldResidual,
     DoctorAuditPressure,

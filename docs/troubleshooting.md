@@ -78,6 +78,24 @@ of pack … --force-spawn
 
 `--force-spawn` bypasses only the spawn lock. It does not bypass stale packet identity or phase/wave transition guards. After `escalate_up`, `of resume` / `of status` name one `of patch --<flag>` and `rev must exceed blocked_at_order_rev`, then `of next-wave`. That is not a stop. After the legal bump, printed `next` is `NEXT-WAVE`. Spawned children still flying: HOLD / collect then patch — do not `of patch` mid-flight (rewrite: `of unpack --force --child-id <id>` then `of patch`). Packed-only leftover may still patch. The rev gate stays. On a started-only spawn record it also refuses while the recorded pid is still running; dead or missing-and-not-found-live may override. When resume/status HOLD names live pid QUIET past stale, ask HITL to stop the hung process then `--force-spawn` or switch adapter — do not claim done; the kernel does not kill. `of doctor` names an open spawn past `started_at + budget.seconds` (or live + idle past pulse-stale) as `over_budget` — a signal, not a kill.
 
+## No adapter on PATH (`present: none`)
+
+**Symptom:** `of detect` prints `present: none` and `next: HOLD`. Typical Cursor cloud / hosts with no harness CLI. A second `of pack` in the wave WARNs `spawn_adapter_missing`. Implicit `of spawn` (no `--adapter generic`) dies. The old path was pack → silent generic `mode=handoff` → same-session implement — that looked like a spawned child wave.
+
+**Meaning:** there is no headless child harness. Cloud OF without an adapter is **single-session only**. `of handoff --packet` is same-session or a native Agent primitive — not a spawned child and not multi-agent dogfood/proof. Related: packed-never-spawned pulse wording is `#274` (not this cut).
+
+**Recover:**
+
+```bash
+of detect
+# install a harness CLI, or:
+export OF_AGENT='my-agent --headless'
+of spawn --adapter generic --packet .orderfield/waves/NNN/packets/<id>.json
+# or stay single-session: one pack + implement as leader; do not pack a second child
+```
+
+`--force-spawn` does not invent an adapter. Explicit `--adapter generic` without `OF_AGENT` stays the documented paste-handoff.
+
 ## Mid-flight `of patch` refused
 
 **Symptom:** `of: error: patch_rev_stale_flying: … next: HOLD`
