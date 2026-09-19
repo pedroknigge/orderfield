@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.21. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.22. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,18 +10,26 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.21`
+**Status:** Shipped · **Current release line:** `0.8.22`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.8.21 — wave-settle auto-continue; OwnsPathCoverage pack WARN; HostMcp isolate; packed-not-spawned pulse
+## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
+
+Landed on main after the published v0.8.21 tag (`fa507f6`, #266) while still claiming 0.8.21 lockstep.
+
+- Pack size-note claims write only after the packet is on disk. Proof: `SliceLintGate.test_failing_pack_does_not_claim_packet_written`. `#267`.
+- PAIR `--verified-contract` without `--both-sides` refuses and does not stamp. Proof: `PairVerifiedContractRefuse`. `#268`.
+- agy/grok spawn isolate host global MCP by default (`HostMcp`; empty overlay HOME). `OF_SPAWN_MCP=inherit` opts in (ask). Pulse prints `cpu=` on `no writes yet`. Proof: `HostMcpIsolate` / `SkillHostMcp`. `#269`.
+- Implicit spawn refuses when detect is present:none. Second pack WARNs. Handoff-to-self ≠ spawned child wave. Proof: `SpawnAdapterMissingGate` / `SkillSpawnAdapterMissing`. `#273`.
+- Pulse / resume name `not spawned` / `next SPAWN` when packed children have no spawn record / no live pid — not `running` + residual MISSING as if flying. Proof: `PackedOnlyNotAlive` / `SkillPackedOnlyStatus`. `#274`.
+
+## 0.8.21 — wave-settle auto-continue; OwnsPathCoverage pack WARN
 
 Landed on main after the published v0.8.20 tag (`522a153e`, #265) while still claiming 0.8.20 lockstep.
 
 - After wave settle (`in_flight=0` + printed `next`), execute that next; no poke; HITL only on kernel refuse / stored consent no / named init-time asks. Proof: `SkillWaveSettleAutoContinue` / `SkillSurface`. `#263`.
 - Pack WARNs `owns_path_empty` / `owns_path_incomplete` when an implementer omits `--owns-path` or `--slice` names a path outside the write set. Packet still written. Complements collect-time `OwnedWrite`. Proof: `OwnsPathCoveragePack` / `SkillOwnsPathCoverage`. `#257`.
-- agy/grok spawn isolate host global MCP by default (`HostMcp`; empty overlay HOME). `OF_SPAWN_MCP=inherit` opts in (ask). Pulse prints `cpu=` on `no writes yet`. Proof: `HostMcpIsolate` / `SkillHostMcp`. `#269`.
-- Pulse / resume name `not spawned` / `next SPAWN` when packed children have no spawn record / no live pid — not `running` + residual MISSING as if flying. Proof: `PackedOnlyNotAlive` / `SkillPackedOnlyStatus`. `#274`.
 
 ## 0.8.20 — OwnedWrite; EscalateUnblock; mid-flight patch refuse; never-chain; LiveQuietStuck
 
