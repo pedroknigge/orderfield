@@ -120,8 +120,7 @@ class ClaimsHonestyGate(unittest.TestCase):
         alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("python3 docs/audit/check-claims.py", skill)
         self.assertIn("≤98%", skill)
-        self.assertIn("check-claims.py", alias)
-        self.assertIn("≤98%", alias)
+        self.assertIn("not a second contract", alias.casefold())
         for slogan in ("mission complete", "all delivered", "ready to ship"):
             self.assertNotIn(slogan, skill.casefold())
             self.assertNotIn(slogan, alias.casefold())

@@ -725,7 +725,7 @@ class PackagingBumpDiscipline(unittest.TestCase):
         table = skill.split("## What to type next", 1)[1].split(
             "## When to use", 1
         )[0]
-        for text in (table, alias, appendix):
+        for text in (table, appendix):
             folded = text.casefold()
             self.assertIn("proven invariant", folded)
             self.assertIn("10-tags", folded)
@@ -803,21 +803,14 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("authority kernel through `of`", compared)
         self.assertIn("cooperative CLI, not a jail", compared)
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
         appendix = (ROOT / "references" / "skill-appendix.md").read_text(encoding="utf-8")
         self.assertIn("typical problems", skill.casefold())
-        self.assertIn("typical problems", alias.casefold())
         self.assertIn("mid-flight", skill.casefold())
-        self.assertIn("mid-flight", alias.casefold())
         self.assertIn("planning-with-files", skill.casefold())
-        self.assertIn("planning-with-files", alias.casefold())
         self.assertIn("only the leader may change it", skill.casefold())
-        self.assertIn("only the leader may change it", alias.casefold())
         self.assertIn("first close", skill.casefold())
-        self.assertIn("first close", alias.casefold())
         for surface, label in (
             (skill, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             folded = surface.casefold()
@@ -828,9 +821,7 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("planning-with-files", appendix.casefold())
         self.assertIn("when work goes through `of`", skill)
         self.assertIn("remain protocol", skill)
-        self.assertIn("slaving-by-contract through `of`", alias)
         self.assertIn("slaving-by-contract through `of`", appendix)
-        self.assertIn("not a jail", alias.casefold())
         self.assertIn("not a jail", appendix.casefold())
 
 
@@ -851,7 +842,6 @@ class FieldEvidenceHonesty(unittest.TestCase):
     def surfaces() -> dict[str, str]:
         return {
             "SKILL.md": SkillSurface.core(ROOT),
-            "of/SKILL.md": SkillSurface.alias(ROOT),
             "references/skill-appendix.md": SkillSurface.appendix(ROOT),
             "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
             "docs/external-brief.md": (ROOT / "docs" / "external-brief.md").read_text(
@@ -901,9 +891,6 @@ class SkillLeaderInitiative(unittest.TestCase):
         self.assertLess(propose_at, pack_at)
         self.assertIn("must propose", skill.casefold())
         self.assertIn("never silent switch", skill.casefold())
-        self.assertIn("must propose", alias.casefold())
-        self.assertIn("cheap", alias.casefold())
-        self.assertIn("frontier", alias.casefold())
         hero = readme[: readme.index("## Install")]
         self.assertIn("cheap vs frontier", hero.casefold())
         self.assertIn("confirm", hero.casefold())
@@ -932,10 +919,6 @@ class SkillHarnessAsk(unittest.TestCase):
         self.assertIn("multi-harness", table)
         self.assertIn("must ask", self.folded(skill))
         self.assertIn("never silent mix", self.folded(skill))
-        self.assertIn("must ask", self.folded(alias))
-        self.assertIn("same-harness", self.folded(alias))
-        self.assertIn("multi-harness", self.folded(alias))
-        self.assertIn("of detect", self.folded(alias))
         hero = self.folded(readme[: readme.index("## Install")])
         self.assertIn("same-harness", hero)
         self.assertIn("multi-harness", hero)
@@ -959,10 +942,6 @@ class SkillModelCatalogConsult(unittest.TestCase):
         self.assertIn("model-catalog", folded)
         self.assertIn("smarter", folded)
         self.assertIn("budget.tokens", folded)
-        alias_fold = alias.casefold()
-        self.assertIn("consult", alias_fold)
-        self.assertIn("model-catalog", alias_fold)
-        self.assertIn("smarter", alias_fold)
         hero = readme[: readme.index("## Install")].casefold()
         self.assertIn("model catalog", hero)
         self.assertIn("cheap vs frontier", hero)
@@ -1010,11 +989,6 @@ class AdapterDetectHonesty(unittest.TestCase):
         self.assertLess(detect_at, folded.index("missing"))
         self.assertIn("path≠auth", folded)
         self.assertIn("never claim login", folded)
-        alias_fold = alias.casefold()
-        self.assertIn("present", alias_fold)
-        self.assertIn("missing", alias_fold)
-        self.assertIn("path≠auth", alias_fold)
-        self.assertIn("never claim login", alias_fold)
         hero = readme[: readme.index("## Install")].casefold()
         self.assertIn("present", hero)
         self.assertIn("missing", hero)
@@ -1039,10 +1013,6 @@ class SkillSpawnAdapterMissing(unittest.TestCase):
         self.assertIn("do not pack a second child", table)
         self.assertIn("handoff-to-self", table)
         self.assertIn("spawned wave", table)
-        alias_fold = alias.casefold()
-        self.assertIn("present:none", alias_fold)
-        self.assertIn("do not pack a second child", alias_fold)
-        self.assertIn("not a spawned child wave", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("spawnadaptermissing", appendix_fold)
         self.assertIn("present:none", appendix_fold)
@@ -1068,7 +1038,6 @@ class HardnessDetectAuthWorktree(unittest.TestCase):
     def surfaces() -> dict[str, str]:
         return {
             "SKILL.md": SkillSurface.core(ROOT),
-            "of/SKILL.md": SkillSurface.alias(ROOT),
             "references/skill-appendix.md": SkillSurface.appendix(ROOT),
             "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
             "docs/architecture.md": (ROOT / "docs" / "architecture.md").read_text(
@@ -1097,7 +1066,6 @@ class HardnessDetectAuthWorktree(unittest.TestCase):
             )
             self.assertIn("not a jail", folded, rel)
         for rel in (
-            "of/SKILL.md",
             "references/skill-appendix.md",
             "README.md",
             "docs/architecture.md",
@@ -1354,10 +1322,6 @@ class SkillRespawnInFlight(unittest.TestCase):
         self.assertIn("leftover residual", table)
         self.assertIn("started-only", table)
         self.assertIn("re-spawn", table)
-        alias_fold = alias.casefold()
-        self.assertIn("leftover residual", alias_fold)
-        self.assertIn("started-only", alias_fold)
-        self.assertIn("re-spawn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("leftover residual", appendix_fold)
         self.assertIn("started-only", appendix_fold)
@@ -1381,10 +1345,6 @@ class SkillEmptyWavePhase(unittest.TestCase):
         self.assertIn("nothing to integrate", table)
         self.assertIn("do not `--force`", table)
         self.assertIn("packets still require integrate", table)
-        alias_fold = alias.casefold()
-        self.assertIn("empty current wave", alias_fold)
-        self.assertIn("nothing to integrate", alias_fold)
-        self.assertIn("without `--force`", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("packed_children", appendix_fold)
         self.assertIn("nothing to integrate", appendix_fold)
@@ -1407,10 +1367,6 @@ class SkillResumeRecompute(unittest.TestCase):
         self.assertIn("integrate --recompute", table)
         self.assertIn("digest drifted", table)
         self.assertIn("do not next-wave", table)
-        alias_fold = alias.casefold()
-        self.assertIn("integrate --recompute", alias_fold)
-        self.assertIn("digest drifted", alias_fold)
-        self.assertIn("do not next-wave", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("integrate --recompute", appendix_fold)
         self.assertIn("integrationdigest", appendix_fold)
@@ -1433,10 +1389,6 @@ class SkillClosedScratch(unittest.TestCase):
         table = self.table(core).casefold()
         self.assertIn("wipes scratch", table)
         self.assertIn("successful close", table)
-        alias_fold = alias.casefold()
-        self.assertIn("wipes", alias_fold)
-        self.assertIn("work/scratch", alias_fold)
-        self.assertIn("closed-ephemeral", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("closedscratch", appendix_fold)
         self.assertIn("work/scratch", appendix_fold)
@@ -1463,11 +1415,6 @@ class SkillAuditPressure(unittest.TestCase):
         self.assertIn("of close", table)
         self.assertIn("not fail", table)
         self.assertIn("not a close gate", table)
-        alias_fold = alias.casefold()
-        self.assertIn("audit", alias_fold)
-        self.assertIn("over", alias_fold)
-        self.assertIn("of gc --audit", alias_fold)
-        self.assertIn("before close", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("auditpressure", appendix_fold)
         self.assertIn("of gc --audit", appendix_fold)
@@ -1496,12 +1443,6 @@ class SkillPlanDocSync(unittest.TestCase):
         self.assertIn("plandocsync", table)
         self.assertIn("not a close gate", table)
         self.assertIn("project finding", table)
-        alias_fold = alias.casefold()
-        self.assertIn("docs/plans", alias_fold)
-        self.assertIn("mode a default", alias_fold)
-        self.assertIn("mode b", alias_fold)
-        self.assertIn("docs_sync.md", alias_fold)
-        self.assertIn("same turn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("plandocsync", appendix_fold)
         self.assertIn("mode a default", appendix_fold)
@@ -1567,7 +1508,6 @@ class SkillPstackCherries(unittest.TestCase):
         self.assertIn("escalate_up", slave)
         self.assertIn("proposed_patch.notes", appendix)
         self.assertIn("mode a default", appendix_fold)
-        self.assertIn("mode a default", alias.casefold())
         self.assertIn("constraints-add", appendix_fold)
         self.assertIn("of learn --protocol", appendix)
         for needle in self.FORBIDDEN_CLONE:
@@ -1686,10 +1626,6 @@ class SkillCollectNextIntegrate(unittest.TestCase):
         appendix = SkillSurface.appendix(ROOT)
         table = self.table(core).casefold()
         self.assertIn("resume next `integrate`", table)
-        alias_fold = alias.casefold()
-        self.assertIn("next is integrate", alias_fold)
-        self.assertIn("not collect", alias_fold)
-        self.assertIn("do not collect again", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("next=integrate", appendix_fold)
         self.assertIn("do not collect again", appendix_fold)
@@ -1724,16 +1660,6 @@ class SkillWaveEndTriage(unittest.TestCase):
         self.assertIn("not auto-promote", table)
         self.assertIn("not a new close gate", table)
         self.assertIn("must ask", table)
-        alias_fold = alias.casefold()
-        self.assertIn("wave-end / pre-close surplus", alias_fold)
-        self.assertIn("not auto-promote-all", alias_fold)
-        self.assertIn("of learn", alias_fold)
-        self.assertIn("--protocol", alias_fold)
-        self.assertIn("--promote", alias_fold)
-        self.assertIn("of issue", alias_fold)
-        self.assertIn("plandocsync", alias_fold)
-        self.assertIn("not a close gate", alias_fold)
-        self.assertIn("must ask", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("wave-end / pre-close surplus", appendix_fold)
         self.assertIn("not auto-promote-all", appendix_fold)
@@ -1766,7 +1692,6 @@ class SkillWaveEndTriage(unittest.TestCase):
         for body, name in (
             (core, "SKILL.md"),
             (appendix, "references/skill-appendix.md"),
-            (SkillSurface.alias(ROOT), "of/SKILL.md"),
         ):
             fold = body.casefold()
             self.assertNotIn("doctor warns unpromoted", fold, name)
@@ -1801,11 +1726,6 @@ class SkillEscalateUnblock(unittest.TestCase):
         self.assertIn("hold", table)
         self.assertIn("collect then patch", table)
         self.assertIn(self.FLYING, table)
-        alias_fold = alias.casefold()
-        self.assertIn("escalate_up", alias_fold)
-        self.assertIn(self.STOP, alias_fold)
-        self.assertIn(self.REV, alias_fold)
-        self.assertIn("no mid-flight", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("escalate_up", appendix_fold)
         self.assertIn(self.STOP, appendix_fold)
@@ -1851,11 +1771,6 @@ class SkillPackSpawnChain(unittest.TestCase):
         self.assertIn(self.VERB, core)
         self.assertIn("First pack line", core)
         self.assertIn(self.PACKET, core)
-        alias_fold = alias.casefold()
-        self.assertIn("never chain pack|spawn|next-wave", alias_fold)
-        self.assertIn(self.VERB, alias_fold)
-        self.assertIn("first pack stdout line", alias_fold)
-        self.assertIn(self.PACKET, alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("never chain", appendix_fold)
         self.assertIn("of pack && of spawn", appendix)
@@ -1868,7 +1783,6 @@ class SkillPackSpawnChain(unittest.TestCase):
         self.assertEqual(SkillSurface.errors(ROOT), [])
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -1903,10 +1817,6 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         core_fold = core.casefold()
         self.assertIn("not invent a consent ask", core_fold)
         self.assertIn("ordinary next-wave/pack is not the adversary", core_fold)
-        alias_fold = alias.casefold()
-        self.assertIn(self.SPEAK, alias_fold)
-        self.assertIn(self.WAIT, alias_fold)
-        self.assertIn("not a consent ask", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn(self.SPEAK, appendix_fold)
         self.assertIn("driveafterintegrate", appendix_fold)
@@ -1979,16 +1889,6 @@ class SkillWaveSettleAutoContinue(unittest.TestCase):
         self.assertIn(self.FORBIDDEN, core_fold)
         self.assertIn(self.KEEPALIVE, core_fold)
         self.assertIn("adversary+verifier at end", core_fold)
-        alias_fold = alias.casefold()
-        self.assertIn(self.SETTLE, alias_fold)
-        self.assertIn(self.PATH, alias_fold)
-        self.assertIn(self.NO_SEGUIMOS, alias_fold)
-        self.assertIn(self.NO_POKE, alias_fold)
-        self.assertIn(self.HITL, alias_fold)
-        self.assertIn(self.REFUSE, alias_fold)
-        self.assertIn(self.FORBIDDEN, alias_fold)
-        self.assertIn(self.KEEPALIVE, alias_fold)
-        self.assertIn("learnings after close", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn(self.SETTLE, appendix_fold)
         self.assertIn(self.PATH, appendix_fold)
@@ -2002,7 +1902,6 @@ class SkillWaveSettleAutoContinue(unittest.TestCase):
         self.assertIn("evaluatorpacket", appendix_fold)
         self.assertIn("learnings after close", appendix_fold)
         self.assertNotIn("of continue", table)
-        self.assertNotIn("of continue", alias_fold)
         self.assertNotIn("of continue", appendix_fold)
         self.assertEqual(SkillSurface.errors(ROOT), [])
         self.assertLessEqual(
@@ -2053,7 +1952,6 @@ class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
     def surfaces() -> dict[str, str]:
         return {
             "SKILL.md": SkillSurface.core(ROOT),
-            "of/SKILL.md": SkillSurface.alias(ROOT),
             "references/skill-appendix.md": SkillSurface.appendix(ROOT),
             "AGENTS.md": (ROOT / "AGENTS.md").read_text(encoding="utf-8"),
             "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
@@ -2100,11 +1998,9 @@ class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
         self.assertIn(self.RISK, table)
         self.assertIn(self.ESCAPE, table)
         self.assertIn("of resume", table)
-        alias = SkillSurface.alias(ROOT).casefold()
         appendix = SkillSurface.appendix(ROOT).casefold()
         readme = (ROOT / "README.md").read_text(encoding="utf-8").casefold()
         for rel, text in (
-            ("of/SKILL.md", alias),
             ("references/skill-appendix.md", appendix),
             ("README.md", readme),
         ):
@@ -2143,9 +2039,6 @@ class SkillRevStaleUnpack(unittest.TestCase):
         self.assertIn("unpack --force", table)
         self.assertIn("do not spawn", table)
         self.assertIn("order.rev", table)
-        alias_fold = alias.casefold()
-        self.assertIn("unpack --force", alias_fold)
-        self.assertIn("do not spawn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("unpack --force", appendix_fold)
         self.assertIn("packetrevstale", appendix_fold)
@@ -2170,10 +2063,6 @@ class SkillPatchRevStaleFlying(unittest.TestCase):
         self.assertIn("refuses", table)
         self.assertIn("hold", table)
         self.assertIn("constraints before first pack", table)
-        alias_fold = alias.casefold()
-        self.assertIn("of patch", alias_fold)
-        self.assertIn("refuses", alias_fold)
-        self.assertIn("hold", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("of patch", appendix_fold)
         self.assertIn("refuse_patch", appendix_fold)
@@ -2201,9 +2090,6 @@ class SkillPostCloseTerminal(unittest.TestCase):
         self.assertIn("not alive", table)
         self.assertIn("spawn_blocked", table)
         self.assertIn("recovery/post-close-terminal", table)
-        alias_fold = alias.casefold()
-        self.assertIn("not active", alias_fold)
-        self.assertIn("not alive", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("not a live spawn surface", appendix_fold)
         self.assertIn("spawn_blocked", appendix_fold)
@@ -2225,10 +2111,6 @@ class SkillPhaseNextWave(unittest.TestCase):
         self.assertIn("after successful `of phase`", table)
         self.assertIn("of next-wave", table)
         self.assertIn("do not `--recompute`", table)
-        alias_fold = alias.casefold()
-        self.assertIn("of phase", alias_fold)
-        self.assertIn("of next-wave", alias_fold)
-        self.assertIn("do not integrate `--recompute`", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("phasedigest", appendix_fold)
         self.assertIn("of next-wave", appendix_fold)
@@ -2256,11 +2138,6 @@ class SkillPackedOnlyStatus(unittest.TestCase):
         self.assertIn("spawn metadata", table)
         self.assertIn("do not hold", table)
         self.assertIn("quote-pulse", table)
-        alias_fold = alias.casefold()
-        self.assertIn("packed", alias_fold)
-        self.assertIn("not spawned", alias_fold)
-        self.assertIn("spawned 0", alias_fold)
-        self.assertIn("next spawn", alias_fold)
         self.assertIn("PACKED", appendix)
         self.assertIn("SPAWN", appendix)
         self.assertIn("not spawned", appendix)
@@ -2286,13 +2163,6 @@ class SkillProductionMode(unittest.TestCase):
         self.assertIn("runtime_ownership", table)
         self.assertIn("of merge", table)
         self.assertNotIn("of merge --", table)
-        alias_fold = alias.casefold()
-        self.assertIn("production mode", alias_fold)
-        self.assertIn("gate a", alias_fold)
-        self.assertIn("--role implementer", alias_fold)
-        self.assertIn("runtime_ownership", alias_fold)
-        self.assertIn("of merge", alias_fold)
-        self.assertNotIn("of merge --", alias)
         appendix_fold = appendix.casefold()
         self.assertIn("#### production mode", appendix_fold)
         self.assertIn("**gate a before features.**", appendix_fold)
@@ -2307,7 +2177,6 @@ class SkillProductionMode(unittest.TestCase):
         self.assertEqual(SkillRunbookPath.errors(ROOT), [])
         for text, rel in (
             (self.table(core), "SKILL.md table"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             errs = SkillRunbookPath.mention_errors(text, rel)
@@ -2339,10 +2208,6 @@ class SkillWebhookReplayPair(unittest.TestCase):
         self.assertIn("hmac", table)
         self.assertIn("--both-sides", table)
         self.assertIn("pair", table)
-        alias_fold = alias.casefold()
-        self.assertIn("webhook", alias_fold)
-        self.assertIn("replay", alias_fold)
-        self.assertIn("--both-sides", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("webhook", appendix_fold)
         self.assertIn("hmac", appendix_fold)
@@ -2407,11 +2272,6 @@ class SkillLivingMap(unittest.TestCase):
         self.assertIn("residual", table)
         self.assertIn(LivingMap.NO_SECOND, table)
         self.assertIn("closeevidence", table.replace(" ", "").replace("`", ""))
-        alias_fold = alias.casefold()
-        self.assertIn(LivingMap.BINDING, alias_fold)
-        self.assertIn("of close", alias_fold)
-        self.assertIn("residual", alias_fold)
-        self.assertIn(LivingMap.NO_SECOND, alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn(LivingMap.BINDING, appendix_fold)
         self.assertIn("#### production mode", appendix_fold)
@@ -2446,11 +2306,6 @@ class SkillHarnessMixPlaybook(unittest.TestCase):
         self.assertIn("of collect", table)
         self.assertIn("of contrast", table)
         self.assertIn("of close", table)
-        alias_fold = alias.casefold()
-        self.assertIn(SkillHarnessMix.MIX, alias_fold)
-        self.assertIn(SkillHarnessMix.WHEN, alias_fold)
-        self.assertIn("of collect", alias_fold)
-        self.assertIn("of doctor", alias_fold)
         self.assertIn(SkillHarnessMix.HEADING, appendix)
         section = SkillHarnessMix.playbook_section(appendix)
         self.assertIsNotNone(section)
@@ -2489,10 +2344,6 @@ class SkillEfficiencyMixPlaybook(unittest.TestCase):
         self.assertIn("of doctor", table)
         self.assertIn("efficiency", table)
         self.assertIn("must ask", table)
-        alias_fold = alias.casefold()
-        self.assertIn(SkillEfficiencyMix.UNKNOWN, alias_fold)
-        self.assertIn(SkillEfficiencyMix.NEVER_INVENT, alias_fold)
-        self.assertIn(SkillEfficiencyMix.RESERVED, alias_fold)
         self.assertIn(SkillEfficiencyMix.HEADING, appendix)
         appendix_fold = appendix.casefold()
         self.assertIn("adapterbalance", appendix_fold.replace(" ", "").replace("`", ""))
@@ -2521,9 +2372,6 @@ class SkillCloseEvidence(unittest.TestCase):
         self.assertIn("artifact_sha", table)
         self.assertIn("rollback", table)
         self.assertIn("closeevidence", table.replace(" ", "").replace("`", ""))
-        alias_fold = alias.casefold()
-        self.assertIn("artifact_sha", alias_fold)
-        self.assertIn("rollback", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("artifact_sha", appendix_fold)
         self.assertIn("rollback:", appendix_fold)
@@ -2545,9 +2393,6 @@ class SkillOwnedWrite(unittest.TestCase):
         self.assertIn("ownedwrite", table.replace(" ", "").replace("`", ""))
         self.assertIn("do not trust status", table)
         self.assertIn("not `of prove`", table)
-        alias_fold = alias.casefold()
-        self.assertIn("ownedwrite", alias_fold.replace(" ", "").replace("`", ""))
-        self.assertIn("do not trust status", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("ownedwrite", appendix_fold.replace(" ", "").replace("`", ""))
         self.assertIn("owned_write_missing", appendix_fold)
@@ -2575,13 +2420,6 @@ class SkillContractSurface(unittest.TestCase):
         self.assertIn("release header", table)
         self.assertIn("verified_contract", table)
         self.assertIn("contractsurface", table.replace(" ", "").replace("`", ""))
-        alias_fold = alias.casefold()
-        self.assertIn("timeout", alias_fold)
-        self.assertIn("idempoten", alias_fold)
-        self.assertIn("health", alias_fold)
-        self.assertIn("/version", alias_fold)
-        self.assertIn("release header", alias_fold)
-        self.assertIn("verified_contract", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("timeout", appendix_fold)
         self.assertIn("idempoten", appendix_fold)
@@ -2607,9 +2445,6 @@ class SkillRequirementSurface(unittest.TestCase):
         self.assertIn("of spec --surface internal", table)
         self.assertIn("never public", table)
         self.assertIn("supersede", table)
-        alias_fold = alias.casefold()
-        self.assertIn("of spec --surface internal", alias_fold)
-        self.assertIn("never public", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("of spec --surface internal", appendix_fold)
         self.assertIn("never public", appendix_fold)
@@ -2632,10 +2467,6 @@ class SkillLearnLengthAdvisory(unittest.TestCase):
         self.assertIn("advisory", table)
         self.assertIn("do not refuse", table)
         self.assertIn("work/scratch/leader", table)
-        alias_fold = alias.casefold()
-        self.assertIn("of learn", alias_fold)
-        self.assertIn("advisory", alias_fold)
-        self.assertIn("work/scratch/leader", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("of learn", appendix_fold)
         self.assertIn("advisory", appendix_fold)
@@ -2659,10 +2490,6 @@ class SkillLearnListClosedFields(unittest.TestCase):
         self.assertIn("of learn", table)
         self.assertIn("--list", table)
         self.assertIn("protocol if no open field", table)
-        alias_fold = alias.casefold()
-        self.assertIn("of learn --list", alias_fold)
-        self.assertIn("protocol store", alias_fold)
-        self.assertIn("no active/open field", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("of learn --list", appendix_fold)
         self.assertIn("protocol store", appendix_fold)
@@ -2687,10 +2514,6 @@ class SkillDoctorClosedHistorical(unittest.TestCase):
         self.assertIn("informational", table)
         self.assertIn("not fail", table)
         self.assertIn("do not rewrite a closed audit trail", table)
-        alias_fold = alias.casefold()
-        self.assertIn("closed-field historical", alias_fold)
-        self.assertIn("informational", alias_fold)
-        self.assertIn("not fail", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("closed-field historical", appendix_fold)
         self.assertIn("informational", appendix_fold)
@@ -2714,11 +2537,6 @@ class SkillDoctorOpenHygiene(unittest.TestCase):
         self.assertIn("sibling fields without close", table)
         self.assertIn("hygiene", table)
         self.assertIn("warn", table)
-        alias_fold = alias.casefold()
-        self.assertIn("leftover root", alias_fold)
-        self.assertIn("of migrate", alias_fold)
-        self.assertIn("sibling fields without close", alias_fold)
-        self.assertIn("hygiene", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("leftover root", appendix_fold)
         self.assertIn("migrate required", appendix_fold)
@@ -2755,7 +2573,7 @@ class SkillCollectConservativeDiagnostic(unittest.TestCase):
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
-        for text in (self.table(core), alias, appendix):
+        for text in (self.table(core), appendix):
             folded = text.casefold()
             self.assertIn("pending/unavailable", folded)
             self.assertIn("adapter", folded)
@@ -2832,16 +2650,10 @@ class SkillAntiDoneTheater(unittest.TestCase):
         self.assertIn("quote-pulse", table_fold)
         self.assertIn("Anti-done-theater", core)
         self.assertIn("mechanical", core.casefold())
-        alias_fold = alias.casefold()
-        self.assertIn("claim shipped", alias_fold)
-        self.assertIn("of contrast", alias_fold)
-        self.assertIn("of close --checklist", alias_fold)
-        self.assertIn("mechanical", alias_fold)
         self.assertIn(self.SPEAK, appendix)
         self.assertIn("mechanical", appendix.casefold())
         self.assertIn("not your judgment", appendix.casefold())
         self.assertEqual(self.speak_quote_errors(table, "SKILL.md table"), [])
-        self.assertEqual(self.speak_quote_errors(alias, "of/SKILL.md"), [])
         self.assertEqual(
             self.speak_quote_errors(appendix, "references/skill-appendix.md"),
             [],
@@ -2890,13 +2702,6 @@ class SkillOrcaWorkerTeardown(unittest.TestCase):
         stop_at = table.index("worker-stop")
         release_at = table.index("worker-release")
         self.assertLess(stop_at, release_at)
-        alias_fold = alias.casefold()
-        self.assertIn("worker-stop", alias_fold)
-        self.assertIn("worker-release", alias_fold)
-        self.assertIn("of worktree remove", alias_fold)
-        self.assertIn("orca worktree rm", alias_fold)
-        self.assertIn("terminal close", alias_fold)
-        self.assertIn("not a process supervisor", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("worker-start", appendix_fold)
         self.assertIn("worker-stop", appendix_fold)
@@ -2937,7 +2742,6 @@ class SkillGenericAgentArgv(unittest.TestCase):
     def test_all_skill_surfaces_name_shlex_and_space_path(self) -> None:
         surfaces = {
             "SKILL.md": SkillSurface.core(ROOT),
-            "of/SKILL.md": SkillSurface.alias(ROOT),
             "references/skill-appendix.md": SkillSurface.appendix(ROOT),
             "references/adapters.md": (
                 ROOT / "references" / "adapters.md"
@@ -2969,7 +2773,6 @@ class SkillCodexWorktreeSpawn(unittest.TestCase):
     def test_all_skill_surfaces_name_worktree_roots_and_refusal(self) -> None:
         surfaces = {
             "SKILL.md": SkillSurface.core(ROOT),
-            "of/SKILL.md": SkillSurface.alias(ROOT),
             "references/skill-appendix.md": SkillSurface.appendix(ROOT),
             "references/adapters.md": (
                 ROOT / "references" / "adapters.md"
@@ -3064,25 +2867,7 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("not a new close gate", table_fold)
         self.assertEqual(self.xor_errors(table, "SKILL.md table"), [])
         self.assertEqual(self.timing_errors(table, "SKILL.md table"), [])
-        alias_fold = alias.casefold()
-        self.assertIn("fresh-context review packet", alias_fold)
-        self.assertIn(self.ASK.casefold(), alias_fold)
-        self.assertNotIn(self.OLD_ASK, alias)
-        self.assertIn("do not pack/spawn", alias_fold)
-        self.assertIn("two packs", alias_fold)
-        self.assertIn("two children", alias_fold)
-        self.assertIn("pack+spawn both", alias_fold)
-        self.assertIn("stored yes", alias_fold)
-        self.assertIn("never silent", alias_fold)
-        self.assertIn("init / first wave", alias_fold)
-        self.assertIn("both", alias_fold)
-        self.assertIn("adversary", alias_fold)
-        self.assertIn("verifier", alias_fold)
-        self.assertIn("must ask", alias_fold)
-        self.assertIn("of learn", alias_fold)
-        self.assertIn("not the review-role ask", alias_fold)
-        self.assertEqual(self.xor_errors(alias, "of/SKILL.md"), [])
-        self.assertEqual(self.timing_errors(alias, "of/SKILL.md"), [])
+
         appendix_fold = appendix.casefold()
         self.assertIn("fresh-context review packet", appendix_fold)
         self.assertIn(self.ASK.casefold(), appendix_fold)
@@ -3175,7 +2960,6 @@ class SkillSharedWorktree(unittest.TestCase):
         self.assertIn("head/index", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3220,17 +3004,11 @@ class SkillOwnsPathCoverage(unittest.TestCase):
         self.assertIn("warns", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
             self.assertIn("owns-path", fold, name)
             self.assertIn("slice", fold, name)
-        alias_fold = alias.casefold()
-        self.assertIn("owns_path_empty", alias_fold)
-        self.assertIn("owns_path_incomplete", alias_fold)
-        self.assertIn("every path", alias_fold)
-        self.assertIn("unpack", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn("owns_path_empty", appendix_fold)
         self.assertIn("owns_path_incomplete", appendix_fold)
@@ -3262,7 +3040,6 @@ class SkillDeadStartedOnlyForce(unittest.TestCase):
         self.assertIn("do not pack", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3292,7 +3069,6 @@ class SkillLiveQuietStuck(unittest.TestCase):
         self.assertIn("do not claim done", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3328,7 +3104,6 @@ class SkillForceSpawnPid(unittest.TestCase):
         self.assertNotIn("override a dead one", core.casefold())
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3361,7 +3136,6 @@ class SkillSpawnEndedSignal(unittest.TestCase):
         self.assertIn("escalate_up", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3393,7 +3167,6 @@ class SkillCursorTierRefuse(unittest.TestCase):
         self.assertIn("no alias", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3428,7 +3201,6 @@ class SkillOperatorAction(unittest.TestCase):
         self.assertIn("never invent", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3455,7 +3227,6 @@ class SkillHostMcp(unittest.TestCase):
         self.assertIn("no writes yet", table)
         for body, name in (
             (core, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             fold = body.casefold()
@@ -3465,6 +3236,28 @@ class SkillHostMcp(unittest.TestCase):
         source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
         self.assertIn("class HostMcp:", source)
         self.assertIn("SPAWN_MCP_VAR", source)
+
+
+
+class SkillAliasPointer(unittest.TestCase):
+    """ /of is a trigger. Hosts load sibling SKILL.md. Not a second contract. #287."""
+
+    def test_alias_is_pointer_under_the_same_cap(self) -> None:
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        alias = SkillSurface.alias(ROOT)
+        self.assertLessEqual(
+            SkillSurface.alias_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        desc = SkillSurface.quoted_description(alias)
+        self.assertLessEqual(len(desc), SkillSurface.DESC_MAX_CHARS)
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_TARGET_BYTES
+        )
+        for needle in SkillSurface.ALIAS_POINTERS:
+            self.assertIn(needle, alias, needle)
+        self.assertNotIn("of eval", alias)
+        self.assertNotIn("read the appendix before pack", alias.casefold())
+        self.assertIn("not a second contract", alias.casefold())
 
 
 class SkillSurfaceCore(unittest.TestCase):
@@ -3477,7 +3270,7 @@ class SkillSurfaceCore(unittest.TestCase):
         )
         self.assertLess(
             SkillSurface.core_bytes(ROOT),
-            20_000,
+            SkillSurface.CORE_TARGET_BYTES,
             "core must stay a cut vs the 62477-byte 0.7.65 monolith",
         )
         core = SkillSurface.core(ROOT)

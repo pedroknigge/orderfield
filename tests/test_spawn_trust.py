@@ -265,9 +265,8 @@ class TrustNativeFlags(unittest.TestCase):
 
     def test_skill_and_table_name_the_new_plan_flags(self) -> None:
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
         table = (ROOT / "references" / "adapters.md").read_text(encoding="utf-8")
-        for text in (skill, alias, table):
+        for text in (skill, table):
             self.assertIn("--mode plan", text)
             self.assertIn("--sandbox read-only", text)
         self.assertIn("`--mode plan`", table)

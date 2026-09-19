@@ -33,6 +33,10 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
 - Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `SkillSurface` already capped `SKILL.md` at 20KB. The remaining gap is the `/of` alias as a 22KB second contract, appendix “read the whole file before pack,” and `AGENTS.md` as an always-on changelog (`#287`; compose with `#278`–`#284`; residual speak handles are `#283`).
+- **Reuse, not a new verb:** same `SkillSurface` + `validate-skill.sh` gate now caps the alias (20KB, description ≤1024). Core target ≪ 18KB. Appendix stays on disk, loaded by verb. `AGENTS.md` keeps rules 0–10 + docs table. No VERSION bump. No second skill product.
+- **Skill drives the cut:** hosts that only load `SKILL.md` keep working; `/of` loads sibling `SKILL.md`. Not a second contract.
+- **Proof:** `python3 scripts/skill_surface.py` + `bash scripts/validate-skill.sh` + `SkillAliasPointer` / `SkillSurfaceCore`. C-150 extended. No new C-ID (honesty cap). `#287`.
 
 ## 0.8.21
 

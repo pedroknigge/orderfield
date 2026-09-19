@@ -20,6 +20,10 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
+Lockstep changelog (0.4.2 … 0.8.22 and later) lives in [CHANGELOG.md](CHANGELOG.md) and [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) — not here.
+
+Living map: checklist → of contrast / of close / residual. Not a second checklist.
+
 ## Docs
 
 | Doc | Role |
@@ -27,7 +31,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [README.md](README.md) | Product surface / install |
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
-| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load) |
+| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load; load by verb) |
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [PRINCIPLES.md](PRINCIPLES.md) | Short-form pointer to invariants |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
@@ -59,169 +63,5 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | [docs/features/kernel/](docs/features/kernel/) | Kernel feature pack |
 | [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
-
-## Surface coverage
-
-| Surface | Status |
-|---------|--------|
-| Kernel CLI (`of` / `scripts/of.py`) | documented |
-| Kernel internals (`scripts/of/` + `scripts/of/cli/`) | documented |
-| Field lock (`MUTATING_COMMANDS` only) | documented |
-| Adapter module (`scripts/of_adapters.py`) | documented |
-| Native adapters + generic | documented |
-| Install + `~/.local/bin/of` | documented |
-| Mission vs phase `done_when` / `--done-when-mission` | documented |
-| Phase-prefix Option B / ref-load / `--requires-tool` | documented |
-| Optional cut + when-pays vs theater | documented |
-| Same-harness default (multi only if user asks) | documented |
-| Session-cut resume (`of resume`, `of checkpoint --summary`, `session.json`) | documented |
-| Reversible field (`of unpack`, `--constraints-rm`, `--reopen`, `collect` MISSING, `integrate --partial`) | documented |
-| First-class fields (`ORDER.harness`, `ORDER.backlog`, role contracts in prompts) | documented |
-| Portable doctrine (`.orderfield/SLAVE.md`, repo-relative reference) | documented |
-| `/of` alias skill + versioned description | documented |
-| Optional `--json` / `OF_JSON` events | documented |
-| Lossless SPEC.md + amendments + `spec_hash` check | documented |
-| Deictic go-ahead ingest (`dale` / `do it` → expand prior brief; advisory note) | documented |
-| Pack `--owns-requirement` (refused while unowned) | documented |
-| Contrast gate (`VERIFIED_CONTRACT` vs `VERIFIED_INTERNAL`; `of close`) | documented |
-| 0.4.2 … + 0.5.5 auto_continue + 0.5.6 eval/parked/events + 0.5.7 eval CI/contrast recovery/Test C doc | documented |
-| 0.6.0 form split (`scripts/of.py` internals; protocol unchanged) | documented |
-| SCOPE-GODSPLIT (`field.py` WAL/learn/retain; form shipped, remaining `field.py` is field I/O) | documented |
-| 0.6.1 deictic go-ahead ingest (advisory, not a new regime) | documented |
-| 0.6.2 CLI command groups (`scripts/of/cli/`, not a new regime) | documented |
-| 0.6.4 `of learn` protocol vs field (not a new regime) | documented |
-| 0.6.5 optional `ORDER.origin` provenance (not spawn, not fetch) | documented |
-| 0.6.6 sibling fields (`of new` / `of fields` / `--field` / origin gate / cross-field owns-path) | documented |
-| 0.6.7 vibe-proof hardening (`OF_TRUST` / spawn env allowlist / spec+checkpoint lock / learn provenance / error boundary / 3.11 floor) | documented |
-| 0.6.8 P1 close + theater cut (`OF_CHILD` / WAL / tokens=0 / main review / owned-but-unverified / constraint dedupe / PHASE.md / backlog-undone / compact render / spec --add writes SPEC) | documented |
-| 0.6.9 HITL `of issue` + sibling `--packet`/`of new` recovery + stay-on-run STALE continue | documented |
-| 0.7.0 Vibe-Proof Deep P1 (LEARN-001 ancestor exec-env, WAL CURRENT read view, COST disclaimer, INSTALL pin, REVIEW config) | documented |
-| 0.7.1 Vibe-Proof Deep P1/P2 (LEARN-002 exec registry, ISSUE body-file, WAL-002 CURRENT read, JSON-all-lines, SCOPE-001) | documented |
-| 0.7.2 Vibe-Proof v0.9.5 P1 (WAL-002 writer rematerialize, SIBLING-001 residual resolver, ISSUE-003 title/search, LINT-002) | documented |
-| 0.7.3 Saturation control (gc walks every home, 7-day safe TTL, tree budget + HITL drop/keep) | documented |
-| 0.7.4 GitHub #54–#57 (pack continuation, integrate JSON stdout, spec hyphen PREFIX, skip-warn throttle) | documented |
-| 0.7.5 invariant evals + external brief (mission rewrite / contract close / slogan; Grok Bot contrast written) | documented |
-| 0.7.6 threat-model honesty + pack exclusivity evals (`pack-exclusivity-refused`; child-cannot vs kernel-does-not-stop) | documented |
-| 0.7.7 atomic close / ACTIVE pointer / done_when lint | documented |
-| 0.7.8 docs voice on the published line | documented |
-| 0.7.9 corpus recovery / stale-field signal / multi-harness residual | documented |
-| 0.7.10 close/nested honesty guides + `of doctor` skill VERSION skew | documented |
-| 0.7.11 deep-install Codex `--output-schema` basename (`ArgvRedact`) | documented |
-| 0.7.12 durable multi-day resume (unique-field later session + re-init refuse) | documented |
-| 0.7.13 sibling-field roster UX (ACTIVE marker, packed-age, epic vs patch choose) | documented |
-| 0.7.14 checkpoint handoff stay-on-run (resume HANDOFF for STALE children, checkpoint pulse verdicts, `recovery/checkpoint-handoff-stay-on-run`) | documented |
-| 0.7.15 `budget.seconds` honesty (packet wall-clock; spawn `--timeout` must match or omit; `recovery/budget-seconds-honesty`) | documented |
-| 0.7.16 mid-flight amend evals (`of spec --amend` + `of patch` across waves; next packet carries dated amend; `recovery/midflight-amend`) | documented |
-| 0.7.17 wave-report quality gate (structured residual, not chat dumps; `recovery/wave-report-quality-gate`) | documented |
-| 0.7.18 packet sizing lint (whole-phase pack slogans die; length ≥800 stays advisory; `recovery/packet-sizing-lint`) | documented |
-| 0.7.19 threshold stop-spawn loop (field residual → `spawn_blocked` → patch + next-wave; `recovery/threshold-stop-spawn`) | documented |
-| 0.7.20 resume after process death (live wave from disk; no re-init theater; `recovery/process-death-resume`) | documented |
-| 0.7.21 generic done_when lint stronger (punctuation/platitude + empty theater close; `recovery/done-when-lint`) | documented |
-| 0.7.22 in-flight packed-age watchdog (`of status` / `of resume` past 7d SLA; `recovery/packed-age-watchdog`) | documented |
-| 0.7.23 contrast report renderer (`of contrast` one-pager + machine JSON; `ContrastReport`; `recovery/contrast-close-*`) | documented |
-| 0.7.24 `of wave list` / `of wave show` (live wave marked; `recovery/wave-list-show`) | documented |
-| 0.7.25 `of doctor` one-pass skew (ACTIVE + version + stale packs; `recovery/doctor-one-pass-skew`) | documented |
-| 0.7.26 orphan packed-child cleanup (`OrphanPacked`; `recovery/orphan-packed-cleanup`) | documented |
-| 0.7.27 root stub vs nested fields (refuse `--field` / migrate archive; `recovery/root-stub-ambiguous`) | documented |
-| 0.7.28 `of status --json` live-wave dashboard document (`StatusReport`; `recovery/status-json`) | documented |
-| 0.7.29 multi-wave residual-loop eval corpus (3+ waves + mid-flight amend; `recovery/multi-wave-residual`) | documented |
-| 0.7.30 nested field lifecycle (`of new --parent` / `ORDER.parent` / close returns ACTIVE; `recovery/nested-field-lifecycle`) | documented |
-| 0.7.31 mid-epic handoff packet (`of handoff` field packet / `HandoffReport`; `recovery/mid-epic-handoff`) | documented |
-| 0.7.32 closed-field archive (`of gc --archive-field`; drop refuses `CLOSE.json`; `recovery/closed-field-archive`) | documented |
-| 0.7.33 live in-flight visibility (`of status` / `resume` / `pulse` `running` + residual MISSING; `InFlightSignal`; `recovery/in-flight-visibility`) | documented |
-| 0.7.34 `of pack --explain` dry-run slice sizing (`SliceLint.document`; `recovery/packet-sizing-explain`) | documented |
-| 0.7.35 threat-model addendum for long-task residual theater (disk contract / residual / close-is-proof; [external-brief.md](docs/external-brief.md#long-task-residual-theater)) | documented |
-| 0.7.36 long-mission operator walk (epic → waves → amend → close is proof; [docs/long-mission.md](docs/long-mission.md)) | documented |
-| 0.7.37 adversarial dual-truth corpus (close / fake budget / unpack theater; `recovery/adversarial-dual-truth`) | documented |
-| 0.7.38 pack `--out` accepts physical nested path (`PackOutPhysicalNested`; #94) | documented |
-| 0.7.39 doctor skill SKEW advisory + residual awaiting + first-home roster (`recovery/doctor-advisory-ux`; #88) | documented |
-| 0.7.40 live PULSE progress under `running` (`PulseProgress`; `recovery/in-flight-visibility`) | documented |
-| 0.7.41 cross-field open-pack roster (`PackRoster`; `of fields --json`; `recovery/cross-field-pack-roster`) | documented |
-| 0.7.42 multi-wave close checklist (`CloseChecklist`; contrast + residual empty; `recovery/multi-wave-close-checklist`) | documented |
-| 0.7.43 mortal-install one-sitting demo (`docs/demo/mortal-install.sh`; `install.sh` + `of doctor`) | documented |
-| 0.7.44 harness matrix residual on deep-install dests (claude/codex/cursor; `recovery/multi-harness-residual`; `MultiHarnessResidual`) | documented |
-| 0.7.45 close-is-proof RFC invariants (`docs/close-is-proof.md`; residual empty ≠ closed) | documented |
-| 0.7.46 daily ask-to-update when `of` is behind (`UpdateAsk`; `install.sh --from-release`; `UpdateAskDaily`) | documented |
-| 0.7.47 optional per-task model hints (`AdapterHints`; consent + spawn `--model` passthrough; no silent switch) | documented |
-| 0.7.48 efficiency signal + propose uptier/downtier (`EfficiencySignal`; `residual.usage` provenance; ask only; `recovery/efficiency-signal`) | documented |
-| 0.7.49 `of contrast --diff` narrative (`ContrastDiff`; same facts as spec-diff; no theater; `recovery/contrast-diff-narrative`) | documented |
-| 0.7.50 claims honesty gate (`ClaimsHonesty`; `check-claims.py` in `validate-skill.sh`; `ClaimsHonestyGate`) | documented |
-| 0.7.51 README use-case opening (problem → feature; Haken analogy below; `ReadmeProductSurface`) | documented |
-| 0.7.52 README Mid-flight H2 before Install (three kinds of change + sibling fields; `ReadmeProductSurface`) | documented |
-| 0.7.53 skill-first cheap vs frontier propose (`SkillLeaderInitiative`; consent + 0.7.47/0.7.48; no new router) | documented |
-| 0.7.54 quoted skill YAML + Shared `~/.gemini/skills` agy dest (`SkillFrontmatterQuotedGate`) | documented |
-| 0.7.55 residual optional top-level `v` (`ResidualSchemaContracts`; collect ignores kernel `--json` document version) | documented |
-| 0.7.56 ResidualQuality byte cap skips honest structured evidence (`WaveReportQualityGate`; #116) | documented |
-| 0.7.57 grok + agy consented `--model` passthrough (`AdapterHints`; named model; no invented aliases) | documented |
-| 0.7.58 turn-end quote-PULSE leader duty (`InFlightSignal.speak_line` on status/resume; reuses `PulseProgress`; no manual `of pulse`; `InFlightVisibility`) | documented |
-| 0.7.59 skill-first ask same-harness categories vs multi-harness mix before pack (`SkillHarnessAsk`; reuse `of detect` / `--harness`; no new CLI) | documented |
-| 0.7.60 quick detect present / missing / PATH≠auth (`AdapterDetect`; reuse `of detect` / doctor; never claim login from PATH) | documented |
-| 0.7.61 living model catalog (intelligence×cost) per harness (`ModelCatalog`; `docs/model-catalog.md` + `.json`; consult-before-propose; not `budget.tokens`) | documented |
-| 0.7.62 stream-json / JSON streams feed PULSE (`StreamJson`; reuse `PulseProgress` + stdout residual extract; claude/cursor/codex + 0.7.71 grok `streaming-json`) | documented |
-| 0.7.63 conservative agy `denied_actions` in residual (`AgyDeniedActions`; reuse `StreamJson.parse_line`; not approval; not yolo) | documented |
-| 0.7.64 agy `--json-schema` residual reuses Codex file (`OutputSchema`; Claude omit inline-only / keep stream-json; Qwen omit) | documented |
-| 0.7.65 `OF_TRUST=plan` maps native cursor/agy `--mode plan` + grok `--sandbox read-only` (`TrustNativeFlags`; honesty omit for gated/missing modes) | documented |
-| 0.7.66 adapter resume/continue only when residual already has session id (`AdapterResume`; never invent; never `--continue`) | documented |
-| 0.7.67 SKILL.md short core + `references/skill-appendix.md` (`SkillSurface`; hosts load the core; appendix is the rest of the procedure) | documented |
-| 0.7.68 mechanical anti-done-theater (`CloseChecklist.speak_line` on `--checklist`; contrast RESOLVED + residual empty before claiming shipped; pair with quote-PULSE) | documented |
-| 0.7.69 Claude `-p` + stream-json emits `--verbose` (`StreamJson`; #131; cursor/codex unchanged) | documented |
-| 0.7.70 packed-only is not ALIVE (`SpawnRecord`; status/resume `spawned` + pulse from spawn meta/scratch; `PACKED` + `next SPAWN` not HOLD; `#274` pulse/resume name not spawned) | documented |
-| 0.7.71 grok `--output-format streaming-json` + spawn metadata finalize (`StreamJson`; `SpawnResidual`; `ChildIO`; #133) | documented |
-| 0.7.72 `of issue --body-file` names canonical `.orderfield/work/scratch/<child_id>/` (`_issue_scratch_rel_ok`; leader draft `…/leader/ISSUE.md`; #134) | documented |
-| 0.7.73 Codex residual schema `usage.type` is `["object","null"]` once (`CodexStrictSchema`; #135) | documented |
-| 0.7.74 doctor closed-field historical packs are informational (`DoctorSkew.home_closed`; field id + wave; `recovery/doctor-closed-historical`; #137) | documented |
-| 0.7.75 collect missing-residual conservative diagnostic is factual (`CollectDiagnostic`; adapter/outcome/actual denials; possibility, not cannot-write; #138) | documented |
-| 0.7.76 `integrate --partial` hold reason names in-flight siblings (`hold_if_partial_in_flight`; `recovery/partial-integrate-in-flight`; #139) | documented |
-| 0.7.77 `of learn` length is advisory like `pack --slice` (`LearningLint`; `learning_long` note + store; `LEARNING_MAX_LINES` hard; #146) | documented |
-| 0.7.78 webhook HMAC + replay is a contrast PAIR gate (`WebhookPair`; accept valid and reject replay/bad sig; `--both-sides`) | documented |
-| 0.7.79 skill appendix modo-producción + Gate A before features (`SkillSurface`; reuse verb table / `--owns-requirement` / reserved `RUNTIME_OWNERSHIP`; no `of gate`) | documented |
-| 0.7.80 timeout / idempotency / health SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`; extract TIMEOUT/HEALTH; `--surface internal` cannot hide; no `of gate`) | documented |
-| 0.7.81 done residual close evidence requires artifact SHA + rollback command (`CloseEvidence`; collect refuses captions / mismatch; no new schema) | documented |
-| 0.7.82 living map checklist → of contrast / of close / residual (`LivingMap`; not a second checklist) | documented |
-| 0.7.83 multi-harness mix playbook in SKILL (roles on one harness vs mix; claude/codex/cursor/grok/agy; `SkillHarnessMix`; reuse detect/doctor/consent) | documented |
-| 0.7.84 long-task efficiency mix from honest session/balance signals (`AdapterBalance`; unknown if unpublished; ask before rebalance; reuse EfficiencySignal / detect / doctor) | documented |
-| 0.7.85 fresh-context evaluator packet (`EvaluatorPacket`; ask both adversary+verifier — two packs/two children, not XOR; never silent; not a close gate; C-080 stays Partial) | documented |
-| 0.7.86 Orca worker stop/release duty (`SkillOrcaWorkerTeardown`; start↔stop/release after collect/abandon; leftover of-worktree doctor WARN; no process supervisor; C-045) | documented |
-| 0.7.87 quote checklist `speak` before claiming shipped (`CloseChecklist.speak_line`; contrast RESOLVED + residual empty + quoted SPEAK; protocol not a chat parser) | documented |
-| 0.7.88 `/version` or release header SPEC IDs are VERIFIED_CONTRACT (`ContractSurface`; extract VERSION; `--surface internal` cannot hide; no `of gate`) | documented |
-| 0.7.89 Prod§15 day-90 runbook path required in `done_when` before close (`RunbookPath`; production/day-90 cue only; toy fields stay; no `of gate`) | documented |
-| 0.7.90 native Codex spawn honors recorded child worktree (`-C` + field/Git `--add-dir`) or refuses before launch (`CodexWorktree`; C-045) | documented |
-| 0.7.91 started-only re-spawn dominates leftover residual (`SpawnRecord.flying`; status/resume/pulse stay `running` + PULSE + speak; #163) | documented |
-| 0.7.92 successful `of phase` refreshes covering digest so `of next-wave` does not require `--recompute` (`PhaseDigest`; #164; C-083) | documented |
-| 0.7.93 generic `OF_AGENT` is shell-quoted argv (`GenericAgent` / `shlex.split`); dry-run prints `shlex.join` so a space path stays one token (#165) | documented |
-| 0.7.94 empty-wave `of phase` skips integrate when `packed_children` is empty (`phase_transition_errors`; #166; C-034) | documented |
-| 0.7.95 resume names `INTEGRATE --RECOMPUTE` on digest drift; spawn-owned residual keys omitted from the covering hash (`IntegrationDigest`; #168; C-034 / C-035) | documented |
-| 0.7.96 authority-axis README/SKILL sell + shortest install → first close + planning-with-files contrast (`ReadmeProductSurface`; C-135) | documented |
-| 0.7.97 one VERSION / GitHub tag per proven invariant (`PackagingBump`; current heading needs `**Proof:**`; docs-only / unproven fail; anti 10-tags/day) | documented |
-| 0.7.98 identity-stale + flying prints `UNPACK --FORCE` not spawn; spec `--add`/`--amend` warns rev bump stales N packets (`PacketRevStale`; #178) | documented |
-| 0.7.99 successful close is terminal (`CloseProof` / `ActiveField.release_closed`; not ACTIVE / pulse not ALIVE / `spawn_blocked` cleared; `recovery/post-close-terminal`; #180) | documented |
-| 0.7.100 doctor / close WARN when audit is OVER or scratch is fat (`AuditPressure`; gc before close; not FAIL; not a close gate; #181) | documented |
-| 0.7.101 doctor leftover root ORDER.json SKEW names `migrate required` (FAIL); sibling fields without CLOSE are hygiene WARN (`DoctorSkew`; #182) | documented |
-| 0.8.1 cited plan-doc sync (`PlanDocSync`; Mode A patch or Mode B `DOCS_SYNC.md` + ask; doctor/close WARN on stale; #188) | documented |
-| 0.8.2 after collect+integrate, execute printed `next` same turn (`DriveAfterIntegrate`; report is not a stop; ordinary next-wave is not a consent ask; #191) | documented |
-| 0.8.3 `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`; dry-run is not HITL; #193) | documented |
-| 0.8.4 `OF_TRUST=yolo` + `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`; not silent defaults) | documented |
-| 0.8.5 `of issue --search` lists open issues via Issues list API + local filter (`IssueList`; empty=all; `#198`) | documented |
-| 0.8.6 Cursor `--model-tier` without `--model` refuses pack/spawn (`AdapterHints.TIER_NEED_MODEL`; no invented alias) | documented |
-| 0.8.7 ended spawn without residual is `done_without_residual` not ok/ALIVE; host Write denials are not `escalate_up` (`HostWriteDenial`; `#200`) | documented |
-| 0.8.8 `of issue --body-file` accepts leader `ISSUE.md` / `ISSUE-*.md` under `.orderfield/work/scratch/leader/` (`_issue_scratch_rel_ok`; `#201`) | documented |
-| 0.8.9 after successful `of collect` (`ok=N invalid=0 missing=0`), resume/status `next` is INTEGRATE not COLLECT (`CollectReady`; `#204`) | documented |
-| 0.8.10 `of gc` / `of retain` import `PHASES` so a stored learning with `phase` does not NameError (`#205`) | documented |
-| 0.8.11 after collect/abandon: `of worktree remove` + Orca Host `worktree rm` / `terminal close --tab`; doctor/close WARN on orphaned vs settled (`DoctorSkew.orphaned_worktrees`; `#210`) | documented |
-| 0.8.12 `of spec --surface internal ID` reclassifies a mis-declared requirement (`RequirementSurface`; `#211`); `--surface` without `--add` or ID refuses; contrast teaches the path | documented |
-| 0.8.13 spawn record stores pid; `--force-spawn` refuses a live pid; doctor/status name `over_budget` open spawn (`SpawnRecord` / `DoctorSkew`; `#213`) | documented |
-| 0.8.14 second implementer without a recorded worktree warns `shared_worktree` (`SharedWorktree`; `#214`) | documented |
-| 0.8.15 collect unexpected keys name the legal home (`SchemaHomeHint`; `#215`) | documented |
-| 0.8.16 `validate_schema` subset honesty (`anyOf` / `maxLength` / `patternProperties`; `SchemaSubsetHonesty`; C-030; `#223`); successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`ClosedScratch`; closed-ephemeral; C-084; `#224`); spawn claim lock + `MUTATING_COMMANDS` honesty (`SpawnRecord.claim_started` / `mutating_commands_prose()`; `SpawnLockRace` / `MutatingCommandsHonesty`; `#225`); HITL `of issue` lives in `cli/issue_cmd.py` (not `ops`; same verbs; `#226`; Relates `#219`). Landed on main after the v0.8.15 tag | documented |
-| 0.8.17 pstack Mediums 1–5 dual-truth (`CloseChecklist.flying`, object-form `additionalProperties`, wipe-after-stamp docs, `refuse_child_forge` on patch/close/integrate, `constraints+` README honesty; `#234`); invalid stdout extract names `$.path` + `CodexNullOmit` (`#236`; Closes `#232`); wave-end surplus triage (`SkillWaveEndTriage`; `#229`); demote `of eval` from SKILL / `/of` hot path (`#230`); prove published artifact before FACTIBLE (`SkillArtifactProve`) + store adversary+verifier consent at START (`SkillEvaluatorPacket`; `#235`). Landed on main after the v0.8.16 tag | documented |
-| 0.8.18 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed is not a `--field` refuse); `LearnListClosedFields`; `#231` | documented |
-| 0.8.19 stall `#243`+`#245`+`#244` + agy `#249`. Landed as the published v0.8.19 tag | documented |
-| 0.8.20 OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); LiveQuietStuck HITL HOLD (`#256`). Landed on main after the v0.8.19 tag | documented |
-| 0.8.21 wave-settle auto-continue (`#263`); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`). Landed on main after the v0.8.20 tag | documented |
-| 0.8.22 pack size-note honesty (`#267`); PAIR `--verified-contract` refuse without `--both-sides` (`#268`); agy/grok isolate host MCP + pulse `cpu=` (`HostMcp`; `#269`); present:none HOLD / implicit spawn refuse (`SpawnAdapterMissing`; `#273`); pulse names packed-never-spawned (`InFlightSignal`; `#274`). Landed on main after the v0.8.21 tag | documented |
-| in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
-| `of eval` recovery fixtures | documented |
-| Agent discovery index (`docs/agent-discovery.md`) | documented |
-| Branch protection + CONTRIBUTING / coverage waiver | documented |
 
 Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/antigravity-cli/skills/orderfield/` (agy Global), `~/.gemini/skills/orderfield/` (agy Shared), `~/.gemini/config/skills/orderfield/` (optional legacy), or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.

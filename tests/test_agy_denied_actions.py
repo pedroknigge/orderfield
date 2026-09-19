@@ -313,10 +313,6 @@ class AgyDeniedActionsSkill(unittest.TestCase):
         self.assertIn("residual.denied_actions", skill_fold)
         self.assertIn("do not invent", skill_fold)
         self.assertIn("yolo", skill_fold)
-        alias_fold = alias.casefold()
-        self.assertIn("denied_actions", alias_fold)
-        self.assertIn("conservative", alias_fold)
-        self.assertIn("not approval", alias_fold)
 
 
 if __name__ == "__main__":

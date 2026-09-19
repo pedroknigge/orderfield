@@ -23,14 +23,25 @@ class SkillSurface:
     ALIAS = "of/SKILL.md"
     # Hosts inject SKILL.md. 0.7.65 was 62477 bytes. Cap is the cut.
     CORE_MAX_BYTES = 20_000
+    # Product target: a cut, not a file hugging the cap. #287.
+    CORE_TARGET_BYTES = 18_000
+    DESC_MAX_CHARS = 1024
     CORE_POINTERS = (
         "references/skill-appendix.md",
         "## What to type next",
-        "Read the appendix",
+        "Load by verb",
         "Never chain pack|spawn|next-wave",
         "in_flight=0",
         "HITL only",
         "bare ok/dale",
+    )
+    ALIAS_POINTERS = (
+        "Load the sibling",
+        "not a second contract",
+        "../SKILL.md",
+        "references/skill-appendix.md",
+        "Load by verb",
+        "Do not trigger for a harness name alone",
     )
     APPENDIX_MARKERS = (
         "## Mandatory leader process",
@@ -94,6 +105,22 @@ class SkillSurface:
         return SkillSurface.path(root, SkillSurface.CORE).stat().st_size
 
     @staticmethod
+    def alias_bytes(root: Path) -> int:
+        return SkillSurface.path(root, SkillSurface.ALIAS).stat().st_size
+
+    @staticmethod
+    def quoted_description(text: str) -> str:
+        marker = 'description: "'
+        start = text.find(marker)
+        if start < 0:
+            return ""
+        start += len(marker)
+        end = text.find('"', start)
+        if end < 0:
+            return ""
+        return text[start:end]
+
+    @staticmethod
     def errors(root: Path) -> list[str]:
         path = Path(root)
         errors: list[str] = []
@@ -108,18 +135,52 @@ class SkillSurface:
                 f"{SkillSurface.CORE} {size} bytes > {SkillSurface.CORE_MAX_BYTES} "
                 "(always-loaded core tax)"
             )
+        if size >= SkillSurface.CORE_TARGET_BYTES:
+            errors.append(
+                f"{SkillSurface.CORE} {size} bytes not ≪ "
+                f"{SkillSurface.CORE_TARGET_BYTES} (core must stay a cut)"
+            )
+        alias_size = SkillSurface.alias_bytes(path)
+        if alias_size > SkillSurface.CORE_MAX_BYTES:
+            errors.append(
+                f"{SkillSurface.ALIAS} {alias_size} bytes > "
+                f"{SkillSurface.CORE_MAX_BYTES} (alias is a pointer, not a "
+                "second contract)"
+            )
         core = SkillSurface.core(path)
         for needle in SkillSurface.CORE_POINTERS:
             if needle not in core:
                 errors.append(f"{SkillSurface.CORE} missing {needle!r}")
+        alias = SkillSurface.alias(path)
+        for needle in SkillSurface.ALIAS_POINTERS:
+            if needle not in alias:
+                errors.append(f"{SkillSurface.ALIAS} missing {needle!r}")
+        for rel, text in (
+            (SkillSurface.CORE, core),
+            (SkillSurface.ALIAS, alias),
+        ):
+            desc = SkillSurface.quoted_description(text)
+            if not desc:
+                errors.append(f"{rel} missing quoted description")
+            elif len(desc) > SkillSurface.DESC_MAX_CHARS:
+                errors.append(
+                    f"{rel} description {len(desc)} chars > "
+                    f"{SkillSurface.DESC_MAX_CHARS}"
+                )
         appendix = SkillSurface.appendix(path)
         for needle in SkillSurface.APPENDIX_MARKERS:
             if needle not in appendix:
                 errors.append(f"{SkillSurface.APPENDIX} missing {needle!r}")
         if "not a second contract" not in appendix.casefold():
             errors.append(f"{SkillSurface.APPENDIX} missing 'not a second contract'")
-        if SkillSurface.APPENDIX not in SkillSurface.alias(path):
+        if SkillSurface.APPENDIX not in alias:
             errors.append(f"{SkillSurface.ALIAS} missing appendix pointer")
+        if "read the whole appendix" in alias.casefold():
+            errors.append(f"{SkillSurface.ALIAS} still dumps the appendix")
+        if "read the appendix before pack" in core.casefold():
+            errors.append(
+                f"{SkillSurface.CORE} still says read the whole appendix before pack"
+            )
         return errors
 
 
@@ -134,10 +195,13 @@ def main(argv: list[str] | None = None) -> int:
         print("FAIL: " + "; ".join(errors), file=sys.stderr)
         return 1
     size = SkillSurface.core_bytes(root)
+    alias_size = SkillSurface.alias_bytes(root)
     print(
         f"OK skill surface core={size}B "
+        f"alias={alias_size}B "
         f"appendix={SkillSurface.path(root, SkillSurface.APPENDIX).stat().st_size}B "
-        f"cap={SkillSurface.CORE_MAX_BYTES}"
+        f"cap={SkillSurface.CORE_MAX_BYTES} "
+        f"target={SkillSurface.CORE_TARGET_BYTES}"
     )
     return 0
 

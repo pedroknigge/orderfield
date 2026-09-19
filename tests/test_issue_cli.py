@@ -1149,7 +1149,6 @@ class SkillIssueSearch(unittest.TestCase):
         slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
         for body, name in (
             (skill, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
             (slave, "SLAVE.md"),
         ):

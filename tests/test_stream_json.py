@@ -478,11 +478,6 @@ class StreamJsonPulseSkill(unittest.TestCase):
         self.assertIn("stream-json", skill_fold)
         self.assertIn("same scratch", skill_fold)
         self.assertIn("streaming-json", skill_fold)
-        alias_fold = alias.casefold()
-        self.assertIn("stream-json", alias_fold)
-        self.assertIn("streaming-json", alias_fold)
-        self.assertIn("same", alias_fold)
-        self.assertIn("pulse", alias_fold)
         appendix = (ROOT / "references" / "skill-appendix.md").read_text(
             encoding="utf-8"
         )

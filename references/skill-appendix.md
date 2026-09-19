@@ -2,7 +2,18 @@
 
 Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the leader procedure — not a second contract and not a second skill.
 
-**Read this appendix before pack, spawn, contrast, or close.** The core table names the field-run verbs; these sections are how you run them. Lab `eval` lives here, not on the SKILL/`/of` hot path. A turn that claims field-run verbs without the `of` commands is still a broken run.
+**Load by verb — do not read this whole file before pack.** The core table names the field-run verbs; open the matching section when you run that verb:
+
+| Verb | Read |
+|---|---|
+| pack | [### 3. Pack](#3-pack-do-not-dump-history) (throughput + packet template) + [Multi-harness mix](#multi-harness-mix) |
+| spawn | [### 4. Spawn](#4-spawn-only-through-the-kernel) + [#### Same harness only](#same-harness-only-default) |
+| pulse | [### 4b. Liveness](#4b-liveness-while-a-wave-flies-of-pulse) |
+| collect / integrate | [### 5. Collect + integrate](#5-collect--integrate--the-leader-does-not-judge-vibes) |
+| contrast | [### 5b. Contrast loop](#5b-contrast-loop--original-request-not-the-compressed-order) |
+| close | [#### Production mode](#production-mode) + [Forbidden](#forbidden) + [docs/close-is-proof.md](../docs/close-is-proof.md) |
+
+Lab `eval` lives here, not on the SKILL/`/of` hot path. A turn that claims field-run verbs without the `of` commands is still a broken run.
 
 Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [SLAVE.md](../SLAVE.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md). Subtract first: same capability with less code. No new API to look busy.
 

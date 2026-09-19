@@ -263,7 +263,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 
 ## 0.7.67 — SKILL.md short core + appendix
 
-- Hosts load `SKILL.md` only. The rest of the leader procedure is [references/skill-appendix.md](../references/skill-appendix.md). The core table still names every kernel verb, including the 0.7.66 adapter-resume gate. `/of` points at the sibling plus the appendix. `SkillSurface` is the gate. Not a second skill. Not a new CLI. Not a new regime.
+- Hosts load `SKILL.md` only. The rest of the leader procedure is [references/skill-appendix.md](../references/skill-appendix.md). The core table still names every kernel verb, including the 0.7.66 adapter-resume gate. Agents load the appendix by verb. `/of` is a pointer + trigger (same 20KB cap), not a second contract. `AGENTS.md` is rules 0–10 + docs table. `SkillSurface` is the gate. Not a second skill. Not a new CLI. Not a new regime. #287.
 
 ## 0.7.66 — adapter resume only with residual session id
 
