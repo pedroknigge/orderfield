@@ -437,6 +437,11 @@ def cmd_patch(args: argparse.Namespace) -> None:
                 changed = True
         else:
             die(f"--harness must be one of {ADAPTER_ORDER} (or '-' to clear)")
+    if getattr(args, "evaluator_consent", None) is not None:
+        from of.cli.spec_cmd import EvaluatorPacket
+
+        if EvaluatorPacket.apply_patch(order, args.evaluator_consent):
+            changed = True
     if AdapterHints.apply_patch(
         order,
         int(load_state(root).get("wave") or 1),
@@ -545,6 +550,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         }
         if order.get("harness"):
             summary["harness"] = order["harness"]
+        if order.get("evaluator_consent"):
+            summary["evaluator_consent"] = order["evaluator_consent"]
         if order.get("adapter_hints"):
             summary["adapter_hints"] = order["adapter_hints"]
         if order.get("origin"):

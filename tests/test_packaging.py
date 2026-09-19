@@ -1615,7 +1615,7 @@ occupancy 08:00-12:00
 09:30-10:00 R1 P07 and P15
 """
 
-    def test_core_alias_appendix_teach_published_check(self) -> None:
+    def test_core_alias_appendix_name_published_artifact_hook(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
@@ -1624,10 +1624,24 @@ occupancy 08:00-12:00
             [],
         )
         table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-        self.assertIn("FACTIBLE", table)
-        self.assertIn("published", table.casefold())
-        self.assertIn("skill_artifact_prove.py", appendix)
+        self.assertIn("published_artifact", table)
+        self.assertIn("collect fail-closed", table.casefold())
+        self.assertIn("published_artifact", appendix)
         self.assertNotRegex(core, r"(?<![Nn]ot )`of prove`")
+
+    def test_collect_hook_fails_closed_without_product_bytes(self) -> None:
+        residual = {
+            "status": "done",
+            "result_ref": ".orderfield/work/scratch/e1/result.md",
+            "residual": {"evidence": "FACTIBLE\nCUMPLE"},
+        }
+        self.assertTrue(ArtifactProve.applies(residual))
+        errors = ArtifactProve.errors(residual, ROOT)
+        self.assertTrue(errors, errors)
+        self.assertTrue(
+            any("published artifact missing" in err for err in errors),
+            errors,
+        )
 
     def test_cumple_with_bed_overlap_fails(self) -> None:
         fixture = (ROOT / ArtifactProve.FIXTURE).read_text(encoding="utf-8")
@@ -1655,7 +1669,10 @@ occupancy 08:00-12:00
         )
         errs = ArtifactProve.teaching_errors(fake, fake, fake)
         self.assertTrue(errs, errs)
-        self.assertTrue(any("published" in e.casefold() for e in errs), errs)
+        self.assertTrue(
+            any("published_artifact" in e for e in errs),
+            errs,
+        )
 
     def test_clean_schedule_and_honest_fail_pass(self) -> None:
         self.assertEqual(ArtifactProve.claim_errors(self.CLEAN), [])
@@ -3030,105 +3047,47 @@ class SkillEvaluatorPacket(unittest.TestCase):
             errors.append(f"{rel} packs on start Yes")
         return errors
 
-    def test_core_alias_appendix_ask_at_start_both_roles(self) -> None:
+    def test_core_alias_appendix_name_evaluator_consent_key(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
         table = self.table(core)
-        table_fold = table.casefold()
         init_row = next(
             line
             for line in table.splitlines()
             if "init / first wave" in line.casefold()
         )
-        self.assertIn("must ask", init_row.casefold())
+        self.assertIn("--evaluator-consent", init_row)
         self.assertIn("do not pack/spawn", init_row)
-        self.assertIn("of close --checklist", init_row)
-        self.assertIn("fresh-context review packet", table)
         self.assertIn(self.ASK, table)
         self.assertNotIn(self.OLD_ASK, table)
-        self.assertIn("two packs", table)
-        self.assertIn("two children", table)
-        self.assertIn("pack+spawn both", table)
-        self.assertIn("stored yes", table.casefold())
-        self.assertIn("stored no", table.casefold())
-        self.assertIn("not the review-role ask", table_fold)
-        self.assertIn("never silent", table_fold)
-        self.assertIn("both", table_fold)
-        self.assertIn("--role adversary", table)
-        self.assertIn("--role verifier", table)
-        self.assertIn("--done-when-mission", table)
-        self.assertIn("after close", table_fold)
-        self.assertIn("of learn", table)
-        self.assertIn("self-praise", table_fold)
-        self.assertIn("not a new close gate", table_fold)
+        self.assertNotIn("store `--done-when-mission`", table)
         self.assertEqual(self.xor_errors(table, "SKILL.md table"), [])
         self.assertEqual(self.timing_errors(table, "SKILL.md table"), [])
-        alias_fold = alias.casefold()
-        self.assertIn("fresh-context review packet", alias_fold)
-        self.assertIn(self.ASK.casefold(), alias_fold)
-        self.assertNotIn(self.OLD_ASK, alias)
-        self.assertIn("do not pack/spawn", alias_fold)
-        self.assertIn("two packs", alias_fold)
-        self.assertIn("two children", alias_fold)
-        self.assertIn("pack+spawn both", alias_fold)
-        self.assertIn("stored yes", alias_fold)
-        self.assertIn("never silent", alias_fold)
-        self.assertIn("init / first wave", alias_fold)
-        self.assertIn("both", alias_fold)
-        self.assertIn("adversary", alias_fold)
-        self.assertIn("verifier", alias_fold)
-        self.assertIn("must ask", alias_fold)
-        self.assertIn("of learn", alias_fold)
-        self.assertIn("not the review-role ask", alias_fold)
-        self.assertEqual(self.xor_errors(alias, "of/SKILL.md"), [])
-        self.assertEqual(self.timing_errors(alias, "of/SKILL.md"), [])
-        appendix_fold = appendix.casefold()
-        self.assertIn("fresh-context review packet", appendix_fold)
-        self.assertIn(self.ASK.casefold(), appendix_fold)
-        self.assertNotIn(self.OLD_ASK, appendix)
-        self.assertIn("do not pack/spawn", appendix_fold)
-        self.assertIn("two packs", appendix_fold)
-        self.assertIn("two children", appendix_fold)
-        self.assertIn("pack+spawn both", appendix_fold)
-        self.assertIn("stored yes", appendix_fold)
-        self.assertIn("never silent", appendix_fold)
-        self.assertIn("init / first wave", appendix_fold)
-        self.assertIn("of learn", appendix_fold)
-        self.assertIn("not the review-role ask", appendix_fold)
-        self.assertIn("self-praise is not review", appendix_fold)
-        self.assertIn("not a new close gate", appendix_fold)
-        self.assertEqual(
-            self.xor_errors(appendix, "references/skill-appendix.md"),
-            [],
-        )
-        self.assertEqual(
-            self.timing_errors(appendix, "references/skill-appendix.md"),
-            [],
-        )
+        for rel, text in (
+            ("of/SKILL.md", alias),
+            ("references/skill-appendix.md", appendix),
+        ):
+            self.assertIn("--evaluator-consent", text, rel)
+            self.assertIn("evaluator_consent", text, rel)
+            self.assertNotIn(self.OLD_ASK, text)
+            self.assertEqual(self.xor_errors(text, rel), [])
+            self.assertEqual(self.timing_errors(text, rel), [])
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         hero = readme[: readme.index("## Install")]
-        hero_fold = hero.casefold()
-        self.assertIn("fresh-context review packet", hero_fold)
+        self.assertIn("--evaluator-consent", hero)
+        self.assertIn("evaluator_consent", hero)
         self.assertIn(self.ASK, hero)
         self.assertNotIn(self.OLD_ASK, hero)
-        self.assertIn("do not pack/spawn", hero_fold)
-        self.assertIn("two packs", hero_fold)
-        self.assertIn("pack+spawn both", hero_fold)
-        self.assertIn("stored yes", hero_fold)
-        self.assertIn("never silent", hero_fold)
-        self.assertIn("init / first wave", hero_fold)
-        self.assertIn("both", hero_fold)
-        self.assertIn("not the review-role ask", hero_fold)
         self.assertEqual(self.xor_errors(hero, "README.md hero"), [])
         self.assertEqual(self.timing_errors(hero, "README.md hero"), [])
         speak_src = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
             encoding="utf-8"
         )
+        self.assertIn("KEY = \"evaluator_consent\"", speak_src)
+        self.assertIn("STATUS_UNSET", speak_src)
         self.assertNotIn(self.ASK, speak_src)
         self.assertNotIn(self.OLD_ASK, speak_src)
-        self.assertIn("stored yes: pack+spawn both", speak_src)
-        self.assertIn("stored no:", speak_src)
 
     def test_start_yes_must_not_pack(self) -> None:
         fake = (

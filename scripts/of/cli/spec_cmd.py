@@ -785,23 +785,65 @@ def cmd_contrast(args: argparse.Namespace) -> None:
 class EvaluatorPacket:
     """Fresh-context review packet status. Not a close gate.
 
-    Consent is stored at start (both roles, not XOR). Pack/spawn only
-    at the configured end. Checklist prints whether those packets
-    exist. Reuses WaveRoster roles. No new role, no of merge, no
-    supervisor. CloseChecklist.ok stays contrast + residual.
+    Consent lives on ORDER.evaluator_consent (yes|no). Absent is
+    unset — not ask. Pack/spawn review roles only when yes. Checklist
+    prints whether those packets exist. Reuses WaveRoster roles. No
+    new role, no of merge, no supervisor. CloseChecklist.ok stays
+    contrast + residual. #280 reads ORDER.evaluator_consent.
     """
 
     KIND = "evaluator"
+    KEY = "evaluator_consent"
+    VALUES = ("yes", "no")
     REVIEW_ROLES = ("adversary", "verifier")
     STATUS_ASK = "ask"
+    STATUS_SKIP = "skip"
+    STATUS_UNSET = "unset"
     STATUS_LANDED = "landed"
     STATUS_IN_FLIGHT = "in-flight"
     ASK_NEXT = "of pack --role adversary and --role verifier"
-    SPEAK_ASK = (
-        "stored yes: pack+spawn both; stored no: contrast then close --checklist"
-    )
+    PATCH_NEXT = "of patch --evaluator-consent yes|no"
+    SPEAK_ASK = "stored yes: pack+spawn both"
+    SPEAK_SKIP = "stored no: contrast then close --checklist"
+    SPEAK_UNSET = "missing evaluator_consent; of patch --evaluator-consent yes|no"
     SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
     SPEAK_LANDED = "review packet landed; self-praise is not review"
+
+    @staticmethod
+    def consent_of(order: dict[str, Any] | None) -> str:
+        raw = "" if not isinstance(order, dict) else order.get(EvaluatorPacket.KEY)
+        value = str(raw or "").strip().lower()
+        return value if value in EvaluatorPacket.VALUES else ""
+
+    @staticmethod
+    def normalize(raw: str) -> str:
+        value = str(raw or "").strip().lower()
+        if value not in EvaluatorPacket.VALUES:
+            die(f"--evaluator-consent must be yes or no; got {raw!r}")
+        return value
+
+    @staticmethod
+    def apply_patch(order: dict[str, Any], raw: str | None) -> bool:
+        if raw is None:
+            return False
+        value = EvaluatorPacket.normalize(raw)
+        if order.get(EvaluatorPacket.KEY) == value:
+            return False
+        order[EvaluatorPacket.KEY] = value
+        return True
+
+    @staticmethod
+    def review_errors(order: dict[str, Any] | None) -> list[str]:
+        """Missing start consent is a documented fail for the evaluator path."""
+        if EvaluatorPacket.consent_of(order):
+            return []
+        return [
+            f"missing {EvaluatorPacket.KEY}; {EvaluatorPacket.PATCH_NEXT}"
+        ]
+
+    @staticmethod
+    def should_pack(order: dict[str, Any] | None) -> bool:
+        return EvaluatorPacket.consent_of(order) == "yes"
 
     @staticmethod
     def children(root: Path, state: dict[str, Any]) -> list[dict[str, str]]:
@@ -826,12 +868,19 @@ class EvaluatorPacket:
         return out
 
     @staticmethod
-    def status_of(children: list[dict[str, str]]) -> str:
+    def status_of(
+        children: list[dict[str, str]],
+        consent: str = "",
+    ) -> str:
         if any(row.get("status") == "in-flight" for row in children):
             return EvaluatorPacket.STATUS_IN_FLIGHT
         if children:
             return EvaluatorPacket.STATUS_LANDED
-        return EvaluatorPacket.STATUS_ASK
+        if consent == "no":
+            return EvaluatorPacket.STATUS_SKIP
+        if consent == "yes":
+            return EvaluatorPacket.STATUS_ASK
+        return EvaluatorPacket.STATUS_UNSET
 
     @staticmethod
     def speak_for(status: str) -> str:
@@ -839,6 +888,10 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_IN_FLIGHT
         if status == EvaluatorPacket.STATUS_LANDED:
             return EvaluatorPacket.SPEAK_LANDED
+        if status == EvaluatorPacket.STATUS_SKIP:
+            return EvaluatorPacket.SPEAK_SKIP
+        if status == EvaluatorPacket.STATUS_UNSET:
+            return EvaluatorPacket.SPEAK_UNSET
         return EvaluatorPacket.SPEAK_ASK
 
     @staticmethod
@@ -847,15 +900,28 @@ class EvaluatorPacket:
         return f"{key.ljust(key_width)}{text}"
 
     @staticmethod
-    def document(root: Path, state: dict[str, Any] | None = None) -> dict[str, Any]:
+    def document(
+        root: Path,
+        state: dict[str, Any] | None = None,
+        order: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if state is None:
             state = load_state(root)
+        if order is None:
+            order = load_order(root)
         children = EvaluatorPacket.children(root, state)
-        status = EvaluatorPacket.status_of(children)
-        nxt = EvaluatorPacket.ASK_NEXT if status == EvaluatorPacket.STATUS_ASK else ""
+        consent = EvaluatorPacket.consent_of(order)
+        status = EvaluatorPacket.status_of(children, consent)
+        if status == EvaluatorPacket.STATUS_ASK:
+            nxt = EvaluatorPacket.ASK_NEXT
+        elif status == EvaluatorPacket.STATUS_UNSET:
+            nxt = EvaluatorPacket.PATCH_NEXT
+        else:
+            nxt = ""
         return {
             "v": 1,
             "kind": EvaluatorPacket.KIND,
+            "consent": consent,
             "evaluator": status,
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
@@ -868,21 +934,26 @@ class EvaluatorPacket:
     def machine(doc: dict[str, Any]) -> dict[str, Any]:
         return {
             "v": 1,
-            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK),
+            "consent": str(doc.get("consent") or ""),
+            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET),
             "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
             "evaluator_roles": [
                 str(role) for role in (doc.get("evaluator_roles") or [])
             ],
             "kind": EvaluatorPacket.KIND,
             "next": str(doc.get("next") or ""),
-            "speak": str(doc.get("speak") or EvaluatorPacket.SPEAK_ASK),
+            "speak": str(doc.get("speak") or EvaluatorPacket.SPEAK_UNSET),
         }
 
     @staticmethod
     def named(doc: dict[str, Any]) -> str:
-        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         if status == EvaluatorPacket.STATUS_ASK:
             return EvaluatorPacket.ASK_NEXT
+        if status == EvaluatorPacket.STATUS_UNSET:
+            return EvaluatorPacket.PATCH_NEXT
+        if status == EvaluatorPacket.STATUS_SKIP:
+            return "stored no"
         pairs: list[str] = []
         for row in doc.get("evaluator_children") or []:
             role = str(row.get("role") or "").strip()
@@ -898,7 +969,7 @@ class EvaluatorPacket:
 
     @staticmethod
     def human_line(doc: dict[str, Any], *, key_width: int = 12) -> str:
-        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         extra = EvaluatorPacket.named(doc)
         return f"{'evaluator'.ljust(key_width)}{status}  {extra}"
 
@@ -984,7 +1055,7 @@ class CloseChecklist:
         live = WaveRoster.live_wave(state)
         waves = WaveRoster.numbers(root, state)
         gate = str(contrast.get("gate") or "")
-        evaluator = EvaluatorPacket.document(root, state)
+        evaluator = EvaluatorPacket.document(root, state, order)
         return {
             "v": 1,
             "ok": contrast_ok and residual_empty,
@@ -1006,6 +1077,7 @@ class CloseChecklist:
             "in_flight_ids": flying,
             "wave": live,
             "waves": len(waves),
+            "consent": evaluator.get("consent"),
             "evaluator": evaluator.get("evaluator"),
             "evaluator_ids": list(evaluator.get("evaluator_ids") or []),
             "evaluator_roles": list(evaluator.get("evaluator_roles") or []),
@@ -1033,7 +1105,8 @@ class CloseChecklist:
             "ok": bool(doc.get("ok")),
             "residual": str(doc.get("residual") or ""),
             "residual_empty": bool(doc.get("residual_empty")),
-            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK),
+            "consent": str(doc.get("consent") or ""),
+            "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET),
             "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
             "evaluator_roles": [
                 str(role) for role in (doc.get("evaluator_roles") or [])
@@ -1079,7 +1152,7 @@ class CloseChecklist:
             lines.append(f"next         {nxt}")
         lines.append(EvaluatorPacket.human_line(doc, key_width=12))
         lines.append(CloseChecklist.speak_line(key_width=12))
-        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_ASK)
+        status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         lines.append(EvaluatorPacket.speak_line(status, key_width=12))
         return "\n".join(lines) + "\n"
 

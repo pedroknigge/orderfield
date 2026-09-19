@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = Path("evals/fixtures/skill-artifact-prove-bed-overlap.md")
@@ -35,18 +36,22 @@ def _minutes(stamp: str) -> int:
 
 
 class SkillArtifactProve:
-    """Published-artifact duty. Static methods only."""
+    """Published-artifact duty. Collect/close fail-closed hook.
+
+    Named residual field is ``published_artifact: <relpath>`` in
+    ``residual.evidence``. FACTIBLE/CUMPLE without product bytes dies.
+    Not ``of prove``. Static methods only.
+    """
 
     FIXTURE = FIXTURE
+    KIND = "published_artifact_missing"
+    SCRATCH_PREFIX = ".orderfield/work/scratch/"
+    PUBLISHED_RE = re.compile(r"(?im)^published_artifact:\s*(\S.*)$")
     TEACH_CORE = (
-        "published",
-        "FACTIBLE",
-        "INFACTIBLE",
-        "ROMPE",
-        "occupancy",
+        "published_artifact",
         "not `of prove`",
     )
-    TEACH_APPENDIX = TEACH_CORE + ("CUMPLE", "published artifact")
+    TEACH_APPENDIX = TEACH_CORE + ("collect", "product bytes")
 
     @staticmethod
     def parse_rows(text: str) -> list[tuple[str, str, int, int]]:
@@ -121,9 +126,74 @@ class SkillArtifactProve:
             pair = ", ".join(f"{a}|{b} on {bed}" for a, b, bed in hits)
             errors.append(f"CUMPLE/FACTIBLE while published beds overlap ({pair})")
         window = SkillArtifactProve.required_window(artifact)
-        if not SkillArtifactProve.occupancy_covered(body, window):
+        if window is not None and not SkillArtifactProve.occupancy_covered(
+            body, window
+        ):
             errors.append("F/self-attack missing occupancy window")
         return errors
+
+    @staticmethod
+    def parse_published(evidence: str) -> str | None:
+        match = SkillArtifactProve.PUBLISHED_RE.search(str(evidence or ""))
+        if not match:
+            return None
+        rel = match.group(1).strip()
+        return rel or None
+
+    @staticmethod
+    def is_scratch(rel: str) -> bool:
+        return str(rel or "").replace("\\", "/").startswith(
+            SkillArtifactProve.SCRATCH_PREFIX
+        )
+
+    @staticmethod
+    def applies(res: Any) -> bool:
+        if not isinstance(res, dict) or res.get("status") != "done":
+            return False
+        rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+        evidence = str(rem.get("evidence") or "")
+        if SkillArtifactProve.parse_published(evidence):
+            return True
+        return SkillArtifactProve._says_ok(evidence) and not SkillArtifactProve._says_fail(
+            evidence
+        )
+
+    @staticmethod
+    def published_rel(res: dict[str, Any]) -> str | None:
+        rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+        named = SkillArtifactProve.parse_published(str(rem.get("evidence") or ""))
+        if named:
+            return named
+        result_ref = str(res.get("result_ref") or "").strip()
+        if result_ref and not SkillArtifactProve.is_scratch(result_ref):
+            return result_ref
+        return None
+
+    @staticmethod
+    def errors(res: Any, root: Path) -> list[str]:
+        """Collect/close fail-closed: FACTIBLE needs product bytes."""
+        if not SkillArtifactProve.applies(res):
+            return []
+        rel = SkillArtifactProve.published_rel(res) if isinstance(res, dict) else None
+        missing = "published artifact missing (FACTIBLE/CUMPLE requires product bytes)"
+        if not rel:
+            return [missing]
+        if SkillArtifactProve.is_scratch(rel):
+            return ["published artifact must be product bytes, not scratch"]
+        from of.field import safe_relative_path
+
+        try:
+            path = safe_relative_path(
+                root, rel, "published_artifact", must_exist=False
+            )
+        except SystemExit:
+            return [missing]
+        if not path.is_file():
+            return [missing]
+        text = path.read_text(encoding="utf-8")
+        rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
+        evidence = str(rem.get("evidence") or "")
+        return SkillArtifactProve.claim_errors(text, evidence + "\n" + text)
 
     @staticmethod
     def teaching_errors(core: str, alias: str, appendix: str) -> list[str]:

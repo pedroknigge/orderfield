@@ -832,6 +832,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears",
     )
     s.add_argument(
+        "--evaluator-consent",
+        dest="evaluator_consent",
+        choices=["yes", "no"],
+        help=(
+            "store ORDER.evaluator_consent for adversary+verifier "
+            "(start consent; not a close gate)"
+        ),
+    )
+    s.add_argument(
         "--model-hints",
         dest="model_hints",
         choices=["field", "wave", "off"],

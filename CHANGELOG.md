@@ -32,7 +32,12 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `EvaluatorPacket` already printed ask/landed. The remaining gap is “Consent is stored at start” with no ORDER key, so `#280` cannot read consent and packaging greened on docstring substrings (`#288`).
+- **Reuse, not a new verb:** `ORDER.evaluator_consent` (`yes`/`no`) via `of patch --evaluator-consent`. Missing key is evaluator `unset` (not ask). `review_errors` documents the fail. Close stays Partial (C-080). `#280` reads this key.
+- **Reuse, not `of prove`:** `SkillArtifactProve.errors` is a collect hook. Named residual field `published_artifact: <relpath>` (or a non-scratch `result_ref`). FACTIBLE/CUMPLE without product bytes is INVALID. Occupancy only when `required_window` is present. No hospital solver.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `--evaluator-consent` and `published_artifact:`. Subtract store-on-`--done-when-mission` theater.
+- **Proof:** `EvaluatorPacketProof.test_missing_consent_is_unset_not_ask` / `test_consent_no_skips` / `ArtifactProveCollectGate.test_factible_without_product_bytes_fails_closed`. Packaging tests no longer green solely on docstring substrings. No new C-ID (honesty cap). No VERSION bump. `#288`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). `#288` landed on the same line.
 
 ## 0.8.21
 
