@@ -3442,6 +3442,43 @@ class SkillOperatorAction(unittest.TestCase):
         self.assertIn("not silent defaults", source)
 
 
+class SkillWriteFloor(unittest.TestCase):
+    """SKILL / /of / appendix teach residual write-floor across every adapter."""
+
+    def test_core_alias_appendix_teach_write_floor(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = SkillOperatorAction.table(core).casefold()
+        self.assertIn("write-floor", table)
+        self.assertIn("conservative", table)
+        self.assertIn("opt-out", table)
+        self.assertIn("of_trust=yolo", table)
+        for body, name in (
+            (core, "SKILL.md"),
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("write-floor", fold, name)
+            self.assertIn("conservative", fold, name)
+        for body, name in (
+            (alias, "of/SKILL.md"),
+            (appendix, "references/skill-appendix.md"),
+        ):
+            fold = body.casefold()
+            self.assertIn("worker-start", fold, name)
+            self.assertIn("of_agent", fold, name)
+        adapters = (ROOT / "references" / "adapters.md").read_text(encoding="utf-8")
+        self.assertIn("WriteFloor", adapters)
+        self.assertIn("worker-start", adapters)
+        self.assertIn("settings.local.json", adapters)
+        source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
+        self.assertIn("class WriteFloor:", source)
+        self.assertIn("CLAUDE_SETTINGS", source)
+        self.assertIn('DEFAULT_TRUST_PROFILE = "auto-edit"', source)
+
+
 class SkillHostMcp(unittest.TestCase):
     """SKILL / /of teach agy/grok host-MCP isolate + pulse cpu= on no writes yet."""
 

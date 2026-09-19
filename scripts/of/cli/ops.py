@@ -15,6 +15,7 @@ from typing import Any
 
 from of_adapters import (
     DEFAULT_TRUST_PROFILE,
+    WriteFloor,
     HARNESS_PROMISES,
     KERNEL_VERIFIES,
     TRUST_ENV,
@@ -667,6 +668,8 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("trust")
     print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
     print(f"  profiles      {', '.join(TRUST_PROFILES)}")
+    for line in WriteFloor.doctor_lines():
+        print(f"  {line}")
     for line in OperatorAction.doctor_lines():
         print(f"  {line}")
     for line in HostMcp.doctor_lines():

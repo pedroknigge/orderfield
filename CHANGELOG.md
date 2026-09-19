@@ -32,7 +32,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `_TRUST_FLAGS` / `YOLO_FLAGS` / `OperatorAction` / `CodexWorktree` already exist. The remaining gap is conservative default leaving residual-producing children in print-mode (`#294`). Claude `settings.local.json` was the dogfood trigger; the cut is every adapter OF claims to spawn.
+- **Reuse, not a new verb:** `WriteFloor` applies `auto-edit` by default for claude/codex/agy/qwen. cursor/grok/opencode/orca/generic speak WARN + named next (no invented flags). `OF_TRUST=conservative` opts out. `yolo` stays OperatorAction. Host allow-lists are read-only advisory. Spawn meta records `trust` + `write_floor`. No ORDER schema. No VERSION bump.
+- **Skill drives the cut:** SKILL / `/of` / appendix / adapters.md teach the full matrix. Core stays under the 20KB cap.
+- **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `CodexRecordedWorktree` / `SkillWriteFloor`. C-066 extended. No new C-ID (honesty cap). `#294`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. Write-floor (`#294`) lands on the same 0.8.22 heading after the v0.8.21 tag.
 
 ## 0.8.21
 

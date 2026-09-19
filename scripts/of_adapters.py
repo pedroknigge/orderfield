@@ -64,11 +64,13 @@ KNOWN_TOOLS = sorted(set().union(*ADAPTER_TOOLS.values()))
 # Adapters that do not reliably read a local path before acting: inline the contract.
 INLINE_CONTRACT_ADAPTERS = {"orca", "generic"}
 
-# Trust profiles (OF_TRUST). Default is conservative / non-escalated.
+# Trust profiles (OF_TRUST). Default is the residual write-floor (auto-edit):
+# documented non-yolo write flags so a child can land `.orderfield/` residual.
+# Explicit OF_TRUST=conservative is the opt-out. yolo stays OperatorAction.
 # Kernel verifies: PATH binary, argv spawned, residual file exists, residual schema.
 # Harness merely promises: approval honored, sandbox, auth, model readiness.
 TRUST_ENV = "OF_TRUST"
-DEFAULT_TRUST_PROFILE = "conservative"
+DEFAULT_TRUST_PROFILE = "auto-edit"
 TRUST_PROFILES = ("conservative", "plan", "auto-edit", "auto", "yolo")
 KERNEL_VERIFIES = (
     "binary_on_path",
@@ -204,7 +206,11 @@ def missing_tools(adapter: str, required: list[str]) -> list[str]:
 
 def resolve_trust_profile() -> str:
     raw = (os.environ.get(TRUST_ENV) or DEFAULT_TRUST_PROFILE).strip().lower()
-    aliases = {"": DEFAULT_TRUST_PROFILE, "default": "conservative", "escalated": "yolo"}
+    aliases = {
+        "": DEFAULT_TRUST_PROFILE,
+        "default": DEFAULT_TRUST_PROFILE,
+        "escalated": "yolo",
+    }
     profile = aliases.get(raw, raw)
     if profile not in TRUST_PROFILES:
         die(
@@ -214,7 +220,7 @@ def resolve_trust_profile() -> str:
 
 
 def trust_flags(adapter: str, profile: str | None = None) -> list[str]:
-    """Flags OF_TRUST adds for `adapter`. conservative -> nothing escalated."""
+    """Flags OF_TRUST adds for `adapter`. write-floor (auto-edit) is default."""
     profile = profile or resolve_trust_profile()
     if profile == "yolo":
         return list(YOLO_FLAGS.get(adapter, []))
@@ -316,6 +322,165 @@ class OperatorAction:
         if active:
             lines.append(f"active        {','.join(active)}")
         return lines
+
+
+class WriteFloor:
+    """Residual packs get a documented non-yolo write-floor by default.
+
+    Reuse: TRUST_PROFILES / _TRUST_FLAGS / YOLO_FLAGS / OperatorAction /
+    resolve_trust_profile. Opening a field that requires residuals is the
+    consent — no ORDER key, no new CLI. Explicit OF_TRUST=conservative
+    opts out. yolo stays ask-first OperatorAction for every harness.
+
+    Capable adapters (those with _TRUST_FLAGS auto-edit): apply those
+    flags in build_spawn_argv. Unsupported adapters: speak WARN + named
+    next — never invent Cursor/Grok/OpenCode/Orca permission flags,
+    never silent fail, never edit/commit host settings.
+    """
+
+    PROFILE = "auto-edit"
+    WANT = frozenset({"auto-edit", "auto"})
+    KIND = "write_floor"
+    UNSUPPORTED_KIND = "write_floor_unsupported"
+    HOST_KIND = "host_allowlist"
+    CLAUDE_SETTINGS = ".claude/settings.local.json"
+    NEXT = {
+        "cursor": (
+            "no accept-edits flag; residual write depends on host Write "
+            "(#200). next: ask OF_TRUST=yolo (--force) or residual-capable "
+            "OF_AGENT --adapter generic"
+        ),
+        "grok": (
+            "no accept-edits flag; HostMcp isolate (#269). next: ask "
+            "OF_TRUST=yolo (--always-approve) or residual-capable "
+            "OF_AGENT --adapter generic"
+        ),
+        "opencode": (
+            "--auto is yolo-only. next: ask OF_TRUST=yolo or "
+            "residual-capable OF_AGENT --adapter generic"
+        ),
+        "orca": (
+            "task-create has no trust argv; real perms are on worker-start "
+            "Host path. next: orca orchestration worker-start (not a fake "
+            "--permission) or residual-capable OF_AGENT"
+        ),
+        "generic": (
+            "OF_TRUST is OF_AGENT's job. residual-capable OF_AGENT must "
+            "include write approvals"
+        ),
+    }
+
+    @staticmethod
+    def capable(adapter: str) -> bool:
+        return bool((_TRUST_FLAGS.get(adapter) or {}).get(WriteFloor.PROFILE))
+
+    @staticmethod
+    def wants(profile: str | None = None) -> bool:
+        return (profile or resolve_trust_profile()) in WriteFloor.WANT
+
+    @staticmethod
+    def applied(adapter: str, profile: str | None = None) -> bool:
+        return WriteFloor.capable(adapter) and WriteFloor.wants(profile)
+
+    @staticmethod
+    def next_action(adapter: str) -> str | None:
+        return WriteFloor.NEXT.get(adapter)
+
+    @staticmethod
+    def speak_line(adapter: str, profile: str | None = None) -> str | None:
+        if WriteFloor.applied(adapter, profile):
+            return None
+        if not WriteFloor.wants(profile):
+            return None
+        nxt = WriteFloor.next_action(adapter)
+        if not nxt:
+            return None
+        return f"write-floor unsupported for {adapter}: {nxt}"
+
+    @staticmethod
+    def host_advisory(adapter: str, root: Path | None = None) -> str | None:
+        """Read-only Claude allow-list check. Never create or edit the file."""
+        if adapter != "claude":
+            return None
+        path = (root or Path.cwd()) / WriteFloor.CLAUDE_SETTINGS
+        try:
+            if not path.is_file():
+                return None
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeError):
+            return None
+        perms = data.get("permissions") if isinstance(data, dict) else None
+        if not isinstance(perms, dict):
+            return None
+        deny = perms.get("deny")
+        if not isinstance(deny, list):
+            return None
+        hits: list[str] = []
+        for item in deny:
+            text = str(item).strip()
+            if not text:
+                continue
+            lower = text.lower()
+            tool = lower.split("(", 1)[0]
+            if tool not in {"write", "edit", "bash"}:
+                continue
+            scoped = "(" in lower
+            covers = (not scoped) or "orderfield" in lower or "(*)" in lower
+            if covers:
+                hits.append(text)
+            if len(hits) >= 4:
+                break
+        if not hits:
+            return None
+        return (
+            f"{WriteFloor.CLAUDE_SETTINGS} deny may block residual under "
+            f".orderfield/ ({', '.join(hits)}); advisory only — do not "
+            "edit/commit host settings"
+        )
+
+    @staticmethod
+    def apply_meta(
+        meta: dict[str, Any], adapter: str, profile: str | None = None
+    ) -> bool:
+        resolved = profile or str(meta.get("trust") or resolve_trust_profile())
+        applied = WriteFloor.applied(adapter, resolved)
+        meta["write_floor"] = applied
+        nxt = WriteFloor.next_action(adapter)
+        if WriteFloor.wants(resolved) and nxt and not applied:
+            meta["write_floor_next"] = nxt
+        return applied
+
+    @staticmethod
+    def event_fields(
+        adapter: str, profile: str | None = None
+    ) -> dict[str, Any]:
+        resolved = profile or resolve_trust_profile()
+        fields: dict[str, Any] = {
+            "write_floor": WriteFloor.applied(adapter, resolved),
+        }
+        nxt = WriteFloor.next_action(adapter)
+        if WriteFloor.wants(resolved) and nxt and not fields["write_floor"]:
+            fields["write_floor_next"] = nxt
+        return fields
+
+    @staticmethod
+    def doctor_lines() -> list[str]:
+        capable = [
+            name
+            for name in ADAPTER_ORDER
+            if name != "generic" and WriteFloor.capable(name)
+        ]
+        unsupported = [
+            name for name in ADAPTER_ORDER if WriteFloor.next_action(name)
+        ]
+        return [
+            f"write-floor   {WriteFloor.PROFILE} default for residual packs "
+            f"({','.join(capable)})",
+            f"opt-out       {TRUST_ENV}=conservative",
+            f"unsupported   {','.join(unsupported)} speak WARN + named next",
+            f"host          {WriteFloor.CLAUDE_SETTINGS} advisory only; "
+            "never edit",
+        ]
 
 
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
@@ -1477,7 +1642,7 @@ class AgyDeniedActions:
 
     @staticmethod
     def reported(adapter: str, profile: str, stdout: str) -> list[str] | None:
-        if adapter != AgyDeniedActions.ADAPTER or profile != DEFAULT_TRUST_PROFILE:
+        if adapter != AgyDeniedActions.ADAPTER or profile != "conservative":
             return None
         return AgyDeniedActions.from_stdout(stdout)
 
