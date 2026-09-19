@@ -33,7 +33,15 @@ def run_of(
         "OF_LEARNINGS",
         str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
     )
-    for key in ("OF_TRUST", "OF_ADAPTER", "OF_AGENT", "OF_SPAWN_ENV", "OF_FIELD", "OF_JSON"):
+    for key in (
+        "OF_TRUST",
+        "OF_ADAPTER",
+        "OF_AGENT",
+        "OF_SPAWN_ENV",
+        "OF_SPAWN_MCP",
+        "OF_FIELD",
+        "OF_JSON",
+    ):
         env.pop(key, None)
     if extra_env:
         env.update(extra_env)

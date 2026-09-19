@@ -172,6 +172,25 @@ same field in a multi-field tree, and `OF_CHILD=<child_id>` so `of learn --proto
 an `OF_AGENT` harness needs `OF_SPAWN_ENV` for its API keys.
 Table: `SPAWN_ENV_*` in `scripts/of_adapters.py`.
 
+## Host global MCP (`OF_SPAWN_MCP`)
+
+agy and grok headless `-p` load the host user's global MCP servers
+(`~/.gemini/config/mcp_config.json`, `~/.gemini/antigravity-cli/mcp_config.json`,
+`~/.grok/config.toml`, plus grok's Claude/Cursor compat imports) and **block**
+until they start. agy has no `--no-mcp`. Same packets on `--adapter claude`
+do not hang this way.
+
+`of spawn --adapter agy|grok` **isolates** those host configs by default
+(`HostMcp`; `mcp_mode: isolate` on spawn metadata): empty MCP files under
+packet scratch `spawn-home/`, `HOME` pointed there, other `~/.gemini` /
+`~/.grok` files linked so auth and skills still resolve. Inverse of
+`OF_SPAWN_ENV=inherit`: `OF_SPAWN_MCP=inherit` keeps host MCP — ask first;
+spawn prints the inherit note. Other adapters are `n/a` (HOME unchanged).
+Not a fake argv flag. Not a supervisor.
+
+`of pulse` prints `cpu=` next to `no writes yet` when a live pid exists so
+hung (0%) vs starting is visible without leaving the tool.
+
 ## Claude Code
 
 Binary: `claude`.
@@ -294,7 +313,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `OF_TRUST=plan` adds `--sandbox read-only`. `auto-edit`/`auto` stay conservative: Grok has no accept-edits flag. Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` also passes documented `--output-format streaming-json` before `-p` (`StreamJson`). Residual extract from stdout stays the same path as claude/cursor. Spawn metadata is finalized on every outcome (`outcome` + `exit` + `ended_at`), including timeout when a grandchild keeps stdout open. `--json-schema` is omit (no documented file-path residual schema). This is not a qwen-style residual no-op. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `OF_TRUST=plan` adds `--sandbox read-only`. `auto-edit`/`auto` stay conservative: Grok has no accept-edits flag. Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` also passes documented `--output-format streaming-json` before `-p` (`StreamJson`). Residual extract from stdout stays the same path as claude/cursor. Host global MCP is isolated by default (`HostMcp`; same path as agy). Spawn metadata is finalized on every outcome (`outcome` + `exit` + `ended_at`), including timeout when a grandchild keeps stdout open. `--json-schema` is omit (no documented file-path residual schema). This is not a qwen-style residual no-op. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -329,7 +348,9 @@ tier-only is no-op. `OF_TRUST=plan` prepends `--mode plan`;
 `OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
 `of spawn --adapter agy` keeps that flag order (trust flags, optional
 `--model`+`--effort`, `--json-schema`, optional `--print-timeout`, then
-`--output-format json`, then `-p`). Under `OF_TRUST=conservative`, spawn
+`--output-format json`, then `-p`). Host global MCP is isolated by default
+(`HostMcp`) because print mode blocks on `~/.gemini` MCP and agy has no
+`--no-mcp`. `OF_SPAWN_MCP=inherit` opts in. Under `OF_TRUST=conservative`, spawn
 copies nonempty harness `denied_actions` from that JSON envelope into optional
 `residual.denied_actions` (and prints `denied_actions=`). Missing or empty is
 omit — not approval. `yolo` does not copy. Do not invent `[]`. Do not add

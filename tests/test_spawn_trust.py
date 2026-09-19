@@ -40,7 +40,15 @@ ESCALATION_TOKENS = (
 )
 NON_YOLO = ("conservative", "plan", "auto-edit", "auto")
 NATIVE_ADAPTERS = [a for a in of_adapters.ADAPTER_ORDER if a != "generic"]
-SPAWN_ENV_KEYS = ("OF_TRUST", "OF_ADAPTER", "OF_AGENT", "OF_SPAWN_ENV", "OF_FIELD", "OF_JSON")
+SPAWN_ENV_KEYS = (
+    "OF_TRUST",
+    "OF_ADAPTER",
+    "OF_AGENT",
+    "OF_SPAWN_ENV",
+    "OF_SPAWN_MCP",
+    "OF_FIELD",
+    "OF_JSON",
+)
 
 
 def run_of(
@@ -338,6 +346,7 @@ class TrustMatrixCli(unittest.TestCase):
         meta = load_json(self.tmp / ".orderfield/waves/001/spawns/t1.json")
         self.assertEqual(meta["trust"], "conservative")
         self.assertEqual(meta["env_mode"], "allowlist")
+        self.assertEqual(meta["mcp_mode"], "isolate")
         self.assertEqual(meta["outcome"], "dry_run")
         self.assertIn("ended_at", meta)
         self.assertNotIn("operator_actions", meta)
@@ -502,6 +511,26 @@ class OperatorActionAudit(unittest.TestCase):
             }
         )
         self.assertNotIn("env_mode=", quiet)
+        mcp = CollectDiagnostic.spawn_note(
+            {
+                "adapter": "agy",
+                "trust": "conservative",
+                "env_mode": "allowlist",
+                "mcp_mode": "inherit",
+                "outcome": "ok",
+            }
+        )
+        self.assertIn("mcp_mode=inherit", mcp)
+        quiet_mcp = CollectDiagnostic.spawn_note(
+            {
+                "adapter": "agy",
+                "trust": "conservative",
+                "env_mode": "allowlist",
+                "mcp_mode": "isolate",
+                "outcome": "ok",
+            }
+        )
+        self.assertNotIn("mcp_mode=", quiet_mcp)
 
     def test_doctor_names_operator_actions(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-op-doc-"))
@@ -512,6 +541,8 @@ class OperatorActionAudit(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("audited operator actions", proc.stdout)
         self.assertIn("not silent defaults", proc.stdout)
+        self.assertIn("host-mcp", proc.stdout)
+        self.assertIn("OF_SPAWN_MCP=inherit", proc.stdout)
         self.assertNotIn("active        yolo", proc.stdout)
         hot = run_of(
             tmp,
@@ -665,6 +696,10 @@ class SpawnEnvAllowlist(unittest.TestCase):
         self.assertIn("AWS_SECRET_ACCESS_KEY", added)
         inherit = of_adapters.spawn_env("generic", {**parent, "OF_SPAWN_ENV": "inherit"})
         self.assertEqual(inherit, {**parent, "OF_SPAWN_ENV": "inherit"})
+        leaked = of_adapters.spawn_env(
+            "agy", {**parent, "OF_SPAWN_MCP": "inherit", "HOME": "/h"}
+        )
+        self.assertNotIn("OF_SPAWN_MCP", leaked)
 
     def _spawn_dump(self, extra_env: dict[str, str]) -> tuple[subprocess.CompletedProcess[str], dict]:
         tmp = Path(tempfile.mkdtemp(prefix="of-env-"))
@@ -711,6 +746,134 @@ class SpawnEnvAllowlist(unittest.TestCase):
     def test_of_spawn_env_inherit_opts_out(self) -> None:
         _, child = self._spawn_dump({"OF_SPAWN_ENV": "inherit"})
         self.assertEqual(child.get("CANARY_SECRET"), "leak-me")
+
+
+class HostMcpIsolate(unittest.TestCase):
+    """#269: agy/grok isolate host global MCP; OF_SPAWN_MCP=inherit opts in."""
+
+    def test_mode_default_isolate_only_agy_grok(self) -> None:
+        self.assertEqual(of_adapters.HostMcp.mode("agy", {}), "isolate")
+        self.assertEqual(of_adapters.HostMcp.mode("grok", {}), "isolate")
+        self.assertEqual(of_adapters.HostMcp.mode("claude", {}), "n/a")
+        self.assertEqual(of_adapters.HostMcp.mode("codex", {}), "n/a")
+        self.assertEqual(
+            of_adapters.HostMcp.mode("agy", {"OF_SPAWN_MCP": "inherit"}),
+            "inherit",
+        )
+        self.assertEqual(
+            of_adapters.HostMcp.mode("agy", {"OF_SPAWN_MCP": " INHERIT "}),
+            "inherit",
+        )
+        self.assertIsNone(of_adapters.HostMcp.speak_line("agy", "isolate"))
+        line = of_adapters.HostMcp.speak_line("agy", "inherit")
+        self.assertIsNotNone(line)
+        self.assertIn("OF_SPAWN_MCP=inherit", str(line))
+
+    def test_materialize_empties_mcp_without_mutating_host(self) -> None:
+        home = Path(tempfile.mkdtemp(prefix="of-host-home-"))
+        scratch = Path(tempfile.mkdtemp(prefix="of-host-scratch-"))
+        self.addCleanup(shutil.rmtree, home, True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        hanging = '{"mcpServers": {"pencil": {"command": "/Applications/Pencil.app/mcp"}}}\n'
+        (home / ".gemini" / "config").mkdir(parents=True)
+        (home / ".gemini" / "antigravity-cli" / "skills" / "orderfield").mkdir(
+            parents=True
+        )
+        (home / ".gemini" / "config" / "mcp_config.json").write_text(
+            hanging, encoding="utf-8"
+        )
+        (home / ".gemini" / "antigravity-cli" / "mcp_config.json").write_text(
+            hanging, encoding="utf-8"
+        )
+        skill = home / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md"
+        skill.write_text("skill", encoding="utf-8")
+        (home / ".gitconfig").write_text("[user]\n\tname = t\n", encoding="utf-8")
+        (home / ".grok").mkdir()
+        (home / ".grok" / "config.toml").write_text(
+            "[mcp_servers.github]\ncommand = \"npx\"\n",
+            encoding="utf-8",
+        )
+        (home / ".claude.json").write_text('{"mcpServers": {"x": {}}}\n', encoding="utf-8")
+        overlay = scratch / "spawn-home"
+        of_adapters.HostMcp.materialize(overlay, home)
+        self.assertEqual(
+            (overlay / ".gemini" / "config" / "mcp_config.json").read_text(
+                encoding="utf-8"
+            ),
+            of_adapters.HostMcp.EMPTY_MCP,
+        )
+        self.assertEqual(
+            (home / ".gemini" / "config" / "mcp_config.json").read_text(encoding="utf-8"),
+            hanging,
+        )
+        self.assertTrue(
+            (overlay / ".gemini" / "antigravity-cli" / "skills" / "orderfield" / "SKILL.md")
+            .resolve()
+            .samefile(skill)
+        )
+        self.assertTrue((overlay / ".gitconfig").resolve().samefile(home / ".gitconfig"))
+        self.assertFalse((overlay / ".claude.json").exists())
+        grok_cfg = (overlay / ".grok" / "config.toml").read_text(encoding="utf-8")
+        self.assertIn("mcps = false", grok_cfg)
+        self.assertNotIn("mcp_servers.github", grok_cfg)
+
+    def test_apply_rewrites_home_unless_inherit_or_other_adapter(self) -> None:
+        home = Path(tempfile.mkdtemp(prefix="of-apply-home-"))
+        scratch = Path(tempfile.mkdtemp(prefix="of-apply-scratch-"))
+        self.addCleanup(shutil.rmtree, home, True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        env = {"HOME": str(home), "PATH": "/bin"}
+        self.assertEqual(of_adapters.HostMcp.apply("claude", env, scratch), "n/a")
+        self.assertEqual(env["HOME"], str(home))
+        isolated = of_adapters.HostMcp.apply("agy", dict(env), scratch, home=home)
+        self.assertEqual(isolated, "isolate")
+        env_iso = dict(env)
+        self.assertEqual(of_adapters.HostMcp.apply("agy", env_iso, scratch, home=home), "isolate")
+        self.assertEqual(env_iso["HOME"], str(scratch / "spawn-home"))
+        env_in = {**env, "OF_SPAWN_MCP": "inherit"}
+        self.assertEqual(of_adapters.HostMcp.apply("agy", env_in, scratch, home=home), "inherit")
+        self.assertEqual(env_in["HOME"], str(home))
+        child = {"HOME": str(home), "PATH": "/bin"}
+        self.assertEqual(
+            of_adapters.HostMcp.apply(
+                "agy", child, scratch, home=home, parent={"OF_SPAWN_MCP": "inherit"}
+            ),
+            "inherit",
+        )
+        self.assertEqual(child["HOME"], str(home))
+
+    def test_spawn_dry_run_records_isolate_and_inherit_speaks(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-mcp-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        pack = run_of(
+            tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "a1"
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        packet = pack.stdout.splitlines()[0].strip()
+        quiet = run_of(
+            tmp, "spawn", "--adapter", "agy", "--packet", packet, "--dry-run"
+        )
+        self.assertEqual(quiet.returncode, 0, quiet.stderr)
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/a1.json")
+        self.assertEqual(meta["mcp_mode"], "isolate")
+        self.assertNotIn("OF_SPAWN_MCP=inherit", quiet.stderr)
+        inherit = run_of(
+            tmp,
+            "spawn",
+            "--adapter",
+            "agy",
+            "--packet",
+            packet,
+            "--dry-run",
+            "--force-spawn",
+            extra_env={"OF_SPAWN_MCP": "inherit"},
+        )
+        self.assertEqual(inherit.returncode, 0, inherit.stderr)
+        self.assertIn("OF_SPAWN_MCP=inherit", inherit.stderr)
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/a1.json")
+        self.assertEqual(meta["mcp_mode"], "inherit")
 
 
 class SpawnFinalization(unittest.TestCase):

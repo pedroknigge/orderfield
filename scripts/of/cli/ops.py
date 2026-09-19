@@ -23,6 +23,7 @@ from of_adapters import (
     AdapterDetect,
     AdapterHints,
     OperatorAction,
+    HostMcp,
     detect_adapters,
     pick_adapter,
 )
@@ -100,6 +101,7 @@ from of.field import (
     print_retention_plan,
     probe_adapter_version,
     probe_lock_capability,
+    proc_pcpu,
     save_learning,
     repo_newest_mtime,
     require_nonsymlink_kernel_root,
@@ -662,6 +664,8 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print(f"  default       {DEFAULT_TRUST_PROFILE}  ({TRUST_ENV} override)")
     print(f"  profiles      {', '.join(TRUST_PROFILES)}")
     for line in OperatorAction.doctor_lines():
+        print(f"  {line}")
+    for line in HostMcp.doctor_lines():
         print(f"  {line}")
     print(f"  kernel_verifies  {', '.join(KERNEL_VERIFIES)}")
     print(f"  harness_promises {', '.join(HARNESS_PROMISES)}")
@@ -2375,6 +2379,10 @@ def pulse_once(
         line = f"    -> {verdict} (freshest evidence {fmt_age(age)} ago: {freshest_src})"
         if live is not None:
             line += f" pid={live}"
+            if "no writes yet" in freshest_src:
+                cpu = proc_pcpu(live)
+                if cpu:
+                    line += f" cpu={cpu}"
         if verdict == "STALE":
             exit_code = 2
             line += f"\n       signal only, not an action. of unpack --child-id {child} releases it (scratch kept)."

@@ -1448,6 +1448,25 @@ class PulseActivity(unittest.TestCase):
         self.assertNotIn("STALE", r.stdout)
         self.assertIn(f"pid={os.getpid()}", r.stdout)
 
+    def test_pulse_no_writes_yet_names_cpu(self) -> None:
+        """#269: no writes yet + live pid prints cpu= so hung vs starting is visible."""
+        self._pack()
+        self._mark_spawned()
+        spawn_path = (
+            self.tmp / ".orderfield" / "waves" / "001" / "spawns" / "c1.json"
+        )
+        meta = load_json(spawn_path)
+        of.SpawnRecord.stamp_pid(spawn_path, meta, os.getpid())
+        sample = of.proc_pcpu(os.getpid())
+        self.assertIsNotNone(sample)
+        self.assertTrue(str(sample).endswith("%"))
+        r = run_of(self.tmp, "pulse")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("spawned (no writes yet)", r.stdout)
+        self.assertIn(f"pid={os.getpid()}", r.stdout)
+        self.assertIn("cpu=", r.stdout)
+        self.assertRegex(r.stdout, r"cpu=\d+(?:\.\d+)?%")
+
     def test_dead_pid_old_mtime_stays_stale(self) -> None:
         """#245: dead pid + old mtime may still be STALE."""
         self._pack()
