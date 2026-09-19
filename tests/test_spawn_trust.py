@@ -357,7 +357,9 @@ class WriteFloorMatrix(unittest.TestCase):
         orca = self.argv("orca")
         self.assertEqual(orca[1:3], ["orchestration", "task-create"])
         self.assertNotIn("--permission", orca)
-        self.assertIn("worker-start", str(of_adapters.WriteFloor.next_action("orca")))
+        self.assertIn("task-create", str(of_adapters.WriteFloor.next_action("orca")))
+        self.assertIn("Host", str(of_adapters.WriteFloor.next_action("orca")))
+        self.assertNotIn("--permission", self.argv("orca"))
         self.assertIn("OF_AGENT", str(of_adapters.WriteFloor.next_action("generic")))
         self.assertIn("host Write", str(of_adapters.WriteFloor.next_action("cursor")))
 
@@ -599,7 +601,8 @@ class WriteFloorCli(unittest.TestCase):
                 self.assertFalse(meta["write_floor"])
                 self.assertIn("write_floor_next", meta)
         orca = self.spawn("orca")
-        self.assertIn("worker-start", orca.stderr)
+        self.assertIn("task-create has no trust argv", orca.stderr)
+        self.assertIn("Host", orca.stderr)
         self.assertIn("task-create", dry_run_preview(orca))
         self.assertNotIn("--permission", dry_run_preview(orca))
 

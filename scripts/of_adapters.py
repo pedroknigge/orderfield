@@ -360,9 +360,9 @@ class WriteFloor:
             "residual-capable OF_AGENT --adapter generic"
         ),
         "orca": (
-            "task-create has no trust argv; real perms are on worker-start "
-            "Host path. next: orca orchestration worker-start (not a fake "
-            "--permission) or residual-capable OF_AGENT"
+            "task-create has no trust argv; real perms are on the Host "
+            "interactive worker path (not a fake --permission). next: "
+            "residual-capable OF_AGENT"
         ),
         "generic": (
             "OF_TRUST is OF_AGENT's job. residual-capable OF_AGENT must "
