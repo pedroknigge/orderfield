@@ -51,7 +51,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | --- | --- |
 | `learning_skipped` | Learnings skipped on load (no provenance / schema failure); once per unchanged skipped-set fingerprint |
 | `cost_unmeasured` | Pre-spawn cost disclaimer (`of spawn`) |
-| `slice_long` | Pack slice at/over the advisory char threshold; names split/constraints/`of unpack` fix path. Whole-phase slogans are `error` `slice.phase`, not this warning |
+| `slice_long` | Pack slice at/over the advisory char threshold, emitted after the packet is written; names split/constraints/`of unpack` fix path. A later refuse (stale packets, owns_path overlap) does not claim write-success. Whole-phase slogans are `error` `slice.phase`, not this warning |
 | `learning_long` | Learning text over the advisory char threshold; still stored. Names `work/scratch/leader/<file>.md` plus a short pointer. Chat-dump line count is `error` `learning.lines`, not this warning |
 | `order_rev_stale` | `of spec` identity bump (`--add` / `--amend` / …) will stale N live-wave packets; a child without a residual can no longer be re-spawned |
 | `owns_path_prior` | Pack `--owns-path` was owned in a prior wave |
