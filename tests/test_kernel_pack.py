@@ -946,7 +946,50 @@ class SliceLintExplain(unittest.TestCase):
             "long",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn("The packet was still written", packed.stderr)
         self.assertTrue(
+            (
+                self.tmp / ".orderfield" / "waves" / "001" / "packets" / "long.json"
+            ).is_file()
+        )
+
+    def test_failing_pack_does_not_claim_packet_written(self) -> None:
+        """Size note must not claim write-success when pack later dies (#267)."""
+        first = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "map pricing models",
+            "--role",
+            "explorer",
+            "--child-id",
+            "c1",
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        bumped = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "CLI-001",
+            "--text",
+            "the CLI prints help",
+        )
+        self.assertEqual(bumped.returncode, 0, bumped.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "x" * of.SLICE_WARN_CHARS,
+            "--role",
+            "explorer",
+            "--child-id",
+            "long",
+        )
+        self.assertNotEqual(packed.returncode, 0, packed.stdout + packed.stderr)
+        self.assertIn("stale packets", packed.stderr)
+        blob = packed.stdout + packed.stderr
+        self.assertNotIn("The packet was still written", blob)
+        self.assertFalse(
             (
                 self.tmp / ".orderfield" / "waves" / "001" / "packets" / "long.json"
             ).is_file()

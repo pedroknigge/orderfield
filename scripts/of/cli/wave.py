@@ -512,12 +512,6 @@ def cmd_pack(args: argparse.Namespace) -> None:
     state = load_state(root)
     SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
     slice_note = SliceLint.long_note(slice_text)
-    if slice_note:
-        emit_wave_warning(
-            SliceLint.WARN_KIND,
-            slice_note,
-            plain=f"of: note — {slice_note}",
-        )
     requires_tool = [t.strip().lower() for t in (getattr(args, "requires_tool", None) or [])]
     unknown = [t for t in requires_tool if t not in KNOWN_TOOLS]
     if unknown:
@@ -752,6 +746,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 ),
             )
     dump_json(out, packet, skip_dir_fsync=True)
+    # long_note claims write-success; emit only after the packet is on disk (#267).
+    if slice_note:
+        emit_wave_warning(
+            SliceLint.WARN_KIND,
+            slice_note,
+            plain=f"of: note — {slice_note}",
+        )
     ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
     dump_text(wdir / "prompts" / f"{child_id}.md", prompt, skip_dir_fsync=True)
