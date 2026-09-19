@@ -2570,7 +2570,7 @@ class MultiHarnessResidual(unittest.TestCase):
             "--slice",
             "implement shared residual",
             "--role",
-            "implementer",
+            "explorer",
             "--child-id",
             "imp1",
         )

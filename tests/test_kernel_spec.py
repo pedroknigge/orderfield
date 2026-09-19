@@ -105,13 +105,13 @@ def write_bound_residual(
     wave: int = 1,
 ) -> Path:
     packet = load_json(packet_path(root, child_id, wave))
+    residual = bound_residual(root, child_id, fixture, wave)
+    of.OwnedWrite.ensure(root, packet)
+    if residual.get("status") == "done":
+        of.CloseEvidence.stamp_proof(residual, packet, root)
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
-        encoding="utf-8",
-    )
-    of.OwnedWrite.ensure(root, packet)
+    destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
     return destination
 
 
@@ -1410,6 +1410,15 @@ class CloseEvidenceGate(unittest.TestCase):
         self.assertNotEqual(collected.returncode, 0, blob)
         self.assertIn("rollback is a caption", blob)
 
+    def test_rollback_filename_is_caption(self) -> None:
+        artifact = self._artifact()
+        digest = of.CloseEvidence.digest(artifact)
+        self._write(f"artifact_sha: {digest}\nrollback: notes.md")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("rollback is a caption", blob)
+
     def test_matching_sha_and_rollback_collects(self) -> None:
         artifact = self._artifact()
         evidence = of.CloseEvidence.attach(
@@ -1466,6 +1475,7 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertEqual(packed.returncode, 0, packed.stderr)
 
     def _spawn_meta(self, child_id: str) -> None:
+        packet = load_json(packet_path(self.tmp, child_id))
         path = (
             self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
         )
@@ -1476,6 +1486,9 @@ class OwnedWriteGate(unittest.TestCase):
                     "child_id": child_id,
                     "adapter": "claude",
                     "started_at": of.utc_now(),
+                    of.OwnedWrite.DIGEST_KEY: of.OwnedWrite.snapshot(
+                        self.tmp, packet
+                    ),
                 }
             )
             + "\n",
@@ -1485,11 +1498,12 @@ class OwnedWriteGate(unittest.TestCase):
     def _write_done(self, child_id: str, *, ensure: bool = False) -> None:
         packet = load_json(packet_path(self.tmp, child_id))
         residual = bound_residual(self.tmp, child_id)
+        if ensure:
+            of.OwnedWrite.ensure(self.tmp, packet)
+            of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         dest = self.tmp / str(packet["residual_path"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
-        if ensure:
-            of.OwnedWrite.ensure(self.tmp, packet)
 
     def test_implementer_done_empty_owns_path_is_invalid(self) -> None:
         self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
@@ -1518,12 +1532,51 @@ class OwnedWriteGate(unittest.TestCase):
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 
-    def test_implementer_without_owns_path_or_worktree_skips(self) -> None:
+    def test_implementer_without_owns_path_or_worktree_is_invalid(self) -> None:
         self._pack(role="implementer", child_id="solo")
         self._spawn_meta("solo")
         self._write_done("solo")
         collected = run_of(self.tmp, "collect", "--wave", "1")
-        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertIn("owned_write_missing", blob)
+
+    def test_implementer_scratch_sha_without_product_is_invalid(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        self._write_done("imp")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertTrue(
+            "not scratch" in blob or "owned product" in blob,
+            blob,
+        )
+
+    def test_touch_only_owned_file_is_invalid(self) -> None:
+        product = self.tmp / "src" / "mod.py"
+        product.parent.mkdir(parents=True, exist_ok=True)
+        product.write_text("same bytes\n", encoding="utf-8")
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        os.utime(product, None)
+        packet = load_json(packet_path(self.tmp, "imp"))
+        residual = bound_residual(self.tmp, "imp")
+        of.CloseEvidence.stamp(
+            residual,
+            product,
+            rollback="git checkout -- src/mod.py",
+        )
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertIn("owned_write_missing", blob)
 
     def test_threshold_skips_the_gate(self) -> None:
         self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
@@ -1563,6 +1616,11 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
         self.assertIn("owned_write_missing", empty.stdout + empty.stderr)
         (tree / "landed.py").write_text("ok\n", encoding="utf-8")
+        packet = load_json(packet_path(self.tmp, "wt"))
+        residual = load_json(self.tmp / str(packet["residual_path"]))
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
+        dest = self.tmp / str(packet["residual_path"])
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 

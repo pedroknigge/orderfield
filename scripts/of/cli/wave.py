@@ -79,6 +79,7 @@ from of.spec import (
 
 from of.pack import (
     CodexNullOmit,
+    OwnedWrite,
     OwnsPathCoverage,
     SharedWorktree,
     SliceLint,
@@ -1038,6 +1039,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "trust": profile,
         "env_mode": env_mode,
         "mcp_mode": mcp_mode,
+        OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
     }
     OperatorAction.apply_meta(meta)
     model_name = AdapterHints.spawn_model(adapter, packet)
