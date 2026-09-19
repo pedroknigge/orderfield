@@ -1300,19 +1300,10 @@ class PlanCoverageEval:
             ("AUTH-001", "login boundary port"),
             ("STORE-001", "persist occupancy json"),
             ("CLI-001", "print occupancy exits 0"),
+            (PlanCoverageEval.ORPHAN, "public status and health"),
         ):
             added = eval_run_of(root, "spec", "--add", req_id, "--text", text)
             EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
-        if not orphan:
-            added = eval_run_of(
-                root,
-                "spec",
-                "--add",
-                PlanCoverageEval.ORPHAN,
-                "--text",
-                "public status and health",
-            )
-            EvalInvariantSetup.require_ok(added, "spec add HTTP-001")
         for child_id, path, req_id, slice_text in PlanCoverageEval.COVERED:
             eval_pack_child(root, child_id, path, req_id, slice_text)
         if not orphan:
@@ -1320,16 +1311,6 @@ class PlanCoverageEval:
 
     @staticmethod
     def pack_orphan(root: Path) -> None:
-        added = eval_run_of(
-            root,
-            "spec",
-            "--add",
-            PlanCoverageEval.ORPHAN,
-            "--text",
-            "public status and health",
-        )
-        if added.returncode != 0 and "already" not in (added.stderr or "").lower():
-            EvalInvariantSetup.require_ok(added, "spec add HTTP-001")
         eval_pack_child(
             root,
             PlanCoverageEval.ORPHAN_CHILD,

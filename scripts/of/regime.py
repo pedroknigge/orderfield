@@ -783,6 +783,9 @@ class PlanCoverage:
         if not doc.get("hot"):
             return False
         print(f"note         {doc['note']}", file=file)
+        who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
+        if who:
+            print(f"{PlanCoverage.KIND}   {who}", file=file)
         print(f"next         {doc['next']}", file=file)
         return True
 
