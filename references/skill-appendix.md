@@ -167,6 +167,8 @@ If the consumer tree has no §20 / Apéndice A tables, do not invent product Gat
 
 `of doctor` / close print `docs_sync stale|pending|findings` (`PlanDocSync`) when cited paths are mtime-stale vs last integrate, or a residual names an open project finding without a dump. Not a close gate. Not a CMS. `of learn` is OF-runtime, not product plan sync. Proof: `of eval recovery/plan-doc-sync`.
 
+**Plan-first ORDER.** Incoming plan/docs (Grill-me / mega-plan): **high effort on ORDER only**. Digest every requirement section (`## AUTH-001 …`) into a wave + `of pack --owns-requirement` + `--owns-path` (vertical slice). Tracer-bullet wave 1 (thin end-to-end). Children stay **medium**; they do not re-architect. `of doctor` / close `--checklist` print `plan_cover orphan` when a heading ID has no packet (`PlanCoverage`). Not a close gate. Not a new verb. Reuses PlanDocSync cited paths + SPEC.md. ORDER bias (not essays): architect · sequence-verifiable-units · encode-lessons-in-structure · blast-radius · prove-it-works · attack-the-premise. Subtract unused surface. Proof: `of eval recovery/plan-first-coverage`.
+
 **Wave-end / pre-close surplus.** After close (not between waves; not before next-wave). `DriveAfterIntegrate` / `resume_next_lines` already own settle when `in_flight=0` + printed `next`. Leftover field `of learn` notes and reportable errors are a HITL **must ask after close** — do not let them die with the field or stay chat vapor. EvaluatorPacket consent stays store-at-start. Do not invent a stop on the settle path. Not auto-promote-all. Not a close gate. Not a new verb. Not a process supervisor. Doctor `docs_sync` / `AuditPressure` stay advisory; this duty is skill, not a kernel auto-promote.
 
 | Leftover | Ask / do |

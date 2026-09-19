@@ -1,0 +1,36 @@
+{
+  "id": "recovery/plan-first-coverage",
+  "description": "Fixture mega-plan with one unpacked requirement section: of doctor WARNs plan_cover orphan; not a close gate",
+  "fixture": "recovery_plan_first_coverage",
+  "tags": ["recovery", "doctor", "plan-first"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "plan_cover",
+        "orphan",
+        "HTTP-001",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ]
+    },
+    {
+      "run": "close",
+      "args": ["--checklist"],
+      "exit": 2,
+      "stdout_contains": [
+        "plan_cover orphan",
+        "HTTP-001"
+      ],
+      "stdout_not_contains": [
+        "of close refused: plan_cover",
+        "RUNTIME_OWNERSHIP"
+      ]
+    }
+  ]
+}
