@@ -41,6 +41,7 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | [references/principles.md](references/principles.md) | Haken invariants |
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
+| [docs/design/evidence-receipt.md](docs/design/evidence-receipt.md) | #284 receipt schema + deterministic gate |
 | [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
 | [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |
 | [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |

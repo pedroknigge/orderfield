@@ -1,0 +1,24 @@
+{
+  "id": "recovery/evidence-receipt",
+  "description": "Tampered evidence receipt cannot collect; wave-end verifier prompt prefers receipts + published artifacts over narrative",
+  "fixture": "recovery_evidence_receipt",
+  "tags": ["recovery", "gate", "evidence-receipt", "verifier"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 2,
+      "stdout_contains": ["INVALID", "bad receipt is not green"],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/prompts/v1.md",
+          "contains": [
+            "evidence receipts",
+            "published artifacts",
+            "implementer narrative"
+          ]
+        }
+      ]
+    }
+  ]
+}

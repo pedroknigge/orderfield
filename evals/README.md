@@ -33,6 +33,7 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/contrast-diff-narrative` | `recovery_contrast_close_contract` | `of contrast --diff` narrates CLOSE BLOCKED → VERIFIED_INTERNAL (not the contract) → RESOLVED; no `CLOSED` / `mission complete` theater (`ContrastDiffNarrative`) |
 | `recovery/slogan-evidence-refused` | `recovery_slogan_evidence` | verifier `done` with slogan evidence (`all tests passed`) cannot collect |
 | `recovery/close-evidence-product-sha` | `recovery_close_evidence_product_sha` | implementer `done` + SHA of scratch notes + no product change cannot collect (`CloseEvidence` / `OwnedWrite`; `#286`) |
+| `recovery/evidence-receipt` | `recovery_evidence_receipt` | tampered build/test receipt cannot collect (`EvidenceReceipt`; bad receipt ≠ green); wave-end verifier prompt prefers receipts + published artifacts over narrative (`#284` / `#280`) |
 | `recovery/pack-exclusivity-refused` | `recovery_pack_exclusivity` | foreign owner / unowned new child / same-wave path overlap die; disjoint second owner packs |
 | `recovery/atomic-close-flag-lag` | `recovery_atomic_close` | close without RESOLVED dies; success sets `spec_closed` + `done_when_closed` + `CLOSE.json` |
 | `recovery/active-field-pointer` | `recovery_active_field_pointer` | root stub + nested ACTIVE: status/resume show the nested field |

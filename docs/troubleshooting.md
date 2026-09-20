@@ -43,7 +43,7 @@ of integrate --wave N
 
 **Symptom:** collect reports `must match canonical packet` or `done result_ref must be an existing path under the project`.
 
-**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command (`CloseEvidence`); captions, a bare filename, and mismatched hashes die. Implementer / `--owns-path` must hash owned product or a published artifact, not scratch. Implementer / `--owns-path` `status=done` must also make a content change under those paths or the recorded worktree since spawn (`OwnedWrite`); mtime-only is not a write. Empty `--owns-path` without a worktree is `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` may touch zero product files.
+**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command (`CloseEvidence`); captions, a bare filename, and mismatched hashes die. Implementer / `--owns-path` must hash owned product or a published artifact, not scratch. Implementer / `--owns-path` `status=done` must also make a content change under those paths or the recorded worktree since spawn (`OwnedWrite`); mtime-only is not a write. Empty `--owns-path` without a worktree is `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` may touch zero product files. A cited `evidence_receipt:` must pass the deterministic gate (`EvidenceReceipt`); tamper/hash/exit/quote fail is INVALID, not green. Fall back to the archived original. File reads/search do not use the reducer.
 
 ## Missing residual / collect exit 2
 
@@ -160,7 +160,7 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 ## Verifier residual refused
 
-**Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, or `rollback`.
+**Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, `rollback`, or `bad receipt is not green`.
 
 **Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command — not captions (`CloseEvidence`). Implementer / `--owns-path` hashes owned product or a published artifact, not scratch.
 
