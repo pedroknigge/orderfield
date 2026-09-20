@@ -2011,5 +2011,142 @@ class PlanCoverageUnit(unittest.TestCase):
         self.assertEqual(ids, ["AUTH-001", "STORE-001"])
 
 
+class PlanWriteBackUnit(unittest.TestCase):
+    """Surgical plan markers. Fail-closed without OwnedWrite / close proof."""
+
+    PLAN = (
+        "# Write-back fixture\n"
+        "\n"
+        "## AUTH-001 Login boundary\n"
+        "\n"
+        "- [ ] Implement login port\n"
+        "\n"
+        "## STORE-001 Persist occupancy\n"
+        "\n"
+        "- [ ] Persist occupancy JSON\n"
+    )
+    PR = "https://github.com/pedroknigge/orderfield/pull/314"
+
+    def test_patch_marks_checkbox_and_shipped(self) -> None:
+        patched, meta = of.PlanWriteBack.patch(
+            self.PLAN, "AUTH-001", "done", ship=self.PR
+        )
+        self.assertTrue(meta["changed"])
+        self.assertIn("- [x] Implement login port", patched)
+        self.assertIn(f"Shipped: {self.PR}", patched)
+        self.assertIn("- [ ] Persist occupancy JSON", patched)
+        again, meta2 = of.PlanWriteBack.patch(
+            patched, "AUTH-001", "done", ship=self.PR
+        )
+        self.assertFalse(meta2["changed"])
+        self.assertTrue(meta2["already"])
+        self.assertEqual(again, patched)
+
+    def test_patch_inserts_status_when_section_has_no_markers(self) -> None:
+        text = "## AUTH-001 Login boundary\n\nClean architecture.\n"
+        patched, meta = of.PlanWriteBack.patch(text, "AUTH-001", "done")
+        self.assertTrue(meta["changed"])
+        self.assertIn("Status: done", patched)
+        self.assertTrue(patched.startswith("## AUTH-001"))
+
+    def test_patch_blocked_does_not_check_box(self) -> None:
+        patched, meta = of.PlanWriteBack.patch(
+            self.PLAN, "AUTH-001", "blocked"
+        )
+        self.assertTrue(meta["changed"])
+        self.assertIn("Status: blocked", patched)
+        self.assertIn("- [ ] Implement login port", patched)
+        self.assertNotIn("Shipped:", patched)
+
+    def test_apply_without_proof_leaves_bytes(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-plan-write-proof-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        plan = root / "docs" / "plans" / "active" / "mega.md"
+        plan.parent.mkdir(parents=True)
+        plan.write_text(self.PLAN, encoding="utf-8")
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "write-back proof",
+            "--phase",
+            "build",
+            "--source",
+            f"Living surface: {plan.relative_to(root).as_posix()}",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        added = run_of(
+            root, "spec", "--add", "AUTH-001", "--text", "login port"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        of.eval_pack_child(
+            root, "auth", "src/auth.py", "AUTH-001", "Implement AUTH-001"
+        )
+        packet = of.load_json(
+            of.wave_dir(1, root) / "packets" / "auth.json"
+        )
+        residual = {
+            "status": "done",
+            "role": "implementer",
+            "result_ref": ".orderfield/work/scratch/auth/result.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "looks done",
+                "proposed_patch": None,
+            },
+        }
+        before = plan.read_text(encoding="utf-8")
+        report = of.PlanWriteBack.apply(root, packet, residual)
+        self.assertFalse(report["changed"])
+        self.assertEqual(report["reason"], "proof")
+        self.assertEqual(plan.read_text(encoding="utf-8"), before)
+        self.assertIn("- [ ] Implement login port", before)
+
+    def test_outside_or_uncited_is_hitl(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-plan-write-hitl-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        initialized = run_of(
+            root, "init", "--mission", "hitl", "--phase", "build"
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        order = of.load_order(root)
+        self.assertEqual(
+            of.PlanWriteBack.cite_reason(root, order, "/etc/passwd.md"),
+            of.PlanWriteBack.NOTE_HITL_OUTSIDE,
+        )
+        self.assertEqual(
+            of.PlanWriteBack.cite_reason(root, order, "../outside/plan.md"),
+            of.PlanWriteBack.NOTE_HITL_OUTSIDE,
+        )
+        self.assertEqual(
+            of.PlanWriteBack.cite_reason(root, order, "docs/plans/ghost.md"),
+            of.PlanWriteBack.NOTE_HITL_OUTSIDE,
+        )
+
+    def test_docs_sync_done_is_theater_without_bytes_or_skip(self) -> None:
+        res = {
+            "status": "done",
+            "residual": {"proposed_patch": {"docs_sync": "done"}},
+        }
+        self.assertTrue(
+            of.PlanWriteBack.theater(res, {"changed": False, "already": False})
+        )
+        skip = {
+            "status": "done",
+            "residual": {
+                "proposed_patch": {
+                    "docs_sync": "done",
+                    "notes": "plan_write skip — user will edit",
+                }
+            },
+        }
+        self.assertFalse(
+            of.PlanWriteBack.theater(skip, {"changed": False, "already": False})
+        )
+        self.assertFalse(
+            of.PlanWriteBack.theater(res, {"changed": True, "already": False})
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
