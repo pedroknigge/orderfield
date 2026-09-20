@@ -32,6 +32,10 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
+- **Reuse table (design-first):** `SkillLeaderInitiative` / `SkillHarnessAsk` / `SkillModelCatalogConsult` / `EvaluatorPacket` already own the four init asks. Appendix already called a single obvious pack not those beats. The remaining gap is the SKILL hot-path **must-ask** pile on a 1-2 slice bump (`#289`).
+- **Reuse, not a new verb:** closed `InitAskSkip` table. Small (1-2 exclusive slices; bump / obvious; owners known) skips catalog + cheap/frontier + mix + evaluator. Stay session. detect present or HOLD (`#273`). contrast → close. No silent mix. No silent reviewers. Large keeps the four; store `--done-when-mission`; stored yes → pack+spawn both. `#281` agent bands later — that menu is out of scope. No VERSION bump. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach InitAskSkip. Core stays under the 20KB cap.
+- **Proof:** `SkillInitAskSkip`. C-137 / C-143 / C-080 extended. No new C-ID (honesty cap). `#289`.
 - Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
 
 ## 0.8.21

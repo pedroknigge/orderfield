@@ -39,6 +39,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillEscalateUnblock,
     SkillCheckoutAutoContinueHonesty,
     SkillEvaluatorPacket,
+    SkillInitAskSkip,
     SkillOrcaWorkerTeardown,
     SkillForceSpawnPid,
     SkillLiveQuietStuck,

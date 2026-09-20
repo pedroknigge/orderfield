@@ -31,12 +31,14 @@ class SkillSurface:
         "in_flight=0",
         "HITL only",
         "bare ok/dale",
+        "InitAskSkip",
     )
     APPENDIX_MARKERS = (
         "## Mandatory leader process",
         "## Forbidden",
         "## Roles (identities, not job titles)",
         "#### When orderfield pays vs theater",
+        "#### Init ask skip",
         "#### Production mode",
         "**Gate A before features.**",
         "#### Multi-harness mix",

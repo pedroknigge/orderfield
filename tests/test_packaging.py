@@ -3156,6 +3156,102 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
+class SkillInitAskSkip(unittest.TestCase):
+    """Small fields skip theater init asks; large fields still store evaluator. #289."""
+
+    HEADING = "#### Init ask skip"
+    SMALL = "1-2 exclusive slices"
+    FOUR = ("catalog", "cheap/frontier", "mix", "evaluator")
+    BANDS = ("1-4", "5-10", "10-50")
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    @staticmethod
+    def skip_section(text: str) -> str:
+        start = text.find(SkillInitAskSkip.HEADING)
+        if start < 0:
+            return ""
+        rest = text[start:]
+        nxt = rest.find("\n#### ", 1)
+        if nxt < 0:
+            nxt = rest.find("\n### ")
+        return rest if nxt < 0 else rest[:nxt]
+
+    def test_small_field_skips_theater_asks(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core)
+        table_fold = table.casefold()
+        self.assertIn("InitAskSkip small", table)
+        self.assertIn(self.SMALL, table)
+        for needle in self.FOUR:
+            self.assertIn(needle, table_fold)
+        self.assertIn("skip catalog", table_fold)
+        self.assertIn("no silent reviewers", table_fold)
+        self.assertIn("never silent mix", table_fold)
+        self.assertIn("detect or hold", table_fold)
+        self.assertIn("contrast → close", table_fold)
+        small_row = next(
+            line for line in table.splitlines() if "InitAskSkip small" in line
+        )
+        small_fold = small_row.casefold()
+        self.assertIn("skip", small_fold)
+        self.assertNotIn("must ask", small_fold)
+        self.assertNotIn("must propose", small_fold)
+        self.assertNotIn("consult", small_fold)
+        alias_fold = alias.casefold()
+        self.assertIn("initaskskip", alias_fold)
+        self.assertIn(self.SMALL, alias)
+        self.assertIn("skip the store-ask", alias_fold)
+        self.assertIn("no silent reviewers", alias_fold)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        self.assertIn("InitAskSkip", SkillSurface.CORE_POINTERS)
+        self.assertIn(self.HEADING, SkillSurface.APPENDIX_MARKERS)
+
+    def test_large_field_still_stores_evaluator_on_yes(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core)
+        init_row = next(
+            line
+            for line in table.splitlines()
+            if "init / first wave" in line.casefold()
+        )
+        self.assertIn("InitAskSkip", init_row)
+        self.assertIn("Large", init_row)
+        self.assertIn("must ask", init_row.casefold())
+        self.assertIn("--done-when-mission", init_row)
+        self.assertIn("stored yes", init_row.casefold())
+        self.assertIn("pack+spawn both", init_row)
+        self.assertIn(SkillEvaluatorPacket.ASK, init_row)
+        self.assertIn("never silent", init_row.casefold())
+        section = self.skip_section(appendix)
+        self.assertTrue(section, "appendix missing Init ask skip table")
+        self.assertIn(self.SMALL, section)
+        self.assertIn("store `--done-when-mission`", section)
+        self.assertIn("stored yes", section.casefold())
+        self.assertIn("pack+spawn both", section.casefold())
+        self.assertIn("#281", section)
+        self.assertIn("#273", section)
+        self.assertIn("present:none", section.casefold())
+        folded = section.casefold()
+        for band in self.BANDS:
+            self.assertNotIn(band, folded)
+        alias_fold = alias.casefold()
+        self.assertIn("stored yes", alias_fold)
+        self.assertIn("pack+spawn both", alias_fold)
+        self.assertIn("never silent", alias_fold)
+        self.assertNotIn("of ask", table.casefold())
+        self.assertNotIn("of ask", section.casefold())
+
+
 class SkillSharedWorktree(unittest.TestCase):
     """SKILL teaches two worktrees or series; disjoint owns-path is not enough. #214."""
 

@@ -218,7 +218,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 | 0.8.19 stall `#243`+`#245`+`#244` + agy `#249`. Landed as the published v0.8.19 tag | documented |
 | 0.8.20 OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); LiveQuietStuck HITL HOLD (`#256`). Landed on main after the v0.8.19 tag | documented |
 | 0.8.21 wave-settle auto-continue (`#263`); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`). Landed on main after the v0.8.20 tag | documented |
-| 0.8.22 pack size-note honesty (`#267`); PAIR `--verified-contract` refuse without `--both-sides` (`#268`); agy/grok isolate host MCP + pulse `cpu=` (`HostMcp`; `#269`); present:none HOLD / implicit spawn refuse (`SpawnAdapterMissing`; `#273`); pulse names packed-never-spawned (`InFlightSignal`; `#274`). Landed on main after the v0.8.21 tag | documented |
+| 0.8.22 pack size-note honesty (`#267`); PAIR `--verified-contract` refuse without `--both-sides` (`#268`); agy/grok isolate host MCP + pulse `cpu=` (`HostMcp`; `#269`); present:none HOLD / implicit spawn refuse (`SpawnAdapterMissing`; `#273`); pulse names packed-never-spawned (`InFlightSignal`; `#274`); InitAskSkip small-field theater skip (`#289`; `#281` bands later). Landed on main after the v0.8.21 tag | documented |
 | in-repo lab vs external dogfood honesty (C-153 Partial; `FieldEvidenceHonesty`) | documented |
 | `of eval` recovery fixtures | documented |
 | Agent discovery index (`docs/agent-discovery.md`) | documented |
