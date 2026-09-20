@@ -29,7 +29,9 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Reuse table (design-first):** `EvaluatorPacket` already stores start consent on `ORDER.evaluator_consent`. `#304` writes `ORDER.agent_band`. Large-N reviewers cite a scoped set (`#282`).
 - **Reuse, not a new verb:** `ReviewScope` inherits this wave owns-path / published set (`1-4` or N≤4 full; `5-10` / `10-50` or N>4 scoped). Packet `review_scope` is a cite set, not `owns_paths`. Reads `#304` `agent_band.band`. No VERSION bump.
 - **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. C-080 extended. `#282` / compose `#280`. Design: `docs/features/kernel/wave-review-scope.md`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#284` land on the same line (no bump). `#310` is not PackagingBump.
+- **Reuse, not a new verb:** README lead is problem → what OF does → **When NOT to use OF** (InitAskSkip Small / stay-session). Front-page install is ≤3 glance lines (`ORDERFIELD_REF` + `--from-release` + PATH). Full SHA-256 ritual stays in PUBLISH / mortal-install. First close drops the unmeasured 30-second claim. Compose with #302 dest glance, #315 reserved honesty, and #316 `CHILD.md`. No VERSION bump. `#307` / `#308`.
+- **Proof:** `ReadmeProductSurface` / `QuickstartTest` / `python3 docs/audit/check-claims.py`. C-135 / C-136 extended. No new C-ID (honesty cap). `#307` / `#308`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. No VERSION bump (`#310` / `#284` are not PackagingBump).
 
 ## 0.8.22
 

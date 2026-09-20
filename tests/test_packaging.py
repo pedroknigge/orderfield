@@ -834,7 +834,7 @@ class ReadmeProductSurface(unittest.TestCase):
             "Close is proof",
             "CLOSE.json",
             ".orderfield/",
-            "When not",
+            "When NOT to use OF",
             "## Mid-flight, the plan can change without dying",
             "You intervene.",
             "A child reports the field is wrong.",
@@ -842,15 +842,26 @@ class ReadmeProductSurface(unittest.TestCase):
             "sibling fields",
             "cheap vs frontier",
             "A child residual cannot replace",
+            "InitAskSkip",
+            "Stay session",
         ):
             self.assertIn(needle, hero)
+        self.assertIn("when not", hero.casefold())
+        portada = text[:use]
+        self.assertIn("ORDERFIELD_REF=v", portada)
+        self.assertIn("--from-release", portada)
+        self.assertIn("~/.local/bin", portada)
+        self.assertNotIn("ORDERFIELD_ARCHIVE", portada)
+        self.assertNotIn("ORDERFIELD_SHA256SUMS", portada)
         install_block = text[install:text.index("## Uninstall")]
         chunks = install_block.split("```")
         lead, first_fence = chunks[0], chunks[1]
         self.assertTrue(first_fence.startswith("bash"), first_fence[:20])
-        self.assertIn("SHA256SUMS", first_fence)
-        self.assertIn("releases/download", first_fence)
-        self.assertIn("SHA-256", first_fence)
+        self.assertIn("./install.sh", first_fence)
+        self.assertIn("~/.local/bin", first_fence)
+        self.assertIn("of doctor", first_fence)
+        self.assertNotIn("ORDERFIELD_ARCHIVE", first_fence)
+        self.assertNotIn("ORDERFIELD_SHA256SUMS", first_fence)
         self.assertNotIn("npx skills add pedroknigge/orderfield", first_fence)
         self.assertIn("SHA-256", lead)
         self.assertIn("unpinned", lead.casefold())
@@ -865,6 +876,7 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("unpinned", install_block.casefold())
         self.assertIn("not the trusted", install_block.casefold())
         self.assertIn("SHA-256", install_block)
+        self.assertIn("PUBLISH.md", install_block)
         compared = text[text.index("## Compared-to"):]
         self.assertIn("planning-with-files", compared)
         self.assertIn("refuse_child_forge", compared)
