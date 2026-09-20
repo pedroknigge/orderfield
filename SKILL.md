@@ -39,7 +39,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | long mission, residuals landed / next-wave replan | quote `of status` efficiency, `of detect` present/missing, `of doctor` balance (`unknown` if unpublished). Never invent. **Must ask** before cheap/frontier or mix rebalance. Never silent. |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** Oversized `--slice` is **advisory** — **Do not refuse**. |
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
-| mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
+| mid-epic, next harness or human | `of handoff` / `--json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
 | spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
 | `of collect` prints `MISSING` | pending/unavailable. Quote adapter / trust / outcome and actual `denied_actions`. Conservative headless “permissions may be involved” is a possibility, not proof; conservative children may still write scratch |
@@ -60,7 +60,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
-| webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair`. Not a webhook server |
+| webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair` |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or a release header. `ContractSurface`. Not a monitor |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
