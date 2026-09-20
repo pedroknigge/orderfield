@@ -1545,10 +1545,17 @@ class SkillPlanFirstOrder(unittest.TestCase):
         self.assertIn("plan_cover", table)
         self.assertIn("re-architect", table)
         self.assertIn("owns-requirement", table)
+        self.assertIn("cite the path", table)
+        self.assertIn("@folder", table)
+        self.assertIn("chat paste", table)
+        self.assertIn("fail-closed", table)
         appendix_fold = appendix.casefold()
         self.assertIn("plan_cover", appendix_fold)
         self.assertIn("high effort on order", appendix_fold)
         self.assertIn("tracer", appendix_fold)
+        self.assertIn("chat paste", appendix_fold)
+        self.assertIn("@folder", appendix_fold)
+        self.assertIn("fail-closed", appendix_fold)
         for cherry in (
             "architect",
             "sequence-verifiable-units",
@@ -1563,6 +1570,34 @@ class SkillPlanFirstOrder(unittest.TestCase):
         self.assertIn("medium", slave)
         source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
         self.assertIn("class PlanCoverage:", source)
+
+
+class SkillPlanWriteBack(unittest.TestCase):
+    """SKILL teaches surgical plan write-back after green collect."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_appendix_slave_teach_writeback(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("write-back", table)
+        self.assertIn("ownedwrite", table)
+        self.assertIn("hitl", table)
+        self.assertIn("docs_sync=done", table)
+        self.assertIn("skip", table)
+        appendix_fold = appendix.casefold()
+        self.assertIn("planwriteback", appendix_fold)
+        self.assertIn("write-back", appendix_fold)
+        self.assertIn("shipped", appendix_fold)
+        self.assertIn("ownedwrite", appendix_fold)
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
+        self.assertIn("plan_write skip", slave)
+        self.assertIn("do not rewrite the whole plan", slave)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PlanWriteBack:", source)
 
 
 class SkillPstackCherries(unittest.TestCase):

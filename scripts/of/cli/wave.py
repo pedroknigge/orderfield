@@ -115,7 +115,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 
-from of.regime import done_when_for
+from of.regime import PlanCoverage, PlanWriteBack, done_when_for
 
 
 # Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
@@ -792,6 +792,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
     )
     if band_note:
         print(band_note)
+    PlanCoverage.emit_pack(root, order, claimed=PlanCoverage.claimed(packet))
 
 
 def cmd_unpack(args: argparse.Namespace) -> None:
@@ -1373,6 +1374,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"OK {path.name} status={data.get('status')} wants="
                 f"{data.get('residual', {}).get('wants_to_change')}{denied_note}"
             )
+            PlanWriteBack.collect(root, pkt, data, order)
     snapshot_session(root, "collect")
     emit_event(
         "collect",
