@@ -1,0 +1,62 @@
+{
+  "id": "recovery/observation-pack",
+  "description": "Oversized residual speak is a handle: path+size+excerpt; full body stays on disk and is not required in collect/status/resume stdout",
+  "fixture": "recovery_observation_pack",
+  "tags": ["recovery", "collect", "speak", "observation-pack"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 0,
+      "stdout_contains": [
+        "OK",
+        "handle",
+        "residuals/big.json",
+        "B",
+        "head",
+        "tail",
+        "OF_EVIDENCE_RECEIPT"
+      ],
+      "stdout_not_contains": [
+        "OF_OBS_PACK_MIDDLE_SENTINEL_NOT_IN_SPEAK"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/residuals/big.json",
+          "contains": [
+            "OF_OBS_PACK_MIDDLE_SENTINEL_NOT_IN_SPEAK",
+            "OF_EVIDENCE_RECEIPT"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight     0",
+        "handle",
+        "residuals/big.json",
+        "head",
+        "OF_EVIDENCE_RECEIPT"
+      ],
+      "stdout_not_contains": [
+        "OF_OBS_PACK_MIDDLE_SENTINEL_NOT_IN_SPEAK"
+      ]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": [
+        "in_flight   0",
+        "handle",
+        "residuals/big.json",
+        "head",
+        "OF_EVIDENCE_RECEIPT"
+      ],
+      "stdout_not_contains": [
+        "OF_OBS_PACK_MIDDLE_SENTINEL_NOT_IN_SPEAK"
+      ]
+    }
+  ]
+}

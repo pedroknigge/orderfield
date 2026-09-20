@@ -24,6 +24,6 @@ whole appendix up front. Stop if the sibling is missing. Do not invent a second
 contract.
 
 Product surface is the sibling [README.md](../README.md). Residual speak handles
-are a different paste tax ([#283](https://github.com/pedroknigge/orderfield/issues/283)).
+cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedroknigge/orderfield/issues/283)).
 
 Do not trigger for a harness name alone.

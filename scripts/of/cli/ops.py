@@ -136,6 +136,7 @@ from of.pack import (
     owned_path_presence,
     packed_children,
     packet_owns_paths,
+    packet_residual_file,
     require_child_id,
     scratch_nonempty,
     stale_packet_ids,
@@ -1065,6 +1066,118 @@ class InFlightSignal:
         return PulseProgress.render([str(item) for item in raw if str(item).strip()])
 
 
+class ObservationPack:
+    """Oversized residual speak is a handle. Full bytes stay on disk. #283.
+
+    SoL-Pi ObservationPack adapted to OF's disk contract. Not a Pi clone.
+    Compose: #284 receipts stay in the excerpt (never strip markers).
+    Wave-end roles (#303 / #280) read paths, not pasted blobs.
+    """
+
+    THRESHOLD = 10 * 1024  # 10 KiB; SoL-Pi archive trigger; OF-honest
+    HEAD = 240
+    TAIL = 240
+    RECEIPT_MAX = 4
+    RECEIPT_MARKERS = (
+        "OF_EVIDENCE_RECEIPT",
+        "evidence_receipt",
+        "---RECEIPT---",
+    )
+
+    @staticmethod
+    def oversized(size: int) -> bool:
+        return int(size) >= ObservationPack.THRESHOLD
+
+    @staticmethod
+    def flatten(text: str, limit: int) -> str:
+        collapsed = " ".join(str(text or "").split())
+        if len(collapsed) > limit:
+            return collapsed[: limit - 3] + "..."
+        return collapsed
+
+    @staticmethod
+    def receipt_lines(text: str) -> list[str]:
+        hits: list[str] = []
+        for line in str(text or "").splitlines():
+            if any(marker in line for marker in ObservationPack.RECEIPT_MARKERS):
+                hits.append(line.strip())
+            if len(hits) >= ObservationPack.RECEIPT_MAX:
+                break
+        return hits
+
+    @staticmethod
+    def spoken_rel(root: Path, packet: dict[str, Any], path: Path) -> str:
+        rel = str(packet.get("residual_path") or "").strip()
+        if rel:
+            return physical_field_rel(root, rel)
+        return field_rel(root, path)
+
+    @staticmethod
+    def lines(
+        rel: str,
+        size: int,
+        text: str = "",
+        *,
+        key_width: int = 8,
+    ) -> list[str]:
+        rows = [f"{'handle'.ljust(key_width)}{rel}  {size}B"]
+        if not ObservationPack.oversized(size):
+            return rows
+        body = str(text or "")
+        rows.append(
+            f"{'head'.ljust(key_width)}"
+            f"{ObservationPack.flatten(body[: ObservationPack.HEAD], ObservationPack.HEAD)}"
+        )
+        if len(body) > ObservationPack.HEAD:
+            rows.append(
+                f"{'tail'.ljust(key_width)}"
+                f"{ObservationPack.flatten(body[-ObservationPack.TAIL :], ObservationPack.TAIL)}"
+            )
+        for rec in ObservationPack.receipt_lines(body):
+            rows.append(
+                f"{'receipt'.ljust(key_width)}"
+                f"{ObservationPack.flatten(rec, ObservationPack.HEAD)}"
+            )
+        return rows
+
+    @staticmethod
+    def of_packet(
+        root: Path,
+        packet: dict[str, Any],
+        *,
+        key_width: int = 8,
+    ) -> list[str]:
+        try:
+            path = packet_residual_file(root, packet)
+        except SystemExit:
+            return []
+        if path is None:
+            return []
+        size = path.stat().st_size
+        text = ""
+        if ObservationPack.oversized(size):
+            text = path.read_bytes().decode("utf-8", errors="replace")
+        return ObservationPack.lines(
+            ObservationPack.spoken_rel(root, packet, path),
+            size,
+            text,
+            key_width=key_width,
+        )
+
+    @staticmethod
+    def emit(
+        root: Path,
+        packet: dict[str, Any],
+        *,
+        key_width: int = 8,
+        indent: str = "",
+    ) -> None:
+        for line in ObservationPack.of_packet(
+            root, packet, key_width=key_width
+        ):
+            print(f"{indent}{line}")
+
+
 class DriveAfterIntegrate:
     """Idle + actionable next is not a stop. Not a supervisor.
 
@@ -1865,6 +1978,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     )
     print(f"in_flight   {len(flying)}")
     PackedAge.emit(flying)
+    for pkt in completed_children(root, int(state["wave"])):
+        ObservationPack.emit(root, pkt, key_width=12)
     session = load_session(root)
     status_doc = StatusReport.document(root, order, state, packets, flying, session)
     StatusReport.emit_running(status_doc)
@@ -2049,6 +2164,7 @@ def print_resume_completed(root: Path, completed: list[dict[str, Any]]) -> None:
         cid = str(pkt.get("child_id") or "?")
         print(f"  {cid}")
         print("    residual    present")
+        ObservationPack.emit(root, pkt, key_width=12, indent="    ")
         residual = try_load_packet_residual(root, pkt)
         if residual:
             print(f"    status      {residual.get('status') or '-'}")

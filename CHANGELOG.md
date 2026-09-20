@@ -22,7 +22,11 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Reuse, not a new verb:** skill-surface `SLAVE.md` renamed to `CHILD.md`. Hosts still load SKILL only. Field copy stays frozen `.orderfield/SLAVE.md` (`slave_md_path()` reads `CHILD.md`; `ensure_field_slave_md` still writes the protocol path). No stub. No appendix fold. No new verb. No schema rewrite. Compose with open `#302` dest list: copy `CHILD.md`, not `SLAVE.md`. `#310` / epic `#306`.
 - **Proof:** `validate-skill.sh` requires `CHILD.md`; `SkillSurface` names it; dest install has `CHILD.md` and no skill-root `SLAVE.md`; child/residual teaching tests still read `CHILD.md`. `#310`.
 - **Proof:** `HostRamSuggestBand` / `AgentBandUnit` / `AgentBandCli` / `SkillAgentBand`. Init stores agent-band + optional multi-model once; host RAM suggests a band; children default medium. Not a spawn hard-cap. `#281`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` lands on the same line (no bump).
+- **Reuse table (design-first):** collect already prints `OK <name> status=…`; resume lists `residual present`. The remaining gap is leaders re-pasting full residuals after collect (`#283`; SoL-Pi ObservationPack). Design: [residual-handles.md](docs/features/kernel/residual-handles.md).
+- **Reuse, not a new verb:** `ObservationPack` (next to `DriveAfterIntegrate`) speaks `handle <path> <size>B` plus 240-char head/tail when the residual is ≥10KiB. Full file stays on disk. Small residuals may still print fully. `#284` receipt markers (`OF_EVIDENCE_RECEIPT` / `evidence_receipt` / `---RECEIPT---`) are never stripped. Wave-end roles read paths (`#303` / `#280`). After `in_flight=0`, cite ORDER + handles (`#263`). No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach handle + excerpt; do not paste the body. Core stays under the 20KB cap.
+- **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. No new C-ID (honesty cap). No VERSION bump. `#283`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. No VERSION bump (`#310` is not PackagingBump).
 
 ## 0.8.22
 
