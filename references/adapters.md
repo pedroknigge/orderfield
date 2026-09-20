@@ -38,7 +38,7 @@ In a sibling field (`of new`), those paths live under
 `residual_path`; `of pack` prints the physical packet path and `handoff`,
 `render`, `spawn`, `collect` resolve the canonical path onto the field home.
 
-Note: `of render` and `of handoff` use a reference-load for `SLAVE.md` instead of pasting the full document. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch directory is nonempty, render/handoff add a continuation note: continue from scratch; do not restart the slice.
+Note: `of render` and `of handoff` use a reference-load for `CHILD.md` (field copy `.orderfield/SLAVE.md`) instead of pasting the full document. Native adapters receive an absolute path directive, while fallback or generic adapters may inline it. When the child's scratch directory is nonempty, render/handoff add a continuation note: continue from scratch; do not restart the slice.
 
 The child **must** write the residual to
 `.orderfield/waves/NNN/residuals/<child_id>.json`.
@@ -209,7 +209,7 @@ claude -p --output-format stream-json --verbose \
 
 Claude `--json-schema` is **omit**. The CLI takes an inline JSON Schema string (not a file path) and pairs it with `--output-format json`, which would drop stream-json PULSE. Do not pass `residual.codex.schema.json` as a path. Do not inline a second schema stack. Residual still lands at `packet.residual_path` (child write or stdout extract).
 
-Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Because of reference-load, the child is instructed to read `SLAVE.md` on its own. Do not truncate the handoff envelope. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
+Inside an interactive Claude Code session, prefer the native `Agent` primitive: pack first, then `of handoff --packet PACKET.json`. The message to the child is **that prompt file** (or the full stdout of `of render`). Because of reference-load, the child is instructed to read the child contract (`CHILD.md` / field `.orderfield/SLAVE.md`) on its own. Do not truncate the handoff envelope. Do not tell the child to re-run render. Do not copy history. After pack, caps bind even if you never call `of spawn`.
 
 Skills: copy this folder to `.claude/skills/orderfield/`.
 
@@ -266,7 +266,7 @@ Consented `adapter_hints` with a named model add `--model NAME`. Cursor has
 no cheap/frontier alias (catalog: no frontier row); a consented tier
 without `--model` refuses before launch. Do not invent an alias.
 
-Cursor has no reliable `--append-system-prompt`. Default render/handoff is **reference-load**: the prompt points at the absolute `SLAVE.md` path (use `--inline` only when the child cannot read that path).
+Cursor has no reliable `--append-system-prompt`. Default render/handoff is **reference-load**: the prompt points at the field `.orderfield/SLAVE.md` or the skill `CHILD.md` path (use `--inline` only when the child cannot read that path).
 
 Skills: `.cursor/skills/orderfield/`.
 

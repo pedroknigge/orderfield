@@ -99,7 +99,7 @@ class VersionSync(unittest.TestCase):
         self.assertIn("SHA256SUMS", readme)
 
     def test_slave_heartbeat_is_activity_evidence_not_process_health(self) -> None:
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
         self.assertIn("activity evidence for `of pulse`", slave)
         self.assertIn("shared-repo product mtime", slave)
         self.assertIn("not process health or per-child write attribution", slave)
@@ -149,7 +149,8 @@ class InstallScript(unittest.TestCase):
         dest = tmp / ".agents" / "skills" / "orderfield"
         self.assertTrue((dest / "SKILL.md").is_file(), dest)
         self.assertTrue((dest / "scripts" / "of.py").is_file(), dest)
-        self.assertTrue((dest / "SLAVE.md").is_file(), dest)
+        self.assertTrue((dest / "CHILD.md").is_file(), dest)
+        self.assertFalse((dest / "SLAVE.md").exists(), dest)
         self.assertFalse((tmp / ".claude").exists())
         self.assertFalse((tmp / ".codex").exists())
         self.assertFalse((tmp / ".agy").exists())
@@ -1069,7 +1070,7 @@ class HardnessDetectAuthWorktree(unittest.TestCase):
             "references/skill-appendix.md",
             "README.md",
             "docs/architecture.md",
-            "SLAVE.md",
+            "CHILD.md",
         ):
             folded = self.folded((ROOT / rel).read_text(encoding="utf-8"))
             self.assertIn("security guarantee", folded, rel)
@@ -1485,7 +1486,7 @@ class SkillPlanFirstOrder(unittest.TestCase):
             "attack-the-premise",
         ):
             self.assertIn(cherry, appendix_fold, cherry)
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
         self.assertIn("re-architect", slave)
         self.assertIn("medium", slave)
         source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
@@ -1505,7 +1506,7 @@ class SkillPstackCherries(unittest.TestCase):
 
     def test_appendix_slave_teach_five_cuts(self) -> None:
         appendix = SkillSurface.appendix(ROOT)
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
         alias = SkillSurface.alias(ROOT)
         appendix_fold = appendix.casefold()
         slave_fold = slave.casefold()
@@ -1701,7 +1702,7 @@ class SkillWaveEndTriage(unittest.TestCase):
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
         table = self.table(core).casefold()
         self.assertIn("after close", table)
         self.assertIn("not between waves", table)
@@ -2610,7 +2611,7 @@ class SkillResidualHomeHint(unittest.TestCase):
     """SLAVE / appendix name proposed_patch as the docs_sync home."""
 
     def test_slave_and_appendix_name_docs_sync_home(self) -> None:
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
         self.assertIn("proposed_patch.docs_sync", slave)
         self.assertIn("not on `residual`".casefold(), slave)
         self.assertIn("collect names that home", slave)
@@ -2750,7 +2751,7 @@ class SkillOrcaWorkerTeardown(unittest.TestCase):
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
         adapters = (ROOT / "references" / "adapters.md").read_text(encoding="utf-8")
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
         table = self.table(core).casefold()
         self.assertIn("worker-start", table)
         self.assertIn("worker-stop", table)
@@ -3464,6 +3465,32 @@ class SkillSurfaceCore(unittest.TestCase):
         self.assertIn("## What to type next", core)
         alias = SkillSurface.alias(ROOT)
         self.assertIn(SkillSurface.APPENDIX, alias)
+        self.assertTrue((ROOT / SkillSurface.CHILD).is_file())
+        self.assertFalse((ROOT / "SLAVE.md").exists())
+
+    def test_install_skill_surface_list_names_child_not_slave(self) -> None:
+        """#302 dest allowlist must copy CHILD.md, not the old hot-path name."""
+        src = INSTALL.read_text(encoding="utf-8")
+        if "SKILL_SURFACE_FILES" not in src:
+            return
+        start = src.index("SKILL_SURFACE_FILES")
+        block = src[start : start + 240]
+        self.assertIn("CHILD.md", block)
+        self.assertNotIn("SLAVE.md", block)
+
+    def test_hot_path_pointers_name_child_md(self) -> None:
+        for rel in (
+            "SKILL.md",
+            "AGENTS.md",
+            "README.md",
+            "references/skill-appendix.md",
+            "docs/glossary.md",
+        ):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertIn("CHILD.md", text, rel)
+            stripped = text.replace(".orderfield/SLAVE.md", "")
+            self.assertNotIn("](SLAVE.md)", stripped, rel)
+            self.assertNotIn("](../SLAVE.md)", stripped, rel)
 
     def test_leader_surface_keeps_kernel_verbs(self) -> None:
         leader = SkillSurface.leader(ROOT)
@@ -3495,6 +3522,8 @@ class SkillSurfaceCore(unittest.TestCase):
         dest = tmp / ".agents" / "skills" / "orderfield"
         self.assertTrue((dest / SkillSurface.CORE).is_file())
         self.assertTrue((dest / SkillSurface.APPENDIX).is_file())
+        self.assertTrue((dest / SkillSurface.CHILD).is_file())
+        self.assertFalse((dest / "SLAVE.md").exists())
         installed = (dest / SkillSurface.CORE).read_text(encoding="utf-8")
         self.assertIn(SkillSurface.APPENDIX, installed)
 

@@ -737,10 +737,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_unpack)
 
-    s = sub.add_parser("render", help="print the child prompt (SLAVE.md contract)")
+    s = sub.add_parser("render", help="print the child prompt (CHILD.md contract)")
     s.add_argument("--packet", required=True)
     s.add_argument(
-        "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
+        "--inline", action="store_true", help="paste CHILD.md instead of referencing it"
     )
     s.set_defaults(func=cmd_render)
 
@@ -764,7 +764,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="print one mid-epic JSON packet on stdout (omit --packet)",
     )
     s.add_argument(
-        "--inline", action="store_true", help="paste SLAVE.md instead of referencing it"
+        "--inline", action="store_true", help="paste CHILD.md instead of referencing it"
     )
     s.set_defaults(func=cmd_handoff)
 

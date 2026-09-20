@@ -15,7 +15,7 @@ ok()   { echo "OK $*"; }
 [[ -f "$ALIAS_FILE" ]] || fail "of/SKILL.md missing"
 [[ -f "$ROOT/scripts/of.py" ]] || fail "scripts/of.py missing"
 [[ -f "$ROOT/scripts/of_adapters.py" ]] || fail "scripts/of_adapters.py missing"
-[[ -f "$ROOT/SLAVE.md" ]] || fail "SLAVE.md missing"
+[[ -f "$ROOT/CHILD.md" ]] || fail "CHILD.md missing"
 [[ -f "$ROOT/VERSION" ]] || fail "VERSION missing"
 
 head -1 "$SKILL_FILE" | grep -q '^---' || fail "SKILL.md missing frontmatter"

@@ -19,7 +19,9 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Proof:** `IssueConfirmLock` / `SkillIssueConfirm`. Create needs TTY yes or human `HITL.md` then `--confirm`. Bare `--confirm` is not HITL. `#290` / PR `#299`.
 - **Proof:** `SkillInitAskSkip`. Small 1-2 exclusive-slice bump/obvious skips theater init asks. Large stores `--evaluator-consent`; stored yes → pack+spawn both. `#289` / PR `#300`.
 - **Proof:** `ResidualSchemaContracts.test_public_schema_declares_docs_sync`. Public `proposed_patch.docs_sync` is `pending|done`. `#292` / PR `#301`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main.
+- **Reuse, not a new verb:** skill-surface `SLAVE.md` renamed to `CHILD.md`. Hosts still load SKILL only. Field copy stays frozen `.orderfield/SLAVE.md` (`slave_md_path()` reads `CHILD.md`; `ensure_field_slave_md` still writes the protocol path). No stub. No appendix fold. No new verb. No schema rewrite. Compose with open `#302` dest list: copy `CHILD.md`, not `SLAVE.md`. `#310` / epic `#306`.
+- **Proof:** `validate-skill.sh` requires `CHILD.md`; `SkillSurface` names it; dest install has `CHILD.md` and no skill-root `SLAVE.md`; child/residual teaching tests still read `CHILD.md`. `#310`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. No VERSION bump (`#310` is not PackagingBump).
 
 ## 0.8.22
 

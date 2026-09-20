@@ -65,7 +65,7 @@ class EfficiencySignalDocs(unittest.TestCase):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("docs/efficiency-signal.md", skill)
         self.assertIn("efficiency propose", skill)
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8")
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
         self.assertIn("usage", slave)
         self.assertIn("Do not invent spend", slave)
 

@@ -150,7 +150,7 @@ bash "$verify_root/install.sh" --generic
 
 Literal project install is safe from the checkout root: the installer canonicalizes the base, snapshots the source outside the destination, avoids recursive `.agents` copies, and creates an absolute project-local `.local/bin/of` target.
 
-`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `SLAVE.md`.
+`install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `CHILD.md`.
 
 The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md).
 
@@ -398,7 +398,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core (`/orderfield`, `/of`) |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
 | [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (load by verb: pack / spawn / contrast / close) |
-| [SLAVE.md](SLAVE.md) | Child contract |
+| [CHILD.md](CHILD.md) | Child contract |
 | [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close; BLOCKED / RESOLVED / soft+reason |
 | [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty |

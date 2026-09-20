@@ -33,7 +33,7 @@ First wave is a tracer bullet by skill (thin end-to-end), not a second kernel sh
 - **SKILL.md table** (hosts load this): incoming plan → digest every requirement section into waves + `--owns-requirement` / `--owns-path`; **high effort on ORDER only**; children **medium** (do not re-architect); doctor `plan_cover` orphan; PlanDocSync Mode A/B unchanged.
 - **Appendix** (not a second contract): pstack cherries as ORDER *bias*, not essays — `architect`, `sequence-verifiable-units`, `encode-lessons-in-structure`, `blast-radius`, `prove-it-works`, `attack-the-premise`. Subtract unused surface. Tracer-bullet wave 1.
 - **`/of` alias** mirrors the duty in one paragraph.
-- **SLAVE.md** one line: do not re-architect; slices stay medium.
+- **CHILD.md** one line: do not re-architect; slices stay medium.
 
 Core stays under 20KB (subtract first). No VERSION bump (`PackagingBump` allows skill+eval on the current heading).
 

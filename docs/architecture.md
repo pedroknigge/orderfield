@@ -153,7 +153,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `HandoffReport` / `cmd_handoff` | Mid-epic field packet (no `--packet`): next + in-flight packet paths; `--json` machine object. Child `--packet` still writes the prompt. Does not unpack |
 | `session.json` auto-snapshot | Facts only: `wave`, `last_cmd`, `in_flight`, `updated_at` (+ optional summary). Written from pack/unpack/spawn/collect/integrate/patch/phase/next-wave/spec/close/gc/learn/migrate/checkpoint |
 | in-flight | Packed child with missing residual; `of status` surfaces count and `packed_age` past the 7-day SLA; `of status --json` is the same live snapshot as one object; `of resume` lists `parked` + `parked_reason` |
-| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md`; compact prompt ORDER view (id/rev/mission/phase/spec_ref); continuation note when scratch nonempty |
+| `render_prompt` / `INLINE_CONTRACT_ADAPTERS` | Reference-load field `.orderfield/SLAVE.md` (synced from skill `CHILD.md`); compact prompt ORDER view (id/rev/mission/phase/spec_ref); continuation note when scratch nonempty |
 | `cmd_eval` | Recovery fixtures under `evals/recovery/`; optional `--kernel` unittest modules |
 | `of --json` / `OF_JSON=1` | Optional machine-readable stderr events — see [events.md](events.md) |
 | `cmd_pulse` | Child verdict from packet/scratch only; ALIVE requires an open spawn; leftover PULSE after `ended_at` is `done_without_residual`; shared-repo mtime is display context, not child evidence; ORDER/state/session/wave artifacts stay unchanged, while update throttling may write its user cache |

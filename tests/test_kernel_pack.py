@@ -1181,7 +1181,7 @@ class HandoffPacket(unittest.TestCase):
         self.assertEqual(handed.returncode, 0, handed.stderr)
         prompt = self.tmp / ".orderfield" / "waves" / "001" / "prompts" / "h1.md"
         self.assertTrue(prompt.is_file())
-        self.assertIn("Orderfield slave", prompt.read_text(encoding="utf-8"))
+        self.assertIn("Orderfield child", prompt.read_text(encoding="utf-8"))
         self.assertIn("child_id=h1", handed.stdout)
         self.assertIn("prompt=", handed.stdout)
         self.assertIn("h1.md", handed.stdout)
@@ -1451,7 +1451,7 @@ class StalePackets(unittest.TestCase):
 
 
 class RefLoadHandoff(unittest.TestCase):
-    """SLAVE.md is referenced by absolute path, not pasted into every prompt."""
+    """CHILD.md is referenced by absolute path, not pasted into every prompt."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-ref-"))
@@ -1472,7 +1472,7 @@ class RefLoadHandoff(unittest.TestCase):
 
     def test_default_prompt_references_absolute_slave_path(self) -> None:
         p = of.slave_md_path()
-        self.assertTrue(p.exists(), "SLAVE.md must ship beside the skill")
+        self.assertTrue(p.exists(), "CHILD.md must ship beside the skill")
         prompt = of.render_prompt(self.packet)
         self.assertIn(str(p), prompt)
         self.assertTrue(Path(str(p)).is_absolute())

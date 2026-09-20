@@ -20,7 +20,7 @@ OF_PY = SCRIPTS / "of.py"
 SKILL = ROOT / "SKILL.md"
 ALIAS = ROOT / "of" / "SKILL.md"
 APPENDIX = ROOT / "references" / "skill-appendix.md"
-SLAVE = ROOT / "SLAVE.md"
+SLAVE = ROOT / "CHILD.md"
 AGENTS = ROOT / "AGENTS.md"
 GLOSSARY = ROOT / "docs" / "glossary.md"
 README = ROOT / "README.md"
@@ -105,7 +105,7 @@ class HitlIssueFileSurface(unittest.TestCase):
         self.assertIn("of issue", agents)
         self.assertIn("pedroknigge/orderfield", agents)
         self.assertIn("SKILL.md", agents)
-        self.assertIn("SLAVE.md", agents)
+        self.assertIn("CHILD.md", agents)
         self.assertIn("Not a second contract", agents)
         self.assertIn("A child never posts", agents)
 
