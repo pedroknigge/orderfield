@@ -84,7 +84,7 @@ test "$(gh release view "$release_tag" --json assets --jq '[.assets[].name] | so
 
 One sitting for a human (install → `of doctor` green + disk contract): [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
-Classic install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` is **not** the trusted path (SCOPE-NPX).
+Classic install is tag-pinned and SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` is **not** the trusted path (SCOPE-NPX). README front page is glance only (pin + `--from-release` + PATH); this page keeps the full SHA-256 ritual.
 
 ```bash
 release_version="$(tr -d '[:space:]' < VERSION)"
