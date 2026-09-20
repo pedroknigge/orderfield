@@ -21,7 +21,7 @@ Single integration folding remaining open PRs onto main after `#304` (agent-band
 - **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Deterministic receipt gate; cited tamper is collect INVALID. Wave-end verifier prefers receipts + published artifacts. `#284` / PR `#321`.
 - **Subtract:** SKILL / appendix no longer teach “gate or fallback original” as collect-green. Cited receipt must ACCEPT. Emit FALLBACK keeps the original archive only. `SkillEvidenceReceipt`.
 - **Proof:** `SkillProductBar`. Teaching-only (#323 design A): design-twice, deep modules, unittest/CI green is not Ready. No new verb. No kernel change.
-- Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded PRs `#303` `#314` `#317` `#319` `#320`. `#302` / `#304` / `#315` / `#316` / `#321` already on main. `#323` teaching-only design A on this line.
+- Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded remaining PRs `#317` `#319` `#320` `#323`. `#302` / `#303` / `#304` / `#314` / `#315` / `#316` / `#321` already on main. `#323` teaching-only design A on this line.
 
 ## 0.8.23
 
@@ -40,7 +40,8 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Archive exact build/test bytes; deterministic receipt gate accepts or falls back; cited tamper is collect INVALID (not green). Wave-end verifier prefers receipts + published artifacts. No VERSION bump. `#284` / `#278` / `#251` / `#280`.
 - **Reuse, not a new verb:** `install.sh` dest allowlist adds orca/qwen (same `.$h/skills/orderfield`; `SkillVersionSkew` scans them). Dest copy is the skill surface only (SKILL + scripts/of + schemas + references + VERSION/`install.sh`/`CHILD.md`/`of/`/`README.md`) — not the git tree. Child contract is `CHILD.md` (not `SLAVE.md`). Skill/alias description is Pedro glance `v0.8.23. Use when…` (metadata.version stays VERSION). Compose with #287 / #297 (alias is a pointer). No VERSION bump. `#291`.
 - **Proof:** `InstallScript.test_orca_qwen_dirs_get_skill` / `test_global_orca_qwen_on_path_creates_dests` / `test_dest_is_skill_surface_not_repo` / `SkillSurfaceCore.test_install_skill_surface_list_names_child_not_slave` / `VersionedDescription` / `SkillFrontmatterQuotedGate`. `#291`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#310` / `#284` land on the same line (no bump).
+- **Proof:** `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. After implementer settle, stored-yes `ORDER.evaluator_consent` packs both review roles on that wave residual before next-wave (`EvaluatorPacket.due` / `gate_action`). Stored no skips. Refuse HOLD. Green DriveAfterIntegrate. No VERSION bump. `#280`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#284` land on the same line (no bump). `#310` is not PackagingBump.
 
 ## 0.8.22
 
