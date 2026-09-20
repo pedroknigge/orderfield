@@ -20,7 +20,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
-Lockstep changelog (0.4.2 … 0.8.23 and later) lives in [CHANGELOG.md](CHANGELOG.md) and [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) — not here.
+Lockstep changelog (0.4.2 … 0.8.24 and later) lives in [CHANGELOG.md](CHANGELOG.md) and [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) — not here.
 
 Living map: checklist → of contrast / of close / residual. Not a second checklist.
 

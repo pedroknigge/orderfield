@@ -8,6 +8,19 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.24
+
+Single integration folding remaining open PRs onto main after `#304` (agent-band) and `#315`/`#316` (`CHILD.md`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.23 notes. One CI covers features + PackagingBump.
+
+- **Proof:** `InstallScript.test_orca_qwen_dirs_get_skill` / `test_dest_is_skill_surface_not_repo` / `SkillSurfaceCore.test_install_skill_surface_list_names_child_not_slave`. Dest allowlist matches adapter matrix (orca/qwen); dest is skill surface only; copy `CHILD.md`. `#291` / PR `#302`.
+- **Proof:** `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. Stored-yes `ORDER.evaluator_consent` packs both review roles after implementer settle before next-wave. Stored no skips. Refuse HOLD. Green DriveAfterIntegrate. `#280` / PR `#303`.
+- **Proof:** `PlanIngestGate` / `PlanWriteBackGate` / `SkillPlanFirstOrder` / `SkillPlanWriteBack` / `recovery/plan-ingest-paste`. Cited on-disk plan ingest + green-collect write-back. `#312` / `#313` / PR `#314`.
+- **Proof:** `ReadmeProductSurface` / `QuickstartTest`. README **When NOT** + glance install on the portada. `#307` / `#308` / PR `#317`.
+- **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. Oversized residual speak is handle + excerpt; full file stays on disk; receipt markers not stripped. `#283` / PR `#319`.
+- **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. Large N / bands `5-10` / `10-50` scoped to this-wave owns-path / published set. Band `1-4` stays full residual. `#282` / PR `#320`.
+- **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Deterministic receipt gate; cited tamper is collect INVALID. Wave-end verifier prefers receipts + published artifacts. `#284` / PR `#321`.
+- Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded PRs `#302` `#303` `#314` `#317` `#319` `#320` `#321`. `#304` already on main. `#315` / `#316` already on main.
+
 ## 0.8.23
 
 Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first ORDER, already merged). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.22 notes. No VERSION bump for `#281` (already on this line).
