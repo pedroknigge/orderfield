@@ -1482,6 +1482,137 @@ def eval_setup_recovery_plan_ingest_paste(root: Path) -> None:
     EvalInvariantSetup.require_ok(init, "init")
 
 
+class PlanIngressEval:
+    """Folder / chat / prompt materialize + fidelity. #324.
+
+    Reuses PlanCoverage / PlanIngress. Eval/unittest writer only.
+    """
+
+    DETAILED = (
+        "# Ultra-detailed ingress plan\n"
+        "\n"
+        "## AUTH-001 Login boundary\n"
+        "\n"
+        "Vertical slice owns src/auth.py.\n"
+        "\n"
+        "## Definition of Done\n"
+        "\n"
+        "AUTH-001 ships with tests. DoD is this section.\n"
+        "\n"
+        "## PROHIBIDO\n"
+        "\n"
+        "Do not invent a second plan MD.\n"
+        "\n"
+        "## COLA\n"
+        "\n"
+        "FASE 0 first. PARAR if fidelity fails.\n"
+        "INFO EXCEDENTE belongs in the report.\n"
+    )
+    THIN = "Thin substitute. No mandatory sections.\n"
+    CHAT = "Please do what we discussed in chat.\n"
+    DURABLE = ".orderfield/plan-source.md"
+    INGEST = ".orderfield/ingest.md"
+    INVENTED = "docs/plans/optimistic-ux-p0.md"
+
+    @staticmethod
+    def write_ingest(root: Path, text: str | None = None) -> Path:
+        path = Path(root) / PlanIngressEval.INGEST
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text or PlanIngressEval.DETAILED, encoding="utf-8")
+        return path
+
+    @staticmethod
+    def setup_promote(root: Path) -> None:
+        PlanIngressEval.write_ingest(root)
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "prompt is the plan",
+            "--phase",
+            "build",
+            "--source-file",
+            PlanIngressEval.INGEST,
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+
+    @staticmethod
+    def setup_fidelity(root: Path) -> None:
+        PlanIngressEval.setup_promote(root)
+        revised = eval_run_of(
+            root,
+            "spec",
+            "--revise",
+            PlanIngressEval.THIN,
+        )
+        EvalInvariantSetup.require_ok(revised, "spec revise")
+
+    @staticmethod
+    def setup_folder(root: Path) -> None:
+        PlanCoverageEval.write_plan(root)
+        brief = Path(root) / "BRIEF.md"
+        brief.write_text(
+            "Living surface: " f"{PlanCoverageEval.PLAN}\n",
+            encoding="utf-8",
+        )
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "folder cite only",
+            "--phase",
+            "build",
+            "--source-file",
+            str(brief),
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+
+    @staticmethod
+    def setup_chat(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "from chat memory",
+            "--phase",
+            "build",
+            "--source",
+            PlanIngressEval.CHAT,
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+
+    @staticmethod
+    def setup_invent(root: Path) -> None:
+        PlanIngressEval.setup_promote(root)
+        invented = Path(root) / PlanIngressEval.INVENTED
+        invented.parent.mkdir(parents=True, exist_ok=True)
+        invented.write_text("# Invented substitute\n", encoding="utf-8")
+
+
+@_register_eval_fixture("recovery_plan_ingress_promote")
+def eval_setup_recovery_plan_ingress_promote(root: Path) -> None:
+    """Prompt ingest body promoted verbatim; disposable discarded."""
+    PlanIngressEval.setup_promote(root)
+
+
+@_register_eval_fixture("recovery_plan_ingress_fidelity")
+def eval_setup_recovery_plan_ingress_fidelity(root: Path) -> None:
+    """Pinned source keeps needles; thin SPEC revise is a fidelity gap."""
+    PlanIngressEval.setup_fidelity(root)
+
+
+@_register_eval_fixture("recovery_plan_ingress_folder")
+def eval_setup_recovery_plan_ingress_folder(root: Path) -> None:
+    """Folder cite of an existing plan; kernel writes no new plan MD."""
+    PlanIngressEval.setup_folder(root)
+
+
+@_register_eval_fixture("recovery_plan_ingress_chat")
+def eval_setup_recovery_plan_ingress_chat(root: Path) -> None:
+    """Chat intent without a capture file: speak next, no silent success."""
+    PlanIngressEval.setup_chat(root)
+
+
 class DriveAfterIntegrateEval:
     """Money-plan shape: one wave collect+integrate, idle + NEXT-WAVE."""
 
@@ -2380,14 +2511,17 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.RunbookPathGate",
     "tests.test_kernel.PlanDocSyncUnit",
     "tests.test_kernel.PlanCoverageUnit",
+    "tests.test_kernel.PlanIngressUnit",
     "tests.test_kernel.DoctorPlanDocSync",
     "tests.test_kernel.DoctorPlanCoverage",
     "tests.test_kernel.PlanIngestGate",
+    "tests.test_kernel.PlanIngressGate",
     "tests.test_kernel.PlanWriteBackUnit",
     "tests.test_kernel.PlanWriteBackGate",
     "tests.test_kernel.SkillPlanDocSync",
     "tests.test_kernel.SkillPlanFirstOrder",
     "tests.test_kernel.SkillPlanWriteBack",
+    "tests.test_kernel.SkillPlanIngress",
     "tests.test_kernel.SkillPstackCherries",
     "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",

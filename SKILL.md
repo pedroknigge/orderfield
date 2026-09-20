@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.24. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.8.25. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.24"
+  version: "0.8.25"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -80,7 +80,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
-| incoming plan / cited `docs/plans/…` | put plan on disk and cite the path. Init reads disk (not `@folder` / chat paste). Digest headings → pack `--owns-requirement`/`--owns-path` (uncovered first). high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. WARN default; `plan_cover fail-closed` HOLDs close. Green collect → surgical write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite/close evidence. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
+| incoming plan / cited `docs/plans/…` | classify folder\|chat\|prompt (`plan_ingress` cue). Enough? gather/ask gaps (pstack). Materialize+fidelity **before pack**. folder: cite existing paths only — do not invent a plan MD. chat: durable capture first; missing → speak next (no silent SPEC). prompt: promote `--source`/ingest.md/prompt.md **verbatim** (`docs/plans/<owner>/` or `.orderfield/plan-source.md`), pin `plan_source <rel> sha=`, then discard ingest. Improve = amend only. Disk cite (not `@folder` / chat paste). Digest headings → `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). `plan_fidelity gap\|invent` HOLD pack. doctor `plan_cover` orphan. WARN default; `plan_cover fail-closed` HOLDs close. Green collect → surgical write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite/close evidence. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. Findings persist on cited plan. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |

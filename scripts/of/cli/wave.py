@@ -116,7 +116,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 
-from of.regime import PlanCoverage, PlanWriteBack, done_when_for
+from of.regime import PlanCoverage, PlanIngress, PlanWriteBack, done_when_for
 
 
 # Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
@@ -518,6 +518,9 @@ def cmd_pack(args: argparse.Namespace) -> None:
             SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
         return
     require_spec_intact(root, order)
+    fidelity = PlanIngress.hold_pack(root, order)
+    if fidelity:
+        die(fidelity)
     state = load_state(root)
     SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
     slice_note = SliceLint.long_note(slice_text)

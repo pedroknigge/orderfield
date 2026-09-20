@@ -589,8 +589,19 @@ def read_brief_file(path_str: str, *, flag: str) -> str:
     return read_user_text(path_str, flag=flag)
 
 
-def discard_disposable_ingest(root: Path, source: Path | None = None) -> None:
-    """Product-root prompt.md and .orderfield/ingest.md are ingest scratch, not product."""
+def discard_disposable_ingest(
+    root: Path,
+    source: Path | None = None,
+    order: dict[str, Any] | None = None,
+) -> None:
+    """Product-root prompt.md and .orderfield/ingest.md are ingest scratch, not product.
+
+    Promote a mission-plan body to a durable cite first (#324). Disposable
+    unlink runs only after that promote (or when the body is not the plan).
+    """
+    from of.regime import PlanIngress
+
+    PlanIngress.promote_disposable(root, order, source)
     targets = [of_dir(root) / "ingest.md", root / "PROMPT.md", root / "prompt.md"]
     if source is not None:
         try:

@@ -1582,6 +1582,46 @@ class SkillPlanFirstOrder(unittest.TestCase):
         self.assertIn("medium", slave)
         source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
         self.assertIn("class PlanCoverage:", source)
+        self.assertIn("class PlanIngress:", source)
+
+
+class SkillPlanIngress(unittest.TestCase):
+    """SKILL teaches three ingress modes + materialize+fidelity before pack."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_child_teach_three_modes(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        table = self.table(core).casefold()
+        for needle in (
+            "folder",
+            "chat",
+            "prompt",
+            "materialize",
+            "fidelity",
+            "before pack",
+            "plan_source",
+            "verbatim",
+            "plan_fidelity",
+        ):
+            self.assertIn(needle, table, needle)
+        appendix_fold = appendix.casefold()
+        self.assertIn("planingress", appendix_fold)
+        self.assertIn("plan_fidelity", appendix_fold)
+        self.assertIn("verbatim", appendix_fold)
+        self.assertIn("chat-capture", appendix_fold)
+        alias_fold = alias.casefold()
+        self.assertIn("folder", alias_fold)
+        self.assertIn("chat", alias_fold)
+        self.assertIn("prompt", alias_fold)
+        child = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
+        self.assertIn("do not invent a parallel plan", child)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PlanIngress:", source)
 
 
 class SkillPlanWriteBack(unittest.TestCase):

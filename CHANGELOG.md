@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.25
+
+Plan ingress fidelity. A detailed prompt/chat/folder plan is the disk contract (verbatim or cited), not a thin SPEC plus an invented `docs/plans` MD. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.24 notes.
+
+- **Reuse table (design-first):** `PlanCoverage` / `PlanDocSync` / `PlanWriteBack` / `discard_disposable_ingest` already cite, pin `keep <rel> coverage honest`, and write back on green collect. Paste / `@folder` is not heading-ingest (#312). The remaining gap is materialize-then-cite (`#324` / epic `#311`).
+- **Reuse, not a new verb:** `PlanIngress` classifies `folder|chat|prompt` (heuristic + `plan_ingress` cue), promotes a prompt body **verbatim** to `docs/plans/<owner>/` or `.orderfield/plan-source.md`, pins `plan_source <rel> sha=<hex>`, then discards disposable ingest. Folder cites existing paths only. Chat without a capture speaks next. `plan_fidelity gap|invent` HOLDs pack (default ON once prompt/chat source is pinned). No `of plan`. No `ORDER.plan_source` key. No supervisor / `RUNTIME_OWNERSHIP`.
+- **Deep module:** init / pack / doctor / close call `PlanIngress` (mode + materialize + hash + fidelity). Complexity stays in that helper; the CLI surface is unchanged.
+- **Skill drives the cut:** classify mode → enough? → gather/ask gaps (pstack) → only then ORDER. Materialize+fidelity before pack. `/of` one paragraph. CHILD: do not invent a parallel plan MD. Core stays under 20KB.
+- **Proof:** `PlanIngressUnit` / `PlanIngressGate` / `SkillPlanIngress` / `recovery/plan-ingress-promote` / `recovery/plan-ingress-fidelity` / `recovery/plan-ingress-folder` / `recovery/plan-ingress-chat`. Verbatim promote bytes+sha; invent-path HOLD; fidelity gap HOLD; folder creates no new plan file; chat without capture speaks next; paste-without-promote stays honest. C-111 extended. No new C-ID (honesty cap). `#324`.
+- Packaging: VERSION 0.8.25; skill/alias description preview `v0.8.25. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.24 notes.
+
 ## 0.8.24
 
 Single integration folding remaining open PRs onto main after `#304` (agent-band) and `#315`/`#316` (`CHILD.md`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.23 notes. One CI covers features + PackagingBump.

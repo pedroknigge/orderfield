@@ -1,0 +1,38 @@
+{
+  "id": "recovery/plan-ingress-fidelity",
+  "description": "Pinned prompt source keeps DoD/PROHIBIDO; thin SPEC revise is plan_fidelity gap HOLD",
+  "fixture": "recovery_plan_ingress_fidelity",
+  "tags": ["recovery", "plan-ingress", "fidelity"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "plan_fidelity",
+        "gap",
+        "PROHIBIDO",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/plan-source.md",
+          "contains": ["PROHIBIDO", "Definition of Done"]
+        }
+      ]
+    },
+    {
+      "run": "pack",
+      "args": ["--slice", "thin substitute", "--role", "explorer", "--child-id", "gap"],
+      "exit": 1,
+      "stderr_contains": [
+        "of pack refused: plan_fidelity gap",
+        "PROHIBIDO"
+      ]
+    }
+  ]
+}

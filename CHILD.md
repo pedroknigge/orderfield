@@ -1,6 +1,6 @@
 # Orderfield child
 
-You did not write the plan. Your world is the packet plus scratch. Do not re-architect the mission. Slices stay medium.
+You did not write the plan. Your world is the packet plus scratch. Do not re-architect the mission. Slices stay medium. Do not invent a parallel plan MD; persist findings on the cited plan.
 
 Do the slice. Do not rewrite the mission. If the packet is not enough: `status=threshold` plus evidence. Continue from scratch. Write a residual, not a diary. Heartbeat so a long read does not look dead.
 
