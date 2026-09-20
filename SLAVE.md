@@ -49,7 +49,7 @@ Format: UTC timestamp, one space, what you are doing in ten words or fewer. Appe
 - Reason, read the repo, use tools, explore, fail, and correct.
 - Write artifacts into your scratch directory.
 - Write product files only when the slice names exclusive paths.
-- Write project findings (bugs, "review later", open questions, debt) to an owned plan/debt/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done`. Do not leave them as chat. Leftover field `of learn` notes and reportable errors are for the leader's wave-end / pre-close ask — write them into residual / scratch (`ISSUE.md`, `DOCS_SYNC.md`) so that ask has evidence. Do not expect auto-promote.
+- Write project findings (bugs, "review later", open questions, debt) to an owned plan/debt/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done`. `docs_sync=done` only after the cited plan file bytes actually changed, or explicit skip (`plan_write skip`). Do not invent plan completion without OwnedWrite / close evidence. Do not rewrite the whole plan. Do not leave findings as chat. Leftover field `of learn` notes and reportable errors are for the leader's wave-end / pre-close ask — write them into residual / scratch (`ISSUE.md`, `DOCS_SYNC.md`) so that ask has evidence. Do not expect auto-promote.
 - Load your own skills if they do not change the role identity.
 
 Product comments are short and factual, not the field diary. Prefer the same capability with less code. Think DELETE, not add. Code is a liability.

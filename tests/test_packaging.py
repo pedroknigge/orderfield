@@ -1499,6 +1499,34 @@ class SkillPlanFirstOrder(unittest.TestCase):
         self.assertIn("class PlanCoverage:", source)
 
 
+class SkillPlanWriteBack(unittest.TestCase):
+    """SKILL teaches surgical plan write-back after green collect."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_appendix_slave_teach_writeback(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn("write-back", table)
+        self.assertIn("ownedwrite", table)
+        self.assertIn("hitl", table)
+        self.assertIn("docs_sync=done", table)
+        self.assertIn("skip", table)
+        appendix_fold = appendix.casefold()
+        self.assertIn("planwriteback", appendix_fold)
+        self.assertIn("write-back", appendix_fold)
+        self.assertIn("shipped", appendix_fold)
+        self.assertIn("ownedwrite", appendix_fold)
+        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        self.assertIn("plan_write skip", slave)
+        self.assertIn("do not rewrite the whole plan", slave)
+        source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
+        self.assertIn("class PlanWriteBack:", source)
+
+
 class SkillPstackCherries(unittest.TestCase):
     """Appendix + SLAVE teach pstack-shaped pack/plan cherries. Skill-only."""
 
