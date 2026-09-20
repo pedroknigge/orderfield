@@ -134,13 +134,13 @@ def write_bound_residual(
     wave: int = 1,
 ) -> Path:
     packet = load_json(packet_path(root, child_id, wave))
+    residual = bound_residual(root, child_id, fixture, wave)
+    of.OwnedWrite.ensure(root, packet)
+    if residual.get("status") == "done":
+        of.CloseEvidence.stamp_proof(residual, packet, root)
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
-        encoding="utf-8",
-    )
-    of.OwnedWrite.ensure(root, packet)
+    destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
     return destination
 
 
@@ -268,6 +268,8 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
             "implementer",
             "--child-id",
             child_id,
+            "--owns-path",
+            f"eval/{child_id}.py",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
         return packet_path(self.tmp, child_id)
@@ -519,6 +521,8 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
             result,
             rollback=f"git checkout -- {residual['result_ref']}",
         )
+        of.OwnedWrite.ensure(self.tmp, packet)
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         residual_path = self.tmp / ".orderfield/waves/001/residuals/c1.json"
         residual_path.write_text(json.dumps(residual), encoding="utf-8")
 
@@ -2243,6 +2247,8 @@ class PackContinuationOwnsRequirement(unittest.TestCase):
             "implementer",
             "--child-id",
             "alice",
+            "--owns-path",
+            "slice/alice.py",
             "--owns-requirement",
             "ALPHA-001",
         )

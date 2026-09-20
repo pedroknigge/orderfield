@@ -81,6 +81,11 @@
       "type": "string",
       "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
     },
+    "evaluator_consent": {
+      "type": "string",
+      "enum": ["yes", "no"],
+      "description": "Start consent for fresh-context adversary+verifier. Absent = not asked (evaluator unset). Pack review roles only when yes. of patch --evaluator-consent. Not a close gate. #280 reads this key."
+    },
     "adapter_hints": {
       "type": "object",
       "additionalProperties": false,

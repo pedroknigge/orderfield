@@ -59,6 +59,8 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `owns_path_incomplete` | `--owns-path` does not cover a slash-containing path named in `--slice`; packet still written. Names unpack + re-pack fix |
 | `requires_tool` | Pack `--requires-tool` will refuse some adapters |
 | `trust_conservative` | Conservative print-mode child owns paths / is implementer |
+| `write_floor_unsupported` | Write-floor default / `auto-edit`/`auto` on an adapter with no documented non-yolo write mode (named next) |
+| `host_allowlist` | Claude `.claude/settings.local.json` deny may block `.orderfield/` (advisory; file not edited) |
 | `operator_action` | Spawn selected `OF_TRUST=yolo` and/or `OF_SPAWN_ENV=inherit` (audited operator action; not a silent default) |
 | `host_mcp` | Spawn selected `OF_SPAWN_MCP=inherit` so agy/grok load host global MCP (isolate is the default) |
 | `spawn_in_flight` | `--force-spawn` overrides a started-only spawn whose recorded pid is not running |

@@ -459,7 +459,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
             "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post "
-            "(dry-run is not HITL). Create requires --confirm after human yes, or a TTY yes. "
+            "(dry-run is not HITL). Create requires a TTY yes, or a human "
+            ".orderfield/work/scratch/leader/HITL.md (yes) then --confirm. "
+            "Bare --confirm on non-TTY/cloud is not HITL. "
             "OF_CHILD cannot submit. --search is a read (no confirm; "
             "empty lists all open; query filters the open list)."
         ),
@@ -489,7 +491,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--confirm",
         action="store_true",
-        help="HITL lock for create after human yes; TTY yes also unlocks. Dry-run is not HITL",
+        help=(
+            "after TTY yes or human HITL.md yes; "
+            "bare flag is not HITL on non-TTY/cloud. Dry-run is not HITL"
+        ),
     )
     s.add_argument(
         "--search",
@@ -834,6 +839,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--harness",
         help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears",
+    )
+    s.add_argument(
+        "--evaluator-consent",
+        dest="evaluator_consent",
+        choices=["yes", "no"],
+        help=(
+            "store ORDER.evaluator_consent for adversary+verifier "
+            "(start consent; not a close gate)"
+        ),
     )
     s.add_argument(
         "--model-hints",

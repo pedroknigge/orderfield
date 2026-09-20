@@ -45,6 +45,11 @@
               "items": { "type": "string" }
             },
             "notes": { "type": "string" },
+            "docs_sync": {
+              "type": "string",
+              "enum": ["pending", "done"],
+              "description": "PlanDocSync mark. pending|done. Lives here; not a close gate."
+            },
             "done_when_closed": { "type": "boolean" },
             "requirements_verified": {
               "type": "array",

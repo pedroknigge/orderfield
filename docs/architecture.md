@@ -6,7 +6,7 @@ Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of
 
 > Hub: [AGENTS.md](../AGENTS.md) · Positioning: [README use cases](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 
-**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.22` — see [`VERSION`](../VERSION)
+**Status:** Active · **Stack:** Python 3.11+ stdlib · **Version:** `0.8.23` — see [`VERSION`](../VERSION)
 
 ## C4 — context, container, regime
 
@@ -138,7 +138,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `scripts/of.py` + `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` + `scripts/of/cli/` | Public CLI entry; 0.6 form split, 0.6.2 command groups, SCOPE-GODSPLIT shipped (`wal` / `learn` / `retain`; `field` re-exports public names via `FieldWal` / `FieldLearnings` / `FieldRetain`; remaining `field.py` is the field I/O owner, not a leftover god-module). `of eval` fixtures live in `cli/eval_cmd.py` (not `spec_cmd`). HITL `of issue` lives in `cli/issue_cmd.py` (not `ops`). Protocol unchanged vs 0.5.7 |
 | `scripts/of_adapters.py` | `ADAPTER_ORDER` / `ADAPTER_BINS` / `ADAPTER_TOOLS` / `build_spawn_argv` / `AdapterDetect` / `AdapterBalance` / detect+pick |
 | `done_when_for` / `mission_done_when` / `phase_done_when` / `done_when_closed` | Mission vs phase criteria; Option B prefixes + closed phases |
-| `cmd_patch --done-when` / `--done-when-mission` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune |
+| `cmd_patch --done-when` / `--done-when-mission` / `--evaluator-consent` / `--reopen` / `--constraints-rm` | Phase-scoped replace, reopen, prune; start consent for adversary+verifier (`ORDER.evaluator_consent`) |
 | `cmd_unpack` | Release packed child that never reported; refunds `children_spawned` |
 | `cmd_collect` + `integrate --partial` | Survive missing residuals; reduce what landed. Implementer / owns-path `status=done` with zero writes under owns-path or the recorded worktree since spawn is INVALID (`OwnedWrite`) |
 | `ORDER.harness` / `ORDER.backlog` | First-class fields (not prose constraints) |
@@ -146,7 +146,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `validate_public_schema` / `dump_json` | Runtime/public-schema parity (Draft 2020-12 subset: type/const/enum/minLength/maxLength/pattern/minimum/maximum/minItems/uniqueItems/items/required/additionalProperties/properties/patternProperties/anyOf) and durable atomic JSON replacement |
 | `field_lock` / `MUTATING_COMMANDS` | Cross-process serialization of kernel mutations; OS releases dead owners |
 | `packet_digest` / `require_registered_packet` / `require_packet_artifact_paths` | Immutable packet identity, exact live revision, canonical paths, and symlink rejection |
-| `validate_residual_for_packet` | Residual identity binding, existing in-project `done.result_ref`, `CloseEvidence`, and implementer / owns-path owned write since spawn (`OwnedWrite`) |
+| `validate_residual_for_packet` | Residual identity binding, existing in-project `done.result_ref`, `CloseEvidence`, implementer / owns-path owned write since spawn (`OwnedWrite`), and published-artifact fail-closed when FACTIBLE/CUMPLE (`SkillArtifactProve`) |
 | `integration_input_digest` / `reconcile_integration_state` | Idempotent replay and interrupted-state repair; changed inputs use `--recompute` |
 | `phase_transition_errors` / `wave_transition_errors` | Sequential closed phase movement and complete current-digest wave movement; empty waves skip the phase integrate requirement |
 | `cmd_resume` / `cmd_checkpoint` | Session-cut: one-screen brief from disk; parked agents + `agents_note`; optional `--summary` |

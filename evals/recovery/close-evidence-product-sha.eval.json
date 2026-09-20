@@ -1,0 +1,14 @@
+{
+  "id": "recovery/close-evidence-product-sha",
+  "description": "Implementer done + SHA of scratch notes + no product change cannot collect",
+  "fixture": "recovery_close_evidence_product_sha",
+  "tags": ["recovery", "gate", "close-evidence", "owned-write"],
+  "steps": [
+    {
+      "run": "collect",
+      "args": ["--wave", "1"],
+      "exit": 2,
+      "stdout_contains": ["INVALID", "owned product"]
+    }
+  ]
+}

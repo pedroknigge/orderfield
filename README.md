@@ -21,12 +21,12 @@ The chat can die. ORDER stays. A child residual cannot replace the mission, the 
 `of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
 
 <p align="center">
-  <strong>v0.8.22</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.23</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.22-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.23-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -45,7 +45,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A multi-role wave needs cheap and frontier workers | The plan consults the [model catalog](docs/model-catalog.md), then proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
 | A wave could mix CLIs or stay on one without asking | The leader asks same-harness vs multi-harness mix once per field (init/first pack). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
-| A multi-slice field is about to start | At init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store on `done_when`. Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Contrast still required. Not a new close gate. |
+| A multi-slice field is about to start | **InitAskSkip** Large: at init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. Missing key → evaluator unset. InitAskSkip Small (1-2 exclusive slices; bump / obvious): skip the four theater asks; contrast still required. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate. |
 | A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
 | Adding lines looks like progress | Code is a liability. Think DELETE, not add. Same capability with less code. No new verb. |
 
@@ -69,6 +69,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 ## When it is theater
 
 - VERSION bump plus one obvious feature.
+- Four init asks (catalog / cheap-frontier / mix / evaluator) on a 1-2 slice bump (`InitAskSkip`).
 - A rewrite or new verb when subtract/split would do the same with less code.
 - One ordinary subagent, or work a skill on this agent already covers.
 - Opening a field because a harness name was mentioned.
@@ -102,8 +103,8 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
 
 ```bash
-release_tag=v0.8.22
-release_version=0.8.22
+release_tag=v0.8.23
+release_version=0.8.23
 asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
 verify_root="$(mktemp -d)"
 curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
@@ -321,7 +322,7 @@ of spawn --adapter generic --packet PACKET.json
 
 If `of detect` finds nothing (`present: none`), implicit spawn **refuses** and a second pack WARNs (`SpawnAdapterMissing` / HOLD). Explicit `--adapter generic` without `OF_AGENT` stays the paste-handoff path. That is same-session, not a spawned child wave. Cloud hosts with no CLI are single-session only.
 
-Every adapter (generic included) honours `OF_TRUST` — `conservative` (default) adds no escalation flag anywhere; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode when one exists, otherwise behave as conservative; `yolo` is the only bypass and is never implied. `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`), not silent defaults — spawn speaks and records them; the skill must ask first. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). agy/grok spawn isolate host global MCP by default (`HostMcp`); `OF_SPAWN_MCP=inherit` opts in (ask). `of pulse` prints `cpu=` on `no writes yet` when a live pid exists. Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
+Every adapter (generic included) honours `OF_TRUST` — residual packs default to the write-floor (`auto-edit`: claude/codex/agy/qwen documented non-yolo write flags). cursor/grok/opencode/orca/generic have no such mode: spawn WARNs and names next (`WriteFloor`). Explicit `OF_TRUST=conservative` is the opt-out. `yolo` is the only bypass and is never implied. `OF_TRUST=yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`), not silent defaults — spawn speaks and records them; the skill must ask first. Host allow-lists are advisory only. Spawned children get an environment allowlist, not the parent environment (`OF_SPAWN_ENV=NAME1,NAME2` adds names; `OF_SPAWN_ENV=inherit` opts out). agy/grok spawn isolate host global MCP by default (`HostMcp`); `OF_SPAWN_MCP=inherit` opts in (ask). `of pulse` prints `cpu=` on `no writes yet` when a live pid exists. Every kernel failure is one line — `of: error: <kind>: <message>`, exit 1 (`--json` emits `{"event":"error","ok":false,"kind":…,"message":…}`); `OF_DEBUG=1` shows the traceback, Ctrl-C exits 130.
 
 ---
 
@@ -375,7 +376,7 @@ Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process 
 | `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2, never freezes on one dead child |
 | `integrate` | reduce residuals and choose a regime (`--partial`; identical replay repairs/no-ops; changed inputs need `--recompute`) |
 | `phase` | guarded sequential phase change; empty wave (no packets) skips integrate; `--force --reason` is audited break-glass; `--force` to `deliver` still requires SPEC close |
-| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
+| `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--evaluator-consent yes|no`; `--constraints-rm`, `--reopen`, `--harness`, `--backlog-add`/`--backlog-done`, `--quiet`) |
 | `next-wave` | advance only after complete current-digest integration and required post-escalation revision |
 | `doctor` | local prereqs, ACTIVE/open-field pack SKEW FAIL, skill VERSION SKEW and closed-field historical packs informational, adapter PATH, schemas, lock; PATH ≠ auth/ready |
 | `retain` / `gc` | walk every field home; 7-day safe TTL; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; drop dies on contrast trail unless `--force --reason`; never copies transcripts |
@@ -386,7 +387,7 @@ Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process 
 | `contrast` | review gate: one-pager + machine JSON; `--diff` narrates SPEC vs coverage (same facts as spec-diff; RESOLVED is not CLOSED; no theater). MISSING/DELIVERED/VERIFIED_INTERNAL/VERIFIED_CONTRACT/PAIR/FAILED; CLOSE BLOCKED while open |
 | `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Success writes `spec_closed` + `done_when_closed` + `CLOSE.json` in one WAL generation (slice done ≠ closed) |
 | `eval` | run recovery eval fixtures (`evals/recovery/`); `--strict`, `--kernel`, `--list` |
-| `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm; never consumer origin. Report ONLY invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT report child did not finish, SPEC incomplete, product tests red, consumer build, “user is stuck” (`--dry-run` prints argv and is not HITL; create needs `--confirm` or TTY yes). Works with no ORDER. Children cannot submit |
+| `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm; never consumer origin. Report ONLY invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT report child did not finish, SPEC incomplete, product tests red, consumer build, “user is stuck” (`--dry-run` prints argv and is not HITL; create needs TTY yes or human `HITL.md` then `--confirm`; bare `--confirm` is not HITL). Works with no ORDER. Children cannot submit |
 
 ## Docs
 
@@ -396,7 +397,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 |-----|------|
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core (`/orderfield`, `/of`) |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
-| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (read before pack / spawn / contrast / close) |
+| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (load by verb: pack / spawn / contrast / close) |
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close; BLOCKED / RESOLVED / soft+reason |

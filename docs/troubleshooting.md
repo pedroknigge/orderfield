@@ -43,7 +43,7 @@ of integrate --wave N
 
 **Symptom:** collect reports `must match canonical packet` or `done result_ref must be an existing path under the project`.
 
-**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of those bytes) and `rollback:` a command (`CloseEvidence`); captions and mismatched hashes die. Implementer / `--owns-path` `status=done` must also write at least one file under those paths or the recorded worktree since spawn (`OwnedWrite`); collect names `owned_write_missing` when the tree is empty. Explorer / adversary / verifier without `--owns-path` may touch zero product files.
+**Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command (`CloseEvidence`); captions, a bare filename, and mismatched hashes die. Implementer / `--owns-path` must hash owned product or a published artifact, not scratch. Implementer / `--owns-path` `status=done` must also make a content change under those paths or the recorded worktree since spawn (`OwnedWrite`); mtime-only is not a write. Empty `--owns-path` without a worktree is `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` may touch zero product files.
 
 ## Missing residual / collect exit 2
 
@@ -162,7 +162,7 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 **Symptom:** collect prints `INVALID` with `verifier done requires nonempty evidence`, `platitude`, `result_ref is empty`, `artifact_sha`, or `rollback`.
 
-**Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of `result_ref`) and `rollback:` a command — not captions (`CloseEvidence`).
+**Meaning:** A verifier `status=done` must name what was checked (requirement id, command, or path) and point at a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command — not captions (`CloseEvidence`). Implementer / `--owns-path` hashes owned product or a published artifact, not scratch.
 
 **Recover:** Rewrite the residual with a transcript path, evidence that cites the IDs or CLI you actually ran, the sha256 of `result_ref`, and a rollback command.
 

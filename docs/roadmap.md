@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.22. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.23. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,21 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.22`
+**Status:** Shipped · **Current release line:** `0.8.23`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.23 — morning cut: CloseEvidence SHA; WriteFloor; skill load-tax; evaluator_consent; HITL.md; InitAskSkip; docs_sync
+
+Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line.
+
+- CloseEvidence hashes owned product, not scratch. Empty owns-path is `owned_write_missing`. Mtime-only is not a write. Proof: `CloseEvidenceGate` / `OwnedWriteGate`. `#286`.
+- Residual write-floor default. Unsupported adapters WARN + named next. Proof: `WriteFloorMatrix`. `#294`.
+- `/of` is a pointer. Appendix loads by verb. Proof: `SkillAliasPointer`. `#287`.
+- `ORDER.evaluator_consent` + collect published-artifact fail-closed. Proof: `EvaluatorPacketProof` / `ArtifactProveCollectGate`. `#288`.
+- `of issue` create needs TTY or `HITL.md`+`--confirm`. Proof: `IssueConfirmLock`. `#290`.
+- Small fields skip theater init asks. Large stores `--evaluator-consent`. Proof: `SkillInitAskSkip`. `#289`.
+- Public `proposed_patch.docs_sync` is `pending|done`. Proof: `ResidualSchemaContracts`. `#292`.
 
 ## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
 
@@ -23,6 +35,8 @@ Landed on main after the published v0.8.21 tag (`fa507f6`, #266) while still cla
 - agy/grok spawn isolate host global MCP by default (`HostMcp`; empty overlay HOME). `OF_SPAWN_MCP=inherit` opts in (ask). Pulse prints `cpu=` on `no writes yet`. Proof: `HostMcpIsolate` / `SkillHostMcp`. `#269`.
 - Implicit spawn refuses when detect is present:none. Second pack WARNs. Handoff-to-self ≠ spawned child wave. Proof: `SpawnAdapterMissingGate` / `SkillSpawnAdapterMissing`. `#273`.
 - Pulse / resume name `not spawned` / `next SPAWN` when packed children have no spawn record / no live pid — not `running` + residual MISSING as if flying. Proof: `PackedOnlyNotAlive` / `SkillPackedOnlyStatus`. `#274`.
+- Init ask skip: small 1-2 exclusive-slice bump/obvious skips catalog + cheap/frontier + mix + evaluator theater. Large keeps store-at-start evaluator. No silent mix. `#281` bands later. Proof: `SkillInitAskSkip`. `#289`.
+- Public residual `proposed_patch.properties` names taught `docs_sync` (`pending|done`). Codex lockstep. Typo `doc_sync` does not become the legal key. Not a close gate. Proof: `ResidualSchemaContracts`. `#292`.
 
 ## 0.8.21 — wave-settle auto-continue; OwnsPathCoverage pack WARN
 
@@ -53,7 +67,7 @@ Landed on main after the published v0.8.16 tag (`184d7eba`, #228) while still cl
 - Invalid stdout residual extract names `$.path` + constraint (`SpawnResidual.refuse_line`). `CodexNullOmit` drops public-schema-optional nulls (not a loosened contract). Extra keys still fail. Proof: `SpawnResidualExtract` / `ResidualSchemaContracts`. C-147. No new CLI verb / schema / supervisor. Not a new regime. `#236`. Closes `#232`.
 - Wave-end / pre-close surplus: leftover field `of learn` + reportable errors — ask `--protocol` / `--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL. Not auto-promote. Not a close gate. Proof: `SkillWaveEndTriage`. No new CLI verb. Not a new regime. `#229`.
 - Demote `of eval` from SKILL / `/of` hot path. Kernel `of eval` + tests + CI stay. Appendix `## Lab / eval` keeps the lab command. Proof: `FieldEvidenceHonesty` / `SkillSurfaceCore`. C-150 / C-153. No new CLI verb. Not a new regime. `#230`.
-- Before FACTIBLE / `of close` on schedule+invariants, check the **published** artifact (not D prose). Fail ⇒ INFACTIBLE or ROMPE. At init store both-roles end intent; pack only if stored yes; XOR / start-Yes pack fail. Proof: `SkillArtifactProve` / `SkillEvaluatorPacket`. C-121 / C-151 / C-080. No `of prove`. Not a new close gate. Not a new regime. `#235`.
+- Before FACTIBLE / `of close` on schedule+invariants, check the **published** artifact (not D prose). Residual `published_artifact:` is a collect fail-closed hook when product bytes are missing. At init store `ORDER.evaluator_consent` (`of patch --evaluator-consent yes|no`); pack only if stored yes; missing key is unset. Proof: `SkillArtifactProve` / `SkillEvaluatorPacket` / `EvaluatorPacketProof`. C-121 / C-151 / C-080. No `of prove`. Not a new close gate. Not a new regime. `#235` / `#288`.
 
 ## 0.8.16 — schema subset; close wipes work/scratch; spawn claim lock + MUTATING_COMMANDS honesty; HITL issue_cmd
 
@@ -263,7 +277,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 
 ## 0.7.67 — SKILL.md short core + appendix
 
-- Hosts load `SKILL.md` only. The rest of the leader procedure is [references/skill-appendix.md](../references/skill-appendix.md). The core table still names every kernel verb, including the 0.7.66 adapter-resume gate. `/of` points at the sibling plus the appendix. `SkillSurface` is the gate. Not a second skill. Not a new CLI. Not a new regime.
+- Hosts load `SKILL.md` only. The rest of the leader procedure is [references/skill-appendix.md](../references/skill-appendix.md). The core table still names every kernel verb, including the 0.7.66 adapter-resume gate. Agents load the appendix by verb. `/of` is a pointer + trigger (same 20KB cap), not a second contract. `AGENTS.md` is rules 0–10 + docs table. `SkillSurface` is the gate. Not a second skill. Not a new CLI. Not a new regime. #287.
 
 ## 0.7.66 — adapter resume only with residual session id
 

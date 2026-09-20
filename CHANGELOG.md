@@ -8,6 +8,19 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.23
+
+Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first ORDER, already merged). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.22 notes.
+
+- **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. Implementer/`--owns-path` hashes owned product, not scratch. Empty owns-path is `owned_write_missing`. Mtime-only is not a write. `#286` / PR `#295`.
+- **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `SkillWriteFloor`. Residual write-floor default for capable adapters; unsupported rows WARN + named next. `#294` / PR `#296`.
+- **Proof:** `SkillAliasPointer` / `SkillSurfaceCore`. `/of` is a pointer, not a second contract. Appendix loads by verb. `AGENTS.md` keeps rules 0–10 + docs table. `#287` / PR `#297`.
+- **Proof:** `EvaluatorPacketProof` / `ArtifactProveCollectGate`. `ORDER.evaluator_consent` via `of patch --evaluator-consent`. Collect fail-closed on FACTIBLE without product bytes. `#288` / PR `#298`.
+- **Proof:** `IssueConfirmLock` / `SkillIssueConfirm`. Create needs TTY yes or human `HITL.md` then `--confirm`. Bare `--confirm` is not HITL. `#290` / PR `#299`.
+- **Proof:** `SkillInitAskSkip`. Small 1-2 exclusive-slice bump/obvious skips theater init asks. Large stores `--evaluator-consent`; stored yes → pack+spawn both. `#289` / PR `#300`.
+- **Proof:** `ResidualSchemaContracts.test_public_schema_declares_docs_sync`. Public `proposed_patch.docs_sync` is `pending|done`. `#292` / PR `#301`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main.
+
 ## 0.8.22
 
 Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f6`, #266) while still claiming 0.8.21 lockstep: pack size-note claims write only after the packet is on disk (`SliceLint`; `#267`). PAIR `--verified-contract` without `--both-sides` refuses and does not stamp (`PairVerifiedContractRefuse`; `#268`). agy/grok spawn isolate host global MCP by default (`HostMcp`; `#269`); pulse prints `cpu=` on `no writes yet`. Implicit spawn refuses when detect is present:none (`SpawnAdapterMissing`; `#273`). Pulse / resume name **not spawned** when packed children have no spawn record / no live pid — do not print `running` + residual MISSING as if flying (`InFlightSignal`; `#274`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.21 notes.
@@ -36,7 +49,36 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `PlanCoverage` extracts `##` / `###` heading IDs from cited plans + SPEC.md and WARNs `plan_cover orphan` on doctor / close `--checklist` / integrate. Not FAIL. Not a close gate. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach high effort on ORDER only; implementer slices stay medium; pstack cherries as ORDER bias (not essays). Core stays under the 20KB cap.
 - **Proof:** `PlanCoverageUnit` / `DoctorPlanCoverage` / `SkillPlanFirstOrder` / `recovery/plan-first-coverage`. C-111 extended. No new C-ID (honesty cap). `#279`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first coverage (`#279`) landed on the same heading after that lockstep.
+- **Reuse table (design-first):** `CloseEvidence.errors` already SHA-256s a file and refuses captions. `OwnedWrite.errors` already refuses zero writes under a **set** owns-path (`#251`). The remaining dual-truth hole is hashing scratch `notes.md`, skipping empty implementer owns-path, and greeting a `touch` as a write (`#286`).
+- **Reuse, not a new verb:** proof file prefers owns-path / published path over `.orderfield/work/scratch/`. Empty targets + implementer is `owned_write_missing`. Spawn records `owned_sha`; collect compares bytes, not mtime. `COMMAND_RE` drops a bare filename. No `of prove`. No supervisor. `#284` receipts stay a later layer.
+- **Skill drives the cut:** SKILL / `/of` / SLAVE / appendix teach product SHA, empty owns-path refuse, mtime-only is not a write. Core stays under the 20KB cap.
+- **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. C-033 extended. No new C-ID (honesty cap). `#286`.
+- **Reuse table (design-first):** `_TRUST_FLAGS` / `YOLO_FLAGS` / `OperatorAction` / `CodexWorktree` already exist. The remaining gap is conservative default leaving residual-producing children in print-mode (`#294`). Claude `settings.local.json` was the dogfood trigger; the cut is every adapter OF claims to spawn.
+- **Reuse, not a new verb:** `WriteFloor` applies `auto-edit` by default for claude/codex/agy/qwen. cursor/grok/opencode/orca/generic speak WARN + named next (no invented flags). `OF_TRUST=conservative` opts out. `yolo` stays OperatorAction. Host allow-lists are read-only advisory. Spawn meta records `trust` + `write_floor`. No ORDER schema. No VERSION bump.
+- **Skill drives the cut:** SKILL / `/of` / appendix / adapters.md teach the full matrix. Core stays under the 20KB cap.
+- **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `CodexRecordedWorktree` / `SkillWriteFloor`. C-066 extended. No new C-ID (honesty cap). `#294`.
+- **Reuse table (design-first):** `SkillSurface` already capped `SKILL.md` at 20KB. The remaining gap is the `/of` alias as a 22KB second contract, appendix “read the whole file before pack,” and `AGENTS.md` as an always-on changelog (`#287`; compose with `#278`–`#284`; residual speak handles are `#283`).
+- **Reuse, not a new verb:** same `SkillSurface` + `validate-skill.sh` gate now caps the alias (20KB, description ≤1024). Core target ≪ 18KB. Appendix stays on disk, loaded by verb. `AGENTS.md` keeps rules 0–10 + docs table. No VERSION bump. No second skill product.
+- **Skill drives the cut:** hosts that only load `SKILL.md` keep working; `/of` loads sibling `SKILL.md`. Not a second contract.
+- **Proof:** `python3 scripts/skill_surface.py` + `bash scripts/validate-skill.sh` + `SkillAliasPointer` / `SkillSurfaceCore`. C-150 extended. No new C-ID (honesty cap). `#287`.
+- **Reuse table (design-first):** `EvaluatorPacket` already printed ask/landed. The remaining gap is “Consent is stored at start” with no ORDER key, so `#280` cannot read consent and packaging greened on docstring substrings (`#288`).
+- **Reuse, not a new verb:** `ORDER.evaluator_consent` (`yes`/`no`) via `of patch --evaluator-consent`. Missing key is evaluator `unset` (not ask). `review_errors` documents the fail. Close stays Partial (C-080). `#280` reads this key.
+- **Reuse, not `of prove`:** `SkillArtifactProve.errors` is a collect hook. Named residual field `published_artifact: <relpath>` (or a non-scratch `result_ref`). FACTIBLE/CUMPLE without product bytes is INVALID. Occupancy only when `required_window` is present. No hospital solver.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach `--evaluator-consent` and `published_artifact:`. Subtract store-on-`--done-when-mission` theater.
+- **Proof:** `EvaluatorPacketProof.test_missing_consent_is_unset_not_ask` / `test_consent_no_skips` / `ArtifactProveCollectGate.test_factible_without_product_bytes_fails_closed`. Packaging tests no longer green solely on docstring substrings. No new C-ID (honesty cap). No VERSION bump. `#288`.
+- **Reuse table (design-first):** `IssueConfirm` already owns TTY y/N and `--confirm`. `OF_CHILD` already refuses child submit. `--dry-run` already previews argv. Leader scratch already lives at `work/scratch/leader/`. The remaining gap is a confused deputy: cloud/headless can pass `--confirm` without a human utterance (`#290`; cite `#193`).
+- **Reuse, not a new verb:** headless/cloud (`CURSOR_AGENT` or non-TTY) needs a human `HITL.md` (first non-empty line `y`/`yes`) then `--confirm`. Interactive TTY confirm stays. Child still refused. Bare `--confirm` is not HITL. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`. No VERSION bump.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach TTY or `HITL.md`+`--confirm`. Dry-run is not HITL. Core stays under the 20KB cap.
+- **Proof:** `IssueConfirmLock` (bare `--confirm` non-TTY/cloud refuses; TTY or `HITL.md` yes allows; dry-run unchanged). `IssueCli` submit still needs the note; `OF_CHILD` + note still refuses. `SkillIssueConfirm`. No new C-ID (honesty cap). `#290`.
+- **Reuse table (design-first):** `SkillLeaderInitiative` / `SkillHarnessAsk` / `SkillModelCatalogConsult` / `EvaluatorPacket` already own the four init asks. Appendix already called a single obvious pack not those beats. The remaining gap is the SKILL hot-path **must-ask** pile on a 1-2 slice bump (`#289`).
+- **Reuse, not a new verb:** closed `InitAskSkip` table. Small (1-2 exclusive slices; bump / obvious; owners known) skips catalog + cheap/frontier + mix + evaluator. Stay session. detect present or HOLD (`#273`). contrast → close. No silent mix. No silent reviewers. Large keeps the four; store `--evaluator-consent`; stored yes → pack+spawn both. `#281` agent bands later — that menu is out of scope. No VERSION bump. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach InitAskSkip. Core stays under the 20KB cap.
+- **Proof:** `SkillInitAskSkip`. C-137 / C-143 / C-080 extended. No new C-ID (honesty cap). `#289`.
+- **Reuse table (design-first):** SLAVE / PlanDocSync / SchemaHomeHint already teach `proposed_patch.docs_sync` (`pending|done`). `proposed_patch` already has `additionalProperties: true`, so collect accepts the key. `#234` already shipped object-form additionalProperties honesty. The remaining gap is that public `properties` omit `docs_sync`, so cold agents reading the schema miss the taught key (`#292`).
+- **Reuse, not a new verb:** declare `docs_sync` on `proposed_patch.properties` (`enum: pending|done`). Codex derivative stays lockstep. The object stays open. Not a close gate. No new CLI / residual-key regime / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** no new user-facing surface. SLAVE / appendix already name the home.
+- **Proof:** `ResidualSchemaContracts.test_public_schema_declares_docs_sync` / `test_docs_sync_typo_does_not_become_legal_key`. C-139 extended. No new C-ID (honesty cap). `#292`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first (`#279`), CloseEvidence (`#286`), write-floor (`#294`), skill load-tax (`#287`), evaluator consent (`#288`), HITL.md (`#290`), InitAskSkip (`#289`), and docs_sync schema (`#292`) landed on the same heading after that lockstep.
 
 ## 0.8.21
 

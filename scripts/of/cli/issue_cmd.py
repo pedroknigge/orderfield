@@ -135,18 +135,25 @@ class IssueConfirm:
 
     Reuse: UpdateAsk.maybe_prompt already owns TTY y/N (stdin+stdout isatty,
     y/yes, EOF = no). --dry-run already previews argv. OF_CHILD already
-    blocks children. The remaining gap is a confused deputy that treats
-    omit-dry-run as HITL. --confirm is the headless token after human yes;
-    TTY yes is the interactive path. No new verb / schema / supervisor.
+    blocks children. #193 closed omit-dry-run as HITL. The remaining gap
+    is a confused deputy: cloud/headless can pass --confirm without a
+    human utterance. Headless/cloud needs a human scratch note
+    (work/scratch/leader/HITL.md with yes) or a real TTY. Bare --confirm
+    is not proof. No new verb / schema / supervisor. Cite #193 / #290.
     """
 
     REFUSE = (
         "of issue create refused without HITL "
-        "(pass --confirm after human yes, or answer yes on a TTY; "
+        "(pass --confirm after human yes on a TTY, or write "
+        ".orderfield/work/scratch/leader/HITL.md containing yes "
+        "then --confirm; bare --confirm is not HITL; "
         "--dry-run is not HITL)"
     )
     PROMPT = "Create GitHub issue on pedroknigge/orderfield? [y/N] "
     YES = frozenset({"y", "yes"})
+    PROOF_REL = ".orderfield/work/scratch/leader/HITL.md"
+    PROOF_MAX_BYTES = 256
+    CLOUD_MARKERS = ("CURSOR_AGENT",)
 
     @staticmethod
     def is_tty() -> bool:
@@ -160,18 +167,67 @@ class IssueConfirm:
         return str(answer or "").strip().lower() in IssueConfirm.YES
 
     @staticmethod
+    def cloud_marker(env: dict[str, str] | None = None) -> str | None:
+        src = os.environ if env is None else env
+        for name in IssueConfirm.CLOUD_MARKERS:
+            if (src.get(name) or "").strip():
+                return name
+        return None
+
+    @staticmethod
+    def proof_ok(
+        *,
+        proof: bool | None = None,
+        root: Path | None = None,
+    ) -> bool:
+        if proof is not None:
+            return bool(proof)
+        project = find_root(root).resolve()
+        cursor = project
+        for part in Path(IssueConfirm.PROOF_REL).parts:
+            cursor = cursor / part
+            if cursor.is_symlink():
+                return False
+        if not cursor.is_file():
+            return False
+        try:
+            size = cursor.stat().st_size
+        except OSError:
+            return False
+        if size > IssueConfirm.PROOF_MAX_BYTES:
+            return False
+        try:
+            text = cursor.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return False
+        for line in text.splitlines():
+            token = line.strip()
+            if token:
+                return IssueConfirm.yes(token)
+        return False
+
+    @staticmethod
     def allowed(
         *,
         confirm: bool,
         tty: bool | None = None,
         prompt: Any = None,
+        proof: bool | None = None,
+        cloud: bool | None = None,
+        env: dict[str, str] | None = None,
+        root: Path | None = None,
     ) -> bool:
-        if confirm:
-            return True
+        live = tty is None
         if tty is None:
             tty = IssueConfirm.is_tty()
-        if not tty:
-            return False
+        if cloud is None:
+            cloud = bool(IssueConfirm.cloud_marker(env)) if live else False
+        if (not tty) or cloud:
+            return bool(confirm) and IssueConfirm.proof_ok(
+                proof=proof, root=root
+            )
+        if confirm:
+            return True
         ask = prompt if prompt is not None else input
         try:
             answer = ask(IssueConfirm.PROMPT)
@@ -441,7 +497,7 @@ def _load_issue_body_file(raw: str) -> str:
 
 
 def cmd_issue(args: argparse.Namespace) -> None:
-    """Auto-report of kernel defects; never consumer origin. Always pedroknigge/orderfield. No ORDER. Create requires --confirm or TTY yes."""
+    """Auto-report of kernel defects; never consumer origin. Always pedroknigge/orderfield. No ORDER. Create requires TTY yes, or human HITL.md yes then --confirm. Bare --confirm is not HITL."""
     search = getattr(args, "search", None)
     dry_run = bool(getattr(args, "dry_run", False))
     if search is not None:

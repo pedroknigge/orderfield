@@ -40,6 +40,7 @@ from test_packaging import (  # noqa: E402,F401
     SkillEscalateUnblock,
     SkillCheckoutAutoContinueHonesty,
     SkillEvaluatorPacket,
+    SkillInitAskSkip,
     SkillOrcaWorkerTeardown,
     SkillForceSpawnPid,
     SkillLiveQuietStuck,
@@ -131,6 +132,7 @@ from test_kernel_pack import (  # noqa: E402,F401
 )
 from test_kernel_spec import (  # noqa: E402,F401
     AdversarialDualTruthCorpus,
+    ArtifactProveCollectGate,
     CloseChecklistProof,
     EvaluatorPacketProof,
     ContrastDiffNarrative,

@@ -105,13 +105,13 @@ def write_bound_residual(
     wave: int = 1,
 ) -> Path:
     packet = load_json(packet_path(root, child_id, wave))
+    residual = bound_residual(root, child_id, fixture, wave)
+    of.OwnedWrite.ensure(root, packet)
+    if residual.get("status") == "done":
+        of.CloseEvidence.stamp_proof(residual, packet, root)
     destination = root / str(packet["residual_path"])
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(bound_residual(root, child_id, fixture, wave), indent=2) + "\n",
-        encoding="utf-8",
-    )
-    of.OwnedWrite.ensure(root, packet)
+    destination.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
     return destination
 
 
@@ -1410,6 +1410,15 @@ class CloseEvidenceGate(unittest.TestCase):
         self.assertNotEqual(collected.returncode, 0, blob)
         self.assertIn("rollback is a caption", blob)
 
+    def test_rollback_filename_is_caption(self) -> None:
+        artifact = self._artifact()
+        digest = of.CloseEvidence.digest(artifact)
+        self._write(f"artifact_sha: {digest}\nrollback: notes.md")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("rollback is a caption", blob)
+
     def test_matching_sha_and_rollback_collects(self) -> None:
         artifact = self._artifact()
         evidence = of.CloseEvidence.attach(
@@ -1466,6 +1475,7 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertEqual(packed.returncode, 0, packed.stderr)
 
     def _spawn_meta(self, child_id: str) -> None:
+        packet = load_json(packet_path(self.tmp, child_id))
         path = (
             self.tmp / ".orderfield" / "waves" / "001" / "spawns" / f"{child_id}.json"
         )
@@ -1476,6 +1486,9 @@ class OwnedWriteGate(unittest.TestCase):
                     "child_id": child_id,
                     "adapter": "claude",
                     "started_at": of.utc_now(),
+                    of.OwnedWrite.DIGEST_KEY: of.OwnedWrite.snapshot(
+                        self.tmp, packet
+                    ),
                 }
             )
             + "\n",
@@ -1485,11 +1498,12 @@ class OwnedWriteGate(unittest.TestCase):
     def _write_done(self, child_id: str, *, ensure: bool = False) -> None:
         packet = load_json(packet_path(self.tmp, child_id))
         residual = bound_residual(self.tmp, child_id)
+        if ensure:
+            of.OwnedWrite.ensure(self.tmp, packet)
+            of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         dest = self.tmp / str(packet["residual_path"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
-        if ensure:
-            of.OwnedWrite.ensure(self.tmp, packet)
 
     def test_implementer_done_empty_owns_path_is_invalid(self) -> None:
         self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
@@ -1518,12 +1532,51 @@ class OwnedWriteGate(unittest.TestCase):
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 
-    def test_implementer_without_owns_path_or_worktree_skips(self) -> None:
+    def test_implementer_without_owns_path_or_worktree_is_invalid(self) -> None:
         self._pack(role="implementer", child_id="solo")
         self._spawn_meta("solo")
         self._write_done("solo")
         collected = run_of(self.tmp, "collect", "--wave", "1")
-        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertIn("owned_write_missing", blob)
+
+    def test_implementer_scratch_sha_without_product_is_invalid(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        self._write_done("imp")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertTrue(
+            "not scratch" in blob or "owned product" in blob,
+            blob,
+        )
+
+    def test_touch_only_owned_file_is_invalid(self) -> None:
+        product = self.tmp / "src" / "mod.py"
+        product.parent.mkdir(parents=True, exist_ok=True)
+        product.write_text("same bytes\n", encoding="utf-8")
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        self._spawn_meta("imp")
+        os.utime(product, None)
+        packet = load_json(packet_path(self.tmp, "imp"))
+        residual = bound_residual(self.tmp, "imp")
+        of.CloseEvidence.stamp(
+            residual,
+            product,
+            rollback="git checkout -- src/mod.py",
+        )
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("INVALID", blob)
+        self.assertIn("owned_write_missing", blob)
 
     def test_threshold_skips_the_gate(self) -> None:
         self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
@@ -1563,6 +1616,11 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
         self.assertIn("owned_write_missing", empty.stdout + empty.stderr)
         (tree / "landed.py").write_text("ok\n", encoding="utf-8")
+        packet = load_json(packet_path(self.tmp, "wt"))
+        residual = load_json(self.tmp / str(packet["residual_path"]))
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
+        dest = self.tmp / str(packet["residual_path"])
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 
@@ -2174,8 +2232,8 @@ class CloseChecklistProof(unittest.TestCase):
         self.assertIn("w3", listed.stdout)
         self.assertIn(of.CloseChecklist.SPEAK, listed.stdout)
         self.assertIn(of.CloseChecklist.speak_line(key_width=12), listed.stdout)
-        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, listed.stdout)
-        self.assertIn(of.EvaluatorPacket.STATUS_ASK, listed.stdout)
+        self.assertIn(of.EvaluatorPacket.SPEAK_UNSET, listed.stdout)
+        self.assertIn(of.EvaluatorPacket.STATUS_UNSET, listed.stdout)
         self.assertNotIn("CLOSED", listed.stdout)
         lines = [ln for ln in listed.stdout.splitlines() if ln.strip()]
         cli_machine = json.loads(lines[-1])
@@ -2271,30 +2329,74 @@ class EvaluatorPacketProof(unittest.TestCase):
             "REV-001",
         )
 
-    def test_implementer_only_is_ask_not_a_close_gate(self) -> None:
+    def test_missing_consent_is_unset_not_ask(self) -> None:
+        order = of.load_order(self.tmp)
+        self.assertNotIn(of.EvaluatorPacket.KEY, order)
+        errors = of.EvaluatorPacket.review_errors(order)
+        self.assertTrue(errors, errors)
+        self.assertIn(of.EvaluatorPacket.KEY, errors[0])
+        self.assertIn("--evaluator-consent", errors[0])
+        self.assertFalse(of.EvaluatorPacket.should_pack(order))
         doc = self._doc()
-        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertEqual(doc["consent"], "")
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_UNSET)
         self.assertEqual(doc["evaluator_ids"], [])
-        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_ASK)
-        self.assertIn(of.EvaluatorPacket.ASK_NEXT, doc["next"])
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_UNSET)
+        self.assertEqual(doc["next"], of.EvaluatorPacket.PATCH_NEXT)
+        self.assertNotEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
         listed = run_of(self.tmp, "close", "--checklist")
         self.assertEqual(listed.returncode, 2, listed.stdout + listed.stderr)
-        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, listed.stdout)
-        self.assertIn("evaluator", listed.stdout)
-        self.assertIn(of.EvaluatorPacket.STATUS_ASK, listed.stdout)
+        self.assertIn(of.EvaluatorPacket.SPEAK_UNSET, listed.stdout)
+        self.assertIn(of.EvaluatorPacket.STATUS_UNSET, listed.stdout)
         of.MultiWaveResidualEval.close_child(
             self.tmp, "w3", 3, "wave-3 structured residual names W3-001"
         )
         checklist = self._checklist()
         self.assertTrue(checklist["ok"], checklist)
-        self.assertEqual(checklist["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertEqual(checklist["evaluator"], of.EvaluatorPacket.STATUS_UNSET)
         dry = run_of(self.tmp, "close", "--checklist")
         self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
-        self.assertIn(of.EvaluatorPacket.SPEAK_ASK, dry.stdout)
+        self.assertIn(of.EvaluatorPacket.SPEAK_UNSET, dry.stdout)
         stamped = run_of(self.tmp, "close")
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         self.assertIn("CLOSED", stamped.stdout)
         self.assertNotIn("evaluator refused", stamped.stderr)
+        self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_consent_yes_asks(self) -> None:
+        patched = run_of(self.tmp, "patch", "--evaluator-consent", "yes")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        self.assertIn("evaluator_consent", patched.stdout)
+        order = of.load_order(self.tmp)
+        self.assertEqual(order[of.EvaluatorPacket.KEY], "yes")
+        self.assertEqual(of.EvaluatorPacket.review_errors(order), [])
+        self.assertTrue(of.EvaluatorPacket.should_pack(order))
+        doc = self._doc()
+        self.assertEqual(doc["consent"], "yes")
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_ASK)
+        self.assertEqual(doc["next"], of.EvaluatorPacket.ASK_NEXT)
+
+    def test_consent_no_skips(self) -> None:
+        patched = run_of(self.tmp, "patch", "--evaluator-consent", "no")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        order = of.load_order(self.tmp)
+        self.assertEqual(order[of.EvaluatorPacket.KEY], "no")
+        self.assertEqual(of.EvaluatorPacket.review_errors(order), [])
+        self.assertFalse(of.EvaluatorPacket.should_pack(order))
+        doc = self._doc()
+        self.assertEqual(doc["consent"], "no")
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_SKIP)
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_SKIP)
+        self.assertEqual(doc["next"], "")
+        of.MultiWaveResidualEval.close_child(
+            self.tmp, "w3", 3, "wave-3 structured residual names W3-001"
+        )
+        checklist = self._checklist()
+        self.assertTrue(checklist["ok"], checklist)
+        self.assertEqual(checklist["evaluator"], of.EvaluatorPacket.STATUS_SKIP)
+        stamped = run_of(self.tmp, "close")
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
         self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").exists())
 
     def test_adversary_in_flight_then_landed(self) -> None:
@@ -2330,6 +2432,119 @@ class EvaluatorPacketProof(unittest.TestCase):
         self.assertIn(of.EvaluatorPacket.SPEAK_LANDED, dry.stdout)
         self.assertIn("adversary:rev1", dry.stdout)
         self.assertNotIn("CLOSED", dry.stdout)
+
+
+class ArtifactProveCollectGate(unittest.TestCase):
+    """Collect fail-closed when FACTIBLE lacks product bytes. #288."""
+
+    CLEAN = """required_window: 08:00-12:00
+
+| id | bed | start | end |
+| P07 | R1 | 08:00 | 10:00 |
+| P15 | R2 | 09:30 | 11:00 |
+
+## A
+FACTIBLE
+
+## D
+CUMPLE
+
+## F
+occupancy 08:00-12:00
+08:00-10:00 R1 P07
+09:30-11:00 R2 P15
+"""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-artifact-prove-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(self.tmp, "init", "--mission", "schedule", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "publish the schedule",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _write(
+        self,
+        evidence: str,
+        *,
+        result_text: str = "scratch notes\n",
+        published: str | None = None,
+        published_rel: str = "schedule.md",
+    ) -> None:
+        from skill_artifact_prove import SkillArtifactProve
+
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = bound_residual(self.tmp, "e1")
+        scratch = (
+            self.tmp / ".orderfield" / "work" / "scratch" / "e1" / "result.md"
+        )
+        scratch.parent.mkdir(parents=True, exist_ok=True)
+        scratch.write_text(result_text, encoding="utf-8")
+        residual["result_ref"] = scratch.relative_to(self.tmp).as_posix()
+        if published is not None:
+            dest = self.tmp / published_rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(published, encoding="utf-8")
+            evidence = (
+                f"published_artifact: {published_rel}\n" + evidence
+            )
+        residual["residual"]["evidence"] = of.CloseEvidence.attach(
+            evidence,
+            scratch,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        self.assertTrue(SkillArtifactProve.applies(residual), residual)
+
+    def test_factible_without_product_bytes_fails_closed(self) -> None:
+        from skill_artifact_prove import SkillArtifactProve
+
+        self._write("FACTIBLE\nCUMPLE")
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = load_json(self.tmp / str(packet["residual_path"]))
+        hook = SkillArtifactProve.errors(residual, self.tmp)
+        self.assertTrue(hook, hook)
+        self.assertTrue(
+            any("published artifact missing" in err for err in hook),
+            hook,
+        )
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("published artifact missing", blob)
+
+    def test_named_published_missing_file_fails_closed(self) -> None:
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = bound_residual(self.tmp, "e1")
+        scratch = self.tmp / str(residual["result_ref"])
+        residual["residual"]["evidence"] = of.CloseEvidence.attach(
+            "published_artifact: missing-schedule.md\nFACTIBLE",
+            scratch,
+            rollback=f"git checkout -- {residual['result_ref']}",
+        )
+        dest = self.tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("published artifact missing", blob)
+
+    def test_clean_published_artifact_collects(self) -> None:
+        self._write("mapped the schedule", published=self.CLEAN)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
 
 
 class AdversarialDualTruthCorpus(unittest.TestCase):

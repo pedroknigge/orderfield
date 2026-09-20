@@ -61,28 +61,30 @@ real list so a space path stays one token.
 
 ## Trust profiles (`OF_TRUST`)
 
-`OF_TRUST` is authoritative for **every** adapter. Default is
-`conservative`: no approval bypass, no sandbox bypass, no `--force`, no
-`--auto`, no `--dangerously-*` for any harness. The harness keeps its own
-approval prompts and sandbox. Escalation is an explicit `OF_TRUST=yolo`.
-`yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`),
-not silent defaults: spawn speaks, records `operator_actions`, and the skill
-must ask first.
+`OF_TRUST` is authoritative for **every** adapter. Default is the residual
+**write-floor** (`auto-edit`): documented non-yolo write flags so a child can
+land `.orderfield/` residual. Explicit `OF_TRUST=conservative` is the opt-out.
+`yolo` stays an audited operator action (`OperatorAction`) — ask first, never
+implied. Spawn records `trust` + `write_floor` per child (`WriteFloor`).
 
 | `OF_TRUST` | claude | codex | cursor | opencode | grok | agy | qwen | orca |
 |---|---|---|---|---|---|---|---|---|
-| `conservative` (default) | — | — | — | — | — | — | `--approval-mode default` | — |
+| `conservative` (opt-out) | — | — | — | — | — | — | `--approval-mode default` | — |
 | `plan` | `--permission-mode plan` | `--sandbox read-only` | `--mode plan` | — | `--sandbox read-only` | `--mode plan` | `--approval-mode plan` | — |
-| `auto-edit` | `--permission-mode acceptEdits` | `--sandbox workspace-write` | — | — | — | `--mode accept-edits` | `--approval-mode auto-edit` | — |
-| `auto` | `--permission-mode acceptEdits` | `--sandbox workspace-write` | — | — | — | `--mode accept-edits` | `--approval-mode auto` | — |
+| `auto-edit` (default / write-floor) | `--permission-mode acceptEdits` | `--sandbox workspace-write` | WARN | WARN | WARN | `--mode accept-edits` | `--approval-mode auto-edit` | WARN |
+| `auto` | `--permission-mode acceptEdits` | `--sandbox workspace-write` | WARN | WARN | WARN | `--mode accept-edits` | `--approval-mode auto` | WARN |
 | `yolo` | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` | `--force` | `--auto` | `--always-approve` | `--dangerously-skip-permissions --mode accept-edits` | `--approval-mode yolo` | — |
 
-`—` means "behave as conservative" (no flag). Aliases: `` / `default` →
-`conservative`, `escalated` → `yolo`. Unknown values die before anything is
-spawned. `generic` passes `OF_AGENT` verbatim; trust is your command's job.
-Orca has no trust surface (`task-create`). The table is
-`YOLO_FLAGS` / `_TRUST_FLAGS` in `scripts/of_adapters.py`; adding a flag there
-is a trust decision, not a fix.
+`WARN` = no documented non-yolo write mode: spawn speaks + names next (cursor
+host Write `#200`; grok HostMcp `#269`; opencode `--auto` is yolo-only; orca
+`task-create` has no trust argv — real perms are `worker-start` Host path, not
+a fake `--permission`). Aliases: `` / `default` → `auto-edit` (write-floor),
+`escalated` → `yolo`. Unknown values die before anything is spawned.
+`generic` passes `OF_AGENT` verbatim; a residual-capable `OF_AGENT` must include
+write approvals (skill). The table is `YOLO_FLAGS` / `_TRUST_FLAGS` /
+`WriteFloor` in `scripts/of_adapters.py`; adding a flag there is a trust
+decision, not a fix. Host `.claude/settings.local.json` is read-only advisory
+— never edit or commit host settings.
 
 Honesty (do not invent flags): Claude `auto` stays `acceptEdits` — classifier
 `--permission-mode auto` is account/model/admin gated and would fail many
@@ -135,16 +137,16 @@ home dirs, and never invents a number. `residual.usage` is not a
 balance. `budget.tokens` stays reserved. Mid-mission mix still
 **must ask**. Class: `AdapterBalance` in `scripts/of_adapters.py`.
 
-A conservative child runs with the harness's own approval policy and **no
-stdin** (`of spawn` passes `/dev/null`, so a prompt fails fast instead of
-hanging on the leader's terminal). Print-mode harnesses cannot prompt at
-all: `claude -p` denies permission-gated tools, `codex exec` stays in its
-read-only sandbox, `agent -p` (cursor) does not apply edits — so a
-conservative child that must write a residual or product files exits with
-`no residual yet`. That is the deliberate default: pick `OF_TRUST=auto-edit`
-(acceptEdits / workspace-write) for a headless implementer, never `yolo` by
-reflex. `spawns/<child_id>.json` records `trust` so a lost child is
-explainable.
+A conservative child (`OF_TRUST=conservative`) runs with the harness's own
+approval policy and **no stdin** (`of spawn` passes `/dev/null`, so a prompt
+fails fast instead of hanging on the leader's terminal). Print-mode harnesses
+cannot prompt at all: `claude -p` denies permission-gated tools, `codex exec`
+stays in its read-only sandbox, `agent -p` (cursor) does not apply edits —
+so a conservative child that must write a residual or product files exits
+with `no residual yet`. Residual packs now default to the write-floor
+(`auto-edit`) instead. Explicit conservative is the opt-out; never `yolo` by
+reflex. `spawns/<child_id>.json` records `trust` + `write_floor` so a lost
+child is explainable.
 
 ## Spawn environment (`OF_SPAWN_ENV`)
 
@@ -226,9 +228,10 @@ codex exec --json \
 
 `--json` is the event stream. Residual still lands at `-o`. Spawn appends stream milestones to the same PULSE.
 
-Conservative passes no sandbox flag. `OF_TRUST=auto-edit` adds
-`--sandbox workspace-write` so the child can write the residual without
-bypassing approvals; `OF_TRUST=yolo` is the old
+Write-floor default / `OF_TRUST=auto-edit` adds `--sandbox workspace-write`
+so the child can write the residual without bypassing approvals (worktree
+`-C` / `--add-dir` stay). Explicit `OF_TRUST=conservative` passes no
+sandbox flag. `OF_TRUST=yolo` is
 `--dangerously-bypass-approvals-and-sandbox`.
 
 If `of worktree add --child-id CHILD` recorded a worktree for this packet,
@@ -256,7 +259,9 @@ agent -p --output-format stream-json \
 `of spawn` parses that NDJSON into the same `scratch/<id>/PULSE`. Residual extract from stdout stays. `--resume ID` only when `residual.session_id` is already set (`AdapterResume`). Never `--continue`.
 
 `--force` only under `OF_TRUST=yolo`. `OF_TRUST=plan` adds `--mode plan`.
-`auto-edit`/`auto` stay conservative: Cursor has no accept-edits flag.
+`auto-edit`/`auto` (including the write-floor default) have no accept-edits
+flag: spawn WARNs and names next (host Write `#200` / yolo ask / `OF_AGENT`).
+Do not invent a Cursor permission flag.
 Consented `adapter_hints` with a named model add `--model NAME`. Cursor has
 no cheap/frontier alias (catalog: no frontier row); a consented tier
 without `--model` refuses before launch. Do not invent an alias.
@@ -286,7 +291,7 @@ Binary: `orca`.
 
 Orca is **substrate**. Do not ask it to decide phase or regime.
 
-`of spawn --adapter orca` is best-effort (`task-create` with the rendered prompt as `--spec`) — one-shot on the current worktree, not the interactive leak. Prefer the interactive loop: pack first, `of render` as the worker prompt, then `of collect` on the residual. After pack, caps bind even if you never call `of spawn`. Do not let an Orca gate change phase or ORDER.
+`of spawn --adapter orca` is substrate only (`task-create` with the rendered prompt as `--spec`) — one-shot on the current worktree, no trust argv, not the interactive leak. Real write perms live on Host `worker-start`, not a fake `--permission`. Write-floor default WARNs and names `worker-start` / `OF_AGENT`. Prefer the interactive loop: pack first, `of render` as the worker prompt, then `of collect` on the residual. After pack, caps bind even if you never call `of spawn`. Do not let an Orca gate change phase or ORDER.
 
 Interactive `worker-start` is a start↔stop/release pair. The skill opens workers; the leader must close them. Orderfield is not a process supervisor and does not auto-kill Orca processes.
 
@@ -313,7 +318,7 @@ Official Orca skills (`orchestration`, `orca-cli`) can coexist. This skill owns 
 
 ## Grok
 
-Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `OF_TRUST=plan` adds `--sandbox read-only`. `auto-edit`/`auto` stay conservative: Grok has no accept-edits flag. Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` also passes documented `--output-format streaming-json` before `-p` (`StreamJson`). Residual extract from stdout stays the same path as claude/cursor. Host global MCP is isolated by default (`HostMcp`; same path as agy). Spawn metadata is finalized on every outcome (`outcome` + `exit` + `ended_at`), including timeout when a grandchild keeps stdout open. `--json-schema` is omit (no documented file-path residual schema). This is not a qwen-style residual no-op. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
+Candidate binaries: `grok`, `grok-cli`. Headless mode requires `-p`; `--always-approve` is added only under `OF_TRUST=yolo` (conservative keeps Grok's approval prompts). `OF_TRUST=plan` adds `--sandbox read-only`. `auto-edit`/`auto` (write-floor default) have no accept-edits flag: spawn WARNs and names next (HostMcp `#269` / yolo ask / `OF_AGENT`). Do not invent a Grok permission flag. Consented `adapter_hints` with a named model add `--model NAME` before `-p` (Grok CLI `-m`/`--model`). Tier-only is no-op — do not invent a cheap/frontier id. `of spawn --adapter grok` also passes documented `--output-format streaming-json` before `-p` (`StreamJson`). Residual extract from stdout stays the same path as claude/cursor. Host global MCP is isolated by default (`HostMcp`; same path as agy). Spawn metadata is finalized on every outcome (`outcome` + `exit` + `ended_at`), including timeout when a grandchild keeps stdout open. `--json-schema` is omit (no documented file-path residual schema). This is not a qwen-style residual no-op. If that CLI is missing, set `OF_AGENT` and `--adapter generic`. Interactive Grok sessions should `of pack` / `of handoff` (or full `of render`) and delegate with the native subagent primitive — the leader must not do the slice. Pack is the cap surface; Agent/render does not bypass it.
 
 Skills: `.grok/skills/orderfield/` and `.agents/skills/orderfield/`.
 
@@ -377,7 +382,7 @@ qwen --output-format json --approval-mode default \
 
 ### Trust profiles
 
-Default trust is **conservative / non-escalated**: `--approval-mode default`, never `--yolo`. The flag is always passed so a user setting such as `tools.approvalMode=yolo` cannot silently escalate. Visible override: `OF_TRUST` (`conservative` (default), `plan`, `auto-edit`, `auto`, `yolo`) — see the table above.
+Default trust is the residual **write-floor**: `--approval-mode auto-edit`, never `--yolo`. Explicit `OF_TRUST=conservative` passes `--approval-mode default` so a user setting such as `tools.approvalMode=yolo` cannot silently escalate. Visible override: `OF_TRUST` (`auto-edit` (default), `conservative`, `plan`, `auto`, `yolo`) — see the table above.
 
 Kernel vs harness verification boundary:
 
@@ -414,8 +419,9 @@ export OF_AGENT='my-agent --add-dir "/path/with spaces/.git"'
 
 The command receives the prompt as its last argument and the allowlisted
 environment (`OF_SPAWN_ENV` to widen). It must write the residual to the
-packet's `residual_path`. `OF_TRUST` is not translated for generic: put your
-own approval flags in `OF_AGENT`.
+packet's `residual_path`. `OF_TRUST` is not translated for generic: a
+residual-capable `OF_AGENT` must include write approvals. Spawn WARNs on the
+write-floor default.
 
 **Handoff, if you do not:**
 
