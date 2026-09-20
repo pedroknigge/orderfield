@@ -33,7 +33,8 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. No new C-ID (honesty cap). No VERSION bump. `#283`.
 - **Reuse, not a new verb:** `ReviewScope` inherits this wave's owns-path / published set (`1-4` or N≤4 full; `5-10` / `10-50` or N>4 scoped). Packet `review_scope` is a cite set, not `owns_paths`. `ORDER.agent_band` from `#304`. No VERSION bump. No new C-ID.
 - **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. C-080 extended. Honesty cap. `#282` / compose `#280`. Design: `docs/features/kernel/wave-review-scope.md`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#282` / `#283` / `#291` / `#307` / `#308` / `#310` land on the same line (no bump).
+- **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Archive exact build/test bytes; deterministic receipt gate accepts or falls back; cited tamper is collect INVALID (not green). Wave-end verifier prefers receipts + published artifacts. No VERSION bump. `#284` / `#278` / `#251` / `#280`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#282` / `#283` / `#284` / `#291` / `#307` / `#308` / `#310` land on the same line (no bump).
 
 ## 0.8.22
 

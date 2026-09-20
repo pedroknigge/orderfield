@@ -2622,6 +2622,40 @@ class SkillCloseEvidence(unittest.TestCase):
         self.assertIn("closeevidence", appendix_fold.replace(" ", ""))
 
 
+class SkillEvidenceReceipt(unittest.TestCase):
+    """SKILL teaches receipts + wave-end verifier prefers them over narrative."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_slave_name_receipts(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8")
+        table = self.table(core).casefold()
+        self.assertIn("evidence_receipt", table)
+        self.assertIn("evidencereceipt", table.replace(" ", "").replace("`", ""))
+        self.assertIn("wave-end verifier prefers receipts", table)
+        self.assertIn("published artifacts", table)
+        self.assertIn("file read/search bypass", table)
+        appendix_fold = appendix.casefold()
+        self.assertIn("evidence_receipt", appendix_fold)
+        self.assertIn("evidencereceipt", appendix_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("wave-end verifier", appendix_fold)
+        self.assertIn("published artifacts", appendix_fold)
+        self.assertIn("observationpack", appendix_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("must not strip", appendix_fold)
+        self.assertIn("bad receipt", appendix_fold)
+        self.assertIn("file reads", appendix_fold)
+        slave_fold = slave.casefold()
+        self.assertIn("evidence_receipt", slave_fold)
+        self.assertIn("evidencereceipt", slave_fold.replace(" ", "").replace("`", ""))
+        self.assertIn("wave-end verifier prefers receipts", slave_fold)
+        self.assertIn("not a second contract", alias.casefold())
+
+
 class SkillOwnedWrite(unittest.TestCase):
     """SKILL teaches implementer done needs an owned write. Do not trust status."""
 

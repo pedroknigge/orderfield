@@ -273,6 +273,8 @@ from of.spec import (
     write_spec,
 )
 
+from of.receipt import EvidenceReceipt
+
 from of.pack import (
     CHILD_ID_RE,
     PACKET_IDENTITY_FIELDS,
@@ -893,6 +895,7 @@ __all__ = [
     'require_spec_intact',
     'CloseEvidence',
     'CodexNullOmit',
+    'EvidenceReceipt',
     'OwnedWrite',
     'ResidualQuality',
     'require_wave_transition',

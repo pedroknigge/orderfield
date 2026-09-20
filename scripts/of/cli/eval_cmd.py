@@ -40,7 +40,9 @@ from of.pack import (
     CloseEvidence,
     OwnedWrite,
     packet_digest,
+    render_prompt,
 )
+from of.receipt import EvidenceReceipt
 from of.cli.spec_cmd import CloseProof
 
 
@@ -521,6 +523,87 @@ def eval_setup_recovery_close_evidence_product_sha(root: Path) -> None:
             OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
         },
     )
+
+
+@_register_eval_fixture("recovery_evidence_receipt")
+def eval_setup_recovery_evidence_receipt(root: Path) -> None:
+    """Tampered receipt cannot collect; verifier prompt names receipts."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "eval evidence receipt gate",
+        "--phase",
+        "verify",
+    )
+    EvalInvariantSetup.require_ok(init, "init")
+    packed = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "map the build log",
+        "--role",
+        "explorer",
+        "--child-id",
+        "e1",
+    )
+    EvalInvariantSetup.require_ok(packed, "pack")
+    verifier = eval_run_of(
+        root,
+        "pack",
+        "--slice",
+        "wave-end review of published residual",
+        "--role",
+        "verifier",
+        "--child-id",
+        "v1",
+    )
+    EvalInvariantSetup.require_ok(verifier, "pack verifier")
+    vpacket = load_json(wave_dir(1, root) / "packets" / "v1.json")
+    prompt_path = wave_dir(1, root) / "prompts" / "v1.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text(render_prompt(vpacket, root=root), encoding="utf-8")
+    packet = load_json(wave_dir(1, root) / "packets" / "e1.json")
+    notes = root / ".orderfield" / "work" / "scratch" / "e1" / "notes.md"
+    notes.parent.mkdir(parents=True, exist_ok=True)
+    notes.write_text("explorer mapped the log\n", encoding="utf-8")
+    scratch = notes.parent
+    data = (
+        "python -m unittest discover -s tests\n"
+        "FAILED tests/test_mod.py:12\n"
+        + ("pad tests/test_mod.py line\n" * 200)
+    ).encode("utf-8")
+    receipt, outcome = EvidenceReceipt.reduce(
+        scratch,
+        data,
+        command_id="pytest-unit",
+        exit_code=1,
+        command="python -m unittest discover -s tests",
+        quotes=["FAILED tests/test_mod.py:12"],
+        paths=["tests/test_mod.py"],
+        root=root,
+    )
+    if outcome != EvidenceReceipt.ACCEPT or receipt is None:
+        raise RuntimeError(f"fixture receipt must ACCEPT; got {outcome}")
+    receipt["quotes"] = ["CUMPLE all tests passed"]
+    receipt_path = scratch / "logs" / "pytest-unit.receipt.json"
+    receipt_path.write_bytes(EvidenceReceipt.dump(receipt))
+    residual = load_json(
+        kernel_repo_root() / "assets" / "fixtures" / "residual.done.json"
+    )
+    for key in PACKET_IDENTITY_FIELDS:
+        residual[key] = packet[key]
+    residual["result_ref"] = notes.relative_to(root).as_posix()
+    rem = residual.setdefault("residual", {})
+    rem["evidence"] = CloseEvidence.attach(
+        "mapped the log\nevidence_receipt: "
+        + receipt_path.relative_to(root).as_posix(),
+        notes,
+        rollback="git checkout -- .orderfield/work/scratch/e1/notes.md",
+    )
+    dest = root / str(packet["residual_path"])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(dest, residual)
 
 
 @_register_eval_fixture("recovery_slogan_evidence")
@@ -2333,6 +2416,9 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.OwnedWriteGate",
     "tests.test_kernel.SkillCloseEvidence",
     "tests.test_kernel.SkillOwnedWrite",
+    "tests.test_evidence_receipt.EvidenceReceiptGate",
+    "tests.test_evidence_receipt.EvidenceReceiptCollect",
+    "tests.test_packaging.SkillEvidenceReceipt",
     "tests.test_kernel.SkillLivingMap",
     "tests.test_kernel.LivingMapGate",
     "tests.test_kernel.SkillHarnessMixPlaybook",
