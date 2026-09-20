@@ -17,7 +17,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack. The table names the field-run verbs. Lab `eval` stays in the appendix.
 
-The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
+The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when work goes through `of` — exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
 Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
