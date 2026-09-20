@@ -18,7 +18,9 @@ from of.field import (
     load_order,
     load_state,
     load_wave_report,
+    of_dir,
     parse_utc,
+    sha256_text,
     spec_log_dir,
     spec_path,
     utc_now,
@@ -26,6 +28,7 @@ from of.field import (
 )
 
 from of.spec import (
+    load_requirements,
     requirement_coverage_errors,
     spec_bytes_hash,
 )
@@ -796,7 +799,10 @@ class PlanCoverage:
         source_text: str | None = None,
     ) -> list[str]:
         if order is None:
-            order = load_order(root)
+            try:
+                order = load_order(root)
+            except SystemExit:
+                order = {}
         rels: list[str] = []
         seen: set[str] = set()
 
@@ -817,6 +823,8 @@ class PlanCoverage:
         extra = PlanCoverage.source_file_cite(root, source_file)
         if extra:
             add(extra)
+        for rel, _digest in PlanIngress.pinned(order):
+            add(rel)
         return rels
 
     @staticmethod
@@ -1064,6 +1072,721 @@ class PlanCoverage:
         print(f"note         {PlanCoverage.NOTE_BIAS}", file=file)
         print(f"{PlanCoverage.KIND}   {' '.join(orphans[:8])}", file=file)
         print(f"next         {PlanCoverage.NEXT}", file=file)
+        return True
+
+
+class PlanIngress:
+    """Mode + materialize + source hash + fidelity. No new verb.
+
+    Deep module: one place owns the disk contract path. Init / pack /
+    doctor / close call this interface. Reuses PlanCoverage pins and
+    PlanDocSync cite/resolve. Not a CMS. Not ORDER.plan_source. #324.
+    """
+
+    KIND = "plan_fidelity"
+    KIND_INGRESS = "plan_ingress"
+    MODE_FOLDER = "folder"
+    MODE_CHAT = "chat"
+    MODE_PROMPT = "prompt"
+    STATUS_IDLE = "idle"
+    STATUS_OK = "ok"
+    STATUS_GAP = "gap"
+    STATUS_INVENT = "invent"
+    STATUS_CHAT = "chat"
+    FAIL_CLOSED_CUE = "plan_fidelity fail-closed"
+    DURABLE_REL = ".orderfield/plan-source.md"
+    PROMOTE_NAME = "plan-source.md"
+    DEFAULT_OWNER = "ingress"
+    MODE_CUE_RE = re.compile(r"plan_ingress\s+(folder|chat|prompt)\b", re.I)
+    SOURCE_PIN_RE = re.compile(
+        r"plan_source\s+(\S+)\s+sha=([0-9a-fA-F]{64})\b"
+    )
+    CHAT_CAPTURE_RE = re.compile(r"chat-capture-", re.I)
+    NEEDLES = (
+        "PROHIBIDO",
+        "Definition of Done",
+        "DoD",
+        "INFO EXCEDENTE",
+        "PARAR",
+        "## COLA",
+        "FASE 0",
+    )
+    CHAT_CUES = (
+        "as discussed",
+        "what we discussed",
+        "do what we discussed",
+        "from chat",
+        "what we talked",
+        "como hablamos",
+        "hacé esto",
+        "hace esto",
+    )
+    DISPOSABLE_RELS = frozenset(
+        {".orderfield/ingest.md", "prompt.md", "PROMPT.md"}
+    )
+    NOTE_GAP = (
+        "plan_fidelity gap — SPEC/requirements drop mandatory source "
+        "sections (HOLD)"
+    )
+    NOTE_INVENT = (
+        "plan_fidelity invent — a plan MD was written that is not the "
+        "pinned source (HOLD)"
+    )
+    NOTE_CHAT = (
+        "plan_ingress chat — write a durable capture then cite it; "
+        "chat memory is not the contract"
+    )
+    NEXT_GAP = (
+        "of spec --amend / --add to restore source needles, or explicit "
+        "plan amend"
+    )
+    NEXT_INVENT = "remove the invented plan MD or cite it via explicit amend"
+    NEXT_CHAT = (
+        "write docs/plans/<owner>/chat-capture-<ts>.md or "
+        ".orderfield/plan-source.md then cite it"
+    )
+
+    @staticmethod
+    def constraints_blob(order: dict[str, Any] | None) -> str:
+        return "\n".join(
+            str(item) for item in ((order or {}).get("constraints") or [])
+        )
+
+    @staticmethod
+    def cue_mode(order: dict[str, Any] | None) -> str | None:
+        match = PlanIngress.MODE_CUE_RE.search(
+            PlanIngress.constraints_blob(order)
+        )
+        return match.group(1).casefold() if match else None
+
+    @staticmethod
+    def pinned(order: dict[str, Any] | None) -> list[tuple[str, str]]:
+        found: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for item in (order or {}).get("constraints") or []:
+            match = PlanIngress.SOURCE_PIN_RE.search(str(item or ""))
+            if not match:
+                continue
+            rel = match.group(1).replace("\\", "/")
+            if not rel or rel in seen:
+                continue
+            seen.add(rel)
+            found.append((rel, match.group(2).casefold()))
+        return found
+
+    @staticmethod
+    def needles_in(text: str) -> list[str]:
+        found: list[str] = []
+        seen: set[str] = set()
+        body = str(text or "")
+        for needle in PlanIngress.NEEDLES:
+            if needle in body and needle not in seen:
+                seen.add(needle)
+                found.append(needle)
+        for row in PlanCoverage.sections(body):
+            rid = str(row.get("id") or "")
+            if rid and rid not in seen:
+                seen.add(rid)
+                found.append(rid)
+        return found
+
+    @staticmethod
+    def looks_detailed(text: str) -> bool:
+        body = str(text or "")
+        return any(needle in body for needle in PlanIngress.NEEDLES)
+
+    @staticmethod
+    def looks_chat(text: str) -> bool:
+        fold = str(text or "").casefold()
+        return any(cue in fold for cue in PlanIngress.CHAT_CUES)
+
+    @staticmethod
+    def disposable_rel(root: Path, source_file: str | Path | None) -> str | None:
+        raw = str(source_file or "").strip()
+        if not raw or raw == "-":
+            return None
+        path = Path(raw)
+        cand = path if path.is_absolute() else Path(root) / path
+        try:
+            rel = cand.resolve().relative_to(Path(root).resolve()).as_posix()
+        except (OSError, ValueError):
+            name = path.name
+            return name if name in PlanIngress.DISPOSABLE_RELS else None
+        if rel in PlanIngress.DISPOSABLE_RELS:
+            return rel
+        return None
+
+    @staticmethod
+    def existing_cites(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        try:
+            rels = PlanCoverage.cited_rels(
+                root, order, source_file, source_text
+            )
+        except (OSError, TypeError, ValueError, SystemExit):
+            return out
+        disposable = set(PlanIngress.DISPOSABLE_RELS)
+        for rel in rels:
+            posix = str(rel or "").replace("\\", "/")
+            name = posix.rsplit("/", 1)[-1]
+            if posix in disposable or name in {"ingest.md", "prompt.md", "PROMPT.md"}:
+                continue
+            for file_rel, path in PlanCoverage.expand(root, rel):
+                if not path.is_file() or path.is_symlink():
+                    continue
+                if file_rel in seen:
+                    continue
+                fname = file_rel.rsplit("/", 1)[-1]
+                if file_rel in disposable or fname in {
+                    "ingest.md",
+                    "prompt.md",
+                    "PROMPT.md",
+                }:
+                    continue
+                seen.add(file_rel)
+                out.append(file_rel)
+        return out
+
+    @staticmethod
+    def classify(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> str | None:
+        cue = PlanIngress.cue_mode(order)
+        if cue:
+            return cue
+        if PlanIngress.existing_cites(
+            root, order, source_file, source_text
+        ):
+            return PlanIngress.MODE_FOLDER
+        text = str(source_text or "")
+        disposable = PlanIngress.disposable_rel(root, source_file)
+        if PlanIngress.looks_detailed(text):
+            return PlanIngress.MODE_PROMPT
+        if disposable and (
+            PlanIngress.looks_detailed(text) or PlanCoverage.sections(text)
+        ):
+            return PlanIngress.MODE_PROMPT
+        if PlanIngress.looks_chat(text):
+            return PlanIngress.MODE_CHAT
+        return None
+
+    @staticmethod
+    def owner_name(root: Path, order: dict[str, Any] | None = None) -> str:
+        plans = Path(root) / "docs" / "plans"
+        if plans.is_dir() and not plans.is_symlink():
+            try:
+                subs = sorted(
+                    item.name
+                    for item in plans.iterdir()
+                    if item.is_dir()
+                    and not item.is_symlink()
+                    and not item.name.startswith(".")
+                )
+            except OSError:
+                subs = []
+            if len(subs) == 1:
+                return subs[0]
+        oid = str((order or {}).get("id") or "")
+        if oid.startswith("ord_"):
+            return oid
+        return PlanIngress.DEFAULT_OWNER
+
+    @staticmethod
+    def promote_dest(root: Path, order: dict[str, Any] | None = None) -> Path:
+        plans = Path(root) / "docs" / "plans"
+        if plans.is_dir() and not plans.is_symlink():
+            return (
+                plans
+                / PlanIngress.owner_name(root, order)
+                / PlanIngress.PROMOTE_NAME
+            )
+        return of_dir(root) / "plan-source.md"
+
+    @staticmethod
+    def dest_rel(root: Path, dest: Path) -> str:
+        try:
+            return dest.resolve().relative_to(Path(root).resolve()).as_posix()
+        except (OSError, ValueError):
+            return dest.as_posix().replace("\\", "/")
+
+    @staticmethod
+    def write_verbatim(path: Path, text: str) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = str(text).encode("utf-8")
+        path.write_bytes(data)
+        return hashlib.sha256(data).hexdigest()
+
+    @staticmethod
+    def capture_rels(root: Path) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+
+        def add(rel: str) -> None:
+            posix = str(rel or "").replace("\\", "/")
+            if not posix or posix in seen:
+                return
+            seen.add(posix)
+            out.append(posix)
+
+        for cue in PlanDocSync.PLAN_DIR_CUES:
+            tree = Path(root) / cue.rstrip("/")
+            if not tree.is_dir() or tree.is_symlink():
+                continue
+            try:
+                files = sorted(
+                    item
+                    for item in tree.rglob("*.md")
+                    if item.is_file() and not item.is_symlink()
+                )
+            except OSError:
+                continue
+            root_res = Path(root).resolve()
+            for item in files:
+                name = item.name.casefold()
+                if not PlanIngress.CHAT_CAPTURE_RE.search(name):
+                    continue
+                try:
+                    add(item.resolve().relative_to(root_res).as_posix())
+                except (OSError, ValueError):
+                    continue
+        durable = of_dir(root) / "plan-source.md"
+        if durable.is_file() and not durable.is_symlink():
+            add(PlanIngress.DURABLE_REL)
+        return out
+
+    @staticmethod
+    def pin_mode(order: dict[str, Any], mode: str) -> bool:
+        if PlanIngress.cue_mode(order) == mode:
+            return False
+        if PlanIngress.cue_mode(order):
+            return False
+        constraints = [str(item) for item in (order.get("constraints") or [])]
+        constraints.append(f"{PlanIngress.KIND_INGRESS} {mode}")
+        order["constraints"] = constraints
+        return True
+
+    @staticmethod
+    def pin_source(order: dict[str, Any], rel: str, digest: str) -> bool:
+        posix = str(rel or "").replace("\\", "/")
+        hex_digest = str(digest or "").casefold()
+        if not posix or not hex_digest:
+            return False
+        constraints = [str(item) for item in (order.get("constraints") or [])]
+        blob = "\n".join(constraints)
+        changed = False
+        pin = f"plan_source {posix} sha={hex_digest}"
+        if pin not in blob and f"plan_source {posix} " not in blob:
+            constraints.append(pin)
+            changed = True
+        keep = f"{PlanCoverage.PIN_PREFIX}{posix} coverage honest"
+        has_keep = any(
+            str(item).startswith(f"{PlanCoverage.PIN_PREFIX}{posix} ")
+            for item in constraints
+        )
+        if not has_keep:
+            constraints.append(keep)
+            changed = True
+        if changed:
+            order["constraints"] = constraints
+        return changed
+
+    @staticmethod
+    def plan_tree_rels(root: Path) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        root_res = Path(root).resolve()
+        for cue in ("docs/plans", "docs/plan"):
+            tree = Path(root) / cue
+            if not tree.is_dir() or tree.is_symlink():
+                continue
+            try:
+                files = sorted(
+                    item
+                    for item in tree.rglob("*.md")
+                    if item.is_file() and not item.is_symlink()
+                )
+            except OSError:
+                continue
+            for item in files:
+                try:
+                    rel = item.resolve().relative_to(root_res).as_posix()
+                except (OSError, ValueError):
+                    continue
+                if rel in seen:
+                    continue
+                seen.add(rel)
+                out.append(rel)
+        durable = of_dir(root) / "plan-source.md"
+        if durable.is_file() and not durable.is_symlink():
+            if PlanIngress.DURABLE_REL not in seen:
+                out.append(PlanIngress.DURABLE_REL)
+        return out
+
+    @staticmethod
+    def allowed_rels(order: dict[str, Any] | None) -> set[str]:
+        allowed = {rel for rel, _digest in PlanIngress.pinned(order)}
+        for item in (order or {}).get("constraints") or []:
+            text = str(item or "")
+            if text.startswith(PlanCoverage.PIN_PREFIX) and text.endswith(
+                " coverage honest"
+            ):
+                rel = text[len(PlanCoverage.PIN_PREFIX) : -len(" coverage honest")]
+                if rel:
+                    allowed.add(rel.replace("\\", "/"))
+        return allowed
+
+    @staticmethod
+    def invented(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> list[str]:
+        if not PlanIngress.pinned(order):
+            return []
+        allowed = PlanIngress.allowed_rels(order)
+        return [
+            rel
+            for rel in PlanIngress.plan_tree_rels(root)
+            if rel not in allowed
+        ]
+
+    @staticmethod
+    def missing_needles(source: str, spec_text: str, req_blob: str) -> list[str]:
+        """Prose needles must remain in SPEC; IDs may live in the index."""
+        spec = str(spec_text or "")
+        reqs = str(req_blob or "")
+        missing: list[str] = []
+        for needle in PlanIngress.NEEDLES:
+            if needle in source and needle not in spec:
+                missing.append(needle)
+        for row in PlanCoverage.sections(source):
+            rid = str(row.get("id") or "")
+            if rid and rid not in spec and rid not in reqs:
+                missing.append(rid)
+        return missing
+
+    @staticmethod
+    def fail_closed(
+        order: dict[str, Any] | None, mode: str | None
+    ) -> bool:
+        blob = PlanIngress.constraints_blob(order).casefold()
+        if PlanIngress.FAIL_CLOSED_CUE in blob:
+            return True
+        if PlanCoverage.FAIL_CLOSED_CUE in blob:
+            return True
+        if mode in {PlanIngress.MODE_PROMPT, PlanIngress.MODE_CHAT}:
+            return bool(PlanIngress.pinned(order))
+        return False
+
+    @staticmethod
+    def read_rel(root: Path, rel: str) -> str | None:
+        path = PlanDocSync.resolve(root, rel)
+        if path is None or not path.is_file() or path.is_symlink():
+            return None
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+
+    @staticmethod
+    def document(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> dict[str, Any]:
+        if order is None:
+            try:
+                order = load_order(root)
+            except SystemExit:
+                order = {}
+        mode = PlanIngress.classify(
+            root, order, source_file, source_text
+        )
+        pins = PlanIngress.pinned(order)
+        invented = PlanIngress.invented(root, order)
+        gaps: list[str] = []
+        spec_text = ""
+        spec = spec_path(root)
+        if field_is_file(spec):
+            try:
+                spec_text = spec.read_text(encoding="utf-8")
+            except OSError:
+                spec_text = ""
+        try:
+            req_blob = json.dumps(load_requirements(root), ensure_ascii=False)
+        except (OSError, TypeError, ValueError, SystemExit):
+            req_blob = ""
+        for rel, _digest in pins:
+            text = PlanIngress.read_rel(root, rel)
+            if text is None:
+                continue
+            for needle in PlanIngress.missing_needles(text, spec_text, req_blob):
+                if needle not in gaps:
+                    gaps.append(needle)
+        captures = PlanIngress.capture_rels(root)
+        hold = PlanIngress.fail_closed(order, mode)
+        if invented and pins:
+            status = PlanIngress.STATUS_INVENT
+            note = PlanIngress.NOTE_INVENT
+            nxt = PlanIngress.NEXT_INVENT
+        elif mode == PlanIngress.MODE_CHAT and not captures and not pins:
+            status = PlanIngress.STATUS_CHAT
+            note = PlanIngress.NOTE_CHAT
+            nxt = PlanIngress.NEXT_CHAT
+        elif gaps and (hold or pins):
+            status = PlanIngress.STATUS_GAP
+            note = PlanIngress.NOTE_GAP
+            nxt = PlanIngress.NEXT_GAP
+        elif pins or (
+            mode == PlanIngress.MODE_FOLDER
+            and PlanIngress.existing_cites(
+                root, order, source_file, source_text
+            )
+        ):
+            status = PlanIngress.STATUS_OK
+            note = ""
+            nxt = ""
+        else:
+            status = PlanIngress.STATUS_IDLE
+            note = ""
+            nxt = ""
+        return {
+            "status": status,
+            "mode": mode or "",
+            "paths": [rel for rel, _digest in pins],
+            "pins": [{"rel": rel, "sha": digest} for rel, digest in pins],
+            "invented": invented,
+            "gaps": gaps,
+            "captures": captures,
+            "fail_closed": hold,
+            "hot": status
+            in {
+                PlanIngress.STATUS_GAP,
+                PlanIngress.STATUS_INVENT,
+                PlanIngress.STATUS_CHAT,
+            },
+            "note": note,
+            "next": nxt,
+        }
+
+    @staticmethod
+    def apply(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> dict[str, Any]:
+        if order is None:
+            try:
+                order = load_order(root)
+            except SystemExit:
+                order = {}
+        text = source_text
+        if text is None:
+            for path in PlanIngress.disposable_files(root, source_file):
+                try:
+                    text = path.read_text(encoding="utf-8")
+                    break
+                except OSError:
+                    continue
+        mode = PlanIngress.classify(root, order, source_file, text)
+        promoted = ""
+        if mode:
+            PlanIngress.pin_mode(order, mode)
+        if mode == PlanIngress.MODE_FOLDER:
+            for rel in PlanIngress.existing_cites(
+                root, order, source_file, text
+            ):
+                body = PlanIngress.read_rel(root, rel)
+                if body is None:
+                    continue
+                PlanIngress.pin_source(order, rel, sha256_text(body))
+        elif mode == PlanIngress.MODE_PROMPT and (text or "").strip():
+            if not PlanIngress.pinned(order):
+                dest = PlanIngress.promote_dest(root, order)
+                digest = PlanIngress.write_verbatim(dest, str(text))
+                rel = PlanIngress.dest_rel(root, dest)
+                PlanIngress.pin_source(order, rel, digest)
+                promoted = rel
+        elif mode == PlanIngress.MODE_CHAT:
+            for rel in PlanIngress.capture_rels(root):
+                body = PlanIngress.read_rel(root, rel)
+                if body is None:
+                    continue
+                PlanIngress.pin_source(order, rel, sha256_text(body))
+        doc = PlanIngress.document(root, order, source_file, text)
+        doc["promoted"] = promoted
+        return doc
+
+    @staticmethod
+    def disposable_files(
+        root: Path, source: str | Path | None = None
+    ) -> list[Path]:
+        targets = [
+            of_dir(root) / "ingest.md",
+            Path(root) / "PROMPT.md",
+            Path(root) / "prompt.md",
+        ]
+        if source is not None and str(source).strip() and str(source) != "-":
+            raw = Path(source)
+            targets.append(raw if raw.is_absolute() else Path(root) / raw)
+        out: list[Path] = []
+        seen: set[str] = set()
+        for path in targets:
+            try:
+                if not path.is_file() or path.is_symlink():
+                    continue
+                ident = str(path.resolve())
+                if ident in seen:
+                    continue
+                seen.add(ident)
+                out.append(path)
+            except OSError:
+                continue
+        return out
+
+    @staticmethod
+    def promote_disposable(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source: str | Path | None = None,
+    ) -> str:
+        """Promote a disposable ingest body before unlink. No silent rewrite."""
+        if PlanIngress.pinned(order):
+            return ""
+        text = ""
+        src: str | Path | None = source
+        for path in PlanIngress.disposable_files(root, source):
+            try:
+                text = path.read_text(encoding="utf-8")
+                src = path
+                break
+            except OSError:
+                continue
+        if not (text or "").strip():
+            return ""
+        mode = PlanIngress.classify(root, order, src, text)
+        if mode != PlanIngress.MODE_PROMPT:
+            return ""
+        if order is None:
+            order = {}
+        doc = PlanIngress.apply(
+            root, order, source_file=src, source_text=text
+        )
+        return str(doc.get("promoted") or "")
+
+    @staticmethod
+    def hold_pack(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> str | None:
+        doc = PlanIngress.document(root, order)
+        status = str(doc.get("status") or "")
+        if status == PlanIngress.STATUS_CHAT:
+            return (
+                f"of pack refused: {PlanIngress.NOTE_CHAT}; "
+                f"{PlanIngress.NEXT_CHAT}"
+            )
+        if status == PlanIngress.STATUS_INVENT:
+            who = " ".join(str(p) for p in (doc.get("invented") or []))
+            return (
+                f"of pack refused: {PlanIngress.NOTE_INVENT} {who}; "
+                f"{PlanIngress.NEXT_INVENT}"
+            )
+        if status == PlanIngress.STATUS_GAP and doc.get("fail_closed"):
+            who = " ".join(str(n) for n in (doc.get("gaps") or []))
+            return (
+                f"of pack refused: {PlanIngress.NOTE_GAP} {who}; "
+                f"{PlanIngress.NEXT_GAP}"
+            )
+        return None
+
+    @staticmethod
+    def hold_close(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> str | None:
+        hold = PlanIngress.hold_pack(root, order)
+        if not hold:
+            return None
+        return hold.replace("of pack refused:", "of close refused:", 1)
+
+    @staticmethod
+    def doctor_lines(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> tuple[list[str], bool]:
+        doc = PlanIngress.document(root, order)
+        if not doc["hot"]:
+            return [], False
+        status = str(doc.get("status") or PlanIngress.STATUS_GAP)
+        if status == PlanIngress.STATUS_INVENT:
+            who = " ".join(str(p) for p in (doc.get("invented") or []))
+            kind = PlanIngress.KIND
+        elif status == PlanIngress.STATUS_CHAT:
+            who = ""
+            kind = PlanIngress.KIND_INGRESS
+        else:
+            who = " ".join(str(n) for n in (doc.get("gaps") or []))
+            kind = PlanIngress.KIND
+        line = f"  {kind}     {status}"
+        if who:
+            line += f"  {who}"
+        lines = [line, f"  note          {doc['note']}"]
+        if doc.get("next"):
+            lines.append(f"  next          {doc['next']}")
+        return lines, True
+
+    @staticmethod
+    def emit(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        file: Any = None,
+        apply_doc: dict[str, Any] | None = None,
+    ) -> bool:
+        doc = apply_doc or PlanIngress.document(root, order)
+        mode = str(doc.get("mode") or "")
+        promoted = str(doc.get("promoted") or "")
+        spoke = False
+        if promoted:
+            print(
+                f"{PlanIngress.KIND_INGRESS}  {mode or PlanIngress.MODE_PROMPT}"
+                f"  promoted {promoted}",
+                file=file,
+            )
+            pins = list(doc.get("pins") or [])
+            if pins:
+                print(
+                    f"plan_source   sha={pins[0].get('sha') or ''}",
+                    file=file,
+                )
+            spoke = True
+        elif mode == PlanIngress.MODE_FOLDER and doc.get("paths"):
+            where = " ".join(str(p) for p in (doc.get("paths") or [])[:3])
+            print(
+                f"{PlanIngress.KIND_INGRESS}  folder  cited {where}",
+                file=file,
+            )
+            spoke = True
+        if not doc.get("hot"):
+            return spoke
+        print(f"note         {doc['note']}", file=file)
+        extra = ""
+        if doc.get("status") == PlanIngress.STATUS_INVENT:
+            extra = " ".join(str(p) for p in (doc.get("invented") or []))
+        elif doc.get("status") == PlanIngress.STATUS_GAP:
+            extra = " ".join(str(n) for n in (doc.get("gaps") or []))
+        if extra:
+            print(f"{PlanIngress.KIND}   {extra}", file=file)
+        if doc.get("next"):
+            print(f"next         {doc['next']}", file=file)
         return True
 
 

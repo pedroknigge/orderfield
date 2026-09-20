@@ -1,0 +1,40 @@
+{
+  "id": "recovery/plan-ingress-promote",
+  "description": "Ultra-detailed ingest.md is the plan: promote verbatim, pin sha, discard disposable",
+  "fixture": "recovery_plan_ingress_promote",
+  "tags": ["recovery", "plan-ingress", "promote"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ],
+      "file_contains": [
+        {
+          "path": ".orderfield/plan-source.md",
+          "contains": [
+            "PROHIBIDO",
+            "Definition of Done",
+            "## COLA",
+            "FASE 0",
+            "AUTH-001"
+          ]
+        },
+        {
+          "path": ".orderfield/ORDER.json",
+          "contains": [
+            "plan_source .orderfield/plan-source.md sha=",
+            "keep .orderfield/plan-source.md coverage honest",
+            "plan_ingress prompt"
+          ]
+        }
+      ],
+      "file_missing": [
+        ".orderfield/ingest.md"
+      ]
+    }
+  ]
+}

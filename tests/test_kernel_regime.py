@@ -2011,6 +2011,175 @@ class PlanCoverageUnit(unittest.TestCase):
         self.assertEqual(ids, ["AUTH-001", "STORE-001"])
 
 
+class PlanIngressUnit(unittest.TestCase):
+    """Mode classify + materialize + fidelity helpers. Proofs call PlanIngress."""
+
+    def test_classify_folder_chat_prompt(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-cls-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        self.assertEqual(
+            of.PlanIngress.classify(
+                root, {}, source_text=of.PlanIngressEval.CHAT
+            ),
+            of.PlanIngress.MODE_CHAT,
+        )
+        self.assertEqual(
+            of.PlanIngress.classify(
+                root, {}, source_text=of.PlanIngressEval.DETAILED
+            ),
+            of.PlanIngress.MODE_PROMPT,
+        )
+        of.PlanCoverageEval.write_plan(root)
+        self.assertEqual(
+            of.PlanIngress.classify(
+                root,
+                {},
+                source_text=f"Living surface: {of.PlanCoverageEval.PLAN}\n",
+            ),
+            of.PlanIngress.MODE_FOLDER,
+        )
+        cued = {"constraints": ["plan_ingress chat"]}
+        self.assertEqual(
+            of.PlanIngress.classify(
+                root, cued, source_text=of.PlanIngressEval.DETAILED
+            ),
+            of.PlanIngress.MODE_CHAT,
+        )
+
+    def test_verbatim_promote_round_trip_bytes_and_sha(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-promo-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanIngressEval.write_ingest(root)
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "verbatim promote",
+            "--phase",
+            "build",
+            "--source-file",
+            of.PlanIngressEval.INGEST,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        dest = root / of.PlanIngressEval.DURABLE
+        self.assertTrue(dest.is_file(), initialized.stdout)
+        body = dest.read_bytes()
+        self.assertEqual(body, of.PlanIngressEval.DETAILED.encode("utf-8"))
+        digest = of.sha256_text(of.PlanIngressEval.DETAILED)
+        order = json.loads((root / ".orderfield" / "ORDER.json").read_text())
+        blob = "\n".join(str(c) for c in order.get("constraints") or [])
+        self.assertIn(f"plan_source {of.PlanIngressEval.DURABLE} sha={digest}", blob)
+        self.assertIn(f"keep {of.PlanIngressEval.DURABLE} coverage honest", blob)
+        self.assertFalse((root / of.PlanIngressEval.INGEST).exists())
+        self.assertIn("promoted", initialized.stdout)
+        self.assertIn(digest, initialized.stdout)
+
+    def test_folder_mode_creates_no_new_plan_file(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-folder-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanCoverageEval.write_plan(root)
+        before = {
+            p.relative_to(root).as_posix()
+            for p in (root / "docs" / "plans").rglob("*.md")
+        }
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "folder cite",
+            "--phase",
+            "build",
+            "--source",
+            f"Follow {of.PlanCoverageEval.PLAN}",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        after = {
+            p.relative_to(root).as_posix()
+            for p in (root / "docs" / "plans").rglob("*.md")
+        }
+        self.assertEqual(before, after)
+        self.assertFalse((root / ".orderfield" / "plan-source.md").exists())
+        self.assertFalse((root / "docs" / "plans" / "active" / "plan-source.md").exists())
+        self.assertIn("folder", initialized.stdout)
+
+    def test_chat_without_capture_speaks_next(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-chat-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "from chat",
+            "--phase",
+            "build",
+            "--source",
+            of.PlanIngressEval.CHAT,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn(of.PlanIngress.NOTE_CHAT, initialized.stdout)
+        self.assertIn("chat-capture", initialized.stdout)
+        self.assertFalse((root / of.PlanIngressEval.DURABLE).exists())
+        packed = run_of(
+            root, "pack", "--slice", "thin", "--role", "explorer", "--child-id", "x"
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        self.assertIn("of pack refused: plan_ingress chat", packed.stderr)
+
+    def test_fidelity_gap_when_spec_drops_needles(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-gap-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanIngressEval.write_ingest(root)
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "gap hold",
+            "--phase",
+            "build",
+            "--source-file",
+            of.PlanIngressEval.INGEST,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        revised = run_of(root, "spec", "--revise", of.PlanIngressEval.THIN)
+        self.assertEqual(revised.returncode, 0, revised.stderr)
+        doc = of.PlanIngress.document(root)
+        self.assertEqual(doc["status"], of.PlanIngress.STATUS_GAP)
+        self.assertIn("PROHIBIDO", doc["gaps"])
+        self.assertIn("Definition of Done", doc["gaps"])
+        hold = of.PlanIngress.hold_pack(root)
+        self.assertIsNotNone(hold)
+        self.assertIn("plan_fidelity gap", hold or "")
+
+    def test_invent_path_hold(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-invent-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanIngressEval.setup_invent(root)
+        doc = of.PlanIngress.document(root)
+        self.assertEqual(doc["status"], of.PlanIngress.STATUS_INVENT)
+        self.assertIn(of.PlanIngressEval.INVENTED, doc["invented"])
+        hold = of.PlanIngress.hold_pack(root)
+        self.assertIsNotNone(hold)
+        self.assertIn("plan_fidelity invent", hold or "")
+
+    def test_paste_without_promote_stays_honest(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-paste-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "paste honesty",
+            "--phase",
+            "build",
+            "--source",
+            of.PlanCoverageEval.fixture_text(),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn(of.PlanCoverage.NOTE_PASTE, initialized.stdout)
+        self.assertFalse((root / of.PlanIngressEval.DURABLE).exists())
+        self.assertEqual(of.PlanCoverage.document(root)["sections"], [])
+
+
 class PlanWriteBackUnit(unittest.TestCase):
     """Surgical plan markers. Fail-closed without OwnedWrite / close proof."""
 

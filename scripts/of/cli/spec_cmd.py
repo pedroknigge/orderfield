@@ -43,6 +43,7 @@ from of.regime import (
     DoneWhenLint,
     PlanCoverage,
     PlanDocSync,
+    PlanIngress,
     done_when_closed,
     mark_done_when_closed,
 )
@@ -399,15 +400,17 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             wave = int(state.get("wave") or 1)
             live_n = len(packed_children(root, wave))
             order["rev"] = int(order["rev"]) + 1
+            PlanIngress.apply(root, order, source_file=ingest_source)
             PlanCoverage.ingest(root, order)
             save_order(order, root)
             print(f"rev={order['rev']}")
             PacketRevStale.emit_note(live_n, wave)
         snapshot_session(root, "spec")
-        discard_disposable_ingest(root, ingest_source)
+        discard_disposable_ingest(root, ingest_source, order=order if identity else None)
         if identity:
             PlanDocSync.emit(root, order)
             PlanCoverage.emit_ingest(root, order)
+            PlanIngress.emit(root, order)
             PlanCoverage.emit(root, order)
     counts = requirement_counts(data)
     print(
@@ -1342,11 +1345,15 @@ def cmd_close(args: argparse.Namespace) -> None:
     AuditPressure.emit(root)
     PlanDocSync.emit(root, order)
     PlanCoverage.emit(root, order)
+    PlanIngress.emit(root, order)
     DoctorSkew.emit_teardown(root)
     if not getattr(args, "checklist", False):
         hold = PlanCoverage.hold_close(root, order)
         if hold:
             die(hold)
+        fidelity = PlanIngress.hold_close(root, order)
+        if fidelity:
+            die(fidelity)
     if getattr(args, "checklist", False):
         blocked = CloseChecklist.emit(checklist, machine=True)
         emit_event(

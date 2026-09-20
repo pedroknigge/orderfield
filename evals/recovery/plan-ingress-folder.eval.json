@@ -1,0 +1,35 @@
+{
+  "id": "recovery/plan-ingress-folder",
+  "description": "Folder mode cites the existing plan; kernel writes no new plan MD",
+  "fixture": "recovery_plan_ingress_folder",
+  "tags": ["recovery", "plan-ingress", "folder"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ],
+      "file_contains": [
+        {
+          "path": "docs/plans/active/mega.md",
+          "contains": ["AUTH-001", "HTTP-001"]
+        },
+        {
+          "path": ".orderfield/ORDER.json",
+          "contains": [
+            "plan_ingress folder",
+            "docs/plans/active/mega.md"
+          ]
+        }
+      ],
+      "file_missing": [
+        "docs/plans/active/plan-source.md",
+        ".orderfield/plan-source.md",
+        "docs/plans/optimistic-ux-p0.md"
+      ]
+    }
+  ]
+}

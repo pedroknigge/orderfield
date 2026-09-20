@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.24. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.25. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.24`
+**Status:** Shipped · **Current release line:** `0.8.25`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.25 — plan ingress fidelity (folder / chat / prompt → disk contract)
+
+- Incoming plan is the disk contract: folder cites existing paths only; chat requires a durable capture; prompt promote is verbatim + `plan_source` sha pin (`PlanIngress`; `#324`). `plan_fidelity gap|invent` HOLDs pack. Paste without promote stays honest. No new verb. Proof: `PlanIngressUnit` / `PlanIngressGate` / `recovery/plan-ingress-promote`.
 
 ## 0.8.24 — all-in: dest honesty; wave-end both roles; plan ingest; README When NOT; residual handles; scoped review; evidence receipts; product bar
 

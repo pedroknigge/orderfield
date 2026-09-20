@@ -66,6 +66,10 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | `recovery/plan-doc-sync` | `recovery_plan_doc_sync` | cited `docs/plans/…` stale vs last integrate: `of doctor` WARN `docs_sync stale`; close `--checklist` is advisory; dump is Mode B ask (`PlanDocSync`; #188) |
 | `recovery/plan-first-coverage` | `recovery_plan_first_coverage` | fixture mega-plan with one unpacked heading: `of doctor` WARN `plan_cover orphan HTTP-001`; packing it clears; not a close gate (`PlanCoverage`; #279) |
 | `recovery/plan-ingest-paste` | `recovery_plan_ingest_paste` | plan headings only in `--source` paste: `of doctor` WARN `plan_cover paste`; coverage list empty; not ingest (`PlanCoverage`; #312) |
+| `recovery/plan-ingress-promote` | `recovery_plan_ingress_promote` | ultra-detailed `ingest.md` promoted verbatim to `.orderfield/plan-source.md` with `plan_source` sha pin; disposable discarded (`PlanIngress`; #324) |
+| `recovery/plan-ingress-fidelity` | `recovery_plan_ingress_fidelity` | thin SPEC revise after prompt pin: doctor `plan_fidelity gap`; pack HOLD (`PlanIngress`; #324) |
+| `recovery/plan-ingress-folder` | `recovery_plan_ingress_folder` | cited on-disk plan: kernel writes no new plan MD (`PlanIngress`; #324) |
+| `recovery/plan-ingress-chat` | `recovery_plan_ingress_chat` | chat without capture: doctor speaks next; pack HOLD; no silent success (`PlanIngress`; #324) |
 | `recovery/drive-after-integrate` | `recovery_drive_after_integrate` | after collect+integrate: resume/status/integrate print `DriveAfterIntegrate.speak` with `in_flight 0` + `NEXT-WAVE`; report is not a stop (`DriveAfterIntegrate`; #191) |
 | `recovery/observation-pack` | `recovery_observation_pack` | oversized residual: collect/status/resume speak `handle` + path + excerpt + receipt marker; mid-body sentinel stays on disk and is **not** in stdout (`ObservationPack`; #283) |
 | `recovery/doctor-advisory-ux` | `recovery_doctor_advisory` | healthy first-home: `of doctor` exit 0 (not FAIL); pack/handoff name residual awaiting/MISSING; `of fields` labels `first` not `legacy` (`DoctorSkillVersionSkew` / `DoctorOnePassSkew`) |

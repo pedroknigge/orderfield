@@ -27,7 +27,7 @@ from of.field import (
     session_path,
     write_phase_md,
 )
-from of.regime import DoneWhenLint, PlanCoverage
+from of.regime import DoneWhenLint, PlanCoverage, PlanIngress
 from of.pack import ensure_field_slave_md
 from of.host_ram import AgentBand
 from of.spec import (
@@ -112,7 +112,10 @@ def _stamp_and_write_new_field(
             "(of pack --owns-requirement ID; do not implement without a packet)"
         )
         src_path = Path(source_file) if source_file and str(source_file) != "-" else None
-        discard_disposable_ingest(root, src_path)
+        ingress = PlanIngress.apply(
+            root, order, source_file=src_path, source_text=source_text
+        )
+        discard_disposable_ingest(root, src_path, order=order)
     else:
         print(
             "of: note — no --source/--source-file; ORDER may compress the contract. "
@@ -120,9 +123,13 @@ def _stamp_and_write_new_field(
             "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
             file=sys.stderr,
         )
+        ingress = PlanIngress.apply(
+            root, order, source_file=source_file, source_text=source_text
+        )
     PlanCoverage.emit_ingest(
         root, order, source_file=source_file, source_text=source_text
     )
+    PlanIngress.emit(root, order, apply_doc=ingress)
     save_order(order, root)
     save_state(default_state(), root)
     write_phase_md(root, order)

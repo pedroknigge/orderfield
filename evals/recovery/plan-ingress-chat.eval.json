@@ -1,0 +1,34 @@
+{
+  "id": "recovery/plan-ingress-chat",
+  "description": "Chat mode without a durable capture speaks next; pack HOLD; no silent success",
+  "fixture": "recovery_plan_ingress_chat",
+  "tags": ["recovery", "plan-ingress", "chat"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "plan_ingress",
+        "chat",
+        "write a durable capture",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ],
+      "file_missing": [
+        ".orderfield/plan-source.md"
+      ]
+    },
+    {
+      "run": "pack",
+      "args": ["--slice", "from chat memory", "--role", "explorer", "--child-id", "chat"],
+      "exit": 1,
+      "stderr_contains": [
+        "of pack refused: plan_ingress chat"
+      ]
+    }
+  ]
+}

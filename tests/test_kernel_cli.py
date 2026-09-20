@@ -2212,6 +2212,64 @@ class PlanIngestGate(unittest.TestCase):
         self.assertNotIn("of close refused: plan_cover", checklist.stderr)
 
 
+class PlanIngressGate(unittest.TestCase):
+    """CLI: promote / folder / chat / fidelity HOLD / invent HOLD."""
+
+    def test_prompt_promote_then_pack_hold_on_gap(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-gap-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        of.PlanIngressEval.write_ingest(tmp)
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "prompt gate",
+            "--phase",
+            "build",
+            "--source-file",
+            of.PlanIngressEval.INGEST,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        dest = tmp / of.PlanIngressEval.DURABLE
+        self.assertEqual(
+            dest.read_bytes(), of.PlanIngressEval.DETAILED.encode("utf-8")
+        )
+        revised = run_of(tmp, "spec", "--revise", of.PlanIngressEval.THIN)
+        self.assertEqual(revised.returncode, 0, revised.stderr)
+        doctor = run_of(tmp, "doctor")
+        self.assertEqual(doctor.returncode, 0, doctor.stdout)
+        self.assertIn("plan_fidelity", doctor.stdout)
+        self.assertIn("gap", doctor.stdout)
+        self.assertIn("PROHIBIDO", doctor.stdout)
+        packed = run_of(
+            tmp, "pack", "--slice", "thin", "--role", "explorer", "--child-id", "x"
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        self.assertIn("of pack refused: plan_fidelity gap", packed.stderr)
+
+    def test_invent_path_holds_pack(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-invent-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        of.PlanIngressEval.setup_invent(tmp)
+        packed = run_of(
+            tmp, "pack", "--slice", "thin", "--role", "explorer", "--child-id", "x"
+        )
+        self.assertNotEqual(packed.returncode, 0)
+        self.assertIn("of pack refused: plan_fidelity invent", packed.stderr)
+        self.assertIn("optimistic-ux-p0.md", packed.stderr)
+
+    def test_chat_doctor_speaks_without_silent_success(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-chat-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        of.PlanIngressEval.setup_chat(tmp)
+        doctor = run_of(tmp, "doctor")
+        self.assertEqual(doctor.returncode, 0, doctor.stdout)
+        self.assertIn("plan_ingress", doctor.stdout)
+        self.assertIn("chat", doctor.stdout)
+        self.assertIn(of.PlanIngress.NOTE_CHAT, doctor.stdout)
+        self.assertIn("doctor        WARN", doctor.stdout)
+
+
 class PlanWriteBackGate(unittest.TestCase):
     """Green collect writes the cited plan; false-green does not."""
 

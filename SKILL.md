@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.24. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.8.25. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.24"
+  version: "0.8.25"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,9 +19,9 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
 
-Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
+Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Mid-flight H2; first close. Compared-to: planning-with-files.
 
-Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
+Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
 ## What to type next
 
@@ -80,7 +80,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
-| incoming plan / cited `docs/plans/…` | put plan on disk and cite the path. Init reads disk (not `@folder` / chat paste). Digest headings → pack `--owns-requirement`/`--owns-path` (uncovered first). high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. WARN default; `plan_cover fail-closed` HOLDs close. Green collect → surgical write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite/close evidence. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
+| incoming plan / cited `docs/plans/…` | classify folder\|chat\|prompt (`plan_ingress`). Materialize+fidelity **before pack**. folder: cite the path only. chat: capture or speak next. prompt: promote `--source`/ingest.md **verbatim**, pin `plan_source sha=`, discard ingest. Not `@folder` / chat paste. `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). `plan_fidelity` HOLD pack. doctor `plan_cover` orphan; `plan_cover fail-closed` HOLDs close. Green collect → write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
@@ -99,7 +99,7 @@ A harness name alone is not a trigger. Skill beats child. Typical problems: [REA
 
 ## Auto-report (HITL)
 
-Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. Self-telemetry — not a helpdesk. Use `of issue`.
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm.
 
 ONLY Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
 
@@ -113,7 +113,7 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Anti-done-theater.** Ready = named interface + proof. Unittest/CI green is not Ready. Non-trivial: design-twice (two approaches) before implement. Deep modules: simple interface, complexity hidden. Flying is not shipped.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
+**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
 **Steer policy.** In-flight text is **steered**. Deictic `dale` / `do it` / `as discussed` is **execute `next`**.
 
