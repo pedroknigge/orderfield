@@ -38,7 +38,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
 | long mission, residuals landed / next-wave replan | quote `of status` efficiency, `of detect` present/missing, `of doctor` balance (`unknown` if unpublished). Never invent. **Must ask** before cheap/frontier or mix rebalance. Never silent. |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** Oversized `--slice` is **advisory** — **Do not refuse**. |
-| learn text over 400 chars | `of learn` still stores; **advisory** — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
+| learn text over 400 chars | `of learn` stores; **advisory** — **Do not refuse**. Over 4 lines refuse dumps. Long record: `work/scratch/leader/<file>.md` + pointer. |
 | mid-epic, next harness or human | `of handoff` / `--json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
 | spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
@@ -65,33 +65,27 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair` |
-| timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or a release header. `ContractSurface`. Not a monitor |
 | timeout / idempotency / health / version | public VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or release header. `ContractSurface` |
 | never public | `of spec --surface internal ID` — not `--supersede` |
-| binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
+| binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED ≠ CLOSED; no theater|
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
-| about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE |
+| about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote printed `speak` (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or speak unquoted, do not claim shipped. Mechanical. Pair with quote-PULSE |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
 | several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `--json` — open packs across homes; `of status --json` is one field |
-| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; no supervisor |
+| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk verbs; no supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256: README / PUBLISH. orca/qwen dests; skill surface only. Unpinned npx is not trusted. Not pip. Not a daemon |
-| stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
-| multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
+| stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release`. once a day. Do not upgrade mid-ORDER without consent |
+| multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
-<<<<<<< HEAD
 | incoming plan / cited `docs/plans/…` | cite the path on disk (not `@folder` / chat paste). `--owns-requirement` leftover first. high effort on ORDER; children medium (do not re-architect). `plan_cover` WARN; fail-closed HOLDs close. Green collect → write-back. Fail-closed without OwnedWrite. HITL if uncited. `docs_sync=done` after bytes or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
-| `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW / closed-field packs informational. Do not rewrite a closed audit trail. |
-=======
->>>>>>> 334bdd3 (fix: restore closed-field historical + unpinned SKILL needles)
-| incoming plan / cited `docs/plans/…` | digest every requirement section → wave + pack `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
