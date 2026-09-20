@@ -1941,6 +1941,75 @@ class PlanCoverageUnit(unittest.TestCase):
             {"HTTP-001"},
         )
 
+    def test_cited_on_disk_plan_has_n_headings(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-plan-ingest-n-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanCoverageEval.write_plan(root)
+        (root / "BRIEF.md").write_text(
+            f"Living surface: {of.PlanCoverageEval.PLAN}\n",
+            encoding="utf-8",
+        )
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "ingest n headings",
+            "--phase",
+            "build",
+            "--source-file",
+            "BRIEF.md",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn("plan_ingest  4 headings", initialized.stdout)
+        doc = of.PlanCoverage.document(root)
+        self.assertEqual(
+            [row["id"] for row in doc["sections"]],
+            ["AUTH-001", "STORE-001", "HTTP-001", "CLI-001"],
+        )
+        self.assertEqual(doc["status"], of.PlanCoverage.STATUS_ORPHAN)
+
+    def test_chat_paste_is_not_ingest(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-plan-ingest-paste-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        paste = of.PlanCoverageEval.fixture_text()
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "paste is not ingest",
+            "--phase",
+            "build",
+            "--source",
+            paste,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn(of.PlanCoverage.NOTE_PASTE, initialized.stdout)
+        doc = of.PlanCoverage.document(root)
+        self.assertEqual(doc["sections"], [])
+        self.assertEqual(doc["status"], of.PlanCoverage.STATUS_PASTE)
+        self.assertIn("AUTH-001", doc["paste_ids"])
+
+    def test_directory_cite_expands_markdown(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-plan-ingest-dir-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        plan_dir = root / "docs" / "plans" / "active"
+        plan_dir.mkdir(parents=True)
+        (plan_dir / "auth.md").write_text("## AUTH-001 Login\n", encoding="utf-8")
+        (plan_dir / "store.md").write_text("## STORE-001 Persist\n", encoding="utf-8")
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "directory cite",
+            "--phase",
+            "build",
+            "--source",
+            "Follow docs/plans/active/",
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        ids = [row["id"] for row in of.PlanCoverage.document(root)["sections"]]
+        self.assertEqual(ids, ["AUTH-001", "STORE-001"])
+
 
 if __name__ == "__main__":
     unittest.main()

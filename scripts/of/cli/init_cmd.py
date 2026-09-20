@@ -27,7 +27,7 @@ from of.field import (
     session_path,
     write_phase_md,
 )
-from of.regime import DoneWhenLint
+from of.regime import DoneWhenLint, PlanCoverage
 from of.pack import ensure_field_slave_md
 from of.spec import (
     archive_previous_field,
@@ -118,6 +118,9 @@ def _stamp_and_write_new_field(
             "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
             file=sys.stderr,
         )
+    PlanCoverage.emit_ingest(
+        root, order, source_file=source_file, source_text=source_text
+    )
     save_order(order, root)
     save_state(default_state(), root)
     write_phase_md(root, order)

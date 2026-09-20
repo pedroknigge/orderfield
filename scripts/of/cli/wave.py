@@ -114,7 +114,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 
-from of.regime import done_when_for
+from of.regime import PlanCoverage, done_when_for
 
 
 # Canonical `.orderfield/...` artifact -> physical field home (of.field owns it).
@@ -786,6 +786,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
     )
     if packet.get("adapter_hints"):
         print(f"adapter_hints={AdapterHints.format_line(packet['adapter_hints'])}")
+    PlanCoverage.emit_pack(root, order, claimed=PlanCoverage.claimed(packet))
 
 
 def cmd_unpack(args: argparse.Namespace) -> None:

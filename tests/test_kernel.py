@@ -86,6 +86,7 @@ from test_kernel_cli import (  # noqa: E402,F401
     DoctorAuditPressure,
     DoctorPlanDocSync,
     DoctorPlanCoverage,
+    PlanIngestGate,
     DoctorOnePassSkew,
     DoctorSkillVersionSkew,
     DoctorWorktreeLeftover,
