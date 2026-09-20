@@ -580,6 +580,44 @@ class ResidualSchemaContracts(unittest.TestCase):
         legal["residual"]["proposed_patch"] = {"docs_sync": "done"}
         self.assertEqual(of.validate_residual(legal), [])
 
+    def test_public_schema_declares_docs_sync(self) -> None:
+        schema = load_json(RESIDUAL_SCHEMA)
+        props = schema["properties"]["residual"]["properties"]["proposed_patch"][
+            "properties"
+        ]
+        self.assertIn("docs_sync", props)
+        self.assertEqual(props["docs_sync"]["enum"], ["pending", "done"])
+        self.assertIs(
+            schema["properties"]["residual"]["properties"]["proposed_patch"][
+                "additionalProperties"
+            ],
+            True,
+        )
+        for mark in ("pending", "done"):
+            residual = load_json(DONE)
+            residual["residual"]["proposed_patch"] = {"docs_sync": mark}
+            self.assertEqual(of.validate_residual(residual), [])
+            assert_draft_2020_12_valid(self, schema, residual)
+        bad = load_json(DONE)
+        bad["residual"]["proposed_patch"] = {"docs_sync": "maybe"}
+        errs = of.validate_residual(bad)
+        self.assertTrue(errs)
+        self.assertTrue(any("docs_sync" in err for err in errs), errs)
+
+    def test_docs_sync_typo_does_not_become_legal_key(self) -> None:
+        residual = load_json(DONE)
+        residual["residual"]["doc_sync"] = "done"
+        errs = of.validate_residual(residual)
+        self.assertTrue(errs)
+        joined = " ".join(errs)
+        self.assertIn("unexpected properties", joined)
+        self.assertIn("doc_sync", joined)
+        self.assertIn("proposed_patch.doc_sync", joined)
+        self.assertNotIn("proposed_patch.docs_sync", joined)
+        on_patch = load_json(DONE)
+        on_patch["residual"]["proposed_patch"] = {"doc_sync": "done"}
+        self.assertEqual(of.validate_residual(on_patch), [])
+
     def test_misplaced_notes_names_declared_proposed_patch_home(self) -> None:
         residual = load_json(DONE)
         residual["residual"]["notes"] = "move me"
@@ -721,6 +759,7 @@ class ResidualSchemaContracts(unittest.TestCase):
             {
                 "done_when+": None,
                 "notes": None,
+                "docs_sync": "pending",
                 "done_when_closed": None,
                 "requirements_verified": None,
                 "requirements_failed": None,

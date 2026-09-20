@@ -32,6 +32,10 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
+- **Reuse table (design-first):** SLAVE / PlanDocSync / SchemaHomeHint already teach `proposed_patch.docs_sync` (`pending|done`). `proposed_patch` already has `additionalProperties: true`, so collect accepts the key. `#234` already shipped object-form additionalProperties honesty. The remaining gap is that public `properties` omit `docs_sync`, so cold agents reading the schema miss the taught key (`#292`).
+- **Reuse, not a new verb:** declare `docs_sync` on `proposed_patch.properties` (`enum: pending|done`). Codex derivative stays lockstep. The object stays open. Not a close gate. No new CLI / residual-key regime / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** no new user-facing surface. SLAVE / appendix already name the home.
+- **Proof:** `ResidualSchemaContracts.test_public_schema_declares_docs_sync` / `test_docs_sync_typo_does_not_become_legal_key`. C-139 extended. No new C-ID (honesty cap). `#292`.
 - Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
 
 ## 0.8.21
