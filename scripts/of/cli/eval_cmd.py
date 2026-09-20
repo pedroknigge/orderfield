@@ -1444,6 +1444,75 @@ def eval_setup_recovery_drive_after_integrate(root: Path) -> None:
     DriveAfterIntegrateEval.setup(root)
 
 
+class ObservationPackEval:
+    """Oversized residual on disk; speak is a handle. #283."""
+
+    CHILD = "big"
+    SENTINEL = "OF_OBS_PACK_MIDDLE_SENTINEL_NOT_IN_SPEAK"
+    RECEIPT = "OF_EVIDENCE_RECEIPT sha256=deadbeef exit=0 size=win"
+    PAD = "docs/audit/claims-matrix.md "
+
+    @staticmethod
+    def inflate(root: Path, child_id: str = CHILD) -> Path:
+        from of.cli.ops import ObservationPack
+
+        pkt_path = wave_dir(1, root) / "packets" / f"{child_id}.json"
+        packet = load_json(pkt_path)
+        dest = root / str(packet["residual_path"])
+        data = load_json(dest)
+        rem = data.setdefault("residual", {})
+        pad = ObservationPackEval.PAD * 400
+        rem["evidence"] = (
+            f"{rem.get('evidence') or ''}\n{pad}\n"
+            f"{ObservationPackEval.SENTINEL}\n"
+            f"{ObservationPackEval.RECEIPT}\n{pad}\n"
+        )
+        dump_json(dest, data)
+        size = dest.stat().st_size
+        if size < ObservationPack.THRESHOLD:
+            die(
+                f"eval fixture observation-pack: residual {size}B "
+                f"< {ObservationPack.THRESHOLD}B"
+            )
+        return dest
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "observation pack residual handles",
+            "--phase",
+            "explore",
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        packed = eval_run_of(
+            root,
+            "pack",
+            "--slice",
+            "write a structured oversized residual",
+            "--role",
+            "explorer",
+            "--child-id",
+            ObservationPackEval.CHILD,
+        )
+        EvalInvariantSetup.require_ok(packed, "pack")
+        EvalInvariantSetup.write_bound_residual(
+            root,
+            ObservationPackEval.CHILD,
+            evidence="wave-1 structured residual for observation-pack",
+            result_text="big structured result\n",
+        )
+        ObservationPackEval.inflate(root)
+
+
+@_register_eval_fixture("recovery_observation_pack")
+def eval_setup_recovery_observation_pack(root: Path) -> None:
+    """Oversized residual: speak is handle+excerpt, not the full body."""
+    ObservationPackEval.setup(root)
+
+
 @_register_eval_fixture("recovery_doctor_one_pass")
 def eval_setup_recovery_doctor_one_pass(root: Path) -> None:
     """Nested ACTIVE + leftover stub + aged in-flight pack. One doctor pass."""
@@ -2236,6 +2305,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillPstackCherries",
     "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",
+    "tests.test_kernel.ObservationPackProof",
+    "tests.test_kernel.SkillObservationPack",
     "tests.test_kernel.EscalateUnblockNext",
     "tests.test_kernel.SkillEscalateUnblock",
     "tests.test_kernel.SkillDriveAfterIntegrate",

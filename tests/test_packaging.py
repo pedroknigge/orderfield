@@ -2024,6 +2024,69 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         self.assertIn("must propose", table)
 
 
+class SkillObservationPack(unittest.TestCase):
+    """Oversized residual speak is a handle. Do not paste the body. #283."""
+
+    HANDLE = "cite handle"
+    EXCERPT = "head/tail excerpt"
+    DISK = "full file stays on disk"
+    PASTE = "do not paste the body"
+    RECEIPT = "of_evidence_receipt"
+    PATHS = "wave-end roles read paths"
+    SMALL = "small residuals may print fully"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_handle_not_paste(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(self.HANDLE, table)
+        self.assertIn(self.EXCERPT, table)
+        self.assertIn(self.DISK, table)
+        self.assertIn(self.PASTE, table)
+        self.assertIn(self.RECEIPT, table)
+        self.assertIn(self.PATHS, table)
+        self.assertIn(self.SMALL, table)
+        self.assertIn("10kib", table)
+        alias_fold = alias.casefold()
+        self.assertIn("path+excerpt", alias_fold)
+        self.assertIn("#283", alias)
+        appendix_fold = appendix.casefold()
+        self.assertIn("observationpack", appendix_fold)
+        self.assertIn("of_evidence_receipt", appendix_fold)
+        self.assertIn("do not paste the body", appendix_fold)
+        self.assertIn("wave-end verifier/adversary", appendix_fold)
+        self.assertIn("recovery/observation-pack", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class ObservationPack:", source)
+        self.assertIn("THRESHOLD = 10 * 1024", source)
+        self.assertIn("OF_EVIDENCE_RECEIPT", source)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_TARGET_BYTES
+        )
+
+    def test_does_not_invent_verb_or_strip_receipts(self) -> None:
+        for rel, body in (
+            ("SKILL.md", SkillSurface.core(ROOT)),
+            ("of/SKILL.md", SkillSurface.alias(ROOT)),
+            ("references/skill-appendix.md", SkillSurface.appendix(ROOT)),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("of residual", fold, rel)
+            self.assertNotIn("of excerpt", fold, rel)
+            self.assertNotIn("of continue", fold, rel)
+
+
 class SkillWaveSettleAutoContinue(unittest.TestCase):
     """After wave settles, execute printed next. No poke unless real HITL. #263."""
 

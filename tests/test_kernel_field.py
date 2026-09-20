@@ -953,6 +953,107 @@ class DriveAfterIntegrateProof(unittest.TestCase):
         self.assertIn(of.InFlightSignal.SPEAK, flying.stdout)
 
 
+class ObservationPackProof(unittest.TestCase):
+    """Oversized residual speak is a handle. Disk stays full. #283."""
+
+    SENTINEL = of.ObservationPackEval.SENTINEL
+    RECEIPT = of.ObservationPackEval.RECEIPT
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-obs-pack-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "s",
+            "--role",
+            "explorer",
+            "--child-id",
+            "big",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _land(self, *, inflate: bool) -> Path:
+        dest = write_bound_residual(self.tmp, "big")
+        if inflate:
+            dest = of.ObservationPackEval.inflate(self.tmp, "big")
+        return dest
+
+    def test_threshold_is_10kib(self) -> None:
+        self.assertEqual(of.ObservationPack.THRESHOLD, 10 * 1024)
+        self.assertFalse(of.ObservationPack.oversized(of.ObservationPack.THRESHOLD - 1))
+        self.assertTrue(of.ObservationPack.oversized(of.ObservationPack.THRESHOLD))
+
+    def test_small_residual_handle_without_excerpt(self) -> None:
+        dest = self._land(inflate=False)
+        self.assertLess(dest.stat().st_size, of.ObservationPack.THRESHOLD)
+        before = dest.read_bytes()
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertIn("OK", collected.stdout)
+        self.assertIn("handle  ", collected.stdout)
+        self.assertIn("residuals/big.json", collected.stdout)
+        self.assertIn(f"{dest.stat().st_size}B", collected.stdout)
+        self.assertNotIn("\nhead    ", collected.stdout)
+        self.assertNotIn("\ntail    ", collected.stdout)
+        self.assertEqual(dest.read_bytes(), before)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("handle      ", resumed.stdout)
+        self.assertIn("residuals/big.json", resumed.stdout)
+        self.assertNotIn("\n    head        ", resumed.stdout)
+
+    def test_oversized_speak_is_handle_not_body(self) -> None:
+        dest = self._land(inflate=True)
+        before = dest.read_bytes()
+        self.assertGreaterEqual(len(before), of.ObservationPack.THRESHOLD)
+        self.assertIn(self.SENTINEL.encode("utf-8"), before)
+        self.assertIn(b"OF_EVIDENCE_RECEIPT", before)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertIn("handle  ", collected.stdout)
+        self.assertIn("residuals/big.json", collected.stdout)
+        self.assertIn(f"{len(before)}B", collected.stdout)
+        self.assertIn("\nhead    ", collected.stdout)
+        self.assertIn("\ntail    ", collected.stdout)
+        self.assertIn("OF_EVIDENCE_RECEIPT", collected.stdout)
+        self.assertNotIn(self.SENTINEL, collected.stdout)
+        self.assertEqual(dest.read_bytes(), before)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("in_flight     0", resumed.stdout)
+        self.assertIn("handle      ", resumed.stdout)
+        self.assertIn("residuals/big.json", resumed.stdout)
+        self.assertIn("head        ", resumed.stdout)
+        self.assertIn("OF_EVIDENCE_RECEIPT", resumed.stdout)
+        self.assertNotIn(self.SENTINEL, resumed.stdout)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("in_flight   0", status.stdout)
+        self.assertIn("handle      ", status.stdout)
+        self.assertIn("residuals/big.json", status.stdout)
+        self.assertIn("OF_EVIDENCE_RECEIPT", status.stdout)
+        self.assertNotIn(self.SENTINEL, status.stdout)
+        self.assertEqual(dest.read_bytes(), before)
+
+    def test_receipt_marker_survives_mid_file(self) -> None:
+        dest = self._land(inflate=True)
+        text = dest.read_text(encoding="utf-8")
+        hits = of.ObservationPack.receipt_lines(text)
+        self.assertTrue(hits)
+        self.assertTrue(any("OF_EVIDENCE_RECEIPT" in row for row in hits))
+        lines = of.ObservationPack.of_packet(
+            self.tmp, load_json(packet_path(self.tmp, "big"))
+        )
+        speak = "\n".join(lines)
+        self.assertIn("receipt ", speak)
+        self.assertIn("OF_EVIDENCE_RECEIPT", speak)
+        self.assertNotIn(self.SENTINEL, speak)
+
+
 class EscalateUnblockNext(unittest.TestCase):
     """escalate_up next names the 1-action unblock. Rev gate stays. #254."""
 
