@@ -19,6 +19,7 @@ Single integration folding remaining open PRs onto main after `#304` (agent-band
 - **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. Oversized residual speak is handle + excerpt; full file stays on disk; receipt markers not stripped. `#283` / PR `#319`.
 - **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. Large N / bands `5-10` / `10-50` scoped to this-wave owns-path / published set. Band `1-4` stays full residual. `#282` / PR `#320`.
 - **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Deterministic receipt gate; cited tamper is collect INVALID. Wave-end verifier prefers receipts + published artifacts. `#284` / PR `#321`.
+- **Subtract:** SKILL / appendix no longer teach “gate or fallback original” as collect-green. Cited receipt must ACCEPT. Emit FALLBACK keeps the original archive only. `SkillEvidenceReceipt`.
 - Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded PRs `#302` `#303` `#314` `#317` `#319` `#320`. `#304` / `#315` / `#316` / `#321` already on main.
 
 ## 0.8.23

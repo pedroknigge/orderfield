@@ -122,7 +122,7 @@ Verifier (and adversary) read **bytes**: verified receipts + `published_artifact
 
 ## Skill lines
 
-- **SKILL.md table:** build/test above floor → archive + `evidence_receipt:`; gate or fallback; tamper ≠ green; read/search bypass; wave-end verifier prefers receipts + published artifacts.
+- **SKILL.md table:** build/test above floor → archive + `evidence_receipt:`; cited receipt must ACCEPT; tamper ≠ green; read/search bypass; wave-end verifier prefers receipts + published artifacts. Emit FALLBACK keeps the original archive — it is not collect-green.
 - **Appendix:** schema, fallback matrix, `#283` must not strip, not a CloseEvidence replacement, not trust-the-summary.
 - **CHILD.md:** children archive exact bytes and cite the receipt; do not summarize owned source.
 - **`/of`:** pointer only (not a second contract).
