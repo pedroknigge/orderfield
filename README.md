@@ -175,7 +175,9 @@ Where it lands:
 | Codex | `~/.agents/skills/orderfield` + pointer in `~/.codex/AGENTS.md` |
 | Cursor | `~/.cursor/skills/orderfield` |
 | OpenCode | `~/.opencode/skills/orderfield` |
+| Orca | `~/.orca/skills/orderfield` |
 | Grok | `~/.grok/skills/orderfield` |
+| Qwen | `~/.qwen/skills/orderfield` |
 | Antigravity (`agy`) | Global `~/.gemini/antigravity-cli/skills/orderfield`; Shared `~/.gemini/skills/orderfield`; `~/.gemini/config/skills/orderfield` optional legacy |
 
 Those HOME dest copies load in every working tree. A clone or checkout that already has an open `.orderfield/` still auto-continues (rule 0). Operator risk, not a feature to gut. Pause/stop/close only.
