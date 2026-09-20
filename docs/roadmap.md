@@ -14,9 +14,9 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.8.24 — all-in: dest honesty; wave-end both roles; plan ingest; README When NOT; residual handles; scoped review; evidence receipts
+## 0.8.24 — all-in: dest honesty; wave-end both roles; plan ingest; README When NOT; residual handles; scoped review; evidence receipts; product bar
 
-Single integration folding `#302` `#303` `#314` `#317` `#319` `#320` `#321` onto main after `#304`. Same 0.6 line.
+Single integration folding `#303` `#314` `#317` `#319` `#320` `#323` onto main after `#304`. `#302` / `#321` already on main. Same 0.6 line.
 
 - Install dests match adapter matrix; dest is skill surface only (`CHILD.md`). Proof: `InstallScript` / `SkillSurfaceCore`. `#291`.
 - Stored-yes wave-end packs both review roles before next-wave. Proof: `WaveEndBothRolesProof`. `#280`.
@@ -25,6 +25,7 @@ Single integration folding `#302` `#303` `#314` `#317` `#319` `#320` `#321` onto
 - Oversized residual speak is a handle. Proof: `ObservationPackProof`. `#283`.
 - Large-band wave-end review is scoped to this wave. Proof: `WaveReviewScopeProof`. `#282`.
 - Evidence receipt + deterministic gate; tamper ≠ green. Proof: `EvidenceReceiptGate`. `#284`.
+- Teaching-only product bar: design-twice, deep modules, unittest/CI green is not Ready. Proof: `SkillProductBar`. `#323`.
 
 ## 0.8.23 — morning cut: CloseEvidence SHA; WriteFloor; skill load-tax; evaluator_consent; HITL.md; InitAskSkip; docs_sync; agent-band
 

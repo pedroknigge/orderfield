@@ -20,6 +20,7 @@ Single integration folding remaining open PRs onto main after `#304` (agent-band
 - **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. Large N / bands `5-10` / `10-50` scoped to this-wave owns-path / published set. Band `1-4` stays full residual. `#282` / PR `#320`.
 - **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Deterministic receipt gate; cited tamper is collect INVALID. Wave-end verifier prefers receipts + published artifacts. `#284` / PR `#321`.
 - **Subtract:** SKILL / appendix no longer teach “gate or fallback original” as collect-green. Cited receipt must ACCEPT. Emit FALLBACK keeps the original archive only. `SkillEvidenceReceipt`.
+- **Proof:** `SkillProductBar`. Teaching-only (#323 design A): design-twice, deep modules, unittest/CI green is not Ready. No new verb. No kernel change.
 - Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded PRs `#303` `#314` `#317` `#319` `#320`. `#302` / `#304` / `#315` / `#316` / `#321` already on main. `#323` teaching-only design A on this line.
 
 ## 0.8.23

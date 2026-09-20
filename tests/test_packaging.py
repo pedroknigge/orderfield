@@ -3873,6 +3873,29 @@ class SkillSurfaceCore(unittest.TestCase):
         self.assertIn(SkillSurface.APPENDIX, installed)
 
 
+class SkillProductBar(unittest.TestCase):
+    """#323 design A: SKILL/appendix teach design-twice, deep modules, tests≠Ready."""
+
+    def test_core_cannot_read_green_tests_as_ready(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        fold = core.casefold()
+        self.assertIn("unittest/ci green is not ready", fold)
+        self.assertIn("design-twice", fold)
+        self.assertIn("deep modules", fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("unittest/ci green is not ready", appendix_fold)
+        self.assertIn("design-twice", appendix_fold)
+        self.assertIn("deep module", appendix_fold)
+        self.assertIn("hurry-to-green", appendix_fold)
+        self.assertNotIn("of design", fold)
+        self.assertNotIn("of design", appendix_fold)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_TARGET_BYTES
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
 

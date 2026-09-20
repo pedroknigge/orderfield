@@ -66,7 +66,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
-| about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE |
+| about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Unittest/CI green is not Ready. Pair with quote-PULSE |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
 | several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
@@ -111,12 +111,12 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
-**Anti-done-theater.** Same as the shipped row. Mechanical. Flying is not shipped.
+**Anti-done-theater.** Same as the shipped row. Unittest/CI green is not Ready. Flying is not shipped.
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
-**Steer policy.** In-flight user text on an open field is **steered**, not a second mission. Deictic go-ahead (`dale`, `do it`, `as discussed`) is **execute `next`**, not `of spec --amend` of those words.
+**Steer policy.** In-flight text is **steered**. Deictic `dale` / `do it` / `as discussed` is **execute `next`**.
 
 **Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, close-is-proof: appendix. Not the whole file before pack.
+Stay-on-the-run, pays-vs-theater, design-twice, deep modules, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
