@@ -57,7 +57,10 @@ ROLE_CONTRACTS = {
     ),
     "verifier": (
         "verifier checks SPEC.md against ORDER and against the product's "
-        "public surface. Internal unit tests are VERIFIED_INTERNAL, not closed. "
+        "public surface. Prefer evidence receipts and published artifacts "
+        "over implementer narrative. A receipt that fails the deterministic "
+        "gate is not green; fall back to the archived original. Do not trust "
+        "a summary. Internal unit tests are VERIFIED_INTERNAL, not closed. "
         "If SPEC names a CLI, HTTP API, file format, exit code, or stdout schema, "
         "exercise that surface (separate processes when the contract is a command). "
         "Pair-shaped requirements (same/different, valid/invalid, success/fail) "

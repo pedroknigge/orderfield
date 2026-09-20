@@ -468,8 +468,10 @@ def validate_residual_for_packet(
     errs.extend(verifier_done_errors(res, packet, root))
     errs.extend(CloseEvidence.errors(res, root, packet))
     errs.extend(OwnedWrite.errors(res, packet, root))
+    from of.receipt import EvidenceReceipt
     from skill_artifact_prove import SkillArtifactProve
 
+    errs.extend(EvidenceReceipt.errors(res, root))
     errs.extend(SkillArtifactProve.errors(res, root))
     return errs
 
@@ -1000,7 +1002,8 @@ class CloseEvidence:
     hash owned product bytes or a named published artifact — never
     ``.orderfield/work/scratch/``. Rollback is a verb command, not a
     filename caption. Not a new schema key. Not ``of prove``. Not
-    ``of close`` / ``CLOSE.json``. #284 receipts are a later layer.
+    ``of close`` / ``CLOSE.json``. #284 ``EvidenceReceipt`` cites the
+    same evidence string; it does not replace this gate.
     """
 
     SCRATCH_PREFIX = ".orderfield/work/scratch/"
@@ -1972,6 +1975,9 @@ def render_prompt(
         if role == "verifier":
             body += (
                 "This is the close-the-loop review: SPEC ↔ ORDER ↔ public surface. "
+                "Prefer evidence receipts and published artifacts over "
+                "implementer narrative. A receipt that fails the deterministic "
+                "gate is not green. "
                 "Exercise the CLI/HTTP/file format named in SPEC, not only the "
                 "library behind it. Pair-shaped requirements need both sides. "
                 "Stamp of spec --verified-contract ID [--both-sides]. "
