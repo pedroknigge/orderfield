@@ -468,6 +468,9 @@ def validate_residual_for_packet(
     errs.extend(verifier_done_errors(res, packet, root))
     errs.extend(CloseEvidence.errors(res, root, packet))
     errs.extend(OwnedWrite.errors(res, packet, root))
+    from skill_artifact_prove import SkillArtifactProve
+
+    errs.extend(SkillArtifactProve.errors(res, root))
     return errs
 
 

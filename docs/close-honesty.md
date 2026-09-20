@@ -19,7 +19,7 @@ Before 0.7.7 a leader could narrate CLOSED while done-when stayed open. Atomic c
 
 If those two columns disagree, the session is lying. Re-run `of contrast`. Read `.orderfield/CLOSE.json` (or the field-home copy). Do not patch the story.
 
-A published schedule that says FACTIBLE / D CUMPLE while labeled beds overlap is the same split. Check the artifact bytes, not D. Fail ⇒ INFACTIBLE or ROMPE. `SkillArtifactProve`.
+A published schedule that says FACTIBLE / D CUMPLE while labeled beds overlap is the same split. Check the artifact bytes, not D. Residual `published_artifact:` is a collect fail-closed hook when product bytes are missing. Fail ⇒ INFACTIBLE or ROMPE. `SkillArtifactProve`.
 
 ## What the disk is
 

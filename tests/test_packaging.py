@@ -1592,7 +1592,7 @@ occupancy 08:00-12:00
 09:30-10:00 R1 P07 and P15
 """
 
-    def test_core_alias_appendix_teach_published_check(self) -> None:
+    def test_core_alias_appendix_name_published_artifact_hook(self) -> None:
         core = SkillSurface.core(ROOT)
         alias = SkillSurface.alias(ROOT)
         appendix = SkillSurface.appendix(ROOT)
@@ -1601,10 +1601,24 @@ occupancy 08:00-12:00
             [],
         )
         table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-        self.assertIn("FACTIBLE", table)
-        self.assertIn("published", table.casefold())
-        self.assertIn("skill_artifact_prove.py", appendix)
+        self.assertIn("published_artifact", table)
+        self.assertIn("collect fail-closed", table.casefold())
+        self.assertIn("published_artifact", appendix)
         self.assertNotRegex(core, r"(?<![Nn]ot )`of prove`")
+
+    def test_collect_hook_fails_closed_without_product_bytes(self) -> None:
+        residual = {
+            "status": "done",
+            "result_ref": ".orderfield/work/scratch/e1/result.md",
+            "residual": {"evidence": "FACTIBLE\nCUMPLE"},
+        }
+        self.assertTrue(ArtifactProve.applies(residual))
+        errors = ArtifactProve.errors(residual, ROOT)
+        self.assertTrue(errors, errors)
+        self.assertTrue(
+            any("published artifact missing" in err for err in errors),
+            errors,
+        )
 
     def test_cumple_with_bed_overlap_fails(self) -> None:
         fixture = (ROOT / ArtifactProve.FIXTURE).read_text(encoding="utf-8")
@@ -1632,7 +1646,10 @@ occupancy 08:00-12:00
         )
         errs = ArtifactProve.teaching_errors(fake, fake, fake)
         self.assertTrue(errs, errs)
-        self.assertTrue(any("published" in e.casefold() for e in errs), errs)
+        self.assertTrue(
+            any("published_artifact" in e for e in errs),
+            errs,
+        )
 
     def test_clean_schedule_and_honest_fail_pass(self) -> None:
         self.assertEqual(ArtifactProve.claim_errors(self.CLEAN), [])
@@ -2903,7 +2920,8 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("both", table_fold)
         self.assertIn("--role adversary", table)
         self.assertIn("--role verifier", table)
-        self.assertIn("--done-when-mission", table)
+        self.assertIn("--evaluator-consent", init_row)
+        self.assertNotIn("store `--done-when-mission`", table)
         self.assertIn("after close", table_fold)
         self.assertIn("of learn", table)
         self.assertIn("self-praise", table_fold)
@@ -2948,11 +2966,15 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertIn("init / first wave", hero_fold)
         self.assertIn("both", hero_fold)
         self.assertIn("not the review-role ask", hero_fold)
+        self.assertIn("--evaluator-consent", hero)
+        self.assertIn("evaluator_consent", hero)
         self.assertEqual(self.xor_errors(hero, "README.md hero"), [])
         self.assertEqual(self.timing_errors(hero, "README.md hero"), [])
         speak_src = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
             encoding="utf-8"
         )
+        self.assertIn("KEY = \"evaluator_consent\"", speak_src)
+        self.assertIn("STATUS_UNSET", speak_src)
         self.assertNotIn(self.ASK, speak_src)
         self.assertNotIn(self.OLD_ASK, speak_src)
         self.assertIn("stored yes: pack+spawn both", speak_src)

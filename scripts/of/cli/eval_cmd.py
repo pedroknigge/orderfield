@@ -2180,6 +2180,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PackRosterCrossField",
     "tests.test_kernel.CloseChecklistProof",
     "tests.test_kernel.EvaluatorPacketProof",
+    "tests.test_kernel.ArtifactProveCollectGate",
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.EfficiencySignalProof",
     "tests.test_kernel.ClaimsHonestyGate",
