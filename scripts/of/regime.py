@@ -799,7 +799,10 @@ class PlanCoverage:
         source_text: str | None = None,
     ) -> list[str]:
         if order is None:
-            order = load_order(root)
+            try:
+                order = load_order(root)
+            except SystemExit:
+                order = {}
         rels: list[str] = []
         seen: set[str] = set()
 
@@ -1222,13 +1225,29 @@ class PlanIngress:
     ) -> list[str]:
         out: list[str] = []
         seen: set[str] = set()
-        for rel in PlanCoverage.cited_rels(
-            root, order, source_file, source_text
-        ):
+        try:
+            rels = PlanCoverage.cited_rels(
+                root, order, source_file, source_text
+            )
+        except (OSError, TypeError, ValueError, SystemExit):
+            return out
+        disposable = set(PlanIngress.DISPOSABLE_RELS)
+        for rel in rels:
+            posix = str(rel or "").replace("\\", "/")
+            name = posix.rsplit("/", 1)[-1]
+            if posix in disposable or name in {"ingest.md", "prompt.md", "PROMPT.md"}:
+                continue
             for file_rel, path in PlanCoverage.expand(root, rel):
                 if not path.is_file() or path.is_symlink():
                     continue
                 if file_rel in seen:
+                    continue
+                fname = file_rel.rsplit("/", 1)[-1]
+                if file_rel in disposable or fname in {
+                    "ingest.md",
+                    "prompt.md",
+                    "PROMPT.md",
+                }:
                     continue
                 seen.add(file_rel)
                 out.append(file_rel)
@@ -1439,32 +1458,19 @@ class PlanIngress:
         ]
 
     @staticmethod
-    def contract_blob(root: Path) -> str:
-        parts: list[str] = []
-        spec = spec_path(root)
-        if field_is_file(spec):
-            try:
-                parts.append(spec.read_text(encoding="utf-8"))
-            except OSError:
-                pass
-        try:
-            parts.append(
-                json.dumps(load_requirements(root), ensure_ascii=False)
-            )
-        except (OSError, TypeError, ValueError, SystemExit):
-            pass
-        return "\n".join(parts)
-
-    @staticmethod
-    def missing_needles(source: str, contract: str) -> list[str]:
-        have = set(PlanIngress.needles_in(source))
-        keep = set(PlanIngress.needles_in(contract))
-        # Needles are literal; requirement IDs may appear outside headings.
-        body = str(contract or "")
-        for needle in list(have):
-            if needle in body:
-                keep.add(needle)
-        return [needle for needle in have if needle not in keep]
+    def missing_needles(source: str, spec_text: str, req_blob: str) -> list[str]:
+        """Prose needles must remain in SPEC; IDs may live in the index."""
+        spec = str(spec_text or "")
+        reqs = str(req_blob or "")
+        missing: list[str] = []
+        for needle in PlanIngress.NEEDLES:
+            if needle in source and needle not in spec:
+                missing.append(needle)
+        for row in PlanCoverage.sections(source):
+            rid = str(row.get("id") or "")
+            if rid and rid not in spec and rid not in reqs:
+                missing.append(rid)
+        return missing
 
     @staticmethod
     def fail_closed(
@@ -1507,12 +1513,22 @@ class PlanIngress:
         pins = PlanIngress.pinned(order)
         invented = PlanIngress.invented(root, order)
         gaps: list[str] = []
-        contract = PlanIngress.contract_blob(root)
+        spec_text = ""
+        spec = spec_path(root)
+        if field_is_file(spec):
+            try:
+                spec_text = spec.read_text(encoding="utf-8")
+            except OSError:
+                spec_text = ""
+        try:
+            req_blob = json.dumps(load_requirements(root), ensure_ascii=False)
+        except (OSError, TypeError, ValueError, SystemExit):
+            req_blob = ""
         for rel, _digest in pins:
             text = PlanIngress.read_rel(root, rel)
             if text is None:
                 continue
-            for needle in PlanIngress.missing_needles(text, contract):
+            for needle in PlanIngress.missing_needles(text, spec_text, req_blob):
                 if needle not in gaps:
                     gaps.append(needle)
         captures = PlanIngress.capture_rels(root)
@@ -1680,13 +1696,13 @@ class PlanIngress:
                 f"{PlanIngress.NEXT_CHAT}"
             )
         if status == PlanIngress.STATUS_INVENT:
-            who = " ".join(str(p) for p in (doc.get("invented") or [])[:4])
+            who = " ".join(str(p) for p in (doc.get("invented") or []))
             return (
                 f"of pack refused: {PlanIngress.NOTE_INVENT} {who}; "
                 f"{PlanIngress.NEXT_INVENT}"
             )
         if status == PlanIngress.STATUS_GAP and doc.get("fail_closed"):
-            who = " ".join(str(n) for n in (doc.get("gaps") or [])[:6])
+            who = " ".join(str(n) for n in (doc.get("gaps") or []))
             return (
                 f"of pack refused: {PlanIngress.NOTE_GAP} {who}; "
                 f"{PlanIngress.NEXT_GAP}"
@@ -1711,13 +1727,13 @@ class PlanIngress:
             return [], False
         status = str(doc.get("status") or PlanIngress.STATUS_GAP)
         if status == PlanIngress.STATUS_INVENT:
-            who = " ".join(str(p) for p in (doc.get("invented") or [])[:4])
+            who = " ".join(str(p) for p in (doc.get("invented") or []))
             kind = PlanIngress.KIND
         elif status == PlanIngress.STATUS_CHAT:
             who = ""
             kind = PlanIngress.KIND_INGRESS
         else:
-            who = " ".join(str(n) for n in (doc.get("gaps") or [])[:6])
+            who = " ".join(str(n) for n in (doc.get("gaps") or []))
             kind = PlanIngress.KIND
         line = f"  {kind}     {status}"
         if who:
@@ -1764,9 +1780,9 @@ class PlanIngress:
         print(f"note         {doc['note']}", file=file)
         extra = ""
         if doc.get("status") == PlanIngress.STATUS_INVENT:
-            extra = " ".join(str(p) for p in (doc.get("invented") or [])[:4])
+            extra = " ".join(str(p) for p in (doc.get("invented") or []))
         elif doc.get("status") == PlanIngress.STATUS_GAP:
-            extra = " ".join(str(n) for n in (doc.get("gaps") or [])[:6])
+            extra = " ".join(str(n) for n in (doc.get("gaps") or []))
         if extra:
             print(f"{PlanIngress.KIND}   {extra}", file=file)
         if doc.get("next"):
