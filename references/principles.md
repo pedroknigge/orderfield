@@ -34,8 +34,8 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 2. **One phase at a time.** `explore` and `implement`/`build` do not coexist in the same wave.
 3. **Escalate-up before spawn.** A residual on `mission|phase|constraints|done_when|workspace` forbids `scale_out`, `scale_across`, and spawn in that wave. The kernel sets `spawn_blocked` until a later ORDER revision and guarded `next-wave`. Pack is the bind surface; interactive Agent/render does not bypass it.
 4. **Closed menu.** Regimes: `escalate_up`, `scale_out`, `scale_across`, `scale_up`, `human`, `hold`, `phase`. Anything else is a contract error.
-5. **Caps bind where implemented.** `max_children` and spawn blocking bind at `of pack` (and collect), not only at `of spawn`. Packet `budget.seconds` is the spawned-process wall-clock (`of spawn --timeout` must match or be omitted). `max_depth` only gates whether `--allow-nested` may be packed; inherited depth is not tracked. `budget.tokens` and `local_budget_pct` are reserved, not runtime accounting (`of pack` writes `tokens=0`; `--tokens N` for N>0 dies). `scale_up` remains reserved and is not selected by accounting.
-6. **Across is reserved.** Legacy `scale_across` reports and cooldown state remain readable for recovery, but no runtime selector emits a new across wave. Runtime ownership is encoded as reserve/remove (`RUNTIME_OWNERSHIP`); the kernel does not invent telemetry.
+5. **Caps bind where implemented.** `max_children` and spawn blocking bind at `of pack` (and collect), not only at `of spawn`. Packet `budget.seconds` is the spawned-process wall-clock (`of spawn --timeout` must match or be omitted). `max_depth` only gates whether `--allow-nested` may be packed; inherited depth is not tracked. `budget.tokens` and `local_budget_pct` are **not implemented** (schema leftover `tokens=0`; `--tokens N` for N>0 dies). `scale_up` is **not implemented** and is not selected by accounting.
+6. **Across is not implemented.** Legacy `scale_across` reports and cooldown state remain readable for recovery, but no runtime selector emits a new across wave. Runtime ownership leftovers stay encoded as reserve/remove (`RUNTIME_OWNERSHIP`); the kernel does not invent telemetry.
 7. **Skill beats child.** Same identity plus a procedure = skill, not spawn.
 8. **Residuals upward.** The parent consumes residuals, not diaries, when the leader follows the handoff contract. Native harnesses are not technically prevented from sharing more context.
 9. **The harness does not judge.** Orca / Claude / Codex transport. For waves routed through it, the kernel chooses the regime.
@@ -53,8 +53,8 @@ This is slaving-by-contract, not adiabatic following. The field is designed (`of
 
 - `escalate_up` — the field is insufficient. Patch ORDER. Re-enslave.
 - `scale_out` — the pattern is correct, volume is missing. More copies of the same fast mode; the ORDER does not get louder. On an open wave, max `uncertainty` ≥ 0.5 blocks this (`hold` instead). `uncertainty` never selects `escalate_up` by itself.
-- `scale_across` — reserved compatibility value; retained for legacy report/state recovery.
-- `scale_up` — reserved menu value; no token/depth/budget accounting selects it.
+- `scale_across` — **not implemented**; retained for legacy report/state recovery.
+- `scale_up` — **not implemented**; no token/depth/budget accounting selects it.
 - `hold` — wait (missing residuals, or landed residuals are complete while siblings remain in flight, or the wave closed and `done_when` is still open, or `done_when_closed` was applied this wave — `of phase` is still explicit).
 - `phase` — `done_when_closed` is true and residuals are ~0. Still an explicit `of phase` to move.
 - `human` — 3 waves asking to change the mission, or an irreversible action, or caps exhausted while the wave is not all_done. A full cap of done residuals is `hold` (done_when open) or `phase` (done_when closed).
