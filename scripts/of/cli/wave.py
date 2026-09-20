@@ -1402,8 +1402,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"OK {path.name} status={data.get('status')} wants="
                 f"{data.get('residual', {}).get('wants_to_change')}{denied_note}"
             )
-PlanWriteBack.collect(root, pkt, data, order)
-from of.cli.ops import ObservationPack
+            PlanWriteBack.collect(root, pkt, data, order)
+            from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)
     snapshot_session(root, "collect")
