@@ -1511,8 +1511,10 @@ class PlanIngressEval:
     THIN = "Thin substitute. No mandatory sections.\n"
     CHAT = "Please do what we discussed in chat.\n"
     DURABLE = ".orderfield/plan-source.md"
+    BASELINE = ".orderfield/plan-baseline.json"
     INGEST = ".orderfield/ingest.md"
     INVENTED = "docs/plans/optimistic-ux-p0.md"
+    INVENTED_AFTER = "docs/plans/other/new-fake.md"
 
     @staticmethod
     def write_ingest(root: Path, text: str | None = None) -> Path:
@@ -1582,11 +1584,21 @@ class PlanIngressEval:
         EvalInvariantSetup.require_ok(init, "init")
 
     @staticmethod
+    def write_invented(
+        root: Path, rel: str | None = None, text: str | None = None
+    ) -> Path:
+        dest = Path(root) / (rel or PlanIngressEval.INVENTED)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text or "# Invented substitute\n", encoding="utf-8")
+        return dest
+
+    @staticmethod
     def setup_invent(root: Path) -> None:
         PlanIngressEval.setup_promote(root)
-        invented = Path(root) / PlanIngressEval.INVENTED
-        invented.parent.mkdir(parents=True, exist_ok=True)
-        invented.write_text("# Invented substitute\n", encoding="utf-8")
+        baseline = Path(root) / PlanIngressEval.BASELINE
+        if not baseline.is_file():
+            raise AssertionError("plan-baseline.json missing after pin")
+        PlanIngressEval.write_invented(root)
 
 
 @_register_eval_fixture("recovery_plan_ingress_promote")

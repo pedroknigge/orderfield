@@ -27,6 +27,8 @@ from of.field import (
     wave_dir,
 )
 
+from of.wal import dump_json
+
 from of.spec import (
     load_requirements,
     requirement_coverage_errors,
@@ -1095,6 +1097,7 @@ class PlanIngress:
     STATUS_CHAT = "chat"
     FAIL_CLOSED_CUE = "plan_fidelity fail-closed"
     DURABLE_REL = ".orderfield/plan-source.md"
+    BASELINE_REL = ".orderfield/plan-baseline.json"
     PROMOTE_NAME = "plan-source.md"
     DEFAULT_OWNER = "ingress"
     MODE_CUE_RE = re.compile(r"plan_ingress\s+(folder|chat|prompt)\b", re.I)
@@ -1129,8 +1132,8 @@ class PlanIngress:
         "sections (HOLD)"
     )
     NOTE_INVENT = (
-        "plan_fidelity invent — a plan MD was written that is not the "
-        "pinned source (HOLD)"
+        "plan_fidelity invent — a plan MD was written after pin that "
+        "is not in the baseline or pin set (HOLD)"
     )
     NOTE_CHAT = (
         "plan_ingress chat — write a durable capture then cite it; "
@@ -1445,16 +1448,70 @@ class PlanIngress:
         return allowed
 
     @staticmethod
+    def baseline_path(root: Path) -> Path:
+        return of_dir(root) / "plan-baseline.json"
+
+    @staticmethod
+    def read_baseline(root: Path) -> list[str] | None:
+        path = PlanIngress.baseline_path(root)
+        if not path.is_file() or path.is_symlink():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, TypeError, ValueError):
+            return None
+        raw: list[Any]
+        if isinstance(data, list):
+            raw = data
+        elif isinstance(data, dict):
+            maybe = data.get("rels")
+            if not isinstance(maybe, list):
+                return None
+            raw = maybe
+        else:
+            return None
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            rel = str(item or "").replace("\\", "/")
+            if not rel or rel in seen:
+                continue
+            seen.add(rel)
+            out.append(rel)
+        return out
+
+    @staticmethod
+    def write_baseline(root: Path, *, overwrite: bool = False) -> list[str]:
+        """Snapshot plan_tree_rels at pin time. Write-once unless overwrite."""
+        if not overwrite:
+            existing = PlanIngress.read_baseline(root)
+            if existing is not None:
+                return existing
+        rels = list(PlanIngress.plan_tree_rels(root))
+        path = PlanIngress.baseline_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(path, {"v": 1, "rels": rels})
+        return rels
+
+    @staticmethod
+    def baseline_rels(root: Path) -> set[str]:
+        found = PlanIngress.read_baseline(root)
+        if found is None:
+            found = PlanIngress.write_baseline(root)
+        return set(found)
+
+    @staticmethod
     def invented(
         root: Path, order: dict[str, Any] | None = None
     ) -> list[str]:
         if not PlanIngress.pinned(order):
             return []
         allowed = PlanIngress.allowed_rels(order)
+        baseline = PlanIngress.baseline_rels(root)
         return [
             rel
             for rel in PlanIngress.plan_tree_rels(root)
-            if rel not in allowed
+            if rel not in baseline and rel not in allowed
         ]
 
     @staticmethod
@@ -1623,6 +1680,8 @@ class PlanIngress:
                 if body is None:
                     continue
                 PlanIngress.pin_source(order, rel, sha256_text(body))
+        if PlanIngress.pinned(order):
+            PlanIngress.write_baseline(root)
         doc = PlanIngress.document(root, order, source_file, text)
         doc["promoted"] = promoted
         return doc
