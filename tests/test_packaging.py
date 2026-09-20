@@ -3227,26 +3227,6 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
-class SkillWaveEndBothRoles(unittest.TestCase):
-    """Stored yes after settle packs both roles; no drops neither. #280 compose."""
-
-    def test_core_appendix_teach_wave_end_both(self) -> None:
-        core = SkillSurface.core(ROOT)
-        appendix = SkillSurface.appendix(ROOT)
-        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-        self.assertIn("Wave-end review scope", table)
-        self.assertIn("pack both review roles", table.casefold())
-        self.assertIn("stored yes", table.casefold())
-        fold = appendix.casefold()
-        self.assertIn("#### wave-end review scope", fold)
-        self.assertIn("evaluatorpacket.due", fold)
-        self.assertIn("gate_action", fold)
-        self.assertIn("pack+spawn both", fold)
-        self.assertIn("do not drop", fold)
-        self.assertIn("consent no", fold)
-        self.assertIn("hold", fold)
-
-
 class SkillWaveReviewScope(unittest.TestCase):
     """Large N scoped to this wave owns-path / published set. #282."""
 
@@ -3411,17 +3391,27 @@ class SkillWaveEndBothRoles(unittest.TestCase):
         self.assertIn("--evaluator-consent", init_row)
         self.assertIn("not a second ask", table_fold)
         self.assertIn("in_flight=0", table)
+        self.assertIn("Wave-end review scope", table)
+        self.assertIn("pack both review roles", table_fold)
         self.assertNotIn("before close pack+spawn", table_fold)
+        alias_fold = SkillSurface.alias(ROOT).casefold()
+        self.assertIn("load sibling", alias_fold)
+        self.assertNotIn("before close pack+spawn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn(self.SETTLE, appendix_fold)
         self.assertIn(self.SKIP, appendix_fold)
         self.assertIn("before next-wave", appendix_fold)
         self.assertIn("evaluatorpacket", appendix_fold)
+        self.assertIn("evaluatorpacket.due", appendix_fold)
+        self.assertIn("gate_action", appendix_fold)
+        self.assertIn("do not drop", appendix_fold)
+        self.assertIn("consent no", appendix_fold)
         self.assertIn("driveafterintegrate", appendix_fold)
         self.assertIn(self.HOLD, appendix_fold)
         self.assertIn("ownedwrite", appendix_fold)
         self.assertIn(self.BYTES, appendix_fold)
         self.assertNotIn("of continue", table_fold)
+        self.assertNotIn("of continue", alias_fold)
         self.assertNotIn("of continue", appendix_fold)
         self.assertEqual(SkillEvaluatorPacket.xor_errors(table, "SKILL.md table"), [])
         self.assertEqual(SkillSurface.errors(ROOT), [])
@@ -3434,6 +3424,7 @@ class SkillWaveEndBothRoles(unittest.TestCase):
         self.assertIn("def due(", source)
         self.assertIn("def gate_action(", source)
         self.assertIn("KEY = \"evaluator_consent\"", source)
+        self.assertIn("HOLD_DETAIL", source)
         ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
         self.assertIn("DriveAfterIntegrate.gate", ops)
 
@@ -3884,94 +3875,4 @@ class SkillSurfaceCore(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-class SkillWaveEndBothRoles(unittest.TestCase):
-    """After implementer settle, stored yes runs both review roles. #280.
-
-    Reuse (design-first; written before the wording cut):
-
-    | Existing | Already covers | This cut |
-    |---|---|---|
-    | EvaluatorPacket store-at-start (#235) | consent on `ORDER.evaluator_consent` | read `consent_of`; per-wave `due` |
-    | `of pack --role verifier\\|adversary` | packet + role contracts | scoped to this wave residual |
-    | SkillWaveSettleAutoContinue / DriveAfterIntegrate (#263/#191) | `in_flight=0` + printed `next` | gate: due→PACK; refuse→HOLD; green→printed next |
-    | OwnedWrite / SkillArtifactProve (#251/#235) | verifier reads bytes | no `of prove` |
-    | resume_next_lines | HOLD / PACK / NEXT-WAVE labels | review refuse + due detail |
-
-    Trigger: pulse/resume `in_flight=0`, implementer residual published,
-    wave not integrated. Consent yes → pack both before collect/next-wave.
-    Consent no → skip. Refuse → HOLD. Green → DriveAfterIntegrate.
-    Net-new verb: none. No supervisor. No VERSION bump in this PR.
-    """
-
-    SETTLE = "after each wave settle"
-    SKIP = "skip review"
-    HOLD = "review refused"
-    BYTES = "published residual"
-
-    @staticmethod
-    def table(skill: str) -> str:
-        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-
-    def test_core_alias_appendix_teach_per_wave_both_roles(self) -> None:
-        core = SkillSurface.core(ROOT)
-        alias = SkillSurface.alias(ROOT)
-        appendix = SkillSurface.appendix(ROOT)
-        table = self.table(core)
-        table_fold = table.casefold()
-        init_row = next(
-            line
-            for line in table.splitlines()
-            if "init / first wave" in line.casefold()
-        )
-        self.assertIn(self.SETTLE, init_row.casefold())
-        self.assertIn("before next-wave", init_row.casefold())
-        self.assertIn(self.SKIP, init_row.casefold())
-        self.assertIn("pack+spawn both", init_row)
-        self.assertIn("--role adversary", init_row)
-        self.assertIn("--role verifier", init_row)
-        self.assertIn("not a second ask", table_fold)
-        self.assertIn("in_flight=0", table)
-        self.assertNotIn("before close pack+spawn", table_fold)
-        # Alias is a pointer (#297) — wave-end teaching lives in sibling SKILL + appendix.
-        alias_fold = alias.casefold()
-        self.assertIn("load sibling", alias_fold)
-        self.assertNotIn("before close pack+spawn", alias_fold)
-        appendix_fold = appendix.casefold()
-        self.assertIn(self.SETTLE, appendix_fold)
-        self.assertIn(self.SKIP, appendix_fold)
-        self.assertIn("before next-wave", appendix_fold)
-        self.assertIn("evaluatorpacket", appendix_fold)
-        self.assertIn("driveafterintegrate", appendix_fold)
-        self.assertIn(self.HOLD, appendix_fold)
-        self.assertIn("ownedwrite", appendix_fold)
-        self.assertIn(self.BYTES, appendix_fold)
-        self.assertNotIn("of continue", table_fold)
-        self.assertNotIn("of continue", alias_fold)
-        self.assertNotIn("of continue", appendix_fold)
-        self.assertEqual(SkillEvaluatorPacket.xor_errors(table, "SKILL.md table"), [])
-        self.assertEqual(SkillSurface.errors(ROOT), [])
-        self.assertLessEqual(
-            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
-        )
-        source = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("def due(", source)
-        self.assertIn("def gate_action(", source)
-        self.assertIn('KEY = "evaluator_consent"', source)
-        self.assertIn("HOLD_DETAIL", source)
-        ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
-        self.assertIn("DriveAfterIntegrate.gate", ops)
-
-    def test_does_not_invent_supervisor_or_xor_or_new_verb(self) -> None:
-        for rel, body in (
-            ("SKILL.md", SkillSurface.core(ROOT)),
-            ("of/SKILL.md", SkillSurface.alias(ROOT)),
-            ("references/skill-appendix.md", SkillSurface.appendix(ROOT)),
-        ):
-            fold = body.casefold()
-            self.assertNotIn("of continue", fold, rel)
-            self.assertNotIn("of review", fold, rel)
-            self.assertEqual(SkillEvaluatorPacket.xor_errors(body, rel), [])
 

@@ -51,7 +51,6 @@ from test_packaging import (  # noqa: E402,F401
     SkillWaveEndBothRoles,
     SkillWaveReviewScope,
     SkillInitAskSkip,
-    SkillWaveEndBothRoles,
     SkillOrcaWorkerTeardown,
     SkillForceSpawnPid,
     SkillLiveQuietStuck,

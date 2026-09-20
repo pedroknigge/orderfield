@@ -17,13 +17,13 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack. The table names the field-run verbs. Lab `eval` stays in the appendix.
 
-The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when work goes through `of` — exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
+The harness starts and stops processes. ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
 
-Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
+Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install. Compared-to: planning-with-files.
 
 Children stay in the packet. Threshold blocks spawn that wave.
 
-Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu when work goes through `of`. Role obedience, ownership, same-harness, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
+Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, and writes outside `of` stay protocol. Detect/doctor PATH ≠ credentials or session. Worktree/process bounds are honesty, not a jail.
 
 ## What to type next
 
@@ -56,7 +56,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing / malformed / non-Git refuse before launch. No record → existing argv |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
-| init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
+| init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave. Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list`, not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. |
 | init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
@@ -66,14 +66,14 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
-| VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py|
+| VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Pair with quote-PULSE |
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
 | several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `--json` — open packs across homes; `of status --json` is one field |
-| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
+| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; no supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
@@ -82,7 +82,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
-| incoming plan / cited `docs/plans/…` | put plan on disk and cite the path. Init reads disk (not `@folder` / chat paste). Digest every heading → pack `--owns-requirement`/`--owns-path` (uncovered first). high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. WARN default; `plan_cover fail-closed` HOLDs close. Green collect mapped heading → surgical write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite/close evidence. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
+| incoming plan / cited `docs/plans/…` | put plan on disk and cite the path. Init reads disk (not `@folder` / chat paste). Digest headings → pack `--owns-requirement`/`--owns-path` (uncovered first). high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. WARN default; `plan_cover fail-closed` HOLDs close. Green collect → surgical write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite/close evidence. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
@@ -101,13 +101,11 @@ A harness name alone is not a trigger. Skill beats child. Typical problems: [REA
 
 ## Auto-report (HITL)
 
-Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. Self-telemetry — not a helpdesk. Use `of issue`.
+Self-telemetry to `pedroknigge/orderfield` via `of issue` — not a helpdesk.
 
-ONLY if Orderfield's: invalid schema / WAL incoherent / pack produced a packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
+ONLY Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child unfinished, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
 
-**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create (or only `of issue --dry-run`). Both sides are the contract. Confirm creates; refuse / edit-later / silence does not.
-
-`of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. A child **never posts** — draft `ISSUE.md` or `issues/<slug>.md` or `of issue --dry-run`. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`; empty=all). Child: [CHILD.md](CHILD.md).
+**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create. Both sides are the contract. Confirm creates; refuse / edit-later / silence does not. Child: [CHILD.md](CHILD.md) — **never posts**. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search first (`of issue --search [QUERY]`). TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses.
 
 ## Mandatory leader process (core)
 
@@ -119,8 +117,8 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`. Repo st
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Clone/checkout + HOME dest skill is the same.
 
-**Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
+**Steer policy.** In-flight user text on an open field is **steered**, not a second mission. Deictic go-ahead (`dale`, `do it`, `as discussed`) is **execute `next`**, not `of spec --amend` of those words.
 
-**Load by verb** for steps 0–7, Forbidden, Roles, paths, and Orca teardown.
+**Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, and close-is-proof: appendix. Not the whole file before pack.
+Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, close-is-proof: appendix. Not the whole file before pack.
