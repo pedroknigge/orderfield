@@ -194,6 +194,19 @@ If the consumer tree has no §20 / Apéndice A tables, do not invent product Gat
 
 **Wave-end / pre-close surplus.** After close (not between waves; not before next-wave). `DriveAfterIntegrate` / `resume_next_lines` already own settle when `in_flight=0` + printed `next`. Leftover field `of learn` notes and reportable errors are a HITL **must ask after close** — do not let them die with the field or stay chat vapor. EvaluatorPacket consent stays `ORDER.evaluator_consent` via `of patch --evaluator-consent` (store-at-start). Do not invent a stop on the settle path. Not auto-promote-all. Not a close gate. Not a new verb. Not a process supervisor. Doctor `docs_sync` / `AuditPressure` stay advisory; this duty is skill, not a kernel auto-promote.
 
+#### Wave-end review scope
+
+Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
+
+| Band / N | Mode | Verifier | Adversary |
+|---|---|---|---|
+| `1-4` or unset N≤4 | **full** | this wave residual | same |
+| `5-10` / `10-50` or unset N>4 | **scoped** | this wave owns-path / published set only | same cite set; collisions + shared boundaries; strata ~4 |
+
+`ORDER.agent_band.band` is optional (#304). Unset infers from this-wave non-review count. Green scoped review still executes printed `next`. Init-ask-skip does not name these bands.
+
+**Release VERSION.** One VERSION and one GitHub release tag per proven invariant (user-facing or kernel). The current CHANGELOG heading must name `**Proof:**`. Packaging-only, docs-only, and cosmetic cuts fail `python3 scripts/check_packaging_bump.py` (also in `validate-skill.sh`). Anti-pattern: 10-tags/day. Eval-only guards prefer no bump. Follow [PUBLISH.md](../PUBLISH.md). Not a tag-date scanner. Not a bot.
+
 | Leftover | Ask / do |
 |---|---|
 | Unpromoted field `of learn` notes (`of learn --list`) | `--protocol` / `--promote` after reading (OF-runtime) OR write owned `docs/plans/…` / findings (product) OR keep field-only OR `--forget` / discard |

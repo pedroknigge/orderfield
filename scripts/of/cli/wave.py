@@ -83,6 +83,7 @@ from of.pack import (
     CodexNullOmit,
     OwnedWrite,
     OwnsPathCoverage,
+    ReviewScope,
     SharedWorktree,
     SliceLint,
     canonical_packet_rel,
@@ -553,6 +554,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
     ]
     owns_paths = require_owns_paths(root, owns_paths_raw) if owns_paths_raw else []
     live = packed_children(root, int(wave))
+    review_scope: dict[str, Any] | None = None
+    if str(args.role) in ReviewScope.REVIEW_ROLES:
+        review_scope = ReviewScope.inherit(
+            root, order, int(wave), str(args.role), live
+        )
+        slice_text = ReviewScope.apply_slice(
+            slice_text, str(args.role), review_scope
+        )
+        slice_note = SliceLint.long_note(slice_text)
     for kind, message in SpawnAdapterMissing.pack_notes(len(live)):
         emit_wave_warning(
             kind,
@@ -626,6 +636,22 @@ def cmd_pack(args: argparse.Namespace) -> None:
             message,
             plain=f"of: note — {message}",
         )
+    if review_scope is not None:
+        for kind, message in ReviewScope.notes(
+            role=str(args.role),
+            slice_text=slice_text,
+            scope=review_scope,
+        ):
+            emit_wave_warning(
+                kind,
+                message,
+                plain=f"of: note — {message}",
+            )
+        emit_wave_warning(
+            ReviewScope.KIND,
+            ReviewScope.note(review_scope),
+            plain=f"of: note — {ReviewScope.note(review_scope)}",
+        )
     order_view: dict[str, Any] = {
         "id": order["id"],
         "rev": order["rev"],
@@ -677,7 +703,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "order_id": order["id"],
         "order_rev": order["rev"],
         "order": order_view,
-        "slice": args.slice,
+        "slice": slice_text,
         "role": args.role,
         "residual_path": residual_path,
         "scratch_dir": scratch,
@@ -710,6 +736,8 @@ def cmd_pack(args: argparse.Namespace) -> None:
         packet["owns_requirements"] = owns
     if owns_paths:
         packet["owns_paths"] = owns_paths
+    if review_scope:
+        packet["review_scope"] = review_scope
     packet["packet_hash"] = packet_digest(packet)
     require_public_schema(packet, "packet.schema.json", "packet")
     errors = validate_packet(packet)
