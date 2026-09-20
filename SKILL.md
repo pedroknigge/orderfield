@@ -15,15 +15,13 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack. The table names the field-run verbs. Lab `eval` stays in the appendix.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack.
 
-The harness starts and stops processes. ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
+ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
 
-Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install. Compared-to: planning-with-files.
+Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
-Children stay in the packet. Threshold blocks spawn that wave.
-
-Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, and writes outside `of` stay protocol. Detect/doctor PATH ≠ credentials or session. Worktree/process bounds are honesty, not a jail.
+Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, and writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
 ## What to type next
 
@@ -40,9 +38,9 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** Oversized `--slice` is **advisory** — **Do not refuse**. |
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
-| conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
+| conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them |
 | spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
-| `of collect` prints `MISSING` | pending/unavailable. Quote adapter / trust / outcome and actual `denied_actions`. Conservative headless “permissions may be involved” is a possibility, not proof; conservative children may still write scratch |
+| `of collect` prints `MISSING` | pending/unavailable. Quote adapter / trust / outcome and actual `denied_actions`. Conservative “permissions may be involved” is a possibility, not proof; conservative children may still write scratch |
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` `--json-schema` → `residual.codex.schema.json` (`usage` `[object,null]`). Codex-null omit. Invalid extract names `$.path`. Claude omit: inline-only (drops stream-json PULSE). Qwen omit |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | `artifact_sha:` + `rollback:` (`CloseEvidence`). Implementer/`--owns-path` hashes owned product, not scratch. Empty `--owns-path` is `owned_write_missing`. Mtime-only is not a write (`OwnedWrite`). Do not trust status. Not `of prove` |
@@ -56,12 +54,12 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing / malformed / non-Git refuse before launch. No record → existing argv |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
-| init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave. Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list`, not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. |
+| init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet). Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list`, not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
 | init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
-| webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair`. Not a webhook server |
+| webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair` |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or a release header. `ContractSurface`. Not a monitor |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — same ContrastReport + spec-diff facts; RESOLVED is not CLOSED; no theater |
@@ -72,8 +70,8 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
 | escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
 | several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
-| several siblings, need flying packs | `of fields` / `--json` — open packs across homes; `of status --json` is one field |
-| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; no supervisor |
+| several siblings, need flying packs | `of fields` / `--json` — open packs across homes |
+| long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
@@ -87,7 +85,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
 | leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
 | status/resume/pulse says `PACKED` / not spawned / `next SPAWN` | no spawn record / no live pid. `of spawn` if detect present. present:none → HOLD. `of handoff --packet` ≠ spawned child / dogfood. Do not HOLD or quote-PULSE as if running. `spawned` counts spawn metadata |
-| residual / `OF_TRUST` | write-floor default. unsupported WARN + next. `conservative` opt-out. `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` **must ask** — not silent defaults; operator action; never invent. Host settings advisory. `plan` → `--mode plan` / grok `--sandbox read-only`. agy/grok isolate MCP (`OF_SPAWN_MCP=inherit`). Pulse `cpu=` on `no writes yet`. Appendix. |
+| residual / `OF_TRUST` | write-floor default. unsupported WARN + next. `conservative` opt-out. `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` **must ask** — not silent defaults; operator action; never invent. `plan` → `--mode plan` / grok `--sandbox read-only`. agy/grok isolate MCP (`OF_SPAWN_MCP=inherit`). Pulse `cpu=` on `no writes yet`. |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Load by verb:** [references/skill-appendix.md](references/skill-appendix.md) pack→§3; spawn→§4; contrast→§5b; close→Production mode |
 
 ## When to use
@@ -101,21 +99,21 @@ A harness name alone is not a trigger. Skill beats child. Typical problems: [REA
 
 ## Auto-report (HITL)
 
-Self-telemetry to `pedroknigge/orderfield` via `of issue` — not a helpdesk.
+Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm. Self-telemetry — not a helpdesk. Use `of issue`.
 
-ONLY Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child unfinished, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
+ONLY Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
 
-**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create. Both sides are the contract. Confirm creates; refuse / edit-later / silence does not. Child: [CHILD.md](CHILD.md) — **never posts**. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search first (`of issue --search [QUERY]`). TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses.
+**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create. Both sides are the contract. Confirm creates; refuse / edit-later / silence does not. `of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. A child **never posts**. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`). Child: [CHILD.md](CHILD.md).
 
 ## Mandatory leader process (core)
 
-Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`. Repo state is `.orderfield/`, not the skill tree.
+Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
-**Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Past tense after CLI returns. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
+**Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
 **Anti-done-theater.** Same as the shipped row. Mechanical. Flying is not shipped.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Clone/checkout + HOME dest skill is the same.
+**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
 **Steer policy.** In-flight user text on an open field is **steered**, not a second mission. Deictic go-ahead (`dale`, `do it`, `as discussed`) is **execute `next`**, not `of spec --amend` of those words.
 
