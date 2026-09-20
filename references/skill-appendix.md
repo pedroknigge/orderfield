@@ -35,12 +35,12 @@ If unsure, draft + HITL, default to *not* posting.
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.**
 
-- Confirm → create (`of issue --confirm` after HITL, or answer yes on a TTY). `--dry-run` is preview only — **not HITL**.
+- Confirm → create (answer yes on a TTY, or write `.orderfield/work/scratch/leader/HITL.md` containing yes then `of issue --confirm`). Bare `--confirm` on non-TTY / `CURSOR_AGENT` / `OF_CHILD` is not HITL. `--dry-run` is preview only — **not HITL**.
 - Refuse / edit-later / silence → do not create (or only `of issue --dry-run`).
 
 Both sides are the contract. Auto-post, yolo post, and posting from a child are forbidden.
 
-`of issue` always targets `--repo pedroknigge/orderfield`. It works with no ORDER. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate, do not invent a token, do not post to consumer origin. Create without `--confirm` on a non-TTY refuses. A TTY may prompt `[y/N]`; `--confirm` skips the prompt after human yes.
+`of issue` always targets `--repo pedroknigge/orderfield`. It works with no ORDER. Stdlib-only: the kernel spawns `gh` with the logged-in account (`gh auth`). Do not impersonate, do not invent a token, do not post to consumer origin. Create without HITL proof refuses. A TTY may prompt `[y/N]`; `--confirm` skips the prompt on a real TTY. Headless/cloud needs the human `HITL.md` note then `--confirm`. Bare `--confirm` is not HITL.
 
 ```bash
 of issue --search
@@ -485,7 +485,7 @@ of patch --done-when-mission "tests green; CHANGELOG; install" # untagged; survi
 - Do not leave unpromoted field `of learn` notes or reportable errors as chat vapor after close. **Must ask after close** — not between waves — promote OF-runtime (`--protocol` / `--promote`), write product findings (PlanDocSync Mode A/B), keep field-only, or discard; defects → `of issue` HITL. Not auto-promote-all. Not a close gate. Appendix **Wave-end / pre-close surplus**.
 - Do not claim FACTIBLE / D CUMPLE from memory or D prose. Check the published artifact. Residual `published_artifact: <path>` (product bytes). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F must cover the occupancy window.
 - Do not open four waves to append to the same file. Same-wave disjoint owners are `scale_out` under one ORDER. `max_across_per_wave` does not serialize children.
-- Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL.
+- Do not create a GitHub issue without explicit human confirmation in the same turn. Confirm creates (TTY yes, or human `HITL.md` yes then `of issue --confirm`); refuse / edit-later / silence does not. Bare `--confirm` is not HITL. `--dry-run` is not HITL.
 - Do not post from a child. Children draft `scratch/ISSUE.md` or `of issue --dry-run`; the leader asks HITL, then `of issue --confirm` to `pedroknigge/orderfield`.
 - Do not auto-report Orderfield defects to the consumer working-tree origin. Target is always `pedroknigge/orderfield` via `of issue`.
 

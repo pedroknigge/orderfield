@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: "v0.8.22 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. Same-harness vs mix once/field. of issue HITL. Install: SHA-256."
+description: "v0.8.22 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. Same-harness vs mix once/field. of issue: TTY or HITL.md+--confirm. Install: SHA-256."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
@@ -81,7 +81,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | incoming plan / cited `docs/plans/…` | digest every requirement section → wave + pack `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. **Mode A default** when owns_path else **Mode B** dump+ask. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
-| leader HITL `of issue` | `--confirm` or TTY y/N. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`) |
+| leader HITL `of issue` | TTY y/N or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. `--search [QUERY]` lists open issues (empty=all; query filters). `--body-file` `.orderfield/work/scratch/<child_id>/` (leader: `ISSUE.md`/`ISSUE-*.md`). Children never post. |
 | status/resume/pulse says `PACKED` / not spawned / `next SPAWN` | no spawn record / no live pid. `of spawn` if detect present. present:none → HOLD. `of handoff --packet` ≠ spawned child / dogfood. Do not HOLD or quote-PULSE as if running. `spawned` counts spawn metadata |
 | residual / `OF_TRUST` | write-floor default. unsupported WARN + next. `conservative` opt-out. `OF_TRUST=yolo` / `OF_SPAWN_ENV=inherit` **must ask** — not silent defaults; operator action; never invent. Host settings advisory. `plan` → `--mode plan` / grok `--sandbox read-only`. agy/grok isolate MCP (`OF_SPAWN_MCP=inherit`). Pulse `cpu=` on `no writes yet`. Appendix. |
 | full procedure (steps 0–7, Forbidden, Roles, paths) | **Load by verb:** [references/skill-appendix.md](references/skill-appendix.md) pack→§3; spawn→§4; contrast→§5b; close→Production mode |
@@ -103,7 +103,7 @@ ONLY if Orderfield's: invalid schema / WAL incoherent / pack produced a packet c
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create (or only `of issue --dry-run`). Both sides are the contract. Confirm creates; refuse / edit-later / silence does not.
 
-`of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). Non-TTY without `--confirm` refuses. A child **never posts** — draft `ISSUE.md` or `issues/<slug>.md` or `of issue --dry-run`. You ask HITL, then `of issue --confirm`. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`; empty=all). Child: [SLAVE.md](SLAVE.md).
+`of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. A child **never posts** — draft `ISSUE.md` or `issues/<slug>.md` or `of issue --dry-run`. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search: `of issue --search [QUERY]` (empty=all). Child: [SLAVE.md](SLAVE.md).
 
 ## Mandatory leader process (core)
 
