@@ -2059,6 +2059,42 @@ class DoctorPlanDocSync(unittest.TestCase):
         self.assertNotIn("doctor        FAIL", r.stdout)
 
 
+class DoctorPlanCoverage(unittest.TestCase):
+    """Cited mega-plan with an unpacked heading: doctor/close WARN, not FAIL."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-plan-cover-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        of.eval_setup_recovery_plan_first_coverage(self.tmp)
+
+    def test_doctor_warns_on_orphan_section(self) -> None:
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("plan_cover", r.stdout)
+        self.assertIn("orphan", r.stdout)
+        self.assertIn("HTTP-001", r.stdout)
+        self.assertIn(of.PlanCoverage.NOTE, r.stdout)
+        self.assertIn("doctor        WARN", r.stdout)
+        self.assertNotIn("doctor        FAIL", r.stdout)
+        self.assertNotIn("AUTH-001", r.stdout.split("plan_cover", 1)[-1].split("note", 1)[0])
+
+    def test_close_checklist_is_advisory_not_a_gate(self) -> None:
+        r = run_of(self.tmp, "close", "--checklist")
+        self.assertIn(of.PlanCoverage.NOTE, r.stdout)
+        self.assertIn("HTTP-001", r.stdout)
+        self.assertNotIn("of close refused: plan_cover", r.stderr)
+
+    def test_packing_orphan_clears_warn(self) -> None:
+        of.PlanCoverageEval.pack_orphan(self.tmp)
+        doc = of.PlanCoverage.document(self.tmp)
+        self.assertEqual(doc["status"], of.PlanCoverage.STATUS_OK)
+        self.assertEqual(doc["orphan_ids"], [])
+        r = run_of(self.tmp, "doctor")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("plan_cover     orphan", r.stdout)
+        self.assertNotIn(of.PlanCoverage.NOTE, r.stdout)
+
+
 class DoctorWorktreeLeftover(unittest.TestCase):
     """Orphaned of-worktrees vs settled children are doctor WARN. No Orca poll."""
 

@@ -32,7 +32,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `InFlightSignal.packed_only` / `PACKED_CHROME` / `parked_reason=not_spawned`. Banner key is `packed` when every flying verdict is `PACKED`. Quote-PULSE speak is spawned flying only. Machine `residual` stays MISSING. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach `PACKED` / not spawned / next SPAWN — residual MISSING is not a live child. Do not quote-PULSE. Core stays under the 20KB cap.
 - **Proof:** `PackedOnlyNotAlive` (packed-without-spawn vs spawned-no-residual) / `SkillPackedOnlyStatus`. C-119 / C-124 / C-142 / C-152 extended. No new C-ID (honesty cap). `#274`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`).
+- **Reuse table (design-first):** `PlanDocSync.cited` already names living `docs/plans/…`. Pack already binds `--owns-requirement` / `--owns-path`. SPEC `requirement_coverage_errors` only sees indexed IDs. The remaining gap is a mega-plan heading the leader never packed (`#279` / epic `#278`).
+- **Reuse, not a new verb:** `PlanCoverage` extracts `##` / `###` heading IDs from cited plans + SPEC.md and WARNs `plan_cover orphan` on doctor / close `--checklist` / integrate. Not FAIL. Not a close gate. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
+- **Skill drives the cut:** SKILL / `/of` / appendix teach high effort on ORDER only; implementer slices stay medium; pstack cherries as ORDER bias (not essays). Core stays under the 20KB cap.
+- **Proof:** `PlanCoverageUnit` / `DoctorPlanCoverage` / `SkillPlanFirstOrder` / `recovery/plan-first-coverage`. C-111 extended. No new C-ID (honesty cap). `#279`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first coverage (`#279`) landed on the same heading after that lockstep.
 
 ## 0.8.21
 

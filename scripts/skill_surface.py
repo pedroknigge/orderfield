@@ -31,6 +31,8 @@ class SkillSurface:
         "in_flight=0",
         "HITL only",
         "bare ok/dale",
+        "plan_cover",
+        "high effort on ORDER",
     )
     APPENDIX_MARKERS = (
         "## Mandatory leader process",
@@ -62,6 +64,8 @@ class SkillSurface:
         "of eval --strict --kernel",
         "recovery/adversarial-dual-truth",
         "recovery/multi-wave-close-checklist",
+        "plan_cover orphan",
+        "high effort on ORDER",
     )
 
     @staticmethod
