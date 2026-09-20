@@ -81,8 +81,8 @@ of eval --strict --kernel     # recovery + CliFieldResidual / StalePackets / Res
 | *(kernel unittest)* | — | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below (`ReadmeProductSurface`) |
 | *(kernel unittest)* | — | in-repo lab is re-runnable; external field dogfood stays Partial (`FieldEvidenceHonesty`; C-153) |
 | *(kernel unittest)* | — | before FACTIBLE / close on schedule+invariants, check the published artifact; CUMPLE-with-bed-overlap fixture fails (`SkillArtifactProve`; no `of prove`) |
-| *(kernel unittest)* | — | skill must propose cheap vs frontier in chat before pack `--model-tier`; alias mirrors; README hero names the consent propose (`SkillLeaderInitiative`) |
-| *(kernel unittest)* | — | skill must ask same-harness vs multi-harness mix in chat before pack; alias mirrors; README hero names the consent ask (`SkillHarnessAsk`) |
+| *(kernel unittest)* | — | skill must propose cheap vs frontier in chat before pack `--model-tier`; `/of` is a pointer (not a second contract); README hero names the consent propose (`SkillLeaderInitiative`) |
+| *(kernel unittest)* | — | skill must ask same-harness vs multi-harness mix in chat before pack; `/of` is a pointer (not a second contract); README hero names the consent ask (`SkillHarnessAsk`) |
 | *(kernel unittest)* | — | skill mix playbook binds pack/spawn/collect/contrast/close/doctor + detect consent; captions-only mix fails (`SkillHarnessMixPlaybook`) |
 | *(kernel unittest)* | — | mid-mission efficiency mix quotes unknown balance; never invent; `budget.tokens` reserved (`SkillEfficiencyMixPlaybook`; `AdapterBalanceUnit`) |
 | *(kernel unittest)* | — | skill consults `docs/model-catalog.md` before cheap/frontier or mix; catalog sourced or unknown (`SkillModelCatalogConsult`; `ModelCatalogHonesty`) |

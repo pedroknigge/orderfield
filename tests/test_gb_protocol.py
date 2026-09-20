@@ -219,8 +219,6 @@ class CloseIsProofRfc(unittest.TestCase):
             self.assertIn(fixture, text, fixture)
         skill = SKILL.read_text(encoding="utf-8")
         self.assertIn("docs/close-is-proof.md", skill)
-        alias = ALIAS.read_text(encoding="utf-8")
-        self.assertIn("docs/close-is-proof.md", alias)
 
     def test_rfc_refuses_supervisor_and_new_runtime(self) -> None:
         text = CLOSE_IS_PROOF.read_text(encoding="utf-8")

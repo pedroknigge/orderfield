@@ -344,12 +344,6 @@ class OutputSchemaSkill(unittest.TestCase):
         self.assertIn("inline", skill_fold)
         self.assertIn("stream-json", skill_fold)
         self.assertIn("$.path", skill)
-        alias_fold = alias.casefold()
-        self.assertIn("--json-schema", alias_fold)
-        self.assertIn("agy", alias_fold)
-        self.assertIn("omit", alias_fold)
-        self.assertIn("claude", alias_fold)
-        self.assertIn("$.path", alias)
 
 
 if __name__ == "__main__":

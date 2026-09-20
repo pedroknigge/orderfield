@@ -56,22 +56,34 @@ grep -q "Qwen Code" "$ROOT/docs/roadmap.md" || fail "roadmap missing Qwen Code s
 grep -q 'scale_up' "$ROOT/docs/roadmap.md" || fail "roadmap missing scale_up/accounting decision"
 ok "README + current docs $VER_FILE"
 
-DESC=$(echo "$FM" | awk '
-  /^description:/{
-    sub(/^description:[[:space:]]*/, "")
-    if ($0 == ">" || $0 == "|" || $0 == ">-" || $0 == "|-") { grab=1; next }
-    print $0
-    grab=1
-    next
-  }
-  grab && /^[a-zA-Z0-9_-]+:/ { exit }
-  grab { print }
-')
-DESC_FLAT=$(echo "$DESC" | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
-DESC_LEN=${#DESC_FLAT}
+desc_len() {
+  local file="$1"
+  local fm desc flat
+  fm=$(awk 'BEGIN{n=0} /^---$/{n++; next} n==1{print} n==2{exit}' "$file")
+  desc=$(echo "$fm" | awk '
+    /^description:/{
+      sub(/^description:[[:space:]]*/, "")
+      if ($0 == ">" || $0 == "|" || $0 == ">-" || $0 == "|-") { grab=1; next }
+      print $0
+      grab=1
+      next
+    }
+    grab && /^[a-zA-Z0-9_-]+:/ { exit }
+    grab { print }
+  ')
+  flat=$(echo "$desc" | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+  echo "${#flat}"
+}
+
+DESC_LEN=$(desc_len "$SKILL_FILE")
 [[ "$DESC_LEN" -gt 0 ]] || fail "description empty"
 [[ "$DESC_LEN" -le "$MAX_DESC" ]] || fail "description length $DESC_LEN > $MAX_DESC"
 ok "description length $DESC_LEN"
+
+ALIAS_DESC_LEN=$(desc_len "$ALIAS_FILE")
+[[ "$ALIAS_DESC_LEN" -gt 0 ]] || fail "of/SKILL.md description empty"
+[[ "$ALIAS_DESC_LEN" -le "$MAX_DESC" ]] || fail "of/SKILL.md description length $ALIAS_DESC_LEN > $MAX_DESC"
+ok "alias description length $ALIAS_DESC_LEN"
 
 for f in \
   "$ROOT/assets/fixtures/residual.threshold.json" \

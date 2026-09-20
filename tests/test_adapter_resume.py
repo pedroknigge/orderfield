@@ -333,9 +333,6 @@ class AdapterResumeSkill(unittest.TestCase):
         self.assertIn("do not invent", folded)
         self.assertIn("residual.session_id", skill.casefold())
         self.assertIn("--continue", skill)
-        alias_fold = alias.casefold()
-        self.assertIn("session_id", alias_fold)
-        self.assertIn("do not invent", alias_fold)
 
 
 if __name__ == "__main__":

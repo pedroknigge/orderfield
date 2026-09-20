@@ -135,8 +135,9 @@ class SkillArtifactProve:
         for needle in SkillArtifactProve.TEACH_CORE:
             if needle.casefold() not in hot.casefold() and needle not in hot:
                 errors.append(f"SKILL.md table missing {needle!r}")
+        if "not a second contract" not in alias.casefold():
+            errors.append("of/SKILL.md missing 'not a second contract'")
         for rel, text, needles in (
-            ("of/SKILL.md", alias, SkillArtifactProve.TEACH_CORE),
             ("references/skill-appendix.md", appendix, SkillArtifactProve.TEACH_APPENDIX),
         ):
             folded = text.casefold()

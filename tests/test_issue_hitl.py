@@ -250,7 +250,6 @@ class SkillIssueConfirm(unittest.TestCase):
         appendix = APPENDIX.read_text(encoding="utf-8")
         for body, name in (
             (skill, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             self.assertIn("--confirm", body, name)
@@ -269,7 +268,6 @@ class SkillIssueConfirm(unittest.TestCase):
         )
         self.assertIn("class IssueConfirm:", source)
         self.assertIn("issue_cmd.py", appendix)
-        self.assertIn("issue_cmd.py", alias)
 
 
 class SkillIssueBodyFileLeader(unittest.TestCase):
@@ -281,7 +279,6 @@ class SkillIssueBodyFileLeader(unittest.TestCase):
         appendix = APPENDIX.read_text(encoding="utf-8")
         for body, name in (
             (skill, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             self.assertIn(".orderfield/work/scratch/leader", body, name)
@@ -293,7 +290,6 @@ class SkillIssueBodyFileLeader(unittest.TestCase):
         )
         for body, name in (
             (skill, "SKILL.md"),
-            (alias, "of/SKILL.md"),
             (appendix, "references/skill-appendix.md"),
         ):
             self.assertIn("ISSUE-*.md", body, name)

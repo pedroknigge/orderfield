@@ -44,7 +44,6 @@ class LivingMap:
         "AGENTS.md",
         "docs/agent-discovery.md",
         "SKILL.md",
-        "of/SKILL.md",
         "references/skill-appendix.md",
     )
 
@@ -96,7 +95,6 @@ class SkillRunbookPath:
     REFUSE = "close refuse"
     SKILL_PAGES = (
         "SKILL.md",
-        "of/SKILL.md",
         "references/skill-appendix.md",
     )
 
@@ -153,7 +151,6 @@ class SkillHarnessMix:
     HARNESSES = ("claude", "codex", "cursor", "grok", "agy")
     SKILL_PAGES = (
         "SKILL.md",
-        "of/SKILL.md",
         "references/skill-appendix.md",
     )
 

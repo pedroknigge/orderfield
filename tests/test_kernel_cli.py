@@ -1069,7 +1069,6 @@ class UpdateAskDaily(unittest.TestCase):
         self.assertIn("SHA256", skill)
         self.assertIn("once a day", skill)
         self.assertIn("do not upgrade mid-order", skill.lower())
-        self.assertIn("--from-release", alias)
 
     def test_semver_tuple(self) -> None:
         self.assertEqual(of.semver_tuple("0.4.0"), (0, 4, 0))

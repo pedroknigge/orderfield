@@ -396,7 +396,7 @@ Hub for agents: [AGENTS.md](AGENTS.md). Code wins over narrative.
 |-----|------|
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core (`/orderfield`, `/of`) |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias (not a second contract) |
-| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (read before pack / spawn / contrast / close) |
+| [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (load by verb: pack / spawn / contrast / close) |
 | [SLAVE.md](SLAVE.md) | Child contract |
 | [docs/external-brief.md](docs/external-brief.md) | One-pager + threat model |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close; BLOCKED / RESOLVED / soft+reason |

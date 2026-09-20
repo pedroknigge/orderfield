@@ -44,7 +44,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `WriteFloor` applies `auto-edit` by default for claude/codex/agy/qwen. cursor/grok/opencode/orca/generic speak WARN + named next (no invented flags). `OF_TRUST=conservative` opts out. `yolo` stays OperatorAction. Host allow-lists are read-only advisory. Spawn meta records `trust` + `write_floor`. No ORDER schema. No VERSION bump.
 - **Skill drives the cut:** SKILL / `/of` / appendix / adapters.md teach the full matrix. Core stays under the 20KB cap.
 - **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `CodexRecordedWorktree` / `SkillWriteFloor`. C-066 extended. No new C-ID (honesty cap). `#294`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first (`#279`), CloseEvidence product SHA (`#286`), and write-floor (`#294`) landed on the same heading after that lockstep.
+- **Reuse table (design-first):** `SkillSurface` already capped `SKILL.md` at 20KB. The remaining gap is the `/of` alias as a 22KB second contract, appendix “read the whole file before pack,” and `AGENTS.md` as an always-on changelog (`#287`; compose with `#278`–`#284`; residual speak handles are `#283`).
+- **Reuse, not a new verb:** same `SkillSurface` + `validate-skill.sh` gate now caps the alias (20KB, description ≤1024). Core target ≪ 18KB. Appendix stays on disk, loaded by verb. `AGENTS.md` keeps rules 0–10 + docs table. No VERSION bump. No second skill product.
+- **Skill drives the cut:** hosts that only load `SKILL.md` keep working; `/of` loads sibling `SKILL.md`. Not a second contract.
+- **Proof:** `python3 scripts/skill_surface.py` + `bash scripts/validate-skill.sh` + `SkillAliasPointer` / `SkillSurfaceCore`. C-150 extended. No new C-ID (honesty cap). `#287`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first (`#279`), CloseEvidence product SHA (`#286`), write-floor (`#294`), and skill load-tax subtract (`#287`) landed on the same heading after that lockstep.
 
 ## 0.8.21
 
