@@ -1504,6 +1504,11 @@ class PlanIngress:
     def invented(
         root: Path, order: dict[str, Any] | None = None
     ) -> list[str]:
+        if order is None:
+            try:
+                order = load_order(root)
+            except SystemExit:
+                order = {}
         if not PlanIngress.pinned(order):
             return []
         allowed = PlanIngress.allowed_rels(order)

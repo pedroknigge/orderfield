@@ -2193,6 +2193,8 @@ class PlanIngressUnit(unittest.TestCase):
         )
         self.assertEqual(initialized.returncode, 0, initialized.stderr)
         self.assertTrue((root / of.PlanIngressEval.BASELINE).is_file())
+        order = of.load_order(root)
+        self.assertGreaterEqual(len(of.PlanIngress.pinned(order)), 5)
         invented = of.PlanIngress.invented(root)
         self.assertEqual(invented, [])
         hold = of.PlanIngress.hold_pack(root)
