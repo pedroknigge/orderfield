@@ -33,10 +33,10 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
-| multi-role pack plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. On yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. Never `budget.tokens`. |
+| multi-role pack plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. On yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
-| status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Never `of pack --tokens`. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
-| long mission, residuals landed / next-wave replan | quote `of status` efficiency, `of detect` present/missing, `of doctor` balance (`unknown` if unpublished). Never invent. **Must ask** before cheap/frontier or mix rebalance. Never silent. Never `budget.tokens`. |
+| status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
+| long mission, residuals landed / next-wave replan | quote `of status` efficiency, `of detect` present/missing, `of doctor` balance (`unknown` if unpublished). Never invent. **Must ask** before cheap/frontier or mix rebalance. Never silent. |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** Oversized `--slice` is **advisory** — **Do not refuse**. |
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
 | mid-epic, next harness or human | `of handoff` (field packet) or `of handoff --json` — do not unpack |
@@ -71,9 +71,9 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
 | several siblings, need flying packs | `of fields` / `--json` — open packs across homes; `of status --json` is one field |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
-| production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `--tokens` / `of merge` |
+| production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
-| session says CLOSED, `--tokens`, or unpack a reporter | disk wins; `--tokens` dies; collect/integrate a reporter. Never `of pack --tokens` N>0 |
+| session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256 pin: README / PUBLISH. Unpinned npx is not trusted. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |

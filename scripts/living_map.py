@@ -18,8 +18,9 @@ Net-new surface: none. No CLI, schema key, supervisor, `RUNTIME_OWNERSHIP`,
 `of merge`, or token ceiling. Captions-only pages fail `LivingMap.errors`.
 A skill that mentions multi-harness mix without pack/spawn/collect/contrast/
 close/doctor + detect consent fails `SkillHarnessMix.errors`.
-Long-task mix pages that invent a balance (missing unknown / never invent /
-budget.tokens) fail `SkillEfficiencyMix.errors`.
+Long-task mix pages that invent a balance (missing unknown / never invent)
+fail `SkillEfficiencyMix.errors`. Hosts-loaded SKILL must omit live
+`budget.tokens` speak; the appendix labels that leftover **not implemented**.
 
 Stdlib only. Class with static methods — same shape as `SkillSurface`.
 """
@@ -230,7 +231,8 @@ class SkillEfficiencyMix:
     HEADING = "**Long-task efficiency mix"
     UNKNOWN = "unknown"
     NEVER_INVENT = "never invent"
-    RESERVED = "budget.tokens"
+    NOT_IMPLEMENTED = "not implemented"
+    LEFTOVER = "budget.tokens"
     SKILL_PAGES = SkillHarnessMix.SKILL_PAGES
 
     @staticmethod
@@ -240,19 +242,39 @@ class SkillEfficiencyMix:
         for needle in (
             SkillEfficiencyMix.UNKNOWN,
             SkillEfficiencyMix.NEVER_INVENT,
-            SkillEfficiencyMix.RESERVED,
         ):
             if needle not in folded:
                 errors.append(f"{rel} missing {needle!r}")
         return errors
 
     @staticmethod
+    def hot_path_errors(text: str, rel: str = "SKILL.md") -> list[str]:
+        """Hosts-loaded table must not sell token budgets as live."""
+        if "## What to type next" in text and "## When to use" in text:
+            body = text.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        else:
+            body = text
+        folded = body.casefold()
+        errors: list[str] = []
+        if SkillEfficiencyMix.LEFTOVER in folded:
+            errors.append(f"{rel} table sells {SkillEfficiencyMix.LEFTOVER}")
+        if "of pack --tokens" in folded:
+            errors.append(f"{rel} table sells of pack --tokens")
+        return errors
+
+    @staticmethod
     def appendix_errors(
         text: str, rel: str = "references/skill-appendix.md"
     ) -> list[str]:
+        errors: list[str] = []
         if SkillEfficiencyMix.HEADING not in text:
-            return [f"{rel} missing {SkillEfficiencyMix.HEADING!r}"]
-        return []
+            errors.append(f"{rel} missing {SkillEfficiencyMix.HEADING!r}")
+        folded = text.casefold()
+        if SkillEfficiencyMix.NOT_IMPLEMENTED not in folded:
+            errors.append(f"{rel} missing {SkillEfficiencyMix.NOT_IMPLEMENTED!r}")
+        if SkillEfficiencyMix.LEFTOVER not in folded:
+            errors.append(f"{rel} missing leftover {SkillEfficiencyMix.LEFTOVER!r}")
+        return errors
 
     @staticmethod
     def errors(root: Path) -> list[str]:
@@ -265,6 +287,8 @@ class SkillEfficiencyMix:
                 continue
             body = page.read_text(encoding="utf-8")
             errors.extend(SkillEfficiencyMix.mention_errors(body, rel))
+            if rel == "SKILL.md":
+                errors.extend(SkillEfficiencyMix.hot_path_errors(body, rel))
             if rel == "references/skill-appendix.md":
                 errors.extend(SkillEfficiencyMix.appendix_errors(body, rel))
         return errors
