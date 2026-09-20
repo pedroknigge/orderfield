@@ -23,6 +23,10 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Proof:** `validate-skill.sh` requires `CHILD.md`; `SkillSurface` names it; dest install has `CHILD.md` and no skill-root `SLAVE.md`; child/residual teaching tests still read `CHILD.md`. `#310`.
 - **Proof:** `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. Stored yes (`ORDER.evaluator_consent`) packs both review roles after each implementer wave settle before next-wave; stored no skips; review refuse HOLDs. C-080 / C-025 extended. No new C-ID (honesty cap). `#280` / PR `#303`.
 - Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main.
+- **Reuse table (design-first):** `EvaluatorPacket` already stores start consent on `ORDER.evaluator_consent`. `#315` already labels reserved budget/scale as not implemented. The remaining gap is stored-yes review after wave settle, and large-N reviewers citing the whole field (`#280` / `#282`; `#303` still open; `#304` still off main).
+- **Reuse, not a new verb:** `EvaluatorPacket.due` / `gate_action` compose onto `evaluator_consent`. Stored yes + settled implementers → pack both review roles before next-wave. Stored no skips. Review refuse HOLDs. `ReviewScope` inherits this wave's owns-path / published set (`1-4` or N≤4 full; `5-10` / `10-50` or N>4 scoped). Packet `review_scope` is a cite set, not `owns_paths`. Optional `ORDER.agent_band` is read-only until `#304`. No VERSION bump. No new C-ID.
+- **Skill drives the cut:** SKILL residuals-landed row + appendix **Wave-end review scope**. Init-ask-skip must not name band strings. Core stays under the 20KB cap.
+- **Proof:** `WaveEndBothRolesProof` / `WaveReviewScopeProof` / `SkillWaveEndBothRoles` / `SkillWaveReviewScope`. C-080 extended. Honesty cap. `#282` / compose `#280`. Design: `docs/features/kernel/wave-review-scope.md`.
 
 ## 0.8.22
 

@@ -683,6 +683,247 @@ class OwnsPathCoverage:
         ]
 
 
+class ReviewScope:
+    """Wave-end verifier+adversary inherit this wave's owns-path / published set.
+
+    Band 1-4: full residual. Bands 5-10 / 10-50: scoped. Unset band infers
+    from this-wave implementer count (N<=4 full, N>4 scoped). Reads
+    ``ORDER.agent_band.band`` when present. Reviewers do not stamp
+    ``owns_paths`` (write-set). Reuses OwnsPathCoverage.slice_paths.
+    No new verb. Not a supervisor. SoL-Pi groups-of-four is strata only.
+    """
+
+    KIND = "review_scope"
+    REVIEW_ROLES = ("adversary", "verifier")
+    MODE_FULL = "full"
+    MODE_SCOPED = "scoped"
+    BANDS_FULL = frozenset({"1-4"})
+    BANDS_SCOPED = frozenset({"5-10", "10-50"})
+    STRATUM = 4
+    FULL_MARK = "full wave residual"
+    SCOPE_PREFIX = "scope:"
+    FOCUS_ARTIFACTS = "artifacts"
+    FOCUS_COLLISIONS = "collisions"
+    FIX = (
+        "pack inherits this wave's owns-path / published set; "
+        "do not cite prior-wave paths"
+    )
+
+    @staticmethod
+    def band_of(order: dict[str, Any] | None) -> str | None:
+        raw = (order or {}).get("agent_band")
+        if not isinstance(raw, dict):
+            return None
+        band = str(raw.get("band") or "").strip()
+        if band in ReviewScope.BANDS_FULL or band in ReviewScope.BANDS_SCOPED:
+            return band
+        return None
+
+    @staticmethod
+    def mode_for(band: str | None, n: int) -> str:
+        if band in ReviewScope.BANDS_FULL:
+            return ReviewScope.MODE_FULL
+        if band in ReviewScope.BANDS_SCOPED:
+            return ReviewScope.MODE_SCOPED
+        return ReviewScope.MODE_SCOPED if int(n) > 4 else ReviewScope.MODE_FULL
+
+    @staticmethod
+    def strata(child_ids: list[str], size: int = STRATUM) -> list[list[str]]:
+        ids = [str(cid).strip() for cid in child_ids if str(cid).strip()]
+        width = max(1, int(size))
+        return [ids[i : i + width] for i in range(0, len(ids), width)]
+
+    @staticmethod
+    def wave_set(
+        root: Path,
+        wave: int,
+        packets: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        rows = (
+            packets
+            if packets is not None
+            else packed_children(root, int(wave))
+        )
+        paths: list[str] = []
+        published: list[str] = []
+        ids: list[str] = []
+        seen_paths: set[str] = set()
+        seen_pub: set[str] = set()
+        for packet in rows:
+            role = str(packet.get("role") or "")
+            if role in ReviewScope.REVIEW_ROLES:
+                continue
+            cid = str(packet.get("child_id") or "").strip()
+            if cid:
+                ids.append(cid)
+            for owned in packet_owns_paths(packet):
+                if owned not in seen_paths:
+                    seen_paths.add(owned)
+                    paths.append(owned)
+            rel = posix_owns_path(str(packet.get("residual_path") or ""))
+            if rel and rel not in seen_pub and packet_residual_file(root, packet):
+                seen_pub.add(rel)
+                published.append(rel)
+        return {
+            "ids": ids,
+            "paths": paths,
+            "published": published,
+            "n": len(ids),
+        }
+
+    @staticmethod
+    def inherit(
+        root: Path,
+        order: dict[str, Any],
+        wave: int,
+        role: str,
+        live: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        wave_set = ReviewScope.wave_set(root, int(wave), live)
+        band = ReviewScope.band_of(order)
+        mode = ReviewScope.mode_for(band, int(wave_set["n"]))
+        focus = (
+            ReviewScope.FOCUS_COLLISIONS
+            if str(role) == "adversary"
+            else ReviewScope.FOCUS_ARTIFACTS
+        )
+        scope: dict[str, Any] = {
+            "mode": mode,
+            "paths": list(wave_set["paths"]),
+            "published": list(wave_set["published"]),
+            "role_focus": focus,
+        }
+        if band:
+            scope["band"] = band
+        if mode == ReviewScope.MODE_SCOPED and str(role) == "adversary":
+            groups = ReviewScope.strata(list(wave_set["ids"]))
+            if groups:
+                scope["strata"] = groups
+        return scope
+
+    @staticmethod
+    def allowed_paths(scope: dict[str, Any]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for raw in list(scope.get("paths") or []) + list(scope.get("published") or []):
+            path = posix_owns_path(str(raw))
+            if path and path not in seen:
+                seen.add(path)
+                out.append(path)
+        return out
+
+    @staticmethod
+    def apply_slice(slice_text: str, role: str, scope: dict[str, Any]) -> str:
+        text = " ".join(str(slice_text or "").split())
+        mode = str(scope.get("mode") or ReviewScope.MODE_FULL)
+        if mode == ReviewScope.MODE_FULL:
+            if ReviewScope.FULL_MARK not in text.casefold():
+                text = f"{text} {ReviewScope.FULL_MARK}".strip()
+            return text
+        cited = OwnsPathCoverage.slice_paths(text)
+        missing = [
+            path
+            for path in (scope.get("paths") or [])
+            if not any(owns_paths_overlap(str(path), named) for named in cited)
+        ]
+        bits: list[str] = []
+        if missing:
+            bits.append(ReviewScope.SCOPE_PREFIX + " " + " ".join(missing))
+        if str(role) == "adversary":
+            if "collisions" not in text.casefold():
+                bits.append("collisions and shared boundaries")
+            groups = scope.get("strata") or []
+            if groups and "strata:" not in text.casefold():
+                bits.append(
+                    "strata: "
+                    + "; ".join(",".join(str(cid) for cid in group) for group in groups)
+                )
+        elif "this wave only" not in text.casefold():
+            bits.append("published artifacts this wave only")
+        if bits:
+            text = f"{text} {' '.join(bits)}".strip()
+        return text
+
+    @staticmethod
+    def notes(
+        *, role: str, slice_text: str, scope: dict[str, Any]
+    ) -> list[tuple[str, str]]:
+        if str(role or "") not in ReviewScope.REVIEW_ROLES:
+            return []
+        if str(scope.get("mode") or "") != ReviewScope.MODE_SCOPED:
+            return []
+        allowed = ReviewScope.allowed_paths(scope)
+        leak = [
+            named
+            for named in OwnsPathCoverage.slice_paths(slice_text)
+            if not any(owns_paths_overlap(named, mine) for mine in allowed)
+        ]
+        if not leak:
+            return []
+        who = ", ".join(leak[:8])
+        return [
+            (
+                ReviewScope.KIND,
+                f"review slice cites {who} outside this wave owns-path / "
+                f"published set ({ReviewScope.KIND}); {ReviewScope.FIX}.",
+            )
+        ]
+
+    @staticmethod
+    def note(scope: dict[str, Any]) -> str:
+        mode = str(scope.get("mode") or ReviewScope.MODE_FULL)
+        band = str(scope.get("band") or "").strip()
+        band_bit = f" band={band}" if band else ""
+        if mode == ReviewScope.MODE_FULL:
+            return (
+                f"review_scope=full{band_bit} "
+                "(this wave residual; not a write-set)"
+            )
+        n_paths = len(scope.get("paths") or [])
+        n_pub = len(scope.get("published") or [])
+        return (
+            f"review_scope=scoped{band_bit} paths={n_paths} "
+            f"published={n_pub} (this wave only; not a write-set)"
+        )
+
+    @staticmethod
+    def prompt_block(role: str, scope: dict[str, Any]) -> str:
+        mode = str(scope.get("mode") or ReviewScope.MODE_FULL)
+        paths = ", ".join(str(p) for p in (scope.get("paths") or [])) or "(none)"
+        published = (
+            ", ".join(str(p) for p in (scope.get("published") or [])) or "(none)"
+        )
+        if mode == ReviewScope.MODE_FULL:
+            return (
+                "\n## Review scope — full\n\n"
+                "Band 1-4 (or N<=4 when band unset). Review this wave's "
+                "residual in full. Do not drop adversary or verifier. "
+                "Not a supervisor. Not whole-field history by accident — "
+                f"this wave. Cite set: {paths}. Published: {published}.\n"
+            )
+        if str(role) == "adversary":
+            focus = (
+                "Adversary: stratified on cross-slice collisions and shared "
+                "boundaries (not whole field history). Groups of ~4."
+            )
+        else:
+            focus = (
+                "Verifier: published artifacts / owns-path of this wave only. "
+                "Read bytes (OwnedWrite), not implementer prose."
+            )
+        extra = ""
+        groups = scope.get("strata") or []
+        if groups:
+            extra = " Strata: " + "; ".join(
+                ",".join(str(cid) for cid in group) for group in groups
+            ) + "."
+        return (
+            "\n## Review scope — scoped\n\n"
+            f"{focus} Paths: {paths}. Published: {published}.{extra} "
+            "Do not review prior waves. Do not drop this role.\n"
+        )
+
+
 class SharedWorktree:
     """Two implementers share one HEAD/index unless recorded worktrees isolate them.
 
@@ -1915,6 +2156,9 @@ def render_prompt(
     contract = ROLE_CONTRACTS.get(role)
     if contract:
         body += f"\n## Role contract — {role}\n\n{contract}\n"
+    scope = packet.get("review_scope")
+    if isinstance(scope, dict) and role in ReviewScope.REVIEW_ROLES:
+        body += ReviewScope.prompt_block(role, scope)
     lessons = protocol_learning_lines(root) if root is not None else []
     if lessons:
         # LEARN-002: wrap each line as untrusted quoted data, never naked doctrine.

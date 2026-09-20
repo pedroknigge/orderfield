@@ -801,9 +801,13 @@ class EvaluatorPacket:
     KEY = "evaluator_consent"
     VALUES = ("yes", "no")
     REVIEW_ROLES = ("adversary", "verifier")
+    REFUSE_STATUSES = frozenset(
+        {"threshold", "escalate_up", "failed", "blocked"}
+    )
     STATUS_ASK = "ask"
     STATUS_SKIP = "skip"
     STATUS_UNSET = "unset"
+    STATUS_REFUSE = "refuse"
     STATUS_LANDED = "landed"
     STATUS_IN_FLIGHT = "in-flight"
     ASK_NEXT = "of pack --role adversary and --role verifier"
@@ -821,8 +825,10 @@ class EvaluatorPacket:
     SPEAK_SKIP = "stored no: skip review; execute printed next"
     SPEAK_REFUSE = "review refused; HOLD — do not next-wave"
     SPEAK_UNSET = "missing evaluator_consent; of patch --evaluator-consent yes|no"
+    SPEAK_REFUSE = "review refused; HOLD — do not next-wave"
     SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
     SPEAK_LANDED = "review packet landed; self-praise is not review"
+    SETTLE_ACTIONS = frozenset({"collect", "integrate", "pack"})
 
     @staticmethod
     def consent_of(order: dict[str, Any] | None) -> str:
@@ -989,6 +995,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_REFUSE
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.SPEAK_UNSET
+        if status == EvaluatorPacket.STATUS_REFUSE:
+            return EvaluatorPacket.SPEAK_REFUSE
         return EvaluatorPacket.SPEAK_ASK
 
     @staticmethod
@@ -1027,6 +1035,7 @@ class EvaluatorPacket:
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
             "evaluator_children": children,
+            "due": due,
             "next": nxt,
             "speak": EvaluatorPacket.speak_for(status),
         }

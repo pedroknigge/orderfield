@@ -93,7 +93,7 @@ GOAL / SCOPE / CONTEXT / ACCEPTANCE / VERIFY / TIMEBOX / FORBIDDEN / REPORT
 
 ACCEPTANCE is one done-because-of fact plus a real-surface exercise. Evidence-box for this wave: Files · Build · You see · Verify (artifact). One checkable unit — not an essay.
 
-`--role adversary` / `--role verifier`: bucket each finding `act` / `consider` / `noted` / `dismissed`. Act writes `proposed_patch` or `escalate_up` (`status=threshold` + `wants_to_change`). Consider → `proposed_patch.notes`. Noted / dismissed → `evidence` (dismissed names why). `docs_sync` stays under `proposed_patch`. No new keys.
+`--role adversary` / `--role verifier`: bucket each finding `act` / `consider` / `noted` / `dismissed`. Act writes `proposed_patch` or `escalate_up` (`status=threshold` + `wants_to_change`). Consider → `proposed_patch.notes`. Noted / dismissed → `evidence` (dismissed names why). `docs_sync` stays under `proposed_patch`. Packet `review_scope` (when present) is this wave's cite set — not `owns_paths`, not a write-set. Scoped review stays on those paths / published residuals. Do not drop this role. No new keys.
 
 ## How your turn ends
 

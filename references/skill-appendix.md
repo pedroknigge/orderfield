@@ -148,6 +148,17 @@ Closed table. Not a verb. Reuses `SkillLeaderInitiative` / `SkillHarnessAsk` / `
 | Small: 1-2 exclusive slices; bump / obvious feature; owners known; one context fits | skip (stay session; no catalog/propose) | skip (same-harness implicit). detect present or HOLD | skip store-ask. contrast → `of close --checklist`. Do not pack review roles |
 | Large: colliding / public-claim / multi-role / multi-harness | consult + **must propose** once/field | **must ask** once/field | **must ask** once; store `--evaluator-consent`; never silent. Stored yes → after each wave settle pack+spawn both on that wave residual before next-wave. Stored no → skip review; execute printed next |
 
+#### Wave-end review scope
+
+Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
+
+| Band / N | Mode | Verifier | Adversary |
+|---|---|---|---|
+| `1-4` or unset N≤4 | **full** | this wave residual | same |
+| `5-10` / `10-50` or unset N>4 | **scoped** | this wave owns-path / published set only | same cite set; collisions + shared boundaries; strata ~4 |
+
+`ORDER.agent_band.band` is optional (#304). Unset infers from this-wave non-review count. Green scoped review still executes printed `next`. Init-ask-skip does not name these bands.
+
 **Release VERSION.** One VERSION and one GitHub release tag per proven invariant (user-facing or kernel). The current CHANGELOG heading must name `**Proof:**`. Packaging-only, docs-only, and cosmetic cuts fail `python3 scripts/check_packaging_bump.py` (also in `validate-skill.sh`). Anti-pattern: 10-tags/day. Eval-only guards prefer no bump. Follow [PUBLISH.md](../PUBLISH.md). Not a tag-date scanner. Not a bot.
 
 #### Production mode

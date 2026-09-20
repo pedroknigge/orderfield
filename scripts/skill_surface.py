@@ -55,6 +55,7 @@ class SkillSurface:
         "## Roles (identities, not job titles)",
         "#### When orderfield pays vs theater",
         "#### Init ask skip",
+        "#### Wave-end review scope",
         "#### Production mode",
         "**Gate A before features.**",
         "#### Multi-harness mix",

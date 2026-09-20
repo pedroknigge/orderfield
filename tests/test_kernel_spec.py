@@ -2,6 +2,7 @@
 """Kernel tests — spec invariants (SPEC.md, requirements, contrast, close)."""
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -55,6 +56,28 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def publish_committed(home: Path, rel: str, text: str) -> None:
+    """Keep a tamper across the next mutator (WAL-002 rematerializes CURRENT)."""
+    payload = text.encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest()
+    current_path = home / "wal" / "CURRENT.json"
+    current = json.loads(current_path.read_text(encoding="utf-8"))
+    gen = home / "wal" / str(current["generation"])
+    dest = gen / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(payload)
+    live = home / rel
+    live.parent.mkdir(parents=True, exist_ok=True)
+    live.write_bytes(payload)
+    man_path = gen / "MANIFEST.json"
+    man = json.loads(man_path.read_text(encoding="utf-8"))
+    files = man.setdefault("files", {})
+    files[rel] = digest
+    man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
+    current.setdefault("files", {})[rel] = digest
+    current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
 
 
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
@@ -2432,6 +2455,327 @@ class EvaluatorPacketProof(unittest.TestCase):
         self.assertIn(of.EvaluatorPacket.SPEAK_LANDED, dry.stdout)
         self.assertIn("adversary:rev1", dry.stdout)
         self.assertNotIn("CLOSED", dry.stdout)
+
+
+class WaveEndBothRolesProof(unittest.TestCase):
+    """Consent yes packs both after settle; no skips; refuse HOLDs. #280 compose."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wave-end-both-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        started = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(started.returncode, 0, started.stderr)
+
+    def _store(self, value: str) -> None:
+        patched = run_of(self.tmp, "patch", "--evaluator-consent", value)
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+
+    def _pack_wave(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "wave product",
+            "--role",
+            "explorer",
+            "--child-id",
+            "w1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _doc(self) -> dict:
+        return of.EvaluatorPacket.document(
+            self.tmp, of.load_state(self.tmp), of.load_order(self.tmp)
+        )
+
+    def _add_review(self, *, role: str, child_id: str) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "fresh-context review of the wave residual",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        )
+
+    def test_consent_yes_due_names_pack_both_before_collect(self) -> None:
+        self._store("yes")
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        doc = self._doc()
+        self.assertEqual(doc["consent"], "yes")
+        self.assertTrue(doc["due"], doc)
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, doc["next"])
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("in_flight     0", resumed.stdout)
+        self.assertIn("PACK", resumed.stdout)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        self.assertNotIn("next\n  COLLECT", resumed.stdout)
+        self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
+        adv = self._add_review(role="adversary", child_id="adv1")
+        self.assertEqual(adv.returncode, 0, adv.stderr)
+        ver = self._add_review(role="verifier", child_id="ver1")
+        self.assertEqual(ver.returncode, 0, ver.stderr)
+        after = self._doc()
+        self.assertFalse(after["due"], after)
+        self.assertEqual(after["evaluator"], of.EvaluatorPacket.STATUS_IN_FLIGHT)
+        self.assertIn("adversary", after["evaluator_roles"])
+        self.assertIn("verifier", after["evaluator_roles"])
+
+    def test_consent_no_skips_review_and_collects(self) -> None:
+        self._store("no")
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        doc = self._doc()
+        self.assertEqual(doc["consent"], "no")
+        self.assertFalse(doc["due"], doc)
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_SKIP)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("COLLECT", resumed.stdout)
+        self.assertNotIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, integrated.stderr)
+
+    def test_review_refuse_holds_named_next(self) -> None:
+        self._store("yes")
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        self.assertEqual(self._add_review(role="adversary", child_id="adv1").returncode, 0)
+        self.assertEqual(self._add_review(role="verifier", child_id="ver1").returncode, 0)
+        write_bound_residual(self.tmp, "adv1", THRESHOLD)
+        write_bound_residual(self.tmp, "ver1")
+        doc = self._doc()
+        self.assertTrue(of.EvaluatorPacket.refused(self.tmp, of.load_state(self.tmp)))
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_REFUSE)
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_REFUSE)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("HOLD", resumed.stdout)
+        self.assertIn(of.EvaluatorPacket.HOLD_DETAIL, resumed.stdout)
+        self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertNotIn(of.DriveAfterIntegrate.SPEAK, resumed.stdout)
+
+    def test_review_green_auto_continues_after_integrate(self) -> None:
+        self._store("yes")
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        self.assertEqual(self._add_review(role="adversary", child_id="adv1").returncode, 0)
+        self.assertEqual(self._add_review(role="verifier", child_id="ver1").returncode, 0)
+        write_bound_residual(self.tmp, "adv1")
+        write_bound_residual(self.tmp, "ver1")
+        landed = self._doc()
+        self.assertFalse(landed["due"], landed)
+        self.assertEqual(landed["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, integrated.stderr)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, resumed.stdout)
+
+
+class WaveReviewScopeProof(unittest.TestCase):
+    """N>4 scoped to this wave; band 1-4 stays full residual. #282."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wave-review-scope-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        started = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(started.returncode, 0, started.stderr)
+
+    def _store(self, value: str) -> None:
+        patched = run_of(self.tmp, "patch", "--evaluator-consent", value)
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+
+    def _write_order(self, order: dict) -> None:
+        publish_committed(
+            self.tmp / ".orderfield",
+            "ORDER.json",
+            json.dumps(order, indent=2) + "\n",
+        )
+
+    def _raise_cap(self, n: int = 12) -> None:
+        order = of.load_order(self.tmp)
+        order["caps"]["max_children"] = int(n)
+        self._write_order(order)
+
+    def _set_band(self, band: str) -> None:
+        order = of.load_order(self.tmp)
+        order["agent_band"] = {"band": band}
+        self._write_order(order)
+
+    def _pack_impl(self, child_id: str, owns: str, slice_text: str = "") -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            slice_text or f"implement {owns}",
+            "--role",
+            "implementer",
+            "--child-id",
+            child_id,
+            "--owns-path",
+            owns,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _add_review(self, *, role: str, child_id: str, wave: int = 1) -> dict:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "fresh-context review of the wave residual",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        return load_json(packet_path(self.tmp, child_id, wave))
+
+    def test_mode_for_bands_and_n_infer(self) -> None:
+        self.assertEqual(of.ReviewScope.mode_for("1-4", 9), of.ReviewScope.MODE_FULL)
+        self.assertEqual(of.ReviewScope.mode_for("5-10", 2), of.ReviewScope.MODE_SCOPED)
+        self.assertEqual(of.ReviewScope.mode_for("10-50", 2), of.ReviewScope.MODE_SCOPED)
+        self.assertEqual(of.ReviewScope.mode_for(None, 4), of.ReviewScope.MODE_FULL)
+        self.assertEqual(of.ReviewScope.mode_for(None, 5), of.ReviewScope.MODE_SCOPED)
+        groups = of.ReviewScope.strata(["a", "b", "c", "d", "e"])
+        self.assertEqual(groups, [["a", "b", "c", "d"], ["e"]])
+        self.assertTrue(all(len(g) <= of.ReviewScope.STRATUM for g in groups))
+
+    def test_band_1_4_full_residual(self) -> None:
+        self._store("yes")
+        self._set_band("1-4")
+        self._pack_impl("w1", "src/one.py")
+        self._pack_impl("w2", "src/two.py")
+        write_bound_residual(self.tmp, "w1")
+        write_bound_residual(self.tmp, "w2")
+        adv = self._add_review(role="adversary", child_id="adv1")
+        ver = self._add_review(role="verifier", child_id="ver1")
+        for pkt in (adv, ver):
+            scope = pkt.get("review_scope") or {}
+            self.assertEqual(scope.get("mode"), of.ReviewScope.MODE_FULL, scope)
+            self.assertEqual(scope.get("band"), "1-4")
+            self.assertIn(of.ReviewScope.FULL_MARK, str(pkt.get("slice") or ""))
+            self.assertNotIn("owns_paths", pkt)
+        prompt = (
+            self.tmp
+            / ".orderfield"
+            / "waves"
+            / "001"
+            / "prompts"
+            / "ver1.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Review scope — full", prompt)
+        self.assertIn("this wave", prompt.casefold())
+
+    def test_n_gt_4_scoped_this_wave_only(self) -> None:
+        self._store("yes")
+        self._raise_cap(12)
+        self._pack_impl("hist", "hist/old.py")
+        write_bound_residual(self.tmp, "hist")
+        self._add_review(role="adversary", child_id="hist-adv")
+        self._add_review(role="verifier", child_id="hist-ver")
+        write_bound_residual(self.tmp, "hist-adv")
+        write_bound_residual(self.tmp, "hist-ver")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        nxt = run_of(self.tmp, "next-wave")
+        self.assertEqual(nxt.returncode, 0, nxt.stderr)
+
+        wave2 = [
+            ("imp1", "src/a.py"),
+            ("imp2", "src/b.py"),
+            ("imp3", "src/c.py"),
+            ("imp4", "src/d.py"),
+            ("imp5", "src/e.py"),
+        ]
+        for cid, path in wave2:
+            self._pack_impl(cid, path)
+            write_bound_residual(self.tmp, cid, wave=2)
+        owns = [path for _, path in wave2]
+        adv = self._add_review(role="adversary", child_id="adv2", wave=2)
+        ver = self._add_review(role="verifier", child_id="ver2", wave=2)
+        packet_dir = self.tmp / ".orderfield" / "waves" / "002" / "packets"
+        self.assertTrue((packet_dir / "adv2.json").is_file())
+        self.assertTrue((packet_dir / "ver2.json").is_file())
+        published = {
+            f".orderfield/waves/002/residuals/{cid}.json" for cid, _ in wave2
+        }
+        for pkt in (adv, ver):
+            self.assertEqual(pkt.get("wave"), 2)
+            scope = pkt.get("review_scope") or {}
+            self.assertEqual(scope.get("mode"), of.ReviewScope.MODE_SCOPED, scope)
+            self.assertEqual(sorted(scope.get("paths") or []), sorted(owns))
+            self.assertEqual(sorted(scope.get("published") or []), sorted(published))
+            cited = of.OwnsPathCoverage.slice_paths(str(pkt.get("slice") or ""))
+            allowed = set(owns) | published
+            leak = [
+                path
+                for path in cited
+                if not any(of.owns_paths_overlap(path, mine) for mine in allowed)
+            ]
+            self.assertEqual(leak, [], cited)
+            self.assertNotIn("hist/old.py", cited)
+            self.assertNotIn("hist/old.py", scope.get("paths") or [])
+            blob = json.dumps(pkt)
+            self.assertNotIn("hist/old.py", blob)
+            self.assertNotIn("waves/001/residuals", blob)
+            self.assertNotIn("owns_paths", pkt)
+            prompt = (
+                self.tmp
+                / ".orderfield"
+                / "waves"
+                / "002"
+                / "prompts"
+                / f"{pkt['child_id']}.md"
+            ).read_text(encoding="utf-8")
+            self.assertIn("Review scope — scoped", prompt)
+            self.assertNotIn("hist/old.py", prompt)
+        self.assertEqual(adv["review_scope"].get("role_focus"), "collisions")
+        self.assertEqual(ver["review_scope"].get("role_focus"), "artifacts")
+        strata = adv["review_scope"].get("strata") or []
+        self.assertGreaterEqual(len(strata), 1)
+        self.assertTrue(all(len(group) <= 4 for group in strata))
+        self.assertEqual(
+            [cid for group in strata for cid in group],
+            [cid for cid, _ in wave2],
+        )
+        write_bound_residual(self.tmp, "adv2", wave=2)
+        write_bound_residual(self.tmp, "ver2", wave=2)
+        collected = run_of(self.tmp, "collect", "--wave", "2")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "2")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, integrated.stderr)
+
+    def test_stored_band_5_10_scopes_small_n(self) -> None:
+        self._store("yes")
+        self._set_band("5-10")
+        self._pack_impl("only", "src/only.py")
+        write_bound_residual(self.tmp, "only")
+        ver = self._add_review(role="verifier", child_id="ver-s")
+        scope = ver.get("review_scope") or {}
+        self.assertEqual(scope.get("mode"), of.ReviewScope.MODE_SCOPED)
+        self.assertEqual(scope.get("band"), "5-10")
+        self.assertEqual(scope.get("paths"), ["src/only.py"])
+        self.assertIn("this wave only", str(ver.get("slice") or ""))
 
 
 class ArtifactProveCollectGate(unittest.TestCase):
