@@ -1097,12 +1097,19 @@ class ObservationPack:
 
     @staticmethod
     def receipt_lines(text: str) -> list[str]:
+        """Windows around receipt markers. Pretty-printed JSON is one long line."""
         hits: list[str] = []
-        for line in str(text or "").splitlines():
-            if any(marker in line for marker in ObservationPack.RECEIPT_MARKERS):
-                hits.append(line.strip())
-            if len(hits) >= ObservationPack.RECEIPT_MAX:
-                break
+        body = str(text or "")
+        for marker in ObservationPack.RECEIPT_MARKERS:
+            start = 0
+            while len(hits) < ObservationPack.RECEIPT_MAX:
+                idx = body.find(marker, start)
+                if idx < 0:
+                    break
+                lo = max(0, idx - 8)
+                hi = min(len(body), idx + len(marker) + 96)
+                hits.append(body[lo:hi])
+                start = idx + len(marker)
         return hits
 
     @staticmethod

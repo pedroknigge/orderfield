@@ -39,7 +39,7 @@ receipt OF_EVIDENCE_RECEIPT sha256=… exit=0
 | `handle  <rel>  <size>B` | every present residual | `rel` is `physical_field_rel` of `packet.residual_path` (nested homes stay honest) |
 | `head` | oversized only | first 240 chars, whitespace collapsed to one line |
 | `tail` | oversized only | last 240 chars, same flatten |
-| `receipt` | oversized + marker present | each matching line, up to 4. Never stripped |
+| `receipt` | oversized + marker present | window around each marker (pretty-printed JSON may be one long line), up to 4. Never stripped |
 
 Resume indents under the child (`key_width=12`). Collect/status use the same keys at the current column.
 
