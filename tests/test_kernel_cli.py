@@ -390,7 +390,7 @@ class GenericHandoff(unittest.TestCase):
         self.assertIn("mode=handoff", spawned.stdout)
         prompt = tmp / ".orderfield" / "waves" / "001" / "prompts" / "g1.md"
         self.assertTrue(prompt.is_file())
-        self.assertIn("Orderfield slave", prompt.read_text(encoding="utf-8"))
+        self.assertIn("Orderfield child", prompt.read_text(encoding="utf-8"))
 
 
 class EnglishSurface(unittest.TestCase):
@@ -2558,7 +2558,7 @@ class MultiHarnessResidual(unittest.TestCase):
         dest.mkdir(parents=True, exist_ok=True)
         shutil.copytree(SCRIPTS, dest / "scripts")
         shutil.copytree(ROOT / "schemas", dest / "schemas")
-        shutil.copy(ROOT / "SLAVE.md", dest / "SLAVE.md")
+        shutil.copy(ROOT / "CHILD.md", dest / "CHILD.md")
         shutil.copy(ROOT / "VERSION", dest / "VERSION")
         return dest / "scripts" / "of.py"
 

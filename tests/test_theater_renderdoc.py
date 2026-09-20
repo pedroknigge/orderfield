@@ -20,7 +20,7 @@ import of.pack as pack  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 SKILL = ROOT / "SKILL.md"
-SLAVE = ROOT / "SLAVE.md"
+SLAVE = ROOT / "CHILD.md"
 
 
 def run_of(cwd: Path, *args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess[str]:

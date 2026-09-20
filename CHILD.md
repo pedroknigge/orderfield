@@ -1,4 +1,4 @@
-# Orderfield slave
+# Orderfield child
 
 You did not write the plan. Your world is the packet plus scratch. Do not re-architect the mission. Slices stay medium.
 
@@ -19,7 +19,7 @@ Do not ask for the parent's history. CONTEXT is file/SPEC pointers, never the pa
 
 Packet `workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation copied into the packet. The kernel does not lock files or enforce those paths. Same-wave overlapping `owns_paths` is a **pack error**. If the slice names a product path not in `owns_paths`, `escalate_up` — do not write it. That is a pack error (leader unpack + `--owns-path` covering every named path), not a child rewrite. Follow the slice, `owns_paths`, and ORDER constraints. Two slaves writing the same product path without exclusive owners is a **cut error**, not a file locker. Verifier `status=done` needs nonempty evidence that names a requirement id, command, or path, plus a nonempty `result_ref`. `"all tests passed"` is not evidence. Any `status=done` residual must also name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command — not captions or a bare filename. Collect refuses a mismatch or a slogan rollback (`CloseEvidence`). Implementer / `owns_paths` must hash owned product bytes or a named published artifact, not scratch notes. Empty `owns_paths` is `owned_write_missing`. A touch that only updates mtime is not a write (`OwnedWrite`). FACTIBLE/CUMPLE in evidence also needs `published_artifact: <product path>` (not scratch); missing product bytes cannot collect (`SkillArtifactProve`). Explorer / adversary / verifier without `owns_paths` may hash scratch and touch zero product files. Do not trust status alone.
 
-Protocol keys `workspace.writable_by_slaves` and this file (`.orderfield/SLAVE.md`) are frozen. `of migrate` may map writable aliases onto `writable_by_slaves`. Do not rename those keys without a versioned migration.
+Protocol keys `workspace.writable_by_slaves` and the field copy (`.orderfield/SLAVE.md`) are frozen. The skill-surface name is `CHILD.md`; `of init`/`pack`/`handoff`/`spawn` sync that file onto the frozen path. `of migrate` may map writable aliases onto `writable_by_slaves`. Do not rename those keys without a versioned migration.
 
 ## Isolation when the leader shares the repo
 

@@ -1792,7 +1792,7 @@ def enforce_wave_child_caps(
 
 
 def slave_md_path() -> Path:
-    return skill_root() / "SLAVE.md"
+    return skill_root() / "CHILD.md"
 
 
 def _bound_slave_md_path() -> Path:
@@ -1811,12 +1811,13 @@ def field_slave_md_path(root: Path) -> Path:
 
 
 def ensure_field_slave_md(root: Path) -> Path | None:
-    """Keep a copy of SLAVE.md inside the field.
+    """Keep a copy of CHILD.md inside the field as `.orderfield/SLAVE.md`.
 
-    The copy travels with the repo, so children reference the repo-relative
-    `.orderfield/SLAVE.md` instead of an absolute path on the leader's
-    machine (which a container, sandbox, or remote runtime cannot read).
-    Refreshed whenever the skill's copy differs. No-op without an ORDER.
+    The copy travels with the repo, so children reference the frozen
+    repo-relative `.orderfield/SLAVE.md` instead of an absolute path on
+    the leader's machine (which a container, sandbox, or remote runtime
+    cannot read). Refreshed whenever the skill's CHILD.md differs.
+    No-op without an ORDER.
     """
     if not order_path(root).exists():
         return None
@@ -1839,16 +1840,17 @@ def slave_md() -> str:
     p = _bound_slave_md_path()
     if p.exists():
         return p.read_text(encoding="utf-8")
-    return "# Orderfield slave\nWrite a residual JSON.\n"
+    return "# Orderfield child\nWrite a residual JSON.\n"
 
 
 def slave_contract(inline: bool = False, root: Path | None = None) -> str:
-    """Reference-load by default: point at SLAVE.md instead of pasting it.
+    """Reference-load by default: point at the child contract instead of pasting it.
 
     Prefers the field copy (`.orderfield/SLAVE.md`, repo-relative — portable
-    across hosts) over the skill's absolute path. Falls back to the inline
-    body when no file is on disk, and when the caller asks for inline
-    (adapters that do not read local files reliably).
+    across hosts; frozen protocol path synced from skill CHILD.md) over the
+    skill's absolute path. Falls back to the inline body when no file is on
+    disk, and when the caller asks for inline (adapters that do not read
+    local files reliably).
     """
     if inline:
         return slave_md()
@@ -1865,7 +1867,7 @@ def slave_contract(inline: bool = False, root: Path | None = None) -> str:
     else:
         return slave_md()
     return (
-        "# Orderfield slave — read the contract first\n\n"
+        "# Orderfield child — read the contract first\n\n"
         "Before anything else, read this file in full:\n\n"
         f"    {ref}\n\n"
         "It is the doctrine for this turn: slaved mode, what you may and may not "

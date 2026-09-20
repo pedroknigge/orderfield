@@ -16,7 +16,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 7. **Same harness only** by default: **ask** same-harness categories vs multi-harness mix before pack. Pin same-harness with `of patch --harness <adapter>` (a field, not a prose constraint). Mix only after explicit yes; then `of detect` (present / missing / PATH≠auth; PATH is not login).
 8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
 9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for a software mission that will not fit one context, colliding writers, and a false public claim (adversary catch); theater for bump+obvious feature (doc-manager + grok-build feedbacks).
-10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [SLAVE.md](SLAVE.md) (child). Not a second contract.
+10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [CHILD.md](CHILD.md) (child). Not a second contract.
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
@@ -32,7 +32,7 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
 | [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load; load by verb) |
-| [SLAVE.md](SLAVE.md) | Child contract |
+| [CHILD.md](CHILD.md) | Child contract |
 | [PRINCIPLES.md](PRINCIPLES.md) | Short-form pointer to invariants |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change / release / debt |
 | [DEPENDENCIES.md](DEPENDENCIES.md) | Stdlib-only inventory |

@@ -2,7 +2,7 @@
 
 A new agent is fast and lost. Dumping the whole tree is more conversation, not more order.
 
-Point at hub, skill, slave, kernel, evals, VERSION. Link. Do not copy.
+Point at hub, skill, child contract, kernel, evals, VERSION. Link. Do not copy.
 
 Installed metadata matches `of doctor`. Resume first.
 
@@ -18,7 +18,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | --- | --- |
 | [AGENTS.md](../AGENTS.md) | Harness rules: resume first, auto-revival, delegate via `of` |
 | [SKILL.md](../SKILL.md) | Leader procedure (`/orderfield`, `/of`) |
-| [SLAVE.md](../SLAVE.md) | Child contract (also copied to `.orderfield/SLAVE.md`) |
+| [CHILD.md](../CHILD.md) | Child contract (copied to frozen `.orderfield/SLAVE.md`) |
 | [references/principles.md](../references/principles.md) | Haken invariants |
 | [SECURITY.md](../SECURITY.md) | Scope + how to report a vulnerability |
 

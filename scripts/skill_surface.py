@@ -21,6 +21,7 @@ class SkillSurface:
     CORE = "SKILL.md"
     APPENDIX = "references/skill-appendix.md"
     ALIAS = "of/SKILL.md"
+    CHILD = "CHILD.md"
     # Hosts inject SKILL.md. 0.7.65 was 62477 bytes. Cap is the cut.
     CORE_MAX_BYTES = 20_000
     # Product target: a cut, not a file hugging the cap. #287.
@@ -132,7 +133,12 @@ class SkillSurface:
     def errors(root: Path) -> list[str]:
         path = Path(root)
         errors: list[str] = []
-        for rel in (SkillSurface.CORE, SkillSurface.APPENDIX, SkillSurface.ALIAS):
+        for rel in (
+            SkillSurface.CORE,
+            SkillSurface.APPENDIX,
+            SkillSurface.ALIAS,
+            SkillSurface.CHILD,
+        ):
             if not SkillSurface.path(path, rel).is_file():
                 errors.append(f"missing {rel}")
         if errors:

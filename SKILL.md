@@ -104,7 +104,7 @@ ONLY if Orderfield's: invalid schema / WAL incoherent / pack produced a packet c
 
 **Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create (or only `of issue --dry-run`). Both sides are the contract. Confirm creates; refuse / edit-later / silence does not.
 
-`of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. A child **never posts** — draft `ISSUE.md` or `issues/<slug>.md` or `of issue --dry-run`. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`; empty=all). Child: [SLAVE.md](SLAVE.md).
+`of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. `--dry-run` is **not HITL**. A child **never posts** — draft `ISSUE.md` or `issues/<slug>.md` or `of issue --dry-run`. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`; empty=all). Child: [CHILD.md](CHILD.md).
 
 ## Mandatory leader process (core)
 
