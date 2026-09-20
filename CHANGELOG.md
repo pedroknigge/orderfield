@@ -15,13 +15,13 @@ Single integration folding remaining open PRs onto main after `#304` (agent-band
 - **Proof:** `InstallScript.test_orca_qwen_dirs_get_skill` / `test_dest_is_skill_surface_not_repo` / `SkillSurfaceCore.test_install_skill_surface_list_names_child_not_slave`. Dest allowlist matches adapter matrix (orca/qwen); dest is skill surface only; copy `CHILD.md`. `#291` / PR `#302`.
 - **Proof:** `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. Stored-yes `ORDER.evaluator_consent` packs both review roles after implementer settle before next-wave. Stored no skips. Refuse HOLD. Green DriveAfterIntegrate. `#280` / PR `#303`.
 - **Proof:** `PlanIngestGate` / `PlanWriteBackGate` / `SkillPlanFirstOrder` / `SkillPlanWriteBack` / `recovery/plan-ingest-paste`. Cited on-disk plan ingest + green-collect write-back. `#312` / `#313` / PR `#314`.
-- **Proof:** `ReadmeProductSurface` / `QuickstartTest`. README **When NOT** + glance install on the portada. `#307` / `#308` / PR `#317`.
+- **Proof:** `ReadmeProductSurface` / `QuickstartTest`. README **When NOT** + glance install on the front page. `#307` / `#308` / PR `#317`.
 - **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. Oversized residual speak is handle + excerpt; full file stays on disk; receipt markers not stripped. `#283` / PR `#319`.
 - **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. Large N / bands `5-10` / `10-50` scoped to this-wave owns-path / published set. Band `1-4` stays full residual. `#282` / PR `#320`.
 - **Proof:** `EvidenceReceiptGate` / `EvidenceReceiptCollect` / `SkillEvidenceReceipt` / `recovery/evidence-receipt`. Deterministic receipt gate; cited tamper is collect INVALID. Wave-end verifier prefers receipts + published artifacts. `#284` / PR `#321`.
 - **Subtract:** SKILL / appendix no longer teach “gate or fallback original” as collect-green. Cited receipt must ACCEPT. Emit FALLBACK keeps the original archive only. `SkillEvidenceReceipt`.
 - **Proof:** `SkillProductBar`. Teaching-only (#323 design A): design-twice, deep modules, unittest/CI green is not Ready. No new verb. No kernel change.
-- Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded remaining PRs `#317` `#319` `#320` `#323`. `#302` / `#303` / `#304` / `#314` / `#315` / `#316` / `#321` already on main. `#323` teaching-only design A on this line.
+- Packaging: VERSION 0.8.24; skill/alias description preview `v0.8.24. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.23 notes. Folded remaining PRs `#317` `#319` `#323`. `#302` / `#303` / `#304` / `#314` / `#315` / `#316` / `#320` / `#321` already on main. `#323` teaching-only design A on this line.
 
 ## 0.8.23
 
@@ -41,6 +41,9 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Reuse, not a new verb:** `install.sh` dest allowlist adds orca/qwen (same `.$h/skills/orderfield`; `SkillVersionSkew` scans them). Dest copy is the skill surface only (SKILL + scripts/of + schemas + references + VERSION/`install.sh`/`CHILD.md`/`of/`/`README.md`) — not the git tree. Child contract is `CHILD.md` (not `SLAVE.md`). Skill/alias description is Pedro glance `v0.8.23. Use when…` (metadata.version stays VERSION). Compose with #287 / #297 (alias is a pointer). No VERSION bump. `#291`.
 - **Proof:** `InstallScript.test_orca_qwen_dirs_get_skill` / `test_global_orca_qwen_on_path_creates_dests` / `test_dest_is_skill_surface_not_repo` / `SkillSurfaceCore.test_install_skill_surface_list_names_child_not_slave` / `VersionedDescription` / `SkillFrontmatterQuotedGate`. `#291`.
 - **Proof:** `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. After implementer settle, stored-yes `ORDER.evaluator_consent` packs both review roles on that wave residual before next-wave (`EvaluatorPacket.due` / `gate_action`). Stored no skips. Refuse HOLD. Green DriveAfterIntegrate. No VERSION bump. `#280`.
+- **Reuse table (design-first):** `EvaluatorPacket` already stores start consent on `ORDER.evaluator_consent`. `#304` writes `ORDER.agent_band`. Large-N reviewers cite a scoped set (`#282`).
+- **Reuse, not a new verb:** `ReviewScope` inherits this wave owns-path / published set (`1-4` or N≤4 full; `5-10` / `10-50` or N>4 scoped). Packet `review_scope` is a cite set, not `owns_paths`. Reads `#304` `agent_band.band`. No VERSION bump.
+- **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. C-080 extended. `#282` / compose `#280`. Design: `docs/features/kernel/wave-review-scope.md`.
 - Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#284` land on the same line (no bump). `#310` is not PackagingBump.
 
 ## 0.8.22

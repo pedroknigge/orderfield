@@ -2345,6 +2345,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.WaveReviewScopeProof",
     "tests.test_kernel.ArtifactProveCollectGate",
     "tests.test_kernel.WaveEndBothRolesProof",
+    "tests.test_kernel.WaveReviewScopeProof",
     "tests.test_kernel.SkillWaveEndBothRoles",
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.HostRamSuggestBand",
