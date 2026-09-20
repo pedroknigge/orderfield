@@ -1,6 +1,6 @@
 ---
 name: orderfield
-description: "v0.8.23 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. InitAskSkip. of issue: TTY or HITL.md+--confirm. Install: SHA-256."
+description: "v0.8.23 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. InitAskSkip. Agent-band once (children medium; do not re-ask). of issue: TTY or HITL.md+--confirm. Install: SHA-256."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
@@ -17,7 +17,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack. The table names the field-run verbs. Lab `eval` stays in the appendix.
 
-The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when a kernel, a product, or a multi-slice build needs exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
+The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when work goes through `of` — exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
 Product surface: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Typical problems. Mid-flight H2 before Install (SHA-256 pin → first close). Compared-to: planning-with-files.
 
@@ -55,6 +55,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
 | init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children). Stored no → contrast → `of close --checklist`. Missing key → unset. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not after ordinary integrate. |
+| init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID` → `of contrast` → `of close --checklist` → `of close` |
@@ -114,7 +115,7 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`. Repo st
 
 **Anti-done-theater.** Same as the shipped row. Mechanical. Flying is not shipped.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Clone/checkout + HOME dest skill is the same.
+**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Clone/checkout + HOME dest skill is the same.
 
 **Steer policy.** While a turn is in flight, a new user message on an open field is **steered**, not queued as a separate mission. A deictic go-ahead (`dale`, `do it`, `as discussed`) on an open field is **execute `next`**, not `of spec --amend` of those words.
 

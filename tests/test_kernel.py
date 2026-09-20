@@ -15,6 +15,12 @@ if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
 from test_adapter_hints import AdapterHintsCli  # noqa: E402,F401
+from test_host_ram import (  # noqa: E402,F401
+    AgentBandCli,
+    AgentBandUnit,
+    HostRamSuggestBand,
+    SkillAgentBand,
+)
 from test_claims_honesty import ClaimsHonestyGate  # noqa: E402,F401
 from test_packaging import (  # noqa: E402,F401
     AdapterDetectHonesty,

@@ -14,9 +14,9 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
-## 0.8.23 — morning cut: CloseEvidence SHA; WriteFloor; skill load-tax; evaluator_consent; HITL.md; InitAskSkip; docs_sync
+## 0.8.23 — morning cut: CloseEvidence SHA; WriteFloor; skill load-tax; evaluator_consent; HITL.md; InitAskSkip; docs_sync; agent-band
 
-Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line.
+Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line. `#281` lands on this line (no VERSION bump).
 
 - CloseEvidence hashes owned product, not scratch. Empty owns-path is `owned_write_missing`. Mtime-only is not a write. Proof: `CloseEvidenceGate` / `OwnedWriteGate`. `#286`.
 - Residual write-floor default. Unsupported adapters WARN + named next. Proof: `WriteFloorMatrix`. `#294`.
@@ -25,6 +25,7 @@ Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line.
 - `of issue` create needs TTY or `HITL.md`+`--confirm`. Proof: `IssueConfirmLock`. `#290`.
 - Small fields skip theater init asks. Large stores `--evaluator-consent`. Proof: `SkillInitAskSkip`. `#289`.
 - Public `proposed_patch.docs_sync` is `pending|done`. Proof: `ResidualSchemaContracts`. `#292`.
+- Init stores agent-band `1-4` / `5-10` / `10-50` + optional multi-model once (`ORDER.agent_band`; `of patch --agent-band`). Host RAM suggests a band (`HostRam`; doctor/init `ram_total_gb`). Children default medium. Not a spawn hard-cap. Proof: `HostRamSuggestBand` / `AgentBandCli` / `SkillAgentBand`. `#281`.
 
 ## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
 

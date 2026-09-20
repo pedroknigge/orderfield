@@ -119,7 +119,7 @@
         "effort": {
           "type": "string",
           "enum": ["low", "medium", "high"],
-          "description": "agy only: required with --model (default medium when omitted on argv)."
+          "description": "Child slice default medium. agy requires --effort with --model; high is ORDER authoring, not implementer slices."
         }
       }
     },

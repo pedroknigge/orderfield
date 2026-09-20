@@ -86,6 +86,21 @@
       "enum": ["yes", "no"],
       "description": "Start consent for fresh-context adversary+verifier. Absent = not asked (evaluator unset). Pack review roles only when yes. of patch --evaluator-consent. Not a close gate. #280 reads this key."
     },
+    "agent_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Once-per-field wave budget + optional multi-model consent. Not a spawn hard-cap. Not a supervisor.",
+      "properties": {
+        "band": {
+          "type": "string",
+          "enum": ["1-4", "5-10", "10-50"]
+        },
+        "multi_model": {
+          "type": "boolean",
+          "description": "Optional multi-model/multi-quality. Task + adapters are the ceiling, not OF."
+        }
+      }
+    },
     "adapter_hints": {
       "type": "object",
       "additionalProperties": false,
