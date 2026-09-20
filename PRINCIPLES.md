@@ -16,8 +16,8 @@ Short form:
 2. One phase per wave.
 3. Escalate-up before spawn.
 4. Closed regime menu.
-5. Enforced child/spawn caps; declared budgets stay in packets.
-6. Cooldown after scale_across.
+5. Enforced child/spawn caps; packet `budget.seconds` is the spawn wall-clock. Token budgets are not implemented.
+6. `scale_across` / `scale_up` are not implemented (legacy menu values; remapped to hold).
 7. Skill beats child.
 8. Residuals are the intended upward boundary; transcripts stay down by contract.
 9. The harness transports. The kernel chooses regimes for work routed through it.

@@ -758,6 +758,7 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("slaving-by-contract", kernel_block.casefold())
         self.assertIn("not a jail", kernel_block.casefold())
         hero = text[:install]
+        self.assertNotIn("budget.tokens", hero)
         for needle in (
             "Anyone can persist a plan. Only the leader may change it.",
             "The brief lives on disk as SPEC",
@@ -941,7 +942,7 @@ class SkillModelCatalogConsult(unittest.TestCase):
         self.assertLess(consult_at, ask_at)
         self.assertIn("model-catalog", folded)
         self.assertIn("smarter", folded)
-        self.assertIn("budget.tokens", folded)
+        self.assertNotIn("budget.tokens", folded)
         hero = readme[: readme.index("## Install")].casefold()
         self.assertIn("model catalog", hero)
         self.assertIn("cheap vs frontier", hero)
@@ -1532,7 +1533,8 @@ class SkillPstackCherries(unittest.TestCase):
             self.assertIn(field, appendix, field)
             self.assertIn(field, slave, field)
         self.assertIn("budget.seconds", appendix)
-        self.assertIn("never `budget.tokens`", appendix_fold)
+        self.assertIn("budget.tokens", appendix_fold)
+        self.assertIn("not implemented", appendix_fold)
         self.assertIn("file/SPEC pointers, never the parent transcript", appendix)
         self.assertIn("done-because-of", appendix_fold)
         self.assertIn("done-because-of", slave_fold)
@@ -2394,11 +2396,13 @@ class SkillEfficiencyMixPlaybook(unittest.TestCase):
         table = self.table(core).casefold()
         self.assertIn(SkillEfficiencyMix.UNKNOWN, table)
         self.assertIn(SkillEfficiencyMix.NEVER_INVENT, table)
-        self.assertIn(SkillEfficiencyMix.RESERVED, table)
+        self.assertNotIn(SkillEfficiencyMix.LEFTOVER, table)
         self.assertIn("of doctor", table)
         self.assertIn("efficiency", table)
         self.assertIn("must ask", table)
         self.assertIn(SkillEfficiencyMix.HEADING, appendix)
+        self.assertIn(SkillEfficiencyMix.NOT_IMPLEMENTED, appendix.casefold())
+        self.assertIn(SkillEfficiencyMix.LEFTOVER, appendix.casefold())
         appendix_fold = appendix.casefold()
         self.assertIn("adapterbalance", appendix_fold.replace(" ", "").replace("`", ""))
         self.assertIn("statusline", appendix_fold.replace(" ", ""))
@@ -2408,7 +2412,6 @@ class SkillEfficiencyMixPlaybook(unittest.TestCase):
         errs = SkillEfficiencyMix.mention_errors(fake, "fake.md")
         self.assertTrue(any(SkillEfficiencyMix.UNKNOWN in e for e in errs), errs)
         self.assertTrue(any(SkillEfficiencyMix.NEVER_INVENT in e for e in errs), errs)
-        self.assertTrue(any(SkillEfficiencyMix.RESERVED in e for e in errs), errs)
 
 
 class SkillCloseEvidence(unittest.TestCase):
