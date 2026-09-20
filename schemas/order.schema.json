@@ -84,12 +84,12 @@
     "evaluator_consent": {
       "type": "string",
       "enum": ["yes", "no"],
-      "description": "Start consent for fresh-context adversary+verifier. Absent = not asked (evaluator unset). Pack review roles only when yes. of patch --evaluator-consent. Not a close gate. #280 reads this key."
+      "description": "Start consent for fresh-context adversary+verifier. Absent = not asked (evaluator unset). Pack review roles only when yes. of patch --evaluator-consent. Not a close gate. #280 reads this key. #282 scopes large-band review after settle."
     },
     "agent_band": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Once-per-field wave budget + optional multi-model consent. Not a spawn hard-cap. Not a supervisor.",
+      "description": "Once-per-field wave budget + optional multi-model consent. Not a spawn hard-cap. Not a supervisor. Written by #304; ReviewScope reads band; unset infers from this-wave N.",
       "properties": {
         "band": {
           "type": "string",

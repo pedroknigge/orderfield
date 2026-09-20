@@ -15,7 +15,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 `/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
 
-**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack. The table names the field-run verbs. Lab `eval` stays in the appendix.
+**Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack.
 
 The harness starts and stops processes. ORDER, packets, residuals, and regime decisions live on disk. Use it when work goes through `of` — exclusive owners, a SPEC that survives compaction, and `of contrast` before close.
 
@@ -47,7 +47,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
 | status=done residual | `artifact_sha:` + `rollback:` (`CloseEvidence`). Implementer/`--owns-path` hashes owned product, not scratch. Empty `--owns-path` is `owned_write_missing`. Mtime-only is not a write (`OwnedWrite`). Do not trust status. Not `of prove` |
 | build/test log above floor | archive exact bytes; cite `evidence_receipt:` (hash/exit/quotes/paths/size/command_id). Gate accepts or fallback original (`EvidenceReceipt`). Tamper ≠ green. File read/search bypass. Wave-end verifier prefers receipts + published artifacts over narrative |
-| residuals landed / `in_flight=0` + printed `next` | execute that `next` (collect/integrate/next-wave/contrast/close). collect+integrate → resume next `INTEGRATE` same turn. Do not ask ¿seguimos? / do not wait for ok/pulse. No poke. Report is not a stop. Not a consent ask |
+| residuals landed / `in_flight=0` + printed `next` | execute that `next` (collect/integrate/next-wave/contrast/close). Stored yes + wave settled → pack both review roles first (appendix **Wave-end review scope**; scoped at N>4). collect+integrate → resume next `INTEGRATE` same turn. Do not ask ¿seguimos? / do not wait for ok/pulse. No poke. Report is not a stop. Not a consent ask |
 | resume next `INTEGRATE --RECOMPUTE` | `of integrate --wave N --recompute` — report digest drifted; do not next-wave. Spawn `session_id` / `denied_actions` after integrate are not drift |
 | resume next `UNPACK --FORCE` | `of unpack --force` — ORDER.rev stale; do not spawn. Mid-flight `of patch` refuses (HOLD). Constraints before first pack |
 | after successful `of phase` | `of next-wave` — just-integrated wave stays eligible; do not `--recompute` the prior wave |

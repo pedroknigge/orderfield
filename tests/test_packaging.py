@@ -3152,6 +3152,55 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
+class SkillWaveEndBothRoles(unittest.TestCase):
+    """Stored yes after settle packs both roles; no drops neither. #280 compose."""
+
+    def test_core_appendix_teach_wave_end_both(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertIn("Wave-end review scope", table)
+        self.assertIn("pack both review roles", table.casefold())
+        self.assertIn("stored yes", table.casefold())
+        fold = appendix.casefold()
+        self.assertIn("#### wave-end review scope", fold)
+        self.assertIn("evaluatorpacket.due", fold)
+        self.assertIn("gate_action", fold)
+        self.assertIn("pack+spawn both", fold)
+        self.assertIn("do not drop", fold)
+        self.assertIn("consent no", fold)
+        self.assertIn("hold", fold)
+
+
+class SkillWaveReviewScope(unittest.TestCase):
+    """Large N scoped to this wave owns-path / published set. #282."""
+
+    def test_appendix_teaches_scope_not_init_ask_skip(self) -> None:
+        appendix = SkillSurface.appendix(ROOT)
+        section_start = appendix.find("#### Wave-end review scope")
+        self.assertGreaterEqual(section_start, 0)
+        rest = appendix[section_start:]
+        nxt = rest.find("\n#### ", 1)
+        if nxt < 0:
+            nxt = rest.find("\n### ")
+        section = rest if nxt < 0 else rest[:nxt]
+        fold = section.casefold()
+        self.assertIn("review_scope", fold)
+        self.assertIn("scoped", fold)
+        self.assertIn("this wave", fold)
+        self.assertIn("owns-path", fold)
+        self.assertIn("published", fold)
+        self.assertIn("do not drop", fold)
+        for band in ("1-4", "5-10", "10-50"):
+            self.assertIn(band, section)
+        skip = SkillInitAskSkip.skip_section(appendix)
+        skip_fold = skip.casefold()
+        for band in SkillInitAskSkip.BANDS:
+            self.assertNotIn(band, skip_fold)
+        self.assertIn("cite set", fold)
+        self.assertNotIn("owns_paths write", fold)
+
+
 class SkillInitAskSkip(unittest.TestCase):
     """Small fields skip theater init asks; large fields still store evaluator. #289."""
 
