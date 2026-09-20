@@ -34,7 +34,7 @@ The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `met
 
 ## regime
 
-The closed menu `of integrate` may choose: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. The kernel owns the menu; harnesses do not invent a new one. `scale_across` and `scale_up` are reserved compatibility values, not selected by runtime accounting.
+The closed menu `of integrate` may choose: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. The kernel owns the menu; harnesses do not invent a new one. `scale_across` and `scale_up` are **not implemented** (legacy enums; remapped to hold).
 
 ## escalate_up
 
@@ -74,7 +74,7 @@ Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave
 
 ## model-catalog
 
-Advisory living table of harness / model id / tier hint / public `$/unit` / notes / `last_checked`. Machine copy: [model-catalog.json](model-catalog.json). Cite public sheets or mark unknown. Smarter is not always costlier. Not IQ ranks. Not `budget.tokens`. Skill consults before propose/mix; kernel does not route spawn from it. Class: `ModelCatalog`.
+Advisory living table of harness / model id / tier hint / public `$/unit` / notes / `last_checked`. Machine copy: [model-catalog.json](model-catalog.json). Cite public sheets or mark unknown. Smarter is not always costlier. Not IQ ranks. Not a token budget. Skill consults before propose/mix; kernel does not route spawn from it. Class: `ModelCatalog`.
 
 ## session_id (residual)
 
@@ -88,7 +88,7 @@ Optional residual list of harness-reported refused tools. Conservative `agy` spa
 
 ## efficiency-signal
 
-`EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never compared to reserved `budget.tokens`. Never a silent switch. Mid-mission the leader also proposes harness mix from those signals plus `of detect` / `AdapterBalance` (unknown unless a published payload is already in hand). Design: [efficiency-signal.md](efficiency-signal.md).
+`EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never a token ceiling (`budget.tokens` is **not implemented**). Never a silent switch. Mid-mission the leader also proposes harness mix from those signals plus `of detect` / `AdapterBalance` (unknown unless a published payload is already in hand). Design: [efficiency-signal.md](efficiency-signal.md).
 
 ## HITL issue loop
 

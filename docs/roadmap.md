@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.23. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.23. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 

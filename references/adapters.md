@@ -122,7 +122,7 @@ packet even without a field write. No write → spawn argv is unchanged.
 
 `of doctor` prints that table plus one advisory `catalog` pointer.
 This is argv translation like `OF_TRUST`, not a silent router and not
-`budget.tokens`. The living intelligence×cost sheet is
+a token budget. The living intelligence×cost sheet is
 [docs/model-catalog.md](../docs/model-catalog.md) (`ModelCatalog`).
 Class: `AdapterHints` in `scripts/of_adapters.py`.
 
@@ -134,7 +134,7 @@ in hand (`AdapterBalance.parse_published`). No documented headless
 balance CLI exists for native adapters. `of doctor` prints
 `unknown` per adapter. The kernel never runs `/usage`, never scrapes
 home dirs, and never invents a number. `residual.usage` is not a
-balance. `budget.tokens` stays reserved. Mid-mission mix still
+balance. `budget.tokens` is **not implemented**. Mid-mission mix still
 **must ask**. Class: `AdapterBalance` in `scripts/of_adapters.py`.
 
 A conservative child (`OF_TRUST=conservative`) runs with the harness's own

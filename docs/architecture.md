@@ -94,7 +94,7 @@ flowchart TD
     decide --> hold["hold<br/>wait — missing residuals, landed-complete with siblings in flight, or wave closed and done_when still open"]
     decide --> phaseR["phase<br/>done_when closed · still an explicit of phase"]
     decide --> human["human<br/>repeated mission change, irreversible action, or caps exhausted"]
-    decide --> reserved["scale_up / scale_across<br/>reserved compatibility values<br/>remapped to hold — no token or depth accounting"]
+    decide --> reserved["scale_up / scale_across<br/>not implemented<br/>remapped to hold — no token or depth accounting"]
 ```
 
 Who may change the plan:
@@ -103,7 +103,7 @@ Who may change the plan:
 |--------|----------|---------------------------|
 | Residual `done` | Leader integrates; regime may be `hold`, `phase`, or `scale_out` | Child transcripts are not ingested into ORDER |
 | Residual `threshold` naming mission / phase / constraints / done_when / workspace | Kernel selects `escalate_up`; leader patches ORDER | Child does not rewrite the field; spawn in that wave stops |
-| Reserved `scale_up` / `scale_across` | Remapped to `hold` | No fake telemetry, no process supervisor |
+| `scale_up` / `scale_across` (**not implemented**) | Remapped to `hold` | No fake telemetry, no process supervisor |
 
 Loop on disk (same objects as the context diagram): leader → pack → packet → harness starts child → residual → collect → integrate → ORDER'. Compacted chat does not own this loop.
 
@@ -166,7 +166,7 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 | `cmd_spec` / `cmd_spec_diff` / `cmd_contrast` / `cmd_close` | Binding-requirement ledger (index over SPEC: `origin` + line range), SPEC↔ORDER omissions, public-surface close gate (`VERIFIED_CONTRACT`; pair `--both-sides`; webhook HMAC + replay via `WebhookPair`; timeout / idempotency / health / version via `ContractSurface`). `of contrast --diff` is the `ContrastDiff` narrative of those facts (RESOLVED is not CLOSED). `of close --checklist` is contrast + residual empty (`CloseChecklist`) plus `speak_line` (do not claim shipped unless RESOLVED and residual empty); leaders must quote that `speak` line before claiming shipped (protocol); write path refuses residual MISSING. Living map: checklist → of contrast / of close / residual (Prod§7 `ContractSurface`; Prod§11 `/version` / release header `ContractSurface` + residual `CloseEvidence`; Prod§15 `RunbookPath` in `done_when`; ship `CloseChecklist`). Not a second checklist |
 | `cmd_pack` `--owns-path` | Same-wave exclusive product paths; packet workspace union; not a file lock; `SharedWorktree` warns when a second implementer lacks a recorded worktree |
 | `phase_deliver_errors` / verifier evidence | `--force` to deliver still requires SPEC close; verifier `done` needs identifying evidence |
-| `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | 0.5.0 decision encoded as reserve: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
+| `RUNTIME_OWNERSHIP` / `RESERVED_REGIMES` | **not implemented**: `scale_up`, `scale_across`, tokens, `local_budget_pct`, inherited depth; no fake telemetry |
 | `argv_preview` / `redact_text` / `ArgvRedact` | Secrets and escalated approval flags stripped from spawn previews and logs; long `--output-schema` / `--json-schema` / path tokens keep a basename so a deep skill dest (`~/.claude` / `~/.agents` / `~/.cursor`) still names `residual.codex.schema.json` |
 | `OutputSchema` | Codex `--output-schema` and agy `--json-schema` reuse `residual.codex.schema.json` (type unions unique; `usage` is `[object,null]`). Codex-null optionals are omit (`CodexNullOmit`). Invalid stdout extract names `$.path`. Claude omit (inline-only; keep stream-json PULSE). Qwen omit (structured_output tool, not residual delivery) |
 | `packets_all_stale` / `complete_stale_wave_recoverable` | Fully stale wave: `next-wave` without a report; complete stale wave may still integrate |
@@ -178,23 +178,23 @@ leader → of resume → of pack → packet → of spawn|handoff → child → r
 
 Commands that also write artifacts but are **not** in that set — `spawn`, `handoff`, `learn`, `worktree` — do not enter the CLI lock wrapper. They still use atomic JSON replacement where they write JSON. `spawn` takes `field.lock` only to claim `waves/<n>/spawns/<id>.json` (live `dump_bytes`, not WAL — inherit would otherwise delete a non-snapshot rel) and to bump `children_spawned` after the child ends. The lock serializes cooperating mutations on the ORDER/state core path. It does not prevent a child or editor from modifying files directly, and it does not serialize product-code writes.
 
-## Advisory and reserved fields
+## Advisory fields and leftovers (not implemented)
 
-Runtime ownership is **reserved**, not implemented. `of status` prints the reserved set. `decide_regime` remaps any reserved regime to `hold`.
+Runtime ownership leftovers are **not implemented**. `of status` lists those keys as `reserved (no telemetry)` — that is a leftover inventory, not live accounting. `decide_regime` remaps any leftover regime to `hold`.
 
 | Field/surface | Behavior |
 |---------------|----------------|
 | `budget.seconds` | Enforced as the spawned subprocess wall-clock. `of spawn --timeout` must match or be omitted |
-| `budget.tokens` | Reserved; `of pack` writes 0; `--tokens N` for N>0 dies; not measured or enforced |
-| `residual.usage` | Optional harness-reported `{tokens?, model?}`. Provenance, not a budget. Never compared to `budget.tokens` |
+| `budget.tokens` | **Not implemented**; schema leftover (`tokens=0`); `--tokens N` for N>0 dies; not measured or enforced |
+| `residual.usage` | Optional harness-reported `{tokens?, model?}`. Provenance, not a budget. Never a token ceiling |
 | `residual.denied_actions` | Optional agy-reported refused tools under conservative trust. Provenance, not approval. Omit when the harness did not report any. Codex `--output-schema` omits the key (not a Codex output field) |
 | `residual.session_id` | Optional harness-reported session id. `AdapterResume` emits `--resume ID` (claude/cursor) only when this key is already nonempty. Cold residual is a fresh spawn. Never invent. Never `--continue`. Not `ORDER.origin.session_id`. Codex `--output-schema` omits the key |
 | `EfficiencySignal` | Live-wave quality × optional usage. Propose uptier/downtier on status/resume/doctor. Ask only. Not a router |
-| `AdapterBalance` | Read-only session/balance honesty. Interactive `/usage` is named, not run. Claude statusLine `rate_limits` parses only when already in hand. Missing → **unknown**. Never invent. Never `budget.tokens` |
-| `ModelCatalog` | Advisory `docs/model-catalog.md` + `.json`. Skill consults before cheap/frontier or mix. Not a router. Not `budget.tokens` |
-| `thresholds.local_budget_pct` | Reserved; not evaluated |
+| `AdapterBalance` | Read-only session/balance honesty. Interactive `/usage` is named, not run. Claude statusLine `rate_limits` parses only when already in hand. Missing → **unknown**. Never invent. Not a token budget |
+| `ModelCatalog` | Advisory `docs/model-catalog.md` + `.json`. Skill consults before cheap/frontier or mix. Not a router. Not a token budget |
+| `thresholds.local_budget_pct` | **Not implemented**; not evaluated |
 | `caps.max_depth` | Permission check for `--allow-nested`; inherited depth is not tracked |
-| `scale_up` / `scale_across` | Reserved regime enums; decision logic never selects them from accounting |
+| `scale_up` / `scale_across` | **Not implemented** (legacy enums); decision logic never selects them |
 
 No new telemetry. Removing a reserved field later requires a versioned migration. `workspace.writable_by_slaves` and `.orderfield/SLAVE.md` are frozen protocol keys (`of migrate` maps writable aliases onto the protocol key).
 

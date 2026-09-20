@@ -74,6 +74,6 @@ Not a process supervisor. Not a bot org. Not `RUNTIME_OWNERSHIP`. Not a fake tok
 | Frontier explorer + reported tokens → propose downtier; no write | `EfficiencySignalProof` |
 | Missing usage is valid; no invented downtier | `EfficiencySignalUnit` |
 | Unpublished balance stays unknown; statusLine payload parses; junk/usage.tokens is not a balance | `AdapterBalanceUnit` |
-| Skill / `/of` / appendix teach unknown + never invent + reserved tokens | `SkillEfficiencyMixPlaybook` |
+| Skill / `/of` teach unknown + never invent; appendix labels token budgets **not implemented** | `SkillEfficiencyMixPlaybook` |
 
 Re-run: `of eval --strict --kernel` (includes `recovery/efficiency-signal`).
