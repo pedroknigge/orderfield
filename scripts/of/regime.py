@@ -1083,11 +1083,13 @@ class PlanWriteBack:
     SKIP_CUES = ("plan_write skip", "docs_sync skip")
     ANY_HEADING = re.compile(r"^(#{1,6})\s+(\S.*)$")
     CHECKBOX_OPEN = re.compile(r"^(\s*(?:[-*+]|\d+\.)\s+)\[ \]")
+    CHECKBOX_DONE = re.compile(r"^(\s*(?:[-*+]|\d+\.)\s+)\[[xX]\]")
     STATUS_LINE = re.compile(
         r"^(\s*(?:\*\*)?Status(?:\*\*)?\s*:\s*)(\S.*)$", re.I
     )
     SHIPPED_LINE = re.compile(r"^\s*Shipped:\s*", re.I)
     HEADING_BOX = re.compile(r"\[ \]")
+    HEADING_BOX_DONE = re.compile(r"\[[xX]\]")
     PR_RE = re.compile(
         r"https?://(?:www\.)?(?:github\.com|gitlab\.com)"
         r"/[^\s)<>]+/(?:pull|merge_requests)/\d+",
@@ -1281,6 +1283,8 @@ class PlanWriteBack:
                 if boxed != out[i]:
                     had_box = True
                     out[i] = boxed
+                elif PlanWriteBack.HEADING_BOX_DONE.search(out[i]):
+                    had_box = True
                 continue
             if PlanWriteBack.STATUS_LINE.match(out[i]):
                 had_status = True
@@ -1293,6 +1297,8 @@ class PlanWriteBack:
             if opened and mark == PlanWriteBack.MARK_DONE:
                 had_box = True
                 out[i] = f"{opened.group(1)}[x]{out[i][opened.end():]}"
+            elif PlanWriteBack.CHECKBOX_DONE.match(out[i]):
+                had_box = True
         insert_at = heading_idx + 1
         if not had_status and not had_box:
             out.insert(insert_at, f"Status: {mark}")
