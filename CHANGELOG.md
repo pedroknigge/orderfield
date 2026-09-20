@@ -22,7 +22,9 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Reuse, not a new verb:** skill-surface `SLAVE.md` renamed to `CHILD.md`. Hosts still load SKILL only. Field copy stays frozen `.orderfield/SLAVE.md` (`slave_md_path()` reads `CHILD.md`; `ensure_field_slave_md` still writes the protocol path). No stub. No appendix fold. No new verb. No schema rewrite. Compose with open `#302` dest list: copy `CHILD.md`, not `SLAVE.md`. `#310` / epic `#306`.
 - **Proof:** `validate-skill.sh` requires `CHILD.md`; `SkillSurface` names it; dest install has `CHILD.md` and no skill-root `SLAVE.md`; child/residual teaching tests still read `CHILD.md`. `#310`.
 - **Proof:** `HostRamSuggestBand` / `AgentBandUnit` / `AgentBandCli` / `SkillAgentBand`. Init stores agent-band + optional multi-model once; host RAM suggests a band; children default medium. Not a spawn hard-cap. `#281`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` lands on the same line (no bump).
+- **Reuse, not a new verb:** README lead is problem → what OF does → **When NOT to use OF** (InitAskSkip Small / stay-session). Front-page install is ≤3 glance lines (`ORDERFIELD_REF` + `--from-release` + PATH). Full SHA-256 ritual stays in PUBLISH / mortal-install. First close drops the unmeasured 30-second claim. Compose with #302 dest glance, #315 reserved honesty, and #316 `CHILD.md`. No VERSION bump. `#307` / `#308`.
+- **Proof:** `ReadmeProductSurface` / `QuickstartTest` / `python3 docs/audit/check-claims.py`. C-135 / C-136 extended. No new C-ID (honesty cap). `#307` / `#308`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. No VERSION bump (`#310` is not PackagingBump).
 
 ## 0.8.22
 
