@@ -26,6 +26,7 @@ Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line. `#281` l
 - Small fields skip theater init asks. Large stores `--evaluator-consent`. Proof: `SkillInitAskSkip`. `#289`.
 - Public `proposed_patch.docs_sync` is `pending|done`. Proof: `ResidualSchemaContracts`. `#292`.
 - Init stores agent-band `1-4` / `5-10` / `10-50` + optional multi-model once (`ORDER.agent_band`; `of patch --agent-band`). Host RAM suggests a band (`HostRam`; doctor/init `ram_total_gb`). Children default medium. Not a spawn hard-cap. Proof: `HostRamSuggestBand` / `AgentBandCli` / `SkillAgentBand`. `#281`.
+- After implementer wave settle, stored-yes consent packs both review roles on that wave residual before next-wave. Stored no skips. Refuse HOLD. Green auto-continues. Proof: `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. `#280`.
 
 ## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
 
