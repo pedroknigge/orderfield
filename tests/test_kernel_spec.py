@@ -2434,6 +2434,136 @@ class EvaluatorPacketProof(unittest.TestCase):
         self.assertNotIn("CLOSED", dry.stdout)
 
 
+class WaveEndBothRolesProof(unittest.TestCase):
+    """Consent yes packs both after settle; no skips; refuse HOLDs. #280."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wave-end-both-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        started = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(started.returncode, 0, started.stderr)
+
+    def _store(self, value: str) -> None:
+        patched = run_of(self.tmp, "patch", "--evaluator-consent", value)
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+
+    def _pack_wave(self) -> None:
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "wave product",
+            "--role",
+            "explorer",
+            "--child-id",
+            "w1",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _doc(self) -> dict:
+        return of.EvaluatorPacket.document(
+            self.tmp, of.load_state(self.tmp), of.load_order(self.tmp)
+        )
+
+    def _add_review(self, *, role: str, child_id: str) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "fresh-context review of the wave residual",
+            "--role",
+            role,
+            "--child-id",
+            child_id,
+        )
+
+    def test_consent_yes_due_names_pack_both_before_collect(self) -> None:
+        self._store(of.EvaluatorPacket.CONSENT_YES)
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        doc = self._doc()
+        self.assertEqual(doc["consent"], of.EvaluatorPacket.CONSENT_YES)
+        self.assertTrue(doc["due"], doc)
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_ASK)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, doc["next"])
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("in_flight     0", resumed.stdout)
+        self.assertIn("PACK", resumed.stdout)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        self.assertNotIn("next\n  COLLECT", resumed.stdout)
+        self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
+        adv = self._add_review(role="adversary", child_id="adv1")
+        self.assertEqual(adv.returncode, 0, adv.stderr)
+        ver = self._add_review(role="verifier", child_id="ver1")
+        self.assertEqual(ver.returncode, 0, ver.stderr)
+        after = self._doc()
+        self.assertFalse(after["due"], after)
+        self.assertEqual(after["evaluator"], of.EvaluatorPacket.STATUS_IN_FLIGHT)
+        self.assertIn("adversary", after["evaluator_roles"])
+        self.assertIn("verifier", after["evaluator_roles"])
+
+    def test_consent_no_skips_review_and_collects(self) -> None:
+        self._store(of.EvaluatorPacket.CONSENT_NO)
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        doc = self._doc()
+        self.assertEqual(doc["consent"], of.EvaluatorPacket.CONSENT_NO)
+        self.assertFalse(doc["due"], doc)
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_SKIP)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("COLLECT", resumed.stdout)
+        self.assertNotIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, integrated.stderr)
+
+    def test_review_refuse_holds_named_next(self) -> None:
+        self._store(of.EvaluatorPacket.CONSENT_YES)
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        self.assertEqual(self._add_review(role="adversary", child_id="adv1").returncode, 0)
+        self.assertEqual(self._add_review(role="verifier", child_id="ver1").returncode, 0)
+        write_bound_residual(self.tmp, "adv1", THRESHOLD)
+        write_bound_residual(self.tmp, "ver1")
+        doc = self._doc()
+        self.assertTrue(of.EvaluatorPacket.refused(self.tmp, of.load_state(self.tmp)))
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_REFUSE)
+        self.assertEqual(doc["speak"], of.EvaluatorPacket.SPEAK_REFUSE)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("HOLD", resumed.stdout)
+        self.assertIn(of.EvaluatorPacket.HOLD_DETAIL, resumed.stdout)
+        self.assertNotIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertNotIn(of.DriveAfterIntegrate.SPEAK, resumed.stdout)
+
+    def test_review_green_auto_continues_after_integrate(self) -> None:
+        self._store(of.EvaluatorPacket.CONSENT_YES)
+        self._pack_wave()
+        write_bound_residual(self.tmp, "w1")
+        self.assertEqual(self._add_review(role="adversary", child_id="adv1").returncode, 0)
+        self.assertEqual(self._add_review(role="verifier", child_id="ver1").returncode, 0)
+        write_bound_residual(self.tmp, "adv1")
+        write_bound_residual(self.tmp, "ver1")
+        landed = self._doc()
+        self.assertFalse(landed["due"], landed)
+        self.assertEqual(landed["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(self.tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        self.assertIn("NEXT-WAVE", integrated.stderr)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, integrated.stderr)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("next\n  NEXT-WAVE", resumed.stdout)
+        self.assertIn(of.DriveAfterIntegrate.SPEAK, resumed.stdout)
+
+
 class ArtifactProveCollectGate(unittest.TestCase):
     """Collect fail-closed when FACTIBLE lacks product bytes. #288."""
 
