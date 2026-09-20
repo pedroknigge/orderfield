@@ -1593,7 +1593,7 @@ class SkillPlanWriteBack(unittest.TestCase):
         self.assertIn("write-back", appendix_fold)
         self.assertIn("shipped", appendix_fold)
         self.assertIn("ownedwrite", appendix_fold)
-        slave = (ROOT / "SLAVE.md").read_text(encoding="utf-8").casefold()
+        slave = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
         self.assertIn("plan_write skip", slave)
         self.assertIn("do not rewrite the whole plan", slave)
         source = (ROOT / "scripts" / "of" / "regime.py").read_text(encoding="utf-8")
