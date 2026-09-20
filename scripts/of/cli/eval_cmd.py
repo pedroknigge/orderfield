@@ -2264,6 +2264,8 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.CloseChecklistProof",
     "tests.test_kernel.EvaluatorPacketProof",
     "tests.test_kernel.ArtifactProveCollectGate",
+    "tests.test_kernel.WaveEndBothRolesProof",
+    "tests.test_kernel.SkillWaveEndBothRoles",
     "tests.test_kernel.AdapterHintsCli",
     "tests.test_kernel.HostRamSuggestBand",
     "tests.test_kernel.AgentBandUnit",

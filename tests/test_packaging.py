@@ -3205,6 +3205,91 @@ class SkillInitAskSkip(unittest.TestCase):
         self.assertNotIn("of ask", section.casefold())
 
 
+class SkillWaveEndBothRoles(unittest.TestCase):
+    """After implementer settle, stored yes runs both review roles. #280.
+
+    Reuse (design-first; written before the wording cut):
+
+    | Existing | Already covers | This cut |
+    |---|---|---|
+    | EvaluatorPacket store-at-start (#235/#288) | `ORDER.evaluator_consent` | read `consent_of`; per-wave `due` |
+    | `of pack --role verifier\\|adversary` | packet + role contracts | scoped to this wave residual |
+    | SkillWaveSettleAutoContinue / DriveAfterIntegrate (#263/#191) | `in_flight=0` + printed `next` | gate: due→PACK; refuse→HOLD; green→printed next |
+    | OwnedWrite / SkillArtifactProve (#251/#235) | verifier reads bytes | no `of prove` |
+    | resume_next_lines | HOLD / PACK / NEXT-WAVE labels | review refuse + due detail |
+
+    Trigger: pulse/resume `in_flight=0`, implementer residual published,
+    wave not integrated. Consent yes → pack both before collect/next-wave.
+    Consent no → skip. Refuse → HOLD. Green → DriveAfterIntegrate.
+    Net-new verb: none. No supervisor. No VERSION bump.
+    """
+
+    SETTLE = "after each wave settle"
+    SKIP = "skip review"
+    HOLD = "review refused"
+    BYTES = "published residual"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_appendix_teach_per_wave_both_roles(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core)
+        table_fold = table.casefold()
+        init_row = next(
+            line
+            for line in table.splitlines()
+            if "init / first wave" in line.casefold()
+        )
+        self.assertIn(self.SETTLE, init_row.casefold())
+        self.assertIn("before next-wave", init_row.casefold())
+        self.assertIn(self.SKIP, init_row.casefold())
+        self.assertIn("pack+spawn both", init_row)
+        self.assertIn("--role adversary", init_row)
+        self.assertIn("--role verifier", init_row)
+        self.assertIn("--evaluator-consent", init_row)
+        self.assertIn("not a second ask", table_fold)
+        self.assertIn("in_flight=0", table)
+        self.assertNotIn("before close pack+spawn", table_fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn(self.SETTLE, appendix_fold)
+        self.assertIn(self.SKIP, appendix_fold)
+        self.assertIn("before next-wave", appendix_fold)
+        self.assertIn("evaluatorpacket", appendix_fold)
+        self.assertIn("driveafterintegrate", appendix_fold)
+        self.assertIn(self.HOLD, appendix_fold)
+        self.assertIn("ownedwrite", appendix_fold)
+        self.assertIn(self.BYTES, appendix_fold)
+        self.assertNotIn("of continue", table_fold)
+        self.assertNotIn("of continue", appendix_fold)
+        self.assertEqual(SkillEvaluatorPacket.xor_errors(table, "SKILL.md table"), [])
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        source = (ROOT / "scripts" / "of" / "cli" / "spec_cmd.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("def due(", source)
+        self.assertIn("def gate_action(", source)
+        self.assertIn("KEY = \"evaluator_consent\"", source)
+        ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
+        self.assertIn("DriveAfterIntegrate.gate", ops)
+
+    def test_does_not_invent_supervisor_or_xor_or_new_verb(self) -> None:
+        for rel, body in (
+            ("SKILL.md", SkillSurface.core(ROOT)),
+            ("of/SKILL.md", SkillSurface.alias(ROOT)),
+            ("references/skill-appendix.md", SkillSurface.appendix(ROOT)),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("of continue", fold, rel)
+            self.assertNotIn("of review", fold, rel)
+            self.assertEqual(SkillEvaluatorPacket.xor_errors(body, rel), [])
+
+
 class SkillSharedWorktree(unittest.TestCase):
     """SKILL teaches two worktrees or series; disjoint owns-path is not enough. #214."""
 
