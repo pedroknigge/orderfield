@@ -2635,10 +2635,14 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
 
     def test_skill_names_the_corpus(self) -> None:
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("of pack --tokens", skill)
+        table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+        self.assertNotIn("of pack --tokens", table)
+        self.assertNotIn("budget.tokens", table)
         appendix = (ROOT / "references" / "skill-appendix.md").read_text(
             encoding="utf-8"
         )
+        self.assertIn("of pack --tokens", appendix)
+        self.assertIn("not implemented", appendix.casefold())
         self.assertIn("recovery/adversarial-dual-truth", appendix)
 
 
