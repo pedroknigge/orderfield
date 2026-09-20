@@ -1,0 +1,24 @@
+{
+  "id": "recovery/plan-ingest-paste",
+  "description": "Plan headings only via --source paste: not ingested; doctor speaks honesty; no plan_cover orphan",
+  "fixture": "recovery_plan_ingest_paste",
+  "tags": ["recovery", "doctor", "plan-ingest"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "plan_cover",
+        "paste",
+        "chat paste / @folder is not ingest",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "plan_cover     orphan",
+        "doctor        FAIL",
+        "RUNTIME_OWNERSHIP",
+        "of merge"
+      ]
+    }
+  ]
+}

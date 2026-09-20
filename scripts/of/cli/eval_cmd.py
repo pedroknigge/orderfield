@@ -1353,13 +1353,6 @@ class PlanCoverageEval:
             str(brief),
         )
         EvalInvariantSetup.require_ok(init, "init")
-        patched = eval_run_of(
-            root,
-            "patch",
-            "--constraints-add",
-            PlanCoverageEval.CONSTRAINT,
-        )
-        EvalInvariantSetup.require_ok(patched, "patch")
         for req_id, text in (
             ("AUTH-001", "login boundary port"),
             ("STORE-001", "persist occupancy json"),
@@ -1388,6 +1381,22 @@ class PlanCoverageEval:
 def eval_setup_recovery_plan_first_coverage(root: Path) -> None:
     """Cited mega-plan with one unpacked heading. Doctor WARNs plan_cover."""
     PlanCoverageEval.setup(root)
+
+
+@_register_eval_fixture("recovery_plan_ingest_paste")
+def eval_setup_recovery_plan_ingest_paste(root: Path) -> None:
+    """Plan headings only in --source paste. Not ingest. Doctor speaks honesty."""
+    init = eval_run_of(
+        root,
+        "init",
+        "--mission",
+        "paste is not ingest",
+        "--phase",
+        "build",
+        "--source",
+        PlanCoverageEval.fixture_text(),
+    )
+    EvalInvariantSetup.require_ok(init, "init")
 
 
 class DriveAfterIntegrateEval:
@@ -2218,8 +2227,12 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.PlanCoverageUnit",
     "tests.test_kernel.DoctorPlanDocSync",
     "tests.test_kernel.DoctorPlanCoverage",
+    "tests.test_kernel.PlanIngestGate",
+    "tests.test_kernel.PlanWriteBackUnit",
+    "tests.test_kernel.PlanWriteBackGate",
     "tests.test_kernel.SkillPlanDocSync",
     "tests.test_kernel.SkillPlanFirstOrder",
+    "tests.test_kernel.SkillPlanWriteBack",
     "tests.test_kernel.SkillPstackCherries",
     "tests.test_kernel.SkillArtifactProve",
     "tests.test_kernel.DriveAfterIntegrateProof",

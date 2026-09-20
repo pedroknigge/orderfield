@@ -31,6 +31,8 @@ from of.spec import (
 )
 
 from of.pack import (
+    CloseEvidence,
+    OwnedWrite,
     in_flight_children,
     landable_wave,
     packed_children,
@@ -569,25 +571,48 @@ class PlanDocSync:
 
 
 class PlanCoverage:
-    """Cited plan / SPEC heading IDs must map to a wave/packet.
+    """Cited on-disk plan heading IDs must map to a wave/packet.
 
     Reuses PlanDocSync.cited / resolve. Complements SPEC
     ``requirement_coverage_errors`` (unowned index IDs): a heading the
-    leader never ``of spec --add``ed is still an orphan here. Advisory.
-    Not a close gate. Not a new verb. Not a CMS.
+    leader never ``of spec --add``ed is still an orphan here. Disk cite
+    wins; SPEC / chat paste / @folder is not ingest. Advisory WARN
+    default. Constraint ``plan_cover fail-closed`` HOLDs close.
+    Not a new verb. Not a CMS.
     """
 
     KIND = "plan_cover"
     STATUS_IDLE = "idle"
     STATUS_OK = "ok"
     STATUS_ORPHAN = "orphan"
+    STATUS_PASTE = "paste"
+    FAIL_CLOSED_CUE = "plan_cover fail-closed"
+    MAX_DIR_FILES = 32
+    PIN_PREFIX = "keep "
     HEADING_RE = re.compile(r"^(#{2,3})\s+(\S.*)$")
     ID_RE = re.compile(r"\b([A-Z][A-Z0-9]{0,15}-[0-9]{3})\b")
+    DIR_RE = re.compile(
+        r"(?<![A-Za-z0-9_./-])"
+        r"(?:docs/plans|docs/plan)(?:/[\w.-]+)*/?"
+        r"(?![A-Za-z0-9_.-])"
+    )
     NOTE = (
         "plan_cover orphan — every cited plan / SPEC requirement "
         "section needs a wave/packet (--owns-requirement or slice id); "
         "high effort on ORDER, medium on implementer slices "
         "(not a close gate)"
+    )
+    NOTE_HOLD = (
+        "plan_cover orphan — fail-closed; pack --owns-requirement "
+        "for each leftover heading before close (HOLD)"
+    )
+    NOTE_PASTE = (
+        "plan_ingest none — chat paste / @folder is not ingest; "
+        "put the plan on disk and cite the path"
+    )
+    NOTE_BIAS = (
+        "plan_cover bias — map --owns-requirement to an uncovered "
+        "heading (vertical slice; do not re-architect)"
     )
     NEXT = (
         "pack --owns-requirement ID --owns-path PATH for each orphan "
@@ -663,44 +688,169 @@ class PlanCoverage:
         return out
 
     @staticmethod
+    def fail_closed(order: dict[str, Any] | None) -> bool:
+        blob = " ".join(
+            str(item) for item in ((order or {}).get("constraints") or [])
+        )
+        return PlanCoverage.FAIL_CLOSED_CUE in blob.casefold()
+
+    @staticmethod
+    def dir_named(text: str) -> list[str]:
+        found: list[str] = []
+        seen: set[str] = set()
+        for match in PlanCoverage.DIR_RE.finditer(str(text or "")):
+            raw = match.group(0).replace("\\", "/").rstrip("/")
+            if (
+                not raw
+                or raw.startswith("/")
+                or raw.startswith("..")
+                or "/../" in raw
+            ):
+                continue
+            if raw in seen:
+                continue
+            seen.add(raw)
+            found.append(raw)
+        return found
+
+    @staticmethod
+    def source_file_cite(
+        root: Path, source_file: str | Path | None
+    ) -> str | None:
+        raw = str(source_file or "").strip()
+        if not raw or raw == "-":
+            return None
+        path = Path(raw)
+        cand = path if path.is_absolute() else Path(root) / path
+        try:
+            resolved = cand.resolve()
+            rel = resolved.relative_to(Path(root).resolve()).as_posix()
+        except (OSError, ValueError):
+            return None
+        if rel.startswith(".") or "/../" in rel:
+            return None
+        if not (PlanDocSync.planish(rel) or PlanCoverage.dir_named(rel)):
+            return None
+        if resolved.is_symlink():
+            return None
+        if resolved.is_file() or resolved.is_dir():
+            return rel
+        return None
+
+    @staticmethod
+    def pin_cites(order: dict[str, Any], paths: list[str]) -> bool:
+        """Record ingested paths in constraints so PlanDocSync keeps them.
+
+        Reuses the existing constraints list (no ORDER schema key). Pack WAL
+        publish must not be the only memory of a --source-file plan cite.
+        """
+        constraints = [str(item) for item in (order.get("constraints") or [])]
+        blob = "\n".join(constraints)
+        changed = False
+        for rel in paths:
+            posix = str(rel or "").replace("\\", "/")
+            if not posix or posix in blob:
+                continue
+            constraints.append(f"{PlanCoverage.PIN_PREFIX}{posix} coverage honest")
+            blob = "\n".join(constraints)
+            changed = True
+        if changed:
+            order["constraints"] = constraints
+        return changed
+
+    @staticmethod
+    def expand(root: Path, rel: str) -> list[tuple[str, Path]]:
+        path = PlanDocSync.resolve(root, rel)
+        if path is None or path.is_symlink():
+            return []
+        if path.is_file():
+            return [(str(rel).replace("\\", "/"), path)]
+        if not path.is_dir():
+            return []
+        try:
+            files = sorted(
+                item
+                for item in path.rglob("*.md")
+                if item.is_file() and not item.is_symlink()
+            )
+        except OSError:
+            return []
+        try:
+            root_res = Path(root).resolve()
+        except OSError:
+            return []
+        out: list[tuple[str, Path]] = []
+        for item in files[: PlanCoverage.MAX_DIR_FILES]:
+            try:
+                file_rel = item.resolve().relative_to(root_res).as_posix()
+            except (OSError, ValueError):
+                continue
+            out.append((file_rel, item))
+        return out
+
+    @staticmethod
+    def cited_rels(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> list[str]:
+        if order is None:
+            order = load_order(root)
+        rels: list[str] = []
+        seen: set[str] = set()
+
+        def add(rel: str) -> None:
+            posix = str(rel or "").replace("\\", "/")
+            if not posix or posix in seen:
+                return
+            seen.add(posix)
+            rels.append(posix)
+
+        blob = RunbookPath.corpus(order, root)
+        if source_text:
+            blob = f"{blob}\n{source_text}"
+        for rel in PlanDocSync.named(blob):
+            add(rel)
+        for rel in PlanCoverage.dir_named(blob):
+            add(rel)
+        extra = PlanCoverage.source_file_cite(root, source_file)
+        if extra:
+            add(extra)
+        return rels
+
+    @staticmethod
+    def paste_ids(text: str) -> list[str]:
+        return [str(row.get("id") or "") for row in PlanCoverage.sections(text)]
+
+    @staticmethod
     def plan_texts(
-        root: Path, order: dict[str, Any] | None = None
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
     ) -> list[tuple[str, str]]:
         if order is None:
             order = load_order(root)
         rows: list[tuple[str, str]] = []
         seen: set[str] = set()
-        for rel in PlanDocSync.cited(order, root):
-            path = PlanDocSync.resolve(root, rel)
-            if path is None or not path.is_file() or path.is_symlink():
-                continue
-            try:
-                key = str(path.resolve())
-            except OSError:
-                continue
-            if key in seen:
-                continue
-            seen.add(key)
-            try:
-                rows.append((rel, path.read_text(encoding="utf-8")))
-            except OSError:
-                continue
-        spec = spec_path(root)
-        if field_is_file(spec):
-            try:
-                key = str(spec.resolve())
-            except OSError:
-                key = ""
-            if key and key not in seen:
+        for rel in PlanCoverage.cited_rels(
+            root, order, source_file, source_text
+        ):
+            for file_rel, path in PlanCoverage.expand(root, rel):
+                if not path.is_file() or path.is_symlink():
+                    continue
                 try:
-                    rows.append(
-                        (
-                            field_rel(root, spec),
-                            spec.read_text(encoding="utf-8"),
-                        )
-                    )
+                    key = str(path.resolve())
                 except OSError:
-                    pass
+                    continue
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    rows.append((file_rel, path.read_text(encoding="utf-8")))
+                except OSError:
+                    continue
         return rows
 
     @staticmethod
@@ -718,13 +868,23 @@ class PlanCoverage:
 
     @staticmethod
     def document(
-        root: Path, order: dict[str, Any] | None = None
+        root: Path,
+        order: dict[str, Any] | None = None,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
     ) -> dict[str, Any]:
         if order is None:
             order = load_order(root)
         sections: list[dict[str, Any]] = []
         seen: set[str] = set()
-        for rel, text in PlanCoverage.plan_texts(root, order):
+        paths: list[str] = []
+        path_seen: set[str] = set()
+        for rel, text in PlanCoverage.plan_texts(
+            root, order, source_file, source_text
+        ):
+            if rel not in path_seen:
+                path_seen.add(rel)
+                paths.append(rel)
             for section in PlanCoverage.sections(text):
                 rid = str(section.get("id") or "")
                 if not rid or rid in seen:
@@ -735,21 +895,47 @@ class PlanCoverage:
                 sections.append(row)
         packets = PlanCoverage.packets(root)
         orphans = PlanCoverage.orphans(sections, packets)
-        if not sections:
-            status = PlanCoverage.STATUS_IDLE
-        elif orphans:
+        paste: list[str] = []
+        if source_text is not None:
+            paste = [
+                rid
+                for rid in PlanCoverage.paste_ids(source_text)
+                if rid and rid not in seen
+            ]
+        elif not sections:
+            spec = spec_path(root)
+            if field_is_file(spec):
+                try:
+                    paste = PlanCoverage.paste_ids(
+                        spec.read_text(encoding="utf-8")
+                    )
+                except OSError:
+                    paste = []
+        hold = PlanCoverage.fail_closed(order)
+        if sections and orphans:
             status = PlanCoverage.STATUS_ORPHAN
-        else:
+            note = PlanCoverage.NOTE_HOLD if hold else PlanCoverage.NOTE
+        elif sections:
             status = PlanCoverage.STATUS_OK
-        note = PlanCoverage.NOTE if status == PlanCoverage.STATUS_ORPHAN else ""
+            note = ""
+        elif paste:
+            status = PlanCoverage.STATUS_PASTE
+            note = PlanCoverage.NOTE_PASTE
+        else:
+            status = PlanCoverage.STATUS_IDLE
+            note = ""
         return {
             "status": status,
             "sections": sections,
+            "paths": paths,
             "orphans": orphans,
             "orphan_ids": [str(row.get("id") or "") for row in orphans],
-            "hot": status == PlanCoverage.STATUS_ORPHAN,
+            "paste_ids": paste,
+            "fail_closed": hold,
+            "hot": status
+            in {PlanCoverage.STATUS_ORPHAN, PlanCoverage.STATUS_PASTE},
             "note": note,
-            "next": PlanCoverage.NEXT if note else "",
+            "next": PlanCoverage.NEXT if status == PlanCoverage.STATUS_ORPHAN else "",
         }
 
     @staticmethod
@@ -759,18 +945,21 @@ class PlanCoverage:
         doc = PlanCoverage.document(root, order)
         if not doc["hot"]:
             return [], False
-        who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
-        line = f"  {PlanCoverage.KIND}     {PlanCoverage.STATUS_ORPHAN}"
+        status = str(doc.get("status") or PlanCoverage.STATUS_ORPHAN)
+        if status == PlanCoverage.STATUS_PASTE:
+            who = " ".join(str(i) for i in (doc.get("paste_ids") or [])[:8])
+        else:
+            who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
+        line = f"  {PlanCoverage.KIND}     {status}"
         if who:
             line += f"  {who}"
-        return (
-            [
-                line,
-                f"  note          {doc['note']}",
-                f"  next          {doc['next']}",
-            ],
-            True,
-        )
+        lines = [
+            line,
+            f"  note          {doc['note']}",
+        ]
+        if doc.get("next"):
+            lines.append(f"  next          {doc['next']}")
+        return (lines, True)
 
     @staticmethod
     def emit(
@@ -783,11 +972,487 @@ class PlanCoverage:
         if not doc.get("hot"):
             return False
         print(f"note         {doc['note']}", file=file)
-        who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
+        if doc.get("status") == PlanCoverage.STATUS_PASTE:
+            who = " ".join(str(i) for i in (doc.get("paste_ids") or [])[:8])
+        else:
+            who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
         if who:
             print(f"{PlanCoverage.KIND}   {who}", file=file)
-        print(f"next         {doc['next']}", file=file)
+        if doc.get("next"):
+            print(f"next         {doc['next']}", file=file)
         return True
+
+    @staticmethod
+    def ingest(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+    ) -> dict[str, Any]:
+        if order is None:
+            order = load_order(root)
+        doc = PlanCoverage.document(
+            root, order, source_file=source_file, source_text=source_text
+        )
+        PlanCoverage.pin_cites(order, [str(p) for p in (doc.get("paths") or [])])
+        return doc
+
+    @staticmethod
+    def emit_ingest(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        source_file: str | Path | None = None,
+        source_text: str | None = None,
+        file: Any = None,
+    ) -> dict[str, Any]:
+        doc = PlanCoverage.ingest(
+            root, order, source_file=source_file, source_text=source_text
+        )
+        sections = list(doc.get("sections") or [])
+        paths = [str(p) for p in (doc.get("paths") or [])]
+        if sections:
+            where = " ".join(paths[:3])
+            print(
+                f"plan_ingest  {len(sections)} headings  {where}".rstrip(),
+                file=file,
+            )
+            ids = " ".join(str(row.get("id") or "") for row in sections[:12])
+            if ids:
+                print(f"{PlanCoverage.KIND}   {ids}", file=file)
+        elif doc.get("status") == PlanCoverage.STATUS_PASTE:
+            print(PlanCoverage.NOTE_PASTE, file=file)
+        return doc
+
+    @staticmethod
+    def hold_close(
+        root: Path, order: dict[str, Any] | None = None
+    ) -> str | None:
+        doc = PlanCoverage.document(root, order)
+        if not doc.get("fail_closed"):
+            return None
+        if doc.get("status") != PlanCoverage.STATUS_ORPHAN:
+            return None
+        who = " ".join(str(i) for i in (doc.get("orphan_ids") or [])[:8])
+        return (
+            f"of close refused: {PlanCoverage.KIND} orphan {who}; "
+            f"{PlanCoverage.NEXT}"
+        )
+
+    @staticmethod
+    def emit_pack(
+        root: Path,
+        order: dict[str, Any] | None = None,
+        *,
+        claimed: set[str] | None = None,
+        file: Any = None,
+    ) -> bool:
+        doc = PlanCoverage.document(root, order)
+        spoke = PlanCoverage.emit(root, order, file=file)
+        sections = list(doc.get("sections") or [])
+        if not sections:
+            return spoke
+        claimed = {str(i) for i in (claimed or set()) if str(i)}
+        if claimed & {
+            str(row.get("id") or "") for row in sections
+        }:
+            return spoke
+        orphans = [str(i) for i in (doc.get("orphan_ids") or []) if i]
+        if not orphans:
+            return spoke
+        print(f"note         {PlanCoverage.NOTE_BIAS}", file=file)
+        print(f"{PlanCoverage.KIND}   {' '.join(orphans[:8])}", file=file)
+        print(f"next         {PlanCoverage.NEXT}", file=file)
+        return True
+
+
+class PlanWriteBack:
+    """Surgical status write-back into the cited user plan MD.
+
+    Reuses PlanCoverage heading map + PlanDocSync cite/resolve.
+    Fail-closed without OwnedWrite / CloseEvidence. User plan path
+    wins — no second ledger inside ``.orderfield/``. Not a CMS.
+    Not a new verb. #313.
+    """
+
+    KIND = "plan_write"
+    MARK_DONE = "done"
+    MARK_PROGRESS = "in-progress"
+    MARK_BLOCKED = "blocked"
+    SKIP_CUES = ("plan_write skip", "docs_sync skip")
+    ANY_HEADING = re.compile(r"^(#{1,6})\s+(\S.*)$")
+    CHECKBOX_OPEN = re.compile(r"^(\s*(?:[-*+]|\d+\.)\s+)\[ \]")
+    CHECKBOX_DONE = re.compile(r"^(\s*(?:[-*+]|\d+\.)\s+)\[[xX]\]")
+    STATUS_LINE = re.compile(
+        r"^(\s*(?:\*\*)?Status(?:\*\*)?\s*:\s*)(\S.*)$", re.I
+    )
+    SHIPPED_LINE = re.compile(r"^\s*Shipped:\s*", re.I)
+    HEADING_BOX = re.compile(r"\[ \]")
+    HEADING_BOX_DONE = re.compile(r"\[[xX]\]")
+    PR_RE = re.compile(
+        r"https?://(?:www\.)?(?:github\.com|gitlab\.com)"
+        r"/[^\s)<>]+/(?:pull|merge_requests)/\d+",
+        re.I,
+    )
+    SHA_RE = re.compile(r"\b([0-9a-f]{40})\b")
+    NOTE_PROOF = (
+        "plan_write skip — no OwnedWrite / close evidence; plan MD unchanged"
+    )
+    NOTE_HITL_OUTSIDE = (
+        "plan_write hitl — plan path is outside the project root; "
+        "cite a path under the repo"
+    )
+    NOTE_HITL_UNCITED = (
+        "plan_write hitl — plan file is not cited; "
+        "cite docs/plans/… in ORDER/SPEC"
+    )
+    NOTE_THEATER = (
+        "plan_write theater — docs_sync=done without plan byte change "
+        "or explicit skip"
+    )
+    NEXT_HITL = "cite docs/plans/… under the project or dump + ask (Mode B)"
+
+    @staticmethod
+    def fold(text: str) -> str:
+        return str(text or "").casefold()
+
+    @staticmethod
+    def skip(res: Any) -> bool:
+        rem = res.get("residual") if isinstance(res, dict) else None
+        patch = rem.get("proposed_patch") if isinstance(rem, dict) else None
+        blob = ""
+        if isinstance(patch, dict):
+            blob = str(patch.get("notes") or "")
+        elif isinstance(patch, str):
+            blob = patch
+        folded = PlanWriteBack.fold(blob)
+        return any(cue in folded for cue in PlanWriteBack.SKIP_CUES)
+
+    @staticmethod
+    def docs_sync_done(res: Any) -> bool:
+        rem = res.get("residual") if isinstance(res, dict) else None
+        patch = rem.get("proposed_patch") if isinstance(rem, dict) else None
+        if not isinstance(patch, dict):
+            return False
+        return str(patch.get("docs_sync") or "").strip().casefold() == "done"
+
+    @staticmethod
+    def proven(res: Any, packet: dict[str, Any], root: Path) -> bool:
+        if not isinstance(res, dict) or str(res.get("status") or "") != "done":
+            return False
+        if CloseEvidence.errors(res, root, packet):
+            return False
+        if OwnedWrite.errors(res, packet, root):
+            return False
+        return True
+
+    @staticmethod
+    def mark_for(res: Any) -> str | None:
+        if not isinstance(res, dict):
+            return None
+        status = str(res.get("status") or "")
+        if status == "done":
+            return PlanWriteBack.MARK_DONE
+        if status == "threshold":
+            return PlanWriteBack.MARK_BLOCKED
+        if status in {"partial", "blocked"}:
+            return (
+                PlanWriteBack.MARK_BLOCKED
+                if status == "blocked"
+                else PlanWriteBack.MARK_PROGRESS
+            )
+        return PlanWriteBack.MARK_PROGRESS if status else None
+
+    @staticmethod
+    def ship_note(res: Any, packet: dict[str, Any] | None = None) -> str:
+        rem = res.get("residual") if isinstance(res, dict) else None
+        patch = rem.get("proposed_patch") if isinstance(rem, dict) else None
+        parts = [
+            str(rem.get("evidence") or "") if isinstance(rem, dict) else "",
+            str(patch.get("notes") or "") if isinstance(patch, dict) else "",
+        ]
+        blob = " ".join(parts)
+        found: list[str] = []
+        match = PlanWriteBack.PR_RE.search(blob)
+        if match:
+            found.append(match.group(0).rstrip(".,;"))
+        sha = PlanWriteBack.SHA_RE.search(blob)
+        if sha:
+            found.append(sha.group(1))
+        wave = packet.get("wave") if isinstance(packet, dict) else None
+        head = f"wave {wave}" if isinstance(wave, int) and wave >= 1 else ""
+        extra = " · ".join(found)
+        if head and extra:
+            return f"{head} · {extra}"
+        return extra or head
+
+    @staticmethod
+    def cite_reason(
+        root: Path, order: dict[str, Any] | None, rel: str
+    ) -> str | None:
+        posix = str(rel or "").replace("\\", "/")
+        path = PlanDocSync.resolve(root, posix)
+        if path is None or path.is_symlink() or not path.is_file():
+            return PlanWriteBack.NOTE_HITL_OUTSIDE
+        cited = set(PlanCoverage.cited_rels(root, order))
+        if posix not in cited and posix not in {
+            str(p).replace("\\", "/")
+            for p in (PlanCoverage.document(root, order).get("paths") or [])
+        }:
+            return PlanWriteBack.NOTE_HITL_UNCITED
+        return None
+
+    @staticmethod
+    def section_span(
+        lines: list[str], req_id: str
+    ) -> tuple[int, int, int] | None:
+        """Return (heading_idx, start, end exclusive) for req_id."""
+        in_fence = False
+        heading_idx: int | None = None
+        level = 0
+        for i, raw in enumerate(lines):
+            stripped = raw.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            match = PlanWriteBack.ANY_HEADING.match(stripped)
+            if not match:
+                continue
+            title = match.group(2).strip()
+            found = PlanCoverage.ID_RE.search(title)
+            this_level = len(match.group(1))
+            if heading_idx is None:
+                if found and found.group(1) == req_id:
+                    heading_idx = i
+                    level = this_level
+                continue
+            if this_level <= level:
+                return (heading_idx, heading_idx, i)
+        if heading_idx is None:
+            return None
+        return (heading_idx, heading_idx, len(lines))
+
+    @staticmethod
+    def _set_status(line: str, mark: str) -> str:
+        match = PlanWriteBack.STATUS_LINE.match(line)
+        if not match:
+            return line
+        return f"{match.group(1)}{mark}"
+
+    @staticmethod
+    def _heading_box(line: str, mark: str) -> str:
+        if mark != PlanWriteBack.MARK_DONE:
+            return line
+        if not PlanWriteBack.HEADING_BOX.search(line):
+            return line
+        return PlanWriteBack.HEADING_BOX.sub("[x]", line, count=1)
+
+    @staticmethod
+    def patch(
+        text: str,
+        req_id: str,
+        mark: str,
+        *,
+        ship: str = "",
+    ) -> tuple[str, dict[str, Any]]:
+        """Surgical edit of one heading section. Pure. No I/O."""
+        raw = str(text or "")
+        ended = raw.endswith("\n")
+        lines = raw.splitlines()
+        span = PlanWriteBack.section_span(lines, req_id)
+        if span is None:
+            return raw, {"changed": False, "reason": "unmapped"}
+        heading_idx, start, end = span
+        out = list(lines)
+        in_fence = False
+        had_status = False
+        had_box = False
+        had_shipped = False
+        for i in range(start, end):
+            stripped = out[i].strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            if i == heading_idx:
+                boxed = PlanWriteBack._heading_box(out[i], mark)
+                if boxed != out[i]:
+                    had_box = True
+                    out[i] = boxed
+                elif PlanWriteBack.HEADING_BOX_DONE.search(out[i]):
+                    had_box = True
+                continue
+            if PlanWriteBack.STATUS_LINE.match(out[i]):
+                had_status = True
+                out[i] = PlanWriteBack._set_status(out[i], mark)
+                continue
+            if PlanWriteBack.SHIPPED_LINE.match(out[i]):
+                had_shipped = True
+                continue
+            opened = PlanWriteBack.CHECKBOX_OPEN.match(out[i])
+            if opened and mark == PlanWriteBack.MARK_DONE:
+                had_box = True
+                out[i] = f"{opened.group(1)}[x]{out[i][opened.end():]}"
+            elif PlanWriteBack.CHECKBOX_DONE.match(out[i]):
+                had_box = True
+        insert_at = heading_idx + 1
+        if not had_status and not had_box:
+            out.insert(insert_at, f"Status: {mark}")
+            end += 1
+            insert_at += 1
+            had_status = True
+        if (
+            mark == PlanWriteBack.MARK_DONE
+            and ship
+            and not had_shipped
+        ):
+            ship_at = end
+            while ship_at > insert_at and not out[ship_at - 1].strip():
+                ship_at -= 1
+            out.insert(ship_at, f"Shipped: {ship}")
+            had_shipped = True
+        joined = "\n".join(out)
+        if ended:
+            joined += "\n"
+        changed = joined != raw
+        return joined, {
+            "changed": changed,
+            "already": not changed and (had_box or had_status or had_shipped),
+            "reason": "" if changed or had_box or had_status else "noop",
+        }
+
+    @staticmethod
+    def apply(
+        root: Path,
+        packet: dict[str, Any],
+        res: Any,
+        order: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if order is None:
+            order = load_order(root)
+        mark = PlanWriteBack.mark_for(res)
+        empty = {
+            "changed": False,
+            "already": False,
+            "ids": [],
+            "paths": [],
+            "reason": "",
+            "note": "",
+            "next": "",
+        }
+        if not mark:
+            empty["reason"] = "idle"
+            return empty
+        if mark == PlanWriteBack.MARK_DONE and not PlanWriteBack.proven(
+            res, packet, root
+        ):
+            empty["reason"] = "proof"
+            empty["note"] = PlanWriteBack.NOTE_PROOF
+            return empty
+        cover = PlanCoverage.document(root, order)
+        claimed = PlanCoverage.claimed(packet)
+        mapped = [
+            row
+            for row in (cover.get("sections") or [])
+            if str(row.get("id") or "") in claimed
+        ]
+        if not mapped:
+            empty["reason"] = "unmapped"
+            return empty
+        ship = (
+            PlanWriteBack.ship_note(res, packet)
+            if mark == PlanWriteBack.MARK_DONE
+            else ""
+        )
+        changed = False
+        already = False
+        ids: list[str] = []
+        paths: list[str] = []
+        note = ""
+        nxt = ""
+        for row in mapped:
+            rel = str(row.get("rel") or "")
+            rid = str(row.get("id") or "")
+            hitl = PlanWriteBack.cite_reason(root, order, rel)
+            if hitl:
+                note = hitl
+                nxt = PlanWriteBack.NEXT_HITL
+                continue
+            path = PlanDocSync.resolve(root, rel)
+            if path is None or not path.is_file() or path.is_symlink():
+                note = PlanWriteBack.NOTE_HITL_OUTSIDE
+                nxt = PlanWriteBack.NEXT_HITL
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            patched, meta = PlanWriteBack.patch(text, rid, mark, ship=ship)
+            if meta.get("changed") and patched != text:
+                try:
+                    path.write_text(patched, encoding="utf-8")
+                except OSError:
+                    continue
+                changed = True
+                ids.append(rid)
+                if rel not in paths:
+                    paths.append(rel)
+            elif meta.get("already"):
+                already = True
+                ids.append(rid)
+        reason = "wrote" if changed else ("already" if already else "noop")
+        if note and not changed:
+            reason = "hitl"
+        return {
+            "changed": changed,
+            "already": already and not changed,
+            "ids": ids,
+            "paths": paths,
+            "reason": reason,
+            "note": note,
+            "next": nxt,
+            "mark": mark,
+        }
+
+    @staticmethod
+    def theater(res: Any, report: dict[str, Any]) -> bool:
+        if not PlanWriteBack.docs_sync_done(res):
+            return False
+        if PlanWriteBack.skip(res):
+            return False
+        if report.get("changed") or report.get("already"):
+            return False
+        return True
+
+    @staticmethod
+    def collect(
+        root: Path,
+        packet: dict[str, Any],
+        res: Any,
+        order: dict[str, Any] | None = None,
+        *,
+        file: Any = None,
+    ) -> dict[str, Any]:
+        report = PlanWriteBack.apply(root, packet, res, order)
+        if report.get("changed"):
+            who = " ".join(str(i) for i in (report.get("ids") or [])[:8])
+            where = " ".join(str(p) for p in (report.get("paths") or [])[:3])
+            mark = str(report.get("mark") or PlanWriteBack.MARK_DONE)
+            print(
+                f"{PlanWriteBack.KIND}  {who} {mark}  {where}".rstrip(),
+                file=file,
+            )
+        elif report.get("note"):
+            print(f"note         {report['note']}", file=file)
+            if report.get("next"):
+                print(f"next         {report['next']}", file=file)
+        if PlanWriteBack.theater(res, report):
+            print(f"note         {PlanWriteBack.NOTE_THEATER}", file=file)
+        return report
 
 
 def done_when_tag(criterion: str) -> str | None:
