@@ -793,9 +793,10 @@ class EvaluatorPacket:
     unset — not ask. After an implementer wave settles
     (in_flight=0, published residual, not yet integrated), stored
     yes packs both roles on that wave residual before next-wave.
-    Stored no skips. Review refuse is HOLD. Reuses WaveRoster
-    roles. No new role, no of merge, no supervisor.
-    CloseChecklist.ok stays contrast + residual.
+    Stored no skips. Review refuse is HOLD. Checklist prints
+    whether those packets exist. Reuses WaveRoster roles. No new
+    role, no of merge, no supervisor. CloseChecklist.ok stays
+    contrast + residual. #280 reads ORDER.evaluator_consent.
     """
 
     KIND = "evaluator"
@@ -985,6 +986,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_LANDED
         if status == EvaluatorPacket.STATUS_SKIP:
             return EvaluatorPacket.SPEAK_SKIP
+        if status == EvaluatorPacket.STATUS_REFUSE:
+            return EvaluatorPacket.SPEAK_REFUSE
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.SPEAK_UNSET
         if status == EvaluatorPacket.STATUS_REFUSE:
@@ -1022,6 +1025,7 @@ class EvaluatorPacket:
             "v": 1,
             "kind": EvaluatorPacket.KIND,
             "consent": consent,
+            "due": due,
             "evaluator": status,
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
@@ -1036,6 +1040,7 @@ class EvaluatorPacket:
         return {
             "v": 1,
             "consent": str(doc.get("consent") or ""),
+            "due": bool(doc.get("due")),
             "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET),
             "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
             "evaluator_roles": [
@@ -1054,6 +1059,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.PATCH_NEXT
+        if status == EvaluatorPacket.STATUS_REFUSE:
+            return EvaluatorPacket.HOLD_DETAIL
         if status == EvaluatorPacket.STATUS_SKIP:
             return "stored no"
         if status == EvaluatorPacket.STATUS_REFUSE:

@@ -84,6 +84,41 @@
       "items": { "type": "string", "minLength": 1 },
       "description": "Exclusive product paths for this packet. Same-wave overlap is a pack error; not a file lock."
     },
+    "review_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "description": "Wave-end verifier/adversary cite set inherited from this wave. Not a write-set. Not owns_paths.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["full", "scoped"]
+        },
+        "band": {
+          "type": "string",
+          "enum": ["1-4", "5-10", "10-50"]
+        },
+        "paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "published": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "strata": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "role_focus": {
+          "type": "string",
+          "enum": ["artifacts", "collisions"]
+        }
+      }
+    },
     "reads_spec": { "type": "boolean" },
     "slice": { "type": "string", "minLength": 1 },
     "role": {

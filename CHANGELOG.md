@@ -31,7 +31,9 @@ Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first
 - **Reuse, not a new verb:** `ObservationPack` (next to `DriveAfterIntegrate`) speaks `handle <path> <size>B` plus 240-char head/tail when the residual is ≥10KiB. Full file stays on disk. Small residuals may still print fully. `#284` receipt markers (`OF_EVIDENCE_RECEIPT` / `evidence_receipt` / `---RECEIPT---`) are never stripped. Wave-end roles read paths (`#303` / `#280`). After `in_flight=0`, cite ORDER + handles (`#263`). No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach handle + excerpt; do not paste the body. Core stays under the 20KB cap.
 - **Proof:** `ObservationPackProof` / `SkillObservationPack` / `recovery/observation-pack`. No new C-ID (honesty cap). No VERSION bump. `#283`.
-- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#283` / `#291` / `#307` / `#308` / `#310` land on the same line (no bump).
+- **Reuse, not a new verb:** `ReviewScope` inherits this wave's owns-path / published set (`1-4` or N≤4 full; `5-10` / `10-50` or N>4 scoped). Packet `review_scope` is a cite set, not `owns_paths`. `ORDER.agent_band` from `#304`. No VERSION bump. No new C-ID.
+- **Proof:** `WaveReviewScopeProof` / `SkillWaveReviewScope`. C-080 extended. Honesty cap. `#282` / compose `#280`. Design: `docs/features/kernel/wave-review-scope.md`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main. `#281` / `#280` / `#282` / `#283` / `#291` / `#307` / `#308` / `#310` land on the same line (no bump).
 
 ## 0.8.22
 
