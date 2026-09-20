@@ -67,7 +67,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 | `MUTATING_COMMANDS` | `scripts/of/field.py` | Exact set is `MUTATING_COMMANDS_ORDER` / `mutating_commands_prose()`: `init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`. CLI wrapper is `of.cli.main`; spawn/gc/spec may take the lock inside the handler |
 | Adapters | `scripts/of_adapters.py` | `ADAPTER_ORDER` = claude, codex, cursor, opencode, orca, grok, agy, qwen, generic. `INLINE_CONTRACT_ADAPTERS` = orca, generic |
 | Schemas | `schemas/*.json` | order, state, packet, residual, residual.codex, wave-report, session, **learning**, **requirements** |
-| Install | `install.sh` | harness dests + installed-kernel `of`; copies `scripts/of/` with the skill tree |
+| Install | `install.sh` | harness dests (incl. orca/qwen) + installed-kernel `of`; dest copies skill surface only (SKILL + scripts/of + schemas + references), not the git tree |
 | Tests | `tests/test_kernel.py`, `tests/test_kernel_{field,spec,pack,regime,cli,origin}.py`, `tests/test_packaging.py` | kernel split by invariant class + packaging |
 | CI | `.github/workflows/test.yml` | unittest + `of eval --strict --kernel` + `validate-skill.sh`; gitleaks; ubuntu/macos × 3.11/3.13 |
 | Doctrine | `CHILD.md`, `references/principles.md`, `references/adapters.md` | |

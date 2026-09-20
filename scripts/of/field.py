@@ -2938,7 +2938,7 @@ class SkillVersionSkew:
     """
 
     GENERIC = (".agents", "skills", "orderfield")
-    HARNESS_NAMES = ("claude", "codex", "cursor", "opencode", "grok")
+    HARNESS_NAMES = ("claude", "codex", "cursor", "opencode", "orca", "grok", "qwen")
     AGY_REL = (
         (".gemini", "antigravity-cli", "skills", "orderfield"),
         (".gemini", "skills", "orderfield"),

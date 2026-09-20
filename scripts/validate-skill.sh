@@ -29,12 +29,12 @@ NAME_VAL=$(echo "$FM" | awk -F': *' '/^name:/{print $2; exit}' | tr -d '"' | tr 
 ok "name $NAME"
 
 VER_FILE=$(tr -d '[:space:]' < "$ROOT/VERSION")
-VER_SKILL=$(echo "$FM" | awk -F'"' '/version:/{print $2; exit}')
+VER_SKILL=$(echo "$FM" | awk -F'"' '/^[[:space:]]*version:/{print $2; exit}')
 [[ -n "$VER_SKILL" ]] || fail "SKILL.md metadata.version empty"
 [[ "$VER_FILE" == "$VER_SKILL" ]] || fail "VERSION $VER_FILE != SKILL.md $VER_SKILL"
 ok "version $VER_FILE"
 
-VER_ALIAS=$(awk -F'"' '/version:/{print $2; exit}' "$ALIAS_FILE")
+VER_ALIAS=$(awk -F'"' '/^[[:space:]]*version:/{print $2; exit}' "$ALIAS_FILE")
 [[ "$VER_FILE" == "$VER_ALIAS" ]] || fail "VERSION $VER_FILE != of/SKILL.md $VER_ALIAS"
 grep -q '^name: of$' "$ALIAS_FILE" || fail "of/SKILL.md name is not of"
 grep -q '^  alias-of: orderfield$' "$ALIAS_FILE" || fail "of/SKILL.md missing alias-of"

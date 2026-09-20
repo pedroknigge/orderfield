@@ -170,6 +170,68 @@ class InstallScript(unittest.TestCase):
         self.assertTrue((tmp / ".claude" / "skills" / "orderfield" / "SKILL.md").is_file())
         self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
 
+    def test_orca_qwen_dirs_get_skill(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-orca-qwen-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".orca").mkdir()
+        (tmp / ".qwen").mkdir()
+        proc = run(tmp, "bash", str(INSTALL), str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue((tmp / ".orca" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertTrue((tmp / ".qwen" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertIn(".orca/skills/orderfield", proc.stdout)
+        self.assertIn(".qwen/skills/orderfield", proc.stdout)
+
+    def test_global_orca_qwen_on_path_creates_dests(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-oq-path-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        for name in ("orca", "qwen"):
+            fake = bindir / name
+            fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            fake.chmod(0o755)
+        env = {
+            "HOME": str(tmp),
+            "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
+        proc = run(tmp, "bash", str(INSTALL), "--global", env=env)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue((tmp / ".orca" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertTrue((tmp / ".qwen" / "skills" / "orderfield" / "SKILL.md").is_file())
+        self.assertTrue((tmp / ".agents" / "skills" / "orderfield" / "SKILL.md").is_file())
+
+    def test_dest_is_skill_surface_not_repo(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-surface-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        proc = run(tmp, "bash", str(INSTALL), "--generic", "--root", str(tmp))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        dest = tmp / ".agents" / "skills" / "orderfield"
+        must = (
+            "SKILL.md",
+            "VERSION",
+            "install.sh",
+            "README.md",
+            "scripts/of.py",
+            "scripts/of_adapters.py",
+            "scripts/of/__init__.py",
+            "schemas/order.schema.json",
+            "references/skill-appendix.md",
+            "of/SKILL.md",
+        )
+        for rel in must:
+            self.assertTrue((dest / rel).is_file(), rel)
+        self.assertTrue((dest / "CHILD.md").is_file(), "dest must copy CHILD.md")
+        self.assertFalse((dest / "SLAVE.md").exists(), "do not copy SLAVE.md")
+        forbidden = ("tests", "evals", "docs", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
+        for name in forbidden:
+            self.assertFalse((dest / name).exists(), name)
+        files = [p for p in dest.rglob("*") if p.is_file()]
+        self.assertLessEqual(len(files), 80, len(files))
+        size = sum(p.stat().st_size for p in files)
+        self.assertLessEqual(size, 1_500_000, size)
+
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -303,6 +365,10 @@ class InstallScript(unittest.TestCase):
         harnesses = src.split("KNOWN_HARNESSES=", 1)[1].split(")", 1)[0]
         self.assertNotIn("agy", harnesses)
         self.assertNotIn("antigravity", harnesses)
+        self.assertIn("orca", harnesses)
+        self.assertIn("qwen", harnesses)
+        self.assertIn("copy_skill_surface", src)
+        self.assertIn("SKILL_SURFACE_FILES", src)
         # PATH symlink targets installed dest, not $SRC (adversary E).
         self.assertIn("of_installed_kernel", src)
         self.assertIn('"$base/.agents/skills/$NAME/scripts/of.py"', src)
@@ -819,7 +885,10 @@ class ReadmeProductSurface(unittest.TestCase):
             self.assertIn("sha-256", folded, label)
             self.assertIn("unpinned", folded, label)
             self.assertIn("npx", folded, label)
-            self.assertIn("not trusted", folded, label)
+            self.assertTrue(
+                "not trusted" in folded or "not the trusted" in folded,
+                f"{label} missing not-trusted",
+            )
         self.assertIn("planning-with-files", appendix.casefold())
         self.assertIn("when work goes through `of`", skill)
         self.assertIn("remain protocol", skill)
@@ -1175,7 +1244,8 @@ class VersionedDescription(unittest.TestCase):
     def test_description_preview_starts_with_version(self) -> None:
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn(f'description: "v{ver} —', skill)
+        self.assertIn(f'description: "v{ver}.', skill)
+        self.assertIn("Use when", skill)
 
 
 class SkillFrontmatterQuotedGate(unittest.TestCase):
@@ -1187,8 +1257,8 @@ class SkillFrontmatterQuotedGate(unittest.TestCase):
             text = (ROOT / rel).read_text(encoding="utf-8")
             data = SkillFrontmatterQuoted.load(text)
             self.assertIsInstance(data["description"], str, rel)
-            self.assertTrue(data["description"].startswith(f"v{ver} —"), rel)
-            self.assertIn("—", data["description"], rel)
+            self.assertTrue(data["description"].startswith(f"v{ver}."), rel)
+            self.assertIn("Use when", data["description"], rel)
             if rel == "SKILL.md":
                 self.assertIn("compatibility", data)
                 self.assertIsInstance(data["compatibility"], str)
@@ -1242,7 +1312,8 @@ class RepositoryAliasSkill(unittest.TestCase):
         body = alias.read_text(encoding="utf-8")
         ver = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertIn("name: of", body)
-        self.assertIn(f'description: "v{ver} —', body)
+        self.assertIn(f'description: "v{ver}.', body)
+        self.assertIn("Use when", body)
         self.assertIn("alias-of: orderfield", body)
         self.assertIn("../orderfield/SKILL.md", body)
         self.assertEqual(body, (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8"))
@@ -2065,6 +2136,8 @@ class SkillCheckoutAutoContinueHonesty(unittest.TestCase):
             self.assertIn("~/.agents", text, rel)
             self.assertIn("~/.claude", text, rel)
             self.assertIn("~/.cursor", text, rel)
+        self.assertIn("~/.orca/skills/orderfield", readme)
+        self.assertIn("~/.qwen/skills/orderfield", readme)
 
     def test_kernel_has_no_silent_skip(self) -> None:
         ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
