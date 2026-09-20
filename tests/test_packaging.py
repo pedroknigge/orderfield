@@ -1474,10 +1474,17 @@ class SkillPlanFirstOrder(unittest.TestCase):
         self.assertIn("plan_cover", table)
         self.assertIn("re-architect", table)
         self.assertIn("owns-requirement", table)
+        self.assertIn("cite the path", table)
+        self.assertIn("@folder", table)
+        self.assertIn("chat paste", table)
+        self.assertIn("fail-closed", table)
         appendix_fold = appendix.casefold()
         self.assertIn("plan_cover", appendix_fold)
         self.assertIn("high effort on order", appendix_fold)
         self.assertIn("tracer", appendix_fold)
+        self.assertIn("chat paste", appendix_fold)
+        self.assertIn("@folder", appendix_fold)
+        self.assertIn("fail-closed", appendix_fold)
         for cherry in (
             "architect",
             "sequence-verifiable-units",
