@@ -847,12 +847,12 @@ class ReadmeProductSurface(unittest.TestCase):
         ):
             self.assertIn(needle, hero)
         self.assertIn("when not", hero.casefold())
-        portada = text[:use]
-        self.assertIn("ORDERFIELD_REF=v", portada)
-        self.assertIn("--from-release", portada)
-        self.assertIn("~/.local/bin", portada)
-        self.assertNotIn("ORDERFIELD_ARCHIVE", portada)
-        self.assertNotIn("ORDERFIELD_SHA256SUMS", portada)
+        front = text[:use]
+        self.assertIn("ORDERFIELD_REF=v", front)
+        self.assertIn("--from-release", front)
+        self.assertIn("~/.local/bin", front)
+        self.assertNotIn("ORDERFIELD_ARCHIVE", front)
+        self.assertNotIn("ORDERFIELD_SHA256SUMS", front)
         install_block = text[install:text.index("## Uninstall")]
         chunks = install_block.split("```")
         lead, first_fence = chunks[0], chunks[1]
