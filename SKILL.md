@@ -111,7 +111,7 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
-**Anti-done-theater.** Same as the shipped row. Unittest/CI green is not Ready. Flying is not shipped.
+**Anti-done-theater.** Ready = named interface + proof. Unittest/CI green is not Ready. Non-trivial: design-twice (two approaches) before implement. Deep modules: simple interface, complexity hidden. Flying is not shipped.
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
@@ -119,4 +119,4 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, design-twice, deep modules, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
+Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
