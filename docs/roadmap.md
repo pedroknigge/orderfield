@@ -23,6 +23,7 @@ Landed on main after the published v0.8.21 tag (`fa507f6`, #266) while still cla
 - agy/grok spawn isolate host global MCP by default (`HostMcp`; empty overlay HOME). `OF_SPAWN_MCP=inherit` opts in (ask). Pulse prints `cpu=` on `no writes yet`. Proof: `HostMcpIsolate` / `SkillHostMcp`. `#269`.
 - Implicit spawn refuses when detect is present:none. Second pack WARNs. Handoff-to-self ≠ spawned child wave. Proof: `SpawnAdapterMissingGate` / `SkillSpawnAdapterMissing`. `#273`.
 - Pulse / resume name `not spawned` / `next SPAWN` when packed children have no spawn record / no live pid — not `running` + residual MISSING as if flying. Proof: `PackedOnlyNotAlive` / `SkillPackedOnlyStatus`. `#274`.
+- Init ask skip: small 1-2 exclusive-slice bump/obvious skips catalog + cheap/frontier + mix + evaluator theater. Large keeps store-at-start evaluator. No silent mix. `#281` bands later. Proof: `SkillInitAskSkip`. `#289`.
 
 ## 0.8.21 — wave-settle auto-continue; OwnsPathCoverage pack WARN
 

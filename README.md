@@ -45,7 +45,7 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A multi-role wave needs cheap and frontier workers | The plan consults the [model catalog](docs/model-catalog.md), then proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
 | A wave could mix CLIs or stay on one without asking | The leader asks same-harness vs multi-harness mix once per field (init/first pack). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. `budget.tokens` stays reserved. |
-| A multi-slice field is about to start | At init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Contrast still required. Not a new close gate. |
+| A multi-slice field is about to start | **InitAskSkip** Large: at init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. Missing key → evaluator unset. InitAskSkip Small (1-2 exclusive slices; bump / obvious): skip the four theater asks; contrast still required. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate. |
 | A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
 | Adding lines looks like progress | Code is a liability. Think DELETE, not add. Same capability with less code. No new verb. |
 
@@ -69,6 +69,7 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 ## When it is theater
 
 - VERSION bump plus one obvious feature.
+- Four init asks (catalog / cheap-frontier / mix / evaluator) on a 1-2 slice bump (`InitAskSkip`).
 - A rewrite or new verb when subtract/split would do the same with less code.
 - One ordinary subagent, or work a skill on this agent already covers.
 - Opening a field because a harness name was mentioned.

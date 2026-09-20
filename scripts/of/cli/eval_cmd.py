@@ -2226,6 +2226,7 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillCheckoutAutoContinueHonesty",
     "tests.test_kernel.SkillAntiDoneTheater",
     "tests.test_kernel.SkillEvaluatorPacket",
+    "tests.test_kernel.SkillInitAskSkip",
     "tests.test_kernel.PackagingBumpDiscipline",
     "tests.test_kernel.WebhookPairContract",
     "tests.test_kernel.WebhookPairGate",

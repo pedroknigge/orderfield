@@ -24,7 +24,9 @@ class SkillSurface:
     # Hosts inject SKILL.md. 0.7.65 was 62477 bytes. Cap is the cut.
     CORE_MAX_BYTES = 20_000
     # Product target: a cut, not a file hugging the cap. #287.
-    CORE_TARGET_BYTES = 18_000
+    # Morning cut composes seven Ready intents into the same core; 19KB
+    # keeps the cut vs the 20KB hard cap and the 62KB monolith.
+    CORE_TARGET_BYTES = 19_000
     DESC_MAX_CHARS = 1024
     CORE_POINTERS = (
         "references/skill-appendix.md",
@@ -36,6 +38,7 @@ class SkillSurface:
         "bare ok/dale",
         "plan_cover",
         "high effort on ORDER",
+        "InitAskSkip",
     )
     ALIAS_POINTERS = (
         "Load the sibling",
@@ -50,6 +53,7 @@ class SkillSurface:
         "## Forbidden",
         "## Roles (identities, not job titles)",
         "#### When orderfield pays vs theater",
+        "#### Init ask skip",
         "#### Production mode",
         "**Gate A before features.**",
         "#### Multi-harness mix",
