@@ -27,6 +27,7 @@ Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line. `#281` l
 - Public `proposed_patch.docs_sync` is `pending|done`. Proof: `ResidualSchemaContracts`. `#292`.
 - Evidence receipt + deterministic gate for build/test residuals. Archive exact bytes; accept or fall back; tamper ≠ green. Wave-end verifier prefers receipts + published artifacts. Proof: `EvidenceReceiptGate` / `recovery/evidence-receipt`. `#284`.
 - After implementer wave settle, stored-yes consent packs both review roles on that wave residual before next-wave. Stored no skips. Refuse HOLD. Green auto-continues. Proof: `WaveEndBothRolesProof` / `SkillWaveEndBothRoles`. `#280`.
+- Oversized residual speak is a handle (path+size+excerpt; ≥10KiB). Full file stays on disk. Receipt markers not stripped. Proof: `ObservationPackProof` / `recovery/observation-pack`. `#283`.
 
 ## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
 
