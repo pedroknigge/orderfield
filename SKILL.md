@@ -81,13 +81,16 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
-| human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256: README / PUBLISH. orca/qwen dests; skill surface only. Not pip. Not a daemon |
+| human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256: README / PUBLISH. orca/qwen dests; skill surface only. Unpinned npx is not trusted. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
+<<<<<<< HEAD
 | incoming plan / cited `docs/plans/…` | cite the path on disk (not `@folder` / chat paste). `--owns-requirement` leftover first. high effort on ORDER; children medium (do not re-architect). `plan_cover` WARN; fail-closed HOLDs close. Green collect → write-back. Fail-closed without OwnedWrite. HITL if uncited. `docs_sync=done` after bytes or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW / closed-field packs informational. Do not rewrite a closed audit trail. |
+=======
+>>>>>>> 334bdd3 (fix: restore closed-field historical + unpinned SKILL needles)
 | incoming plan / cited `docs/plans/…` | digest every requirement section → wave + pack `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). doctor `plan_cover` orphan. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
 | any residual MISSING (`running`) | spawned flying: `of status` / `of resume` print live `PULSE` (stream-json / grok `streaming-json` on the same scratch) + `speak` — quote one line; do not claim done. No manual `of pulse`. Started-only re-spawn dominates a leftover residual — stay `running` + speak. PACKED / not spawned is next SPAWN, not quote-PULSE |
 | grok spawn residual / metadata | `of spawn --adapter grok` `--output-format streaming-json` before `-p`. Residual extract reuses claude/cursor stdout. Metadata finalized on exit / timeout / missing binary (`outcome` + `exit` + `ended_at`) |
