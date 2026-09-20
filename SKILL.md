@@ -41,7 +41,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | learn text over 400 chars | `of learn` stores; **advisory** — **Do not refuse**. Over 4 lines refuse dumps. Long record: `work/scratch/leader/<file>.md` + pointer. |
 | mid-epic, next harness or human | `of handoff` / `--json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
-| spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
+| spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
 | `of collect` prints `MISSING` | pending/unavailable. Quote adapter / trust / outcome and actual `denied_actions`. Conservative headless “permissions may be involved” is a possibility, not proof; conservative children may still write scratch |
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` `--json-schema` → `residual.codex.schema.json` (`usage` `[object,null]`). Codex-null omit. Invalid extract names `$.path`. Claude omit: inline-only (drops stream-json PULSE). Qwen omit |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
@@ -56,7 +56,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | resume next `UNPACK --FORCE` | `of unpack --force` — ORDER.rev stale; do not spawn. Mid-flight `of patch` refuses (HOLD). Constraints before first pack |
 | after successful `of phase` | `of next-wave` — just-integrated wave stays eligible; do not `--recompute` the prior wave |
 | empty current wave (no packets), `done_when` closed | `of phase <next>` — nothing to integrate; do not `--force`. Packets still require integrate |
-| recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing/malformed/non-Git refuse. No record → existing argv |
+| recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing/malformed/non-Git refuse before launch. No record → existing argv |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: `of worktree add` each or series (`shared_worktree`). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
 | init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`. Missing key → unset. After close: `of learn`, not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
@@ -81,7 +81,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256: README / PUBLISH. orca/qwen dests; skill surface only. Unpinned npx is not trusted. Not pip. Not a daemon |
-| stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
+| stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
 | multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
@@ -118,7 +118,7 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`. Repo st
 
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Past tense after CLI returns. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
-**Anti-done-theater.** Same as the shipped row. Mechanical. Flying is not shipped.
+**Anti-done-theater.** Mechanical. Flying is not shipped.
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop; do not wait for ok/pulse. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`. Clone/checkout + HOME dest skill is the same.
 
