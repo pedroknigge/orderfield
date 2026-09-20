@@ -36,7 +36,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** `PlanCoverage` extracts `##` / `###` heading IDs from cited plans + SPEC.md and WARNs `plan_cover orphan` on doctor / close `--checklist` / integrate. Not FAIL. Not a close gate. No new CLI / schema / supervisor / `RUNTIME_OWNERSHIP`.
 - **Skill drives the cut:** SKILL / `/of` / appendix teach high effort on ORDER only; implementer slices stay medium; pstack cherries as ORDER bias (not essays). Core stays under the 20KB cap.
 - **Proof:** `PlanCoverageUnit` / `DoctorPlanCoverage` / `SkillPlanFirstOrder` / `recovery/plan-first-coverage`. C-111 extended. No new C-ID (honesty cap). `#279`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first coverage (`#279`) landed on the same heading after that lockstep.
+- **Reuse table (design-first):** `CloseEvidence.errors` already SHA-256s a file and refuses captions. `OwnedWrite.errors` already refuses zero writes under a **set** owns-path (`#251`). The remaining dual-truth hole is hashing scratch `notes.md`, skipping empty implementer owns-path, and greeting a `touch` as a write (`#286`).
+- **Reuse, not a new verb:** proof file prefers owns-path / published path over `.orderfield/work/scratch/`. Empty targets + implementer is `owned_write_missing`. Spawn records `owned_sha`; collect compares bytes, not mtime. `COMMAND_RE` drops a bare filename. No `of prove`. No supervisor. `#284` receipts stay a later layer.
+- **Skill drives the cut:** SKILL / `/of` / SLAVE / appendix teach product SHA, empty owns-path refuse, mtime-only is not a write. Core stays under the 20KB cap.
+- **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. C-033 extended. No new C-ID (honesty cap). `#286`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first coverage (`#279`) and CloseEvidence product SHA (`#286`) landed on the same heading after that lockstep.
 
 ## 0.8.21
 
