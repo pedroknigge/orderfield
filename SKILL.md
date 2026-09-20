@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.22 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. InitAskSkip. of issue: TTY or HITL.md+--confirm. Install: SHA-256."
+description: "v0.8.23 — Leader disk plan. /of. Resume, pack, residual, contrast, close. In-flight: running + PULSE + speak. PACKED/spawned is spawn meta. Quote PULSE. Checklist → contrast / close / residual. InitAskSkip. of issue: TTY or HITL.md+--confirm. Install: SHA-256."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.22"
+  version: "0.8.23"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---

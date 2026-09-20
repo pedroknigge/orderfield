@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.22. Accounting and `scale_up` stay reserved. That is the slow decision.
+The current line is 0.8.23. Accounting and `scale_up` stay reserved. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,21 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.22`
+**Status:** Shipped · **Current release line:** `0.8.23`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.23 — morning cut: CloseEvidence SHA; WriteFloor; skill load-tax; evaluator_consent; HITL.md; InitAskSkip; docs_sync
+
+Folded Ready PRs `#295`–`#301` onto main after `#293`. Same 0.6 line.
+
+- CloseEvidence hashes owned product, not scratch. Empty owns-path is `owned_write_missing`. Mtime-only is not a write. Proof: `CloseEvidenceGate` / `OwnedWriteGate`. `#286`.
+- Residual write-floor default. Unsupported adapters WARN + named next. Proof: `WriteFloorMatrix`. `#294`.
+- `/of` is a pointer. Appendix loads by verb. Proof: `SkillAliasPointer`. `#287`.
+- `ORDER.evaluator_consent` + collect published-artifact fail-closed. Proof: `EvaluatorPacketProof` / `ArtifactProveCollectGate`. `#288`.
+- `of issue` create needs TTY or `HITL.md`+`--confirm`. Proof: `IssueConfirmLock`. `#290`.
+- Small fields skip theater init asks. Large stores `--evaluator-consent`. Proof: `SkillInitAskSkip`. `#289`.
+- Public `proposed_patch.docs_sync` is `pending|done`. Proof: `ResidualSchemaContracts`. `#292`.
 
 ## 0.8.22 — pack size-note honesty; PAIR verified-contract refuse; HostMcp isolate; present:none HOLD; packed-not-spawned pulse
 

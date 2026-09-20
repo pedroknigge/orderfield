@@ -8,6 +8,19 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.23
+
+Morning cut folding Ready PRs `#295`–`#301` onto main after `#293` (plan-first ORDER, already merged). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.22 notes.
+
+- **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. Implementer/`--owns-path` hashes owned product, not scratch. Empty owns-path is `owned_write_missing`. Mtime-only is not a write. `#286` / PR `#295`.
+- **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `SkillWriteFloor`. Residual write-floor default for capable adapters; unsupported rows WARN + named next. `#294` / PR `#296`.
+- **Proof:** `SkillAliasPointer` / `SkillSurfaceCore`. `/of` is a pointer, not a second contract. Appendix loads by verb. `AGENTS.md` keeps rules 0–10 + docs table. `#287` / PR `#297`.
+- **Proof:** `EvaluatorPacketProof` / `ArtifactProveCollectGate`. `ORDER.evaluator_consent` via `of patch --evaluator-consent`. Collect fail-closed on FACTIBLE without product bytes. `#288` / PR `#298`.
+- **Proof:** `IssueConfirmLock` / `SkillIssueConfirm`. Create needs TTY yes or human `HITL.md` then `--confirm`. Bare `--confirm` is not HITL. `#290` / PR `#299`.
+- **Proof:** `SkillInitAskSkip`. Small 1-2 exclusive-slice bump/obvious skips theater init asks. Large stores `--evaluator-consent`; stored yes → pack+spawn both. `#289` / PR `#300`.
+- **Proof:** `ResidualSchemaContracts.test_public_schema_declares_docs_sync`. Public `proposed_patch.docs_sync` is `pending|done`. `#292` / PR `#301`.
+- Packaging: VERSION 0.8.23; skill/alias description preview `v0.8.23 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.22 notes. Folded PRs `#295`–`#301`. `#293` already on main.
+
 ## 0.8.22
 
 Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f6`, #266) while still claiming 0.8.21 lockstep: pack size-note claims write only after the packet is on disk (`SliceLint`; `#267`). PAIR `--verified-contract` without `--both-sides` refuses and does not stamp (`PairVerifiedContractRefuse`; `#268`). agy/grok spawn isolate host global MCP by default (`HostMcp`; `#269`); pulse prints `cpu=` on `no writes yet`. Implicit spawn refuses when detect is present:none (`SpawnAdapterMissing`; `#273`). Pulse / resume name **not spawned** when packed children have no spawn record / no live pid — do not print `running` + residual MISSING as if flying (`InFlightSignal`; `#274`). Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.21 notes.
