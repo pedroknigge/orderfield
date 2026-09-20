@@ -399,6 +399,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             wave = int(state.get("wave") or 1)
             live_n = len(packed_children(root, wave))
             order["rev"] = int(order["rev"]) + 1
+            PlanCoverage.ingest(root, order)
             save_order(order, root)
             print(f"rev={order['rev']}")
             PacketRevStale.emit_note(live_n, wave)
@@ -406,6 +407,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         discard_disposable_ingest(root, ingest_source)
         if identity:
             PlanDocSync.emit(root, order)
+            PlanCoverage.emit_ingest(root, order)
             PlanCoverage.emit(root, order)
     counts = requirement_counts(data)
     print(
@@ -1334,6 +1336,10 @@ def cmd_close(args: argparse.Namespace) -> None:
     PlanDocSync.emit(root, order)
     PlanCoverage.emit(root, order)
     DoctorSkew.emit_teardown(root)
+    if not getattr(args, "checklist", False):
+        hold = PlanCoverage.hold_close(root, order)
+        if hold:
+            die(hold)
     if getattr(args, "checklist", False):
         blocked = CloseChecklist.emit(checklist, machine=True)
         emit_event(

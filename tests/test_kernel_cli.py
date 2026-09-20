@@ -2096,6 +2096,122 @@ class DoctorPlanCoverage(unittest.TestCase):
         self.assertNotIn(of.PlanCoverage.NOTE, r.stdout)
 
 
+class PlanIngestGate(unittest.TestCase):
+    """On-disk cite ingests; chat paste does not; fail-closed HOLDs close."""
+
+    def test_source_file_plan_seeds_coverage(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-plan-ingest-src-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        plan = of.PlanCoverageEval.write_plan(tmp)
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "source-file is the plan",
+            "--phase",
+            "build",
+            "--source-file",
+            str(plan.relative_to(tmp)),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn("plan_ingest  4 headings", initialized.stdout)
+        doc = of.PlanCoverage.document(tmp)
+        self.assertEqual(len(doc["sections"]), 4)
+        for req_id, text in (
+            ("AUTH-001", "login boundary port"),
+            ("STORE-001", "persist occupancy json"),
+        ):
+            added = run_of(tmp, "spec", "--add", req_id, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        of.eval_pack_child(
+            tmp, "auth", "src/auth.py", "AUTH-001", "Implement AUTH-001"
+        )
+        of.eval_pack_child(
+            tmp, "store", "src/store.py", "STORE-001", "Implement STORE-001"
+        )
+        leftover = of.PlanCoverage.document(tmp)
+        self.assertEqual(leftover["status"], of.PlanCoverage.STATUS_ORPHAN)
+        self.assertEqual(set(leftover["orphan_ids"]), {"HTTP-001", "CLI-001"})
+        doctor = run_of(tmp, "doctor")
+        self.assertEqual(doctor.returncode, 0, doctor.stdout)
+        self.assertIn("plan_cover", doctor.stdout)
+        self.assertIn("orphan", doctor.stdout)
+
+    def test_paste_doctor_speaks_honesty_without_orphans(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-plan-ingest-paste-cli-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "paste honesty",
+            "--phase",
+            "build",
+            "--source",
+            of.PlanCoverageEval.fixture_text(),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertIn(of.PlanCoverage.NOTE_PASTE, initialized.stdout)
+        doctor = run_of(tmp, "doctor")
+        self.assertEqual(doctor.returncode, 0, doctor.stdout)
+        self.assertIn("paste", doctor.stdout)
+        self.assertIn(of.PlanCoverage.NOTE_PASTE, doctor.stdout)
+        self.assertNotIn("plan_cover     orphan", doctor.stdout)
+        self.assertEqual(of.PlanCoverage.document(tmp)["sections"], [])
+
+    def test_pack_bias_when_slice_ignores_headings(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-plan-ingest-bias-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        of.PlanCoverageEval.write_plan(tmp)
+        brief = tmp / "BRIEF.md"
+        brief.write_text(
+            f"Living surface: {of.PlanCoverageEval.PLAN}\n", encoding="utf-8"
+        )
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "pack bias",
+            "--phase",
+            "build",
+            "--source-file",
+            str(brief),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        packed = run_of(
+            tmp,
+            "pack",
+            "--slice",
+            "unrelated chrome",
+            "--role",
+            "explorer",
+            "--child-id",
+            "chrome",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn(of.PlanCoverage.NOTE_BIAS, packed.stdout)
+        self.assertIn("AUTH-001", packed.stdout)
+
+    def test_fail_closed_holds_close(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-plan-ingest-hold-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        of.eval_setup_recovery_plan_first_coverage(tmp)
+        patched = run_of(
+            tmp,
+            "patch",
+            "--constraints-add",
+            of.PlanCoverage.FAIL_CLOSED_CUE,
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        closed = run_of(tmp, "close")
+        self.assertNotEqual(closed.returncode, 0)
+        self.assertIn("of close refused: plan_cover orphan", closed.stderr)
+        self.assertIn("HTTP-001", closed.stderr)
+        checklist = run_of(tmp, "close", "--checklist")
+        self.assertIn(of.PlanCoverage.NOTE_HOLD, checklist.stdout)
+        self.assertNotIn("of close refused: plan_cover", checklist.stderr)
+
+
 class DoctorWorktreeLeftover(unittest.TestCase):
     """Orphaned of-worktrees vs settled children are doctor WARN. No Orca poll."""
 
