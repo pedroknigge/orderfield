@@ -24,7 +24,7 @@ The script calls `install.sh`, then the installed `of doctor` from an empty work
 
 ## No tree yet
 
-Do not pipe unsigned `main`. README portada is glance only. Use the tag-pinned SHA-256 recipe on [PUBLISH.md](../../PUBLISH.md), then:
+Do not pipe unsigned `main`. README front page is glance only. Use the tag-pinned SHA-256 recipe on [PUBLISH.md](../../PUBLISH.md), then:
 
 ```bash
 of doctor

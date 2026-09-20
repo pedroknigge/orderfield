@@ -116,7 +116,7 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-The portada glance above is the trusted pin (`ORDERFIELD_REF=v0.8.23` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.23` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
