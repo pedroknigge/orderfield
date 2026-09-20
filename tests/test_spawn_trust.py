@@ -105,14 +105,23 @@ class TrustMatrixInProcess(unittest.TestCase):
             adapter, "PROMPT", {"child_id": "c1"}, Path("/tmp/of-r.json"), dry_run=True
         )
 
-    def test_conservative_is_default_and_emits_no_escalation(self) -> None:
+    def test_write_floor_is_default_and_emits_no_escalation(self) -> None:
         os.environ.pop("OF_TRUST", None)
+        self.assertEqual(of_adapters.DEFAULT_TRUST_PROFILE, "auto-edit")
         for adapter in NATIVE_ADAPTERS:
             with self.subTest(adapter=adapter):
                 argv = self.argv(adapter)
                 for tok in ESCALATION_TOKENS:
                     self.assertNotIn(tok, argv, (adapter, argv))
                 self.assertIn("PROMPT", argv)
+        claude = self.argv("claude")
+        self.assertEqual(claude[claude.index("--permission-mode") + 1], "acceptEdits")
+        codex = self.argv("codex")
+        self.assertEqual(codex[codex.index("--sandbox") + 1], "workspace-write")
+        agy = self.argv("agy")
+        self.assertEqual(agy[agy.index("--mode") + 1], "accept-edits")
+        qwen = self.argv("qwen")
+        self.assertEqual(qwen[qwen.index("--approval-mode") + 1], "auto-edit")
 
     def test_non_yolo_profiles_never_bypass(self) -> None:
         for profile in NON_YOLO:
@@ -191,9 +200,13 @@ class TrustMatrixInProcess(unittest.TestCase):
     def test_aliases(self) -> None:
         os.environ["OF_TRUST"] = "escalated"
         self.assertIn("--always-approve", self.argv("grok"))
-        for alias in ("", "default", "  Conservative "):
+        for alias in ("", "default"):
             os.environ["OF_TRUST"] = alias
             self.assertNotIn("--always-approve", self.argv("grok"))
+            self.assertTrue(of_adapters.WriteFloor.wants())
+        os.environ["OF_TRUST"] = "  Conservative "
+        self.assertEqual(of_adapters.resolve_trust_profile(), "conservative")
+        self.assertFalse(of_adapters.WriteFloor.wants())
 
     def test_unknown_profile_dies_for_every_adapter(self) -> None:
         os.environ["OF_TRUST"] = "skynet"
@@ -276,6 +289,157 @@ class TrustNativeFlags(unittest.TestCase):
         self.assertNotIn("Cursor has no intermediate mode", table)
 
 
+class WriteFloorMatrix(unittest.TestCase):
+    """#294: every adapter gets write-floor argv or an honest WARN/refuse."""
+
+    def setUp(self) -> None:
+        self._trust = os.environ.pop("OF_TRUST", None)
+        self.addCleanup(self._restore)
+
+    def _restore(self) -> None:
+        if self._trust is None:
+            os.environ.pop("OF_TRUST", None)
+        else:
+            os.environ["OF_TRUST"] = self._trust
+
+    def argv(self, adapter: str) -> list[str]:
+        return of_adapters.build_spawn_argv(
+            adapter, "PROMPT", {"child_id": "c1"}, Path("/tmp/of-r.json"), dry_run=True
+        )
+
+    def test_capable_rows_apply_write_floor_by_default(self) -> None:
+        os.environ.pop("OF_TRUST", None)
+        for adapter, flag, value in (
+            ("claude", "--permission-mode", "acceptEdits"),
+            ("codex", "--sandbox", "workspace-write"),
+            ("agy", "--mode", "accept-edits"),
+            ("qwen", "--approval-mode", "auto-edit"),
+        ):
+            with self.subTest(adapter=adapter):
+                self.assertTrue(of_adapters.WriteFloor.capable(adapter))
+                self.assertTrue(of_adapters.WriteFloor.applied(adapter))
+                argv = self.argv(adapter)
+                self.assertEqual(argv[argv.index(flag) + 1], value)
+                for tok in ESCALATION_TOKENS:
+                    self.assertNotIn(tok, argv)
+                self.assertIsNone(of_adapters.WriteFloor.speak_line(adapter))
+
+    def test_conservative_opt_out_drops_write_floor(self) -> None:
+        os.environ["OF_TRUST"] = "conservative"
+        for adapter in ("claude", "codex", "agy"):
+            with self.subTest(adapter=adapter):
+                self.assertFalse(of_adapters.WriteFloor.applied(adapter))
+                argv = self.argv(adapter)
+                self.assertNotIn("acceptEdits", argv)
+                self.assertNotIn("workspace-write", argv)
+                self.assertNotIn("accept-edits", argv)
+                for tok in ESCALATION_TOKENS:
+                    self.assertNotIn(tok, argv)
+        qwen = self.argv("qwen")
+        self.assertEqual(qwen[qwen.index("--approval-mode") + 1], "default")
+
+    def test_unsupported_rows_warn_and_invent_no_flags(self) -> None:
+        os.environ.pop("OF_TRUST", None)
+        for adapter in ("cursor", "grok", "opencode", "orca", "generic"):
+            with self.subTest(adapter=adapter):
+                self.assertFalse(of_adapters.WriteFloor.capable(adapter))
+                self.assertFalse(of_adapters.WriteFloor.applied(adapter))
+                line = of_adapters.WriteFloor.speak_line(adapter)
+                self.assertIsNotNone(line)
+                assert line is not None
+                self.assertIn("write-floor unsupported", line)
+                self.assertIn(adapter, line)
+                nxt = of_adapters.WriteFloor.next_action(adapter)
+                self.assertIsNotNone(nxt)
+                argv = self.argv(adapter)
+                for tok in ESCALATION_TOKENS:
+                    self.assertNotIn(tok, argv)
+        orca = self.argv("orca")
+        self.assertEqual(orca[1:3], ["orchestration", "task-create"])
+        self.assertNotIn("--permission", orca)
+        self.assertIn("task-create", str(of_adapters.WriteFloor.next_action("orca")))
+        self.assertIn("Host", str(of_adapters.WriteFloor.next_action("orca")))
+        self.assertNotIn("--permission", self.argv("orca"))
+        self.assertIn("OF_AGENT", str(of_adapters.WriteFloor.next_action("generic")))
+        self.assertIn("host Write", str(of_adapters.WriteFloor.next_action("cursor")))
+
+    def test_yolo_stays_operator_action_not_write_floor(self) -> None:
+        os.environ["OF_TRUST"] = "yolo"
+        self.assertFalse(of_adapters.WriteFloor.wants())
+        for adapter in NATIVE_ADAPTERS:
+            self.assertFalse(of_adapters.WriteFloor.applied(adapter))
+            self.assertIsNone(of_adapters.WriteFloor.speak_line(adapter))
+        self.assertEqual(of_adapters.OperatorAction.actions("yolo", "allowlist"), ["yolo"])
+
+    def test_plan_is_not_write_floor(self) -> None:
+        os.environ["OF_TRUST"] = "plan"
+        self.assertFalse(of_adapters.WriteFloor.wants())
+        self.assertIsNone(of_adapters.WriteFloor.speak_line("cursor"))
+        self.assertEqual(of_adapters.trust_flags("codex"), ["--sandbox", "read-only"])
+
+    def test_host_advisory_is_read_only(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-host-allow-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.assertIsNone(of_adapters.WriteFloor.host_advisory("claude", tmp))
+        self.assertIsNone(of_adapters.WriteFloor.host_advisory("codex", tmp))
+        settings = tmp / ".claude" / "settings.local.json"
+        settings.parent.mkdir()
+        settings.write_text(
+            json.dumps(
+                {
+                    "permissions": {
+                        "deny": ["Write(.orderfield/**)", "Bash(*)"],
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        before = settings.read_text(encoding="utf-8")
+        line = of_adapters.WriteFloor.host_advisory("claude", tmp)
+        self.assertIsNotNone(line)
+        assert line is not None
+        self.assertIn("settings.local.json", line)
+        self.assertIn(".orderfield", line)
+        self.assertIn("advisory only", line)
+        self.assertEqual(settings.read_text(encoding="utf-8"), before)
+        self.assertIsNone(of_adapters.WriteFloor.host_advisory("agy", tmp))
+        quiet = tmp / "quiet"
+        quiet.mkdir()
+        (quiet / ".claude").mkdir()
+        (quiet / ".claude" / "settings.local.json").write_text(
+            json.dumps({"permissions": {"deny": ["Read(.env)"]}}),
+            encoding="utf-8",
+        )
+        self.assertIsNone(of_adapters.WriteFloor.host_advisory("claude", quiet))
+
+    def test_doctor_lines_name_the_matrix(self) -> None:
+        lines = of_adapters.WriteFloor.doctor_lines()
+        blob = "\n".join(lines)
+        self.assertIn("auto-edit default", blob)
+        self.assertIn("claude", blob)
+        self.assertIn("codex", blob)
+        self.assertIn("agy", blob)
+        self.assertIn("qwen", blob)
+        self.assertIn("OF_TRUST=conservative", blob)
+        self.assertIn("cursor", blob)
+        self.assertIn("settings.local.json", blob)
+        self.assertIn("never edit", blob)
+
+    def test_apply_meta_records_effective_trust(self) -> None:
+        os.environ.pop("OF_TRUST", None)
+        meta: dict = {"trust": "auto-edit"}
+        self.assertTrue(of_adapters.WriteFloor.apply_meta(meta, "claude"))
+        self.assertTrue(meta["write_floor"])
+        self.assertNotIn("write_floor_next", meta)
+        grok: dict = {"trust": "auto-edit"}
+        self.assertFalse(of_adapters.WriteFloor.apply_meta(grok, "grok"))
+        self.assertFalse(grok["write_floor"])
+        self.assertIn("write_floor_next", grok)
+        opt: dict = {"trust": "conservative"}
+        self.assertFalse(of_adapters.WriteFloor.apply_meta(opt, "claude"))
+        self.assertFalse(opt["write_floor"])
+
+
 class TrustMatrixCli(unittest.TestCase):
     """of spawn --dry-run argv preview is the observable contract (SEC-001)."""
 
@@ -316,7 +480,12 @@ class TrustMatrixCli(unittest.TestCase):
                     proc = self.spawn(adapter, profile)
                     self.assertEqual(proc.returncode, 0, proc.stderr)
                     preview = dry_run_preview(proc)
-                    self.assertNotIn("<approval>", preview)
+                    # qwen write-floor `--approval-mode auto-edit` redacts as
+                    # <approval>; conservative `--approval-mode default` does not.
+                    if adapter == "qwen" and profile is None:
+                        self.assertIn("<approval>", preview)
+                    else:
+                        self.assertNotIn("<approval>", preview)
                     for tok in ESCALATION_TOKENS:
                         self.assertNotIn(f" {tok} ", f" {preview} ")
 
@@ -351,6 +520,132 @@ class TrustMatrixCli(unittest.TestCase):
         self.assertIn("ended_at", meta)
         self.assertNotIn("operator_actions", meta)
         self.assertNotIn("operator action", proc.stderr)
+
+
+class WriteFloorCli(unittest.TestCase):
+    """Dry-run argv snapshots + honesty for every adapter row (#294)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.tmp = Path(tempfile.mkdtemp(prefix="of-write-floor-cli-"))
+        init = run_of(cls.tmp, "init", "--mission", "m", "--phase", "explore")
+        assert init.returncode == 0, init.stderr
+        pack = run_of(
+            cls.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "wf1"
+        )
+        assert pack.returncode == 0, pack.stderr
+        cls.packet = pack.stdout.splitlines()[0].strip()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def spawn(self, adapter: str, profile: str | None = None) -> subprocess.CompletedProcess[str]:
+        extra = {"OF_TRUST": profile} if profile is not None else None
+        return run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            adapter,
+            "--packet",
+            self.packet,
+            "--dry-run",
+            extra_env=extra,
+        )
+
+    def test_capable_default_dry_run_snapshots(self) -> None:
+        expect = {
+            "claude": "--permission-mode acceptEdits",
+            "codex": "--sandbox workspace-write",
+            "agy": "--mode accept-edits",
+            "qwen": "--approval-mode '<approval>'",
+        }
+        for adapter, needle in expect.items():
+            with self.subTest(adapter=adapter):
+                proc = self.spawn(adapter)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                preview = dry_run_preview(proc)
+                self.assertIn(needle, preview)
+                for tok in ESCALATION_TOKENS:
+                    self.assertNotIn(f" {tok} ", f" {preview} ")
+                meta = load_json(self.tmp / ".orderfield/waves/001/spawns/wf1.json")
+                self.assertEqual(meta["trust"], "auto-edit")
+                self.assertTrue(meta["write_floor"])
+                self.assertNotIn("write_floor_next", meta)
+
+    def test_unsupported_default_speaks_named_next(self) -> None:
+        for adapter in ("cursor", "grok", "opencode", "orca", "generic"):
+            with self.subTest(adapter=adapter):
+                extra = {"OF_AGENT": f"{sys.executable} -c 'print(1)'"} if adapter == "generic" else None
+                proc = run_of(
+                    self.tmp,
+                    "spawn",
+                    "--adapter",
+                    adapter,
+                    "--packet",
+                    self.packet,
+                    "--dry-run",
+                    extra_env=extra,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertIn("write-floor unsupported", proc.stderr)
+                self.assertIn(adapter, proc.stderr)
+                if adapter != "generic":
+                    preview = dry_run_preview(proc)
+                    for tok in ESCALATION_TOKENS:
+                        self.assertNotIn(f" {tok} ", f" {preview} ")
+                meta = load_json(self.tmp / ".orderfield/waves/001/spawns/wf1.json")
+                if adapter == "generic":
+                    continue
+                self.assertEqual(meta["trust"], "auto-edit")
+                self.assertFalse(meta["write_floor"])
+                self.assertIn("write_floor_next", meta)
+        orca = self.spawn("orca")
+        self.assertIn("task-create has no trust argv", orca.stderr)
+        self.assertIn("Host", orca.stderr)
+        self.assertIn("task-create", dry_run_preview(orca))
+        self.assertNotIn("--permission", dry_run_preview(orca))
+
+    def test_conservative_opt_out_records_false_floor(self) -> None:
+        proc = self.spawn("claude", "conservative")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        preview = dry_run_preview(proc)
+        self.assertNotIn("acceptEdits", preview)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/wf1.json")
+        self.assertEqual(meta["trust"], "conservative")
+        self.assertFalse(meta["write_floor"])
+        self.assertNotIn("write-floor unsupported", proc.stderr)
+
+    def test_yolo_ask_first_is_not_write_floor(self) -> None:
+        proc = self.spawn("claude", "yolo")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("operator action: yolo", proc.stderr)
+        self.assertNotIn("write-floor unsupported", proc.stderr)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/wf1.json")
+        self.assertEqual(meta["trust"], "yolo")
+        self.assertFalse(meta["write_floor"])
+        self.assertEqual(meta["operator_actions"], ["yolo"])
+
+    def test_doctor_prints_write_floor(self) -> None:
+        proc = run_of(self.tmp, "doctor")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("write-floor", proc.stdout)
+        self.assertIn("auto-edit default", proc.stdout)
+        self.assertIn("OF_TRUST=conservative", proc.stdout)
+        self.assertIn("settings.local.json", proc.stdout)
+
+    def test_host_advisory_speaks_without_writing_settings(self) -> None:
+        settings = self.tmp / ".claude" / "settings.local.json"
+        settings.parent.mkdir(exist_ok=True)
+        body = json.dumps({"permissions": {"deny": ["Write(.orderfield/**)"]}})
+        settings.write_text(body, encoding="utf-8")
+        proc = self.spawn("claude")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("settings.local.json", proc.stderr)
+        self.assertIn("advisory only", proc.stderr)
+        self.assertEqual(settings.read_text(encoding="utf-8"), body)
+        quiet = self.spawn("codex")
+        self.assertNotIn("settings.local.json", quiet.stderr)
 
 
 class OperatorActionAudit(unittest.TestCase):

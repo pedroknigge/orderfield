@@ -32,6 +32,7 @@ from of_adapters import (
     spawn_env_mode,
     HostMcp,
     OperatorAction,
+    WriteFloor,
 )
 
 from of.field import (
@@ -933,6 +934,20 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_id = require_child_id(packet.get("child_id"), "packet child_id")
     wave = packet.get("wave") or state["wave"]
     profile = resolve_trust_profile()
+    floor_speak = WriteFloor.speak_line(adapter, profile)
+    if floor_speak:
+        emit_wave_warning(
+            WriteFloor.UNSUPPORTED_KIND,
+            floor_speak,
+            plain=f"of: note — {floor_speak}",
+        )
+    host_speak = WriteFloor.host_advisory(adapter, root)
+    if host_speak:
+        emit_wave_warning(
+            WriteFloor.HOST_KIND,
+            host_speak,
+            plain=f"of: note — {host_speak}",
+        )
     if (
         profile == "conservative"
         and adapter in PRINT_MODE_ADAPTERS
@@ -942,12 +957,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             "trust_conservative",
             f"{TRUST_ENV}=conservative: {adapter} runs headless with no "
             "approval prompt, so a child that must write files usually exits with "
-            "no residual. OF_TRUST=auto-edit is the working headless profile; "
+            "no residual. write-floor default is OF_TRUST=auto-edit; "
             "yolo is never implied.",
             plain=(
                 f"of: note — {TRUST_ENV}=conservative: {adapter} runs headless with no "
                 "approval prompt, so a child that must write files usually exits with "
-                "no residual. OF_TRUST=auto-edit is the working headless profile; "
+                "no residual. write-floor default is OF_TRUST=auto-edit; "
                 "yolo is never implied."
             ),
         )
@@ -1002,6 +1017,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             mode="handoff",
             ok=True,
             **OperatorAction.event_fields(operator_actions),
+            **WriteFloor.event_fields(adapter, profile),
         )
         print(f"adapter=generic child_id={child_id} mode=handoff")
         print(f"prompt={prompt_path}")
@@ -1041,6 +1057,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "mcp_mode": mcp_mode,
         OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
     }
+    WriteFloor.apply_meta(meta, adapter, profile)
     OperatorAction.apply_meta(meta)
     model_name = AdapterHints.spawn_model(adapter, packet)
     if model_name:
@@ -1085,6 +1102,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             outcome="dry_run",
             ok=True,
             **OperatorAction.event_fields(operator_actions),
+            **WriteFloor.event_fields(adapter, profile),
         )
         print("dry-run argv:")
         print(argv_preview(argv))
@@ -1116,6 +1134,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             ok=False,
             **{k: v for k, v in extra.items() if k in ("timeout_s",)},
             **OperatorAction.event_fields(operator_actions),
+            **WriteFloor.event_fields(adapter, profile),
         )
         die(message)
 
@@ -1266,6 +1285,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         outcome=meta["outcome"],
         ok=ok,
         **OperatorAction.event_fields(operator_actions),
+        **WriteFloor.event_fields(adapter, profile),
     )
     print(f"exit={proc.returncode} outcome={meta['outcome']} log={log_path}")
     _emit_drive_after_spawn(root, order, load_state(root), int(wave))

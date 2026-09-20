@@ -40,7 +40,11 @@ Kernel + skill work that landed on main after the published v0.8.21 tag (`fa507f
 - **Reuse, not a new verb:** proof file prefers owns-path / published path over `.orderfield/work/scratch/`. Empty targets + implementer is `owned_write_missing`. Spawn records `owned_sha`; collect compares bytes, not mtime. `COMMAND_RE` drops a bare filename. No `of prove`. No supervisor. `#284` receipts stay a later layer.
 - **Skill drives the cut:** SKILL / `/of` / SLAVE / appendix teach product SHA, empty owns-path refuse, mtime-only is not a write. Core stays under the 20KB cap.
 - **Proof:** `CloseEvidenceGate` / `OwnedWriteGate` / `recovery/close-evidence-product-sha`. C-033 extended. No new C-ID (honesty cap). `#286`.
-- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first coverage (`#279`) and CloseEvidence product SHA (`#286`) landed on the same heading after that lockstep.
+- **Reuse table (design-first):** `_TRUST_FLAGS` / `YOLO_FLAGS` / `OperatorAction` / `CodexWorktree` already exist. The remaining gap is conservative default leaving residual-producing children in print-mode (`#294`). Claude `settings.local.json` was the dogfood trigger; the cut is every adapter OF claims to spawn.
+- **Reuse, not a new verb:** `WriteFloor` applies `auto-edit` by default for claude/codex/agy/qwen. cursor/grok/opencode/orca/generic speak WARN + named next (no invented flags). `OF_TRUST=conservative` opts out. `yolo` stays OperatorAction. Host allow-lists are read-only advisory. Spawn meta records `trust` + `write_floor`. No ORDER schema. No VERSION bump.
+- **Skill drives the cut:** SKILL / `/of` / appendix / adapters.md teach the full matrix. Core stays under the 20KB cap.
+- **Proof:** `WriteFloorMatrix` / `WriteFloorCli` / `CodexRecordedWorktree` / `SkillWriteFloor`. C-066 extended. No new C-ID (honesty cap). `#294`.
+- Packaging: VERSION 0.8.22; skill/alias description preview `v0.8.22 — …`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.21 notes. These five cuts merged after the v0.8.21 tag (`#267`–`#274` / PRs `#270`–`#276`). Plan-first (`#279`), CloseEvidence product SHA (`#286`), and write-floor (`#294`) landed on the same heading after that lockstep.
 
 ## 0.8.21
 

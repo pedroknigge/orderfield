@@ -587,7 +587,7 @@ class QwenAdapter(unittest.TestCase):
         self.assertIn("adapter=qwen", good.stdout)
         preview = good.stdout.split("dry-run argv:", 1)[1].strip().splitlines()[0]
         self.assertIn("--output-format json", preview)
-        self.assertIn("--approval-mode default", preview)
+        self.assertIn("--approval-mode '<approval>'", preview)
         self.assertNotIn("--yolo", preview)
         self.assertNotIn(" -p ", f" {preview} ")
         self.assertNotIn("--always-approve", preview)
@@ -723,7 +723,7 @@ class HeadlessArgv(unittest.TestCase):
         self.assertNotIn("--yolo", argv)
         self.assertNotIn("-y", argv)
         self.assertIn("--approval-mode", argv)
-        self.assertEqual(argv[argv.index("--approval-mode") + 1], "default")
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "auto-edit")
 
     def test_qwen_does_not_hardcode_provider_or_credentials(self) -> None:
         argv = self.argv("qwen")
@@ -767,7 +767,7 @@ class HeadlessArgv(unittest.TestCase):
     def test_qwen_trust_boundary_is_documented(self) -> None:
         import of_adapters
 
-        self.assertEqual(of_adapters.DEFAULT_TRUST_PROFILE, "conservative")
+        self.assertEqual(of_adapters.DEFAULT_TRUST_PROFILE, "auto-edit")
         self.assertIn("conservative", of_adapters.TRUST_PROFILES)
         self.assertIn("yolo", of_adapters.TRUST_PROFILES)
         self.assertIn("binary_on_path", of_adapters.KERNEL_VERIFIES)
