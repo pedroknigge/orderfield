@@ -1121,7 +1121,22 @@ class DriveAfterIntegrate:
             order_rev=int(order.get("rev") or 0),
             spawned_flying=EscalateUnblock.launched_flying(root, flying),
         )
-        return action, flying
+        return DriveAfterIntegrate.gate(
+            action, root, order, state, int(wave)
+        ), flying
+
+    @staticmethod
+    def gate(
+        action: str,
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int,
+    ) -> str:
+        """Compose wave-end review with idle settle. Lazy import."""
+        from of.cli.spec_cmd import EvaluatorPacket
+
+        return EvaluatorPacket.gate_action(action, root, order, state, int(wave))
 
     @staticmethod
     def emit(
@@ -1503,6 +1518,8 @@ class HandoffReport:
             order_rev=int(order.get("rev") or 0),
             spawned_flying=EscalateUnblock.launched_flying(root, flying),
         )
+        wave = int(state.get("wave") or 1)
+        action = DriveAfterIntegrate.gate(action, root, order, state, wave)
         return action, verdicts, resume_next_lines(
             action, root=root, flying=flying, state=state
         )
@@ -1970,6 +1987,17 @@ def resume_next_lines(
         and LiveQuietStuck.of(root, flying or [])
     ):
         return LiveQuietStuck.next_lines()
+    if root is not None:
+        from of.cli.spec_cmd import EvaluatorPacket
+
+        st = state if state is not None else load_state(root)
+        live = WaveRoster.live_wave(st)
+        if action == "hold" and EvaluatorPacket.refused(root, st, live):
+            return ["HOLD", EvaluatorPacket.HOLD_DETAIL]
+        if action == "pack":
+            order = load_order(root)
+            if EvaluatorPacket.due(root, order, st, live):
+                return ["PACK", EvaluatorPacket.ASK_NEXT]
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
@@ -2294,6 +2322,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         order_rev=int(order.get("rev") or 0),
         spawned_flying=EscalateUnblock.launched_flying(root, flying),
     )
+    nxt = DriveAfterIntegrate.gate(nxt, root, order, state, wave)
     print(f"id            {order['id']}")
     try:
         home_rel = field_home(root).resolve().relative_to(root.resolve())

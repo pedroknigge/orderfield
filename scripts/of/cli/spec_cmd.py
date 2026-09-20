@@ -788,7 +788,10 @@ class EvaluatorPacket:
     """Fresh-context review packet status. Not a close gate.
 
     Consent lives on ORDER.evaluator_consent (yes|no). Absent is
-    unset — not ask. Pack/spawn review roles only when yes. Checklist
+    unset — not ask. After an implementer wave settles
+    (``in_flight=0``, published residual, not yet integrated),
+    stored yes packs both roles on that wave residual before
+    next-wave. Stored no skips. Review refuse is HOLD. Checklist
     prints whether those packets exist. Reuses WaveRoster roles. No
     new role, no of merge, no supervisor. CloseChecklist.ok stays
     contrast + residual. #280 reads ORDER.evaluator_consent.
@@ -805,8 +808,18 @@ class EvaluatorPacket:
     STATUS_IN_FLIGHT = "in-flight"
     ASK_NEXT = "of pack --role adversary and --role verifier"
     PATCH_NEXT = "of patch --evaluator-consent yes|no"
-    SPEAK_ASK = "stored yes: pack+spawn both"
-    SPEAK_SKIP = "stored no: contrast then close --checklist"
+    HOLD_DETAIL = "review refused; do not next-wave"
+    REFUSE_STATUSES = frozenset(
+        {"threshold", "escalate_up", "failed", "blocked"}
+    )
+    STATUS_REFUSE = "refuse"
+    SETTLE_ACTIONS = frozenset({"collect", "integrate", "pack"})
+    SPEAK_ASK = (
+        "stored yes: pack+spawn both on this wave residual before next-wave; "
+        "stored no: skip review; execute printed next"
+    )
+    SPEAK_SKIP = "stored no: skip review; execute printed next"
+    SPEAK_REFUSE = "review refused; HOLD — do not next-wave"
     SPEAK_UNSET = "missing evaluator_consent; of patch --evaluator-consent yes|no"
     SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
     SPEAK_LANDED = "review packet landed; self-praise is not review"
@@ -848,10 +861,18 @@ class EvaluatorPacket:
         return EvaluatorPacket.consent_of(order) == "yes"
 
     @staticmethod
-    def children(root: Path, state: dict[str, Any]) -> list[dict[str, str]]:
+    def children(
+        root: Path,
+        state: dict[str, Any],
+        wave: int | None = None,
+    ) -> list[dict[str, str]]:
         live = WaveRoster.live_wave(state)
+        if wave is None:
+            waves = WaveRoster.numbers(root, state)
+        else:
+            waves = [int(wave)]
         out: list[dict[str, str]] = []
-        for n in WaveRoster.numbers(root, state):
+        for n in waves:
             facts = WaveRoster.facts(root, n, live)
             for child in facts["children"]:
                 role = str(child.get("role") or "")
@@ -865,16 +886,88 @@ class EvaluatorPacket:
                         "child_id": cid,
                         "role": role,
                         "status": str(child.get("status") or ""),
+                        "residual_status": str(child.get("residual_status") or ""),
                     }
                 )
         return out
+
+    @staticmethod
+    def due(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int | None = None,
+    ) -> bool:
+        if order.get("spec_closed"):
+            return False
+        if EvaluatorPacket.consent_of(order) != "yes":
+            return False
+        live = WaveRoster.live_wave(state)
+        target = live if wave is None else int(wave)
+        if field_is_file(wave_dir(int(target), root) / "report.json"):
+            return False
+        facts = WaveRoster.facts(root, int(target), live)
+        if facts["in_flight"]:
+            return False
+        roles = {str(child.get("role") or "") for child in facts["children"]}
+        if all(role in roles for role in EvaluatorPacket.REVIEW_ROLES):
+            return False
+        return any(
+            child.get("status") == "done"
+            and str(child.get("role") or "") not in EvaluatorPacket.REVIEW_ROLES
+            for child in facts["children"]
+        )
+
+    @staticmethod
+    def refused(
+        root: Path,
+        state: dict[str, Any],
+        wave: int | None = None,
+    ) -> bool:
+        children = EvaluatorPacket.children(root, state, wave)
+        if not children:
+            return False
+        if any(row.get("status") == "in-flight" for row in children):
+            return False
+        return any(
+            row.get("residual_status") in EvaluatorPacket.REFUSE_STATUSES
+            for row in children
+        )
+
+    @staticmethod
+    def gate_action(
+        action: str,
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int,
+    ) -> str:
+        """Idle settle: refuse HOLD; due packs both roles. No new verb."""
+        if EvaluatorPacket.refused(root, state, int(wave)):
+            return "hold"
+        if (
+            EvaluatorPacket.due(root, order, state, int(wave))
+            and action in EvaluatorPacket.SETTLE_ACTIONS
+        ):
+            return "pack"
+        return action
 
     @staticmethod
     def status_of(
         children: list[dict[str, str]],
         consent: str = "",
     ) -> str:
-        if any(row.get("status") == "in-flight" for row in children):
+        flying = any(row.get("status") == "in-flight" for row in children)
+        if (
+            (not flying)
+            and children
+            and any(
+                row.get("residual_status") in EvaluatorPacket.REFUSE_STATUSES
+                for row in children
+            )
+        ):
+            return EvaluatorPacket.STATUS_REFUSE
+        if flying:
             return EvaluatorPacket.STATUS_IN_FLIGHT
         if children:
             return EvaluatorPacket.STATUS_LANDED
@@ -892,6 +985,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_LANDED
         if status == EvaluatorPacket.STATUS_SKIP:
             return EvaluatorPacket.SPEAK_SKIP
+        if status == EvaluatorPacket.STATUS_REFUSE:
+            return EvaluatorPacket.SPEAK_REFUSE
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.SPEAK_UNSET
         return EvaluatorPacket.SPEAK_ASK
@@ -914,16 +1009,20 @@ class EvaluatorPacket:
         children = EvaluatorPacket.children(root, state)
         consent = EvaluatorPacket.consent_of(order)
         status = EvaluatorPacket.status_of(children, consent)
+        due = EvaluatorPacket.due(root, order, state)
         if status == EvaluatorPacket.STATUS_ASK:
             nxt = EvaluatorPacket.ASK_NEXT
         elif status == EvaluatorPacket.STATUS_UNSET:
             nxt = EvaluatorPacket.PATCH_NEXT
+        elif status == EvaluatorPacket.STATUS_REFUSE:
+            nxt = EvaluatorPacket.HOLD_DETAIL
         else:
             nxt = ""
         return {
             "v": 1,
             "kind": EvaluatorPacket.KIND,
             "consent": consent,
+            "due": due,
             "evaluator": status,
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
@@ -937,6 +1036,7 @@ class EvaluatorPacket:
         return {
             "v": 1,
             "consent": str(doc.get("consent") or ""),
+            "due": bool(doc.get("due")),
             "evaluator": str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET),
             "evaluator_ids": [str(cid) for cid in (doc.get("evaluator_ids") or [])],
             "evaluator_roles": [
@@ -954,6 +1054,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.PATCH_NEXT
+        if status == EvaluatorPacket.STATUS_REFUSE:
+            return EvaluatorPacket.HOLD_DETAIL
         if status == EvaluatorPacket.STATUS_SKIP:
             return "stored no"
         pairs: list[str] = []
