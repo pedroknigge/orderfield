@@ -7,7 +7,8 @@ NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 # INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
 DEFAULT_VERSION="0.8.23"
-KNOWN_HARNESSES=(claude codex cursor opencode grok)
+# Same names as ADAPTER_ORDER minus agy (gemini dests) and generic (no HOME tree).
+KNOWN_HARNESSES=(claude codex cursor opencode orca grok qwen)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
 BEGIN_MARKER="<!-- BEGIN orderfield skill -->"
 END_MARKER="<!-- END orderfield skill -->"
@@ -251,44 +252,50 @@ if [[ "$UNINSTALL" -eq 0 ]] && { [[ "$FROM_RELEASE" -eq 1 ]] || ! have_local; };
   SRC="$(pinned_source_root "$SRC")"
 fi
 
-# A literal `./install.sh --project` installs below its own checkout. Copy from
-# an external snapshot so the destination cannot recurse into the source while
-# it is being populated. The snapshot also drops leftovers from older local
-# project installs.
+# Skill surface only — not the git tree (tests/, docs/, evals/, CHANGELOG).
+# Dest must still run: kernel + schemas + appendix + VERSION + install.sh
+# (UpdateAsk) + child contract + /of alias + README (SKILL pointer).
+# Child contract is CHILD.md (#316). Dest list must not name SLAVE.md.
+SKILL_SURFACE_FILES=(SKILL.md CHILD.md VERSION install.sh README.md)
+SKILL_SURFACE_TREES=(of schemas references scripts/of)
+SKILL_SURFACE_SCRIPTS=(scripts/of.py scripts/of_adapters.py)
+
+copy_skill_surface() {
+  local dest="$1" rel
+  mkdir -p "$dest"
+  for rel in "${SKILL_SURFACE_FILES[@]}"; do
+    if [[ -f "$SRC/$rel" ]]; then
+      cp -a "$SRC/$rel" "$dest/$rel"
+    fi
+  done
+  for rel in "${SKILL_SURFACE_TREES[@]}"; do
+    if [[ -d "$SRC/$rel" ]]; then
+      mkdir -p "$dest/$rel"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete --exclude '__pycache__' "$SRC/$rel/" "$dest/$rel/"
+      else
+        cp -R "$SRC/$rel"/. "$dest/$rel/"
+        find "$dest/$rel" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+      fi
+    fi
+  done
+  for rel in "${SKILL_SURFACE_SCRIPTS[@]}"; do
+    if [[ -f "$SRC/$rel" ]]; then
+      mkdir -p "$dest/$(dirname "$rel")"
+      cp -a "$SRC/$rel" "$dest/$rel"
+    fi
+  done
+}
+
+# A literal `./install.sh --project` installs below its own checkout. Stage the
+# skill surface so the destination cannot recurse into the source while it is
+# being populated.
 if [[ "$UNINSTALL" -eq 0 && -z "$cleanup_src" ]]; then
   case "$base/" in
     "$SRC/"*)
       staged_src="$(mktemp -d "${TMPDIR:-/tmp}/orderfield-install.XXXXXX")"
       cleanup_src="$staged_src"
-      if command -v rsync >/dev/null 2>&1; then
-        rsync -a \
-          --exclude .git \
-          --exclude .orderfield \
-          --exclude .agents \
-          --exclude .claude \
-          --exclude .codex \
-          --exclude .cursor \
-          --exclude .opencode \
-          --exclude .grok \
-          --exclude .gemini \
-          --exclude .local \
-          --exclude '__pycache__' \
-          "$SRC/" "$staged_src/"
-      else
-        cp -R "$SRC"/. "$staged_src/"
-        rm -rf \
-          "$staged_src/.git" \
-          "$staged_src/.orderfield" \
-          "$staged_src/.agents" \
-          "$staged_src/.claude" \
-          "$staged_src/.codex" \
-          "$staged_src/.cursor" \
-          "$staged_src/.opencode" \
-          "$staged_src/.grok" \
-          "$staged_src/.gemini" \
-          "$staged_src/.local"
-        find "$staged_src" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-      fi
+      copy_skill_surface "$staged_src"
       SRC="$staged_src"
       ;;
   esac
@@ -315,17 +322,7 @@ copy_one() {
   mkdir -p "$(dirname "$dest")"
   rm -rf "$dest"
   mkdir -p "$dest"
-  if command -v rsync >/dev/null 2>&1; then
-    rsync -a --delete \
-      --exclude .git \
-      --exclude .orderfield \
-      --exclude '__pycache__' \
-      "$SRC/" "$dest/"
-  else
-    cp -R "$SRC"/. "$dest/"
-    rm -rf "$dest/.git" "$dest/.orderfield"
-    find "$dest" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-  fi
+  copy_skill_surface "$dest"
   echo "installed $dest"
   if [[ "$(basename "$dest")" == "$NAME" ]]; then
     write_alias_for "$dest"
@@ -462,6 +459,8 @@ harness_present() {
     cursor) command -v cursor >/dev/null 2>&1 || command -v agent >/dev/null 2>&1 || command -v cursor-agent >/dev/null 2>&1 ;;
     opencode) command -v opencode >/dev/null 2>&1 ;;
     grok) command -v grok >/dev/null 2>&1 || command -v grok-cli >/dev/null 2>&1 ;;
+    orca) command -v orca >/dev/null 2>&1 ;;
+    qwen) command -v qwen >/dev/null 2>&1 ;;
     *) return 1 ;;
   esac
 }
