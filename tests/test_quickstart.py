@@ -1,6 +1,6 @@
-"""DOC-001: the README '30-second loop' must run verbatim from a fresh temp dir.
+"""DOC-001: the README first-close loop must run verbatim from a fresh temp dir.
 
-The fenced bash block under `## 30-second loop` is extracted from README.md
+The fenced bash block under `## First close` is extracted from README.md
 and executed with `set -e`, `of` resolved to this checkout's kernel, in an
 empty temporary directory. Every command must exit 0 in order, so the
 documented loop cannot drift from the kernel.
@@ -21,11 +21,11 @@ OF_PY = ROOT / "scripts" / "of.py"
 
 
 def quickstart_block(text: str) -> str:
-    """Return the first fenced ```bash block after the '## 30-second loop' heading."""
-    start = text.index("## 30-second loop")
+    """Return the first fenced ```bash block after the '## First close' heading."""
+    start = text.index("## First close")
     match = re.search(r"```bash\n(.*?)\n```", text[start:], re.S)
     if match is None:
-        raise AssertionError("README '30-second loop' has no fenced bash block")
+        raise AssertionError("README 'First close' has no fenced bash block")
     return match.group(1)
 
 

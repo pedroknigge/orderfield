@@ -2,7 +2,7 @@
 
 A human lands a verified install and sees the disk contract. Not a daemon. Not pip.
 
-> Hub: [AGENTS.md](../../AGENTS.md) · Pin recipe: [README.md](../../README.md#install) · Publish: [PUBLISH.md](../../PUBLISH.md) · Doctor: [troubleshooting.md](../troubleshooting.md#of-doctor)
+> Hub: [AGENTS.md](../../AGENTS.md) · Glance: [README.md](../../README.md) · SHA-256 pin recipe: [PUBLISH.md](../../PUBLISH.md) · Doctor: [troubleshooting.md](../troubleshooting.md#of-doctor)
 
 `install.sh` already copies the skill and points `of` at the **installed** kernel. `of doctor` already names kernel + skills. This page is the one sitting that ties those together. Do not invent a second installer.
 
@@ -20,11 +20,11 @@ Hermetic look (does not touch `$HOME`):
 bash docs/demo/mortal-install.sh --root "$(mktemp -d)"
 ```
 
-The script calls `install.sh`, then the installed `of doctor` from an empty workdir. Exit 0 only when doctor prints `ok` (kernel + skills). It then names the disk contract: `.orderfield/` is the session; `of resume` is the next verb; first close is the README 30-second loop; no process supervisor, no `of merge`.
+The script calls `install.sh`, then the installed `of doctor` from an empty workdir. Exit 0 only when doctor prints `ok` (kernel + skills). It then names the disk contract: `.orderfield/` is the session; `of resume` is the next verb; first close is the README [First close](../../README.md#first-close) loop; no process supervisor, no `of merge`.
 
 ## No tree yet
 
-Do not pipe unsigned `main`. Use the tag-pinned SHA-256 recipe on [README.md](../../README.md#install) / [PUBLISH.md](../../PUBLISH.md), then:
+Do not pipe unsigned `main`. README front page is glance only. Use the tag-pinned SHA-256 recipe on [PUBLISH.md](../../PUBLISH.md), then:
 
 ```bash
 of doctor

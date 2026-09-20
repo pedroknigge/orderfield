@@ -834,7 +834,7 @@ class ReadmeProductSurface(unittest.TestCase):
             "Close is proof",
             "CLOSE.json",
             ".orderfield/",
-            "When not",
+            "When NOT to use OF",
             "## Mid-flight, the plan can change without dying",
             "You intervene.",
             "A child reports the field is wrong.",
@@ -842,15 +842,26 @@ class ReadmeProductSurface(unittest.TestCase):
             "sibling fields",
             "cheap vs frontier",
             "A child residual cannot replace",
+            "InitAskSkip",
+            "Stay session",
         ):
             self.assertIn(needle, hero)
+        self.assertIn("when not", hero.casefold())
+        front = text[:use]
+        self.assertIn("ORDERFIELD_REF=v", front)
+        self.assertIn("--from-release", front)
+        self.assertIn("~/.local/bin", front)
+        self.assertNotIn("ORDERFIELD_ARCHIVE", front)
+        self.assertNotIn("ORDERFIELD_SHA256SUMS", front)
         install_block = text[install:text.index("## Uninstall")]
         chunks = install_block.split("```")
         lead, first_fence = chunks[0], chunks[1]
         self.assertTrue(first_fence.startswith("bash"), first_fence[:20])
-        self.assertIn("SHA256SUMS", first_fence)
-        self.assertIn("releases/download", first_fence)
-        self.assertIn("SHA-256", first_fence)
+        self.assertIn("./install.sh", first_fence)
+        self.assertIn("~/.local/bin", first_fence)
+        self.assertIn("of doctor", first_fence)
+        self.assertNotIn("ORDERFIELD_ARCHIVE", first_fence)
+        self.assertNotIn("ORDERFIELD_SHA256SUMS", first_fence)
         self.assertNotIn("npx skills add pedroknigge/orderfield", first_fence)
         self.assertIn("SHA-256", lead)
         self.assertIn("unpinned", lead.casefold())
@@ -865,6 +876,7 @@ class ReadmeProductSurface(unittest.TestCase):
         self.assertIn("unpinned", install_block.casefold())
         self.assertIn("not the trusted", install_block.casefold())
         self.assertIn("SHA-256", install_block)
+        self.assertIn("PUBLISH.md", install_block)
         compared = text[text.index("## Compared-to"):]
         self.assertIn("planning-with-files", compared)
         self.assertIn("refuse_child_forge", compared)
@@ -2012,6 +2024,69 @@ class SkillDriveAfterIntegrate(unittest.TestCase):
         self.assertIn("must propose", table)
 
 
+class SkillObservationPack(unittest.TestCase):
+    """Oversized residual speak is a handle. Do not paste the body. #283."""
+
+    HANDLE = "cite handle"
+    EXCERPT = "head/tail excerpt"
+    DISK = "full file stays on disk"
+    PASTE = "do not paste the body"
+    RECEIPT = "of_evidence_receipt"
+    PATHS = "wave-end roles read paths"
+    SMALL = "small residuals may print fully"
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_alias_appendix_teach_handle_not_paste(self) -> None:
+        core = SkillSurface.core(ROOT)
+        alias = SkillSurface.alias(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        table = self.table(core).casefold()
+        self.assertIn(self.HANDLE, table)
+        self.assertIn(self.EXCERPT, table)
+        self.assertIn(self.DISK, table)
+        self.assertIn(self.PASTE, table)
+        self.assertIn(self.RECEIPT, table)
+        self.assertIn(self.PATHS, table)
+        self.assertIn(self.SMALL, table)
+        self.assertIn("10kib", table)
+        alias_fold = alias.casefold()
+        self.assertIn("path+excerpt", alias_fold)
+        self.assertIn("#283", alias)
+        appendix_fold = appendix.casefold()
+        self.assertIn("observationpack", appendix_fold)
+        self.assertIn("of_evidence_receipt", appendix_fold)
+        self.assertIn("do not paste the body", appendix_fold)
+        self.assertIn("wave-end verifier/adversary", appendix_fold)
+        self.assertIn("recovery/observation-pack", appendix_fold)
+        source = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class ObservationPack:", source)
+        self.assertIn("THRESHOLD = 10 * 1024", source)
+        self.assertIn("OF_EVIDENCE_RECEIPT", source)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLessEqual(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_MAX_BYTES
+        )
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_TARGET_BYTES
+        )
+
+    def test_does_not_invent_verb_or_strip_receipts(self) -> None:
+        for rel, body in (
+            ("SKILL.md", SkillSurface.core(ROOT)),
+            ("of/SKILL.md", SkillSurface.alias(ROOT)),
+            ("references/skill-appendix.md", SkillSurface.appendix(ROOT)),
+        ):
+            fold = body.casefold()
+            self.assertNotIn("of residual", fold, rel)
+            self.assertNotIn("of excerpt", fold, rel)
+            self.assertNotIn("of continue", fold, rel)
+
+
 class SkillWaveSettleAutoContinue(unittest.TestCase):
     """After wave settles, execute printed next. No poke unless real HITL. #263."""
 
@@ -3152,26 +3227,6 @@ class SkillEvaluatorPacket(unittest.TestCase):
         self.assertTrue(any("pick one role" in e for e in errs), errs)
 
 
-class SkillWaveEndBothRoles(unittest.TestCase):
-    """Stored yes after settle packs both roles; no drops neither. #280 compose."""
-
-    def test_core_appendix_teach_wave_end_both(self) -> None:
-        core = SkillSurface.core(ROOT)
-        appendix = SkillSurface.appendix(ROOT)
-        table = core.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-        self.assertIn("Wave-end review scope", table)
-        self.assertIn("pack both review roles", table.casefold())
-        self.assertIn("stored yes", table.casefold())
-        fold = appendix.casefold()
-        self.assertIn("#### wave-end review scope", fold)
-        self.assertIn("evaluatorpacket.due", fold)
-        self.assertIn("gate_action", fold)
-        self.assertIn("pack+spawn both", fold)
-        self.assertIn("do not drop", fold)
-        self.assertIn("consent no", fold)
-        self.assertIn("hold", fold)
-
-
 class SkillWaveReviewScope(unittest.TestCase):
     """Large N scoped to this wave owns-path / published set. #282."""
 
@@ -3336,17 +3391,27 @@ class SkillWaveEndBothRoles(unittest.TestCase):
         self.assertIn("--evaluator-consent", init_row)
         self.assertIn("not a second ask", table_fold)
         self.assertIn("in_flight=0", table)
+        self.assertIn("Wave-end review scope", table)
+        self.assertIn("pack both review roles", table_fold)
         self.assertNotIn("before close pack+spawn", table_fold)
+        alias_fold = SkillSurface.alias(ROOT).casefold()
+        self.assertIn("load sibling", alias_fold)
+        self.assertNotIn("before close pack+spawn", alias_fold)
         appendix_fold = appendix.casefold()
         self.assertIn(self.SETTLE, appendix_fold)
         self.assertIn(self.SKIP, appendix_fold)
         self.assertIn("before next-wave", appendix_fold)
         self.assertIn("evaluatorpacket", appendix_fold)
+        self.assertIn("evaluatorpacket.due", appendix_fold)
+        self.assertIn("gate_action", appendix_fold)
+        self.assertIn("do not drop", appendix_fold)
+        self.assertIn("consent no", appendix_fold)
         self.assertIn("driveafterintegrate", appendix_fold)
         self.assertIn(self.HOLD, appendix_fold)
         self.assertIn("ownedwrite", appendix_fold)
         self.assertIn(self.BYTES, appendix_fold)
         self.assertNotIn("of continue", table_fold)
+        self.assertNotIn("of continue", alias_fold)
         self.assertNotIn("of continue", appendix_fold)
         self.assertEqual(SkillEvaluatorPacket.xor_errors(table, "SKILL.md table"), [])
         self.assertEqual(SkillSurface.errors(ROOT), [])
@@ -3359,6 +3424,7 @@ class SkillWaveEndBothRoles(unittest.TestCase):
         self.assertIn("def due(", source)
         self.assertIn("def gate_action(", source)
         self.assertIn("KEY = \"evaluator_consent\"", source)
+        self.assertIn("HOLD_DETAIL", source)
         ops = (ROOT / "scripts" / "of" / "cli" / "ops.py").read_text(encoding="utf-8")
         self.assertIn("DriveAfterIntegrate.gate", ops)
 
@@ -3807,5 +3873,29 @@ class SkillSurfaceCore(unittest.TestCase):
         self.assertIn(SkillSurface.APPENDIX, installed)
 
 
+class SkillProductBar(unittest.TestCase):
+    """#323 design A: SKILL/appendix teach design-twice, deep modules, tests≠Ready."""
+
+    def test_core_cannot_read_green_tests_as_ready(self) -> None:
+        core = SkillSurface.core(ROOT)
+        appendix = SkillSurface.appendix(ROOT)
+        fold = core.casefold()
+        self.assertIn("unittest/ci green is not ready", fold)
+        self.assertIn("design-twice", fold)
+        self.assertIn("deep modules", fold)
+        appendix_fold = appendix.casefold()
+        self.assertIn("unittest/ci green is not ready", appendix_fold)
+        self.assertIn("design-twice", appendix_fold)
+        self.assertIn("deep module", appendix_fold)
+        self.assertIn("hurry-to-green", appendix_fold)
+        self.assertNotIn("of design", fold)
+        self.assertNotIn("of design", appendix_fold)
+        self.assertEqual(SkillSurface.errors(ROOT), [])
+        self.assertLess(
+            SkillSurface.core_bytes(ROOT), SkillSurface.CORE_TARGET_BYTES
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
+

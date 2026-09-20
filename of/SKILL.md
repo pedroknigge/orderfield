@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.8.23. Alias for /orderfield. Use when /of, a field must be resumed, or a multi-slice disk brief. Load sibling SKILL.md. Not a second contract. Do not trigger for a harness name alone."
+description: "v0.8.24. Alias for /orderfield. Use when /of, a field must be resumed, or a multi-slice disk brief. Load sibling SKILL.md. Not a second contract. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.8.23"
+  version: "0.8.24"
   alias-of: orderfield
 ---
 
@@ -24,6 +24,6 @@ whole appendix up front. Stop if the sibling is missing. Do not invent a second
 contract.
 
 Product surface is the sibling [README.md](../README.md). Residual speak handles
-are a different paste tax ([#283](https://github.com/pedroknigge/orderfield/issues/283)).
+cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedroknigge/orderfield/issues/283)).
 
 Do not trigger for a harness name alone.

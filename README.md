@@ -10,31 +10,37 @@
 
 Anyone can persist a plan. Only the leader may change it.
 
-The chat can die. ORDER stays. A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
+The chat can die. You switch model or CLI. Two writers collide on one tree. A harness says done while the public surface is unproven. Without a leader-owned field, the next session asks what you were building.
 
-**After `/clear`, without a leader-owned field**
+Orderfield keeps that plan on disk as ORDER + SPEC. Children get bounded packets with exclusive owners. Close is proof (`of contrast` / `CLOSE.json`) — tests passing is not the close. `of resume` prints `next`. A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 
-> Agent: I don't have the earlier plan. What were we building?
-
-**After `/clear`, with Orderfield**
-
-`of resume` prints `next`. The mission on disk did not change. A child residual cannot rewrite it.
+Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.8.23</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.24</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.23-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.24-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
+Trusted path is tag-pinned **v0.8.24**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+
+```bash
+ORDERFIELD_REF=v0.8.24 bash install.sh --global --from-release
+# ensure ~/.local/bin is on PATH
+of doctor    # must print ok
+```
+
+Full SHA-256 verify of the downloaded `install.sh` + archive lives in [PUBLISH.md](PUBLISH.md) (same recipe as [docs/demo/mortal-install.md](docs/demo/mortal-install.md)). Unpinned `npx skills add` is not the trusted path — it does not create the `of` CLI.
+
 # Typical problems → what Orderfield does
 
-Orderfield keeps a software plan on disk so the work can continue after chat ends, tokens run out, or you change model or CLI. Children get bounded packets with exclusive owners. A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
+The brief lives on disk as SPEC. Packs bind each step. `of resume` / `of handoff` continue from `.orderfield/` instead of chat memory.
 
-| Problem | Orderfield |
+| Problem | What Orderfield does |
 |---|---|
 | A long or complex implementation prompt with steps that must be respected | The brief lives on disk as SPEC. Packs bind each step. The plan is not reinvented mid-flight. |
 | You find an error or a gap mid-run | It becomes an amend, a patch, or a residual. The next packet carries it. It is not lost in chat scroll. |
@@ -45,11 +51,22 @@ Orderfield keeps a software plan on disk so the work can continue after chat end
 | A multi-role wave needs cheap and frontier workers | The plan consults the [model catalog](docs/model-catalog.md), then proposes a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. |
 | A wave could mix CLIs or stay on one without asking | The leader asks same-harness vs multi-harness mix once per field (init/first pack). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login. |
 | A long mission needs a cheaper or different CLI mid-flight | The leader quotes honest signals (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix. |
-| A multi-slice field is about to start | **InitAskSkip** Large: at init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. InitAskSkip Small (1-2 exclusive slices; bump / obvious): skip the four theater asks; contrast still required. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate. Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap; leader RAM is not a cloud VM. |
+| A multi-slice field is about to start | **InitAskSkip** Large: at init / first wave **must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice; large N scoped to this wave). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. InitAskSkip Small (1-2 exclusive slices; bump / obvious): skip the four theater asks; contrast still required. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate. Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap; leader RAM is not a cloud VM. |
 | A markdown plan anyone can edit after `/clear` | Persistence is not authority. Only the leader / `of patch` may change ORDER. Children write residuals. |
-| Adding lines looks like progress | Code is a liability. Think DELETE, not add. Same capability with less code. No new verb. |
 
-Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
+## When NOT to use OF
+
+When not to open a field: stay on this session.
+
+- One ordinary subagent or skill already covers the work.
+- A VERSION bump plus one obvious feature, or a 1–2 file change with known owners (`InitAskSkip` Small).
+- You mentioned a harness name. That is not a trigger.
+- Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
+- A rewrite or new verb when subtract/split would do the same with less code.
+
+**InitAskSkip Small** (1–2 exclusive slices; bump / obvious; owners known): skip catalog, cheap vs frontier, mix, and evaluator. Stay session. `of detect` present or HOLD. Contrast → `of close --checklist`. Never silent mix. No silent reviewers.
+
+If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init. Work that will not survive one chat (long steps, a mid-run gap, a model switch, colliding writers, or a public claim that must be proven) is when to reach for `/orderfield` or `/of`.
 
 ## It's working if
 
@@ -59,26 +76,25 @@ Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if y
 - A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 - Two writers on one mission have exclusive owners (requirement or path).
 
-## When to reach for it
-
-- The user invokes `/orderfield` or `/of`, or `.orderfield/ORDER.json` already exists — resume it; do not re-init.
-- Work that will not survive one chat: a long stepped prompt, a mid-run gap that must not be lost, a token cut or model switch, more than one writer, or a public claim that must be proven.
-
-**When not.** If one ordinary subagent or skill already fits, do not open a field.
-
-## When it is theater
-
-- VERSION bump plus one obvious feature.
-- Four init asks (catalog / cheap-frontier / mix / evaluator) on a 1-2 slice bump (`InitAskSkip`).
-- A rewrite or new verb when subtract/split would do the same with less code.
-- One ordinary subagent, or work a skill on this agent already covers.
-- Opening a field because a harness name was mentioned.
-- Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
-- More kernel for the same capability.
-
-A field that only adds startup tax is theater. First productive write is not the finish.
+Documented first close (CI extracts the block): [First close](#first-close). One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.” Undisclosed vulnerabilities: [SECURITY.md](SECURITY.md) (private advisory; not a public `of issue`).
+
+<details>
+<summary><strong>Large-path asks (InitAskSkip)</strong></summary>
+
+<br>
+
+**InitAskSkip** Large (multi-slice / multi-role; once per field at init / first wave):
+
+- Consult the [model catalog](docs/model-catalog.md), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own.
+- Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
+- Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
+- **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → before close pack+spawn both `--role adversary` and `--role verifier` (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
+
+Code is a liability. Think DELETE, not add. Same capability with less code. No new verb.
+
+</details>
 
 ---
 
@@ -100,28 +116,9 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-Trusted path: tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add …` (or similar) is **not the trusted install path** — it follows whatever the skills CLI resolves and does not create the `of` CLI.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.24` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
-```bash
-release_tag=v0.8.23
-release_version=0.8.23
-asset_base="https://github.com/pedroknigge/orderfield/releases/download/${release_tag}"
-verify_root="$(mktemp -d)"
-curl -fsSL "$asset_base/SHA256SUMS" -o "$verify_root/SHA256SUMS"
-curl -fsSL "$asset_base/install.sh" -o "$verify_root/install.sh"
-curl -fsSL "$asset_base/orderfield-${release_version}.tar.gz" \
-  -o "$verify_root/orderfield-${release_version}.tar.gz"
-# SHA-256 verify (same recipe as PUBLISH.md), then:
-ORDERFIELD_REF="$release_tag" \
-ORDERFIELD_VERSION="$release_version" \
-ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
-ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
-bash "$verify_root/install.sh"
-# ensure ~/.local/bin is on PATH
-of doctor    # must print ok
-```
-
-That lands `~/.local/bin/of` and the skill copies. First close is the [30-second loop](#30-second-loop): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
+That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
 From a checkout you already trust (local tree, not a remote pin):
 
@@ -138,11 +135,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF="$release_tag" \
-ORDERFIELD_VERSION="$release_version" \
-ORDERFIELD_ARCHIVE="$verify_root/orderfield-${release_version}.tar.gz" \
-ORDERFIELD_SHA256SUMS="$verify_root/SHA256SUMS" \
-bash "$verify_root/install.sh" --generic
+ORDERFIELD_REF=v0.8.24 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
@@ -151,8 +144,6 @@ bash "$verify_root/install.sh" --generic
 Literal project install is safe from the checkout root: the installer canonicalizes the base, snapshots the source outside the destination, avoids recursive `.agents` copies, and creates an absolute project-local `.local/bin/of` target.
 
 `install.sh --global` also installs `~/.local/bin/of` → the **installed** skill copy (`~/.agents/skills/orderfield/scripts/of.py`). Ensure `~/.local/bin` is on your `PATH`. Do not point `of` at a disposable checkout; that breaks reference-load for `CHILD.md`.
-
-The full checksum-verify recipe lives in [PUBLISH.md](PUBLISH.md).
 
 Python 3.11+ (3.9 and 3.10 are end-of-life; `scripts/of.py` refuses older interpreters with one line). No pip packages.
 
@@ -207,9 +198,9 @@ Project-local ORDER state (`.orderfield/` in a working repo) is left alone — u
 
 ---
 
-## 30-second loop
+## First close
 
-First close, from the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). If the user said only `dale` / `do it` pointing at prior chat, `--source` is that prior request, not the go-ahead. Do not implement in the leader tree.
+First close, from the **project you want to orchestrate**. The user's brief is the contract — pass it with `--source` / `--source-file` (never write `PROMPT.md` at the project root). If the user said only `dale` / `do it` pointing at prior chat, `--source` is that prior request, not the go-ahead. Do not implement in the leader tree. A human sitting is minutes, not a stopwatch claim.
 
 ```bash
 of init --mission "decidable architecture for a pricing tool" --phase explore \
@@ -272,7 +263,7 @@ CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`
 
 **When to open orderfield:** it pays for a software mission that will not fit one context, colliding product paths, and a false public claim (an adversary can catch a lie). It is theater for a VERSION bump plus one obvious feature, one ordinary subagent, or work a single skill can close. **Cut is optional** when exclusive owners are already obvious; put them in constraints.
 
-Before pack, the leader asks same-harness categories vs multi-harness mix. Default stays **same harness** (current session adapter) unless you choose mix; then `of detect` labels CLIs present / missing and `PATH≠auth` (Partial — not a login). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew on existing HOME installs versus this checkout, ACTIVE pointer/stub skew, stale packs (`packed_age` / `order_rev`), and tree-audit OVER / fat scratch in one pass — PATH presence is not authentication, credentials, session authority, or readiness; missing skill dests are silent; skill SKEW, closed-field historical packs, and audit OVER / fat scratch are informational (not FAIL); open-field pack SKEW still FAIL. `of close` / `--checklist` print the same OVER note (not a close gate). Successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`closed-ephemeral`). Pack lines name field id + wave. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; never copy transcripts). Orphan packed children (closed / leftover / stale prior wave, residual missing) are named on the plan; explicit `of gc` unlinks them and records `gc-stamp.json` `orphans[]` — resume auto-gc never unlinks packets. `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
+Before pack, the leader asks same-harness categories vs multi-harness mix. Default stays **same harness** (current session adapter) unless you choose mix; then `of detect` labels CLIs present / missing and `PATH≠auth` (Partial — not a login). `of doctor` reports local prereqs, adapter PATH/version, writable field, schemas, lock, skill VERSION skew on existing HOME installs versus this checkout, ACTIVE pointer/stub skew, stale packs (`packed_age` / `order_rev`), and tree-audit OVER / fat scratch in one pass — PATH presence is not authentication, credentials, session authority, or readiness; missing skill dests are silent; skill SKEW, closed-field historical packs, and audit OVER / fat scratch are informational (not FAIL); open-field pack SKEW still FAIL. `of close` / `--checklist` print the same OVER note (not a close gate). Successful `of close` wipes `work/scratch` and wave logs/spawns/prompts (`closed-ephemeral`). Pack lines name field id + wave. `of retain` / `of gc` walk every field home (7-day safe TTL; closed-field ephemeral immediate; tree budget + HITL `--audit` / `--keep-field` / `--archive-field` / `--drop-field`; archive keeps `CLOSE.json`; never copy transcripts). Orphan packed children (closed / leftover / stale prior wave, residual missing) are named on the plan; explicit `of gc` unlinks them and records `gc-stamp.json` `orphans[]` — resume auto-gc never unlinks packets. `of learn` is the write path: bare `of learn TEXT` is a **field** lesson (this ORDER only; dies with the mission); `--protocol` is explicit for cross-project lessons about running a field; `--promote <id>` copies a field lesson into protocol after the leader has read it. Spawn always sets `OF_CHILD=<child_id>`; `--protocol` / `--promote` refuse while it is set (`of: error: child-forge:`). `source=leader` is never written for a child. Child prompts receive at most 8 protocol lines as untrusted quoted data. Every stored lesson carries provenance (`source`, `repo` = sha256 of the resolved project root, `origin`, `of_version`); unprovenanced or schema-invalid items are skipped on load with one stderr warning. Provenance is an audit trail, not authentication (a process running as your user can write a well-formed item); the real boundary is that child prompts read the user cache only, and promotion is a leader decision after reading the text. Spawn argv previews and logs redact secrets and escalated approval flags. Children run under `OF_TRUST` (`conservative` default — no escalation flag for any adapter; `plan` / `auto-edit` / `auto` map to the harness's closest non-bypass mode, else behave as conservative; `yolo` is the only bypass and must be chosen explicitly; `''`/`default` → conservative, `escalated` → yolo) with an environment allowlist (`OF_SPAWN_ENV=NAME1,NAME2` extends it; `OF_SPAWN_ENV=inherit` opts out). Inside an interactive session you can skip headless spawn: **pack first** (that is the cap surface), then `of handoff --packet …` (or the full `of render` stdout) is the **only** message to the child. `of handoff` and `of render` reference `CHILD.md` via the field copy `.orderfield/SLAVE.md` (repo-relative, portable across hosts) rather than pasting the entire document. After pack, caps bind even if you use Agent. Collect + integrate still go through the kernel. `workspace.writable_by_slaves` is documentation, not a lock.
 
 </details>
 
