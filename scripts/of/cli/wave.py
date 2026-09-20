@@ -34,6 +34,7 @@ from of_adapters import (
     OperatorAction,
     WriteFloor,
 )
+from of.host_ram import AgentBand
 
 from of.field import (
     OF_CHILD_ENV,
@@ -700,7 +701,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
             hints,
             verb="pack",
         )
-        packet["adapter_hints"] = hints
+        packet["adapter_hints"] = AgentBand.stamp_effort(hints) or hints
     if order.get("spec_ref"):
         packet["spec_ref"] = order["spec_ref"]
         packet["spec_hash"] = order.get("spec_hash") or ""
@@ -786,6 +787,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
     )
     if packet.get("adapter_hints"):
         print(f"adapter_hints={AdapterHints.format_line(packet['adapter_hints'])}")
+    band_note = AgentBand.pack_note(
+        order, int(state.get("children_spawned") or 0)
+    )
+    if band_note:
+        print(band_note)
 
 
 def cmd_unpack(args: argparse.Namespace) -> None:

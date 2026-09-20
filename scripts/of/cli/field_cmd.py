@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from of_adapters import ADAPTER_ORDER, AdapterHints
+from of.host_ram import AgentBand
 
 from of.field import (
     PHASES,
@@ -452,6 +453,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
         model=getattr(args, "model", None),
     ):
         changed = True
+    if AgentBand.apply_args(order, args):
+        changed = True
     if getattr(args, "origin", None) is not None or getattr(
         args, "session_id", None
     ) is not None:
@@ -556,6 +559,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
             summary["evaluator_consent"] = order["evaluator_consent"]
         if order.get("adapter_hints"):
             summary["adapter_hints"] = order["adapter_hints"]
+        if order.get("agent_band"):
+            summary["agent_band"] = order["agent_band"]
         if order.get("origin"):
             summary["origin"] = order["origin"]
         if order.get("backlog"):

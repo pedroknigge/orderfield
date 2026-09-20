@@ -31,6 +31,7 @@ from of_adapters import (
 )
 
 from of.model_catalog import ModelCatalog
+from of.host_ram import AgentBand, HostRam
 
 from of.field import (
     CHECKPOINT_MAX_CHARS,
@@ -685,6 +686,17 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         "  boundary      kernel verifies PATH/argv/residual; "
         "harness promises approval/auth/ready"
     )
+    print("host")
+    host_doc = HostRam.measure()
+    for line in HostRam.doctor_lines(host_doc):
+        print(f"  {line}")
+    if has_order:
+        try:
+            stored_band = AgentBand.format_line(load_order(root).get("agent_band"))
+        except (OSError, SystemExit):
+            stored_band = ""
+        if stored_band:
+            print(f"  agent_band   {stored_band}  (stored once; do not re-ask)")
     print("model_hints")
     for line in AdapterHints.doctor_lines():
         print(f"  {line}")
@@ -714,6 +726,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         if has_order
         else 0,
         audit_over=audit_warn,
+        **HostRam.event_fields(host_doc),
     )
     if failed:
         print("doctor        FAIL")
@@ -1282,6 +1295,7 @@ class StatusReport:
             "done_when_closed": done_when_closed(order),
             "active": ActiveField.read(root),
             "harness": order.get("harness") or None,
+            "agent_band": AgentBand.of(order),
             "origin": StatusReport.origin(order),
             "parent": NestedField.id_of(order) or None,
             "root_stub": StatusReport.root_stub_kind(root),
@@ -1377,6 +1391,7 @@ class StatusReport:
             "done_when_closed": bool(doc.get("done_when_closed")),
             "active": doc.get("active"),
             "harness": doc.get("harness"),
+            "agent_band": doc.get("agent_band"),
             "origin": doc.get("origin"),
             "parent": doc.get("parent"),
             "root_stub": doc.get("root_stub"),
@@ -1812,6 +1827,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     hints_line = AdapterHints.format_line(order.get("adapter_hints"))
     if hints_line:
         print(f"model_hints {hints_line}")
+    band_line = AgentBand.format_line(order.get("agent_band"))
+    if band_line:
+        print(f"agent_band  {band_line}")
     EfficiencySignal.emit(root, packets)
     origin_line = format_origin_line(order)
     if origin_line:

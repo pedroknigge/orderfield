@@ -13,6 +13,8 @@ Two names. One kernel. `/of` is `/orderfield`.
 
 **Load the sibling skill and follow it.** This file is a `/of` trigger, not a second contract. Hosts that inject this alias must then load sibling `SKILL.md`. Do not restate the leader table here.
 
+Init **agent-band** once (store `of patch --agent-band` / `--multi-model`; children **medium**; **do not re-ask**). Wave budget, **not a spawn cap**. Leader RAM is not a **cloud** VM. Follow the sibling.
+
 After package installation, the full skill is normally at
 `../orderfield/SKILL.md` relative to this file. In a source checkout, it is at
 `../SKILL.md`. The leader appendix is `../orderfield/references/skill-appendix.md`

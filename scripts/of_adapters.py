@@ -1277,6 +1277,8 @@ class AdapterHints:
             parts.append(str(hints["tier"]))
         if hints.get("model"):
             parts.append(str(hints["model"]))
+        if hints.get("effort"):
+            parts.append(str(hints["effort"]))
         return " ".join(parts)
 
     @staticmethod

@@ -20,6 +20,7 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 
 - [x] 0.8.23: morning cut `#295`–`#301` — CloseEvidence product SHA (`#286`); WriteFloor (`#294`); skill load-tax (`#287`); evaluator_consent (`#288`); HITL.md (`#290`); InitAskSkip (`#289`); docs_sync schema (`#292`); no new C-ID (honesty cap)
 - [x] 0.8.22: pack size-note honesty (`#267`; `SliceLintGate`); PAIR `--verified-contract` refuse without `--both-sides` (`#268`; `PairVerifiedContractRefuse`); agy/grok isolate host MCP + pulse `cpu=` (`HostMcp`; `#269`); present:none HOLD / implicit spawn refuse (`SpawnAdapterMissing`; `#273`); pulse names packed-never-spawned (`InFlightSignal`; `#274`); no new C-ID (honesty cap)
+- [x] 0.8.23: init agent-band + multi-model consent once; HostRam suggest-band; children default medium (`HostRam` / `AgentBand`; `#281`); no new C-ID (honesty cap)
 - [x] 0.8.21: wave-settle auto-continue no poke (`#263`; `SkillWaveSettleAutoContinue`; C-025); pack WARNs `owns_path_empty` / `owns_path_incomplete` (`OwnsPathCoverage`; `#257`); no new C-ID (honesty cap)
 - [x] 0.8.20: OwnedWrite (`#251`); EscalateUnblock (`#254`); mid-flight `of patch` refuse (`#253`); never chain pack|spawn (`#255`); live pid + long QUIET names HITL HOLD (`LiveQuietStuck`; `#256`); no new C-ID (honesty cap)
 - [x] 0.8.19: pulse `--watch` idle exit (`#243`); no STALE while `live_pid` (`#245`); SKILL once/field pre-pack ask (`#244`); agy `--model`+`--effort` + packet `--print-timeout` (`#249`); no new C-ID (honesty cap)

@@ -193,7 +193,9 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("adapter_hints=cheap", r.stdout)
         packet = load_json(packet_path(self.tmp, "cheap1"))
-        self.assertEqual(packet["adapter_hints"], {"tier": "cheap"})
+        self.assertEqual(
+            packet["adapter_hints"], {"tier": "cheap", "effort": "medium"}
+        )
         out = self._spawn_argv("cheap1", "claude")
         self.assertIn("--model", out)
         self.assertIn("haiku", out)
@@ -207,13 +209,13 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(
             load_json(packet_path(self.tmp, "e1"))["adapter_hints"],
-            {"tier": "cheap"},
+            {"tier": "cheap", "effort": "medium"},
         )
         r = self._pack("i1", "implementer")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(
             load_json(packet_path(self.tmp, "i1"))["adapter_hints"],
-            {"tier": "frontier"},
+            {"tier": "frontier", "effort": "medium"},
         )
         claude = self._spawn_argv("i1", "claude")
         self.assertIn("opus", claude)
@@ -249,7 +251,7 @@ class AdapterHintsCli(unittest.TestCase):
         packet = load_json(packet_path(self.tmp, "named"))
         self.assertEqual(
             packet["adapter_hints"],
-            {"tier": "frontier", "model": "gpt-5.4"},
+            {"tier": "frontier", "model": "gpt-5.4", "effort": "medium"},
         )
         for adapter in ("claude", "codex", "cursor", "grok", "agy"):
             out = self._spawn_argv("named", adapter)
@@ -327,7 +329,7 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertEqual(ok.returncode, 0, ok.stderr)
         self.assertEqual(
             load_json(packet_path(self.tmp, "okcursor"))["adapter_hints"],
-            {"tier": "frontier", "model": "grok-4.6"},
+            {"tier": "frontier", "model": "grok-4.6", "effort": "medium"},
         )
 
     def test_patch_tier_without_consent_dies(self) -> None:

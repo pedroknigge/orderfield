@@ -25,6 +25,7 @@ from of.field import (
     set_json_events,
 )
 from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
+from of.host_ram import AgentBand
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.ops import (
@@ -309,6 +310,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="session_id",
         help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
     )
+    AgentBand.add_flags(s)
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser(
@@ -347,6 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Plain of new stays an unrelated epic"
         ),
     )
+    AgentBand.add_flags(s)
     s.set_defaults(func=cmd_new)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
@@ -866,6 +869,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="model",
         help="field/wave default --model NAME; requires consent; not a catalog",
     )
+    AgentBand.add_flags(s)
     s.add_argument(
         "--backlog-add",
         dest="backlog_add",

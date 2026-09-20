@@ -68,6 +68,10 @@ The child moves freely inside the packet. It does not redefine mission, phase, c
 
 Same identity plus a procedure already on the agent = invoke the skill, do not spawn. A harness name alone is not a trigger. One ordinary subagent, or work a single skill can close, is theater for a field.
 
+## agent_band
+
+Once-per-field wave budget on `ORDER.agent_band` (`1-4` / `5-10` / `10-50`) plus optional `multi_model`. Asked at init / first wave and stored (`of init` / `of patch --agent-band` / `--multi-model`). Do not re-ask each wave. Skill biases wave size from the stored band. `of doctor` / init print `ram_total_gb` and a suggested band from stdlib host RAM (`HostRam`). The band is a **wave budget**, not a spawn hard-cap and not `caps.max_children`. Task + adapters are the ceiling, not OF. Leader host RAM is not a cloud/remote worker. Children default medium effort. Class: `AgentBand` / `HostRam`. Large-band scoped review is a later cut (`#282`).
+
 ## adapter_hints
 
 Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill consults the [model catalog](model-catalog.md) then must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku and frontier→opus. Cursor has no cheap/frontier alias (catalog: no frontier row); a consented tier without `--model` refuses pack/spawn so Cursor cannot go QUIET with no log. Grok/agy pass a named model only (tier-only is no-op). Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Living sheet: [model-catalog](#model-catalog). Post-hoc score: [efficiency-signal](#efficiency-signal).

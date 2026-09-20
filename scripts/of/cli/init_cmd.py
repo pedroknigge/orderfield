@@ -29,6 +29,7 @@ from of.field import (
 )
 from of.regime import DoneWhenLint
 from of.pack import ensure_field_slave_md
+from of.host_ram import AgentBand
 from of.spec import (
     archive_previous_field,
     discard_disposable_ingest,
@@ -79,6 +80,7 @@ def _stamp_and_write_new_field(
         order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
+    AgentBand.apply_args(order, args)
     DoneWhenLint.refuse(list(order.get("done_when") or []))
     origin_harness, origin_session = resolve_init_origin(
         getattr(args, "origin", None),
@@ -164,6 +166,10 @@ def cmd_init(args: argparse.Namespace) -> None:
     )
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
+    if order.get("agent_band"):
+        print(f"agent_band  {AgentBand.format_line(order['agent_band'])}")
+    for line in AgentBand.speak_init():
+        print(line)
 
 
 def cmd_new(args: argparse.Namespace) -> None:
@@ -204,6 +210,10 @@ def cmd_new(args: argparse.Namespace) -> None:
     print(f"field         {order['id']}")
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
+    if order.get("agent_band"):
+        print(f"agent_band  {AgentBand.format_line(order['agent_band'])}")
+    for line in AgentBand.speak_init():
+        print(line)
     if parent_id:
         print(f"parent        {parent_id}")
         print(NestedField.new_note(parent_id))

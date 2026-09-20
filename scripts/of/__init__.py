@@ -43,6 +43,7 @@ from of_adapters import (
 )
 
 from of.model_catalog import ModelCatalog
+from of.host_ram import AgentBand, HostRam
 
 from of.field import (
     APPROVAL_FLAG_NAMES,
@@ -509,6 +510,8 @@ __all__ = [
     'OutputSchema',
     'StreamJson',
     'ModelCatalog',
+    'AgentBand',
+    'HostRam',
     'ActiveField',
     'ArgvRedact',
     'AuditPressure',
