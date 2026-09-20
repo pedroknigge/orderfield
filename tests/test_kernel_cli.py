@@ -2210,6 +2210,98 @@ class PlanIngestGate(unittest.TestCase):
         self.assertNotIn("of close refused: plan_cover", checklist.stderr)
 
 
+class PlanWriteBackGate(unittest.TestCase):
+    """Green collect writes the cited plan; false-green does not."""
+
+    PLAN = (
+        "# Write-back fixture\n"
+        "\n"
+        "## AUTH-001 Login boundary\n"
+        "\n"
+        "- [ ] Implement login port\n"
+        "\n"
+        "## STORE-001 Persist occupancy\n"
+        "\n"
+        "- [ ] Persist occupancy JSON\n"
+    )
+    REL = "docs/plans/active/mega.md"
+    PR = "https://github.com/pedroknigge/orderfield/pull/314"
+
+    def _field(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-plan-write-gate-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        plan = tmp / self.REL
+        plan.parent.mkdir(parents=True)
+        plan.write_text(self.PLAN, encoding="utf-8")
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "write-back collect",
+            "--phase",
+            "build",
+            "--source-file",
+            self.REL,
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        added = run_of(
+            tmp, "spec", "--add", "AUTH-001", "--text", "login port"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        of.eval_pack_child(
+            tmp, "auth", "src/auth.py", "AUTH-001", "Implement AUTH-001"
+        )
+        return tmp
+
+    def test_green_collect_marks_done_and_pr(self) -> None:
+        tmp = self._field()
+        plan = tmp / self.REL
+        from of.cli.eval_cmd import EvalInvariantSetup
+
+        EvalInvariantSetup.write_bound_residual(
+            tmp,
+            "auth",
+            evidence=f"AUTH-001 landed {self.PR}",
+        )
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        self.assertIn("plan_write", collected.stdout)
+        self.assertIn("AUTH-001", collected.stdout)
+        text = plan.read_text(encoding="utf-8")
+        self.assertIn("- [x] Implement login port", text)
+        self.assertIn("Shipped:", text)
+        self.assertIn(self.PR, text)
+        self.assertIn("- [ ] Persist occupancy JSON", text)
+
+    def test_false_green_leaves_plan_unchanged(self) -> None:
+        tmp = self._field()
+        plan = tmp / self.REL
+        packet = of.load_json(of.wave_dir(1, tmp) / "packets" / "auth.json")
+        residual = of.load_json(DONE)
+        for key in of.PACKET_IDENTITY_FIELDS:
+            residual[key] = packet[key]
+        residual["status"] = "done"
+        residual["role"] = packet.get("role") or "implementer"
+        rem = residual.setdefault("residual", {})
+        rem["wants_to_change"] = []
+        rem["evidence"] = "status=done with zero owned writes"
+        rem["proposed_patch"] = {"docs_sync": "done"}
+        result = tmp / ".orderfield" / "work" / "scratch" / "auth" / "result.md"
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text("false green\n", encoding="utf-8")
+        residual["result_ref"] = result.relative_to(tmp).as_posix()
+        dest = tmp / str(packet["residual_path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        of.dump_json(dest, residual)
+        before = plan.read_text(encoding="utf-8")
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertNotEqual(collected.returncode, 0)
+        self.assertIn("INVALID", collected.stdout)
+        self.assertEqual(plan.read_text(encoding="utf-8"), before)
+        self.assertIn("- [ ] Implement login port", before)
+        self.assertNotIn("plan_write  AUTH-001", collected.stdout)
+
+
 class DoctorWorktreeLeftover(unittest.TestCase):
     """Orphaned of-worktrees vs settled children are doctor WARN. No Orca poll."""
 
