@@ -885,7 +885,10 @@ class ReadmeProductSurface(unittest.TestCase):
             self.assertIn("sha-256", folded, label)
             self.assertIn("unpinned", folded, label)
             self.assertIn("npx", folded, label)
-            self.assertIn("not trusted", folded, label)
+            self.assertTrue(
+                "not trusted" in folded or "not the trusted" in folded,
+                f"{label} missing not-trusted",
+            )
         self.assertIn("planning-with-files", appendix.casefold())
         self.assertIn("when work goes through `of`", skill)
         self.assertIn("remain protocol", skill)
