@@ -2145,6 +2145,12 @@ def resume_next_lines(
             order = load_order(root)
             if EvaluatorPacket.due(root, order, st, live):
                 return ["PACK", EvaluatorPacket.ASK_NEXT]
+        if action in ("next-wave", "pack"):
+            from of.replay import DiscoveryReplay
+
+            replayed = DiscoveryReplay.lines(root)
+            if replayed:
+                return replayed
     guidance: dict[str, tuple[str, str]] = {
         "hold": ("HOLD", "continue existing packets; do not repack"),
         "spawn": (
