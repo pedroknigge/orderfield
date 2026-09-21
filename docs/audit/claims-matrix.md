@@ -16,7 +16,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.28`
+**Code rev:** VERSION `0.8.29`
+- [x] 0.8.29: one red check is the order parameter (`DiscoveryReplay`); external check file not `artifact_sha`; two reds escalate instead of a sibling OPEN; next id is specification order; owned prompt omits other requirement texts; not a coverage win over one context; PackagingBump 0.8.29; no new C-ID (honesty cap)
 - [x] 0.8.28: printed next CONTINUE / OPEN / STOP from collected residuals (`DiscoveryReplay`); no requirements keeps the legal next; plan ingress unchanged; PackagingBump 0.8.28; no new C-ID (honesty cap)
 - [x] 0.8.27: roast cut abandoned/cite/SPEC-EMPTY/learnings/SharedWorktree refuse/order_bind/ORDER tamper/#328 oracle packaging; PackagingBump 0.8.27; no new C-ID (honesty cap)
 

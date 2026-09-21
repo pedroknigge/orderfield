@@ -245,6 +245,16 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             state.setdefault("mission_streak_waves", []).append(int(wave))
         else:
             state["mission_change_streak"] = 0
+    if regime != "escalate_up":
+        from of.replay import DiscoveryReplay
+
+        broken = DiscoveryReplay.unstable(root)
+        if broken:
+            regime = "escalate_up"
+            reason = (
+                f"{broken} did not relax after two waves; "
+                "do not open another requirement"
+            )
     if regime == "escalate_up":
         state["spawn_blocked"] = True
         state["blocked_at_order_rev"] = order_rev_at_decision

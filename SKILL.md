@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.28. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.8.29. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.28"
+  version: "0.8.29"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---

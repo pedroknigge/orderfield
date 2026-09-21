@@ -3,31 +3,24 @@
 A collected residual is a revealed node. Uncollected packets stay hidden
 (prefix-only). The coding agent is unchanged. No new verb.
 
-A requirement is green only when its residual is done and cites artifact_sha.
-Red means owned and not green. The printed next stays on that red with the
-same child. A different id is opened only after the current check is green,
-or after the same id stays red for two waves — and that red still blocks
-contrast. Stop only when every requirement is green.
+The order parameter is one red check. Green is an external check file the
+leader writes (`.orderfield/checks/<id>.json`), not a child `artifact_sha`.
+While any touched requirement lacks that file, the printed next stays on the
+latest red with the same child. Two waves on that red escalate. A different
+id opens only when nothing touched is red, and then only the next unowned
+id in specification order. Stop only when every active requirement is green.
 """
 
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from typing import Any
 
-# Contract surfaces first. A plateau on CLI should open health/timeout/…,
-# not another tweak of the same prefix.
-_SURFACE_RANK = (
-    "HEALTH",
-    "TIMEOUT",
-    "VERSION",
-    "IDEMP",
-    "HTTP",
-    "WEBHOOK",
-    "CLI",
-)
 _COST = 0.05
 _PARALLEL = 0.1
+_CHECK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
 
 
 def _quality(residual: dict[str, Any]) -> float:
@@ -44,19 +37,6 @@ def _quality(residual: dict[str, Any]) -> float:
     if status == "threshold":
         return 0.0
     return 0.1
-
-
-def _prefix(req_id: str) -> str:
-    return str(req_id).split("-", 1)[0].upper()
-
-
-def _rank(req_id: str) -> tuple[int, str]:
-    prefix = _prefix(req_id)
-    try:
-        index = _SURFACE_RANK.index(prefix)
-    except ValueError:
-        index = len(_SURFACE_RANK)
-    return (index, req_id)
 
 
 class DiscoveryReplay:
@@ -177,8 +157,35 @@ class DiscoveryReplay:
         return pack
 
     @staticmethod
-    def _touch(waves: list[dict[str, Any]]) -> tuple[set[str], dict[str, dict[str, Any]]]:
-        green: set[str] = set()
+    def check_path(root: Path, rid: str) -> Path:
+        return root / ".orderfield" / "checks" / f"{rid}.json"
+
+    @staticmethod
+    def externally_green(root: Path, rid: str) -> bool:
+        if not _CHECK_ID.fullmatch(rid):
+            return False
+        path = DiscoveryReplay.check_path(root, rid)
+        if not path.is_file():
+            return False
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(doc, dict) or doc.get("pass") is not True:
+            return False
+        named = str(doc.get("id") or "").strip()
+        return named == rid
+
+    @staticmethod
+    def _green(root: Path) -> set[str]:
+        return {
+            rid
+            for rid in DiscoveryReplay._active_ids(root)
+            if DiscoveryReplay.externally_green(root, rid)
+        }
+
+    @staticmethod
+    def _last(waves: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         last: dict[str, dict[str, Any]] = {}
         for wave in waves:
             for child in wave["children"]:
@@ -190,29 +197,74 @@ class DiscoveryReplay:
                         "q": child["q"],
                         "wave": wave["wave"],
                     }
-                    if float(child["q"]) >= 1.0:
-                        green.add(rid)
-        return green, last
+        return last
 
     @staticmethod
-    def _red_streak(waves: list[dict[str, Any]], rid: str) -> int:
+    def _red_streak(
+        waves: list[dict[str, Any]], rid: str, *, green: set[str]
+    ) -> int:
+        if rid in green:
+            return 0
         streak = 0
         for wave in reversed(waves):
             touched = [child for child in wave["children"] if rid in child["reqs"]]
             if not touched:
                 break
-            if any(float(child["q"]) >= 1.0 for child in touched):
-                break
             streak += 1
         return streak
+
+    @staticmethod
+    def _escalated(root: Path, rid: str, wave: int) -> bool:
+        """True when this red wave already became escalate_up.
+
+        A later printed next, after the leader patches, retries the same
+        child. It does not open a sibling, and it does not escalate again
+        until a newer wave is also red.
+        """
+        from of.field import wave_dir
+
+        path = wave_dir(int(wave), root) / "report.json"
+        if not path.is_file():
+            return False
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(report, dict):
+            return False
+        return report.get("regime") == "escalate_up" and rid in str(
+            report.get("reason") or ""
+        )
+
+    @staticmethod
+    def unstable(root: Path) -> str | None:
+        """Requirement id that stayed red for two waves, or None.
+
+        Integrate turns this into escalate_up. A sibling pack is not the
+        regime change.
+        """
+        if not DiscoveryReplay._active_ids(root):
+            return None
+        waves = DiscoveryReplay.waves(root)
+        green = DiscoveryReplay._green(root)
+        last = DiscoveryReplay._last(waves)
+        reds = [rid for rid in last if rid not in green]
+        reds.sort(key=lambda rid: int(last[rid]["wave"]), reverse=True)
+        for rid in reds:
+            if DiscoveryReplay._red_streak(waves, rid, green=green) >= 2:
+                return rid
+        return None
 
     @staticmethod
     def decide(root: Path) -> dict[str, str] | None:
         if not DiscoveryReplay._active_ids(root):
             return None
         waves = DiscoveryReplay.waves(root)
-        green, last = DiscoveryReplay._touch(waves)
-        unowned = sorted(DiscoveryReplay._unowned(root), key=_rank)
+        green = DiscoveryReplay._green(root)
+        last = DiscoveryReplay._last(waves)
+        unowned = [
+            rid for rid in DiscoveryReplay._unowned(root) if rid not in green
+        ]
         reds = [rid for rid in last if rid not in green]
         reds.sort(key=lambda rid: int(last[rid]["wave"]), reverse=True)
 
@@ -235,14 +287,16 @@ class DiscoveryReplay:
         if reds:
             rid = reds[0]
             touch = last[rid]
-            streak = DiscoveryReplay._red_streak(waves, rid)
-            if streak >= 2 and unowned:
-                opened = unowned[0]
+            streak = DiscoveryReplay._red_streak(waves, rid, green=green)
+            if streak >= 2 and not DiscoveryReplay._escalated(
+                root, rid, int(touch["wave"])
+            ):
                 return {
-                    "label": "OPEN",
+                    "label": "ESCALATE",
                     "detail": (
-                        f"{rid} still red after {streak} waves; do not contrast. "
-                        + pack(role="explorer", child_id=opened, rid=opened)
+                        f"{rid} did not relax after {streak} waves. "
+                        "do not open another requirement. "
+                        "of patch then of next-wave"
                     ),
                 }
             return {
@@ -259,7 +313,12 @@ class DiscoveryReplay:
             }
         if unowned:
             opened = unowned[0]
-            done = ", ".join(sorted(green)) or "none"
+            named = [
+                rid
+                for rid in DiscoveryReplay._active_ids(root)
+                if rid in green
+            ]
+            done = ", ".join(named) or "none"
             return {
                 "label": "OPEN",
                 "detail": (

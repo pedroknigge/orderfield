@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Discovery replay: a worse second wave prints OPEN or STOP, not a bare next-wave."""
+"""Discovery replay: one red check is the order parameter."""
 
 from __future__ import annotations
 
@@ -48,7 +48,15 @@ def packet_path(root: Path, child_id: str, wave: int) -> Path:
     )
 
 
-def land(root: Path, child_id: str, wave: int, *, status: str, evidence: str) -> None:
+def land(
+    root: Path,
+    child_id: str,
+    wave: int,
+    *,
+    status: str,
+    evidence: str,
+    external: bool = True,
+) -> None:
     packet = json.loads(packet_path(root, child_id, wave).read_text(encoding="utf-8"))
     residual = json.loads(DONE.read_text(encoding="utf-8"))
     residual["status"] = status
@@ -69,6 +77,14 @@ def land(root: Path, child_id: str, wave: int, *, status: str, evidence: str) ->
             result,
             rollback=f"git checkout -- {residual['result_ref']}",
         )
+        if external:
+            for rid in packet.get("owns_requirements") or []:
+                check = root / ".orderfield" / "checks" / f"{rid}.json"
+                check.parent.mkdir(parents=True, exist_ok=True)
+                check.write_text(
+                    json.dumps({"id": rid, "pass": True}) + "\n",
+                    encoding="utf-8",
+                )
     dest = root / str(packet["residual_path"])
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
@@ -108,8 +124,23 @@ class ReplayPolicy(unittest.TestCase):
         packed = run_of(self.tmp, *args)
         self.assertEqual(packed.returncode, 0, packed.stderr)
 
-    def _close_wave(self, child_id: str, wave: int, *, status: str, evidence: str) -> None:
-        land(self.tmp, child_id, wave, status=status, evidence=evidence)
+    def _close_wave(
+        self,
+        child_id: str,
+        wave: int,
+        *,
+        status: str,
+        evidence: str,
+        external: bool = True,
+    ) -> None:
+        land(
+            self.tmp,
+            child_id,
+            wave,
+            status=status,
+            evidence=evidence,
+            external=external,
+        )
         collected = run_of(self.tmp, "collect", "--wave", str(wave))
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
         integrated = run_of(self.tmp, "integrate", "--wave", str(wave))
@@ -166,7 +197,7 @@ class ReplayPolicy(unittest.TestCase):
         self.assertIn("CONTINUE", resumed.stdout)
         self.assertNotIn("NEXT-WAVE", resumed.stdout)
 
-    def test_second_red_opens_without_closing(self) -> None:
+    def test_second_red_escalates_without_opening(self) -> None:
         for rid, text in (
             ("HEALTH-001", "GET /health returns 200"),
             ("IDEMP-001", "same idempotency key is not charged twice"),
@@ -189,13 +220,45 @@ class ReplayPolicy(unittest.TestCase):
             status="blocked",
             evidence="scripts/health.py still missing the handler",
         )
+        report = json.loads(
+            (self.tmp / ".orderfield" / "waves" / "002" / "report.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(report["regime"], "escalate_up")
+        self.assertIn("HEALTH-001", report["reason"])
+        self.assertNotIn("IDEMP-001", report["reason"])
         decision = of.replay.DiscoveryReplay.decide(self.tmp)
         self.assertIsNotNone(decision)
         assert decision is not None
-        self.assertEqual(decision["label"], "OPEN")
-        self.assertIn("HEALTH-001 still red", decision["detail"])
-        self.assertIn("do not contrast", decision["detail"])
-        self.assertIn("--owns-requirement IDEMP-001", decision["detail"])
+        self.assertEqual(decision["label"], "CONTINUE")
+        self.assertIn("--owns-requirement HEALTH-001", decision["detail"])
+        self.assertNotIn("IDEMP-001", decision["detail"])
+        state = json.loads(
+            (self.tmp / ".orderfield" / "state.json").read_text(encoding="utf-8")
+        )
+        self.assertTrue(state.get("spawn_blocked"))
+        self.assertEqual(state.get("last_regime"), "escalate_up")
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("PATCH THEN NEXT-WAVE", resumed.stdout)
+        self.assertNotIn("IDEMP-001", resumed.stdout)
+        patched = run_of(
+            self.tmp,
+            "patch",
+            "--constraints-add",
+            "retry HEALTH-001 only; do not open another requirement",
+        )
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertEqual(advanced.returncode, 0, advanced.stderr)
+        retry = of.replay.DiscoveryReplay.decide(self.tmp)
+        self.assertIsNotNone(retry)
+        assert retry is not None
+        self.assertEqual(retry["label"], "CONTINUE")
+        self.assertIn("--child-id health", retry["detail"])
+        self.assertIn("--owns-requirement HEALTH-001", retry["detail"])
+        self.assertNotIn("IDEMP-001", retry["detail"])
 
     def test_no_requirements_keeps_next_wave_after_a_drop(self) -> None:
         self._pack("e1", "map the charge command")
@@ -265,18 +328,70 @@ class ReplayPolicy(unittest.TestCase):
         self.assertEqual(
             opened,
             [
+                "CLI-001",
+                "IDEMP-001",
                 "HEALTH-001",
                 "TIMEOUT-001",
                 "VERSION-001",
-                "IDEMP-001",
                 "WEBHOOK-001",
-                "CLI-001",
             ],
         )
         done = of.replay.DiscoveryReplay.decide(self.tmp)
         self.assertIsNotNone(done)
         assert done is not None
         self.assertEqual(done["label"], "STOP")
+
+    def test_cited_residual_does_not_clear_the_red(self) -> None:
+        for rid, text in (
+            ("CLI-001", "charge command prints the price table"),
+            ("HEALTH-001", "GET /health returns 200"),
+        ):
+            added = run_of(self.tmp, "spec", "--add", rid, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        self._pack("e1", "map the charge command", "CLI-001")
+        self._close_wave(
+            "e1",
+            1,
+            status="done",
+            evidence="scripts/cli.py 1 file changed",
+            external=False,
+        )
+        decision = of.replay.DiscoveryReplay.decide(self.tmp)
+        self.assertIsNotNone(decision)
+        assert decision is not None
+        self.assertEqual(decision["label"], "CONTINUE")
+        self.assertIn("--owns-requirement CLI-001", decision["detail"])
+        self.assertNotIn("HEALTH-001", decision["detail"])
+
+    def test_owned_prompt_omits_the_other_requirement(self) -> None:
+        from of.pack import render_prompt
+
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "STORE-001",
+            "--text",
+            "append only store unique phrase zebra-store",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        added = run_of(
+            self.tmp,
+            "spec",
+            "--add",
+            "CHARGE-001",
+            "--text",
+            "charge id unique phrase quartz-charge",
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        self._pack("store", "build the store", "STORE-001")
+        packet = json.loads(
+            packet_path(self.tmp, "store", 1).read_text(encoding="utf-8")
+        )
+        text = render_prompt(packet, root=self.tmp)
+        self.assertIn("zebra-store", text)
+        self.assertNotIn("quartz-charge", text)
+        self.assertNotIn("Read this file in full", text)
 
 
 if __name__ == "__main__":

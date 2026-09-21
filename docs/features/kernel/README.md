@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.28. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.29. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.28` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.29` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -138,6 +138,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.23 cited on-disk plan files/directories ingest at init (`plan_ingest N`; `PlanCoverage`; `#312`). SPEC / chat paste / `@folder` is not ingest. Pack emits uncovered IDs. Constraint `plan_cover fail-closed` HOLDs close. WARN default. Proof: `PlanIngestGate` / `recovery/plan-ingest-paste`. No new CLI / supervisor.
 - 0.8.23 green collect on a mapped heading surgically writes the cited user plan MD (`PlanWriteBack`; `#313`). Fail-closed without OwnedWrite / CloseEvidence. HITL if the plan is outside the project root or not cited. `docs_sync=done` only after plan bytes change or skip. Proof: `PlanWriteBackUnit` / `PlanWriteBackGate` / `SkillPlanWriteBack`. No new CLI / supervisor.
 - 0.8.25 folder/chat/prompt ingress materialize-then-cite (`PlanIngress`; `#324`). Prompt promote is verbatim + `plan_source <rel> sha=`. `plan_fidelity gap|invent` HOLDs pack. Chat without capture speaks next. Folder writes no new plan MD. Proof: `PlanIngressUnit` / `PlanIngressGate` / `SkillPlanIngress` / `recovery/plan-ingress-promote`. No new CLI / supervisor.
+- 0.8.29 printed `next` treats one red check as the order parameter (`DiscoveryReplay`). Green is `.orderfield/checks/<id>.json` (`pass: true`), not `done` + `artifact_sha`. Two red waves escalate (`spawn_blocked`) instead of opening a sibling; after patch, the same child retries. The next unowned id is specification order. An owned child prompt omits other requirement texts. No requirements: the legal next stands. Not a coverage win over one context. Not plan ingress. Not a new verb. Proof: `ReplayPolicy`.
 - 0.8.28 printed `next` stays on a red requirement (`CONTINUE`, same child) and names the next unowned id (`OPEN`) only after that check is green (`done` + `artifact_sha`). `STOP` is contrast when every requirement is green. No requirements: the legal next stands. Not plan ingress. Not a new verb. Proof: `ReplayPolicy`.
 - 0.8.27 roast cut: abandoned close, verified-contract `--cite`, SPEC-EMPTY, learnings scope, SharedWorktree refuse, `order_bind`, ORDER tamper refuse, `#328` oracle packaging. Proof: `ClosedFieldArchiveTrail` / `SpecEmptyCloseGate` / `SharedWorktreePack` / `OrderLiveTamperRefuse` / `SkillArtifactProve`.
 - 0.8.26 invent is a plan MD created after pin baseline, not an unpinned file in a shared `docs/plans` tree (`PlanIngress`; `#326`). `.orderfield/plan-baseline.json` is written on apply/pin. Proof: `PlanIngressUnit` / `PlanIngressGate`. No new CLI / supervisor.

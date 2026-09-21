@@ -2234,6 +2234,25 @@ def compact_packet_for_prompt(
     return view
 
 
+def _owned_requirement_block(root: Path | None, owned: list[Any]) -> str:
+    """Requirement texts this packet may see. Other ids stay out of the prompt."""
+    if root is None:
+        return ""
+    from of.spec import find_requirement, load_requirements
+
+    data = load_requirements(root)
+    lines: list[str] = []
+    for rid in owned:
+        item = find_requirement(data, str(rid))
+        text = ""
+        if isinstance(item, dict):
+            text = str(item.get("text") or "").strip()
+        lines.append(f"{rid}: {text}".rstrip())
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n\n"
+
+
 def render_prompt(
     packet: dict[str, Any],
     inline: bool = False,
@@ -2276,13 +2295,24 @@ def render_prompt(
             if owned
             else "This packet declared no owns_requirements.\n"
         ) + path_line
+        if owned:
+            spec_read = (
+                "Act only on the owned requirement text below. "
+                "Do not open, implement, or cite any other requirement id. "
+                "Do not write `.orderfield/checks`.\n\n"
+                + _owned_requirement_block(root, owned)
+            )
+        else:
+            spec_read = (
+                "Read this file in full before acting — it is the verbatim user brief:\n\n"
+                f"    {spec_ref_physical}\n\n"
+            )
         body += (
             "\n## Binding specification\n\n"
             "ORDER may compress reasoning. It must not compress the contract.\n"
             "The packet fits on one screen. The specification does not have to.\n"
-            "Read this file in full before acting — it is the verbatim user brief:\n\n"
-            f"    {spec_ref_physical}\n\n"
-            "The slice is a cut of work determined from SPEC + ORDER together. "
+            + spec_read
+            + "The slice is a cut of work determined from SPEC + ORDER together. "
             "It does not replace the specification. "
             "CLI, schemas, types, exit codes, invariants, and deliverables in SPEC "
             "outrank a compressed mission or done_when.\n"

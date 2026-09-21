@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.29
+
+One red check is the order parameter. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.28 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **Reuse, not a new verb:** `resume` still prints `next`. Green is `.orderfield/checks/<id>.json` with `"pass": true` and a matching `id`. A cited residual (`artifact_sha`) does not clear the check. While a touched requirement is red, `CONTINUE` stays on that child and id. Two red waves on that id set `escalate_up` (`spawn_blocked`) and do not open a sibling. After `of patch` bumps the rev, the same child is retried. The next unowned id follows specification order, not a surface rank. Every active requirement green prints `STOP`. No requirements: the legal next stands.
+- **Child prompt:** a packet with `owns_requirements` carries only those requirement texts. It does not tell the child to read `SPEC.md` in full. The file on disk remains.
+- **Honesty:** this is not a coverage win over one context. A seven-module yard tied a single agent at 7/7 external checks; that agent used one run and this walk used seven. It does change the printed next versus 0.8.28.
+- **Proof:** `ReplayPolicy.test_red_requirement_stays_with_the_same_child` / `test_second_red_escalates_without_opening` / `test_cited_residual_does_not_clear_the_red` / `test_green_walk_names_every_requirement_then_stops` / `test_owned_prompt_omits_the_other_requirement` / `test_no_requirements_keeps_next_wave_after_a_drop` / `test_one_wave_keeps_next_wave`.
+- Packaging: VERSION 0.8.29; skill/alias description preview `v0.8.29. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.28 notes.
+
 ## 0.8.28
 
 Printed next names the requirement when one exists. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.27 notes. Folder, chat, and prompt ingress are unchanged.
