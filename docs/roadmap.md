@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.28. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.29. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.28`
+**Status:** Shipped · **Current release line:** `0.8.29`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.29 — one red check is the order parameter
+
+- Green is `.orderfield/checks/<id>.json`, not `artifact_sha`. Two reds escalate instead of opening a sibling. The next id is specification order. An owned packet omits other requirement texts. No requirements: the legal next stands. Not a coverage win over one context. Not a new verb. Proof: `ReplayPolicy`.
 
 ## 0.8.28 — printed next names the requirement
 
