@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.25. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.26. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.25`
+**Status:** Shipped · **Current release line:** `0.8.26`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.26 — plan invent baseline (shared docs/plans is not invent)
+
+- Invent is a plan MD created after pin baseline, not an unpinned pre-existing file (`PlanIngress`; `#326`). `.orderfield/plan-baseline.json` on apply/pin. Shared monorepo trees no longer HOLD invent. Proof: `PlanIngressUnit` / `PlanIngressGate`.
 
 ## 0.8.25 — plan ingress fidelity (folder / chat / prompt → disk contract)
 

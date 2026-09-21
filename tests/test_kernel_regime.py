@@ -2100,6 +2100,8 @@ class PlanIngressUnit(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertFalse((root / ".orderfield" / "plan-source.md").exists())
         self.assertFalse((root / "docs" / "plans" / "active" / "plan-source.md").exists())
+        self.assertTrue((root / of.PlanIngressEval.BASELINE).is_file())
+        self.assertEqual(of.PlanIngress.invented(root), [])
         self.assertIn("folder", initialized.stdout)
 
     def test_chat_without_capture_speaks_next(self) -> None:
@@ -2153,13 +2155,70 @@ class PlanIngressUnit(unittest.TestCase):
     def test_invent_path_hold(self) -> None:
         root = Path(tempfile.mkdtemp(prefix="of-ingress-invent-"))
         self.addCleanup(shutil.rmtree, root, True)
-        of.PlanIngressEval.setup_invent(root)
+        of.PlanIngressEval.setup_promote(root)
+        baseline = root / of.PlanIngressEval.BASELINE
+        self.assertTrue(baseline.is_file(), "baseline is written at pin")
+        of.PlanIngressEval.write_invented(root)
         doc = of.PlanIngress.document(root)
         self.assertEqual(doc["status"], of.PlanIngress.STATUS_INVENT)
         self.assertIn(of.PlanIngressEval.INVENTED, doc["invented"])
         hold = of.PlanIngress.hold_pack(root)
         self.assertIsNotNone(hold)
         self.assertIn("plan_fidelity invent", hold or "")
+
+    def test_shared_tree_preexisting_not_invent(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-shared-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        pinned: list[str] = []
+        for i in range(5):
+            rel = f"docs/plans/owner/pin-{i:02d}.md"
+            path = root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"# Pin {i}\n\n## AUTH-{i:03d} Slice\n", encoding="utf-8")
+            pinned.append(rel)
+        for i in range(12):
+            rel = f"docs/plans/shared/other-{i:02d}.md"
+            path = root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"# Shared {i}\n", encoding="utf-8")
+        initialized = run_of(
+            root,
+            "init",
+            "--mission",
+            "shared tree pin",
+            "--phase",
+            "build",
+            "--source",
+            "Follow " + " ".join(pinned),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        self.assertTrue((root / of.PlanIngressEval.BASELINE).is_file())
+        order = of.load_order(root)
+        self.assertGreaterEqual(len(of.PlanIngress.pinned(order)), 5)
+        invented = of.PlanIngress.invented(root)
+        self.assertEqual(invented, [])
+        hold = of.PlanIngress.hold_pack(root)
+        self.assertTrue(
+            hold is None or "plan_fidelity invent" not in hold,
+            hold,
+        )
+
+    def test_after_pin_new_plan_is_invent(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="of-ingress-after-pin-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        of.PlanIngressEval.setup_promote(root)
+        self.assertTrue((root / of.PlanIngressEval.BASELINE).is_file())
+        self.assertEqual(of.PlanIngress.invented(root), [])
+        extra = of.PlanIngressEval.write_invented(
+            root, of.PlanIngressEval.INVENTED_AFTER
+        )
+        rel = extra.relative_to(root).as_posix()
+        invented = of.PlanIngress.invented(root)
+        self.assertIn(rel, invented)
+        hold = of.PlanIngress.hold_pack(root)
+        self.assertIsNotNone(hold)
+        self.assertIn("plan_fidelity invent", hold or "")
+        self.assertIn("new-fake.md", hold or "")
 
     def test_paste_without_promote_stays_honest(self) -> None:
         root = Path(tempfile.mkdtemp(prefix="of-ingress-paste-"))

@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.26
+
+Plan invent baseline. Shared `docs/plans` trees no longer false-positive `plan_fidelity invent` HOLD. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.25 notes.
+
+- **Reuse table (design-first):** `PlanIngress.invented()` in 0.8.25 returned every `docs/plans/**/*.md` not in the pin set. Monorepos with a shared plans tree HOLD invent on every pack (`#326`).
+- **Reuse, not a new verb:** On pin/materialize/`apply`, write `.orderfield/plan-baseline.json` (sorted `plan_tree_rels` at pin time). `invented()` = `plan_tree_rels(now) − baseline − allowed`. Pre-existing plans are never invent. New MD after pin is invent. No `of plan`. No new ORDER key.
+- **Deep module:** invent stays inside `PlanIngress`. Init / pack / doctor / close keep calling that helper. CLI surface is unchanged.
+- **Proof:** `PlanIngressUnit.test_shared_tree_preexisting_not_invent` / `test_after_pin_new_plan_is_invent` / `test_invent_path_hold` (invented file created after baseline) / `PlanIngressGate.test_shared_tree_does_not_invent_hold_pack` / folder mode with shared tree still green. C-111 extended. No new C-ID (honesty cap). `#326`.
+- Packaging: VERSION 0.8.26; skill/alias description preview `v0.8.26. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.25 notes.
+
 ## 0.8.25
 
 Plan ingress fidelity. A detailed prompt/chat/folder plan is the disk contract (verbatim or cited), not a thin SPEC plus an invented `docs/plans` MD. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.24 notes.

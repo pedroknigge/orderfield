@@ -2250,13 +2250,47 @@ class PlanIngressGate(unittest.TestCase):
     def test_invent_path_holds_pack(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-invent-"))
         self.addCleanup(shutil.rmtree, tmp, True)
-        of.PlanIngressEval.setup_invent(tmp)
+        of.PlanIngressEval.setup_promote(tmp)
+        self.assertTrue((tmp / of.PlanIngressEval.BASELINE).is_file())
+        of.PlanIngressEval.write_invented(tmp)
         packed = run_of(
             tmp, "pack", "--slice", "thin", "--role", "explorer", "--child-id", "x"
         )
         self.assertNotEqual(packed.returncode, 0)
         self.assertIn("of pack refused: plan_fidelity invent", packed.stderr)
         self.assertIn("optimistic-ux-p0.md", packed.stderr)
+
+    def test_shared_tree_does_not_invent_hold_pack(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-shared-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        pinned: list[str] = []
+        for i in range(5):
+            rel = f"docs/plans/owner/pin-{i:02d}.md"
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"# Pin {i}\n\n## AUTH-{i:03d} Slice\n", encoding="utf-8")
+            pinned.append(rel)
+        for i in range(12):
+            rel = f"docs/plans/shared/other-{i:02d}.md"
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"# Shared {i}\n", encoding="utf-8")
+        initialized = run_of(
+            tmp,
+            "init",
+            "--mission",
+            "shared tree pack",
+            "--phase",
+            "build",
+            "--source",
+            "Follow " + " ".join(pinned),
+        )
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        packed = run_of(
+            tmp, "pack", "--slice", "thin", "--role", "explorer", "--child-id", "x"
+        )
+        self.assertNotIn("plan_fidelity invent", packed.stderr)
+        self.assertEqual(of.PlanIngress.invented(tmp), [])
 
     def test_chat_doctor_speaks_without_silent_success(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-ingress-cli-chat-"))
