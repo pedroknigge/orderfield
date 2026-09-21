@@ -2145,7 +2145,10 @@ def resume_next_lines(
             order = load_order(root)
             if EvaluatorPacket.due(root, order, st, live):
                 return ["PACK", EvaluatorPacket.ASK_NEXT]
-        if action in ("next-wave", "pack"):
+        if action in ("next-wave", "pack") and not (
+            action == "next-wave"
+            and str(st.get("last_regime") or "") == "escalate_up"
+        ):
             from of.replay import DiscoveryReplay
 
             replayed = DiscoveryReplay.lines(root)

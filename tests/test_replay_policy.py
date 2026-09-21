@@ -129,7 +129,7 @@ class ReplayPolicy(unittest.TestCase):
         self.assertIn("NEXT-WAVE", resumed.stdout)
         self.assertNotIn("\n  OPEN\n", resumed.stdout)
 
-    def test_worse_second_wave_opens_unowned_surface(self) -> None:
+    def test_red_requirement_stays_with_the_same_child(self) -> None:
         for rid, text in (
             ("CLI-001", "charge command prints the price table"),
             ("HEALTH-001", "GET /health returns 200"),
@@ -151,21 +151,53 @@ class ReplayPolicy(unittest.TestCase):
             "e2",
             2,
             status="blocked",
-            evidence="scripts/cli.py still missing the timeout path",
+            evidence="scripts/health.py still missing the handler",
+        )
+        decision = of.replay.DiscoveryReplay.decide(self.tmp)
+        self.assertIsNotNone(decision)
+        assert decision is not None
+        self.assertEqual(decision["label"], "CONTINUE")
+        self.assertIn("--child-id e2", decision["detail"])
+        self.assertIn("--owns-requirement HEALTH-001", decision["detail"])
+        self.assertIn("do not open another", decision["detail"])
+        self.assertNotIn("IDEMP-001", decision["detail"])
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("CONTINUE", resumed.stdout)
+        self.assertNotIn("NEXT-WAVE", resumed.stdout)
+
+    def test_second_red_opens_without_closing(self) -> None:
+        for rid, text in (
+            ("HEALTH-001", "GET /health returns 200"),
+            ("IDEMP-001", "same idempotency key is not charged twice"),
+        ):
+            added = run_of(self.tmp, "spec", "--add", rid, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        self._pack("health", "probe /health", "HEALTH-001")
+        self._close_wave(
+            "health",
+            1,
+            status="blocked",
+            evidence="scripts/health.py missing the handler",
+        )
+        advanced = run_of(self.tmp, "next-wave")
+        self.assertEqual(advanced.returncode, 0, advanced.stderr)
+        self._pack("health", "probe /health again", "HEALTH-001")
+        self._close_wave(
+            "health",
+            2,
+            status="blocked",
+            evidence="scripts/health.py still missing the handler",
         )
         decision = of.replay.DiscoveryReplay.decide(self.tmp)
         self.assertIsNotNone(decision)
         assert decision is not None
         self.assertEqual(decision["label"], "OPEN")
+        self.assertIn("HEALTH-001 still red", decision["detail"])
+        self.assertIn("do not contrast", decision["detail"])
         self.assertIn("--owns-requirement IDEMP-001", decision["detail"])
-        self.assertNotIn("HEALTH-001", decision["detail"].split("do not refine", 1)[-1])
-        resumed = run_of(self.tmp, "resume")
-        self.assertEqual(resumed.returncode, 0, resumed.stderr)
-        self.assertIn("OPEN", resumed.stdout)
-        self.assertIn("IDEMP-001", resumed.stdout)
-        self.assertNotIn("NEXT-WAVE", resumed.stdout)
 
-    def test_worse_second_wave_stops_when_nothing_is_unowned(self) -> None:
+    def test_no_requirements_keeps_next_wave_after_a_drop(self) -> None:
         self._pack("e1", "map the charge command")
         self._close_wave(
             "e1",
@@ -182,14 +214,69 @@ class ReplayPolicy(unittest.TestCase):
             status="blocked",
             evidence="scripts/cli.py still missing the timeout path",
         )
-        decision = of.replay.DiscoveryReplay.decide(self.tmp)
-        self.assertIsNotNone(decision)
-        assert decision is not None
-        self.assertEqual(decision["label"], "STOP")
-        self.assertIn("of contrast", decision["detail"])
+        self.assertIsNone(of.replay.DiscoveryReplay.decide(self.tmp))
         resumed = run_of(self.tmp, "resume")
-        self.assertIn("STOP", resumed.stdout)
-        self.assertNotIn("NEXT-WAVE", resumed.stdout)
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("NEXT-WAVE", resumed.stdout)
+        self.assertNotIn("STOP", resumed.stdout)
+
+    def test_green_walk_names_every_requirement_then_stops(self) -> None:
+        import shlex
+
+        specs = (
+            ("CLI-001", "pay charge prints a price line and a charge id"),
+            ("IDEMP-001", "the same idempotency key is not charged twice"),
+            ("HEALTH-001", "GET /health returns 200"),
+            ("TIMEOUT-001", "a charge past 2s records nothing"),
+            ("VERSION-001", "GET /version returns the build version"),
+            ("WEBHOOK-001", "webhook POST verifies HMAC and rejects a replayed nonce"),
+        )
+        for rid, text in specs:
+            added = run_of(self.tmp, "spec", "--add", rid, "--text", text)
+            self.assertEqual(added.returncode, 0, added.stderr)
+        opened: list[str] = []
+        for _ in range(len(specs) + 1):
+            decision = of.replay.DiscoveryReplay.decide(self.tmp)
+            self.assertIsNotNone(decision)
+            assert decision is not None
+            if decision["label"] == "STOP":
+                self.assertIn("of contrast", decision["detail"])
+                self.assertIn("do not pack", decision["detail"])
+                break
+            self.assertEqual(decision["label"], "OPEN")
+            if "of next-wave" in decision["detail"]:
+                advanced = run_of(self.tmp, "next-wave")
+                self.assertEqual(advanced.returncode, 0, advanced.stderr)
+            args = shlex.split(decision["detail"].split("of pack", 1)[1])
+            packed = run_of(self.tmp, "pack", *args)
+            self.assertEqual(packed.returncode, 0, packed.stderr + decision["detail"])
+            child = args[args.index("--child-id") + 1]
+            rid = args[args.index("--owns-requirement") + 1]
+            wave = json.loads(
+                (self.tmp / ".orderfield" / "state.json").read_text(encoding="utf-8")
+            )["wave"]
+            self._close_wave(
+                child,
+                int(wave),
+                status="done",
+                evidence=f"src/{rid}.py 1 file changed",
+            )
+            opened.append(rid)
+        self.assertEqual(
+            opened,
+            [
+                "HEALTH-001",
+                "TIMEOUT-001",
+                "VERSION-001",
+                "IDEMP-001",
+                "WEBHOOK-001",
+                "CLI-001",
+            ],
+        )
+        done = of.replay.DiscoveryReplay.decide(self.tmp)
+        self.assertIsNotNone(done)
+        assert done is not None
+        self.assertEqual(done["label"], "STOP")
 
 
 if __name__ == "__main__":

@@ -3,10 +3,11 @@
 A collected residual is a revealed node. Uncollected packets stay hidden
 (prefix-only). The coding agent is unchanged. No new verb.
 
-Replay score, same shape as Dream-RSI: best quality, minus attempts, plus
-a parallelism bonus for disjoint owns-path in that wave. A later wave that
-does not beat the previous one is a plateau: do not print a bare next-wave.
-Open a different unowned requirement, or stop and contrast.
+A requirement is green only when its residual is done and cites artifact_sha.
+Red means owned and not green. The printed next stays on that red with the
+same child. A different id is opened only after the current check is green,
+or after the same id stays red for two waves — and that red still blocks
+contrast. Stop only when every requirement is green.
 """
 
 from __future__ import annotations
@@ -77,21 +78,27 @@ class DiscoveryReplay:
                     revealed.append((packet, residual))
             if not revealed:
                 continue
-            qualities = [_quality(res) for _pkt, res in revealed]
-            paths = {
-                p
-                for pkt, _res in revealed
-                for p in packet_owns_paths(pkt)
-                if p
-            }
-            reqs = sorted(
-                {
-                    str(rid)
-                    for pkt, _res in revealed
-                    for rid in (pkt.get("owns_requirements") or [])
-                    if str(rid).strip()
-                }
-            )
+            children: list[dict[str, Any]] = []
+            for pkt, res in revealed:
+                reqs = sorted(
+                    {
+                        str(rid)
+                        for rid in (pkt.get("owns_requirements") or [])
+                        if str(rid).strip()
+                    }
+                )
+                children.append(
+                    {
+                        "child_id": str(pkt.get("child_id") or ""),
+                        "role": str(pkt.get("role") or "explorer"),
+                        "paths": [p for p in packet_owns_paths(pkt) if p],
+                        "reqs": reqs,
+                        "q": _quality(res),
+                    }
+                )
+            qualities = [child["q"] for child in children]
+            paths = {p for child in children for p in child["paths"]}
+            reqs = sorted({rid for child in children for rid in child["reqs"]})
             n = len(revealed)
             parallel = (len(paths) / n) if n else 0.0
             found.append(
@@ -101,7 +108,7 @@ class DiscoveryReplay:
                     "best": max(qualities),
                     "V": max(qualities) - _COST * n + _PARALLEL * parallel,
                     "reqs": reqs,
-                    "prefixes": sorted({_prefix(r) for r in reqs}),
+                    "children": children,
                 }
             )
         return found
@@ -124,46 +131,148 @@ class DiscoveryReplay:
         return ids
 
     @staticmethod
+    def _active_ids(root: Path) -> list[str]:
+        from of.spec import is_active_requirement, load_requirements
+
+        ids: list[str] = []
+        for item in load_requirements(root).get("requirements") or []:
+            if not isinstance(item, dict) or not is_active_requirement(item):
+                continue
+            rid = str(item.get("id") or "").strip()
+            if rid:
+                ids.append(rid)
+        return ids
+
+    @staticmethod
+    def _command(
+        root: Path,
+        waves: list[dict[str, Any]],
+        *,
+        role: str,
+        child_id: str,
+        rid: str,
+        paths: list[str],
+    ) -> str:
+        import shlex
+
+        from of.field import load_state
+
+        args = [
+            "--role",
+            role or "explorer",
+            "--child-id",
+            child_id,
+            "--owns-requirement",
+            rid,
+        ]
+        for path in paths:
+            args.extend(["--owns-path", path])
+        args.extend(["--slice", f"cover {rid}"])
+        pack = "of pack " + shlex.join(args)
+        if not waves:
+            return pack
+        state = load_state(root)
+        if int(state.get("wave") or 1) == int(waves[-1]["wave"]):
+            return "of next-wave && " + pack
+        return pack
+
+    @staticmethod
+    def _touch(waves: list[dict[str, Any]]) -> tuple[set[str], dict[str, dict[str, Any]]]:
+        green: set[str] = set()
+        last: dict[str, dict[str, Any]] = {}
+        for wave in waves:
+            for child in wave["children"]:
+                for rid in child["reqs"]:
+                    last[rid] = {
+                        "child_id": child["child_id"],
+                        "role": child["role"],
+                        "paths": list(child["paths"]),
+                        "q": child["q"],
+                        "wave": wave["wave"],
+                    }
+                    if float(child["q"]) >= 1.0:
+                        green.add(rid)
+        return green, last
+
+    @staticmethod
+    def _red_streak(waves: list[dict[str, Any]], rid: str) -> int:
+        streak = 0
+        for wave in reversed(waves):
+            touched = [child for child in wave["children"] if rid in child["reqs"]]
+            if not touched:
+                break
+            if any(float(child["q"]) >= 1.0 for child in touched):
+                break
+            streak += 1
+        return streak
+
+    @staticmethod
     def decide(root: Path) -> dict[str, str] | None:
+        if not DiscoveryReplay._active_ids(root):
+            return None
         waves = DiscoveryReplay.waves(root)
-        if len(waves) < 2:
-            return None
-        prev, last = waves[-2], waves[-1]
-        if float(last["V"]) > float(prev["V"]):
-            return None
-        # A larger wave costs more. Quality that held is not a plateau.
-        if float(last["best"]) + 1e-9 >= float(prev["best"]) and float(last["best"]) >= 0.55:
-            return None
-        same = bool(set(last["reqs"]) & set(prev["reqs"]))
-        if abs(float(last["V"]) - float(prev["V"])) < 1e-9 and not same:
-            return None
-        saturated = ", ".join(last["reqs"]) or "(none)"
-        unowned = DiscoveryReplay._unowned(root)
-        opened = [rid for rid in unowned if rid not in set(last["reqs"])]
-        opened.sort(key=_rank)
-        score = (
-            f"replay V {float(prev['V']):.2f} -> {float(last['V']):.2f} "
-            f"on {saturated}"
-        )
-        if not opened:
+        green, last = DiscoveryReplay._touch(waves)
+        unowned = sorted(DiscoveryReplay._unowned(root), key=_rank)
+        reds = [rid for rid in last if rid not in green]
+        reds.sort(key=lambda rid: int(last[rid]["wave"]), reverse=True)
+
+        def pack(
+            *,
+            role: str,
+            child_id: str,
+            rid: str,
+            paths: list[str] | None = None,
+        ) -> str:
+            return DiscoveryReplay._command(
+                root,
+                waves,
+                role=role,
+                child_id=child_id,
+                rid=rid,
+                paths=paths or [],
+            )
+
+        if reds:
+            rid = reds[0]
+            touch = last[rid]
+            streak = DiscoveryReplay._red_streak(waves, rid)
+            if streak >= 2 and unowned:
+                opened = unowned[0]
+                return {
+                    "label": "OPEN",
+                    "detail": (
+                        f"{rid} still red after {streak} waves; do not contrast. "
+                        + pack(role="explorer", child_id=opened, rid=opened)
+                    ),
+                }
             return {
-                "label": "STOP",
+                "label": "CONTINUE",
                 "detail": (
-                    f"{score}; plateau and nothing unowned. "
-                    "of contrast. do not pack another refine"
+                    f"{rid} check red; same child. do not open another. "
+                    + pack(
+                        role=str(touch["role"]),
+                        child_id=str(touch["child_id"]),
+                        rid=rid,
+                        paths=list(touch["paths"]),
+                    )
                 ),
             }
-        rid = opened[0]
-        slug = rid.replace("-", "_").lower()
-        return {
-            "label": "OPEN",
-            "detail": (
-                f"{score}; do not refine. "
-                f"of next-wave && of pack --role implementer --child-id {rid} "
-                f"--owns-requirement {rid} --owns-path src/{slug}.py "
-                f"--slice 'cover {rid}'"
-            ),
-        }
+        if unowned:
+            opened = unowned[0]
+            done = ", ".join(sorted(green)) or "none"
+            return {
+                "label": "OPEN",
+                "detail": (
+                    f"{done} green; open next. "
+                    + pack(role="explorer", child_id=opened, rid=opened)
+                ),
+            }
+        if green:
+            return {
+                "label": "STOP",
+                "detail": "all requirement checks green. of contrast. do not pack",
+            }
+        return None
 
     @staticmethod
     def lines(root: Path) -> list[str] | None:

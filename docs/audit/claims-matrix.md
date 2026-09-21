@@ -16,7 +16,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.27`
+**Code rev:** VERSION `0.8.28`
+- [x] 0.8.28: printed next CONTINUE / OPEN / STOP from collected residuals (`DiscoveryReplay`); no requirements keeps the legal next; plan ingress unchanged; PackagingBump 0.8.28; no new C-ID (honesty cap)
 - [x] 0.8.27: roast cut abandoned/cite/SPEC-EMPTY/learnings/SharedWorktree refuse/order_bind/ORDER tamper/#328 oracle packaging; PackagingBump 0.8.27; no new C-ID (honesty cap)
 
 - [x] 0.8.26: plan invent baseline (`PlanIngress`; `#326`) — invent = post-pin new plan MD, not unpinned shared `docs/plans`; `.orderfield/plan-baseline.json` at apply/pin; PackagingBump 0.8.26; no new C-ID (honesty cap)
