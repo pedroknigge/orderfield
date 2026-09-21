@@ -53,7 +53,7 @@ If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init.
 
 - The brief is still on disk after a compacted chat, a token cut, or a model switch.
 - A mid-run error becomes an amend, a patch, or a residual, and the next packet already carries it.
-- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
+- Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Not a second checklist. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
 - A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 - Two writers on one mission have exclusive owners (requirement or path).
 
