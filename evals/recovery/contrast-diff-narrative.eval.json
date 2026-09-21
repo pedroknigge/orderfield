@@ -60,7 +60,7 @@
     },
     {
       "run": "spec",
-      "args": ["--verified-contract", "CLI-001"],
+      "args": ["--verified-contract", "CLI-001", "--cite", "curl -sS /health"],
       "exit": 0
     },
     {

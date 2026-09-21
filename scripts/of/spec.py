@@ -864,22 +864,7 @@ EXTRACT_PREFIX_CUES = (
         ),
     ),
 )
-NAMED_INVARIANT_CUES = (
-    "execution_failed",
-    "execution_requeued",
-    "retry_wait",
-    "only queued",
-    "idempoten",
-    "concurrent identical",
-    "webhook",
-    "hmac",
-    "/health",
-    "health check",
-    "healthz",
-    "/version",
-    "release header",
-    "deadline",
-)
+NAMED_INVARIANT_CUES = ()
 
 
 def _cue_in(text: str, cue: str) -> bool:
@@ -970,14 +955,9 @@ def extract_requirements_from_spec(
             continue
         if in_fence:
             continue
-        low = stripped.lower()
-        named = any(_cue_in(stripped, cue) for cue in NAMED_INVARIANT_CUES)
-        must_not = ("must not" in low or "shall not" in low) and any(
-            _cue_in(stripped, word) for word in ("lease", "audit", "event")
-        )
-        if named or must_not:
-            body = stripped.lstrip("-* ").strip()
-            add(classify_requirement_prefix(body), body, start, end)
+        # Free-prose cue lists are gone. Binding IDs come from headed
+        # rule bullets, python -m lines, or of spec --add. A keyword in
+        # a marketing sentence is not a TIMEOUT contract.
     return reqs
 
 
@@ -1033,8 +1013,8 @@ def requirement_coverage_errors(root: Path) -> list[str]:
     errors: list[str] = []
     if field_is_file(spec) and not items:
         errors.append(
-            "SPEC.md exists but no binding requirements; "
-            "of spec --extract or of spec --add"
+            "SPEC-EMPTY: SPEC.md exists but no binding requirements; "
+            "of spec --add ID --text '…' (or of spec --extract under a Rules heading)"
         )
         return errors
     unowned = [

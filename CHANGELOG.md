@@ -8,6 +8,22 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.27
+
+Roast cut: abandoned exit, close cite, empty SPEC honesty, learnings scope, shared-worktree refuse, packet bind, ORDER tamper refuse, #328 oracle packaging. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.26 notes.
+
+- **Reuse, not a new verb:** `of close --abandoned --reason TEXT` stamps `CLOSE.json` verdict `ABANDONED` so `of gc --archive-field` can move idle open homes without contrast theater. Doctor OPEN_NOTE names that path.
+- **Reuse, not a new verb:** `of spec --verified-contract ID --cite <path-or-command>` stores `proof_cite` / optional `proof_sha`. Honor-system stamp without a cite is refused.
+- **Honesty:** empty SPEC + empty requirements is `SPEC-EMPTY` in contrast blocking and close refuse (not invented FAILED/PAIR). Free-prose `NAMED_INVARIANT_CUES` extraction is gone; headed Rules bullets + `python -m` + `of spec --add` remain.
+- **Learnings:** resume shows this-repo protocol/field only, capped at 8. Child prompts no longer inject the protocol store.
+- **Ownership:** second unsheltered implementer refuses at pack (`SharedWorktree`); `of pack --force` overrides.
+- **Packet bind:** packets store `order_bind` (sha256 of constraining ORDER fields). Notes/hints/band bump `rev` but do not stale flying children. Constraining patches still refuse while spawned.
+- **WAL:** live `ORDER.json` that disagrees with CURRENT refuses before rematerialize (same class as SPEC tamper).
+- **#328:** `scripts/skill_artifact_prove.py` is on the install skill surface; missing oracle WARNs and skips instead of crashing collect/spawn.
+- **Printed next:** `of migrate --field <id>` parses; multi-field roster speak names that form. RootStub migrate hint includes `--field`.
+- **Proof:** `ClosedFieldArchiveTrail.test_abandoned_close_then_archive` / `SpecEmptyCloseGate` / `SemanticExtract.test_free_prose_deadline_is_not_a_timeout_contract` / `SharedWorktreePack.test_second_implementer_without_worktree_refuses` / `PatchRevStaleFlying.test_patch_notes_while_flying_does_not_refuse` / `OrderLiveTamperRefuse` / `SkillArtifactProve.test_missing_oracle_warns_and_skips` / `InstallScript.test_dest_is_skill_surface_not_repo`. `#328`.
+- Packaging: VERSION 0.8.27; skill/alias description preview `v0.8.27. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.26 notes.
+
 ## 0.8.26
 
 Plan invent baseline. Shared `docs/plans` trees no longer false-positive `plan_fidelity invent` HOLD. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.25 notes.

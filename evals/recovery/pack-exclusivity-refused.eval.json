@@ -1,6 +1,6 @@
 {
   "id": "recovery/pack-exclusivity-refused",
-  "description": "Exclusive ownership: foreign owner, unowned new child, and same-wave path overlap die; a disjoint second owner still packs",
+  "description": "Exclusive ownership: foreign owner, unowned new child, and same-wave path overlap die; a disjoint second owner packs only with --force",
   "fixture": "recovery_pack_exclusivity",
   "tags": ["recovery", "gate", "pack", "ownership"],
   "steps": [
@@ -63,7 +63,8 @@
         "--owns-path",
         "slice/bob.py",
         "--owns-requirement",
-        "BETA-001"
+        "BETA-001",
+        "--force"
       ],
       "exit": 0
     },

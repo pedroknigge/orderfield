@@ -50,6 +50,7 @@ class FieldFormSplit(unittest.TestCase):
         self.assertIn("resume", of.field.FieldWal.VIEW_COMMANDS)
         self.assertTrue(hasattr(of.field.FieldWal, "read_current"))
         self.assertTrue(hasattr(of.field.FieldWal, "refuse_live_spec_tamper"))
+        self.assertTrue(hasattr(of.field.FieldWal, "refuse_live_order_tamper"))
         self.assertTrue(hasattr(of.field.FieldWal, "materialize_current"))
         self.assertTrue(hasattr(of.field.FieldLearnings, "format_continuation"))
         self.assertIs(of.field.FieldRetain.archive, of.retain.ClosedFieldArchive)

@@ -397,6 +397,36 @@ def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
     return {"protocol": protocol, "field": field}
 
 
+def repo_digest(root: Path | None) -> str:
+    """Same 12-hex repo key stamped on learning provenance."""
+    project = Path(root) if root is not None else Path.cwd()
+    try:
+        resolved = str(project.resolve())
+    except OSError:
+        resolved = str(project)
+    return sha256_text(resolved)[:12]
+
+
+def learning_matches_repo(item: dict[str, Any], digest: str) -> bool:
+    prov = item.get("provenance")
+    if not isinstance(prov, dict):
+        return False
+    return str(prov.get("repo") or "") == digest
+
+
+def resume_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
+    """This repo only, capped. Full store stays on `of learn --list`."""
+    grouped = list_learnings(root)
+    digest = repo_digest(root)
+    protocol = [
+        item
+        for item in grouped.get("protocol") or []
+        if learning_matches_repo(item, digest)
+    ][:PROTOCOL_PROMPT_CAP]
+    field = list(grouped.get("field") or [])[:PROTOCOL_PROMPT_CAP]
+    return {"protocol": protocol, "field": field}
+
+
 def protocol_learning_lines(root: Path | None = None) -> list[str]:
     # Child prompts read the user cache only. Field-dir protocol pins are
     # for resume/list; a slave must not inject into the next packet by

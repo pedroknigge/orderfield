@@ -215,6 +215,7 @@ class InstallScript(unittest.TestCase):
             "README.md",
             "scripts/of.py",
             "scripts/of_adapters.py",
+            "scripts/skill_artifact_prove.py",
             "scripts/of/__init__.py",
             "schemas/order.schema.json",
             "references/skill-appendix.md",
@@ -1826,6 +1827,31 @@ occupancy 08:00-12:00
         self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         self.assertIn("overlap", proc.stderr.casefold())
         self.assertNotIn("of prove", proc.stderr.casefold())
+
+    def test_present_oracle_does_not_crash_done_residual(self) -> None:
+        from of.pack import skill_artifact_prove_errors
+
+        errs = skill_artifact_prove_errors({"status": "done", "evidence": ""}, ROOT)
+        self.assertIsInstance(errs, list)
+
+    def test_missing_oracle_warns_and_skips(self) -> None:
+        import of.pack as pack
+
+        pack._ARTIFACT_PROVE_WARNED = False
+        missing = ROOT / "scripts" / "no-such-skill-artifact-prove.py"
+        buf = __import__("io").StringIO()
+        old = sys.stderr
+        sys.stderr = buf
+        try:
+            errs = pack.skill_artifact_prove_errors(
+                {"status": "done"},
+                ROOT,
+                module_path=missing,
+            )
+        finally:
+            sys.stderr = old
+        self.assertEqual(errs, [])
+        self.assertIn("skill_artifact_prove missing", buf.getvalue())
 
 
 class SkillCollectNextIntegrate(unittest.TestCase):

@@ -1741,7 +1741,7 @@ class RunbookPathGate(unittest.TestCase):
             self.tmp, "spec", "--add", "CLI-001", "--text", "the CLI must print hello"
         )
         self.assertEqual(added.returncode, 0, added.stderr)
-        verified = run_of(self.tmp, "spec", "--verified-contract", "CLI-001")
+        verified = run_of(self.tmp, "spec", "--verified-contract", "CLI-001", "--cite", "curl -sS /health")
         self.assertEqual(verified.returncode, 0, verified.stderr)
 
     def test_toy_field_can_close_without_runbook(self) -> None:

@@ -14,6 +14,11 @@
     "packed_at": { "type": "string", "minLength": 1 },
     "order_id": { "type": "string", "minLength": 1 },
     "order_rev": { "type": "integer", "minimum": 1 },
+    "order_bind": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of constraining ORDER fields; notes/hints must not stale this"
+    },
     "order": {
       "type": "object",
       "additionalProperties": false,

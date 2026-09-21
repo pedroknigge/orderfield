@@ -6,7 +6,7 @@ set -euo pipefail
 NAME="orderfield"
 REPO_URL="${ORDERFIELD_REPO:-https://github.com/pedroknigge/orderfield.git}"
 # INSTALL-001: remote fetch pins this release; keep in lockstep with VERSION.
-DEFAULT_VERSION="0.8.26"
+DEFAULT_VERSION="0.8.27"
 # Same names as ADAPTER_ORDER minus agy (gemini dests) and generic (no HOME tree).
 KNOWN_HARNESSES=(claude codex cursor opencode orca grok qwen)
 # agy is not a KNOWN_HARNESSES entry; dests are under .gemini/ (see agy_dests).
@@ -258,7 +258,7 @@ fi
 # Child contract is CHILD.md (#316). Dest list must not name SLAVE.md.
 SKILL_SURFACE_FILES=(SKILL.md CHILD.md VERSION install.sh README.md)
 SKILL_SURFACE_TREES=(of schemas references scripts/of)
-SKILL_SURFACE_SCRIPTS=(scripts/of.py scripts/of_adapters.py)
+SKILL_SURFACE_SCRIPTS=(scripts/of.py scripts/of_adapters.py scripts/skill_artifact_prove.py)
 
 copy_skill_surface() {
   local dest="$1" rel

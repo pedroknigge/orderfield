@@ -158,7 +158,7 @@ class ApprovedDesignFixes(unittest.TestCase):
 
     def _pack(self, child: str, req: str | None = "CLI-001") -> str:
         args = ["pack", "--role", "implementer", "--child-id", child, "--slice", "s", "--seconds", "2",
-                "--owns-path", f"src/{child}.py"]  # same-wave implementers need disjoint write sets
+                "--owns-path", f"src/{child}.py", "--force"]  # same-wave implementers need disjoint write sets
         if req:
             args += ["--owns-requirement", req]
         r = run_of(self.tmp, *args)
@@ -216,7 +216,7 @@ class ApprovedDesignFixes(unittest.TestCase):
         for i in range(4):
             self._pack(f"c{i}", f"R-00{i}")
         r = run_of(self.tmp, "pack", "--role", "implementer", "--child-id", "c5", "--slice", "s",
-                   "--owns-path", "src/c5.py", "--owns-requirement", "CLI-001")
+                   "--owns-path", "src/c5.py", "--owns-requirement", "CLI-001", "--force")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("max_children", r.stderr)
         reqs = json.loads((self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text())

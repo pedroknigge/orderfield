@@ -655,6 +655,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print the migration catalog without touching the field",
     )
+    s.add_argument(
+        "--field",
+        dest="field_id",
+        help="same as of --field; accepted after migrate",
+    )
     s.set_defaults(func=cmd_migrate)
 
     s = sub.add_parser(
@@ -719,6 +724,11 @@ def build_parser() -> argparse.ArgumentParser:
         dest="owns_path",
         action="append",
         help="exclusive product path this packet may write (repeatable; not a file lock)",
+    )
+    s.add_argument(
+        "--force",
+        action="store_true",
+        help="allow a second implementer that shares one git worktree",
     )
     s.add_argument(
         "--force-spawn",
@@ -998,6 +1008,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="mark VERIFIED_CONTRACT after exercising the public surface",
     )
     s.add_argument(
+        "--cite",
+        dest="cite",
+        default="",
+        help="with --verified-contract: path or command that exercised the surface",
+    )
+    s.add_argument(
         "--both-sides",
         dest="both_sides",
         action="store_true",
@@ -1075,6 +1091,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--checklist",
         action="store_true",
         help="print contrast + residual-empty proof; do not stamp",
+    )
+    s.add_argument(
+        "--abandoned",
+        action="store_true",
+        help=(
+            "stamp CLOSE.json verdict ABANDONED without contrast; "
+            "requires --reason; then of gc --archive-field"
+        ),
+    )
+    s.add_argument(
+        "--reason",
+        default="",
+        help="required with --abandoned; stored on CLOSE.json",
     )
     s.set_defaults(func=cmd_close)
 

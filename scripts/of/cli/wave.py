@@ -99,6 +99,7 @@ from of.pack import (
     load_packet,
     packed_children,
     packet_digest,
+    order_bind_digest,
     packet_owns_paths,
     packet_residual_file,
     prior_wave_path_owners,
@@ -522,6 +523,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
     if fidelity:
         die(fidelity)
     state = load_state(root)
+    blocked, why = spawn_is_blocked(
+        state, force=bool(getattr(args, "force_spawn", False))
+    )
+    if blocked:
+        die(why)
     SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
     slice_note = SliceLint.long_note(slice_text)
     requires_tool = [t.strip().lower() for t in (getattr(args, "requires_tool", None) or [])]
@@ -590,13 +596,6 @@ def cmd_pack(args: argparse.Namespace) -> None:
                 + ", ".join(unbounded)
                 + " without owns_paths; cannot prove disjoint write sets. "
                 "of unpack or pack the first child with --owns-path"
-            )
-        missing = SharedWorktree.unsheltered(root, child_id, implementers)
-        if missing:
-            emit_wave_warning(
-                SharedWorktree.KIND,
-                SharedWorktree.note(missing),
-                plain=f"note: {SharedWorktree.note(missing)}",
             )
     if owns_paths:
         conflict = same_wave_owns_path_conflict(live, child_id, owns_paths)
@@ -697,6 +696,26 @@ def cmd_pack(args: argparse.Namespace) -> None:
             f"unowned: {', '.join(unowned_ids[:12])}"
             + ("…" if len(unowned_ids) > 12 else "")
         )
+    if owns:
+        from of.spec import find_requirement
+
+        for req_id in owns:
+            item = find_requirement(reqs, req_id)
+            if item is None:
+                die(f"unknown requirement {req_id}; of spec --add first")
+            others = [o for o in (item.get("owned_by") or []) if o != child_id]
+            if others:
+                die(
+                    f"requirement {req_id} already owned by {others[0]}; "
+                    "one exclusive owner per binding requirement"
+                )
+    if args.role == "implementer" and implementers and owns_paths:
+        missing = SharedWorktree.unsheltered(root, child_id, implementers)
+        if missing and not getattr(args, "force", False):
+            die(
+                SharedWorktree.note(missing)
+                + " of pack --force to share one worktree anyway."
+            )
     packet = {
         "v": 1,
         "packet_id": f"pkt_{uuid.uuid4().hex}",
@@ -705,6 +724,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "packed_at": utc_now(),
         "order_id": order["id"],
         "order_rev": order["rev"],
+        "order_bind": order_bind_digest(order),
         "order": order_view,
         "slice": slice_text,
         "role": args.role,

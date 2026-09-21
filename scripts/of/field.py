@@ -470,7 +470,7 @@ class RootStub:
     KIND_LEGACY = "legacy"
     KIND_STALE = "stale"
     KIND_AMBIGUOUS = "ambiguous"
-    MIGRATE_HINT = "of migrate"
+    MIGRATE_HINT = "of migrate --field <id>"
 
     @staticmethod
     def path(root: Path | None = None) -> Path:
@@ -1170,7 +1170,7 @@ def bind_active_field(
         return None
     die_field_roster(
         homes,
-        "multiple fields; pass --field <id> or OF_FIELD (of fields to list)",
+        "multiple fields; of <verb> --field <id> or of --field <id> <verb> (of fields to list)",
     )
     return None
 
@@ -1989,6 +1989,7 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
             if command in MUTATING_COMMANDS and command != "migrate":
                 if command != "spec":
                     FieldWal.refuse_live_spec_tamper(root)
+                    FieldWal.refuse_live_order_tamper(root)
                 FieldWal.materialize_current(root, overwrite=True)
             with FieldWal.generation(root):
                 yield
@@ -3911,7 +3912,9 @@ class DoctorSkew:
     )
     OPEN_NOTE = (
         "sibling fields without CLOSE are hygiene "
-        "(not field FAIL; of fields; of close | of gc --archive-field)"
+        "(not field FAIL; of fields; "
+        "of close --abandoned --reason TEXT; "
+        "of gc --archive-field after close)"
     )
 
     @staticmethod
@@ -4111,7 +4114,13 @@ class DoctorSkew:
                     )
                     skewed = True
             for pkt in packets:
-                if not packet_is_stale(pkt, order):
+                stale = packet_is_stale(pkt, order)
+                rev_only = (
+                    closed
+                    and not stale
+                    and pkt.get("order_rev") != order.get("rev")
+                )
+                if not stale and not rev_only:
                     continue
                 cid = str(pkt.get("child_id") or "?")
                 if closed:
@@ -5131,6 +5140,7 @@ from of.learn import (  # noqa: E402,F401
     learning_skip_warn_cache_path,
     learnings_dir,
     list_learnings,
+    resume_learnings,
     load_field_learnings,
     load_protocol_store,
     page_listed,
