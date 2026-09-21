@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.26. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.27. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.26`
+**Status:** Shipped · **Current release line:** `0.8.27`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.27 — roast cut: abandoned exit, cite, SPEC-EMPTY, learnings, bind, #328
+
+- `of close --abandoned --reason`; `--verified-contract --cite`; SPEC-EMPTY; resume learnings capped/repo-scoped; child prompts omit protocol store; SharedWorktree refuse; `order_bind`; ORDER live vs WAL refuse; skill_artifact_prove on install surface + defensive import (`#328`). Proof: `ClosedFieldArchiveTrail` / `SpecEmptyCloseGate` / `SharedWorktreePack` / `PatchRevStaleFlying` / `OrderLiveTamperRefuse` / `SkillArtifactProve`.
 
 ## 0.8.26 — plan invent baseline (shared docs/plans is not invent)
 
@@ -108,7 +112,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 
 ## 0.8.14 — shared worktree warn for a second implementer
 
-- Two implementers with disjoint `--owns-path` still share one git HEAD and one index. `SharedWorktree` warns `shared_worktree` when a second `--role implementer` is packed and no `of worktree add` is recorded for the unsheltered children. Packet is still written — isolate with two worktrees or run in series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. C-050. No new CLI verb / schema / supervisor. Not a new regime. `#214`.
+- Two implementers with disjoint `--owns-path` still share one git HEAD and one index. 0.8.14 `SharedWorktree` warned `shared_worktree` and still wrote the packet. 0.8.27 refuses that pack unless `of pack --force`, or each implementer has `of worktree add`, or they run in series. Proof: `SharedWorktreePack` / `SkillSharedWorktree`. C-050. No new CLI verb / schema / supervisor. Not a new regime. `#214`.
 
 ## 0.8.13 — force-spawn refuses a live recorded pid
 

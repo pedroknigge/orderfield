@@ -136,11 +136,11 @@ A successful `of phase` refreshes the just-integrated wave's covering digest (`P
 
 ## Two implementers, one branch
 
-**Symptom:** pack prints `note: two implementers share one git HEAD/index` / `shared_worktree`, or two children's commits land on one branch.
+**Symptom:** pack dies with `two implementers share one git HEAD/index` / `shared_worktree`, or two children's commits land on one branch.
 
-**Meaning:** `--owns-path` does not isolate HEAD or the index. Two implementers in one worktree share the branch pointer and staging area.
+**Meaning:** `--owns-path` does not isolate HEAD or the index. A second unsheltered implementer is refused. Two implementers in one worktree share the branch pointer and staging area.
 
-**Recover:** `of worktree add --child-id` for each implementer before spawn, or run them in series (collect the first before spawning the second). Disjoint paths stay required; they are not a substitute for two worktrees.
+**Recover:** `of worktree add --child-id` for each implementer before pack, or run them in series (collect the first before packing the second). `of pack --force` is the operator override. Disjoint paths stay required; they are not a substitute for two worktrees.
 
 ## Spawn residual extract refused
 

@@ -49,6 +49,7 @@ from of.regime import (
 )
 from of.pack import (
     PacketRevStale,
+    in_flight_children,
     packed_children,
     truncate_slice,
 )
@@ -65,6 +66,7 @@ from of.spec import (
     merge_extracted_requirements,
     read_brief_file,
     read_spec_text,
+    read_user_text,
     require_req_id,
     require_spec_intact,
     requirement_close_ok,
@@ -321,6 +323,22 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             else:
                 print(f"surface     {rid} {new} (unchanged)")
     both_sides = bool(getattr(args, "both_sides", False))
+    cite = str(getattr(args, "cite", "") or "").strip()
+    verified_ids = list(getattr(args, "verified_contract", None) or [])
+    if verified_ids and not cite:
+        die(
+            "of spec --verified-contract requires --cite <path-or-command> "
+            "(receipt of the public-surface exercise)"
+        )
+    proof_sha = ""
+    if cite and verified_ids:
+        try:
+            cand = (root / cite).resolve()
+            cand.relative_to(root.resolve())
+            if cand.is_file() and not cand.is_symlink():
+                proof_sha = sha256_text(read_user_text(cand, flag="--cite"))
+        except (OSError, ValueError, UnicodeDecodeError):
+            proof_sha = ""
     for rid in getattr(args, "verified_internal", None) or []:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
@@ -347,7 +365,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 "(unit tests are VERIFIED_INTERNAL, not close).",
                 file=sys.stderr,
             )
-    for rid in getattr(args, "verified_contract", None) or []:
+    for rid in verified_ids:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
             die(f"unknown requirement {rid}")
@@ -357,6 +375,9 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 "(exercise both sides at the public surface first)"
             )
         item["status"] = "verified_contract"
+        item["proof_cite"] = cite
+        if proof_sha:
+            item["proof_sha"] = proof_sha
         if both_sides:
             item["pair_checked"] = True
         changed = True
@@ -512,9 +533,19 @@ class ContrastReport:
     @staticmethod
     def machine(doc: dict[str, Any]) -> dict[str, Any]:
         rows = list(doc.get("rows") or [])
+        blocking = [str(r.get("id") or "") for r in rows if r.get("blocking")]
+        for err in doc.get("errors") or []:
+            text = str(err or "")
+            if text.startswith("SPEC-EMPTY"):
+                if "SPEC-EMPTY" not in blocking:
+                    blocking.append("SPEC-EMPTY")
+            elif text and text not in blocking:
+                # Keep named errors visible when no requirement rows exist.
+                if not rows:
+                    blocking.append(text.split(";", 1)[0].strip())
         return {
             "v": 1,
-            "blocking": [str(r.get("id") or "") for r in rows if r.get("blocking")],
+            "blocking": blocking,
             "coverage": doc.get("coverage") or {},
             "errors": list(doc.get("errors") or []),
             "gate": str(doc.get("gate") or ""),
@@ -1333,6 +1364,25 @@ class CloseProof:
             save_state(state, root)
             dump_json(CloseProof.path(root), CloseProof.document(order))
 
+    @staticmethod
+    def stamp_abandoned(root: Path, order: dict[str, Any], reason: str) -> None:
+        """Terminal stop. Not contrast. Not done_when. Archive can move the home."""
+        text = str(reason or "").strip()
+        if not text:
+            die("of close --abandoned requires --reason <text>")
+        order["spec_closed"] = True
+        order["rev"] = int(order["rev"]) + 1
+        state = load_state(root)
+        state["spawn_blocked"] = True
+        doc = CloseProof.document(order)
+        doc["verdict"] = "ABANDONED"
+        doc["reason"] = text
+        doc["done_when_closed"] = False
+        with field_generation(root):
+            save_order(order, root)
+            save_state(state, root)
+            dump_json(CloseProof.path(root), doc)
+
 
 def cmd_close(args: argparse.Namespace) -> None:
     """Stamp SPEC closed. Refused while contrast is OPEN or residual MISSING."""
@@ -1347,6 +1397,29 @@ def cmd_close(args: argparse.Namespace) -> None:
     PlanCoverage.emit(root, order)
     PlanIngress.emit(root, order)
     DoctorSkew.emit_teardown(root)
+    if getattr(args, "abandoned", False):
+        if getattr(args, "checklist", False):
+            die("of close --abandoned does not take --checklist")
+        reason = str(getattr(args, "reason", "") or "").strip()
+        if not reason:
+            die("of close --abandoned requires --reason <text>")
+        wave = int(order.get("wave") or state.get("wave") or 1)
+        flying = in_flight_children(root, wave)
+        if flying:
+            names = ", ".join(str(item.get("child_id") or "?") for item in flying)
+            die(f"of close --abandoned refuses in-flight children: {names}")
+        if order.get("spec_closed"):
+            print("close       already spec_closed")
+            return
+        CloseProof.stamp_abandoned(root, order, reason)
+        fid = str(order.get("id") or "")
+        print(
+            f"ABANDONED   rev={order['rev']}  proof={CloseProof.FILENAME}  "
+            f"reason={reason}"
+        )
+        if fid:
+            print(f"next          of gc --archive-field {fid}")
+        return
     if not getattr(args, "checklist", False):
         hold = PlanCoverage.hold_close(root, order)
         if hold:
@@ -1366,9 +1439,35 @@ def cmd_close(args: argparse.Namespace) -> None:
             raise SystemExit(2)
         return
     if print_contrast_report(root, order):
+        doc = ContrastReport.document(root, order)
+        errors = [str(e) for e in (doc.get("errors") or []) if e]
+        if errors and all(str(e).startswith("SPEC-EMPTY") for e in errors):
+            die(
+                "of close refused: SPEC-EMPTY — "
+                "of spec --add ID --text '…' before close"
+            )
+        labels: list[str] = []
+        for row in doc.get("rows") or []:
+            if not isinstance(row, dict) or not row.get("blocking"):
+                continue
+            rid = str(row.get("id") or "")
+            verdict = str(row.get("verdict") or "")
+            if rid and verdict:
+                labels.append(f"{rid} ({verdict})")
+            elif rid:
+                labels.append(rid)
+        machine = ContrastReport.machine(doc)
+        if not labels:
+            labels = [str(b) for b in (machine.get("blocking") or []) if b]
+        if labels:
+            die(
+                "of close refused: binding remain — "
+                + ", ".join(labels[:12])
+                + ("…" if len(labels) > 12 else "")
+            )
         die(
-            "of close refused: binding FAILED/MISSING/DELIVERED/"
-            "VERIFIED_INTERNAL/PAIR remain"
+            "of close refused: contrast OPEN — "
+            + (errors[0] if errors else ContrastReport.NEXT_BLOCKED)
         )
     if not checklist["residual_empty"]:
         CloseChecklist.refuse_residual(checklist)

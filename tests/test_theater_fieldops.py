@@ -145,7 +145,7 @@ class Loop001CollectIntegrate(unittest.TestCase):
         json.loads(integrated.stdout)
         self.assertIn("owned-but-unverified LOOP-001", integrated.stderr)
         self.assertEqual(req_status(self.tmp, "LOOP-001"), "owned")
-        stamped = run_of(self.tmp, "spec", "--verified-contract", "LOOP-001")
+        stamped = run_of(self.tmp, "spec", "--verified-contract", "LOOP-001", "--cite", "curl -sS /health")
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         self.assertEqual(req_status(self.tmp, "LOOP-001"), "verified_contract")
         collected = run_of(self.tmp, "collect")

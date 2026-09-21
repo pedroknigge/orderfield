@@ -664,6 +664,7 @@ class ResumeRecoveryBrief(unittest.TestCase):
             owns_path,
             "--owns-requirement",
             req_id,
+            "--force",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -1907,7 +1908,7 @@ class StaleWaveRecovery(unittest.TestCase):
 
     def test_complete_stale_wave_next_wave_without_integrate(self) -> None:
         write_bound_residual(self.tmp, "c1")
-        patched = run_of(self.tmp, "patch", "--notes", "rev bump only")
+        patched = run_of(self.tmp, "patch", "--constraints-add", "append-only")
         self.assertEqual(patched.returncode, 0, patched.stderr)
         nxt = run_of(self.tmp, "next-wave")
         self.assertEqual(nxt.returncode, 0, nxt.stderr)
@@ -2595,8 +2596,8 @@ class ProtocolLearnings(unittest.TestCase):
             ".orderfield/waves/001/packets/e1.json",
         )
         self.assertEqual(rendered.returncode, 0, rendered.stderr)
-        self.assertIn("Orderfield protocol learnings", rendered.stdout)
-        self.assertIn("Windows flock uses a high-offset byte", rendered.stdout)
+        self.assertNotIn("Orderfield protocol learnings", rendered.stdout)
+        self.assertNotIn("Windows flock uses a high-offset byte", rendered.stdout)
         self.assertNotIn("the pricing tool uses Postgres", rendered.stdout)
         self.assertNotIn("Postgres", rendered.stdout)
 
@@ -3126,6 +3127,31 @@ class ClosedFieldArchiveTrail(unittest.TestCase):
         self.assertNotEqual(bound.returncode, 0, bound.stdout)
         self.assertIn("archived", bound.stderr)
         self.assertIn(".orderfield/archive/", bound.stderr)
+
+    def test_abandoned_close_then_archive(self) -> None:
+        fid = self._keep_and_closeable()
+        missing = run_of(self.tmp, "close", "--abandoned")
+        self.assertNotEqual(missing.returncode, 0, missing.stdout)
+        self.assertIn("--reason", missing.stderr)
+        closed = run_of(
+            self.tmp,
+            "close",
+            "--abandoned",
+            "--reason",
+            "mission already shipped",
+        )
+        self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        self.assertIn("ABANDONED", closed.stdout)
+        proof = json.loads(
+            (self.tmp / ".orderfield" / "fields" / fid / "CLOSE.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(proof["verdict"], "ABANDONED")
+        self.assertEqual(proof["reason"], "mission already shipped")
+        archived = run_of(self.tmp, "gc", "--archive-field", fid)
+        self.assertEqual(archived.returncode, 0, archived.stdout + archived.stderr)
+        self.assertIn("archived", archived.stdout)
 
 
 class WaveRosterListShow(unittest.TestCase):
@@ -3882,6 +3908,7 @@ class DurableMultiDayResume(unittest.TestCase):
                 path,
                 "--owns-requirement",
                 req_id,
+                "--force",
             )
             self.assertEqual(packed.returncode, 0, packed.stderr)
         (self.tmp / "app").mkdir(exist_ok=True)
@@ -4316,6 +4343,51 @@ class PatchRevStaleFlying(unittest.TestCase):
         self.assertIn("stales 1 packet(s) in wave 1", patched.stderr)
         order = load_json(self.tmp / ".orderfield" / "ORDER.json")
         self.assertIn("packed leftover ok", order.get("constraints") or [])
+
+    def test_patch_notes_while_flying_does_not_refuse(self) -> None:
+        self._init_pack(spawn=True)
+        before = load_json(self.tmp / ".orderfield" / "ORDER.json")["rev"]
+        packet = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "flyer.json"
+        )
+        self.assertTrue(packet.get("order_bind"))
+        patched = run_of(self.tmp, "patch", "--notes", "leader note only")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+        after = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(after["rev"], before + 1)
+        self.assertIn("leader note only", after.get("notes") or "")
+        self.assertFalse(of.packet_is_stale(packet, after))
+        self.assertEqual(packet["order_bind"], of.order_bind_digest(after))
+
+
+class OrderLiveTamperRefuse(unittest.TestCase):
+    """Live ORDER rewrite that disagrees with WAL CURRENT refuses loudly."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-order-tamper-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_silent_order_rewrite_refuses_patch(self) -> None:
+        started = run_of(
+            self.tmp, "init", "--mission", "original mission", "--phase", "build"
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        live = self.tmp / ".orderfield" / "ORDER.json"
+        data = json.loads(live.read_text(encoding="utf-8"))
+        data["mission"] = "REWRITTEN BY CHILD"
+        live.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        # Newer than WAL CURRENT so rematerialize would hide the rewrite.
+        import os
+        import time
+
+        now = time.time() + 5
+        os.utime(live, (now, now))
+        patched = run_of(self.tmp, "patch", "--notes", "hello")
+        self.assertNotEqual(patched.returncode, 0, patched.stdout)
+        self.assertIn("ORDER.json disagrees with WAL CURRENT", patched.stderr)
+        resumed = run_of(self.tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("original mission", resumed.stdout)
 
 
 class ResumeAfterProcessDeath(unittest.TestCase):

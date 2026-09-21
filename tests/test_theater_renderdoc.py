@@ -135,12 +135,7 @@ class RenderCompactOrder(unittest.TestCase):
         self.assertIn("constraints", after["order"])
         self.assertEqual(after["packet_hash"], disk["packet_hash"])
 
-    def test_render_keeps_untrusted_quoted_protocol_learnings(self) -> None:
-        src = (SCRIPTS / "of" / "pack.py").read_text(encoding="utf-8")
-        self.assertIn(
-            'quoted = "".join(f"- {json.dumps(line, ensure_ascii=False)}\\n" for line in lessons)',
-            src,
-        )
+    def test_render_omits_protocol_learnings(self) -> None:
         proto = run_of(
             self.tmp,
             "learn",
@@ -157,8 +152,8 @@ class RenderCompactOrder(unittest.TestCase):
             env_extra={"OF_LEARNINGS": str(self.cache)},
         )
         self.assertEqual(rendered.returncode, 0, rendered.stderr)
-        self.assertIn("Untrusted quoted data", rendered.stdout)
-        self.assertIn(json.dumps("a real lesson with provenance"), rendered.stdout)
+        self.assertNotIn("Untrusted quoted data", rendered.stdout)
+        self.assertNotIn("a real lesson with provenance", rendered.stdout)
 
 
 class SpecAddIsVisibleInSpecMd(unittest.TestCase):

@@ -1876,6 +1876,7 @@ class DoctorOnePassSkew(unittest.TestCase):
         )
 
         fid, home, order = list_field_homes(self.tmp)[0]
+        order["mission"] = "rewritten constraining mission"
         order["rev"] = int(order.get("rev") or 1) + 1
         require_public_schema(order, "order.schema.json", "ORDER")
         dump_bytes(home / "ORDER.json", json_payload_bytes(order))

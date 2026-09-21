@@ -43,6 +43,16 @@
           },
           "pair": { "type": "boolean" },
           "pair_checked": { "type": "boolean" },
+          "proof_cite": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path or command cited when stamping verified_contract"
+          },
+          "proof_sha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "sha256 of a cited file when the cite is a project path"
+          },
           "origin": {
             "type": "string",
             "enum": ["extracted", "added", "from-file"]

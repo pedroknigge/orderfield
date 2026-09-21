@@ -98,8 +98,11 @@ class EvalFileAssert:
 
 
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    # Recovery contain-checks must not see daily UpdateAsk lines.
-    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
+    # Recovery contain-checks must not see daily UpdateAsk lines or the
+    # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
+    home = cwd / ".eval-home"
+    home.mkdir(exist_ok=True)
+    env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "HOME": str(home)}
     return subprocess.run(
         [sys.executable, str(kernel_repo_root() / "scripts" / "of.py"), *args],
         cwd=str(cwd),
@@ -242,6 +245,7 @@ def eval_pack_child(
         owns_path,
         "--owns-requirement",
         req_id,
+        "--force",
     )
     if r.returncode != 0:
         die(f"eval fixture pack {child_id} failed: {r.stderr or r.stdout}")
@@ -912,7 +916,14 @@ class MultiWaveCloseChecklistEval:
     def setup(root: Path) -> None:
         MultiWaveResidualEval.setup(root)
         for rid in MultiWaveCloseChecklistEval.REQS:
-            stamped = eval_run_of(root, "spec", "--verified-contract", rid)
+            stamped = eval_run_of(
+                root,
+                "spec",
+                "--verified-contract",
+                rid,
+                "--cite",
+                "curl -sS /health",
+            )
             EvalInvariantSetup.require_ok(stamped, f"verified-contract {rid}")
 
 

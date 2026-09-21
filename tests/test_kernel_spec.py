@@ -393,7 +393,7 @@ class SpecFidelity(unittest.TestCase):
         self.assertNotEqual(refused_internal.returncode, 0)
         args = ["spec"]
         for rid in ids:
-            args.extend(["--verified-contract", rid])
+            args.extend(["--verified-contract", rid, "--cite", "curl -sS /health"])
         args.append("--both-sides")
         contract = run_of(self.tmp, *args)
         self.assertEqual(contract.returncode, 0, contract.stderr)
@@ -576,7 +576,7 @@ class SpecFidelity(unittest.TestCase):
         self.assertNotIn(drop, contrast.stdout)
         args = ["spec"]
         for rid in keep:
-            args.extend(["--verified-contract", rid])
+            args.extend(["--verified-contract", rid, "--cite", "curl -sS /health"])
         args.append("--both-sides")
         v = run_of(self.tmp, *args)
         self.assertEqual(v.returncode, 0, v.stderr)
@@ -613,12 +613,12 @@ class SpecFidelity(unittest.TestCase):
         refused = run_of(self.tmp, "close")
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
         after = run_of(self.tmp, "contrast")
@@ -689,7 +689,7 @@ class PairVerifiedContractRefuse(unittest.TestCase):
         self.assertEqual(added.returncode, 0, added.stderr)
         self.assertTrue(of.requirement_is_pair(self._item("RFI-027")))
         before = self._contract_count()
-        refused = run_of(self.tmp, "spec", "--verified-contract", "RFI-027")
+        refused = run_of(self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", "curl -sS /health")
         self.assertNotEqual(refused.returncode, 0, refused.stdout)
         self.assertIn("RFI-027 is a PAIR requirement", refused.stderr)
         self.assertIn("needs --both-sides", refused.stderr)
@@ -697,7 +697,7 @@ class PairVerifiedContractRefuse(unittest.TestCase):
         self.assertFalse(self._item("RFI-027").get("pair_checked"))
         self.assertEqual(self._contract_count(), before)
         sealed = run_of(
-            self.tmp, "spec", "--verified-contract", "RFI-027", "--both-sides"
+            self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", "curl -sS /health", "--both-sides"
         )
         self.assertEqual(sealed.returncode, 0, sealed.stderr)
         self.assertEqual(self._item("RFI-027").get("status"), "verified_contract")
@@ -1078,12 +1078,12 @@ class WebhookPairGate(unittest.TestCase):
         self.assertIn("CLOSE BLOCKED", contrast.stdout)
         refused = run_of(self.tmp, "close")
         self.assertNotEqual(refused.returncode, 0)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
         after = run_of(self.tmp, "contrast")
@@ -1210,7 +1210,7 @@ class ContractSurfaceGate(unittest.TestCase):
             refused = run_of(self.tmp, "close")
             self.assertNotEqual(refused.returncode, 0)
             self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-            stamped = run_of(self.tmp, "spec", "--verified-contract", rid)
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
             self.assertEqual(stamped.returncode, 0, stamped.stderr)
             after = run_of(self.tmp, "contrast")
             self.assertIn("VERIFIED_CONTRACT", after.stdout)
@@ -1231,7 +1231,7 @@ class ContractSurfaceGate(unittest.TestCase):
             refused = run_of(self.tmp, "close")
             self.assertNotEqual(refused.returncode, 0)
             self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-            stamped = run_of(self.tmp, "spec", "--verified-contract", rid)
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
             self.assertEqual(stamped.returncode, 0, stamped.stderr)
             after = run_of(self.tmp, "contrast")
             self.assertIn("VERIFIED_CONTRACT", after.stdout)
@@ -1293,12 +1293,12 @@ class ContractSurfaceGate(unittest.TestCase):
         self._init()
         rid = self._listed_id("idempotency")
         self.assertTrue(rid.startswith("IDEMP-"), rid)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid)
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
 
@@ -1683,10 +1683,11 @@ class SemanticExtract(unittest.TestCase):
             [
                 "# TaskForge",
                 "",
-                "Only queued jobs whose available_at is due may be leased.",
-                "Fail must emit execution_failed.",
-                "Recover of retry_wait to queued must emit execution_requeued.",
-                "Eight concurrent identical enqueue requests must converge.",
+                "## Rules",
+                "- Only queued jobs whose available_at is due may be leased.",
+                "- Fail must emit execution_failed.",
+                "- Recover of retry_wait to queued must emit execution_requeued.",
+                "- Eight concurrent identical enqueue requests must converge.",
                 "",
                 "You must consider retries when designing backoff.",
                 "",
@@ -1713,12 +1714,20 @@ class SemanticExtract(unittest.TestCase):
         self.assertFalse(changed)
         self.assertEqual(len(data["requirements"]), len(reqs))
 
+    def test_free_prose_deadline_is_not_a_timeout_contract(self) -> None:
+        text = (
+            "Redesign the marketing site. The hero needs a new headline. "
+            "Nothing about a deadline should slip."
+        )
+        self.assertEqual(of.extract_requirements_from_spec(text), [])
+
     def test_contrast_cites_spec_line(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-extract-cite-"))
         self.addCleanup(shutil.rmtree, tmp, True)
         brief = tmp / "brief.md"
         brief.write_text(
-            "Only queued jobs whose available_at is due may be leased.\n"
+            "# TaskForge\n\n## Rules\n"
+            "- Only queued jobs whose available_at is due may be leased.\n"
             "python -m taskforge lease\n",
             encoding="utf-8",
         )
@@ -1735,6 +1744,71 @@ class SemanticExtract(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         contrast = run_of(tmp, "contrast")
         self.assertIn("SPEC.md:", contrast.stdout)
+
+
+class SpecEmptyCloseGate(unittest.TestCase):
+    """Empty SPEC blocks with SPEC-EMPTY, not invented FAILED/PAIR labels."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-spec-empty-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_empty_spec_contrast_and_close_name_spec_empty(self) -> None:
+        started = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "informal brief",
+            "--phase",
+            "build",
+            "--source",
+            "just ship the bump",
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        contrast = run_of(self.tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("SPEC-EMPTY", contrast.stdout + contrast.stderr)
+        closed = run_of(self.tmp, "close")
+        self.assertNotEqual(closed.returncode, 0)
+        self.assertIn("SPEC-EMPTY", closed.stderr)
+        self.assertNotIn("FAILED/MISSING/DELIVERED", closed.stderr)
+
+    def test_verified_contract_requires_cite(self) -> None:
+        started = run_of(
+            self.tmp,
+            "init",
+            "--mission",
+            "cite gate",
+            "--phase",
+            "build",
+            "--source",
+            "## Rules\n- demo CLI must serve\n\npython -m demo serve\n",
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        listed = run_of(self.tmp, "spec")
+        rid = next(
+            line.split()[0]
+            for line in listed.stdout.splitlines()
+            if "CLI-" in line
+        )
+        refused = run_of(self.tmp, "spec", "--verified-contract", rid)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("--cite", refused.stderr)
+        stamped = run_of(
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            rid,
+            "--cite",
+            "python -m demo serve --help",
+        )
+        self.assertEqual(stamped.returncode, 0, stamped.stderr)
+        data = json.loads(
+            (self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text(encoding="utf-8")
+        )
+        item = next(r for r in data["requirements"] if r["id"] == rid)
+        self.assertEqual(item["status"], "verified_contract")
+        self.assertEqual(item["proof_cite"], "python -m demo serve --help")
 
 
 class DeicticBrief(unittest.TestCase):
@@ -2176,7 +2250,7 @@ class ContrastDiffNarrative(unittest.TestCase):
             self.tmp,
             "spec",
             "--verified-contract",
-            "CLI-001",
+            "CLI-001", "--cite", "curl -sS /health",
             "--both-sides",
         )
         self.assertEqual(contract.returncode, 0, contract.stderr)
@@ -2442,7 +2516,7 @@ class EvaluatorPacketProof(unittest.TestCase):
         of.MultiWaveResidualEval.close_child(
             self.tmp, "rev1", 4, "review residual names REV-001"
         )
-        stamped = run_of(self.tmp, "spec", "--verified-contract", "REV-001")
+        stamped = run_of(self.tmp, "spec", "--verified-contract", "REV-001", "--cite", "curl -sS /health")
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         landed = self._doc()
         self.assertEqual(landed["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
@@ -2629,6 +2703,7 @@ class WaveReviewScopeProof(unittest.TestCase):
             child_id,
             "--owns-path",
             owns,
+            "--force",
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
 
@@ -2959,7 +3034,10 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
         self.assertIn("CLOSE BLOCKED", contrast.stdout)
         closed = run_of(self.tmp, "close")
         self.assertNotEqual(closed.returncode, 0, closed.stderr)
-        self.assertIn("of close refused", closed.stderr)
+        self.assertTrue(
+            "of close refused" in closed.stderr
+            or "disagrees with WAL CURRENT" in closed.stderr
+        )
         self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
         self.assertFalse(
             of.CloseProof.complete(self.tmp, of.load_order(self.tmp))

@@ -17,19 +17,19 @@ Orderfield keeps that plan on disk as ORDER + SPEC. Children get bounded packets
 Python 3.11+ stdlib. Nine public schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.8.26</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.27</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.26-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.27-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.8.26**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.8.27**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.8.26 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.8.27 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
@@ -116,7 +116,7 @@ Two unrelated missions in the **same working tree** are sibling fields, not two 
 
 ## Install
 
-The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.26` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.27` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
@@ -135,7 +135,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF=v0.8.26 bash install.sh --global --from-release --generic
+ORDERFIELD_REF=v0.8.27 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
@@ -231,7 +231,7 @@ json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=
 EOF
 of collect --wave 1
 of integrate --wave 1
-of spec --verified-contract CLI-001   # only after exercising the public surface, not unit tests
+of spec --verified-contract CLI-001 --cite .orderfield/work/scratch/explorer/notes.md
 of contrast    # one-pager + JSON; CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
 of close --checklist  # contrast + residual empty; does not stamp
 of close       # refused until contrast is RESOLVED and residual is empty
@@ -361,7 +361,7 @@ Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process 
 | `wave` | `list` / `show [N]`: multi-wave roster; `*` is `state.wave`. Read-path only |
 | `detect` | list harness CLIs on PATH (present/missing; PATH≠auth) |
 | `validate` | validate order / packet / residual JSON |
-| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies; disjoint paths are not a second worktree — pack warns `shared_worktree` unless each implementer has `of worktree add` or they run in series; pack WARNs `owns_path_empty` when an implementer omits `--owns-path` and `owns_path_incomplete` when `--slice` names a path outside the write set). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
+| `pack` | build a slaving packet (`--requires-tool`, `--owns-requirement`, `--owns-path`; refused while binding IDs are unowned and this packet owns none; second implementer in a wave needs `--owns-path`; same-wave path overlap dies; disjoint paths are not a second worktree — pack refuses `shared_worktree` unless each implementer has `of worktree add`, they run in series, or `of pack --force` overrides; pack WARNs `owns_path_empty` when an implementer omits `--owns-path` and `owns_path_incomplete` when `--slice` names a path outside the write set). `--explain` dry-runs `SliceLint` (why oversized) and does not write. Oversized `--slice` is an advisory note, still charged. Packet stays one-screen; SPEC.md is the lossless brief |
 | `unpack` | release a packed child that never reported; refunds `children_spawned` |
 | `render` | print the slave prompt (continuation note if scratch nonempty) |
 | `handoff` | write the prompt file and print the envelope for the child |

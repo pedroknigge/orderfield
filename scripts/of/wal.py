@@ -501,6 +501,57 @@ def _materialize_current_only(root: Path, *, overwrite: bool = False) -> None:
     _materialize_generation(root, gen_dir, man, overwrite=overwrite)
 
 
+def _refuse_live_order_tamper(root: Path) -> None:
+    """See live ORDER.json before writer rematerialize undoes a silent rewrite.
+
+    Crash-stale ORDER (older mtime than CURRENT) is restored. A newer live
+    rewrite that disagrees with CURRENT is a field error, not a cache.
+    """
+    home = field_home(root)
+    live = home / "ORDER.json"
+    current = _load_wal_current(root)
+    if not current:
+        return
+    gid = str(current.get("generation") or "")
+    if not gid:
+        return
+    gen_dir = wal_home(root) / gid
+    staged = gen_dir / "ORDER.json"
+    if not staged.is_file() or staged.is_symlink():
+        return
+    if not live.is_file() or live.is_symlink():
+        return
+    try:
+        live_mtime = live.stat().st_mtime
+        staged_mtime = staged.stat().st_mtime
+    except OSError:
+        return
+    if live_mtime < staged_mtime:
+        return
+    try:
+        live_raw = live.read_bytes()
+        staged_raw = staged.read_bytes()
+    except OSError:
+        return
+    if live_raw == staged_raw:
+        return
+    try:
+        live_obj = json.loads(live_raw.decode("utf-8"))
+        staged_obj = json.loads(staged_raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        die(
+            "ORDER.json disagrees with WAL CURRENT (silent rewrite); "
+            "restore from wal/ or of patch with an explicit leader change"
+        )
+    # Ignore whitespace-only diffs that normalize equal.
+    if json.dumps(live_obj, sort_keys=True) == json.dumps(staged_obj, sort_keys=True):
+        return
+    die(
+        "ORDER.json disagrees with WAL CURRENT (silent rewrite); "
+        "restore from wal/ or of patch with an explicit leader change"
+    )
+
+
 def _refuse_live_spec_tamper(root: Path) -> None:
     """See live SPEC.md before writer rematerialize undoes a silent rewrite.
 
@@ -767,6 +818,7 @@ class FieldWal:
     recover = staticmethod(recover_field_wal)
     ensure_view = staticmethod(ensure_committed_field_view)
     refuse_live_spec_tamper = staticmethod(_refuse_live_spec_tamper)
+    refuse_live_order_tamper = staticmethod(_refuse_live_order_tamper)
     materialize_current = staticmethod(_materialize_current_only)
     generation = staticmethod(field_generation)
     load_json = staticmethod(load_json)

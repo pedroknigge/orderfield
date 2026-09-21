@@ -323,7 +323,7 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
 
     def test_render_handoff_and_spawn_reject_stale_order_revision(self) -> None:
         self._pack()
-        patched = run_of(self.tmp, "patch", "--notes", "revision changed")
+        patched = run_of(self.tmp, "patch", "--constraints-add", "append-only")
         self.assertEqual(patched.returncode, 0, patched.stderr)
         packet = ".orderfield/waves/001/packets/c1.json"
         commands = (
@@ -1419,10 +1419,16 @@ class StalePackets(unittest.TestCase):
         r = run_of(
             self.tmp, "pack", "--slice", "two", "--role", "explorer", "--child-id", "c2"
         )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(self.tmp, "patch", "--constraints-add", "append-only")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = run_of(
+            self.tmp, "pack", "--slice", "three", "--role", "explorer", "--child-id", "c3"
+        )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("stale packets", r.stderr)
         self.assertFalse(
-            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c2.json").exists()
+            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c3.json").exists()
         )
 
     def test_next_wave_lands_on_live_occupied_dir(self) -> None:
@@ -1868,6 +1874,7 @@ class PathOwnership(unittest.TestCase):
             "imp2",
             "--owns-path",
             "taskforge/http_api.py",
+            "--force",
         )
         self.assertEqual(disjoint.returncode, 0, disjoint.stderr)
         missing = run_of(
@@ -1992,19 +1999,37 @@ class SharedWorktreePack(unittest.TestCase):
         }
         dest.write_text(json.dumps({"trees": trees}, indent=2) + "\n", encoding="utf-8")
 
-    def test_second_implementer_without_worktree_warns(self) -> None:
+    def test_second_implementer_without_worktree_refuses(self) -> None:
         first = self._pack("imp1", "src/a.py")
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertNotIn("shared_worktree", first.stderr)
         self.assertNotIn("HEAD/index", first.stderr)
         second = self._pack("imp2", "src/b.py")
-        self.assertEqual(second.returncode, 0, second.stderr)
-        self.assertTrue(packet_path(self.tmp, "imp2").is_file())
+        self.assertNotEqual(second.returncode, 0, second.stdout)
+        self.assertFalse(packet_path(self.tmp, "imp2").is_file())
         self.assertIn("HEAD/index", second.stderr)
         self.assertIn("disjoint --owns-path is not enough", second.stderr)
         self.assertIn("no worktree recorded for imp1, imp2", second.stderr)
         self.assertIn("of worktree add", second.stderr)
-        self.assertIn("series", second.stderr)
+        self.assertIn("--force", second.stderr)
+
+    def test_force_allows_shared_worktree(self) -> None:
+        self.assertEqual(self._pack("imp1", "src/a.py").returncode, 0)
+        forced = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "implement imp2",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp2",
+            "--owns-path",
+            "src/b.py",
+            "--force",
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertTrue(packet_path(self.tmp, "imp2").is_file())
 
     def test_recorded_worktrees_skip_warning(self) -> None:
         self.assertEqual(self._pack("imp1", "src/a.py").returncode, 0)
@@ -2015,13 +2040,13 @@ class SharedWorktreePack(unittest.TestCase):
         self.assertNotIn("shared_worktree", second.stderr)
         self.assertTrue(packet_path(self.tmp, "imp2").is_file())
 
-    def test_partial_record_still_warns(self) -> None:
+    def test_partial_record_still_refuses(self) -> None:
         self.assertEqual(self._pack("imp1", "src/a.py").returncode, 0)
         self._record("imp1")
         second = self._pack("imp2", "src/b.py")
-        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertNotEqual(second.returncode, 0, second.stdout)
         self.assertIn("no worktree recorded for imp2", second.stderr)
-        self.assertNotIn("imp1, imp2", second.stderr)
+        self.assertFalse(packet_path(self.tmp, "imp2").is_file())
 
     def test_unit_unsheltered_empty_for_first(self) -> None:
         self.assertEqual(of.SharedWorktree.unsheltered(self.tmp, "imp1", []), [])

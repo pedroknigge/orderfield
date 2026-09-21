@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.8.26. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.8.27. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.8.26` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.8.27` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -38,7 +38,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - Phase-scoped close via phase prefixes + `done_when_closed_phases` (Option B; legacy bool); `--reopen`
 - Reversible field: `of unpack` refunds budget; `collect` survives MISSING; `integrate --partial`; `--constraints-rm`
 - First-class `ORDER.harness` / `ORDER.backlog`; role contracts in prompts; portable `.orderfield/SLAVE.md`
-- Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned unless this child already owns a binding ID; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); a second implementer without a recorded `of worktree` prints `shared_worktree` (disjoint files still share HEAD/index; two worktrees or series); pack WARNs `owns_path_empty` (implementer omitted `--owns-path`) and `owns_path_incomplete` (`--slice` names a path outside the write set); packet workspace unions owned paths; not a file lock
+- Pack/spawn caps and stale-packet refusal; pack without `--owns-requirement` is refused while binding IDs are unowned unless this child already owns a binding ID; `--owns-path` is exclusive in the same wave (overlap dies; second implementer required; cross-wave note); a second implementer without a recorded `of worktree` refuses `shared_worktree` (`of pack --force` overrides; disjoint files still share HEAD/index; two worktrees or series); pack WARNs `owns_path_empty` (implementer omitted `--owns-path`) and `owns_path_incomplete` (`--slice` names a path outside the write set); packet workspace unions owned paths; not a file lock
 - Public JSON schemas are the runtime validation contract for ORDER, state, packets, residuals, session snapshots, wave reports, requirements, and learnings
 - `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) share a cross-process `.orderfield/field.lock` in `of.cli.main`; JSON writes are durable atomic replacements. Multi-file mutations stage one WAL generation + MANIFEST, then publish (`wal/CURRENT.json`). **Readers** (status/resume/render/pulse/wave/contrast/spec-diff/handoff/spawn/validate) use CURRENT; live disk is cache/tamper. **Writers** rematerialize CURRENT onto stale live files before inherit; immediate checkpoint after `OF_WAL_CRASH=after-current` keeps committed children and packets. WAL crash consistency is not a restorable dump. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper
 - `OF_TRUST` is authoritative for every adapter. Residual packs default to the write-floor (`auto-edit` / `WriteFloor`); explicit `conservative` is the opt-out; only `yolo` emits bypass flags. `yolo` and `OF_SPAWN_ENV=inherit` are audited operator actions (`OperatorAction`). Spawned children get an environment allowlist (`OF_SPAWN_ENV`), no stdin, and their own process group. agy/grok isolate host global MCP by default (`HostMcp`; `OF_SPAWN_MCP=inherit` opts in). Pulse prints `cpu=` on `no writes yet` when a live pid exists. Spawn metadata is finalized on every outcome.
@@ -138,6 +138,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 - 0.8.23 cited on-disk plan files/directories ingest at init (`plan_ingest N`; `PlanCoverage`; `#312`). SPEC / chat paste / `@folder` is not ingest. Pack emits uncovered IDs. Constraint `plan_cover fail-closed` HOLDs close. WARN default. Proof: `PlanIngestGate` / `recovery/plan-ingest-paste`. No new CLI / supervisor.
 - 0.8.23 green collect on a mapped heading surgically writes the cited user plan MD (`PlanWriteBack`; `#313`). Fail-closed without OwnedWrite / CloseEvidence. HITL if the plan is outside the project root or not cited. `docs_sync=done` only after plan bytes change or skip. Proof: `PlanWriteBackUnit` / `PlanWriteBackGate` / `SkillPlanWriteBack`. No new CLI / supervisor.
 - 0.8.25 folder/chat/prompt ingress materialize-then-cite (`PlanIngress`; `#324`). Prompt promote is verbatim + `plan_source <rel> sha=`. `plan_fidelity gap|invent` HOLDs pack. Chat without capture speaks next. Folder writes no new plan MD. Proof: `PlanIngressUnit` / `PlanIngressGate` / `SkillPlanIngress` / `recovery/plan-ingress-promote`. No new CLI / supervisor.
+- 0.8.27 roast cut: abandoned close, verified-contract `--cite`, SPEC-EMPTY, learnings scope, SharedWorktree refuse, `order_bind`, ORDER tamper refuse, `#328` oracle packaging. Proof: `ClosedFieldArchiveTrail` / `SpecEmptyCloseGate` / `SharedWorktreePack` / `OrderLiveTamperRefuse` / `SkillArtifactProve`.
 - 0.8.26 invent is a plan MD created after pin baseline, not an unpinned file in a shared `docs/plans` tree (`PlanIngress`; `#326`). `.orderfield/plan-baseline.json` is written on apply/pin. Proof: `PlanIngressUnit` / `PlanIngressGate`. No new CLI / supervisor.
 - 0.8.2 after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (`report is not a stop; execute printed next this turn`). Ordinary next-wave/pack is not a consent ask. Proof: `DriveAfterIntegrateProof` / `SkillDriveAfterIntegrate` / `recovery/drive-after-integrate`. No new CLI / supervisor.
 - 0.8.3 mutating `of issue` create requires `--confirm` or TTY yes (`IssueConfirm`). `--dry-run` is not HITL. `--search` stays a read. Proof: `IssueConfirmLock` / `SkillIssueConfirm`. No new CLI verb / supervisor.

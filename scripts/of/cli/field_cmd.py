@@ -539,7 +539,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
         die("nothing to patch")
     state = load_state(root)
     wave = int(state.get("wave") or 1)
-    PacketRevStale.refuse_patch(root, wave)
+    PacketRevStale.refuse_patch(root, wave, order)
     live_n = len(packed_children(root, wave))
     order["rev"] = int(order["rev"]) + 1
     save_order(order, root)

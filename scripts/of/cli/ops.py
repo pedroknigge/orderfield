@@ -82,6 +82,7 @@ from of.field import (
     list_field_homes,
     load_json,
     list_learnings,
+    resume_learnings,
     load_order,
     load_session,
     load_state,
@@ -2524,7 +2525,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         action=nxt,
         key_width=14,
     )
-    print_learnings(list_learnings(root))
+    print_learnings(resume_learnings(root), show_all=True)
     summary = session.get("summary")
     if isinstance(summary, str) and summary.strip():
         print("summary")
