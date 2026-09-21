@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.27. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.28. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.27`
+**Status:** Shipped · **Current release line:** `0.8.28`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.28 — printed next names the requirement
+
+- With binding requirements, `resume` prints `CONTINUE` (red check, same child), `OPEN` (next unowned id, only after the current one is green), or `STOP` (all green → contrast). A field with no requirements keeps the legal next. Folder / chat / prompt ingress is unchanged. Not a new verb. Proof: `ReplayPolicy`.
 
 ## 0.8.27 — roast cut: abandoned exit, cite, SPEC-EMPTY, learnings, bind, #328
 

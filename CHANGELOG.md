@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.28
+
+Printed next names the requirement when one exists. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.27 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **Reuse, not a new verb:** `resume` still prints `next`. With binding requirements, a red residual (`done` without `artifact_sha`, or blocked) prints `CONTINUE` for the same child and the same id. A green residual prints `OPEN` with the next unowned id. Two red waves on the same id may open another id, and that red still blocks contrast. Every requirement green prints `STOP` (`of contrast`, do not pack). No requirements: the legal next stands.
+- **Honesty:** this does not ingest a plan, a chat, or a prompt. It does not follow plan heading order. Green is a cited residual, not an external check.
+- **Proof:** `ReplayPolicy.test_red_requirement_stays_with_the_same_child` / `test_second_red_opens_without_closing` / `test_green_walk_names_every_requirement_then_stops` / `test_no_requirements_keeps_next_wave_after_a_drop` / `test_one_wave_keeps_next_wave`.
+- Packaging: VERSION 0.8.28; skill/alias description preview `v0.8.28. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.27 notes.
+
 ## 0.8.27
 
 Roast cut: abandoned exit, close cite, empty SPEC honesty, learnings scope, shared-worktree refuse, packet bind, ORDER tamper refuse, #328 oracle packaging. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.26 notes.
