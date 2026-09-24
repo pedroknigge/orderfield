@@ -177,7 +177,7 @@ class DoneWhenSeedCli(_Base):
         )
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("seeded from --done-when", proc.stdout)
-        req = json.loads(next((self.tmp / ".orderfield").rglob("requirements.json")).read_text())
+        req = json.loads(next((self.tmp / ".orderfield").rglob("REQUIREMENTS.json")).read_text())
         ids = [r["id"] for r in req["requirements"]]
         self.assertEqual(ids, ["DONE-001"])
         spec = next((self.tmp / ".orderfield").rglob("SPEC.md")).read_text()
