@@ -6,10 +6,10 @@ math, tie-break, and the verbatim ORDER snapshot stay here.
 Contestants and crew share the field cwd and git branch. A commit on that
 branch is how the others catch up (proposals, ballots, code, residual
 notes). The session that runs of is contestant #1, a peer, not a parent.
-This module records headless argv for the other peers and does not launch
-them in this tracer. It does not create a worktree, does not run a
-merge-packet, and does not accept a host-appointed leader. Two writers do
-not edit one path at once.
+This module launches the other peers headless on this cwd and branch,
+waits for ballots or a deadline, then settles. It does not create a
+worktree, does not run a merge-packet, and does not accept a
+host-appointed leader. Two writers do not edit one path at once.
 
 Re-open after verifier refuse is parent epic #333, not this slice.
 """
@@ -18,10 +18,20 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
-from of_adapters import AdapterDetect, AdapterHints, detect_adapters
+from of_adapters import (
+    ADAPTER_BINS,
+    AdapterDetect,
+    AdapterHints,
+    build_spawn_argv,
+    detect_adapters,
+    spawn_env,
+    which_bin,
+)
 
 from of.field import (
     die,
@@ -44,10 +54,21 @@ STANCES = frozenset({"concede", "challenge"})
 RULE = "plurality-concede"
 TIE_BREAK = "contestant-id"
 PEERS = "equals; list order is not rank and not a role"
+# Strict majority, and c1 must have voted. N=3 needs 2 ballots including c1.
+DEFAULT_DEADLINE_S = 120.0
+DEADLINE_ENV = "OF_CAMPO_DEADLINE"
 
 
 class Campo:
-    """Public surface: config, enter, settle, hold_pack. Election stays inside."""
+    """Public surface: config, enter, settle, hold_pack. Election stays inside.
+
+    Launch, wait, deadline, dead-child, quorum, and settle stay in this module.
+    """
+
+    # (argv, cwd, env) -> process with pid, poll, wait, kill, returncode.
+    # None uses subprocess.Popen on this cwd. Tests inject a fake.
+    runner: Callable[..., Any] | None = None
+    _children: list[Any] = []
 
     @staticmethod
     def config_path() -> Path:
@@ -200,10 +221,40 @@ class Campo:
         return pick_adapter(None)
 
     @staticmethod
+    def deadline_s() -> float:
+        """Seconds to wait for ballots. OF_CAMPO_DEADLINE overrides 120."""
+        raw = (os.environ.get(DEADLINE_ENV) or "").strip()
+        if not raw:
+            return DEFAULT_DEADLINE_S
+        try:
+            value = float(raw)
+        except ValueError:
+            die(f"invalid {DEADLINE_ENV} {raw!r}")
+        if value < 0:
+            die(f"invalid {DEADLINE_ENV} {raw!r}")
+        return value
+
+    @staticmethod
+    def quorum(roster: list[str], ballots: list[dict[str, str]]) -> bool:
+        """Strict majority, c1 included, and at least one concede.
+
+        N=2 needs both ballots. N=3 needs 2 including c1. N=4 needs 3
+        including c1. Absent peers stay in the tally at 0 and can still
+        receive concedes. c1 alone never pins.
+        """
+        if not roster:
+            return False
+        need = len(roster) // 2 + 1
+        present = {str(row.get("contestant") or "") for row in ballots}
+        if "c1" not in present or len(present) < need:
+            return False
+        return any(str(row.get("stance") or "") == "concede" for row in ballots)
+
+    @staticmethod
     def peer_plan(
         order: dict[str, Any], roster: list[dict[str, str]]
     ) -> list[dict[str, Any]]:
-        """c1 is the invoking session. c2..N are headless argv, not launched."""
+        """c1 is the invoking session. c2..N are headless peers on this cwd."""
         invoker = Campo.invoking_harness(order)
         planned: list[dict[str, Any]] = []
         for index, seat in enumerate(roster, start=1):
@@ -224,17 +275,6 @@ class Campo:
                 "mode": "local" if local else "headless",
                 "peer": True,
             }
-            if not local:
-                row["argv"] = AdapterHints.spawn_flags(
-                    bound["harness"],
-                    {
-                        "adapter_hints": {
-                            "model": bound["model"],
-                            "effort": bound["effort"],
-                        }
-                    },
-                )
-                row["launched"] = False
             planned.append(row)
         return planned
 
@@ -248,21 +288,36 @@ class Campo:
         order: dict[str, Any],
         source_text: str | None = None,
     ) -> dict[str, Any]:
-        """Open the arena and pin only when every peer ballot is already valid."""
+        """Open, launch c2..N, wait for ballots or the deadline, then settle."""
         del source_text  # SPEC / PlanIngress already hold the verbatim brief
-        Campo._open(root, order)
-        return Campo.settle(root)
+        planned = Campo._open(root, order)
+        Campo._launch(root, planned)
+        Campo._wait(root, planned)
+        Campo._write_spawns(root, planned)
+        return Campo.settle(root, live=True)
 
     @staticmethod
-    def settle(root: Path) -> dict[str, Any]:
-        """Elect from disk ballots. No leader argument. No worktree."""
+    def settle(root: Path, *, live: bool = False) -> dict[str, Any]:
+        """Elect from disk ballots. No leader argument. No worktree.
+
+        live=True is the init path: ballots children just wrote are not in
+        the open field generation, and a missed deadline may pin a quorum
+        or write campo/hold.json. The manual retry (of campo settle) keeps
+        live=False and still requires every ballot.
+        """
         rnd = Campo._read_round(root)
         if rnd is None:
             die("campo is not open; of init --campo")
         if rnd.get("status") == "pinned" and Campo._leader_path(root).is_file():
             return Campo._pinned_doc(root, rnd)
         roster = Campo._roster_ids(rnd)
-        ballots = Campo._ballots(root, roster)
+        ballots = Campo._ballots(root, roster, live=live)
+        if ballots is None and live:
+            present = Campo._ballots(root, roster, live=True, partial=True) or []
+            if Campo.quorum(roster, present):
+                ballots = present
+            else:
+                return Campo._hold(root, roster, present)
         if ballots is None:
             return Campo._open_doc(
                 root,
@@ -306,13 +361,24 @@ class Campo:
                 f"campo        pinned  leader={doc.get('leader')}  crew={crew}",
                 "orden        pack on this branch; the host does not appoint the leader",
             ]
+        if doc.get("hitl"):
+            heads = ",".join(str(item) for item in (doc.get("headless") or []))
+            missing = " ".join(
+                f"campo/ballots/{cid}.json" for cid in (doc.get("missing") or [])
+            )
+            return [
+                (
+                    f"campo        hold  invoker={doc.get('invoker')} peer  "
+                    f"headless={heads or '-'}  {doc.get('reason')}"
+                ),
+                f"next         write {missing} then of campo settle",
+            ]
         reason = str(doc.get("reason") or "ballots incomplete")
         extra = ""
         if doc.get("invoker"):
             heads = ",".join(str(item) for item in (doc.get("headless") or []))
             extra = (
-                f"  invoker={doc['invoker']} peer  "
-                f"headless={heads or '-'} stub"
+                f"  invoker={doc['invoker']} peer  headless={heads or '-'}"
             )
         return [
             f"campo        open  {reason}{extra}",
@@ -408,7 +474,7 @@ class Campo:
         }
 
     @staticmethod
-    def _open(root: Path, order: dict[str, Any]) -> None:
+    def _open(root: Path, order: dict[str, Any]) -> list[dict[str, Any]]:
         roster = Campo.require_roster()
         planned = Campo.peer_plan(order, roster)
         arena = Campo.arena(root)
@@ -440,20 +506,212 @@ class Campo:
                 "contestants": seats,
             },
         )
+        return planned
+
+    @staticmethod
+    def _stamp() -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    @staticmethod
+    def _public_peer(row: dict[str, Any]) -> dict[str, Any]:
+        keep = (
+            "id",
+            "model",
+            "effort",
+            "harness",
+            "mode",
+            "peer",
+            "argv",
+            "launched",
+            "pid",
+            "started",
+            "ended",
+            "code",
+            "status",
+        )
+        return {key: row[key] for key in keep if key in row}
+
+    @staticmethod
+    def _write_spawns(root: Path, planned: list[dict[str, Any]]) -> None:
         dump_json(
-            arena / "spawns.json",
+            Campo.arena(root) / "spawns.json",
             {
                 "v": 1,
-                "stub": True,
+                "stub": False,
                 "invoker": "c1",
                 "cwd": ".",
+                "deadline_s": Campo.deadline_s(),
                 "note": (
                     "c1 is the session running of, a peer. "
-                    "c2..N argv is headless and not launched"
+                    "c2..N are launched headless on this cwd and branch. "
+                    "No worktree."
                 ),
-                "peers": planned,
+                "peers": [Campo._public_peer(row) for row in planned],
             },
         )
+
+    @staticmethod
+    def _peer_prompt(row: dict[str, Any]) -> str:
+        cid = row["id"]
+        return (
+            f"You are campo peer {cid} ({row['model']}), a peer on this git "
+            "branch and this cwd. Write "
+            f".orderfield/campo/proposals/{cid}.md and "
+            f".orderfield/campo/ballots/{cid}.json with contestant, claim, "
+            "evidence, peer, and stance (concede or challenge). Commit that "
+            "on this branch. Do not create a worktree."
+        )
+
+    @staticmethod
+    def _kill(proc: Any) -> None:
+        try:
+            if proc.poll() is None:
+                proc.kill()
+        except Exception:
+            return
+
+    @staticmethod
+    def _launch(root: Path, planned: list[dict[str, Any]]) -> None:
+        """Start c2..N. A missing CLI dies before any process is created."""
+        headless = [row for row in planned if row.get("mode") == "headless"]
+        for row in headless:
+            harness = str(row["harness"])
+            names = list(ADAPTER_BINS.get(harness) or [])
+            if not names or which_bin(names) is None:
+                die(
+                    "campo launch refused: "
+                    f"{harness} CLI is not on PATH "
+                    f"(peer {row['id']} model {row['model']})"
+                )
+        started: list[Any] = []
+        try:
+            for row in headless:
+                packet = {
+                    "child_id": row["id"],
+                    "adapter_hints": {
+                        "model": row["model"],
+                        "effort": row["effort"],
+                    },
+                }
+                residual = Campo.arena(root) / "peers" / f"{row['id']}.out"
+                residual.parent.mkdir(parents=True, exist_ok=True)
+                argv = build_spawn_argv(
+                    str(row["harness"]),
+                    Campo._peer_prompt(row),
+                    packet,
+                    residual,
+                )
+                env = spawn_env(str(row["harness"]))
+                env["OF_CAMPO_ID"] = str(row["id"])
+                env["OF_CAMPO_ROOT"] = str(root)
+                runner = Campo.runner
+                if runner is not None:
+                    proc = runner(argv, root, env)
+                else:
+                    proc = subprocess.Popen(
+                        argv,
+                        cwd=str(root),
+                        env=env,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                row["argv"] = list(argv)
+                row["launched"] = True
+                row["pid"] = int(getattr(proc, "pid", 0) or 0)
+                row["started"] = Campo._stamp()
+                row["status"] = "running"
+                row["_proc"] = proc
+                started.append(proc)
+        except BaseException:
+            for proc in started:
+                Campo._kill(proc)
+            raise
+        Campo._children = started
+        Campo._write_spawns(root, planned)
+
+    @staticmethod
+    def _wait(root: Path, planned: list[dict[str, Any]]) -> None:
+        roster = [str(row["id"]) for row in planned]
+        deadline = time.monotonic() + Campo.deadline_s()
+        while True:
+            if Campo._ballots(root, roster, live=True) is not None:
+                Campo._reap(root, planned, force=False)
+                Campo._write_spawns(root, planned)
+                return
+            if time.monotonic() >= deadline:
+                Campo._reap(root, planned, force=True)
+                Campo._write_spawns(root, planned)
+                return
+            time.sleep(0.05)
+
+    @staticmethod
+    def _reap(root: Path, planned: list[dict[str, Any]], *, force: bool) -> None:
+        roster = [str(row["id"]) for row in planned]
+        allowed = set(roster)
+        arena = Campo.arena(root)
+        for row in planned:
+            proc = row.get("_proc")
+            if proc is None:
+                continue
+            code = proc.poll()
+            if code is None and force:
+                Campo._kill(proc)
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
+                row["status"] = "timeout"
+                row["code"] = proc.poll()
+                row["ended"] = Campo._stamp()
+                continue
+            if code is None:
+                row["status"] = "running"
+                continue
+            row["code"] = int(code)
+            row["ended"] = Campo._stamp()
+            ballot = Campo._one_ballot(
+                arena / "ballots" / f"{row['id']}.json",
+                str(row["id"]),
+                allowed,
+                Campo._disk_text,
+            )
+            proposal = Campo._disk_text(arena / "proposals" / f"{row['id']}.md")
+            ready = (
+                ballot is not None
+                and proposal is not None
+                and bool(proposal.strip())
+            )
+            row["status"] = "exited" if code == 0 and ready else "dead"
+
+    @staticmethod
+    def _hold(
+        root: Path, roster: list[str], present: list[dict[str, str]]
+    ) -> dict[str, Any]:
+        have = [row["contestant"] for row in present]
+        have_set = set(have)
+        missing = [cid for cid in roster if cid not in have_set]
+        reason = (
+            "quorum missed at deadline"
+            f"; have {','.join(have) or '-'}"
+            f"; missing {','.join(missing) or '-'}"
+        )
+        dump_json(
+            Campo.arena(root) / "hold.json",
+            {
+                "v": 1,
+                "reason": reason,
+                "deadline": Campo.deadline_s(),
+                "have": have,
+                "missing": missing,
+                "hitl": True,
+            },
+        )
+        doc = Campo._open_doc(root, reason)
+        doc["hitl"] = True
+        doc["have"] = have
+        doc["missing"] = missing
+        return doc
 
     @staticmethod
     def _text(path: Path) -> str | None:
@@ -461,6 +719,20 @@ class Campo:
         if not field_is_file(path):
             return None
         return field_read_text(path)
+
+    @staticmethod
+    def _disk_text(path: Path) -> str | None:
+        """Bytes on disk, ignoring the open field generation.
+
+        Children write ballots with normal IO while init still holds the
+        generation. The generation snapshot does not contain those files.
+        """
+        try:
+            if not path.is_file() or path.is_symlink():
+                return None
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            return None
 
     @staticmethod
     def _read_round(root: Path) -> dict[str, Any] | None:
@@ -483,28 +755,36 @@ class Campo:
 
     @staticmethod
     def _ballots(
-        root: Path, roster: list[str]
+        root: Path,
+        roster: list[str],
+        *,
+        live: bool = False,
+        partial: bool = False,
     ) -> list[dict[str, str]] | None:
+        read = Campo._disk_text if live else Campo._text
         found: list[dict[str, str]] = []
         arena = Campo.arena(root)
         allowed = set(roster)
         for cid in roster:
             proposal = arena / "proposals" / f"{cid}.md"
             ballot_path = arena / "ballots" / f"{cid}.json"
-            body = Campo._text(proposal)
-            if body is None or not body.strip():
-                return None
-            ballot = Campo._one_ballot(ballot_path, cid, allowed)
-            if ballot is None:
+            body = read(proposal)
+            ballot = Campo._one_ballot(ballot_path, cid, allowed, read)
+            if body is None or not body.strip() or ballot is None:
+                if partial:
+                    continue
                 return None
             found.append(ballot)
         return found
 
     @staticmethod
     def _one_ballot(
-        path: Path, contestant_id: str, allowed: set[str]
+        path: Path,
+        contestant_id: str,
+        allowed: set[str],
+        read: Callable[[Path], str | None] | None = None,
     ) -> dict[str, str] | None:
-        text = Campo._text(path)
+        text = (read or Campo._text)(path)
         if text is None:
             return None
         try:
@@ -585,6 +865,12 @@ class Campo:
         tally: dict[str, int],
     ) -> None:
         arena = Campo.arena(root)
+        hold = arena / "hold.json"
+        try:
+            if hold.is_file() and not hold.is_symlink():
+                hold.unlink()
+        except OSError:
+            pass
         raw = field_read_bytes(order_path(root))
         if raw is None:
             die("campo pin refused: ORDER missing")
