@@ -63,7 +63,7 @@ Campo is the written arena. Orden is the crew that implements after peers pin a 
 
 Same branch + commit = shared context. A peer commits the proposal, the ballot, the code, or a residual note. The others refresh from that commit before their next turn. There is no merge-packet. Do not isolate. Two writers still do not edit one path at once: owned paths, or turn-taking.
 
-The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. `of` writes headless argv for the rest (`campo/spawns.json`) on this cwd and branch. This tracer does not launch those processes.
+The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. On `of init --campo` the kernel launches the other peers headless on this cwd and branch. `campo/spawns.json` records argv, pid, and whether each peer exited, died, or hit the deadline. Campo does not create a worktree. This session writes contestant #1's proposal and ballot. Launch, the wait, and the pin stay inside `Campo`.
 
 `of config` audits this machine: which harness CLIs are on PATH, then the catalog models for those CLIs. PATH is not a login. The roster stays empty until you set it (`OF_CONFIG` or `~/.orderfield/config.json`). Each contestant is `{model, effort}` (`low|medium|high`). N≥2. They are peers. List order is not rank and not a role. There is no leader key. Election decides the leader. A model must be one installed catalog id. A name on two installed harnesses is not one peer.
 
@@ -82,15 +82,15 @@ Choose only names `of config` prints under installed.
 of config
 of config set --contestant opus medium --contestant grok-4.6 high
 of init --mission "price table" --source "Definition of Done: print the table" --campo
-# each contestant writes .orderfield/campo/proposals/<id>.md
-# and .orderfield/campo/ballots/<id>.json
-# (claim, evidence, peer, stance concede|challenge)
-of campo settle
 ```
 
-Plurality of concedes elects the leader. A tie breaks by contestant id. Without a valid ballot from every contestant, nothing is pinned. The pinned ORDER keeps a detailed user plan verbatim (`PlanIngress`). Crew is the rest of the roster. Implementer `of pack` waits for that pin, then Orden is ordinary pack on the same branch.
+Start `/of` in a harness. The first time, run `of config` and set the roster once (`model` + `effort` per contestant). That roster is stored and is not asked again. Everything after that is automatic: the kernel launches the other peers, this session writes `campo/proposals/c1.md` and `campo/ballots/c1.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`), and the kernel pins when the ballots meet the rule.
 
-Election math stays inside `Campo`. Init and pack call that module.
+Every valid ballot pins immediately. Plurality of concedes elects the leader. A tie breaks by contestant id. The deadline is 120 seconds (`OF_CAMPO_DEADLINE`). At the deadline, a strict majority of valid ballots that includes c1, and at least one concede, pins with the ballots that are present (N=2 needs both; N=3 needs 2 including c1; c1 alone does not pin). Otherwise nothing is pinned: `campo/hold.json` names the gap, and the next line is to write the missing `campo/ballots/<id>.json` files and run `of campo settle`. A peer that exits 0 without a ballot, or exits nonzero, is `dead`. A peer still running at the deadline is killed and recorded `timeout`. A missing harness CLI refuses before any peer is launched.
+
+The pinned ORDER keeps a detailed user plan verbatim (`PlanIngress`). Crew is the rest of the roster. Implementer `of pack` waits for that pin, then Orden is ordinary pack on the same branch.
+
+Election, launch, the deadline, and the pin stay inside `Campo`. Init and pack call that module.
 
 Documented first close (CI extracts the block): [First close](#first-close). One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 

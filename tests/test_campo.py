@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -65,6 +66,55 @@ def stub_cli(directory: Path, name: str) -> None:
     path.chmod(0o755)
 
 
+def ballot_cli(directory: Path, name: str) -> None:
+    """Headless fake: write this peer's proposal and a concede, then exit 0."""
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    path.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os\n"
+        "from pathlib import Path\n"
+        "cid = os.environ['OF_CAMPO_ID']\n"
+        "root = Path(os.environ['OF_CAMPO_ROOT'])\n"
+        "arena = root / '.orderfield' / 'campo'\n"
+        "(arena / 'proposals').mkdir(parents=True, exist_ok=True)\n"
+        "(arena / 'ballots').mkdir(parents=True, exist_ok=True)\n"
+        "(arena / 'proposals' / f'{cid}.md').write_text('proposal ' + cid + '\\n')\n"
+        "peer = 'c1' if cid == 'c3' else 'c3'\n"
+        "(arena / 'ballots' / f'{cid}.json').write_text(json.dumps({\n"
+        "    'contestant': cid,\n"
+        "    'claim': 'peer covers the brief',\n"
+        "    'evidence': 'proposal cites Definition of Done',\n"
+        "    'peer': peer,\n"
+        "    'stance': 'concede',\n"
+        "}))\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
+class FakeProc:
+    """In-process stand-in for a headless adapter process."""
+
+    def __init__(self, pid: int, code: int | None = 0, hang: bool = False) -> None:
+        self.pid = pid
+        self.returncode = None if hang else code
+        self.killed = False
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def wait(self, timeout: float | None = None) -> int | None:
+        if self.returncode is None:
+            raise subprocess.TimeoutExpired(cmd="campo-fake", timeout=timeout or 0)
+        return self.returncode
+
+    def kill(self) -> None:
+        self.killed = True
+        if self.returncode is None:
+            self.returncode = -9
+
+
 def write_seat(
     root: Path,
     cid: str,
@@ -76,6 +126,8 @@ def write_seat(
     extra: dict | None = None,
 ) -> None:
     arena = root / ".orderfield" / "campo"
+    (arena / "proposals").mkdir(parents=True, exist_ok=True)
+    (arena / "ballots").mkdir(parents=True, exist_ok=True)
     (arena / "proposals" / f"{cid}.md").write_text(
         f"PROPOSAL-NOT-ORDER {cid}\n", encoding="utf-8"
     )
@@ -104,9 +156,20 @@ class CampoElection(unittest.TestCase):
             stub_cli(self.bin, name)
         git_dir = str(Path(shutil.which("git") or "/usr/bin/git").resolve().parent)
         self._old_path = os.environ.get("PATH")
+        self._old_deadline = os.environ.get("OF_CAMPO_DEADLINE")
+        self._old_config = os.environ.get("OF_CONFIG")
+        self._old_trust = os.environ.get("OF_TRUST")
         path = os.pathsep.join([str(self.bin), git_dir])
         os.environ["PATH"] = path
-        self.env = {"OF_CONFIG": str(self.config), "PATH": path}
+        os.environ["OF_CONFIG"] = str(self.config)
+        os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+        os.environ["OF_TRUST"] = "auto-edit"
+        self.env = {
+            "OF_CONFIG": str(self.config),
+            "PATH": path,
+            "OF_CAMPO_DEADLINE": "0.4",
+            "OF_TRUST": "auto-edit",
+        }
         git(self.tmp, "init", "-q")
         git(self.tmp, "config", "user.email", "of@test")
         git(self.tmp, "config", "user.name", "of")
@@ -115,11 +178,32 @@ class CampoElection(unittest.TestCase):
         self.branch = git(self.tmp, "rev-parse", "--abbrev-ref", "HEAD")
 
     def tearDown(self) -> None:
+        Campo.runner = None
+        Campo._children = []
         if self._old_path is None:
             os.environ.pop("PATH", None)
         else:
             os.environ["PATH"] = self._old_path
+        if self._old_deadline is None:
+            os.environ.pop("OF_CAMPO_DEADLINE", None)
+        else:
+            os.environ["OF_CAMPO_DEADLINE"] = self._old_deadline
+        if self._old_config is None:
+            os.environ.pop("OF_CONFIG", None)
+        else:
+            os.environ["OF_CONFIG"] = self._old_config
+        if self._old_trust is None:
+            os.environ.pop("OF_TRUST", None)
+        else:
+            os.environ["OF_TRUST"] = self._old_trust
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def open_order(self) -> dict:
+        proc = self.of("init", "--mission", MISSION, "--source", SOURCE)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        from of.field import load_order
+
+        return load_order(self.tmp)
 
     def of(
         self, *args: str, extra: dict[str, str] | None = None
@@ -338,8 +422,11 @@ class CampoElection(unittest.TestCase):
         self.assertEqual(spawns["peers"][0]["harness"], "grok")
         self.assertEqual(spawns["peers"][0]["mode"], "local")
         self.assertEqual(spawns["peers"][1]["mode"], "headless")
-        self.assertFalse(spawns["peers"][1]["launched"])
-        self.assertEqual(spawns["peers"][1]["argv"][0], "--model")
+        self.assertTrue(spawns["peers"][1]["launched"])
+        self.assertGreater(spawns["peers"][1]["pid"], 0)
+        self.assertEqual(spawns["peers"][1]["status"], "dead")
+        self.assertIn("--model", spawns["peers"][1]["argv"])
+        self.assertTrue(str(spawns["peers"][1]["argv"][0]).endswith("claude"))
 
     def test_no_pin_without_ballots_and_scripted_pin(self) -> None:
         bare = self.of(
@@ -375,25 +462,40 @@ class CampoElection(unittest.TestCase):
             "--campo",
         )
         self.assertEqual(opened.returncode, 0, opened.stderr)
-        self.assertIn("no pin without ballots", opened.stdout)
+        self.assertIn("quorum missed at deadline", opened.stdout)
+        self.assertIn("of campo settle", opened.stdout)
         arena = self.tmp / ".orderfield" / "campo"
         self.assertTrue((arena / "round.json").is_file())
         self.assertFalse((arena / "leader.json").exists())
+        hold = json.loads((arena / "hold.json").read_text(encoding="utf-8"))
+        self.assertTrue(hold["hitl"])
+        self.assertIn("c1", hold["missing"])
         rnd = json.loads((arena / "round.json").read_text(encoding="utf-8"))
         self.assertEqual(rnd["contestants"][0]["model"], "opus")
         self.assertEqual(rnd["invoker"], "c1")
         self.assertNotIn("harness", rnd["contestants"][0])
         spawns = json.loads((arena / "spawns.json").read_text(encoding="utf-8"))
-        self.assertTrue(spawns["stub"])
+        self.assertFalse(spawns["stub"])
         self.assertEqual(spawns["cwd"], ".")
         self.assertEqual(spawns["peers"][0]["mode"], "local")
         self.assertEqual(spawns["peers"][0]["harness"], "claude")
         self.assertNotIn("launched", spawns["peers"][0])
         self.assertEqual(spawns["peers"][1]["mode"], "headless")
-        self.assertFalse(spawns["peers"][1]["launched"])
+        self.assertTrue(spawns["peers"][1]["launched"])
+        self.assertGreater(spawns["peers"][1]["pid"], 0)
+        self.assertEqual(spawns["peers"][1]["status"], "dead")
+        self.assertEqual(spawns["peers"][1]["code"], 0)
         self.assertIn("--model", spawns["peers"][1]["argv"])
+        codex = spawns["peers"][2]
+        self.assertEqual(codex["harness"], "codex")
+        self.assertIn("--sandbox", codex["argv"])
+        self.assertIn("workspace-write", codex["argv"])
+        self.assertNotIn("worktree add", " ".join(codex["argv"]))
         self.assertIn("invoker=c1 peer", opened.stdout)
-        self.assertIn("stub", opened.stdout)
+        self.assertNotIn("stub", opened.stdout)
+        early = self.of("campo", "settle")
+        self.assertNotEqual(early.returncode, 0, early.stdout)
+        self.assertIn("no pin without ballots", early.stdout)
         self.assertEqual(rnd["contestants"][0]["effort"], "medium")
         self.assertEqual(rnd["contestants"][2]["effort"], "high")
         drifted_round = dict(rnd)
@@ -441,6 +543,7 @@ class CampoElection(unittest.TestCase):
         self.assertEqual(leader["crew"], ["c1", "c2"])
         self.assertEqual(leader["rule"], "plurality-concede")
         self.assertEqual(leader["tally"]["c3"], 2)
+        self.assertFalse((arena / "hold.json").exists())
         order = (self.tmp / ".orderfield" / "ORDER.json").read_bytes()
         self.assertEqual((arena / "ORDER.json").read_bytes(), order)
         snapshot = order.decode("utf-8")
@@ -465,6 +568,276 @@ class CampoElection(unittest.TestCase):
             (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "impl.json").is_file()
         )
         self.assertEqual(git(self.tmp, "worktree", "list"), self.worktrees)
+
+    def _set_roster(self) -> None:
+        proc = self.of(
+            "config",
+            "set",
+            "--contestant",
+            "opus",
+            "medium",
+            "--contestant",
+            "grok-4.3",
+            "medium",
+            "--contestant",
+            "gpt-5.6-sol",
+            "high",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_launch_recorded_and_auto_settle(self) -> None:
+        self._set_roster()
+        order = self.open_order()
+        seen: list[dict] = []
+
+        def runner(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            cid = env["OF_CAMPO_ID"]
+            seen.append({"id": cid, "argv": argv, "cwd": cwd, "env": dict(env)})
+            peer = "c1" if cid == "c3" else "c3"
+            write_seat(self.tmp, cid, peer=peer)
+            return FakeProc(pid=4100 + len(seen), code=0)
+
+        write_seat(self.tmp, "c1", peer="c3")
+        Campo.runner = runner
+        os.environ["OF_CAMPO_DEADLINE"] = "5"
+        started = time.monotonic()
+        doc = Campo.enter(self.tmp, order)
+        elapsed = time.monotonic() - started
+        os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+        self.assertTrue(doc["pinned"])
+        self.assertEqual(doc["leader"], "c3")
+        self.assertLess(elapsed, 1.0)
+        self.assertEqual(sorted(row["id"] for row in seen), ["c2", "c3"])
+        for row in seen:
+            self.assertEqual(row["cwd"], self.tmp)
+            self.assertEqual(row["env"]["OF_CAMPO_ROOT"], str(self.tmp))
+            self.assertNotIn("OF_TRUST", row["env"])
+            self.assertNotIn("worktree add", " ".join(row["argv"]))
+        codex = next(row for row in seen if row["id"] == "c3")
+        self.assertIn("--sandbox", codex["argv"])
+        self.assertIn("workspace-write", codex["argv"])
+        spawns = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "spawns.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertTrue(spawns["peers"][1]["launched"])
+        self.assertEqual(spawns["peers"][1]["status"], "exited")
+        self.assertEqual(spawns["peers"][1]["pid"], 4101)
+        self.assertEqual(spawns["peers"][2]["status"], "exited")
+        leader = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "leader.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(leader["leader"], "c3")
+        self.assertEqual(leader["tally"]["c3"], 2)
+
+    def test_deadline_quorum_pins_and_miss_holds(self) -> None:
+        self._set_roster()
+        order = self.open_order()
+        os.environ["OF_CAMPO_DEADLINE"] = "0"
+
+        def hang_c3(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            del argv, cwd
+            cid = env["OF_CAMPO_ID"]
+            if cid == "c2":
+                write_seat(self.tmp, "c2", peer="c3")
+                return FakeProc(pid=4202, code=0)
+            return FakeProc(pid=4203, hang=True)
+
+        write_seat(self.tmp, "c1", peer="c3")
+        Campo.runner = hang_c3
+        pinned = Campo.enter(self.tmp, order)
+        self.assertTrue(pinned["pinned"])
+        self.assertEqual(pinned["leader"], "c3")
+        spawns = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "spawns.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        by_id = {row["id"]: row for row in spawns["peers"]}
+        self.assertEqual(by_id["c2"]["status"], "exited")
+        self.assertEqual(by_id["c3"]["status"], "timeout")
+        self.assertEqual(by_id["c3"]["code"], -9)
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "campo" / "hold.json").exists()
+        )
+
+        shutil.rmtree(self.tmp / ".orderfield")
+        order = self.open_order()
+
+        def only_c2(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            del argv, cwd
+            cid = env["OF_CAMPO_ID"]
+            if cid == "c2":
+                write_seat(self.tmp, "c2", peer="c3")
+                return FakeProc(pid=4302, code=0)
+            return FakeProc(pid=4303, hang=True)
+
+        Campo.runner = only_c2
+        held = Campo.enter(self.tmp, order)
+        os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+        self.assertFalse(held["pinned"])
+        self.assertTrue(held["hitl"])
+        self.assertIn("c1", held["missing"])
+        hold = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "hold.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertTrue(hold["hitl"])
+        self.assertEqual(hold["have"], ["c2"])
+        self.assertIn("c1", hold["missing"])
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "campo" / "leader.json").exists()
+        )
+        lines = " ".join(Campo.speak(held))
+        self.assertIn("of campo settle", lines)
+        self.assertIn("campo/ballots/c1.json", lines)
+
+    def test_dead_child_misses_quorum(self) -> None:
+        proc = self.of(
+            "config",
+            "set",
+            "--contestant",
+            "opus",
+            "medium",
+            "--contestant",
+            "grok-4.3",
+            "medium",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        order = self.open_order()
+        os.environ["OF_CAMPO_DEADLINE"] = "0"
+
+        def dead(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            del argv, cwd, env
+            return FakeProc(pid=4402, code=1)
+
+        write_seat(self.tmp, "c1", peer="c2")
+        Campo.runner = dead
+        doc = Campo.enter(self.tmp, order)
+        os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+        self.assertFalse(doc["pinned"])
+        self.assertTrue(doc["hitl"])
+        spawns = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "spawns.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(spawns["peers"][1]["status"], "dead")
+        self.assertEqual(spawns["peers"][1]["code"], 1)
+        self.assertTrue(spawns["peers"][1]["launched"])
+        self.assertFalse(
+            (self.tmp / ".orderfield" / "campo" / "leader.json").exists()
+        )
+
+    def test_missing_cli_refuses_before_launch(self) -> None:
+        self._set_roster()
+        order = self.open_order()
+        (self.bin / "codex").unlink()
+        called: list[str] = []
+
+        def runner(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            del argv, cwd
+            called.append(env["OF_CAMPO_ID"])
+            return FakeProc(pid=4500)
+
+        Campo.runner = runner
+        with self.assertRaises(SystemExit):
+            Campo.enter(self.tmp, order)
+        self.assertEqual(called, [])
+        marker = self.tmp / "grok-started"
+        (self.bin / "grok").write_text(
+            "#!/bin/sh\ntouch \"$OF_CAMPO_ROOT/grok-started\"\nexit 0\n",
+            encoding="utf-8",
+        )
+        (self.bin / "grok").chmod(0o755)
+        Campo.runner = None
+        refused = self.of(
+            "init",
+            "--force",
+            "--mission",
+            MISSION,
+            "--source",
+            SOURCE,
+            "--campo",
+        )
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("not installed", refused.stderr)
+        self.assertFalse(marker.exists())
+        called.clear()
+        Campo.runner = runner
+        planned = [
+            {
+                "id": "c1",
+                "mode": "local",
+                "model": "opus",
+                "effort": "medium",
+                "harness": "claude",
+                "peer": True,
+            },
+            {
+                "id": "c2",
+                "mode": "headless",
+                "model": "gpt-5.6-sol",
+                "effort": "high",
+                "harness": "codex",
+                "peer": True,
+            },
+        ]
+        import io
+        from contextlib import redirect_stderr
+
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            with self.assertRaises(SystemExit):
+                Campo._launch(self.tmp, planned)
+        self.assertIn("not on PATH", buf.getvalue())
+        self.assertIn("codex", buf.getvalue())
+        self.assertEqual(called, [])
+
+    def test_cli_ballots_auto_pin(self) -> None:
+        ballot_cli(self.bin, "grok")
+        ballot_cli(self.bin, "codex")
+        self._set_roster()
+        env = dict(self.env)
+        env["OF_CAMPO_DEADLINE"] = "5"
+        proc = subprocess.Popen(
+            [
+                sys.executable,
+                str(OF_PY),
+                "init",
+                "--mission",
+                MISSION,
+                "--source",
+                SOURCE,
+                "--campo",
+            ],
+            cwd=str(self.tmp),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1", **env},
+        )
+        arena = self.tmp / ".orderfield" / "campo"
+        for _ in range(100):
+            if (arena / "proposals").is_dir():
+                break
+            if proc.poll() is not None:
+                break
+            time.sleep(0.05)
+        write_seat(self.tmp, "c1", peer="c3")
+        stdout, stderr = proc.communicate(timeout=15)
+        self.assertEqual(proc.returncode, 0, stderr)
+        self.assertIn("leader=c3", stdout)
+        leader = json.loads((arena / "leader.json").read_text(encoding="utf-8"))
+        self.assertEqual(leader["leader"], "c3")
+        spawns = json.loads((arena / "spawns.json").read_text(encoding="utf-8"))
+        self.assertEqual(spawns["peers"][1]["status"], "exited")
+        self.assertEqual(spawns["peers"][2]["status"], "exited")
+        self.assertTrue(spawns["peers"][1]["launched"])
 
     def test_docs_teach_campo_then_orden(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -507,11 +880,12 @@ class CampoElection(unittest.TestCase):
         self.assertIn("not a parent", readme.casefold())
         self.assertIn("c1=session", skill)
         self.assertIn("contestant #1", appendix.casefold())
-        self.assertIn("does not launch", appendix.casefold())
+        self.assertIn("launches peers", appendix.casefold())
+        self.assertIn("quorum", appendix.casefold())
         self.assertIn("owned path", appendix.casefold())
         self.assertIn("no merge-packet", appendix.casefold())
         source = (ROOT / "scripts" / "of" / "campo.py").read_text(encoding="utf-8")
-        self.assertNotIn("Popen", source)
+        self.assertIn("subprocess.Popen", source)
         self.assertIn("class Campo:", source)
         self.assertNotIn("worktree add", source)
         self.assertNotIn("cmd_worktree", source)
