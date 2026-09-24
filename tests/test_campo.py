@@ -929,6 +929,9 @@ class CampoElection(unittest.TestCase):
             "--source",
             SOURCE,
             "--campo",
+            # The dead peer must exit before the deadline even on a loaded
+            # runner; c1 never writes here, so the full deadline is spent.
+            extra={"OF_CAMPO_DEADLINE": "3"},
         )
         self.assertEqual(opened.returncode, 0, opened.stderr)
         self.assertIn("code=7", opened.stdout)
