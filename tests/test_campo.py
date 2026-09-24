@@ -73,7 +73,7 @@ def stub_cli(directory: Path, name: str) -> None:
     path.chmod(0o755)
 
 
-def ballot_cli(directory: Path, name: str) -> None:
+def ballot_cli(directory: Path, name: str, *, wait_c1: bool = False) -> None:
     """Headless fake: write this peer's proposal and a concede, then exit 0.
 
     Uses mkdir and cat from PATH. Campo must put /bin on the child PATH;
@@ -81,6 +81,14 @@ def ballot_cli(directory: Path, name: str) -> None:
     """
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / name
+    # wait_c1: stay alive until c1's ballot lands (the kernel settles as
+    # soon as every headless peer exited; this keeps the race deterministic).
+    hold = (
+        'i=0; while [ ! -f "$OF_CAMPO_ROOT/.orderfield/campo/ballots/c1.json" ] '
+        '&& [ $i -lt 40 ]; do sleep 0.1; i=$((i+1)); done\n'
+        if wait_c1
+        else ""
+    )
     path.write_text(
         """#!/bin/sh
 cid="$OF_CAMPO_ID"
@@ -93,8 +101,9 @@ if [ "$cid" = "c3" ]; then peer=c1; fi
 cat > "$arena/ballots/$cid.json" <<EOF
 {"contestant":"$cid","claim":"peer covers the brief","evidence":"proposal cites Definition of Done","peer":"$peer","stance":"concede"}
 EOF
-exit 0
-""",
+"""
+        + hold
+        + "exit 0\n",
         encoding="utf-8",
     )
     path.chmod(0o755)
@@ -935,8 +944,8 @@ class CampoElection(unittest.TestCase):
         self.assertIn("adapter exploded", hold["peers"][0]["stderr_tail"])
 
     def test_cli_ballots_auto_pin(self) -> None:
-        ballot_cli(self.bin, "grok")
-        ballot_cli(self.bin, "codex")
+        ballot_cli(self.bin, "grok", wait_c1=True)
+        ballot_cli(self.bin, "codex", wait_c1=True)
         git_src = shutil.which("git")
         assert git_src is not None
         (self.bin / "git").symlink_to(git_src)
