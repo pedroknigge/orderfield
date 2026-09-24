@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from of.campo import Campo  # noqa: E402
+from of.campo import DEFAULT_DEADLINE_S, Campo  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 SOURCE = (
@@ -324,13 +324,59 @@ class CampoElection(unittest.TestCase):
         self.assertIn("grok-4.6", shown.stdout)
         self.assertIn("c1", shown.stdout)
         self.assertIn("c2", shown.stdout)
+        self.assertIn("deadline_s", shown.stdout)
+        self.assertIn("600s max", shown.stdout)
+        self.assertIn("code default", shown.stdout)
         appoint = self.of("campo", "settle", "--leader", "c1")
         self.assertNotEqual(appoint.returncode, 0)
         quiet = self.of("init", "--mission", "no arena", "--source", "thin brief")
         self.assertEqual(quiet.returncode, 0, quiet.stderr)
         self.assertFalse((self.tmp / ".orderfield" / "campo").exists())
 
+    def test_deadline_resolution_env_config_default(self) -> None:
+        """OF_CAMPO_DEADLINE > config deadline_s > 600 code default."""
+        try:
+            os.environ.pop("OF_CAMPO_DEADLINE", None)
+            self.env.pop("OF_CAMPO_DEADLINE", None)
+            self.assertEqual(Campo.deadline_s(), DEFAULT_DEADLINE_S)
+            self.assertEqual(DEFAULT_DEADLINE_S, 600.0)
+            shown = self.of("config", "show")
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            self.assertIn("600s max", shown.stdout)
+            self.assertIn("code default", shown.stdout)
+            only = self.of("config", "set", "--deadline", "90")
+            self.assertEqual(only.returncode, 0, only.stderr)
+            doc = json.loads(self.config.read_text(encoding="utf-8"))
+            self.assertEqual(doc["deadline_s"], 90.0)
+            self.assertEqual(doc.get("contestants"), [])
+            self.assertEqual(Campo.deadline_s(), 90.0)
+            roster = self.of(
+                "config",
+                "set",
+                "--contestant",
+                "grok-4.6",
+                "high",
+                "--contestant",
+                "opus",
+                "medium",
+            )
+            self.assertEqual(roster.returncode, 0, roster.stderr)
+            doc = json.loads(self.config.read_text(encoding="utf-8"))
+            self.assertEqual(doc["deadline_s"], 90.0)
+            self.assertEqual(len(doc["contestants"]), 2)
+            os.environ["OF_CAMPO_DEADLINE"] = "12"
+            self.assertEqual(Campo.deadline_s(), 12.0)
+            os.environ.pop("OF_CAMPO_DEADLINE", None)
+            self.assertEqual(Campo.deadline_s(), 90.0)
+            shown = self.of("config", "show")
+            self.assertIn("90s max", shown.stdout)
+            self.assertIn("(config;", shown.stdout)
+        finally:
+            os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+            self.env["OF_CAMPO_DEADLINE"] = "0.4"
+
     def test_installed_choice_and_spawn_bind(self) -> None:
+
         missing_cli = self.of(
             "config",
             "set",
@@ -747,7 +793,45 @@ class CampoElection(unittest.TestCase):
             (self.tmp / ".orderfield" / "campo" / "leader.json").exists()
         )
 
+    def test_dead_peers_exit_before_deadline(self) -> None:
+        """All headless peers exited: settle immediately, do not burn the max."""
+        proc = self.of(
+            "config",
+            "set",
+            "--contestant",
+            "opus",
+            "medium",
+            "--contestant",
+            "grok-4.3",
+            "medium",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        order = self.open_order()
+        os.environ["OF_CAMPO_DEADLINE"] = "30"
+
+        def dead(argv: list[str], cwd: Path, env: dict[str, str]) -> FakeProc:
+            del argv, cwd, env
+            return FakeProc(pid=4410, code=1)
+
+        write_seat(self.tmp, "c1", peer="c2")
+        Campo.runner = dead
+        started = time.monotonic()
+        doc = Campo.enter(self.tmp, order)
+        elapsed = time.monotonic() - started
+        os.environ["OF_CAMPO_DEADLINE"] = "0.4"
+        self.assertFalse(doc["pinned"])
+        self.assertTrue(doc["hitl"])
+        self.assertLess(elapsed, 2.0)
+        spawns = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "spawns.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(spawns["peers"][1]["status"], "dead")
+        self.assertEqual(spawns["peers"][1]["code"], 1)
+
     def test_missing_cli_refuses_before_launch(self) -> None:
+
         self._set_roster()
         order = self.open_order()
         (self.bin / "codex").unlink()

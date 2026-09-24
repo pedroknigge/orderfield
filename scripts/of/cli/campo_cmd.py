@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 
-from of.campo import PEERS, Campo
+from of.campo import DEADLINE_ENV, DEFAULT_DEADLINE_S, PEERS, Campo
 from of.field import field_lock, find_root
 
 
@@ -22,8 +22,18 @@ def cmd_config_show(_args: argparse.Namespace) -> None:
     else:
         _print_roster(doc)
         print(f"config      {Campo.config_path()}")
+    stored = doc.get("deadline_s")
+    ceiling = float(stored) if stored is not None else DEFAULT_DEADLINE_S
+    source = "config" if stored is not None else "code default"
+    print(
+        f"deadline_s  {ceiling:g}s max "
+        f"({source}; {DEADLINE_ENV} overrides)"
+    )
     print(f"peers       {PEERS}")
-    print("next        leader: ask user for roster (of config audit); then of config set --contestant MODEL EFFORT; then of new --campo")
+    print(
+        "next        leader: ask user for roster (of config audit); "
+        "then of config set --contestant MODEL EFFORT; then of new --campo"
+    )
 
 
 def cmd_config_set(args: argparse.Namespace) -> None:
@@ -31,10 +41,18 @@ def cmd_config_set(args: argparse.Namespace) -> None:
         (str(model), str(effort))
         for model, effort in (args.contestant or [])
     ]
-    doc = Campo.write_defaults(seats)
+    deadline = getattr(args, "deadline", None)
+    doc = Campo.write_config(
+        seats=seats or None,
+        deadline_s=None if deadline is None else float(deadline),
+    )
     for line in Campo.audit_lines():
         print(line)
-    _print_roster(doc)
+    if Campo.contestants(doc):
+        _print_roster(doc)
+    stored = doc.get("deadline_s")
+    if stored is not None:
+        print(f"deadline_s  {float(stored):g}s max")
     print(f"peers       {PEERS}")
     print(f"config      {Campo.config_path()}")
 
