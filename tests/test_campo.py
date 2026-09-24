@@ -67,27 +67,27 @@ def stub_cli(directory: Path, name: str) -> None:
 
 
 def ballot_cli(directory: Path, name: str) -> None:
-    """Headless fake: write this peer's proposal and a concede, then exit 0."""
+    """Headless fake: write this peer's proposal and a concede, then exit 0.
+
+    Shell, not python. The child PATH is the stub dir plus git, so
+    ``#!/usr/bin/env python3`` does not resolve on macOS runners.
+    """
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / name
     path.write_text(
-        "#!/usr/bin/env python3\n"
-        "import json, os\n"
-        "from pathlib import Path\n"
-        "cid = os.environ['OF_CAMPO_ID']\n"
-        "root = Path(os.environ['OF_CAMPO_ROOT'])\n"
-        "arena = root / '.orderfield' / 'campo'\n"
-        "(arena / 'proposals').mkdir(parents=True, exist_ok=True)\n"
-        "(arena / 'ballots').mkdir(parents=True, exist_ok=True)\n"
-        "(arena / 'proposals' / f'{cid}.md').write_text('proposal ' + cid + '\\n')\n"
-        "peer = 'c1' if cid == 'c3' else 'c3'\n"
-        "(arena / 'ballots' / f'{cid}.json').write_text(json.dumps({\n"
-        "    'contestant': cid,\n"
-        "    'claim': 'peer covers the brief',\n"
-        "    'evidence': 'proposal cites Definition of Done',\n"
-        "    'peer': peer,\n"
-        "    'stance': 'concede',\n"
-        "}))\n",
+        """#!/bin/sh
+cid="$OF_CAMPO_ID"
+root="$OF_CAMPO_ROOT"
+arena="$root/.orderfield/campo"
+mkdir -p "$arena/proposals" "$arena/ballots"
+printf '%s\\n' "proposal $cid" > "$arena/proposals/$cid.md"
+peer=c3
+if [ "$cid" = "c3" ]; then peer=c1; fi
+cat > "$arena/ballots/$cid.json" <<EOF
+{"contestant":"$cid","claim":"peer covers the brief","evidence":"proposal cites Definition of Done","peer":"$peer","stance":"concede"}
+EOF
+exit 0
+""",
         encoding="utf-8",
     )
     path.chmod(0o755)
