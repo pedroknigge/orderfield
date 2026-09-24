@@ -425,6 +425,99 @@ class AuditPressure:
         return True
 
 
+class Deliverable:
+    """Promote the field deliverable out of work/scratch before close wipes it.
+
+    Dogfood: ``of close`` wiped ``work/scratch/leader/FINAL.md`` (the analysis
+    the user asked for). Before ClosedScratch.wipe the kernel copies
+    ``work/scratch/leader/FINAL.md`` to ``<field>/FINAL.md``, other leader
+    ``*.md`` to ``<field>/deliverables/leader/``, and every residual
+    ``result_ref`` that lives in scratch to ``<field>/deliverables/<child>/``.
+    A copy that fails or does not verify dies before the close stamp.
+    """
+
+    FINAL = "FINAL.md"
+    DIR = "deliverables"
+
+    @staticmethod
+    def _copy(src: Path, dest: Path) -> Path:
+        import hashlib
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(src, dest)
+            ok = (
+                hashlib.sha256(src.read_bytes()).hexdigest()
+                == hashlib.sha256(dest.read_bytes()).hexdigest()
+            )
+        except OSError as exc:
+            die(
+                f"of close refused: deliverable {src} would be lost "
+                f"(copy failed: {exc}); leader: fix the path and re-run of close"
+            )
+        if not ok:
+            die(f"of close refused: deliverable copy of {src} did not verify")
+        return dest
+
+    @staticmethod
+    def _result_refs(root: Path, home: Path, scratch: Path) -> list[tuple[str, Path]]:
+        from of.field import physical_artifact_path
+
+        out: list[tuple[str, Path]] = []
+        waves = home / "waves"
+        if not waves.is_dir():
+            return out
+        for res_path in sorted(waves.glob("*/residuals/*.json")):
+            doc = _read_json_object(res_path)
+            if not doc:
+                continue
+            ref = str(doc.get("result_ref") or "").strip()
+            if not ref:
+                continue
+            try:
+                src = physical_artifact_path(root, ref, "result_ref")
+            except SystemExit:
+                continue
+            try:
+                src.resolve().relative_to(scratch.resolve())
+            except (OSError, ValueError):
+                continue
+            if src.is_file() and not src.is_symlink():
+                out.append((res_path.stem, src))
+        return out
+
+    @staticmethod
+    def promote(root: Path, home: Path | None = None) -> list[Path]:
+        home = home or field_home(root)
+        scratch = home / "work" / "scratch"
+        if not scratch.is_dir() or scratch.is_symlink():
+            return []
+        done: list[Path] = []
+        leader = scratch / "leader"
+        final = leader / Deliverable.FINAL
+        if final.is_file() and not final.is_symlink():
+            done.append(Deliverable._copy(final, home / Deliverable.FINAL))
+        if leader.is_dir() and not leader.is_symlink():
+            for md in sorted(leader.glob("*.md")):
+                if md.name == Deliverable.FINAL or md.is_symlink():
+                    continue
+                done.append(
+                    Deliverable._copy(md, home / Deliverable.DIR / "leader" / md.name)
+                )
+        for child, src in Deliverable._result_refs(root, home, scratch):
+            try:
+                rel = src.resolve().relative_to((scratch / child).resolve())
+            except (OSError, ValueError):
+                rel = Path(src.name)
+            done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel))
+        return done
+
+    @staticmethod
+    def emit(root: Path, paths: list[Path]) -> None:
+        for path in paths:
+            print(f"deliverable {field_rel(root, path)}")
+
+
 class ClosedScratch:
     """Wipe this field's work/scratch after a successful close.
 

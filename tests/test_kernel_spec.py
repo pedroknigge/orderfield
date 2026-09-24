@@ -1412,15 +1412,81 @@ class CloseEvidenceGate(unittest.TestCase):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
 
-    def test_caption_only_evidence_refused(self) -> None:
+    def test_missing_sha_is_computed_by_kernel(self) -> None:
+        # Children under default trust may lack a hash tool: the kernel
+        # computes artifact_sha of result_ref at collect.
         self._write("we hashed the artifact and can roll it back")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         blob = collected.stdout + collected.stderr
+        self.assertEqual(collected.returncode, 0, blob)
+        self.assertIn("computed by kernel", blob)
+        packet = load_json(packet_path(self.tmp, "e1"))
+        residual = load_json(self.tmp / str(packet["residual_path"]))
+        digest = of.CloseEvidence.digest(self._artifact())
+        self.assertIn(
+            f"artifact_sha: {digest} (kernel)", residual["residual"]["evidence"]
+        )
+
+    def test_missing_result_file_still_refused(self) -> None:
+        self._write("claims only")
+        packet = load_json(packet_path(self.tmp, "e1"))
+        dest = self.tmp / str(packet["residual_path"])
+        residual = load_json(dest)
+        residual["result_ref"] = ".orderfield/work/scratch/e1/missing.md"
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
         self.assertNotEqual(collected.returncode, 0, blob)
-        self.assertIn("artifact_sha", blob)
-        self.assertIn("CloseEvidence.artifact_sha", blob)
-        self.assertIn("field=", blob)
-        # Explorer without owns_paths may omit rollback; sha is still required.
+        self.assertIn("result_ref must be an existing path", blob)
+        self.assertNotIn("computed by kernel", blob)
+
+    def test_platitude_is_judged_before_kernel_stamp(self) -> None:
+        # The child's own text is validated; the kernel does not pad it.
+        self._write("")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertNotIn("computed by kernel", blob)
+
+    def test_residual_pin_refuses_leader_edit(self) -> None:
+        from of.field import wave_dir
+        from of.residual_pin import ResidualPin
+
+        self._write("child wrote this")
+        packet = load_json(packet_path(self.tmp, "e1"))
+        dest = self.tmp / str(packet["residual_path"])
+        wdir = wave_dir(1, self.tmp)
+        ResidualPin.pin(wdir, "e1", dest, by="spawn")  # kernel saw child exit
+        residual = load_json(dest)
+        residual["residual"]["evidence"] = "leader rewrote the evidence"
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        blob = collected.stdout + collected.stderr
+        self.assertNotEqual(collected.returncode, 0, blob)
+        self.assertIn("rule=ResidualPin", blob)
+        marker = dest.with_suffix(dest.suffix + ".invalid.txt")
+        self.assertTrue(marker.is_file())
+        marker.unlink()  # deleting the marker is not a fix
+        again = run_of(self.tmp, "collect", "--wave", "1")
+        blob2 = again.stdout + again.stderr
+        self.assertNotEqual(again.returncode, 0, blob2)
+        self.assertIn("rule=ResidualPin", blob2)
+        self.assertTrue(marker.is_file(), "marker re-written")
+
+    def test_residual_pin_unchanged_collects_and_repins(self) -> None:
+        from of.field import wave_dir
+        from of.residual_pin import ResidualPin
+
+        self._write("child wrote this; no sha tool")
+        packet = load_json(packet_path(self.tmp, "e1"))
+        dest = self.tmp / str(packet["residual_path"])
+        wdir = wave_dir(1, self.tmp)
+        ResidualPin.pin(wdir, "e1", dest, by="spawn")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        rec = ResidualPin.load(wdir)["e1"]
+        self.assertEqual(rec["by"], "collect")
+        self.assertEqual(rec["sha"], ResidualPin.digest(dest))
 
     def test_explorer_done_without_rollback_collects(self) -> None:
         artifact = self._artifact()

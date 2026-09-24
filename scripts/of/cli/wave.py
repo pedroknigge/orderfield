@@ -33,6 +33,7 @@ from of_adapters import (
     spawn_env_mode,
     HostMcp,
     OperatorAction,
+    SensorTrust,
     WriteFloor,
 )
 from of.host_ram import AgentBand
@@ -118,6 +119,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 
+from of.residual_pin import KernelSha, ResidualPin
 from of.regime import PlanCoverage, PlanIngress, PlanWriteBack, done_when_for
 
 
@@ -963,7 +965,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     )
     print(f"child_id={child_id}")
     print(f"prompt={prompt_path}")
-    print(f"residual (awaiting)={residual_rel}")
+    print(f"residual (awaiting)={physical_field_rel(root, str(residual_rel))}")
     emit_event(
         "handoff",
         kind="child",
@@ -1004,6 +1006,13 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             WriteFloor.UNSUPPORTED_KIND,
             floor_speak,
             plain=f"of: note — {floor_speak}",
+        )
+    sensor_speak = SensorTrust.speak_line(adapter, profile, packet)
+    if sensor_speak:
+        emit_wave_warning(
+            SensorTrust.KIND,
+            sensor_speak,
+            plain=f"of: note — {sensor_speak}",
         )
     host_speak = WriteFloor.host_advisory(adapter, root)
     if host_speak:
@@ -1085,7 +1094,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
         print(f"adapter=generic child_id={child_id} mode=handoff")
         print(f"prompt={prompt_path}")
-        print(f"residual={residual_rel}")
+        print(f"residual={physical_field_rel(root, residual_rel)}")
         print(
             "Paste the prompt into any agent. The child must write the residual JSON."
         )
@@ -1122,6 +1131,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
     }
     WriteFloor.apply_meta(meta, adapter, profile)
+    sensor_mode = SensorTrust.mode(adapter, profile, packet)
+    if sensor_mode:
+        meta[SensorTrust.KIND] = sensor_mode
     OperatorAction.apply_meta(meta)
     model_name = AdapterHints.spawn_model(adapter, packet)
     if model_name:
@@ -1155,7 +1167,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             meta["exit"] = extra.get("exit")
         dump_json(meta_path, meta)
     print(f"adapter={adapter} child_id={child_id}")
-    print(f"residual={residual_rel}")
+    print(f"residual={physical_field_rel(root, residual_rel)}")
     if args.dry_run:
         finalize("dry_run", ok=True)
         snapshot_session(root, "spawn")
@@ -1206,6 +1218,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     # reads OF_FIELD, so a sibling-field child running `of spec ...` would
     # otherwise hit the roster and exit 2.
     child_env = spawn_env(adapter)
+    child_env.update(SensorTrust.env(adapter, profile, packet))
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
     scratch_rel = packet.get("scratch_dir")
@@ -1329,6 +1342,17 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             state = load_state(root)
             state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
             save_state(state, root)
+    if residual_abs.is_file():
+        data = load_json(residual_abs)
+        _errs, stamped = KernelSha.validate(
+            data, packet, root, validate_residual_for_packet
+        )
+        if stamped:
+            dump_json(residual_abs, data, skip_dir_fsync=True)
+        ResidualPin.pin(
+            wdir, str(child_id), residual_abs, by="spawn",
+            data=data if stamped else None,
+        )
     outcome, ok = SpawnRecord.outcome_for(
         proc.returncode,
         SpawnRecord.residual_valid(root, packet, residual_abs),
@@ -1416,8 +1440,21 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"{trust_note}"
             )
             continue
+        pin_dir = wave_dir(int(pkt.get("wave") or wave), root)
+        pin_err, pin_warn = ResidualPin.check(pin_dir, child, path)
+        if pin_warn:
+            print(pin_warn)
         data = load_json(path)
-        errs = validate_residual_for_packet(data, pkt, root)
+        stamped = False
+        if pin_err:
+            errs = [pin_err]
+        else:
+            errs, stamped = KernelSha.validate(
+                data, pkt, root, validate_residual_for_packet
+            )
+            if stamped:
+                dump_json(path, data, skip_dir_fsync=True)
+                print(f"artifact_sha {path.name}: computed by kernel at collect")
         if errs:
             bad += 1
             reason = "; ".join(errs)
@@ -1443,6 +1480,14 @@ def cmd_collect(args: argparse.Namespace) -> None:
             from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)
+        if not pin_err:
+            # Re-pin after kernel writes (stamp / write-back) so the next
+            # collect compares against the kernel's own bytes.
+            ResidualPin.pin(
+                pin_dir, child, path, by="collect",
+                invalid="; ".join(errs) if errs else None,
+                data=data if stamped else None,
+            )
     snapshot_session(root, "collect")
     emit_event(
         "collect",

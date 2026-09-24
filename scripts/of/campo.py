@@ -79,6 +79,7 @@ class Campo:
     # None uses subprocess.Popen on this cwd. Tests inject a fake.
     runner: Callable[..., Any] | None = None
     _children: list[Any] = []
+    SINGLE_CLI_SEATS = 3
 
     @staticmethod
     def config_path() -> Path:
@@ -174,15 +175,15 @@ class Campo:
     # Leader-directed (not human-typed). Interactive: ask user, leader runs of.
     # Headless: auto-roster from installed CLIs + catalog default + medium.
     LEADER_ROSTER_ASK = (
-        "roster unset: ask the user which contestants to seat "
+        "roster unset: ask the user which models compete in Campo "
         "(options from of config audit: installed harnesses, catalog models, "
-        "effort; suggest medium). Then run "
+        "effort; suggest medium; one CLI may seat several models). Then run "
         "`of config set --contestant MODEL EFFORT` (xN) yourself and re-run "
         "`of new --campo`. Do not ask the human to type a command."
     )
     DEGRADE_LINE = (
-        "campo: fewer than 2 installed harness CLIs with catalog models; "
-        "proceeding as single-contestant Orden"
+        "campo: fewer than 2 distinct (cli, model) seats from installed "
+        "harness CLIs; proceeding as single-contestant Orden"
     )
     AUTO_ROSTER_LINE = (
         "campo: roster unset and non-interactive; auto-built contestants "
@@ -190,6 +191,17 @@ class Campo:
     )
     # Back-compat alias for older tests/docs that named the hard-gate line.
     GATE_NEXT = LEADER_ROSTER_ASK
+    # Plain Orden with a stored roster needs the user's own words.
+    ORDEN_USER = "user"
+    ORDEN_CONSENT_ASK = (
+        "orden-only refused: a Campo roster is stored and Campo is the "
+        "default. Ask the user which models compete in Campo (offer the "
+        "stored roster from of config as the default). One harness is not "
+        "plain Orden: one CLI can seat several models. Only if the user "
+        "explicitly asks for plain Orden, re-run with --orden-only=user "
+        "--orden-reason \"<the user's words>\". Do not ask the human to "
+        "type a command."
+    )
 
     @staticmethod
     def roster_ready(doc: dict[str, Any] | None = None) -> bool:
@@ -240,13 +252,23 @@ class Campo:
                 seats.append((model, "medium"))
                 seen.add(model)
                 break
+        # One CLI is still Campo: seat its other catalog models (up to 3).
+        # Degrade only when fewer than two distinct (cli, model) seats exist.
+        if len(by_harness) == 1:
+            for model in by_harness[order[0]]:
+                if len(seats) >= Campo.SINGLE_CLI_SEATS:
+                    break
+                if model in seen:
+                    continue
+                seats.append((model, "medium"))
+                seen.add(model)
         return seats
 
     @staticmethod
     def ensure_roster() -> list[dict[str, str]]:
         """Return a ready roster, auto-build headless, ask-die interactive, or [].
 
-        Empty list means graceful Orden degrade (<2 installed catalog peers).
+        Empty list means graceful Orden degrade (<2 distinct cli+model seats).
         Interactive refuse is die(LEADER_ROSTER_ASK) before any field write.
         """
         rows = Campo.contestants()
@@ -263,20 +285,48 @@ class Campo:
         return Campo.contestants()
 
     @staticmethod
+    def orden_consent(args) -> dict[str, str] | None:
+        """Plain Orden gate. None means Campo entry continues.
+
+        With a stored roster (>=2 seats) plain Orden needs the user's word:
+        --orden-only=user plus --orden-reason. Bare --orden-only is refused
+        with a leader-directed ask, TTY or not (harness Bash is not a TTY).
+        Without a stored roster, bare --orden-only skips nothing and passes.
+        """
+        mode = getattr(args, "orden_only", None)
+        if not mode:
+            return None
+        mode = str(mode).strip().casefold()
+        if mode not in {Campo.ORDEN_USER, "bare", "true"}:
+            die(f"--orden-only takes no value or =user; got {mode!r}")
+        reason = " ".join(str(getattr(args, "orden_reason", "") or "").split())
+        stored = len(Campo.contestants()) >= 2
+        if stored and (mode != Campo.ORDEN_USER or not reason):
+            die(Campo.ORDEN_CONSENT_ASK)
+        if mode == Campo.ORDEN_USER and not reason:
+            die("--orden-only=user requires --orden-reason \"<the user's words>\"")
+        return {
+            "by": Campo.ORDEN_USER if mode == Campo.ORDEN_USER else "no-roster",
+            "reason": reason or "no stored Campo roster",
+        }
+
+    @staticmethod
     def resolve_entry(args) -> bool:
         """Return True when this init/new should enter Campo.
 
-        --orden-only is the only plain-Orden escape. With a stored roster,
-        Campo is the default. Roster unset: interactive leaders get
+        Campo is the default. Plain Orden needs orden_consent (the user's
+        word when a roster is stored). Roster unset: interactive leaders get
         LEADER_ROSTER_ASK (before any field write); headless leaders get an
-        auto-built roster from the of config audit; <2 CLIs degrade to Orden.
-        --campo stays the explicit verb and the of init alias of of new --campo.
+        auto-built roster from the of config audit (one CLI may seat several
+        models); <2 distinct seats degrade to Orden. --multi-model no is a
+        budget hint, never an Orden switch.
         """
-        orden_only = bool(getattr(args, "orden_only", False))
         want_flag = bool(getattr(args, "campo", False))
-        if orden_only and want_flag:
+        if getattr(args, "orden_only", None) and want_flag:
             die("pass only one of --campo / --orden-only")
-        if orden_only:
+        consent = Campo.orden_consent(args)
+        if consent is not None:
+            args.orden_consent = consent
             return False
         rows = Campo.ensure_roster()
         if len(rows) >= 2:

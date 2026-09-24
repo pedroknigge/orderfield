@@ -336,14 +336,33 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--orden-only",
         dest="orden_only",
-        action="store_true",
-        help="plain Orden; skip Campo even when a roster is stored",
+        nargs="?",
+        const="bare",
+        default=None,
+        metavar="user",
+        help=(
+            "plain Orden instead of the default Campo. With a stored roster "
+            "only --orden-only=user --orden-reason TEXT (the user asked)"
+        ),
+    )
+    s.add_argument(
+        "--orden-reason",
+        dest="orden_reason",
+        default=None,
+        help="the user's words asking for plain Orden (recorded in ORDER.orden_only)",
     )
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser(
         "new",
-        help="open a sibling field without closing the others; --parent nests a phase",
+        help="open a sibling field (Campo is the default); --parent nests a phase",
+        description=(
+            "Open a sibling field. Campo is the default: with a stored roster "
+            "(or a headless auto-roster) the kernel launches peer contestants, "
+            "waits for proposals + ballots, and pins a leader. One harness can "
+            "still seat several models. Plain Orden only when the user asked: "
+            "--orden-only=user --orden-reason TEXT."
+        ),
     )
     s.add_argument("--mission", required=True)
     s.add_argument("--phase", default="explore", choices=PHASES)
@@ -386,8 +405,20 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--orden-only",
         dest="orden_only",
-        action="store_true",
-        help="plain Orden; skip Campo even when a roster is stored",
+        nargs="?",
+        const="bare",
+        default=None,
+        metavar="user",
+        help=(
+            "plain Orden instead of the default Campo. With a stored roster "
+            "only --orden-only=user --orden-reason TEXT (the user asked)"
+        ),
+    )
+    s.add_argument(
+        "--orden-reason",
+        dest="orden_reason",
+        default=None,
+        help="the user's words asking for plain Orden (recorded in ORDER.orden_only)",
     )
     s.set_defaults(func=cmd_new)
 

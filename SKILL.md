@@ -29,7 +29,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 |---|---|
 | `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn. Clone/checkout + installed skill: operator risk, not an escape |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
-| Campo then Orden | Leader asks roster (of config; medium) then runs `of config set` + `of new --campo`. Headless auto. `--orden-only` escape. Host does not appoint. Same branch + commit = shared context. c1=session. |
+| Campo then Orden | Campo default. Ask which models compete (stored roster default) → `of config set` + `of new --campo`. `--orden-only=user` iff user asks. Host does not appoint. Same branch + commit = shared context. c1=session. |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
 | multi-role pack plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. On yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |

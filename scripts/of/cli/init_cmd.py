@@ -25,6 +25,7 @@ from of.field import (
     save_order,
     save_state,
     session_path,
+    utc_now,
     write_phase_md,
 )
 from of.campo import Campo
@@ -64,6 +65,46 @@ def resolve_source_text(args: argparse.Namespace) -> str | None:
     return None
 
 
+class DoneWhenSeed:
+    """Analysis-only fields: seed binding requirements from --done-when.
+
+    Dogfood: an explore-only field (no requirement-shaped lines in the brief)
+    hit SPEC-EMPTY at close, so the leader invented SPEC text. When the SPEC
+    extract is empty and the phase is explore, each --done-when line becomes
+    a binding ``DONE-NNN`` requirement (origin ``added``). SPEC.md stays the
+    verbatim brief.
+    """
+
+    PREFIX = "DONE"
+
+    @staticmethod
+    def requirements(
+        extracted: list[dict[str, Any]], phase: str, done_when: Any
+    ) -> list[dict[str, Any]]:
+        if extracted or phase != "explore" or not done_when:
+            return []
+        from of.spec import decorate_requirement
+
+        out: list[dict[str, Any]] = []
+        for text in done_when:
+            body = " ".join(str(text or "").split())
+            if not body:
+                continue
+            out.append(
+                decorate_requirement(
+                    {
+                        "id": f"{DoneWhenSeed.PREFIX}-{len(out) + 1:03d}",
+                        "text": body,
+                        "binding": True,
+                        "owned_by": [],
+                        "status": "unowned",
+                        "origin": "added",
+                    }
+                )
+            )
+        return out
+
+
 def _stamp_and_write_new_field(
     args: argparse.Namespace,
     root: Path,
@@ -82,6 +123,9 @@ def _stamp_and_write_new_field(
     if args.done_when:
         order["done_when"] = args.done_when
     AgentBand.apply_args(order, args)
+    consent = getattr(args, "orden_consent", None)
+    if isinstance(consent, dict):
+        order["orden_only"] = {**consent, "at": utc_now()}
     DoneWhenLint.refuse(list(order.get("done_when") or []))
     origin_harness, origin_session = resolve_init_origin(
         getattr(args, "origin", None),
@@ -99,6 +143,8 @@ def _stamp_and_write_new_field(
     if source_text is not None:
         spec_hash = write_spec(root, source_text, revise=bool(force))
         extracted = extract_requirements_from_spec(source_text)
+        seeded = DoneWhenSeed.requirements(extracted, phase, args.done_when)
+        extracted = extracted or seeded
         save_requirements(
             {"v": 1, "spec_hash": spec_hash, "requirements": extracted},
             root,
@@ -108,8 +154,9 @@ def _stamp_and_write_new_field(
         unowned_n = sum(
             1 for r in extracted if str(r.get("status") or "unowned") == "unowned"
         )
+        label = "seeded from --done-when" if seeded and extracted is seeded else "extracted"
         print(
-            f"requirements {len(extracted)} extracted  unowned {unowned_n}  "
+            f"requirements {len(extracted)} {label}  unowned {unowned_n}  "
             "(of pack --owns-requirement ID; do not implement without a packet)"
         )
         src_path = Path(source_file) if source_file and str(source_file) != "-" else None
