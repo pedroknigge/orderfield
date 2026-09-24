@@ -7,9 +7,10 @@ Contestants and crew share the field cwd and git branch. A commit on that
 branch is how the others catch up (proposals, ballots, code, residual
 notes). The session that runs of is contestant #1, a peer, not a parent.
 This module launches the other peers headless on this cwd and branch,
-waits for ballots or a deadline, then settles. It does not create a
-worktree, does not run a merge-packet, and does not accept a
-host-appointed leader. Two writers do not edit one path at once.
+waits for ballots (or all peers to exit) up to a maximum deadline, then
+settles. It does not create a worktree, does not run a merge-packet, and
+does not accept a host-appointed leader. Two writers do not edit one
+path at once.
 
 Re-open after verifier refuse is parent epic #333, not this slice.
 """
@@ -56,8 +57,12 @@ RULE = "plurality-concede"
 TIE_BREAK = "contestant-id"
 PEERS = "equals; list order is not rank and not a role"
 # Strict majority, and c1 must have voted. N=3 needs 2 ballots including c1.
-DEFAULT_DEADLINE_S = 120.0
+# Deadline is a maximum: settle as soon as every proposal+ballot is in, or
+# every headless peer has exited. Resolution: OF_CAMPO_DEADLINE > config
+# deadline_s > DEFAULT_DEADLINE_S.
+DEFAULT_DEADLINE_S = 600.0
 DEADLINE_ENV = "OF_CAMPO_DEADLINE"
+DEADLINE_CONFIG_KEY = "deadline_s"
 # macOS keeps mkdir/cat/sh in /bin. A leader PATH that is only a stub dir
 # plus git (/usr/bin) cannot run them. Children keep the leader entries first.
 _SYSTEM_PATH = ("/bin", "/usr/bin")
@@ -102,20 +107,52 @@ class Campo:
         if not isinstance(rows, list):
             die(f"invalid campo config {path}: contestants must be a list")
         clean = [Campo._seat_from_disk(item, path) for item in rows]
-        return {"v": 1, "contestants": clean}
+        doc: dict[str, Any] = {"v": 1, "contestants": clean}
+        if DEADLINE_CONFIG_KEY in raw:
+            doc[DEADLINE_CONFIG_KEY] = Campo._parse_deadline(
+                raw[DEADLINE_CONFIG_KEY],
+                where=f"{path} {DEADLINE_CONFIG_KEY}",
+            )
+        return doc
 
     @staticmethod
     def write_defaults(seats: list[tuple[str, str]]) -> dict[str, Any]:
-        clean = [Campo._normalize_seat(model, effort) for model, effort in seats]
-        if len(clean) < 2:
-            die("of config set needs at least two --contestant values")
-        seen: set[str] = set()
-        for seat in clean:
-            if seat["model"] in seen:
-                die(f"duplicate contestant {seat['model']}")
-            seen.add(seat["model"])
-        doc = {"v": 1, "contestants": clean}
-        dump_json(Campo.config_path(), doc)
+        return Campo.write_config(seats=seats)
+
+    @staticmethod
+    def write_config(
+        *,
+        seats: list[tuple[str, str]] | None = None,
+        deadline_s: float | None = None,
+    ) -> dict[str, Any]:
+        """Persist roster and/or deadline_s. Missing fields keep prior values."""
+        if seats is None and deadline_s is None:
+            die("of config set needs --contestant ... or --deadline")
+        path = Campo.config_path()
+        prior = Campo.read_config()
+        doc: dict[str, Any] = {
+            "v": 1,
+            "contestants": list(prior.get("contestants") or []),
+        }
+        if DEADLINE_CONFIG_KEY in prior:
+            doc[DEADLINE_CONFIG_KEY] = prior[DEADLINE_CONFIG_KEY]
+        if seats is not None:
+            clean = [
+                Campo._normalize_seat(model, effort) for model, effort in seats
+            ]
+            if len(clean) < 2:
+                die("of config set needs at least two --contestant values")
+            seen: set[str] = set()
+            for seat in clean:
+                if seat["model"] in seen:
+                    die(f"duplicate contestant {seat['model']}")
+                seen.add(seat["model"])
+            doc["contestants"] = clean
+        if deadline_s is not None:
+            doc[DEADLINE_CONFIG_KEY] = Campo._parse_deadline(
+                deadline_s, where=DEADLINE_CONFIG_KEY
+            )
+        dump_json(path, doc)
         return doc
 
     @staticmethod
@@ -336,18 +373,25 @@ class Campo:
         return pick_adapter(None)
 
     @staticmethod
-    def deadline_s() -> float:
-        """Seconds to wait for ballots. OF_CAMPO_DEADLINE overrides 120."""
-        raw = (os.environ.get(DEADLINE_ENV) or "").strip()
-        if not raw:
-            return DEFAULT_DEADLINE_S
+    def _parse_deadline(raw: Any, *, where: str) -> float:
         try:
             value = float(raw)
-        except ValueError:
-            die(f"invalid {DEADLINE_ENV} {raw!r}")
+        except (TypeError, ValueError):
+            die(f"invalid {where} {raw!r}")
         if value < 0:
-            die(f"invalid {DEADLINE_ENV} {raw!r}")
+            die(f"invalid {where} {raw!r}")
         return value
+
+    @staticmethod
+    def deadline_s() -> float:
+        """Max seconds to wait. Env > config deadline_s > 600."""
+        raw = (os.environ.get(DEADLINE_ENV) or "").strip()
+        if raw:
+            return Campo._parse_deadline(raw, where=DEADLINE_ENV)
+        cfg = Campo.read_config()
+        if DEADLINE_CONFIG_KEY in cfg:
+            return float(cfg[DEADLINE_CONFIG_KEY])
+        return DEFAULT_DEADLINE_S
 
     @staticmethod
     def quorum(roster: list[str], ballots: list[dict[str, str]]) -> bool:
@@ -758,11 +802,34 @@ class Campo:
         Campo._write_spawns(root, planned)
 
     @staticmethod
+    def _headless_done(planned: list[dict[str, Any]]) -> bool:
+        """True when every launched headless peer has exited (poll not None)."""
+        saw = False
+        for row in planned:
+            proc = row.get("_proc")
+            if proc is None:
+                continue
+            saw = True
+            if proc.poll() is None:
+                return False
+        return saw
+
+    @staticmethod
     def _wait(root: Path, planned: list[dict[str, Any]]) -> None:
+        """Wait until ballots complete, all peers exit, or the max deadline.
+
+        Deadline is a ceiling. Full proposal+ballot set settles immediately.
+        All headless peers exited (even without ballots) also ends the wait
+        so a dead roster cannot burn the full 600s.
+        """
         roster = [str(row["id"]) for row in planned]
         deadline = time.monotonic() + Campo.deadline_s()
         while True:
             if Campo._ballots(root, roster, live=True) is not None:
+                Campo._reap(root, planned, force=False)
+                Campo._write_spawns(root, planned)
+                return
+            if Campo._headless_done(planned):
                 Campo._reap(root, planned, force=False)
                 Campo._write_spawns(root, planned)
                 return

@@ -35,6 +35,10 @@ wait, quorum, pin vs `campo/hold.json`, and implementer `hold_pack` stay
 inside `Campo`. Install ships `docs/model-catalog.json` (+ md) on the skill
 surface so `of config` lists real model ids.
 
+
+## Wait ceiling
+
+Campo's wait is a **maximum of 600 seconds** (code default; `of config set --deadline` stores `deadline_s` in `~/.orderfield/config.json`; `OF_CAMPO_DEADLINE` overrides). The kernel settles as soon as every contestant has a proposal and ballot, or as soon as every headless peer process has exited. Do not sleep the remaining ceiling. Skill and stdout lines address the leader model; never tell the human to run an `of` command.
 ## CloseEvidence honesty
 
 INVALID collect lines name the field and the anchor rule (artifact_sha /

@@ -404,17 +404,27 @@ def build_parser() -> argparse.ArgumentParser:
     config_show.set_defaults(func=cmd_config_show)
     config_set = config_sub.add_parser(
         "set",
-        help="choose contestant peers from the installed models (N>=2)",
+        help="choose contestant peers and/or Campo deadline_s max",
     )
     config_set.add_argument(
         "--contestant",
         action="append",
         nargs=2,
         metavar=("MODEL", "EFFORT"),
-        required=True,
+        required=False,
         help=(
             "model effort (repeat; N>=2). Peers, not roles. "
             "Not a leader appointment"
+        ),
+    )
+    config_set.add_argument(
+        "--deadline",
+        type=float,
+        metavar="SECONDS",
+        default=None,
+        help=(
+            "Campo wait ceiling in seconds (stored as deadline_s; "
+            "default 600; OF_CAMPO_DEADLINE still overrides)"
         ),
     )
     config_set.set_defaults(func=cmd_config_set)
