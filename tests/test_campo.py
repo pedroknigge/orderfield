@@ -2,6 +2,13 @@
 """Campo tracer: config defaults, peer election, pin before implementer pack."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import inspect
 import json
 import os
@@ -40,7 +47,7 @@ def run_of(
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -438,7 +445,7 @@ class CampoElection(unittest.TestCase):
             "--campo",
         )
         self.assertNotEqual(bare.returncode, 0, bare.stdout)
-        self.assertIn("N>=2", bare.stderr)
+        self.assertIn(Campo.GATE_NEXT, bare.stderr)
         self.assertFalse((self.tmp / ".orderfield" / "ORDER.json").is_file())
         self.of(
             "config",
@@ -958,3 +965,127 @@ class CampoElection(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class HardGateCampo(unittest.TestCase):
+    """Option A: unset roster refuses plain of new/init before any write."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-campo-gate-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cfg = self.tmp / "config.json"
+        self.env = {
+            "OF_CONFIG": str(self.cfg),
+            "OF_NO_UPDATE_CHECK": "1",
+            "OF_LEARNINGS": str(self.tmp / "learnings.json"),
+        }
+
+    def of(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return run_of(self.tmp, *args, extra_env=self.env)
+
+    def test_plain_new_without_roster_refuses_before_write(self) -> None:
+        # Bypass test helper injection: call argv without --orden-only.
+        env = {**os.environ, **self.env}
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "new",
+                "--mission",
+                "should refuse",
+                "--source",
+                "brief",
+            ],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        blob = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, blob)
+        self.assertIn(Campo.GATE_NEXT, blob)
+        self.assertFalse((self.tmp / ".orderfield").exists(), "refused before disk writes")
+
+    def test_plain_init_without_roster_refuses_before_write(self) -> None:
+        env = {**os.environ, **self.env}
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(OF_PY),
+                "init",
+                "--mission",
+                "should refuse",
+                "--source",
+                "brief",
+            ],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        blob = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, blob)
+        self.assertIn(Campo.GATE_NEXT, blob)
+        self.assertFalse((self.tmp / ".orderfield").exists())
+
+    def test_orden_only_allows_plain_orden(self) -> None:
+        proc = self.of(
+            "init",
+            "--mission",
+            "plain orden",
+            "--source",
+            "thin brief",
+            "--orden-only",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue((self.tmp / ".orderfield").exists())
+        homes = list((self.tmp / ".orderfield" / "fields").glob("ord_*"))
+        # legacy or fields layout
+        self.assertFalse(any(p.joinpath("campo").is_dir() for p in [
+            self.tmp / ".orderfield",
+            *homes,
+        ]))
+
+    def test_roster_set_defaults_new_to_campo(self) -> None:
+        import argparse
+
+        self.cfg.parent.mkdir(parents=True, exist_ok=True)
+        self.cfg.write_text(
+            json.dumps(
+                {
+                    "v": 1,
+                    "contestants": [
+                        {"model": "claude-opus", "effort": "medium"},
+                        {"model": "grok-4", "effort": "high"},
+                    ],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        os.environ["OF_CONFIG"] = str(self.cfg)
+        self.addCleanup(os.environ.pop, "OF_CONFIG", None)
+        args = argparse.Namespace(campo=False, orden_only=False)
+        self.assertTrue(Campo.resolve_entry(args))
+        args2 = argparse.Namespace(campo=False, orden_only=True)
+        self.assertFalse(Campo.resolve_entry(args2))
+
+
+class CatalogInstallSurface(unittest.TestCase):
+    def test_install_sh_copies_model_catalog(self) -> None:
+        src = (ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertIn("SKILL_SURFACE_CATALOG", src)
+        self.assertIn("docs/model-catalog.json", src)
+        self.assertIn("docs/model-catalog.md", src)
+
+
+class DogfoodCampoBeforePack(unittest.TestCase):
+    """Dogfood script asserts .orderfield/**/campo/ exists before first pack."""
+
+    def test_script_exists_and_checks_campo(self) -> None:
+        script = ROOT / "docs" / "demo" / "campo-dogfood-gate.sh"
+        self.assertTrue(script.is_file(), script)
+        body = script.read_text(encoding="utf-8")
+        self.assertIn("campo", body)
+        self.assertIn("pack", body)

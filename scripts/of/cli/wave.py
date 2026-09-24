@@ -1,6 +1,8 @@
 """Wave commands: pack, unpack, render, handoff, spawn, collect."""
 from __future__ import annotations
 
+import json
+
 import argparse
 import errno
 import os

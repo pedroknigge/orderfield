@@ -2,6 +2,13 @@
 """LOCK-001 — spec and checkpoint hold the field lock; spec vs patch race loses no write."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import json
 import os
 import shutil
@@ -37,7 +44,7 @@ class FieldLockRace(unittest.TestCase):
         brief = self.tmp / "brief.md"
         brief.write_text("# brief\n\nBuild the thing.\n", encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, str(OF_PY), "init", "--mission", "race", "--source-file", str(brief)],
+            [sys.executable, str(OF_PY), *with_orden_only("init", "--mission", "race", "--source-file", str(brief))],
             cwd=str(self.tmp), capture_output=True, text=True, env=env_for(self.tmp),
         )
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -122,7 +129,7 @@ class SpawnLockRace(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="of-spawn-lock-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         r = subprocess.run(
-            [sys.executable, str(OF_PY), "init", "--mission", "spawn lock race"],
+            [sys.executable, str(OF_PY), *with_orden_only("init", "--mission", "spawn lock race")],
             cwd=str(self.tmp),
             capture_output=True,
             text=True,

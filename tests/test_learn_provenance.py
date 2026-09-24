@@ -2,6 +2,13 @@
 """SEC-003 — of learn is field-local by default; provenance gates every load."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import json
 import os
 import re
@@ -27,7 +34,7 @@ def run_of(cwd: Path, *args: str, env_extra: dict | None = None) -> subprocess.C
     env.pop("OF_CHILD", None)
     env.update(env_extra or {})
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd), capture_output=True, text=True, env=env,
     )
 

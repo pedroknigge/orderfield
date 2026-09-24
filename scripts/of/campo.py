@@ -133,14 +133,46 @@ class Campo:
             )
         return rows
 
+    GATE_NEXT = (
+        "of config set --contestant MODEL EFFORT (xN) then of new --campo"
+    )
+
+    @staticmethod
+    def roster_ready(doc: dict[str, Any] | None = None) -> bool:
+        return len(Campo.contestants(doc)) >= 2
+
+    @staticmethod
+    def refuse_unset_roster() -> None:
+        die(Campo.GATE_NEXT)
+
+    @staticmethod
+    def resolve_entry(args) -> bool:
+        """Return True when this init/new should enter Campo.
+
+        Refusal (roster unset, no --orden-only) happens before any field write.
+        --orden-only is the explicit plain-Orden escape. With a stored roster,
+        Campo is the default unless --orden-only. --campo stays the explicit
+        verb and the of init alias of of new --campo.
+        """
+        orden_only = bool(getattr(args, "orden_only", False))
+        want_flag = bool(getattr(args, "campo", False))
+        if orden_only and want_flag:
+            die("pass only one of --campo / --orden-only")
+        if orden_only:
+            return False
+        if want_flag:
+            Campo.require_roster()
+            return True
+        if Campo.roster_ready():
+            return True
+        Campo.refuse_unset_roster()
+        return False  # unreachable
+
     @staticmethod
     def require_roster() -> list[dict[str, str]]:
         rows = Campo.contestants()
         if len(rows) < 2:
-            die(
-                "campo needs N>=2 contestants; "
-                "of config set --contestant MODEL EFFORT"
-            )
+            die(Campo.GATE_NEXT)
         return rows
 
     @staticmethod
@@ -311,7 +343,7 @@ class Campo:
         """
         rnd = Campo._read_round(root)
         if rnd is None:
-            die("campo is not open; of init --campo")
+            die("campo is not open; of new --campo")
         if rnd.get("status") == "pinned" and Campo._leader_path(root).is_file():
             return Campo._pinned_doc(root, rnd)
         roster = Campo._roster_ids(rnd)
