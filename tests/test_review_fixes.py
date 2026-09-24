@@ -38,7 +38,7 @@ def run_of(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subproce
     if env:
         base.update(env)
     return subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "of.py"), *args],
+        [sys.executable, str(ROOT / "scripts" / "of.py"), *with_orden_only(*args)],
         cwd=str(cwd), capture_output=True, text=True, env=base,
     )
 
