@@ -985,8 +985,10 @@ class CampoElection(unittest.TestCase):
         leader = json.loads((arena / "leader.json").read_text(encoding="utf-8"))
         self.assertEqual(leader["leader"], "c3")
         spawns = json.loads((arena / "spawns.json").read_text(encoding="utf-8"))
-        self.assertEqual(spawns["peers"][1]["status"], "exited")
-        self.assertEqual(spawns["peers"][2]["status"], "exited")
+        # All ballots valid pins at once; a peer may still be in its exit
+        # path at that instant. It must never be recorded dead/timeout.
+        self.assertIn(spawns["peers"][1]["status"], {"exited", "running"})
+        self.assertIn(spawns["peers"][2]["status"], {"exited", "running"})
         self.assertTrue(spawns["peers"][1]["launched"])
 
     def test_docs_teach_campo_then_orden(self) -> None:
