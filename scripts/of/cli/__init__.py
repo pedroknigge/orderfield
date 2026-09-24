@@ -381,23 +381,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     config = sub.add_parser(
         "config",
-        help="contestant roster (harness, model, effort) for Campo",
+        help="audit installed CLIs, then choose peer model + effort (Campo)",
     )
-    config_sub = config.add_subparsers(dest="config_cmd", required=True)
-    config_show = config_sub.add_parser("show", help="print contestant roster")
+    config.set_defaults(func=cmd_config_show)
+    config_sub = config.add_subparsers(dest="config_cmd", required=False)
+    config_show = config_sub.add_parser(
+        "show",
+        help="audit installed harness CLIs and print the peer roster",
+    )
     config_show.set_defaults(func=cmd_config_show)
     config_set = config_sub.add_parser(
         "set",
-        help="set contestant seats (N>=2; mixed harnesses and efforts)",
+        help="choose contestant peers from the installed models (N>=2)",
     )
     config_set.add_argument(
         "--contestant",
         action="append",
-        nargs=3,
-        metavar=("HARNESS", "MODEL", "EFFORT"),
+        nargs=2,
+        metavar=("MODEL", "EFFORT"),
         required=True,
         help=(
-            "harness model effort (repeat; N>=2). "
+            "model effort (repeat; N>=2). Peers, not roles. "
             "Not a leader appointment"
         ),
     )

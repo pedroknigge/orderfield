@@ -58,6 +58,13 @@ def git(cwd: Path, *args: str) -> str:
     return proc.stdout
 
 
+def stub_cli(directory: Path, name: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    path.chmod(0o755)
+
+
 def write_seat(
     root: Path,
     cid: str,
@@ -92,7 +99,14 @@ class CampoElection(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-campo-"))
         self.config = self.tmp / "user-config.json"
-        self.env = {"OF_CONFIG": str(self.config)}
+        self.bin = self.tmp / "bin"
+        for name in ("claude", "grok", "codex"):
+            stub_cli(self.bin, name)
+        git_dir = str(Path(shutil.which("git") or "/usr/bin/git").resolve().parent)
+        self._old_path = os.environ.get("PATH")
+        path = os.pathsep.join([str(self.bin), git_dir])
+        os.environ["PATH"] = path
+        self.env = {"OF_CONFIG": str(self.config), "PATH": path}
         git(self.tmp, "init", "-q")
         git(self.tmp, "config", "user.email", "of@test")
         git(self.tmp, "config", "user.name", "of")
@@ -101,6 +115,10 @@ class CampoElection(unittest.TestCase):
         self.branch = git(self.tmp, "rev-parse", "--abbrev-ref", "HEAD")
 
     def tearDown(self) -> None:
+        if self._old_path is None:
+            os.environ.pop("PATH", None)
+        else:
+            os.environ["PATH"] = self._old_path
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def of(self, *args: str) -> subprocess.CompletedProcess[str]:
@@ -140,17 +158,20 @@ class CampoElection(unittest.TestCase):
         missing = self.of("config", "show")
         self.assertEqual(missing.returncode, 0, missing.stderr)
         self.assertIn("(unset)", missing.stdout)
+        self.assertIn("installed", missing.stdout)
+        self.assertIn("PATH≠auth", missing.stdout)
+        self.assertIn("opus", missing.stdout)
+        self.assertIn("not a role", missing.stdout)
+        self.assertNotIn("Opus 5.5", missing.stdout)
         self.assertFalse(self.config.is_file())
-        self.assertIn("Opus 5.5", missing.stdout)
-        self.assertIn("Codex Sol 6", missing.stdout)
-        self.assertIn("Grok 4.7", missing.stdout)
-        self.assertIn("Gemini 3.8 Flash", missing.stdout)
+        bare = self.of("config")
+        self.assertEqual(bare.returncode, 0, bare.stderr)
+        self.assertIn("installed", bare.stdout)
         one = self.of(
             "config",
             "set",
             "--contestant",
-            "grok",
-            "only-one",
+            "opus",
             "high",
         )
         self.assertNotEqual(one.returncode, 0, one.stdout)
@@ -159,42 +180,52 @@ class CampoElection(unittest.TestCase):
             "config",
             "set",
             "--contestant",
-            "grok",
-            "grok-4",
+            "opus",
             "max",
             "--contestant",
-            "claude",
-            "claude-sonnet",
+            "grok-4.6",
             "high",
         )
         self.assertNotEqual(bad.returncode, 0, bad.stdout)
+        absent = self.of(
+            "config",
+            "set",
+            "--contestant",
+            "Opus 5.5",
+            "medium",
+            "--contestant",
+            "opus",
+            "high",
+        )
+        self.assertNotEqual(absent.returncode, 0, absent.stdout)
+        self.assertIn("not installed", absent.stderr)
         ok = self.of(
             "config",
             "set",
             "--contestant",
-            "grok",
-            "grok-4",
+            "grok-4.6",
             "high",
             "--contestant",
-            "claude",
-            "claude-sonnet",
-            "high",
+            "opus",
+            "medium",
         )
         self.assertEqual(ok.returncode, 0, ok.stderr)
         doc = json.loads(self.config.read_text(encoding="utf-8"))
         self.assertEqual(
             doc["contestants"],
             [
-                {"harness": "grok", "model": "grok-4", "effort": "high"},
-                {"harness": "claude", "model": "claude-sonnet", "effort": "high"},
+                {"model": "grok-4.6", "effort": "high"},
+                {"model": "opus", "effort": "medium"},
             ],
         )
         self.assertNotIn("models", doc)
+        self.assertNotIn("harness", doc["contestants"][0])
         self.assertNotIn("leader", doc)
+        self.assertIn("not a role", ok.stdout)
         shown = self.of("config", "show")
         self.assertEqual(shown.returncode, 0, shown.stderr)
         self.assertIn("high", shown.stdout)
-        self.assertIn("grok-4", shown.stdout)
+        self.assertIn("grok-4.6", shown.stdout)
         self.assertIn("c1", shown.stdout)
         self.assertIn("c2", shown.stdout)
         appoint = self.of("campo", "settle", "--leader", "c1")
@@ -203,79 +234,62 @@ class CampoElection(unittest.TestCase):
         self.assertEqual(quiet.returncode, 0, quiet.stderr)
         self.assertFalse((self.tmp / ".orderfield" / "campo").exists())
 
-    def test_catalog_fold_stores_unique_id_and_spawn_refuses_unknown(self) -> None:
-        clash = self.of(
+    def test_installed_choice_and_spawn_bind(self) -> None:
+        missing_cli = self.of(
             "config",
             "set",
             "--contestant",
-            "claude",
             "Gemini 3.8 Flash",
             "medium",
             "--contestant",
-            "grok",
-            "Grok 4.7",
+            "opus",
             "high",
         )
-        self.assertNotEqual(clash.returncode, 0, clash.stdout)
-        self.assertIn("agy/gemini-3.8-flash", clash.stderr)
+        self.assertNotEqual(missing_cli.returncode, 0, missing_cli.stdout)
+        self.assertIn("not installed", missing_cli.stderr)
+        stub_cli(self.bin, "agy")
         ok = self.of(
             "config",
             "set",
             "--contestant",
-            "claude",
-            "Opus 5.5",
-            "medium",
-            "--contestant",
-            "agy",
             "Gemini 3.8 Flash",
             "medium",
             "--contestant",
-            "codex",
-            "Codex Sol 6",
-            "high",
-            "--contestant",
-            "grok",
-            "Grok 4.7",
+            "opus",
             "high",
         )
         self.assertEqual(ok.returncode, 0, ok.stderr)
         doc = json.loads(self.config.read_text(encoding="utf-8"))
-        by_model = {row["model"]: row for row in doc["contestants"]}
-        self.assertEqual(by_model["gemini-3.8-flash"]["harness"], "agy")
-        self.assertEqual(by_model["gemini-3.8-flash"]["effort"], "medium")
-        self.assertEqual(by_model["Opus 5.5"]["harness"], "claude")
-        self.assertEqual(by_model["Codex Sol 6"]["effort"], "high")
-        self.assertEqual(by_model["Grok 4.7"]["harness"], "grok")
-        self.assertNotIn("models", doc)
-        flash = Campo.resolve_spawn(by_model["gemini-3.8-flash"])
+        self.assertEqual(
+            doc["contestants"],
+            [
+                {"model": "gemini-3.8-flash", "effort": "medium"},
+                {"model": "opus", "effort": "high"},
+            ],
+        )
+        flash = Campo.resolve_spawn(doc["contestants"][0])
+        self.assertEqual(flash["harness"], "agy")
         self.assertEqual(flash["model"], "gemini-3.8-flash")
+        opus = Campo.resolve_spawn(doc["contestants"][1])
+        self.assertEqual(opus["harness"], "claude")
         with self.assertRaises(SystemExit):
-            Campo.resolve_spawn(by_model["Opus 5.5"])
-        with self.assertRaises(SystemExit):
-            Campo.resolve_spawn(by_model["Codex Sol 6"])
-        with self.assertRaises(SystemExit):
-            Campo.resolve_spawn(by_model["Grok 4.7"])
+            Campo.resolve_spawn({"model": "Opus 5.5", "effort": "medium"})
+        stub_cli(self.bin, "agent")
         shared = self.of(
             "config",
             "set",
             "--contestant",
-            "grok",
             "grok-4.6",
             "high",
             "--contestant",
-            "cursor",
-            "grok-4.6",
+            "opus",
             "low",
         )
-        self.assertEqual(shared.returncode, 0, shared.stderr)
-        shared_doc = json.loads(self.config.read_text(encoding="utf-8"))
-        self.assertEqual(
-            shared_doc["contestants"],
-            [
-                {"harness": "grok", "model": "grok-4.6", "effort": "high"},
-                {"harness": "cursor", "model": "grok-4.6", "effort": "low"},
-            ],
-        )
+        self.assertNotEqual(shared.returncode, 0, shared.stdout)
+        self.assertIn("more than one harness", shared.stderr)
+        (self.bin / "claude").unlink()
+        with self.assertRaises(SystemExit):
+            Campo.resolve_spawn({"model": "opus", "effort": "medium"})
 
     def test_no_pin_without_ballots_and_scripted_pin(self) -> None:
         bare = self.of(
@@ -293,16 +307,13 @@ class CampoElection(unittest.TestCase):
             "config",
             "set",
             "--contestant",
-            "grok",
-            "grok-4",
+            "opus",
             "medium",
             "--contestant",
-            "claude",
-            "claude-sonnet",
+            "grok-4.3",
             "medium",
             "--contestant",
-            "codex",
-            "gpt-5",
+            "gpt-5.6-sol",
             "high",
         )
         opened = self.of(
@@ -319,7 +330,8 @@ class CampoElection(unittest.TestCase):
         self.assertTrue((arena / "round.json").is_file())
         self.assertFalse((arena / "leader.json").exists())
         rnd = json.loads((arena / "round.json").read_text(encoding="utf-8"))
-        self.assertEqual(rnd["contestants"][0]["harness"], "grok")
+        self.assertEqual(rnd["contestants"][0]["model"], "opus")
+        self.assertNotIn("harness", rnd["contestants"][0])
         self.assertEqual(rnd["contestants"][0]["effort"], "medium")
         self.assertEqual(rnd["contestants"][2]["effort"], "high")
         drifted_round = dict(rnd)
@@ -413,8 +425,12 @@ class CampoElection(unittest.TestCase):
         self.assertIn("Codex Sol 6", readme)
         self.assertIn("Grok 4.7", readme)
         self.assertIn("--contestant", readme)
+        self.assertIn("not a rank", readme)
+        self.assertIn("not a role", readme)
         self.assertIn("Opus 5.5", appendix)
         self.assertIn("contestants", appendix)
+        self.assertIn("not a rank", appendix)
+        self.assertIn("installed", appendix)
         self.assertIn("same branch", appendix.casefold())
         self.assertIn("does not create a worktree", appendix.casefold())
         source = (ROOT / "scripts" / "of" / "campo.py").read_text(encoding="utf-8")
