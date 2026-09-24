@@ -28,6 +28,6 @@ cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedrok
 Incoming plan: classify **folder / chat / prompt**, materialize+fidelity before pack;
 invent = post-baseline new MD, not unpinned shared plans. Follow the sibling.
 
-Campo then Orden: `of config set --contestant HARNESS MODEL EFFORT` (repeat, N>=2; empty until set; example band in the sibling README). `of init --campo` opens the arena on this branch. Peers elect the leader; the host does not appoint one. `of campo settle` pins leader, crew, and ORDER. Then pack. Follow the sibling.
+Campo then Orden: `of config` audits installed harness CLIs (PATH≠auth) and their catalog models. `of config set --contestant MODEL EFFORT` (repeat, N>=2) stores peers `{model, effort}` — not a role and not a rank. Empty until set. Example data lives in the sibling README and is not a preference. `of init --campo` opens the arena on this branch. Peers elect the leader; the host does not appoint one. `of campo settle` pins leader, crew, and ORDER. Then pack. Follow the sibling.
 
 Do not trigger for a harness name alone.
