@@ -23,7 +23,7 @@ def cmd_config_show(_args: argparse.Namespace) -> None:
         _print_roster(doc)
         print(f"config      {Campo.config_path()}")
     print(f"peers       {PEERS}")
-    print("next        of config set --contestant MODEL EFFORT")
+    print("next        leader: ask user for roster (of config audit); then of config set --contestant MODEL EFFORT; then of new --campo")
 
 
 def cmd_config_set(args: argparse.Namespace) -> None:

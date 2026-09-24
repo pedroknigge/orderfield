@@ -1226,7 +1226,7 @@ def _dispatch() -> None:
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
         if not (root / ".orderfield").is_dir():
-            # No field here: let init/new hard-gate (or "no ORDER") refuse
+            # No field here: let init/new Campo entry (or "no ORDER") refuse
             # without creating a stray .orderfield/field.lock first.
             args.func(args)
             return
