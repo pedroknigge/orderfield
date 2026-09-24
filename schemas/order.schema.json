@@ -81,6 +81,17 @@
       "type": "string",
       "enum": ["claude", "codex", "cursor", "opencode", "orca", "grok", "agy", "qwen", "generic"]
     },
+    "orden_only": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by", "reason"],
+      "properties": {
+        "by": { "type": "string", "enum": ["user", "no-roster"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "at": { "type": "string" }
+      },
+      "description": "Plain Orden audit record. by=user: the user asked for plain Orden while a Campo roster was stored (--orden-only=user --orden-reason). by=no-roster: no roster stored, nothing skipped."
+    },
     "evaluator_consent": {
       "type": "string",
       "enum": ["yes", "no"],

@@ -25,6 +25,7 @@ from of.field import (
     save_order,
     save_state,
     session_path,
+    utc_now,
     write_phase_md,
 )
 from of.campo import Campo
@@ -125,7 +126,6 @@ class DoneWhenSeed:
         return out
 
 
-
 def _stamp_and_write_new_field(
     args: argparse.Namespace,
     root: Path,
@@ -146,6 +146,9 @@ def _stamp_and_write_new_field(
     if args.done_when:
         order["done_when"] = args.done_when
     AgentBand.apply_args(order, args)
+    consent = getattr(args, "orden_consent", None)
+    if isinstance(consent, dict):
+        order["orden_only"] = {**consent, "at": utc_now()}
     DoneWhenLint.refuse(list(order.get("done_when") or []))
     origin_harness, origin_session = resolve_init_origin(
         getattr(args, "origin", None),

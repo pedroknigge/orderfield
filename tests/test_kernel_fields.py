@@ -839,6 +839,26 @@ class ClosedScratchWipe(unittest.TestCase):
         self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
         self.assertTrue(residual.is_file())
 
+    def test_close_promotes_leader_final_before_wipe(self) -> None:
+        # Dogfood: of close wiped work/scratch/leader/FINAL.md (n=25).
+        self._close_ready()
+        leader = self.tmp / ".orderfield" / "work" / "scratch" / "leader"
+        leader.mkdir(parents=True, exist_ok=True)
+        (leader / "FINAL.md").write_text("# Analysis\nthe deliverable\n", encoding="utf-8")
+        (leader / "notes.md").write_text("side notes\n", encoding="utf-8")
+        closed = run_of(self.tmp, "close")
+        blob = closed.stdout + closed.stderr
+        self.assertEqual(closed.returncode, 0, blob)
+        self.assertIn(of.ClosedScratch.NOTE, closed.stdout)
+        self.assertFalse(leader.exists(), "scratch still wiped")
+        final = self.tmp / ".orderfield" / "FINAL.md"
+        self.assertTrue(final.is_file(), blob)
+        self.assertIn("the deliverable", final.read_text(encoding="utf-8"))
+        self.assertIn("deliverable .orderfield/FINAL.md", closed.stdout)
+        notes = self.tmp / ".orderfield" / "deliverables" / "leader" / "notes.md"
+        self.assertTrue(notes.is_file())
+        self.assertLess(closed.stdout.index("deliverable"), closed.stdout.index(of.ClosedScratch.NOTE))
+
     def test_checklist_does_not_wipe(self) -> None:
         self._close_ready()
         fat = (

@@ -456,6 +456,52 @@ class ActiveField:
         if len(opens) == 1:
             ActiveField.write(root, opens[0])
 
+    @staticmethod
+    def fallback_note(root: Path, closed_id: str) -> str | None:
+        """Leader-directed note when close leaves ACTIVE on another open field.
+
+        Dogfood: after `of close`, ACTIVE silently fell back to a stale open
+        field. Name it, its age and mission, and the leader's ask.
+        """
+        import time as _time
+
+        opens = [
+            (hid, home, order)
+            for hid, home, order in list_field_homes(root)
+            if hid != closed_id and field_is_open(order)
+        ]
+        if not opens:
+            return None
+        pointed = ActiveField.read(root)
+
+        def age(home: Path) -> str:
+            try:
+                secs = max(0.0, _time.time() - (home / "ORDER.json").stat().st_mtime)
+            except OSError:
+                return "age unknown"
+            days = int(secs // 86400)
+            return f"{days}d old" if days else f"{int(secs // 3600)}h old"
+
+        if pointed and any(hid == pointed for hid, _h, _o in opens):
+            _hid, home, order = next(x for x in opens if x[0] == pointed)
+            mission = str(order.get("mission") or "").replace("\n", " ")[:60]
+            return (
+                f"active      fell back to open field {pointed} ({age(home)}; "
+                f"{mission!r}). Leader: ask the user whether to continue it, "
+                f"close it (of close --field {pointed}) or archive it "
+                f"(of close --field {pointed} --abandoned --reason TEXT, then "
+                f"of gc --archive-field {pointed}); do not keep working in it "
+                "silently"
+            )
+        if len(opens) >= 2:
+            ids = ", ".join(f"{hid} ({age(home)})" for hid, home, _o in opens[:6])
+            return (
+                f"active      unset; {len(opens)} open fields remain: {ids}. "
+                "Leader: ask the user which to continue; close or archive "
+                "(--abandoned + of gc --archive-field) the stale ones"
+            )
+        return None
+
 
     @staticmethod
     def fallback_note(root: Path, closed_id: str) -> str | None:

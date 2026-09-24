@@ -1540,3 +1540,8 @@ class SensorTrustProfile(unittest.TestCase):
         proc = run_of(tmp, "spawn", "--adapter", "claude", "--packet", packet, "--dry-run")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("dontAsk", dry_run_preview(proc))
+        self.assertNotIn("acceptEdits", dry_run_preview(proc))
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/s1.json")
+        self.assertEqual(meta["sensor_trust"], "allowlist")
+        cur = run_of(tmp, "spawn", "--adapter", "cursor", "--packet", packet, "--dry-run")
+        self.assertIn("sensor-trust unsupported for cursor", cur.stderr)

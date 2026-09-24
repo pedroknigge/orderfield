@@ -16,6 +16,8 @@ def with_orden_only(*args: str) -> list[str]:
             continue
         break
     if i < len(out) and out[i] in {"init", "new"}:
-        if "--campo" not in out and "--orden-only" not in out:
-            out.append("--orden-only")
+        if "--campo" not in out and not any(
+            tok.startswith("--orden-only") for tok in out
+        ):
+            out.extend(["--orden-only=user", "--orden-reason", "test fixture: plain Orden"])
     return out

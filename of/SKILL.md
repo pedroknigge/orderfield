@@ -28,6 +28,6 @@ cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedrok
 Incoming plan: classify **folder / chat / prompt**, materialize+fidelity before pack;
 invent = post-baseline new MD, not unpinned shared plans. Follow the sibling.
 
-Campo then Orden: leader asks roster (of config; medium), then runs of config set + of new --campo. Headless auto. --orden-only escape. Host does not appoint. Same branch + commit = shared context. c1=session. Follow the sibling.
+Campo then Orden: Campo is default. Leader asks which models compete in Campo (stored roster = default; one CLI can seat several models), then runs of config set + of new --campo. Headless auto. --orden-only=user --orden-reason only if the user asks for plain Orden. Host does not appoint. Same branch + commit = shared context. c1=session. Follow the sibling.
 
 Do not trigger for a harness name alone.

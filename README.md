@@ -84,7 +84,7 @@ of config set --contestant opus medium --contestant grok-4.6 high
 of new --campo --mission "price table" --source "Definition of Done: print the table"
 ```
 
-The user types `/of` plus the intent. The leader runs every `of` command; the human only answers questions. With a stored roster, `of new` enters Campo by default. `of init --campo` is an alias of `of new --campo`. `--orden-only` is the only explicit plain-Orden opt-out.
+The user types `/of` plus the intent. The leader runs every `of` command; the human only answers questions. With a stored roster, `of new` enters Campo by default. `of init --campo` is an alias of `of new --campo`. Plain Orden only when the user asks: the leader passes `--orden-only=user --orden-reason "<the user's words>"` (recorded in ORDER). One harness is not Orden: one CLI can seat several models.
 
 Roster unset and interactive: the kernel refuses before any field write with a **leader** instruction — ask the user for contestants (options from `of config` audit: installed harnesses, catalog models, effort; suggest medium), then the leader runs `of config set --contestant …` and re-runs `of new --campo`. Never ask the human to type a command. Headless / non-interactive leaders auto-build that roster from the audit (catalog default model, effort medium; invoking harness is c1) and enter Campo. Fewer than two installed harnesses with catalog models: one log line, proceed as single-contestant Orden.
 
@@ -108,7 +108,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 **InitAskSkip** Large (multi-slice / multi-role; once per field at init / first wave):
 
 - Consult the [model catalog](docs/model-catalog.md), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own.
-- Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
+- Ask same-harness vs multi-harness mix for the Orden crew after the Campo pin (never a reason to skip Campo). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
 - **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.

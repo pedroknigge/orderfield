@@ -30,9 +30,22 @@ def cmd_config_show(_args: argparse.Namespace) -> None:
         f"({source}; {DEADLINE_ENV} overrides)"
     )
     print(f"peers       {PEERS}")
-    print(
-        "next        leader: ask user for roster (of config audit); "
-        "then of config set --contestant MODEL EFFORT; then of new --campo"
+    print(config_next_line(len(rows)))
+
+
+def config_next_line(seats: int) -> str:
+    """Leader-directed next for `of config`. Stored roster = Campo default."""
+    if seats >= 2:
+        return (
+            f"next        Campo is default: of new enters Campo with this "
+            f"roster ({seats} seats). Leader offers it as the default answer "
+            f"to \"which models compete in Campo?\"; of config set only if "
+            f"the user changes it"
+        )
+    return (
+        "next        leader: ask the user which models compete in Campo "
+        "(of config audit); then of config set --contestant MODEL EFFORT; "
+        "then of new --campo"
     )
 
 

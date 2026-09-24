@@ -1506,6 +1506,7 @@ def cmd_close(args: argparse.Namespace) -> None:
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    Deliverable.emit(root, promoted)
     ClosedScratch.emit(wiped)
     Deliverable.emit(root, promoted)
     if returned:

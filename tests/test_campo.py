@@ -1186,33 +1186,80 @@ class LeaderRosterCampo(unittest.TestCase):
             campo_dirs = list((self.tmp / ".orderfield").rglob("campo"))
         self.assertTrue(campo_dirs, "campo/ arena opened")
 
-    def test_one_cli_degrades_to_orden(self) -> None:
-        # Only one harness stub on PATH.
-        for name in ("grok",):
-            (self.bin / name).unlink(missing_ok=True)
-        env = {**os.environ, **self.env, "OF_CAMPO_ASK": "0"}
-        # PATH has only claude + git
-        proc = subprocess.run(
-            [
-                sys.executable,
-                str(OF_PY),
-                "init",
-                "--mission",
-                "one cli",
-                "--source",
-                "brief",
-            ],
-            cwd=str(self.tmp),
-            capture_output=True,
-            text=True,
-            env=env,
+    def _init_bare(self, *extra: str, ask: bool = False) -> subprocess.CompletedProcess[str]:
+        env = {**os.environ, **self.env, "OF_CAMPO_ASK": "1" if ask else "0"}
+        return subprocess.run(
+            [sys.executable, str(OF_PY), "init", "--mission", "one cli",
+             "--source", "brief", *extra],
+            cwd=str(self.tmp), capture_output=True, text=True, env=env,
         )
+
+    def _campo_dirs(self) -> list[Path]:
+        return list((self.tmp / ".orderfield").rglob("campo"))
+
+    def _store_roster(self) -> None:
+        seats = Campo.default_seats_from_audit()
+        self.assertGreaterEqual(len(seats), 2, seats)
+        self.cfg.write_text(json.dumps({"v": 1, "contestants": [
+            {"model": seats[0][0], "effort": "medium"},
+            {"model": seats[1][0], "effort": "medium"},
+        ]}) + "\n", encoding="utf-8")
+
+    def test_one_cli_degrades_to_orden(self) -> None:
+        # One harness with a single catalog model: <2 distinct seats.
+        for name in ("claude", "grok"):
+            (self.bin / name).unlink(missing_ok=True)
+        stub_cli(self.bin, "qwen")
+        proc = self._init_bare()
         blob = proc.stdout + proc.stderr
         self.assertEqual(proc.returncode, 0, blob)
         self.assertIn("fewer than 2", blob.casefold())
         self.assertTrue((self.tmp / ".orderfield").exists())
-        campo_dirs = list((self.tmp / ".orderfield").rglob("campo"))
-        self.assertFalse(campo_dirs, "no campo/ on degrade")
+        self.assertFalse(self._campo_dirs(), "no campo/ on degrade")
+
+    def test_one_cli_many_models_enters_campo(self) -> None:
+        # "Solo claude" is not Orden: claude haiku/sonnet/opus still compete.
+        (self.bin / "grok").unlink(missing_ok=True)
+        seats = Campo.default_seats_from_audit()
+        self.assertGreaterEqual(len(seats), 2, seats)
+        proc = self._init_bare("--multi-model", "no")
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertNotIn("fewer than 2", blob.casefold())
+        self.assertTrue(self._campo_dirs(), "campo/ arena opened on one CLI")
+
+    def test_stored_roster_bare_orden_only_refused(self) -> None:
+        self._store_roster()
+        for ask in (True, False):
+            proc = self._init_bare("--orden-only", ask=ask)
+            blob = (proc.stdout + proc.stderr).casefold()
+            self.assertNotEqual(proc.returncode, 0, blob)
+            self.assertIn("campo is the default", blob)
+            self.assertIn("--orden-only=user", blob)
+            self.assertNotIn("ask the user to run", blob)
+            self.assertFalse((self.tmp / ".orderfield").exists())
+
+    def test_stored_roster_multi_model_no_still_campo(self) -> None:
+        self._store_roster()
+        proc = self._init_bare("--multi-model", "no")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(self._campo_dirs(), "--multi-model no is not Orden")
+
+    def test_stored_roster_orden_user_consent_recorded(self) -> None:
+        self._store_roster()
+        proc = self._init_bare(
+            "--orden-only=user", "--orden-reason", "user said: no Campo today"
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertFalse(self._campo_dirs())
+        orders = [
+            json.loads(p.read_text(encoding="utf-8"))
+            for p in (self.tmp / ".orderfield").rglob("ORDER.json")
+        ]
+        rec = [o.get("orden_only") for o in orders if o.get("orden_only")]
+        self.assertTrue(rec, orders)
+        self.assertEqual(rec[0]["by"], "user")
+        self.assertIn("no Campo today", rec[0]["reason"])
 
     def test_orden_only_allows_plain_orden(self) -> None:
         proc = self.of(
@@ -1253,10 +1300,16 @@ class LeaderRosterCampo(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
-        args = argparse.Namespace(campo=False, orden_only=False)
+        args = argparse.Namespace(campo=False, orden_only=None)
         self.assertTrue(Campo.resolve_entry(args))
-        args2 = argparse.Namespace(campo=False, orden_only=True)
-        self.assertFalse(Campo.resolve_entry(args2))
+        args2 = argparse.Namespace(campo=False, orden_only="bare", orden_reason=None)
+        with self.assertRaises(SystemExit):
+            Campo.resolve_entry(args2)
+        args3 = argparse.Namespace(
+            campo=False, orden_only="user", orden_reason="user asked"
+        )
+        self.assertFalse(Campo.resolve_entry(args3))
+        self.assertEqual(args3.orden_consent["by"], "user")
 
 
 class CatalogInstallSurface(unittest.TestCase):

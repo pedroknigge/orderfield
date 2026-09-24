@@ -619,7 +619,6 @@ class SensorTrust:
         return f"sensor-trust unsupported for {adapter}: {nxt}" if nxt else None
 
 
-
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
     """Environment for a spawned child: allowlist, not the parent's whole env.
 

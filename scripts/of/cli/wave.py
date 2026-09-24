@@ -1131,6 +1131,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
     }
     WriteFloor.apply_meta(meta, adapter, profile)
+    sensor_mode = SensorTrust.mode(adapter, profile, packet)
+    if sensor_mode:
+        meta[SensorTrust.KIND] = sensor_mode
     OperatorAction.apply_meta(meta)
     sensor_mode = SensorTrust.mode(adapter, profile, packet)
     if sensor_mode:
