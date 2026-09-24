@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import re
 import subprocess
 import time
@@ -133,26 +134,106 @@ class Campo:
             )
         return rows
 
-    GATE_NEXT = (
-        "of config set --contestant MODEL EFFORT (xN) then of new --campo"
+    # Leader-directed (not human-typed). Interactive: ask user, leader runs of.
+    # Headless: auto-roster from installed CLIs + catalog default + medium.
+    LEADER_ROSTER_ASK = (
+        "roster unset: ask the user which contestants to seat "
+        "(options from of config audit: installed harnesses, catalog models, "
+        "effort; suggest medium). Then run "
+        "`of config set --contestant MODEL EFFORT` (xN) yourself and re-run "
+        "`of new --campo`. Do not ask the human to type a command."
     )
+    DEGRADE_LINE = (
+        "campo: fewer than 2 installed harness CLIs with catalog models; "
+        "proceeding as single-contestant Orden"
+    )
+    AUTO_ROSTER_LINE = (
+        "campo: roster unset and non-interactive; auto-built contestants "
+        "from of config audit (catalog default model, effort medium)"
+    )
+    # Back-compat alias for older tests/docs that named the hard-gate line.
+    GATE_NEXT = LEADER_ROSTER_ASK
 
     @staticmethod
     def roster_ready(doc: dict[str, Any] | None = None) -> bool:
         return len(Campo.contestants(doc)) >= 2
 
     @staticmethod
-    def refuse_unset_roster() -> None:
-        die(Campo.GATE_NEXT)
+    def can_ask_user() -> bool:
+        """True when the leader can ask the human interactively.
+
+        OF_CAMPO_ASK=1 forces ask; =0/auto forces headless auto-roster.
+        Default: stdin+stdout are TTYs.
+        """
+        forced = (os.environ.get("OF_CAMPO_ASK") or "").strip().casefold()
+        if forced in ("1", "yes", "true", "ask"):
+            return True
+        if forced in ("0", "no", "false", "auto"):
+            return False
+        return bool(
+            getattr(sys.stdin, "isatty", lambda: False)()
+            and getattr(sys.stdout, "isatty", lambda: False)()
+        )
+
+    @staticmethod
+    def default_seats_from_audit() -> list[tuple[str, str]]:
+        """One unique (model, medium) per present harness with a catalog model.
+
+        Invoking harness first when it has a model. Models already used by an
+        earlier harness are skipped so write_defaults stays unique.
+        """
+        by_harness: dict[str, list[str]] = {}
+        for seat in Campo.installed():
+            by_harness.setdefault(seat["harness"], []).append(seat["model"])
+        if not by_harness:
+            return []
+        invoker = Campo.invoking_harness()
+        order: list[str] = []
+        if invoker in by_harness:
+            order.append(invoker)
+        for name in sorted(by_harness):
+            if name not in order:
+                order.append(name)
+        seats: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for harness in order:
+            for model in by_harness[harness]:
+                if model in seen:
+                    continue
+                seats.append((model, "medium"))
+                seen.add(model)
+                break
+        return seats
+
+    @staticmethod
+    def ensure_roster() -> list[dict[str, str]]:
+        """Return a ready roster, auto-build headless, ask-die interactive, or [].
+
+        Empty list means graceful Orden degrade (<2 installed catalog peers).
+        Interactive refuse is die(LEADER_ROSTER_ASK) before any field write.
+        """
+        rows = Campo.contestants()
+        if len(rows) >= 2:
+            return rows
+        seats = Campo.default_seats_from_audit()
+        if len(seats) < 2:
+            print(Campo.DEGRADE_LINE, file=sys.stderr)
+            return []
+        if Campo.can_ask_user():
+            die(Campo.LEADER_ROSTER_ASK)
+        Campo.write_defaults(seats)
+        print(Campo.AUTO_ROSTER_LINE, file=sys.stderr)
+        return Campo.contestants()
 
     @staticmethod
     def resolve_entry(args) -> bool:
         """Return True when this init/new should enter Campo.
 
-        Refusal (roster unset, no --orden-only) happens before any field write.
-        --orden-only is the explicit plain-Orden escape. With a stored roster,
-        Campo is the default unless --orden-only. --campo stays the explicit
-        verb and the of init alias of of new --campo.
+        --orden-only is the only plain-Orden escape. With a stored roster,
+        Campo is the default. Roster unset: interactive leaders get
+        LEADER_ROSTER_ASK (before any field write); headless leaders get an
+        auto-built roster from the of config audit; <2 CLIs degrade to Orden.
+        --campo stays the explicit verb and the of init alias of of new --campo.
         """
         orden_only = bool(getattr(args, "orden_only", False))
         want_flag = bool(getattr(args, "campo", False))
@@ -160,19 +241,17 @@ class Campo:
             die("pass only one of --campo / --orden-only")
         if orden_only:
             return False
-        if want_flag:
-            Campo.require_roster()
+        rows = Campo.ensure_roster()
+        if len(rows) >= 2:
             return True
-        if Campo.roster_ready():
-            return True
-        Campo.refuse_unset_roster()
-        return False  # unreachable
+        # Explicit --campo with <2 peers: same degrade (no refuse).
+        return False
 
     @staticmethod
     def require_roster() -> list[dict[str, str]]:
-        rows = Campo.contestants()
+        rows = Campo.ensure_roster()
         if len(rows) < 2:
-            die(Campo.GATE_NEXT)
+            die(Campo.LEADER_ROSTER_ASK)
         return rows
 
     @staticmethod

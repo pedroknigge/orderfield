@@ -436,6 +436,7 @@ class CampoElection(unittest.TestCase):
         self.assertTrue(str(spawns["peers"][1]["argv"][0]).endswith("claude"))
 
     def test_no_pin_without_ballots_and_scripted_pin(self) -> None:
+        # Interactive ask path: refuse before write (leader instruction).
         bare = self.of(
             "init",
             "--mission",
@@ -443,9 +444,12 @@ class CampoElection(unittest.TestCase):
             "--source",
             SOURCE,
             "--campo",
+            extra={"OF_CAMPO_ASK": "1"},
         )
         self.assertNotEqual(bare.returncode, 0, bare.stdout)
-        self.assertIn(Campo.GATE_NEXT, bare.stderr)
+        self.assertIn("ask the user", bare.stderr.casefold())
+        self.assertIn("of config set", bare.stderr)
+        self.assertIn("do not ask the human to type", bare.stderr.casefold())
         self.assertFalse((self.tmp / ".orderfield" / "ORDER.json").is_file())
         self.of(
             "config",
@@ -968,32 +972,51 @@ if __name__ == "__main__":
 
 
 
-class HardGateCampo(unittest.TestCase):
-    """Option A: unset roster refuses plain of new/init before any write."""
+class LeaderRosterCampo(unittest.TestCase):
+    """Unset roster: interactive ask (leader), headless auto, --orden-only."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-campo-gate-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.cfg = self.tmp / "config.json"
+        self.bin = self.tmp / "bin"
+        self.bin.mkdir(parents=True, exist_ok=True)
+        for name in ("claude", "grok"):
+            stub_cli(self.bin, name)
+        git_dir = str(Path(shutil.which("git") or "/usr/bin/git").resolve().parent)
+        path = os.pathsep.join([str(self.bin), git_dir])
         self.env = {
             "OF_CONFIG": str(self.cfg),
             "OF_NO_UPDATE_CHECK": "1",
             "OF_LEARNINGS": str(self.tmp / "learnings.json"),
+            "PATH": path,
+            "OF_CAMPO_DEADLINE": "0.2",
+            "OF_TRUST": "auto-edit",
         }
+        git(self.tmp, "init", "-q")
+        git(self.tmp, "config", "user.email", "of@test")
+        git(self.tmp, "config", "user.name", "of")
+        git(self.tmp, "commit", "--allow-empty", "-m", "init")
 
-    def of(self, *args: str) -> subprocess.CompletedProcess[str]:
-        return run_of(self.tmp, *args, extra_env=self.env)
+    def of(self, *args: str, extra: dict | None = None) -> subprocess.CompletedProcess[str]:
+        env = dict(self.env)
+        if extra:
+            env.update(extra)
+        return run_of(self.tmp, *args, extra_env=env)
 
-    def test_plain_new_without_roster_refuses_before_write(self) -> None:
-        # Bypass test helper injection: call argv without --orden-only.
+    def _bare(self, verb: str, *, ask: bool) -> subprocess.CompletedProcess[str]:
         env = {**os.environ, **self.env}
-        proc = subprocess.run(
+        if ask:
+            env["OF_CAMPO_ASK"] = "1"
+        else:
+            env["OF_CAMPO_ASK"] = "0"
+        return subprocess.run(
             [
                 sys.executable,
                 str(OF_PY),
-                "new",
+                verb,
                 "--mission",
-                "should refuse",
+                "roster path",
                 "--source",
                 "brief",
             ],
@@ -1002,20 +1025,79 @@ class HardGateCampo(unittest.TestCase):
             text=True,
             env=env,
         )
-        blob = proc.stdout + proc.stderr
-        self.assertNotEqual(proc.returncode, 0, blob)
-        self.assertIn(Campo.GATE_NEXT, blob)
-        self.assertFalse((self.tmp / ".orderfield").exists(), "refused before disk writes")
 
-    def test_plain_init_without_roster_refuses_before_write(self) -> None:
-        env = {**os.environ, **self.env}
+    def test_interactive_unset_refuses_with_leader_ask(self) -> None:
+        proc = self._bare("new", ask=True)
+        blob = (proc.stdout + proc.stderr).casefold()
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("ask the user", blob)
+        self.assertIn("of config set", blob)
+        self.assertIn("of new --campo", blob)
+        self.assertIn("do not ask the human to type", blob)
+        # No user-directed "you run" / "type of" phrasing.
+        self.assertNotIn("ask the user to run", blob)
+        self.assertNotIn("type `of", blob)
+        self.assertNotIn("type of ", blob)
+        self.assertFalse(
+            (self.tmp / ".orderfield").exists(), "refused before disk writes"
+        )
+        self.assertFalse(self.cfg.is_file(), "roster not written on ask refuse")
+
+    def test_interactive_init_unset_refuses_with_leader_ask(self) -> None:
+        proc = self._bare("init", ask=True)
+        blob = (proc.stdout + proc.stderr).casefold()
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("ask the user", blob)
+        self.assertIn("of config set", blob)
+        self.assertFalse((self.tmp / ".orderfield").exists())
+
+    def test_headless_auto_builds_roster_and_enters_campo(self) -> None:
+        class _Fake:
+            pid = 4242
+            returncode = 0
+
+            def poll(self):
+                return 0
+
+            def wait(self, timeout=None):
+                return 0
+
+            def kill(self):
+                return None
+
+            @property
+            def stderr(self):
+                return type("E", (), {"read": lambda self: b""})()
+
+        Campo.runner = lambda *a, **k: _Fake()
+        self.addCleanup(setattr, Campo, "runner", None)
+        self.addCleanup(setattr, Campo, "_children", [])
+        # of new needs an existing ORDER; init is the first Campo entry.
+        proc = self._bare("init", ask=False)
+        blob = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertIn("auto-built", blob.casefold())
+        self.assertTrue(self.cfg.is_file(), "roster persisted")
+        doc = json.loads(self.cfg.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(doc.get("contestants") or []), 2)
+        campo_dirs = list(self.tmp.glob(".orderfield/**/campo"))
+        if not campo_dirs:
+            campo_dirs = list((self.tmp / ".orderfield").rglob("campo"))
+        self.assertTrue(campo_dirs, "campo/ arena opened")
+
+    def test_one_cli_degrades_to_orden(self) -> None:
+        # Only one harness stub on PATH.
+        for name in ("grok",):
+            (self.bin / name).unlink(missing_ok=True)
+        env = {**os.environ, **self.env, "OF_CAMPO_ASK": "0"}
+        # PATH has only claude + git
         proc = subprocess.run(
             [
                 sys.executable,
                 str(OF_PY),
                 "init",
                 "--mission",
-                "should refuse",
+                "one cli",
                 "--source",
                 "brief",
             ],
@@ -1025,9 +1107,11 @@ class HardGateCampo(unittest.TestCase):
             env=env,
         )
         blob = proc.stdout + proc.stderr
-        self.assertNotEqual(proc.returncode, 0, blob)
-        self.assertIn(Campo.GATE_NEXT, blob)
-        self.assertFalse((self.tmp / ".orderfield").exists())
+        self.assertEqual(proc.returncode, 0, blob)
+        self.assertIn("fewer than 2", blob.casefold())
+        self.assertTrue((self.tmp / ".orderfield").exists())
+        campo_dirs = list((self.tmp / ".orderfield").rglob("campo"))
+        self.assertFalse(campo_dirs, "no campo/ on degrade")
 
     def test_orden_only_allows_plain_orden(self) -> None:
         proc = self.of(
@@ -1041,23 +1125,27 @@ class HardGateCampo(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue((self.tmp / ".orderfield").exists())
         homes = list((self.tmp / ".orderfield" / "fields").glob("ord_*"))
-        # legacy or fields layout
-        self.assertFalse(any(p.joinpath("campo").is_dir() for p in [
-            self.tmp / ".orderfield",
-            *homes,
-        ]))
+        self.assertFalse(
+            any(
+                p.joinpath("campo").is_dir()
+                for p in [self.tmp / ".orderfield", *homes]
+            )
+        )
 
     def test_roster_set_defaults_new_to_campo(self) -> None:
         import argparse
 
         self.cfg.parent.mkdir(parents=True, exist_ok=True)
+        # Models must fold to installed catalog ids on stub PATH.
+        seats = Campo.default_seats_from_audit()
+        self.assertGreaterEqual(len(seats), 2, seats)
         self.cfg.write_text(
             json.dumps(
                 {
                     "v": 1,
                     "contestants": [
-                        {"model": "claude-opus", "effort": "medium"},
-                        {"model": "grok-4", "effort": "high"},
+                        {"model": seats[0][0], "effort": "medium"},
+                        {"model": seats[1][0], "effort": "high"},
                     ],
                 }
             )
@@ -1065,6 +1153,7 @@ class HardGateCampo(unittest.TestCase):
             encoding="utf-8",
         )
         os.environ["OF_CONFIG"] = str(self.cfg)
+        os.environ["PATH"] = self.env["PATH"]
         self.addCleanup(os.environ.pop, "OF_CONFIG", None)
         args = argparse.Namespace(campo=False, orden_only=False)
         self.assertTrue(Campo.resolve_entry(args))

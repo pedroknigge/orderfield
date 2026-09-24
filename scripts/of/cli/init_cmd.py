@@ -247,7 +247,7 @@ def cmd_init(args: argparse.Namespace) -> None:
     source_text = resolve_source_text(args)
     chat_text = resolve_chat_capture(args)
     PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
-    # Hard gate before any disk write (source_text is read-only).
+    # Campo entry (ask / auto / degrade) before any field write.
     args.campo = Campo.resolve_entry(args)
     if homes and args.force:
         bound = bind_active_field(
@@ -292,7 +292,7 @@ def cmd_new(args: argparse.Namespace) -> None:
     source_text = resolve_source_text(args)
     chat_text = resolve_chat_capture(args)
     PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
-    # Hard gate before promote / field home writes.
+    # Campo entry before promote / field home writes.
     args.campo = Campo.resolve_entry(args)
     homes = list_field_homes(root)
     if not homes:

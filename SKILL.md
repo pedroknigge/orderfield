@@ -29,7 +29,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 |---|---|
 | `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn. Clone/checkout + installed skill: operator risk, not an escape |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
-| Campo then Orden | `of config set` once; `of new --campo` (or `--orden-only`). Host does not appoint. Same branch + commit = shared context. c1=session. |
+| Campo then Orden | Leader asks roster (of config; medium) then runs `of config set` + `of new --campo`. Headless auto. `--orden-only` escape. Host does not appoint. Same branch + commit = shared context. c1=session. |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
 | multi-role pack plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. On yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
@@ -109,7 +109,7 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
-**Anti-done-theater.** Ready = named interface + proof. Unittest/CI green is not Ready. Non-trivial: design-twice (two approaches) before implement. Deep modules: simple interface, complexity hidden. Flying is not shipped.
+**Anti-done-theater.** Ready = named interface + proof. Unittest/CI green is not Ready. Non-trivial: design-twice before implement. Deep modules: simple interface, complexity hidden. Flying is not shipped.
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
