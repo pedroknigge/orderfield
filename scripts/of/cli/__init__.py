@@ -28,6 +28,7 @@ from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 from of.host_ram import AgentBand
 
 from of.cli.init_cmd import cmd_init, cmd_new
+from of.cli.campo_cmd import cmd_campo_settle, cmd_config_set, cmd_config_show
 from of.cli.ops import (
     cmd_checkpoint,
     cmd_detect,
@@ -327,11 +328,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
     )
     AgentBand.add_flags(s)
+    s.add_argument(
+        "--campo",
+        action="store_true",
+        help="alias of of new --campo; enter Campo on this branch",
+    )
+    s.add_argument(
+        "--orden-only",
+        dest="orden_only",
+        nargs="?",
+        const="bare",
+        default=None,
+        metavar="user",
+        help=(
+            "plain Orden instead of the default Campo. With a stored roster "
+            "only --orden-only=user --orden-reason TEXT (the user asked)"
+        ),
+    )
+    s.add_argument(
+        "--orden-reason",
+        dest="orden_reason",
+        default=None,
+        help="the user's words asking for plain Orden (recorded in ORDER.orden_only)",
+    )
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser(
         "new",
-        help="open a sibling field without closing the others; --parent nests a phase",
+        help="open a sibling field (Campo is the default); --parent nests a phase",
+        description=(
+            "Open a sibling field. Campo is the default: with a stored roster "
+            "(or a headless auto-roster) the kernel launches peer contestants, "
+            "waits for proposals + ballots, and pins a leader. One harness can "
+            "still seat several models. Plain Orden only when the user asked: "
+            "--orden-only=user --orden-reason TEXT."
+        ),
     )
     s.add_argument("--mission", required=True)
     s.add_argument("--phase", default="explore", choices=PHASES)
@@ -366,7 +397,79 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     AgentBand.add_flags(s)
+    s.add_argument(
+        "--campo",
+        action="store_true",
+        help="enter Campo on this branch (canonical); pin leader only after peer ballots",
+    )
+    s.add_argument(
+        "--orden-only",
+        dest="orden_only",
+        nargs="?",
+        const="bare",
+        default=None,
+        metavar="user",
+        help=(
+            "plain Orden instead of the default Campo. With a stored roster "
+            "only --orden-only=user --orden-reason TEXT (the user asked)"
+        ),
+    )
+    s.add_argument(
+        "--orden-reason",
+        dest="orden_reason",
+        default=None,
+        help="the user's words asking for plain Orden (recorded in ORDER.orden_only)",
+    )
     s.set_defaults(func=cmd_new)
+
+    config = sub.add_parser(
+        "config",
+        help="audit installed CLIs, then choose peer model + effort (Campo)",
+    )
+    config.set_defaults(func=cmd_config_show)
+    config_sub = config.add_subparsers(dest="config_cmd", required=False)
+    config_show = config_sub.add_parser(
+        "show",
+        help="audit installed harness CLIs and print the peer roster",
+    )
+    config_show.set_defaults(func=cmd_config_show)
+    config_set = config_sub.add_parser(
+        "set",
+        help="choose contestant peers and/or Campo deadline_s max",
+    )
+    config_set.add_argument(
+        "--contestant",
+        action="append",
+        nargs=2,
+        metavar=("MODEL", "EFFORT"),
+        required=False,
+        help=(
+            "model effort (repeat; N>=2). Peers, not roles. "
+            "Not a leader appointment"
+        ),
+    )
+    config_set.add_argument(
+        "--deadline",
+        type=float,
+        metavar="SECONDS",
+        default=None,
+        help=(
+            "Campo wait ceiling in seconds (stored as deadline_s; "
+            "default 600; OF_CAMPO_DEADLINE still overrides)"
+        ),
+    )
+    config_set.set_defaults(func=cmd_config_set)
+
+    campo = sub.add_parser(
+        "campo",
+        help="peer election on this branch (no worktree, no host-appointed leader)",
+    )
+    campo_sub = campo.add_subparsers(dest="campo_cmd", required=True)
+    campo_settle = campo_sub.add_parser(
+        "settle",
+        help="pin leader + ORDER from ballots, or leave the arena open",
+    )
+    campo_settle.set_defaults(func=cmd_campo_settle)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
     s.add_argument(
@@ -1163,9 +1266,19 @@ def _dispatch() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
-        if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():
-            # No field here: let the handler refuse ("no ORDER") without
-            # creating a stray .orderfield/field.lock first.
+        # Campo entry before field_lock so an interactive roster-ask refuse
+        # never creates .orderfield/field.lock. After entry resolves, take the
+        # lock so first init opens wal/CURRENT.json. Other verbs (spec, pack,
+        # …) with no field must die without creating .orderfield/.
+        if args.cmd in {"init", "new"} and not (root / ".orderfield").is_dir():
+            from of.campo import Campo
+
+            args.campo = Campo.resolve_entry(args)
+            args.campo_entry_resolved = True
+            with field_lock(root, args.cmd):
+                args.func(args)
+            return
+        if not (root / ".orderfield").is_dir():
             args.func(args)
             return
         with field_lock(root, args.cmd):

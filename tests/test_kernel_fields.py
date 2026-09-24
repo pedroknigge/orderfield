@@ -2,6 +2,13 @@
 """Kernel tests — sibling fields, of new, resume roster, origin gate, OF_FIELD."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import json
 import os
 import shutil
@@ -35,7 +42,7 @@ def run_of(
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -831,6 +838,26 @@ class ClosedScratchWipe(unittest.TestCase):
         self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").is_file())
         self.assertTrue((self.tmp / ".orderfield" / "ORDER.json").is_file())
         self.assertTrue(residual.is_file())
+
+    def test_close_promotes_leader_final_before_wipe(self) -> None:
+        # Dogfood: of close wiped work/scratch/leader/FINAL.md (n=25).
+        self._close_ready()
+        leader = self.tmp / ".orderfield" / "work" / "scratch" / "leader"
+        leader.mkdir(parents=True, exist_ok=True)
+        (leader / "FINAL.md").write_text("# Analysis\nthe deliverable\n", encoding="utf-8")
+        (leader / "notes.md").write_text("side notes\n", encoding="utf-8")
+        closed = run_of(self.tmp, "close")
+        blob = closed.stdout + closed.stderr
+        self.assertEqual(closed.returncode, 0, blob)
+        self.assertIn(of.ClosedScratch.NOTE, closed.stdout)
+        self.assertFalse(leader.exists(), "scratch still wiped")
+        final = self.tmp / ".orderfield" / "FINAL.md"
+        self.assertTrue(final.is_file(), blob)
+        self.assertIn("the deliverable", final.read_text(encoding="utf-8"))
+        self.assertIn("deliverable .orderfield/FINAL.md", closed.stdout)
+        notes = self.tmp / ".orderfield" / "deliverables" / "leader" / "notes.md"
+        self.assertTrue(notes.is_file())
+        self.assertLess(closed.stdout.index("deliverable"), closed.stdout.index(of.ClosedScratch.NOTE))
 
     def test_checklist_does_not_wipe(self) -> None:
         self._close_ready()

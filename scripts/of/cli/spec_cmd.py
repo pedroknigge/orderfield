@@ -13,8 +13,10 @@ from typing import Any
 
 from of.field import (
     FIELD_SPEC_MD,
+    ActiveField,
     AuditPressure,
     ClosedScratch,
+    Deliverable,
     DoctorSkew,
     NestedField,
     SpawnRecord,
@@ -1476,9 +1478,12 @@ def cmd_close(args: argparse.Namespace) -> None:
         return
     if CloseProof.complete(root, order):
         print("close       already spec_closed")
+        Deliverable.emit(root, Deliverable.promote(root))
         ClosedScratch.emit(ClosedScratch.wipe(root))
         return
     repaired = bool(order.get("spec_closed"))
+    # Promote before the stamp: a lost deliverable refuses the close.
+    promoted = Deliverable.promote(root)
     CloseProof.stamp(root, order)
     wiped = ClosedScratch.wipe(root)
     returned = NestedField.return_active(root, order)
@@ -1501,7 +1506,12 @@ def cmd_close(args: argparse.Namespace) -> None:
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    Deliverable.emit(root, promoted)
     ClosedScratch.emit(wiped)
     if returned:
         print(NestedField.format_return_line(returned))
+    else:
+        note = ActiveField.fallback_note(root, str(order.get("id") or ""))
+        if note:
+            print(note)
 

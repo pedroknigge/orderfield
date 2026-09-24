@@ -1,6 +1,13 @@
 """Regressions from the pre-landing review of the Vibe-Proof remediation."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import io
 import contextlib
 import json
@@ -31,7 +38,7 @@ def run_of(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subproce
     if env:
         base.update(env)
     return subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "of.py"), *args],
+        [sys.executable, str(ROOT / "scripts" / "of.py"), *with_orden_only(*args)],
         cwd=str(cwd), capture_output=True, text=True, env=base,
     )
 

@@ -57,6 +57,45 @@ If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init.
 - A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 - Two writers on one mission have exclusive owners (requirement or path).
 
+## Campo then Orden
+
+Campo is the written arena. Orden is the crew that implements after peers pin a leader. The host does not appoint the leader. Contestants share this git branch and this cwd. Campo does not create a worktree.
+
+Same branch + commit = shared context. A peer commits the proposal, the ballot, the code, or a residual note. The others refresh from that commit before their next turn. There is no merge-packet. Do not isolate. Two writers still do not edit one path at once: owned paths, or turn-taking.
+
+The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. On `of new --campo` the kernel launches the other peers headless on this cwd and branch. `campo/spawns.json` records argv, pid, and whether each peer exited, died, or hit the deadline. Campo does not create a worktree. This session writes contestant #1's proposal and ballot. Launch, the wait, and the pin stay inside `Campo`.
+
+`of config` audits this machine: which harness CLIs are on PATH, then the catalog models for those CLIs. PATH is not a login. The roster stays empty until you set it (`OF_CONFIG` or `~/.orderfield/config.json`). Each contestant is `{model, effort}` (`low|medium|high`). N≥2. They are peers. List order is not rank and not a role. There is no leader key. Election decides the leader. A model must be one installed catalog id. A name on two installed harnesses is not one peer.
+
+Example data only (not a default, not a rank, not a role split):
+
+| model | effort |
+|---|---|
+| Opus 5.5 | medium |
+| Gemini 3.8 Flash | medium |
+| Codex Sol 6 | high |
+| Grok 4.7 | high |
+
+Choose only names `of config` prints under installed.
+
+```bash
+of config
+of config set --contestant opus medium --contestant grok-4.6 high
+of new --campo --mission "price table" --source "Definition of Done: print the table"
+```
+
+The user types `/of` plus the intent. The leader runs every `of` command; the human only answers questions. With a stored roster, `of new` enters Campo by default. `of init --campo` is an alias of `of new --campo`. Plain Orden only when the user asks: the leader passes `--orden-only=user --orden-reason "<the user's words>"` (recorded in ORDER). One harness is not Orden: one CLI can seat several models.
+
+Roster unset and interactive: the kernel refuses before any field write with a **leader** instruction — ask the user for contestants (options from `of config` audit: installed harnesses, catalog models, effort; suggest medium), then the leader runs `of config set --contestant …` and re-runs `of new --campo`. Never ask the human to type a command. Headless / non-interactive leaders auto-build that roster from the audit (catalog default model, effort medium; invoking harness is c1) and enter Campo. Fewer than two installed harnesses with catalog models: one log line, proceed as single-contestant Orden.
+
+After the roster exists, everything else is automatic: the kernel launches the other peers, this session writes `campo/proposals/c1.md` and `campo/ballots/c1.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`), and the kernel pins when the ballots meet the rule.
+
+Every valid ballot pins immediately. Plurality of concedes elects the leader. A tie breaks by contestant id. The deadline is a **maximum of 600 seconds** (code default; `of config set --deadline` stores `deadline_s`; `OF_CAMPO_DEADLINE` overrides). Campo settles as soon as every proposal and ballot is in, or as soon as every headless peer has exited—it does not sleep the rest of the ceiling. At the deadline, a strict majority of valid ballots that includes c1, and at least one concede, pins with the ballots that are present (N=2 needs both; N=3 needs 2 including c1; c1 alone does not pin). Otherwise nothing is pinned: `campo/hold.json` names the gap, and the next line is to write the missing `campo/ballots/<id>.json` files and run `of campo settle`. A peer that exits 0 without a ballot, or exits nonzero, is `dead`. A peer still running at the deadline is killed and recorded `timeout`. The hold line and `campo/spawns.json` include that peer's exit code and a stderr tail. A headless peer keeps the leader PATH and also receives `/bin` and `/usr/bin` when they are missing, so it can run system tools on macOS. A missing harness CLI refuses before any peer is launched.
+
+The pinned ORDER keeps a detailed user plan verbatim (`PlanIngress`). Crew is the rest of the roster. Implementer `of pack` waits for that pin, then Orden is ordinary pack on the same branch.
+
+Election, launch, the deadline, and the pin stay inside `Campo`. Init and pack call that module.
+
 Documented first close (CI extracts the block): [First close](#first-close). One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.” Undisclosed vulnerabilities: [SECURITY.md](SECURITY.md).
@@ -69,7 +108,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 **InitAskSkip** Large (multi-slice / multi-role; once per field at init / first wave):
 
 - Consult the [model catalog](docs/model-catalog.md), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own.
-- Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
+- Ask same-harness vs multi-harness mix for the Orden crew after the Campo pin (never a reason to skip Campo). You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
 - **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.

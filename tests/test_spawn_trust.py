@@ -7,6 +7,13 @@ the packet at the physical field home so handoff/spawn/collect round-trip).
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import contextlib
 import io
 import json
@@ -67,7 +74,7 @@ def run_of(
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -554,7 +561,8 @@ class WriteFloorCli(unittest.TestCase):
 
     def test_capable_default_dry_run_snapshots(self) -> None:
         expect = {
-            "claude": "--permission-mode acceptEdits",
+            # explorer packet: claude gets the read-only sensor allowlist.
+            "claude": "--permission-mode dontAsk",
             "codex": "--sandbox workspace-write",
             "agy": "--mode accept-edits",
             "qwen": "--approval-mode '<approval>'",
@@ -1473,3 +1481,67 @@ class SiblingFieldPack(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SensorTrustProfile(unittest.TestCase):
+    """Explorer/adversary/verifier: read-only commands + .orderfield writes."""
+
+    def test_claude_sensor_allowlist(self) -> None:
+        from of_adapters import SensorTrust
+
+        pkt = {"role": "explorer"}
+        flags = SensorTrust.flags("claude", "auto-edit", pkt)
+        self.assertEqual(flags[:2], ["--permission-mode", "dontAsk"])
+        allowed = flags[flags.index("--allowedTools") + 1].split(",")
+        for rule in ("Bash(npm test *)", "Bash(npm run lint *)", "Bash(npx tsc *)",
+                     "Bash(git diff *)", "Bash(gh pr view *)", "Bash(shasum *)",
+                     "Edit(./.orderfield/**)", "Read"):
+            self.assertIn(rule, allowed)
+        self.assertNotIn("Bash(*)", allowed)
+        self.assertNotIn("Edit", allowed)
+
+    def test_roles_and_profiles(self) -> None:
+        from of_adapters import SensorTrust
+
+        for role in ("explorer", "adversary", "verifier"):
+            self.assertIsNotNone(SensorTrust.flags("claude", "auto", {"role": role}))
+        self.assertIsNone(SensorTrust.flags("claude", "auto-edit", {"role": "implementer"}))
+        for profile in ("conservative", "plan", "yolo"):
+            self.assertIsNone(SensorTrust.flags("claude", profile, {"role": "explorer"}))
+
+    def test_qwen_opencode_codex_and_gaps(self) -> None:
+        from of_adapters import SensorTrust
+
+        pkt = {"role": "verifier"}
+        qwen = SensorTrust.flags("qwen", "auto-edit", pkt)
+        self.assertIn("--allowed-tools=run_shell_command(npm test)", qwen)
+        self.assertEqual(qwen[:2], ["--approval-mode", "auto-edit"])
+        env = SensorTrust.env("opencode", "auto-edit", pkt)
+        perm = json.loads(env["OPENCODE_PERMISSION"])
+        self.assertEqual(next(iter(perm["bash"])), "*")
+        self.assertEqual(perm["bash"]["*"], "deny")
+        self.assertEqual(perm["bash"]["npm test *"], "allow")
+        self.assertEqual(perm["edit"][".orderfield/**"], "allow")
+        self.assertEqual(SensorTrust.env("opencode", "conservative", pkt), {})
+        self.assertEqual(SensorTrust.mode("codex", "auto-edit", pkt), "sandbox-workspace-write")
+        for gap in ("cursor", "grok", "agy"):
+            self.assertEqual(SensorTrust.mode(gap, "auto-edit", pkt), "unsupported")
+            line = SensorTrust.speak_line(gap, "auto-edit", pkt)
+            self.assertIn("leader re-runs", line)
+            self.assertNotIn("ask the user to run", line)
+
+    def test_dry_run_records_sensor_meta(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-sensor-trust-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.assertEqual(run_of(tmp, "init", "--mission", "m", "--phase", "explore").returncode, 0)
+        pack = run_of(tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "s1")
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        packet = pack.stdout.splitlines()[0].strip()
+        proc = run_of(tmp, "spawn", "--adapter", "claude", "--packet", packet, "--dry-run")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("dontAsk", dry_run_preview(proc))
+        self.assertNotIn("acceptEdits", dry_run_preview(proc))
+        meta = load_json(tmp / ".orderfield/waves/001/spawns/s1.json")
+        self.assertEqual(meta["sensor_trust"], "allowlist")
+        cur = run_of(tmp, "spawn", "--adapter", "cursor", "--packet", packet, "--dry-run")
+        self.assertIn("sensor-trust unsupported for cursor", cur.stderr)

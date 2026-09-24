@@ -97,6 +97,26 @@ class EvalFileAssert:
         return None
 
 
+def _eval_orden_only(*args: str) -> list[str]:
+    """Eval fixtures use plain Orden; Campo is covered by tests.test_campo."""
+    out = list(args)
+    i = 0
+    while i < len(out):
+        if out[i] == "--json":
+            i += 1
+            continue
+        if out[i] == "--field" and i + 1 < len(out):
+            i += 2
+            continue
+        break
+    if i < len(out) and out[i] in {"init", "new"}:
+        if "--campo" not in out and not any(
+            tok.startswith("--orden-only") for tok in out
+        ):
+            out.extend(["--orden-only=user", "--orden-reason", "eval fixture: plain Orden"])
+    return out
+
+
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     # Recovery contain-checks must not see daily UpdateAsk lines or the
     # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
@@ -104,7 +124,11 @@ def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     home.mkdir(exist_ok=True)
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "HOME": str(home)}
     return subprocess.run(
-        [sys.executable, str(kernel_repo_root() / "scripts" / "of.py"), *args],
+        [
+            sys.executable,
+            str(kernel_repo_root() / "scripts" / "of.py"),
+            *_eval_orden_only(*args),
+        ],
         cwd=str(cwd),
         capture_output=True,
         text=True,

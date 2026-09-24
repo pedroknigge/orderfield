@@ -483,6 +483,142 @@ class WriteFloor:
         ]
 
 
+class SensorTrust:
+    """Read-only sensor trust for explorer / adversary / verifier (#294 part).
+
+    Dogfood: the write-floor (claude ``acceptEdits``) denied ``npm test`` /
+    lint / typecheck / ``gh`` / ``shasum`` in headless sensors, so every
+    explorer ended ``blocked``. Sensors need to *run* read-only commands and
+    write only under ``.orderfield/`` (scratch + residual). Applies only when
+    the resolved profile is the default write-floor (auto-edit / auto);
+    explicit conservative / plan / yolo are never overridden.
+
+    Per harness (argv/env only; host settings are never edited):
+      claude   --permission-mode dontAsk + --allowedTools allowlist
+      qwen     --approval-mode auto-edit + --allowed-tools=run_shell_command(...)
+      opencode OPENCODE_PERMISSION env (bash + edit pattern maps)
+      codex    --sandbox workspace-write (commands run; writes not confined
+               to .orderfield — OwnedWrite digest is the backstop)
+      cursor / grok / agy / orca: no allowlist argv → write-floor as before
+               plus a leader-directed WARN. generic: OF_AGENT's job.
+    """
+
+    ROLES = frozenset({"explorer", "adversary", "verifier"})
+    KIND = "sensor_trust"
+    # Read-only commands a sensor may run (prefix match per harness syntax).
+    COMMANDS = (
+        "npm test", "npm run test", "npm run lint", "npm run typecheck",
+        "npm run check", "npm run build", "npm audit", "npm ls", "npx tsc",
+        "npx eslint", "npx vitest run", "npx jest",
+        "pnpm test", "pnpm run test", "pnpm lint", "pnpm run lint",
+        "pnpm typecheck", "pnpm run typecheck", "pnpm audit",
+        "yarn test", "yarn lint", "yarn typecheck", "yarn audit",
+        "bun test", "pytest", "python -m pytest", "python3 -m pytest",
+        "python3 -m unittest", "ruff check", "mypy", "cargo test",
+        "cargo check", "cargo clippy", "go test", "go vet",
+        "git status", "git log", "git diff", "git show", "git branch",
+        "git rev-parse", "git ls-files", "git blame",
+        "gh pr view", "gh pr list", "gh pr diff", "gh pr checks",
+        "gh issue view", "gh issue list", "gh run view", "gh run list",
+        "gh api", "shasum", "sha256sum", "ls", "cat", "wc", "head",
+        "tail", "rg", "grep", "find", "of",
+    )
+    CLAUDE_TOOLS = ("Read", "Grep", "Glob", "LS")
+    WRITE_GLOB = ".orderfield/**"
+    NEXT = {
+        "cursor": (
+            "no allowlist argv; sensor keeps the write-floor (test/lint may "
+            "be denied). next: leader re-runs the named sensor commands or "
+            "packs this role on claude/qwen/opencode/codex"
+        ),
+        "grok": (
+            "no allowlist argv; sensor keeps the write-floor. next: leader "
+            "re-runs the named sensor commands or packs this role on "
+            "claude/qwen/opencode/codex"
+        ),
+        "agy": (
+            "no allowlist argv (accept-edits only). next: leader re-runs the "
+            "named sensor commands or packs this role on "
+            "claude/qwen/opencode/codex"
+        ),
+        "orca": "task-create has no trust argv; sensor perms stay on the Orca worker",
+        "generic": "OF_TRUST is OF_AGENT's job; include read-only command approvals",
+    }
+    SUPPORTED = ("claude", "qwen", "opencode", "codex")
+
+    @staticmethod
+    def applies(adapter: str, profile: str | None, packet: Any) -> bool:
+        role = str((packet or {}).get("role") or "") if isinstance(packet, dict) else ""
+        resolved = profile or resolve_trust_profile()
+        return role in SensorTrust.ROLES and resolved in WriteFloor.WANT
+
+    @staticmethod
+    def claude_allowed() -> str:
+        rules = list(SensorTrust.CLAUDE_TOOLS)
+        for cmd in SensorTrust.COMMANDS:
+            rules.append(f"Bash({cmd})")
+            rules.append(f"Bash({cmd} *)")
+        rules.append(f"Edit(./{SensorTrust.WRITE_GLOB})")
+        rules.append(f"Write(./{SensorTrust.WRITE_GLOB})")
+        return ",".join(rules)
+
+    @staticmethod
+    def opencode_permission() -> str:
+        bash: dict[str, str] = {"*": "deny"}
+        for cmd in SensorTrust.COMMANDS:
+            bash[cmd] = "allow"
+            bash[f"{cmd} *"] = "allow"
+        doc = {
+            "bash": bash,
+            "edit": {"*": "deny", SensorTrust.WRITE_GLOB: "allow"},
+            "webfetch": "deny",
+        }
+        return json.dumps(doc, separators=(",", ":"))
+
+    @staticmethod
+    def flags(adapter: str, profile: str | None, packet: Any) -> list[str] | None:
+        """Sensor argv replacing trust_flags, or None (use trust_flags)."""
+        if not SensorTrust.applies(adapter, profile, packet):
+            return None
+        if adapter == "claude":
+            return [
+                "--permission-mode",
+                "dontAsk",
+                "--allowedTools",
+                SensorTrust.claude_allowed(),
+            ]
+        if adapter == "qwen":
+            out = ["--approval-mode", "auto-edit"]
+            for cmd in SensorTrust.COMMANDS:
+                out.append(f"--allowed-tools=run_shell_command({cmd})")
+            return out
+        return None
+
+    @staticmethod
+    def env(adapter: str, profile: str | None, packet: Any) -> dict[str, str]:
+        if adapter == "opencode" and SensorTrust.applies(adapter, profile, packet):
+            return {"OPENCODE_PERMISSION": SensorTrust.opencode_permission()}
+        return {}
+
+    @staticmethod
+    def mode(adapter: str, profile: str | None, packet: Any) -> str | None:
+        """Meta label: allowlist / sandbox / unsupported / None (not a sensor)."""
+        if not SensorTrust.applies(adapter, profile, packet):
+            return None
+        if adapter in {"claude", "qwen", "opencode"}:
+            return "allowlist"
+        if adapter == "codex":
+            return "sandbox-workspace-write"
+        return "unsupported"
+
+    @staticmethod
+    def speak_line(adapter: str, profile: str | None, packet: Any) -> str | None:
+        if SensorTrust.mode(adapter, profile, packet) != "unsupported":
+            return None
+        nxt = SensorTrust.NEXT.get(adapter)
+        return f"sensor-trust unsupported for {adapter}: {nxt}" if nxt else None
+
+
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
     """Environment for a spawned child: allowlist, not the parent's whole env.
 
@@ -1783,7 +1919,8 @@ def build_spawn_argv(
     field_home: Path | None = None,
 ) -> list[str]:
     profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
-    trust = trust_flags(adapter, profile)
+    sensor = SensorTrust.flags(adapter, profile, packet)
+    trust = sensor if sensor is not None else trust_flags(adapter, profile)
     model = AdapterHints.spawn_flags(adapter, packet)
     landed = residual if isinstance(residual, dict) else AdapterResume.load(residual_abs)
     resume = AdapterResume.argv_flags(adapter, landed)

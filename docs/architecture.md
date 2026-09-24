@@ -2,7 +2,7 @@
 
 The field lives on disk. Children are coding CLIs. This page names who may change the plan, what the lock covers, and what stays reserved. Form docs do not invent a regime.
 
-Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec`, `checkpoint`, and `gc`; not spawn, handoff, learn, or worktree. The list is `mutating_commands_prose()` from `scripts/of/field.py`.
+Map to `scripts/of/{field,wal,learn,retain,spec,pack,regime,campo}.py` and `scripts/of/cli/`. `MUTATING_COMMANDS` is the lock set — includes `spec`, `checkpoint`, and `gc`; not spawn, handoff, learn, or worktree. The list is `mutating_commands_prose()` from `scripts/of/field.py`.
 
 > Hub: [AGENTS.md](../AGENTS.md) · Consumer surface: [README](../README.md) (install + first close) · Use cases: [README typical problems](../README.md#typical-problems--what-orderfield-does) · Compared-to: [README Compared-to](../README.md#compared-to) · Code: [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`scripts/of_adapters.py`](../scripts/of_adapters.py)
 

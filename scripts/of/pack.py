@@ -1498,12 +1498,43 @@ class CloseEvidence:
         return proof
 
     @staticmethod
+    def field_label(res: Any, root: Path) -> str:
+        order_id = ""
+        if isinstance(res, dict):
+            order_id = str(res.get("order_id") or "")
+        if not order_id:
+            try:
+                from of.field import load_order
+
+                order_id = str((load_order(root) or {}).get("id") or "")
+            except Exception:
+                order_id = ""
+        return order_id or "(unknown-field)"
+
+    @staticmethod
+    def rollback_required(res: Any, packet: Any = None) -> bool:
+        """Implementer / owns-path must name rollback. Read-only explorers may omit."""
+        if CloseEvidence.product_required(res, packet):
+            return True
+        role = ""
+        if isinstance(packet, dict):
+            role = str(packet.get("role") or "")
+        if role in {"explorer", "adversary", "verifier"}:
+            return False
+        return True
+
+    @staticmethod
+    def format_error(field: str, rule: str, detail: str) -> str:
+        return f"field={field} rule=CloseEvidence.{rule}: {detail}"
+
+    @staticmethod
     def errors(res: Any, root: Path, packet: Any = None) -> list[str]:
         if not isinstance(res, dict) or res.get("status") != "done":
             return []
         rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
         evidence = str(rem.get("evidence") or "")
         errs: list[str] = []
+        field = CloseEvidence.field_label(res, root)
         result_ref = res.get("result_ref")
         result_path: Path | None = None
         if result_ref:
@@ -1515,7 +1546,11 @@ class CloseEvidence:
                     result_path = path
                 elif path.exists():
                     errs.append(
-                        "done result_ref must be a file for close evidence"
+                        CloseEvidence.format_error(
+                            field,
+                            "result_ref",
+                            "done result_ref must be a file for close evidence",
+                        )
                     )
             except SystemExit:
                 pass
@@ -1524,39 +1559,67 @@ class CloseEvidence:
             candidates = CloseEvidence.proof_candidates(res, root, packet)
             if not candidates:
                 errs.append(
-                    "close evidence artifact_sha must hash owned product "
-                    "or published artifact, not scratch"
+                    CloseEvidence.format_error(
+                        field,
+                        "artifact_sha",
+                        "artifact_sha must hash owned product "
+                        "or published artifact, not scratch",
+                    )
                 )
             elif not got:
                 errs.append(
-                    "close evidence requires artifact_sha "
-                    "(sha256 of owned product)"
+                    CloseEvidence.format_error(
+                        field,
+                        "artifact_sha",
+                        "requires artifact_sha (sha256 of owned product)",
+                    )
                 )
             else:
                 wants = {CloseEvidence.digest(path) for path in candidates}
                 if got not in wants:
                     errs.append(
-                        "close evidence artifact sha does not match owned product"
+                        CloseEvidence.format_error(
+                            field,
+                            "artifact_sha",
+                            "artifact sha does not match owned product",
+                        )
                     )
         elif result_path is not None:
             want = CloseEvidence.digest(result_path)
             if not got:
                 errs.append(
-                    "close evidence requires artifact_sha "
-                    "(sha256 of result_ref)"
+                    CloseEvidence.format_error(
+                        field,
+                        "artifact_sha",
+                        "requires artifact_sha (sha256 of result_ref)",
+                    )
                 )
             elif got != want:
                 errs.append(
-                    "close evidence artifact sha does not match result_ref"
+                    CloseEvidence.format_error(
+                        field,
+                        "artifact_sha",
+                        "artifact sha does not match result_ref",
+                    )
                 )
         elif not got:
             errs.append(
-                "close evidence requires artifact_sha "
-                "(sha256 of result_ref)"
+                CloseEvidence.format_error(
+                    field,
+                    "artifact_sha",
+                    "requires artifact_sha (sha256 of result_ref)",
+                )
             )
         rollback = CloseEvidence.parse_rollback(evidence)
         if not rollback:
-            errs.append("close evidence requires rollback: <command>")
+            if CloseEvidence.rollback_required(res, packet):
+                errs.append(
+                    CloseEvidence.format_error(
+                        field,
+                        "rollback",
+                        "requires rollback: <command>",
+                    )
+                )
         else:
             collapsed = collapse_evidence(rollback)
             if (
@@ -1564,7 +1627,11 @@ class CloseEvidence:
                 or not CloseEvidence.COMMAND_RE.search(rollback)
             ):
                 errs.append(
-                    "close evidence rollback is a caption; name a command"
+                    CloseEvidence.format_error(
+                        field,
+                        "rollback",
+                        "rollback is a caption; name a command",
+                    )
                 )
         return errs
 
