@@ -27,7 +27,7 @@ Campo is the written arena. Orden is leader + crew after the pin. One module (`C
 3. Each contestant writes `campo/proposals/<id>.md` and `campo/ballots/<id>.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`).
 4. `of campo settle` counts concedes. Plurality wins. A tie breaks by contestant id. Missing ballots, or no concede, leave the arena open and write no `leader.json`.
 5. A pin writes `campo/leader.json` (leader + crew) and `campo/ORDER.json`. A detailed user plan stays verbatim (`PlanIngress` / SPEC sha). Implementer `of pack` waits until that pin exists. Then Orden is pack/spawn on the same branch.
-6. Same branch + commit = shared context. Proposals, ballots, code, and a residual note are files in this tree. Commit them. The other peers refresh from that commit before their next turn. There is no worktree and no merge-packet. Do not isolate. Collision control stays: owned paths, or turn-taking on one path.
+6. Same branch + commit = shared context. Proposals, ballots, code, and a residual note are files in this tree. Commit them. The other peers refresh from that commit before their next turn. There is no worktree and no merge-packet. Do not isolate. Collision control stays: owned paths, or turn-taking on one path. This checkout ignores the rest of `.orderfield/` and leaves `campo/` committable, including a nested field's `campo/`.
 
 In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood stays Partial (C-153). Do not invent case studies. Reviewer path: [docs/external-brief.md](../docs/external-brief.md#how-a-reviewer-re-runs-the-proof).
 

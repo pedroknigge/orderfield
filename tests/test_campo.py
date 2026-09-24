@@ -447,6 +447,25 @@ class CampoElection(unittest.TestCase):
         self.assertIn("class Campo:", source)
         self.assertNotIn("worktree add", source)
         self.assertNotIn("cmd_worktree", source)
+        visible = subprocess.run(
+            [
+                "git",
+                "check-ignore",
+                ".orderfield/campo/proposals/c1.md",
+                ".orderfield/fields/abc/campo/ballots/c1.json",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(visible.stdout, "")
+        hidden = subprocess.run(
+            ["git", "check-ignore", ".orderfield/ORDER.json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(hidden.returncode, 0)
 
 
 if __name__ == "__main__":
