@@ -5,9 +5,11 @@ math, tie-break, and the verbatim ORDER snapshot stay here.
 
 Contestants and crew share the field cwd and git branch. A commit on that
 branch is how the others catch up (proposals, ballots, code, residual
-notes). This module does not create a worktree, does not run a merge-packet,
-and does not accept a host-appointed leader. Two writers do not edit one
-path at once.
+notes). The session that runs of is contestant #1, a peer, not a parent.
+This module records headless argv for the other peers and does not launch
+them in this tracer. It does not create a worktree, does not run a
+merge-packet, and does not accept a host-appointed leader. Two writers do
+not edit one path at once.
 
 Re-open after verifier refuse is parent epic #333, not this slice.
 """
@@ -182,6 +184,61 @@ class Campo:
         }
 
     @staticmethod
+    def invoking_harness(order: dict[str, Any] | None = None) -> str:
+        """Session that is running of. Origin stamp, else OF_ORIGIN, else PATH."""
+        if isinstance(order, dict):
+            origin = order.get("origin")
+            if isinstance(origin, dict):
+                stamped = str(origin.get("harness") or "").strip().lower()
+                if stamped:
+                    return stamped
+        env = (os.environ.get("OF_ORIGIN") or "").strip().lower()
+        if env:
+            return env
+        from of_adapters import pick_adapter
+
+        return pick_adapter(None)
+
+    @staticmethod
+    def peer_plan(
+        order: dict[str, Any], roster: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """c1 is the invoking session. c2..N are headless argv, not launched."""
+        invoker = Campo.invoking_harness(order)
+        planned: list[dict[str, Any]] = []
+        for index, seat in enumerate(roster, start=1):
+            bound = Campo.resolve_spawn(seat)
+            local = index == 1
+            if local and bound["harness"] != invoker:
+                die(
+                    "campo: contestant #1 is the session running of "
+                    f"(harness {invoker}); the first roster peer is "
+                    f"{bound['harness']}/{bound['model']}. "
+                    "Put that session's model first. It stays a peer"
+                )
+            row: dict[str, Any] = {
+                "id": seat["id"],
+                "model": bound["model"],
+                "effort": bound["effort"],
+                "harness": bound["harness"],
+                "mode": "local" if local else "headless",
+                "peer": True,
+            }
+            if not local:
+                row["argv"] = AdapterHints.spawn_flags(
+                    bound["harness"],
+                    {
+                        "adapter_hints": {
+                            "model": bound["model"],
+                            "effort": bound["effort"],
+                        }
+                    },
+                )
+                row["launched"] = False
+            planned.append(row)
+        return planned
+
+    @staticmethod
     def arena(root: Path) -> Path:
         return field_home(root) / "campo"
 
@@ -250,8 +307,15 @@ class Campo:
                 "orden        pack on this branch; the host does not appoint the leader",
             ]
         reason = str(doc.get("reason") or "ballots incomplete")
+        extra = ""
+        if doc.get("invoker"):
+            heads = ",".join(str(item) for item in (doc.get("headless") or []))
+            extra = (
+                f"  invoker={doc['invoker']} peer  "
+                f"headless={heads or '-'} stub"
+            )
         return [
-            f"campo        open  {reason}",
+            f"campo        open  {reason}{extra}",
             "next         write campo/proposals/<id>.md and "
             "campo/ballots/<id>.json then of campo settle",
         ]
@@ -346,6 +410,7 @@ class Campo:
     @staticmethod
     def _open(root: Path, order: dict[str, Any]) -> None:
         roster = Campo.require_roster()
+        planned = Campo.peer_plan(order, roster)
         arena = Campo.arena(root)
         (arena / "proposals").mkdir(parents=True, exist_ok=True)
         (arena / "ballots").mkdir(parents=True, exist_ok=True)
@@ -357,6 +422,10 @@ class Campo:
         ]
         brief_text = Campo._text(spec_path(root))
         brief = sha256_text(brief_text) if brief_text is not None else ""
+        seats = [
+            {"id": row["id"], "model": row["model"], "effort": row["effort"]}
+            for row in planned
+        ]
         dump_json(
             arena / "round.json",
             {
@@ -367,7 +436,22 @@ class Campo:
                 "mission": str(order.get("mission") or ""),
                 "brief_sha": brief,
                 "plan_pins": pins,
-                "contestants": roster,
+                "invoker": "c1",
+                "contestants": seats,
+            },
+        )
+        dump_json(
+            arena / "spawns.json",
+            {
+                "v": 1,
+                "stub": True,
+                "invoker": "c1",
+                "cwd": ".",
+                "note": (
+                    "c1 is the session running of, a peer. "
+                    "c2..N argv is headless and not launched"
+                ),
+                "peers": planned,
             },
         )
 
@@ -531,13 +615,30 @@ class Campo:
 
     @staticmethod
     def _open_doc(root: Path, reason: str) -> dict[str, Any]:
-        del root
+        text = Campo._text(Campo.arena(root) / "spawns.json")
+        peers: list[Any] = []
+        try:
+            raw = json.loads(text) if text else {}
+        except json.JSONDecodeError:
+            raw = {}
+        if isinstance(raw, dict) and isinstance(raw.get("peers"), list):
+            peers = raw["peers"]
+        headless = [
+            str(row.get("id"))
+            for row in peers
+            if isinstance(row, dict) and row.get("mode") == "headless"
+        ]
+        invoker = None
+        if isinstance(raw, dict) and raw.get("invoker"):
+            invoker = str(raw["invoker"])
         return {
             "pinned": False,
             "status": "open",
             "leader": None,
             "crew": [],
             "reason": reason,
+            "invoker": invoker,
+            "headless": headless,
         }
 
     @staticmethod
