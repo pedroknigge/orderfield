@@ -61,8 +61,25 @@ If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init.
 
 Campo is the written arena. Orden is the crew that implements after peers pin a leader. The host does not appoint the leader. Contestants share this git branch and this cwd. Campo does not create a worktree.
 
+`of config` is empty until you set it (`OF_CONFIG` or `~/.orderfield/config.json`). The roster is a list of seats, N≥2, mixed harnesses allowed. Each seat is `harness`, `model`, and its own `effort` (`low|medium|high`). There is no leader key. A name that matches one catalog row is stored as that harness and `model_id`. An ambiguous name is stored as you wrote it and refused at spawn until the catalog lists it.
+
+Example band (not a shipped default):
+
+| harness | model | effort |
+|---|---|---|
+| claude | Opus 5.5 | medium |
+| agy | Gemini 3.8 Flash | medium |
+| codex | Codex Sol 6 | high |
+| grok | Grok 4.7 | high |
+
+`Gemini 3.8 Flash` is the catalog id `agy` / `gemini-3.8-flash`. `Opus 5.5`, `Codex Sol 6`, and `Grok 4.7` stay those strings.
+
 ```bash
-of config set --model grok-4 --model claude-sonnet --effort medium
+of config set \
+  --contestant claude "Opus 5.5" medium \
+  --contestant agy "Gemini 3.8 Flash" medium \
+  --contestant codex "Codex Sol 6" high \
+  --contestant grok "Grok 4.7" high
 of config show
 of init --mission "price table" --source "Definition of Done: print the table" --campo
 # each contestant writes .orderfield/campo/proposals/<id>.md

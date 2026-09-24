@@ -22,7 +22,7 @@ Product surface: [README.md](../README.md) (authority hero, planning-with-files 
 
 Campo is the written arena. Orden is leader + crew after the pin. One module (`Campo`) owns ballots, the election, and the pin. Init and pack call it.
 
-1. `of config set --model A --model B --effort medium` stores contestant defaults (`OF_CONFIG` or `~/.orderfield/config.json`). `of config show` prints them. There is no leader key.
+1. `of config set --contestant HARNESS MODEL EFFORT` (repeat, N≥2) stores the contestants list (`OF_CONFIG` or `~/.orderfield/config.json`). Each seat has its own harness, model, and effort. The file stays empty until set. `of config show` prints the seats, or the example band when unset. There is no leader key. Example (not a default): claude / Opus 5.5 / medium, agy / Gemini 3.8 Flash / medium, codex / Codex Sol 6 / high, grok / Grok 4.7 / high. A unique catalog fold stores that `model_id` (`Gemini 3.8 Flash` → `agy` / `gemini-3.8-flash`). An unknown string is stored as written and `Campo.resolve_spawn` refuses it.
 2. `of init --mission "…" --source "<verbatim brief>" --campo` opens `.orderfield/campo/` on this git branch and this cwd. It does not create a worktree. It does not appoint a leader.
 3. Each contestant writes `campo/proposals/<id>.md` and `campo/ballots/<id>.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`).
 4. `of campo settle` counts concedes. Plurality wins. A tie breaks by contestant id. Missing ballots, or no concede, leave the arena open and write no `leader.json`.

@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from of_adapters import AdapterHints
+from of_adapters import ADAPTER_ORDER, AdapterHints
 
 from of.field import (
     die,
@@ -29,14 +29,23 @@ from of.field import (
     load_order,
     order_path,
     sha256_text,
+    skill_root,
     spec_path,
 )
 
 CONFIG_ENV = "OF_CONFIG"
-MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+# Display names such as "Opus 5.5" are stored when the catalog has no unique id.
+_MODEL_BAD = re.compile(r"[\x00-\x1f\x7f]")
 STANCES = frozenset({"concede", "challenge"})
 RULE = "plurality-concede"
 TIE_BREAK = "contestant-id"
+# Canonical example band for docs and `of config show`. Not a seeded default.
+EXAMPLE_BAND = (
+    ("claude", "Opus 5.5", "medium"),
+    ("agy", "Gemini 3.8 Flash", "medium"),
+    ("codex", "Codex Sol 6", "high"),
+    ("grok", "Grok 4.7", "high"),
+)
 
 
 class Campo:
@@ -53,47 +62,58 @@ class Campo:
     def read_config() -> dict[str, Any]:
         path = Campo.config_path()
         if not path.is_file() or path.is_symlink():
-            return {"v": 1, "effort": AdapterHints.DEFAULT_EFFORT, "models": []}
+            return {"v": 1, "contestants": []}
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             die(f"invalid campo config {path}: {exc}")
         if not isinstance(raw, dict):
             die(f"invalid campo config {path}: expected an object")
-        effort = str(raw.get("effort") or AdapterHints.DEFAULT_EFFORT).strip()
-        if effort not in AdapterHints.EFFORTS:
+        if "contestants" not in raw and ("models" in raw or "effort" in raw):
             die(
-                f"campo config effort must be {'|'.join(sorted(AdapterHints.EFFORTS))}"
+                "campo config is a contestants list; "
+                "rewrite with of config set --contestant HARNESS MODEL EFFORT"
             )
-        models = raw.get("models") or []
-        if not isinstance(models, list):
-            die(f"invalid campo config {path}: models must be a list")
-        clean = [Campo._model(str(item)) for item in models]
-        return {"v": 1, "effort": effort, "models": clean}
+        rows = raw.get("contestants") or []
+        if not isinstance(rows, list):
+            die(f"invalid campo config {path}: contestants must be a list")
+        clean = [Campo._seat_from_disk(item, path) for item in rows]
+        return {"v": 1, "contestants": clean}
 
     @staticmethod
-    def write_defaults(models: list[str], effort: str | None = None) -> dict[str, Any]:
-        clean = [Campo._model(item) for item in models]
+    def write_defaults(seats: list[tuple[str, str, str]]) -> dict[str, Any]:
+        clean = [
+            Campo._normalize_seat(harness, model, effort)
+            for harness, model, effort in seats
+        ]
         if len(clean) < 2:
-            die("of config set needs at least two --model values")
-        picked = str(effort or AdapterHints.DEFAULT_EFFORT).strip()
-        if picked not in AdapterHints.EFFORTS:
-            die(
-                f"--effort must be {'|'.join(sorted(AdapterHints.EFFORTS))} "
-                f"(got {picked!r})"
-            )
-        doc = {"v": 1, "effort": picked, "models": clean}
+            die("of config set needs at least two --contestant values")
+        seen: set[tuple[str, str]] = set()
+        for seat in clean:
+            key = (seat["harness"], seat["model"])
+            if key in seen:
+                die(
+                    f"duplicate contestant {seat['harness']}/{seat['model']}"
+                )
+            seen.add(key)
+        doc = {"v": 1, "contestants": clean}
         dump_json(Campo.config_path(), doc)
         return doc
 
     @staticmethod
     def contestants(doc: dict[str, Any] | None = None) -> list[dict[str, str]]:
         cfg = doc if doc is not None else Campo.read_config()
-        effort = str(cfg.get("effort") or AdapterHints.DEFAULT_EFFORT)
         rows: list[dict[str, str]] = []
-        for index, model in enumerate(cfg.get("models") or [], start=1):
+        for index, seat in enumerate(cfg.get("contestants") or [], start=1):
+            if not isinstance(seat, dict):
+                continue
             rows.append(
-                {"id": f"c{index}", "model": str(model), "effort": effort}
+                {
+                    "id": f"c{index}",
+                    "harness": str(seat.get("harness") or ""),
+                    "model": str(seat.get("model") or ""),
+                    "effort": str(seat.get("effort") or ""),
+                }
             )
         return rows
 
@@ -103,9 +123,35 @@ class Campo:
         if len(rows) < 2:
             die(
                 "campo needs N>=2 contestants; "
-                "of config set --model A --model B --effort medium"
+                "of config set --contestant HARNESS MODEL EFFORT"
             )
         return rows
+
+    @staticmethod
+    def resolve_spawn(seat: dict[str, str]) -> dict[str, str]:
+        """Catalog id check for a later spawn. Unknown stored strings die here."""
+        harness = str(seat.get("harness") or "")
+        model = str(seat.get("model") or "")
+        for row in Campo._catalog_rows():
+            same_harness = str(row.get("harness") or "") == harness
+            same_model = str(row.get("model_id") or "") == model
+            if same_harness and same_model:
+                return {
+                    "harness": harness,
+                    "model": model,
+                    "effort": str(seat.get("effort") or ""),
+                }
+        die(
+            f"campo spawn refused: unknown model {model!r} on harness {harness!r}; "
+            "not in the model catalog"
+        )
+
+    @staticmethod
+    def example_set_line() -> str:
+        parts = ["of config set"]
+        for harness, model, effort in EXAMPLE_BAND:
+            parts.append(f'--contestant {harness} "{model}" {effort}')
+        return " ".join(parts)
 
     @staticmethod
     def arena(root: Path) -> Path:
@@ -185,9 +231,112 @@ class Campo:
     @staticmethod
     def _model(raw: str) -> str:
         model = str(raw or "").strip()
-        if not MODEL_RE.match(model):
-            die(f"invalid --model {raw!r}")
+        if (
+            not model
+            or len(model) > 128
+            or _MODEL_BAD.search(model)
+            or model[0] in "-."
+        ):
+            die(f"invalid contestant model {raw!r}")
         return model
+
+    @staticmethod
+    def _harness(raw: str) -> str:
+        name = str(raw or "").strip()
+        folded = name.casefold()
+        hits = [item for item in ADAPTER_ORDER if item.casefold() == folded]
+        if len(hits) != 1:
+            die(
+                f"--contestant harness must be one of {ADAPTER_ORDER} "
+                f"(got {name!r})"
+            )
+        return hits[0]
+
+    @staticmethod
+    def _effort(raw: str) -> str:
+        picked = str(raw or "").strip().casefold()
+        if picked not in AdapterHints.EFFORTS:
+            die(
+                f"contestant effort must be {'|'.join(sorted(AdapterHints.EFFORTS))} "
+                f"(got {raw!r})"
+            )
+        return picked
+
+    @staticmethod
+    def _fold(text: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", str(text).casefold())
+
+    @staticmethod
+    def _catalog_rows() -> list[dict[str, Any]]:
+        from of.model_catalog import ModelCatalog
+
+        path = ModelCatalog.json_path(skill_root())
+        if not path.is_file():
+            return []
+        try:
+            doc = ModelCatalog.load(skill_root())
+        except (OSError, json.JSONDecodeError, ValueError):
+            return []
+        rows: list[dict[str, Any]] = []
+        for row in ModelCatalog.models(doc):
+            model_id = str(row.get("model_id") or "")
+            harness = str(row.get("harness") or "")
+            if not model_id or model_id == "(user-config)" or not harness:
+                continue
+            rows.append(row)
+        return rows
+
+    @staticmethod
+    def _normalize_seat(harness: str, model: str, effort: str) -> dict[str, str]:
+        picked_harness = Campo._harness(harness)
+        picked_model = Campo._model(model)
+        picked_effort = Campo._effort(effort)
+        folded = Campo._fold(picked_model)
+        matches = [
+            row
+            for row in Campo._catalog_rows()
+            if Campo._fold(str(row.get("model_id") or "")) == folded
+        ]
+        if len(matches) == 1:
+            row = matches[0]
+            catalog_harness = str(row.get("harness") or "")
+            if catalog_harness != picked_harness:
+                die(
+                    f"{picked_model!r} maps to {catalog_harness}/"
+                    f"{row.get('model_id')}, not harness {picked_harness!r}"
+                )
+            return {
+                "harness": catalog_harness,
+                "model": str(row.get("model_id") or ""),
+                "effort": picked_effort,
+            }
+        scoped = [
+            row
+            for row in matches
+            if str(row.get("harness") or "") == picked_harness
+        ]
+        if len(scoped) == 1:
+            row = scoped[0]
+            return {
+                "harness": picked_harness,
+                "model": str(row.get("model_id") or ""),
+                "effort": picked_effort,
+            }
+        return {
+            "harness": picked_harness,
+            "model": picked_model,
+            "effort": picked_effort,
+        }
+
+    @staticmethod
+    def _seat_from_disk(item: Any, path: Path) -> dict[str, str]:
+        if not isinstance(item, dict):
+            die(f"invalid campo config {path}: each contestant must be an object")
+        return {
+            "harness": Campo._harness(str(item.get("harness") or "")),
+            "model": Campo._model(str(item.get("model") or "")),
+            "effort": Campo._effort(str(item.get("effort") or "")),
+        }
 
     @staticmethod
     def _open(root: Path, order: dict[str, Any]) -> None:
