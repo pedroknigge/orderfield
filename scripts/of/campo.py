@@ -57,6 +57,10 @@ PEERS = "equals; list order is not rank and not a role"
 # Strict majority, and c1 must have voted. N=3 needs 2 ballots including c1.
 DEFAULT_DEADLINE_S = 120.0
 DEADLINE_ENV = "OF_CAMPO_DEADLINE"
+# macOS keeps mkdir/cat/sh in /bin. A leader PATH that is only a stub dir
+# plus git (/usr/bin) cannot run them. Children keep the leader entries first.
+_SYSTEM_PATH = ("/bin", "/usr/bin")
+_STDERR_TAIL = 400
 
 
 class Campo:
@@ -366,13 +370,15 @@ class Campo:
             missing = " ".join(
                 f"campo/ballots/{cid}.json" for cid in (doc.get("missing") or [])
             )
-            return [
+            lines = [
                 (
                     f"campo        hold  invoker={doc.get('invoker')} peer  "
                     f"headless={heads or '-'}  {doc.get('reason')}"
                 ),
                 f"next         write {missing} then of campo settle",
             ]
+            lines.extend(Campo._peer_lines(doc.get("peer_diag") or []))
+            return lines
         reason = str(doc.get("reason") or "ballots incomplete")
         extra = ""
         if doc.get("invoker"):
@@ -528,6 +534,7 @@ class Campo:
             "ended",
             "code",
             "status",
+            "stderr_tail",
         )
         return {key: row[key] for key in keep if key in row}
 
@@ -604,7 +611,14 @@ class Campo:
                 env = spawn_env(str(row["harness"]))
                 env["OF_CAMPO_ID"] = str(row["id"])
                 env["OF_CAMPO_ROOT"] = str(root)
+                Campo._ensure_system_path(env)
                 runner = Campo.runner
+                err_fh = None
+                if runner is None:
+                    err_path = Campo.arena(root) / "peers" / f"{row['id']}.err"
+                    err_fh = err_path.open("wb", buffering=0)
+                    row["_err_fh"] = err_fh
+                    row["_err_path"] = err_path
                 if runner is not None:
                     proc = runner(argv, root, env)
                 else:
@@ -614,7 +628,7 @@ class Campo:
                         env=env,
                         stdin=subprocess.DEVNULL,
                         stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
+                        stderr=err_fh,
                     )
                 row["argv"] = list(argv)
                 row["launched"] = True
@@ -626,6 +640,8 @@ class Campo:
         except BaseException:
             for proc in started:
                 Campo._kill(proc)
+            for row in headless:
+                Campo._capture_stderr(row)
             raise
         Campo._children = started
         Campo._write_spawns(root, planned)
@@ -664,12 +680,14 @@ class Campo:
                 row["status"] = "timeout"
                 row["code"] = proc.poll()
                 row["ended"] = Campo._stamp()
+                Campo._capture_stderr(row)
                 continue
             if code is None:
                 row["status"] = "running"
                 continue
             row["code"] = int(code)
             row["ended"] = Campo._stamp()
+            Campo._capture_stderr(row)
             ballot = Campo._one_ballot(
                 arena / "ballots" / f"{row['id']}.json",
                 str(row["id"]),
@@ -696,6 +714,7 @@ class Campo:
             f"; have {','.join(have) or '-'}"
             f"; missing {','.join(missing) or '-'}"
         )
+        diag = Campo._peer_diag(root)
         dump_json(
             Campo.arena(root) / "hold.json",
             {
@@ -705,13 +724,103 @@ class Campo:
                 "have": have,
                 "missing": missing,
                 "hitl": True,
+                "peers": diag,
             },
         )
         doc = Campo._open_doc(root, reason)
         doc["hitl"] = True
         doc["have"] = have
         doc["missing"] = missing
+        doc["peer_diag"] = diag
         return doc
+
+    @staticmethod
+    def _ensure_system_path(env: dict[str, str]) -> None:
+        """Append /bin and /usr/bin when the leader PATH does not have them.
+
+        Leader entries stay first, so a stub dir still wins. macOS git lives
+        in /usr/bin while mkdir and cat live in /bin; without /bin a headless
+        peer exits 0 and writes no ballot.
+        """
+        parts = [part for part in (env.get("PATH") or "").split(os.pathsep) if part]
+        have = set(parts)
+        for entry in _SYSTEM_PATH:
+            if entry in have:
+                continue
+            if Path(entry).is_dir():
+                parts.append(entry)
+                have.add(entry)
+        if parts:
+            env["PATH"] = os.pathsep.join(parts)
+
+    @staticmethod
+    def _capture_stderr(row: dict[str, Any]) -> None:
+        handle = row.pop("_err_fh", None)
+        if handle is not None:
+            try:
+                handle.flush()
+                handle.close()
+            except OSError:
+                pass
+        path = row.pop("_err_path", None)
+        if path is None:
+            return
+        tail = Campo._stderr_tail(Path(path))
+        if tail:
+            row["stderr_tail"] = tail
+
+    @staticmethod
+    def _stderr_tail(path: Path) -> str:
+        text = Campo._disk_text(path)
+        if not text:
+            return ""
+        text = text.replace("\x00", "").strip()
+        if len(text) <= _STDERR_TAIL:
+            return text
+        return text[-_STDERR_TAIL:]
+
+    @staticmethod
+    def _peer_diag(root: Path) -> list[dict[str, Any]]:
+        text = Campo._text(Campo.arena(root) / "spawns.json")
+        try:
+            raw = json.loads(text) if text else {}
+        except json.JSONDecodeError:
+            raw = {}
+        peers = raw.get("peers") if isinstance(raw, dict) else None
+        if not isinstance(peers, list):
+            return []
+        diag: list[dict[str, Any]] = []
+        for row in peers:
+            if not isinstance(row, dict) or row.get("mode") != "headless":
+                continue
+            item: dict[str, Any] = {
+                "id": str(row.get("id") or ""),
+                "status": row.get("status"),
+                "code": row.get("code"),
+            }
+            tail = str(row.get("stderr_tail") or "").strip()
+            if tail:
+                item["stderr_tail"] = tail
+            diag.append(item)
+        return diag
+
+    @staticmethod
+    def _peer_lines(diag: list[Any]) -> list[str]:
+        lines: list[str] = []
+        for row in diag:
+            if not isinstance(row, dict):
+                continue
+            err = " ".join(str(row.get("stderr_tail") or "").split())
+            if len(err) > 180:
+                err = err[-180:]
+            line = (
+                f"peer         {row.get('id')} {row.get('status')} "
+                f"code={row.get('code')}"
+            )
+            if err:
+                line += f" stderr={err}"
+            lines.append(line)
+        return lines
 
     @staticmethod
     def _text(path: Path) -> str | None:
