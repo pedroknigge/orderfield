@@ -69,8 +69,8 @@ def stub_cli(directory: Path, name: str) -> None:
 def ballot_cli(directory: Path, name: str) -> None:
     """Headless fake: write this peer's proposal and a concede, then exit 0.
 
-    Shell, not python. The child PATH is the stub dir plus git, so
-    ``#!/usr/bin/env python3`` does not resolve on macOS runners.
+    Absolute /bin tools. The child PATH is the stub dir plus git.
+    macOS keeps mkdir and cat in /bin, not next to git in /usr/bin.
     """
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / name
@@ -79,11 +79,11 @@ def ballot_cli(directory: Path, name: str) -> None:
 cid="$OF_CAMPO_ID"
 root="$OF_CAMPO_ROOT"
 arena="$root/.orderfield/campo"
-mkdir -p "$arena/proposals" "$arena/ballots"
+/bin/mkdir -p "$arena/proposals" "$arena/ballots"
 printf '%s\\n' "proposal $cid" > "$arena/proposals/$cid.md"
 peer=c3
 if [ "$cid" = "c3" ]; then peer=c1; fi
-cat > "$arena/ballots/$cid.json" <<EOF
+/bin/cat > "$arena/ballots/$cid.json" <<EOF
 {"contestant":"$cid","claim":"peer covers the brief","evidence":"proposal cites Definition of Done","peer":"$peer","stance":"concede"}
 EOF
 exit 0
