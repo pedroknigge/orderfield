@@ -162,7 +162,8 @@ def cmd_init(args: argparse.Namespace) -> None:
         )
     source_text = resolve_source_text(args)
     # Campo entry (ask / auto / degrade) before any field write.
-    args.campo = Campo.resolve_entry(args)
+    if not getattr(args, "campo_entry_resolved", False):
+        args.campo = Campo.resolve_entry(args)
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -204,7 +205,8 @@ def cmd_new(args: argparse.Namespace) -> None:
     # Validate the brief and --parent before promoting the legacy layout.
     source_text = resolve_source_text(args)
     # Campo entry before promote / field home writes.
-    args.campo = Campo.resolve_entry(args)
+    if not getattr(args, "campo_entry_resolved", False):
+        args.campo = Campo.resolve_entry(args)
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")

@@ -985,6 +985,10 @@ class LeaderRosterCampo(unittest.TestCase):
             stub_cli(self.bin, name)
         git_dir = str(Path(shutil.which("git") or "/usr/bin/git").resolve().parent)
         path = os.pathsep.join([str(self.bin), git_dir])
+        self._old_path = os.environ.get("PATH")
+        self._old_config = os.environ.get("OF_CONFIG")
+        os.environ["PATH"] = path
+        os.environ["OF_CONFIG"] = str(self.cfg)
         self.env = {
             "OF_CONFIG": str(self.cfg),
             "OF_NO_UPDATE_CHECK": "1",
@@ -992,11 +996,24 @@ class LeaderRosterCampo(unittest.TestCase):
             "PATH": path,
             "OF_CAMPO_DEADLINE": "0.2",
             "OF_TRUST": "auto-edit",
+            "OF_CAMPO_ASK": "0",
         }
         git(self.tmp, "init", "-q")
         git(self.tmp, "config", "user.email", "of@test")
         git(self.tmp, "config", "user.name", "of")
         git(self.tmp, "commit", "--allow-empty", "-m", "init")
+
+    def tearDown(self) -> None:
+        Campo.runner = None
+        Campo._children = []
+        if self._old_path is None:
+            os.environ.pop("PATH", None)
+        else:
+            os.environ["PATH"] = self._old_path
+        if self._old_config is None:
+            os.environ.pop("OF_CONFIG", None)
+        else:
+            os.environ["OF_CONFIG"] = self._old_config
 
     def of(self, *args: str, extra: dict | None = None) -> subprocess.CompletedProcess[str]:
         env = dict(self.env)
@@ -1152,9 +1169,6 @@ class LeaderRosterCampo(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
-        os.environ["OF_CONFIG"] = str(self.cfg)
-        os.environ["PATH"] = self.env["PATH"]
-        self.addCleanup(os.environ.pop, "OF_CONFIG", None)
         args = argparse.Namespace(campo=False, orden_only=False)
         self.assertTrue(Campo.resolve_entry(args))
         args2 = argparse.Namespace(campo=False, orden_only=True)
