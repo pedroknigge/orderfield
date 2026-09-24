@@ -29,6 +29,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 |---|---|
 | `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn. Clone/checkout + installed skill: operator risk, not an escape |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
+| Campo then Orden | `of config set --model A --model B --effort medium`, then `of init --campo`. Peers ballot; `of campo settle` pins leader + ORDER. Host does not appoint the leader. Same branch. Then pack. |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
 | multi-role pack plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** [docs/model-catalog.md](docs/model-catalog.md), then **must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. On yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
@@ -90,12 +91,9 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 
 ## When to use
 
-- User invokes Orderfield, `/orderfield`, `/of`, Haken slaving, threshold delegation, or an order field.
-- A kernel, product, or multi-slice build that will not fit one context.
-- Multiple slices or writers need ownership, or multiple harnesses must coordinate.
-- `.orderfield/ORDER.json` already exists.
+- `/orderfield` or `/of`, a multi-slice build, colliding writers, or `.orderfield/ORDER.json` already exists.
 
-A harness name alone is not a trigger. Skill beats child. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
+A harness name alone is not a trigger. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
 
 ## Auto-report (HITL)
 

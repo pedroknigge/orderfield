@@ -518,6 +518,11 @@ def cmd_pack(args: argparse.Namespace) -> None:
         if doc.get("whole_phase"):
             SliceLint.refuse_whole_phase(slice_text, phase=order.get("phase"))
         return
+    from of.campo import Campo
+
+    campo_hold = Campo.hold_pack(root, args.role)
+    if campo_hold:
+        die(campo_hold)
     require_spec_intact(root, order)
     fidelity = PlanIngress.hold_pack(root, order)
     if fidelity:

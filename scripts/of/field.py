@@ -282,6 +282,7 @@ FIELD_BIND_COMMANDS = {
     "migrate",
     "worktree",
     "wave",
+    "campo",
 }
 _LEGACY_FIELD_FILES = (
     "ORDER.json",

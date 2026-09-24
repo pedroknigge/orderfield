@@ -12,10 +12,21 @@ Hosts load sibling [SKILL.md](../SKILL.md) only. This file is the rest of the le
 | collect / integrate | [### 5. Collect + integrate](#5-collect--integrate--the-leader-does-not-judge-vibes) |
 | contrast | [### 5b. Contrast loop](#5b-contrast-loop--original-request-not-the-compressed-order) |
 | close | [#### Production mode](#production-mode) + [Forbidden](#forbidden) + [docs/close-is-proof.md](../docs/close-is-proof.md) |
+| Campo / Orden | [## Campo then Orden](#campo-then-orden) |
 
 Lab `eval` lives here, not on the SKILL/`/of` hot path. A turn that claims field-run verbs without the `of` commands is still a broken run.
 
 Product surface: [README.md](../README.md) (authority hero, planning-with-files contrast, first close). Haken analogy is slaving-by-contract through `of`, not a jail. Child contract: [CHILD.md](../CHILD.md). Invariants: [principles.md](principles.md). Adapters: [adapters.md](adapters.md). Subtract first: same capability with less code. No new API to look busy.
+
+## Campo then Orden
+
+Campo is the written arena. Orden is leader + crew after the pin. One module (`Campo`) owns ballots, the election, and the pin. Init and pack call it.
+
+1. `of config set --model A --model B --effort medium` stores contestant defaults (`OF_CONFIG` or `~/.orderfield/config.json`). `of config show` prints them. There is no leader key.
+2. `of init --mission "…" --source "<verbatim brief>" --campo` opens `.orderfield/campo/` on this git branch and this cwd. It does not create a worktree. It does not appoint a leader.
+3. Each contestant writes `campo/proposals/<id>.md` and `campo/ballots/<id>.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`).
+4. `of campo settle` counts concedes. Plurality wins. A tie breaks by contestant id. Missing ballots, or no concede, leave the arena open and write no `leader.json`.
+5. A pin writes `campo/leader.json` (leader + crew) and `campo/ORDER.json`. A detailed user plan stays verbatim (`PlanIngress` / SPEC sha). Implementer `of pack` waits until that pin exists. Then Orden is pack/spawn on the same branch.
 
 In-repo lab proof is re-runnable (`of eval --strict --kernel`). External dogfood stays Partial (C-153). Do not invent case studies. Reviewer path: [docs/external-brief.md](../docs/external-brief.md#how-a-reviewer-re-runs-the-proof).
 

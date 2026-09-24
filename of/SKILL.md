@@ -28,4 +28,6 @@ cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedrok
 Incoming plan: classify **folder / chat / prompt**, materialize+fidelity before pack;
 invent = post-baseline new MD, not unpinned shared plans. Follow the sibling.
 
+Campo then Orden: `of config` sets contestant models and effort. `of init --campo` opens the arena on this branch. Peers elect the leader; the host does not appoint one. `of campo settle` pins leader, crew, and ORDER. Then pack. Follow the sibling.
+
 Do not trigger for a harness name alone.

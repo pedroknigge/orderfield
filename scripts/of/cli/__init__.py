@@ -28,6 +28,7 @@ from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 from of.host_ram import AgentBand
 
 from of.cli.init_cmd import cmd_init, cmd_new
+from of.cli.campo_cmd import cmd_campo_settle, cmd_config_set, cmd_config_show
 from of.cli.ops import (
     cmd_checkpoint,
     cmd_detect,
@@ -327,6 +328,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
     )
     AgentBand.add_flags(s)
+    s.add_argument(
+        "--campo",
+        action="store_true",
+        help="enter Campo on this branch; pin leader only after peer ballots",
+    )
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser(
@@ -366,7 +372,46 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     AgentBand.add_flags(s)
+    s.add_argument(
+        "--campo",
+        action="store_true",
+        help="enter Campo on this branch; pin leader only after peer ballots",
+    )
     s.set_defaults(func=cmd_new)
+
+    config = sub.add_parser(
+        "config",
+        help="contestant model and effort defaults (Campo)",
+    )
+    config_sub = config.add_subparsers(dest="config_cmd", required=True)
+    config_show = config_sub.add_parser("show", help="print contestant defaults")
+    config_show.set_defaults(func=cmd_config_show)
+    config_set = config_sub.add_parser(
+        "set", help="set contestant models and one effort default"
+    )
+    config_set.add_argument(
+        "--model",
+        action="append",
+        required=True,
+        help="contestant model (repeat; N>=2). Not a leader appointment",
+    )
+    config_set.add_argument(
+        "--effort",
+        default="medium",
+        help="effort default for every contestant (low|medium|high)",
+    )
+    config_set.set_defaults(func=cmd_config_set)
+
+    campo = sub.add_parser(
+        "campo",
+        help="peer election on this branch (no worktree, no host-appointed leader)",
+    )
+    campo_sub = campo.add_subparsers(dest="campo_cmd", required=True)
+    campo_settle = campo_sub.add_parser(
+        "settle",
+        help="pin leader + ORDER from ballots, or leave the arena open",
+    )
+    campo_settle.set_defaults(func=cmd_campo_settle)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
     s.add_argument(

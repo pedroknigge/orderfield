@@ -27,6 +27,7 @@ from of.field import (
     session_path,
     write_phase_md,
 )
+from of.campo import Campo
 from of.regime import DoneWhenLint, PlanCoverage, PlanIngress
 from of.pack import ensure_field_slave_md
 from of.host_ram import AgentBand
@@ -135,6 +136,10 @@ def _stamp_and_write_new_field(
     write_phase_md(root, order)
     ensure_field_slave_md(root)
     ActiveField.write(root, str(order["id"]))
+    if getattr(args, "campo", False):
+        campo_doc = Campo.enter(root, order, source_text)
+        for line in Campo.speak(campo_doc):
+            print(line)
     sess = session_path(root)
     if sess.is_file():
         sess.unlink()
@@ -156,6 +161,8 @@ def cmd_init(args: argparse.Namespace) -> None:
             "(or of init --force --field ID replaces one)"
         )
     source_text = resolve_source_text(args)
+    if getattr(args, "campo", False):
+        Campo.require_roster()
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -196,6 +203,8 @@ def cmd_new(args: argparse.Namespace) -> None:
         die("--mission is required")
     # Validate the brief and --parent before promoting the legacy layout.
     source_text = resolve_source_text(args)
+    if getattr(args, "campo", False):
+        Campo.require_roster()
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")
