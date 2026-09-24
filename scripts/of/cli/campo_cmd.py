@@ -7,27 +7,30 @@ from of.campo import Campo
 from of.field import field_lock, find_root
 
 
+def _print_roster(doc: dict) -> None:
+    for row in Campo.contestants(doc):
+        print(
+            f"{row['id']}  {row['harness']}  {row['model']}  {row['effort']}"
+        )
+
+
 def cmd_config_show(_args: argparse.Namespace) -> None:
     doc = Campo.read_config()
-    models = list(doc.get("models") or [])
-    if not models:
-        print(f"effort  {doc.get('effort')}")
-        print("models  (unset)")
-        print("next    of config set --model A --model B --effort medium")
+    if not Campo.contestants(doc):
+        print("contestants  (unset)")
+        print(f"example  {Campo.example_set_line()}")
         return
-    ids = " ".join(row["id"] for row in Campo.contestants(doc))
-    print(f"effort  {doc.get('effort')}")
-    print("models  " + " ".join(str(item) for item in models))
-    print(f"ids     {ids}")
+    _print_roster(doc)
+    print(f"config  {Campo.config_path()}")
 
 
 def cmd_config_set(args: argparse.Namespace) -> None:
-    models = [str(item) for item in (args.model or []) if str(item).strip()]
-    doc = Campo.write_defaults(models, getattr(args, "effort", None))
-    ids = " ".join(row["id"] for row in Campo.contestants(doc))
-    print(f"effort  {doc['effort']}")
-    print("models  " + " ".join(doc["models"]))
-    print(f"ids     {ids}")
+    seats = [
+        (str(harness), str(model), str(effort))
+        for harness, model, effort in (args.contestant or [])
+    ]
+    doc = Campo.write_defaults(seats)
+    _print_roster(doc)
     print(f"config  {Campo.config_path()}")
 
 

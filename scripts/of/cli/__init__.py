@@ -381,24 +381,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     config = sub.add_parser(
         "config",
-        help="contestant model and effort defaults (Campo)",
+        help="contestant roster (harness, model, effort) for Campo",
     )
     config_sub = config.add_subparsers(dest="config_cmd", required=True)
-    config_show = config_sub.add_parser("show", help="print contestant defaults")
+    config_show = config_sub.add_parser("show", help="print contestant roster")
     config_show.set_defaults(func=cmd_config_show)
     config_set = config_sub.add_parser(
-        "set", help="set contestant models and one effort default"
+        "set",
+        help="set contestant seats (N>=2; mixed harnesses and efforts)",
     )
     config_set.add_argument(
-        "--model",
+        "--contestant",
         action="append",
+        nargs=3,
+        metavar=("HARNESS", "MODEL", "EFFORT"),
         required=True,
-        help="contestant model (repeat; N>=2). Not a leader appointment",
-    )
-    config_set.add_argument(
-        "--effort",
-        default="medium",
-        help="effort default for every contestant (low|medium|high)",
+        help=(
+            "harness model effort (repeat; N>=2). "
+            "Not a leader appointment"
+        ),
     )
     config_set.set_defaults(func=cmd_config_set)
 
