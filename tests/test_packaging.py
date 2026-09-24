@@ -2,6 +2,13 @@
 """Install + version sync against the shipped package."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import hashlib
 import importlib.util
 import os
@@ -34,8 +41,16 @@ def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedP
     merged = os.environ.copy()
     if env:
         merged.update(env)
+    argv = list(args)
+    # When argv is `python of.py init|new …`, keep plain Orden in packaging tests.
+    try:
+        of_idx = next(i for i, a in enumerate(argv) if str(a).endswith("of.py"))
+    except StopIteration:
+        of_idx = -1
+    if of_idx >= 0:
+        argv[of_idx + 1 :] = with_orden_only(*argv[of_idx + 1 :])
     return subprocess.run(
-        list(args),
+        argv,
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -220,14 +235,25 @@ class InstallScript(unittest.TestCase):
             "schemas/order.schema.json",
             "references/skill-appendix.md",
             "of/SKILL.md",
+            "docs/model-catalog.json",
+            "docs/model-catalog.md",
         )
         for rel in must:
             self.assertTrue((dest / rel).is_file(), rel)
         self.assertTrue((dest / "CHILD.md").is_file(), "dest must copy CHILD.md")
         self.assertFalse((dest / "SLAVE.md").exists(), "do not copy SLAVE.md")
-        forbidden = ("tests", "evals", "docs", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
+        forbidden = ("tests", "evals", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
         for name in forbidden:
             self.assertFalse((dest / name).exists(), name)
+        # Catalog ships on the skill surface; nothing else under docs/.
+        docs = dest / "docs"
+        self.assertTrue(docs.is_dir(), "docs/model-catalog must install")
+        catalog_files = sorted(p.name for p in docs.iterdir())
+        self.assertEqual(
+            catalog_files,
+            ["model-catalog.json", "model-catalog.md"],
+            catalog_files,
+        )
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
