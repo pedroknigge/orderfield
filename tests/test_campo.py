@@ -433,6 +433,16 @@ class CampoElection(unittest.TestCase):
         self.assertIn("installed", appendix)
         self.assertIn("same branch", appendix.casefold())
         self.assertIn("does not create a worktree", appendix.casefold())
+        phrase = "same branch + commit = shared context"
+        for body, name in (
+            (readme, "README"),
+            (skill, "SKILL"),
+            (alias, "alias"),
+            (appendix, "appendix"),
+        ):
+            self.assertIn(phrase, body.casefold(), name)
+        self.assertIn("owned path", appendix.casefold())
+        self.assertIn("no merge-packet", appendix.casefold())
         source = (ROOT / "scripts" / "of" / "campo.py").read_text(encoding="utf-8")
         self.assertIn("class Campo:", source)
         self.assertNotIn("worktree add", source)
