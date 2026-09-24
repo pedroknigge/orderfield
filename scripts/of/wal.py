@@ -136,6 +136,8 @@ def _wal_snapshot_rel(rel: str) -> bool:
         return True
     if posix.startswith("spec-log/"):
         return True
+    if posix.startswith("campo/"):
+        return True
     if not posix.startswith("waves/"):
         return False
     if "/packets/" in posix or "/prompts/" in posix or "/integrations/" in posix:

@@ -57,6 +57,24 @@ If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init.
 - A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
 - Two writers on one mission have exclusive owners (requirement or path).
 
+## Campo then Orden
+
+Campo is the written arena. Orden is the crew that implements after peers pin a leader. The host does not appoint the leader. Contestants share this git branch and this cwd. Campo does not create a worktree.
+
+```bash
+of config set --model grok-4 --model claude-sonnet --effort medium
+of config show
+of init --mission "price table" --source "Definition of Done: print the table" --campo
+# each contestant writes .orderfield/campo/proposals/<id>.md
+# and .orderfield/campo/ballots/<id>.json
+# (claim, evidence, peer, stance concede|challenge)
+of campo settle
+```
+
+Plurality of concedes elects the leader. A tie breaks by contestant id. Without a valid ballot from every contestant, nothing is pinned. The pinned ORDER keeps a detailed user plan verbatim (`PlanIngress`). Crew is the rest of the roster. Implementer `of pack` waits for that pin, then Orden is ordinary pack on the same branch.
+
+Election math stays inside `Campo`. Init and pack call that module.
+
 Documented first close (CI extracts the block): [First close](#first-close). One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
 Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue` — never consumer origin. Report only kernel failure (invalid schema / WAL incoherent / child-forge / lock invariant / contrast contradicting itself). Do not report child did not finish, SPEC incomplete, or “user is stuck.” Undisclosed vulnerabilities: [SECURITY.md](SECURITY.md).

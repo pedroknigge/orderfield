@@ -29,6 +29,7 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | Doc | Role |
 |-----|------|
 | [README.md](README.md) | Product surface / install |
+| [README.md](README.md#campo-then-orden) | Campo then Orden: peers elect the leader; the host does not appoint one |
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
 | [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load; load by verb) |
