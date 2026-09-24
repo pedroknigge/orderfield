@@ -161,8 +161,8 @@ def cmd_init(args: argparse.Namespace) -> None:
             "(or of init --force --field ID replaces one)"
         )
     source_text = resolve_source_text(args)
-    if getattr(args, "campo", False):
-        Campo.require_roster()
+    # Hard gate before any disk write (source_text is read-only).
+    args.campo = Campo.resolve_entry(args)
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -203,8 +203,8 @@ def cmd_new(args: argparse.Namespace) -> None:
         die("--mission is required")
     # Validate the brief and --parent before promoting the legacy layout.
     source_text = resolve_source_text(args)
-    if getattr(args, "campo", False):
-        Campo.require_roster()
+    # Hard gate before promote / field home writes.
+    args.campo = Campo.resolve_entry(args)
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")

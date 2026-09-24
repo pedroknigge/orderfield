@@ -257,6 +257,8 @@ fi
 # (UpdateAsk) + child contract + /of alias + README (SKILL pointer).
 # Child contract is CHILD.md (#316). Dest list must not name SLAVE.md.
 SKILL_SURFACE_FILES=(SKILL.md CHILD.md VERSION install.sh README.md)
+# Catalog ships with the skill so of config lists real model ids (not empty).
+SKILL_SURFACE_CATALOG=(docs/model-catalog.json docs/model-catalog.md)
 SKILL_SURFACE_TREES=(of schemas references scripts/of)
 SKILL_SURFACE_SCRIPTS=(scripts/of.py scripts/of_adapters.py scripts/skill_artifact_prove.py)
 
@@ -265,6 +267,12 @@ copy_skill_surface() {
   mkdir -p "$dest"
   for rel in "${SKILL_SURFACE_FILES[@]}"; do
     if [[ -f "$SRC/$rel" ]]; then
+      cp -a "$SRC/$rel" "$dest/$rel"
+    fi
+  done
+  for rel in "${SKILL_SURFACE_CATALOG[@]}"; do
+    if [[ -f "$SRC/$rel" ]]; then
+      mkdir -p "$dest/$(dirname "$rel")"
       cp -a "$SRC/$rel" "$dest/$rel"
     fi
   done

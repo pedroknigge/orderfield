@@ -1,6 +1,8 @@
 """Wave commands: pack, unpack, render, handoff, spawn, collect."""
 from __future__ import annotations
 
+import json
+
 import argparse
 import errno
 import os
@@ -1419,7 +1421,15 @@ def cmd_collect(args: argparse.Namespace) -> None:
         errs = validate_residual_for_packet(data, pkt, root)
         if errs:
             bad += 1
-            print(f"INVALID {path.name}: {'; '.join(errs)}")
+            reason = "; ".join(errs)
+            print(f"INVALID {path.name}: {reason}")
+            # Sidecar (not residual JSON — schema forbids unknown residual keys).
+            try:
+                path.with_suffix(path.suffix + ".invalid.txt").write_text(
+                    reason + "\n", encoding="utf-8"
+                )
+            except OSError:
+                pass
         else:
             ok += 1
             denied = data.get("denied_actions") if isinstance(data, dict) else None

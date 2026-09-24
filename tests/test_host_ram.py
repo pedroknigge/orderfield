@@ -2,6 +2,13 @@
 """HostRam suggest-band + once-per-field agent-band consent. #281."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import json
 import os
 import shutil
@@ -41,7 +48,7 @@ def run_of(
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd),
         capture_output=True,
         text=True,

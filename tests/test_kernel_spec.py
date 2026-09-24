@@ -2,6 +2,13 @@
 """Kernel tests — spec invariants (SPEC.md, requirements, contrast, close)."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import hashlib
 import json
 import math
@@ -46,7 +53,7 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
         str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"),
     )
     return subprocess.run(
-        [sys.executable, str(OF_PY), *args],
+        [sys.executable, str(OF_PY), *with_orden_only(*args)],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -1411,7 +1418,16 @@ class CloseEvidenceGate(unittest.TestCase):
         blob = collected.stdout + collected.stderr
         self.assertNotEqual(collected.returncode, 0, blob)
         self.assertIn("artifact_sha", blob)
-        self.assertIn("rollback", blob)
+        self.assertIn("CloseEvidence.artifact_sha", blob)
+        self.assertIn("field=", blob)
+        # Explorer without owns_paths may omit rollback; sha is still required.
+
+    def test_explorer_done_without_rollback_collects(self) -> None:
+        artifact = self._artifact()
+        digest = of.CloseEvidence.digest(artifact)
+        self._write(f"explorer mapped the slice\nartifact_sha: {digest}")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
 
     def test_wrong_sha_is_caption_and_dies(self) -> None:
         fake = "a" * 64

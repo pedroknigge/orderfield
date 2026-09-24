@@ -3889,6 +3889,13 @@ class SkillSurfaceCore(unittest.TestCase):
         self.assertIn("CHILD.md", block)
         self.assertNotIn("SLAVE.md", block)
 
+    def test_install_skill_surface_ships_model_catalog(self) -> None:
+        src = INSTALL.read_text(encoding="utf-8")
+        self.assertIn("SKILL_SURFACE_CATALOG", src)
+        self.assertIn("docs/model-catalog.json", src)
+        self.assertIn("docs/model-catalog.md", src)
+
+
     def test_hot_path_pointers_name_child_md(self) -> None:
         for rel in (
             "SKILL.md",

@@ -1,6 +1,13 @@
 """Regressions from the pre-landing review of the Vibe-Proof remediation."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path as _PathForOrden
+_tests_dir = _PathForOrden(__file__).resolve().parent
+if str(_tests_dir) not in sys.path:
+    sys.path.insert(0, str(_tests_dir))
+from _orden_only import with_orden_only
+
 import io
 import contextlib
 import json

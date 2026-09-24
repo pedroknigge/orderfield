@@ -331,7 +331,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--campo",
         action="store_true",
-        help="enter Campo on this branch; pin leader only after peer ballots",
+        help="alias of of new --campo; enter Campo on this branch",
+    )
+    s.add_argument(
+        "--orden-only",
+        dest="orden_only",
+        action="store_true",
+        help="plain Orden; skip Campo even when a roster is stored",
     )
     s.set_defaults(func=cmd_init)
 
@@ -375,7 +381,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--campo",
         action="store_true",
-        help="enter Campo on this branch; pin leader only after peer ballots",
+        help="enter Campo on this branch (canonical); pin leader only after peer ballots",
+    )
+    s.add_argument(
+        "--orden-only",
+        dest="orden_only",
+        action="store_true",
+        help="plain Orden; skip Campo even when a roster is stored",
     )
     s.set_defaults(func=cmd_new)
 
@@ -1213,9 +1225,9 @@ def _dispatch() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
-        if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():
-            # No field here: let the handler refuse ("no ORDER") without
-            # creating a stray .orderfield/field.lock first.
+        if not (root / ".orderfield").is_dir():
+            # No field here: let init/new hard-gate (or "no ORDER") refuse
+            # without creating a stray .orderfield/field.lock first.
             args.func(args)
             return
         with field_lock(root, args.cmd):

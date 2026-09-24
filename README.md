@@ -63,7 +63,7 @@ Campo is the written arena. Orden is the crew that implements after peers pin a 
 
 Same branch + commit = shared context. A peer commits the proposal, the ballot, the code, or a residual note. The others refresh from that commit before their next turn. There is no merge-packet. Do not isolate. Two writers still do not edit one path at once: owned paths, or turn-taking.
 
-The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. On `of init --campo` the kernel launches the other peers headless on this cwd and branch. `campo/spawns.json` records argv, pid, and whether each peer exited, died, or hit the deadline. Campo does not create a worktree. This session writes contestant #1's proposal and ballot. Launch, the wait, and the pin stay inside `Campo`.
+The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. On `of new --campo` the kernel launches the other peers headless on this cwd and branch. `campo/spawns.json` records argv, pid, and whether each peer exited, died, or hit the deadline. Campo does not create a worktree. This session writes contestant #1's proposal and ballot. Launch, the wait, and the pin stay inside `Campo`.
 
 `of config` audits this machine: which harness CLIs are on PATH, then the catalog models for those CLIs. PATH is not a login. The roster stays empty until you set it (`OF_CONFIG` or `~/.orderfield/config.json`). Each contestant is `{model, effort}` (`low|medium|high`). N≥2. They are peers. List order is not rank and not a role. There is no leader key. Election decides the leader. A model must be one installed catalog id. A name on two installed harnesses is not one peer.
 
@@ -81,8 +81,10 @@ Choose only names `of config` prints under installed.
 ```bash
 of config
 of config set --contestant opus medium --contestant grok-4.6 high
-of init --mission "price table" --source "Definition of Done: print the table" --campo
+of new --campo --mission "price table" --source "Definition of Done: print the table"
 ```
+
+Without a stored roster, plain `of new` / `of init` refuse before any field write and print one next line: that `of config set` command, then `of new --campo`. `--orden-only` is the explicit escape for plain Orden. With a roster, `of new` enters Campo by default. `of init --campo` is an alias.
 
 Start `/of` in a harness. The first time, run `of config` and set the roster once (`model` + `effort` per contestant). That roster is stored and is not asked again. Everything after that is automatic: the kernel launches the other peers, this session writes `campo/proposals/c1.md` and `campo/ballots/c1.json` (`claim`, `evidence`, `peer`, `stance` of `concede` or `challenge`), and the kernel pins when the ballots meet the rule.
 
