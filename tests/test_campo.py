@@ -121,8 +121,13 @@ class CampoElection(unittest.TestCase):
             os.environ["PATH"] = self._old_path
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def of(self, *args: str) -> subprocess.CompletedProcess[str]:
-        return run_of(self.tmp, *args, extra_env=self.env)
+    def of(
+        self, *args: str, extra: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        env = dict(self.env)
+        if extra:
+            env.update(extra)
+        return run_of(self.tmp, *args, extra_env=env)
 
     def test_elect_plurality_tie_and_no_concede(self) -> None:
         leader, tally = Campo._elect(
@@ -291,6 +296,51 @@ class CampoElection(unittest.TestCase):
         with self.assertRaises(SystemExit):
             Campo.resolve_spawn({"model": "opus", "effort": "medium"})
 
+    def test_invoker_is_contestant_one(self) -> None:
+        self.of(
+            "config",
+            "set",
+            "--contestant",
+            "grok-4.6",
+            "high",
+            "--contestant",
+            "opus",
+            "medium",
+        )
+        refused = self.of(
+            "init",
+            "--mission",
+            MISSION,
+            "--source",
+            SOURCE,
+            "--campo",
+        )
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("contestant #1", refused.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "campo" / "spawns.json").exists())
+        shutil.rmtree(self.tmp / ".orderfield")
+        opened = self.of(
+            "init",
+            "--mission",
+            "grok session",
+            "--source",
+            SOURCE,
+            "--campo",
+            extra={"OF_ORIGIN": "grok"},
+        )
+        self.assertEqual(opened.returncode, 0, opened.stderr)
+        spawns = json.loads(
+            (self.tmp / ".orderfield" / "campo" / "spawns.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(spawns["peers"][0]["id"], "c1")
+        self.assertEqual(spawns["peers"][0]["harness"], "grok")
+        self.assertEqual(spawns["peers"][0]["mode"], "local")
+        self.assertEqual(spawns["peers"][1]["mode"], "headless")
+        self.assertFalse(spawns["peers"][1]["launched"])
+        self.assertEqual(spawns["peers"][1]["argv"][0], "--model")
+
     def test_no_pin_without_ballots_and_scripted_pin(self) -> None:
         bare = self.of(
             "init",
@@ -331,7 +381,19 @@ class CampoElection(unittest.TestCase):
         self.assertFalse((arena / "leader.json").exists())
         rnd = json.loads((arena / "round.json").read_text(encoding="utf-8"))
         self.assertEqual(rnd["contestants"][0]["model"], "opus")
+        self.assertEqual(rnd["invoker"], "c1")
         self.assertNotIn("harness", rnd["contestants"][0])
+        spawns = json.loads((arena / "spawns.json").read_text(encoding="utf-8"))
+        self.assertTrue(spawns["stub"])
+        self.assertEqual(spawns["cwd"], ".")
+        self.assertEqual(spawns["peers"][0]["mode"], "local")
+        self.assertEqual(spawns["peers"][0]["harness"], "claude")
+        self.assertNotIn("launched", spawns["peers"][0])
+        self.assertEqual(spawns["peers"][1]["mode"], "headless")
+        self.assertFalse(spawns["peers"][1]["launched"])
+        self.assertIn("--model", spawns["peers"][1]["argv"])
+        self.assertIn("invoker=c1 peer", opened.stdout)
+        self.assertIn("stub", opened.stdout)
         self.assertEqual(rnd["contestants"][0]["effort"], "medium")
         self.assertEqual(rnd["contestants"][2]["effort"], "high")
         drifted_round = dict(rnd)
@@ -441,9 +503,15 @@ class CampoElection(unittest.TestCase):
             (appendix, "appendix"),
         ):
             self.assertIn(phrase, body.casefold(), name)
+        self.assertIn("contestant #1", readme.casefold())
+        self.assertIn("not a parent", readme.casefold())
+        self.assertIn("c1=session", skill)
+        self.assertIn("contestant #1", appendix.casefold())
+        self.assertIn("does not launch", appendix.casefold())
         self.assertIn("owned path", appendix.casefold())
         self.assertIn("no merge-packet", appendix.casefold())
         source = (ROOT / "scripts" / "of" / "campo.py").read_text(encoding="utf-8")
+        self.assertNotIn("Popen", source)
         self.assertIn("class Campo:", source)
         self.assertNotIn("worktree add", source)
         self.assertNotIn("cmd_worktree", source)

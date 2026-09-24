@@ -63,6 +63,8 @@ Campo is the written arena. Orden is the crew that implements after peers pin a 
 
 Same branch + commit = shared context. A peer commits the proposal, the ballot, the code, or a residual note. The others refresh from that commit before their next turn. There is no merge-packet. Do not isolate. Two writers still do not edit one path at once: owned paths, or turn-taking.
 
+The session that runs `of` is contestant #1. It is a peer, not a parent orchestrator. Put that session's model first in the roster. `of` writes headless argv for the rest (`campo/spawns.json`) on this cwd and branch. This tracer does not launch those processes.
+
 `of config` audits this machine: which harness CLIs are on PATH, then the catalog models for those CLIs. PATH is not a login. The roster stays empty until you set it (`OF_CONFIG` or `~/.orderfield/config.json`). Each contestant is `{model, effort}` (`low|medium|high`). N≥2. They are peers. List order is not rank and not a role. There is no leader key. Election decides the leader. A model must be one installed catalog id. A name on two installed harnesses is not one peer.
 
 Example data only (not a default, not a rank, not a role split):
