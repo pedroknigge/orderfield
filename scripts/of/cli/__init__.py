@@ -1320,11 +1320,15 @@ def _dispatch() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
-        if not (root / ".orderfield").is_dir():
-            # No field here: let init/new Campo entry (or "no ORDER") refuse
-            # without creating a stray .orderfield/field.lock first.
-            args.func(args)
-            return
+        # Campo entry before field_lock so an interactive roster-ask refuse
+        # never creates .orderfield/field.lock. After entry resolves, always
+        # take the lock so first init opens wal/CURRENT.json.
+        # contend spans several homes, so it holds the flock without a generation.
+        if args.cmd in {"init", "new"} and not (root / ".orderfield").is_dir():
+            from of.campo import Campo
+
+            args.campo = Campo.resolve_entry(args)
+            args.campo_entry_resolved = True
         with field_lock(root, args.cmd, generation=args.cmd != "contend"):
             args.func(args)
     else:

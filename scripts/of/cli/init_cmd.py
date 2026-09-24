@@ -248,7 +248,8 @@ def cmd_init(args: argparse.Namespace) -> None:
     chat_text = resolve_chat_capture(args)
     PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
     # Campo entry (ask / auto / degrade) before any field write.
-    args.campo = Campo.resolve_entry(args)
+    if not getattr(args, "campo_entry_resolved", False):
+        args.campo = Campo.resolve_entry(args)
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -293,7 +294,8 @@ def cmd_new(args: argparse.Namespace) -> None:
     chat_text = resolve_chat_capture(args)
     PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
     # Campo entry before promote / field home writes.
-    args.campo = Campo.resolve_entry(args)
+    if not getattr(args, "campo_entry_resolved", False):
+        args.campo = Campo.resolve_entry(args)
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")
