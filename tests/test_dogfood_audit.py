@@ -34,6 +34,8 @@ class _Base(unittest.TestCase):
             "OF_LEARNINGS": str(self.tmp / "learnings.json"),
             "OF_CAMPO_ASK": "0",
         }
+        # Anchor find_root here (a stray .orderfield above tmp must not win).
+        subprocess.run(["git", "init", "-q"], cwd=str(self.tmp), check=True)
 
     def of(self, *args: str, wrap: bool = True) -> subprocess.CompletedProcess[str]:
         argv = with_orden_only(*args) if wrap else list(args)
