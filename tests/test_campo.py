@@ -69,8 +69,8 @@ def stub_cli(directory: Path, name: str) -> None:
 def ballot_cli(directory: Path, name: str) -> None:
     """Headless fake: write this peer's proposal and a concede, then exit 0.
 
-    Absolute /bin tools. The child PATH is the stub dir plus git.
-    macOS keeps mkdir and cat in /bin, not next to git in /usr/bin.
+    Uses mkdir and cat from PATH. Campo must put /bin on the child PATH;
+    macOS keeps those tools there, not beside git in /usr/bin.
     """
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / name
@@ -79,11 +79,11 @@ def ballot_cli(directory: Path, name: str) -> None:
 cid="$OF_CAMPO_ID"
 root="$OF_CAMPO_ROOT"
 arena="$root/.orderfield/campo"
-/bin/mkdir -p "$arena/proposals" "$arena/ballots"
+mkdir -p "$arena/proposals" "$arena/ballots"
 printf '%s\\n' "proposal $cid" > "$arena/proposals/$cid.md"
 peer=c3
 if [ "$cid" = "c3" ]; then peer=c1; fi
-/bin/cat > "$arena/ballots/$cid.json" <<EOF
+cat > "$arena/ballots/$cid.json" <<EOF
 {"contestant":"$cid","claim":"peer covers the brief","evidence":"proposal cites Definition of Done","peer":"$peer","stance":"concede"}
 EOF
 exit 0
@@ -612,6 +612,9 @@ class CampoElection(unittest.TestCase):
             self.assertEqual(row["cwd"], self.tmp)
             self.assertEqual(row["env"]["OF_CAMPO_ROOT"], str(self.tmp))
             self.assertNotIn("OF_TRUST", row["env"])
+            path_entries = row["env"]["PATH"].split(os.pathsep)
+            self.assertIn("/bin", path_entries)
+            self.assertIn("/usr/bin", path_entries)
             self.assertNotIn("worktree add", " ".join(row["argv"]))
         codex = next(row for row in seen if row["id"] == "c3")
         self.assertIn("--sandbox", codex["argv"])
@@ -798,11 +801,54 @@ class CampoElection(unittest.TestCase):
         self.assertIn("codex", buf.getvalue())
         self.assertEqual(called, [])
 
+    def test_child_stderr_tail_on_hold(self) -> None:
+        proc = self.of(
+            "config",
+            "set",
+            "--contestant",
+            "opus",
+            "medium",
+            "--contestant",
+            "grok-4.3",
+            "medium",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        (self.bin / "grok").write_text(
+            "#!/bin/sh\necho adapter exploded >&2\nexit 7\n",
+            encoding="utf-8",
+        )
+        (self.bin / "grok").chmod(0o755)
+        opened = self.of(
+            "init",
+            "--mission",
+            MISSION,
+            "--source",
+            SOURCE,
+            "--campo",
+        )
+        self.assertEqual(opened.returncode, 0, opened.stderr)
+        self.assertIn("code=7", opened.stdout)
+        self.assertIn("adapter exploded", opened.stdout)
+        arena = self.tmp / ".orderfield" / "campo"
+        spawns = json.loads((arena / "spawns.json").read_text(encoding="utf-8"))
+        peer = spawns["peers"][1]
+        self.assertEqual(peer["status"], "dead")
+        self.assertEqual(peer["code"], 7)
+        self.assertIn("adapter exploded", peer["stderr_tail"])
+        hold = json.loads((arena / "hold.json").read_text(encoding="utf-8"))
+        self.assertEqual(hold["peers"][0]["code"], 7)
+        self.assertIn("adapter exploded", hold["peers"][0]["stderr_tail"])
+
     def test_cli_ballots_auto_pin(self) -> None:
         ballot_cli(self.bin, "grok")
         ballot_cli(self.bin, "codex")
+        git_src = shutil.which("git")
+        assert git_src is not None
+        (self.bin / "git").symlink_to(git_src)
         self._set_roster()
         env = dict(self.env)
+        # Stub dir only. mkdir/cat are not here; Campo must add /bin.
+        env["PATH"] = str(self.bin)
         env["OF_CAMPO_DEADLINE"] = "5"
         proc = subprocess.Popen(
             [
