@@ -3,8 +3,11 @@
 Deep module. Init and pack call this interface. Ballot rules, plurality
 math, tie-break, and the verbatim ORDER snapshot stay here.
 
-Contestants and crew share the field cwd and git branch. This module does
-not create a worktree and does not accept a host-appointed leader.
+Contestants and crew share the field cwd and git branch. A commit on that
+branch is how the others catch up (proposals, ballots, code, residual
+notes). This module does not create a worktree, does not run a merge-packet,
+and does not accept a host-appointed leader. Two writers do not edit one
+path at once.
 
 Re-open after verifier refuse is parent epic #333, not this slice.
 """
