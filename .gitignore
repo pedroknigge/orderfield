@@ -1,4 +1,10 @@
-.orderfield/
+.orderfield/*
+!.orderfield/campo/
+!.orderfield/fields/
+.orderfield/fields/*
+!.orderfield/fields/*/
+.orderfield/fields/*/*
+!.orderfield/fields/*/campo/
 scratch/
 vibe-proof-audit-report.*
 __pycache__/
