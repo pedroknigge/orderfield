@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.29. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.30. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,16 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.29`
+**Status:** Shipped · **Current release line:** `0.8.30`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.30 — plan contest + evidence over claims
+
+- `of contend` opens N candidate sibling fields sharing one brief; `of crown` ranks them by `of contrast` and crowns a strict, above-floor winner (ties/below-floor exit 2 for a human); losers archived with `CONTEST.json`. Selection by the field, not debate. Proof: `ContendOpensSiblings` / `CrownSelectsByContrast`.
+- Mother-context compile: `of init`/`new` `--chat-capture-file` + `--cite` pin conversation and linked docs into the contract; contenders inherit the pins. Proof: `CompileMotherContext`.
+- Dogfood hardening without the arena: kernel-computed `artifact_sha`, `ResidualPin` refuses leader-edited residuals, `SensorTrust` read-only sensors, `Deliverable` survives the close wipe, field-labeled `CloseEvidence` errors, close fallback note, `DoneWhenSeed`. Proof: `test_campo_picks` / `CloseEvidenceGate` / `SensorTrustProfile`.
+- Dead `protocol_learning_lines` removed; docs match the render omission (`#337`).
 
 ## 0.8.29 — one red check is the order parameter
 
