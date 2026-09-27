@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.30
+
+Plan contest, mother-context compile, and evidence over claims. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.29 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **Plan contest:** `of contend --candidates N` opens candidate sibling fields sharing one brief; `of crown --contest ID` ranks them by `of contrast` blocking count and crowns a strict, above-floor winner (ties and below-floor fields exit 2 for a human). ACTIVE moves to the winner, its ORDER records the ranking, losers move to `.orderfield/archive/<id>/` with a `CONTEST.json` trail. Selection by the field, not debate.
+- **Mother-context compile:** `of init` / `of new` `--chat-capture-file <path|->` + `--cite <rel>` (repeatable) pin conversation exports and linked docs into the contract with kernel-computed shas; the chat hold clears with that evidence. `of contend` inherits the parent pins into every candidate.
+- **Evidence over claims:** a `done` residual without `artifact_sha` gets it computed by the kernel at spawn exit / collect (`(kernel)` stamp; a wrong child sha stays INVALID). Collect pins residual bytes (`ResidualPin`) and refuses leader edits with a re-written `.invalid.txt` sidecar. Sensor roles run read-only commands under default trust (`SensorTrust` allowlist on claude/qwen/opencode, sandbox on codex, WARN elsewhere). `of close` promotes `FINAL.md` + `deliverables/` before the scratch wipe and names the ACTIVE fallback. `CloseEvidence` errors name `field=` + `rule=`; read-only roles may omit `rollback:`. Empty explore briefs seed `DONE-NNN` from `--done-when`.
+- **Honesty:** dead `protocol_learning_lines` removed; docs match the render omission (`#337`). The Campo election/quorum/roster machinery was reviewed and deliberately not ported.
+- **Proof:** `ContendOpensSiblings` / `CrownSelectsByContrast` / `CompileMotherContext` / `SpawnDryRunPath` / `CloseFallbackAndStub` / `DoneWhenSeedTest` / `DoneWhenSeedCli` / `DeliverableClose` / `SensorTrustProfile` / `CloseEvidenceGate`.
+- Packaging: VERSION 0.8.30; skill/alias description preview `v0.8.30. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.29 notes.
+
 ## 0.8.29
 
 One red check is the order parameter. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.28 notes. Folder, chat, and prompt ingress are unchanged.

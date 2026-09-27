@@ -17,9 +17,10 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.29`
+**Code rev:** VERSION `0.8.30`
 - [x] 2026-09-21 consumer README rewrite (C-135 / C-136): install + first close sit on the public path; First close H2 is between Install and Uninstall; locked `ReadmeProductSurface` needles stay; ceremony (InitAskSkip Large, lock set, command dump) moves below or into SKILL. `docs/external-brief.md` status stamp `0.7.57` → `0.8.29`. No new C-ID (honesty cap)
 - [x] 0.8.29: one red check is the order parameter (`DiscoveryReplay`); external check file not `artifact_sha`; two reds escalate instead of a sibling OPEN; next id is specification order; owned prompt omits other requirement texts; not a coverage win over one context; PackagingBump 0.8.29; no new C-ID (honesty cap)
+- [x] 0.8.30: plan contest (`of contend`/`of crown`, selection by contrast, mother-context compile + pin inheritance); dogfood hardening without the arena (KernelSha/ResidualPin, SensorTrust, Deliverable, CloseEvidence field labels, fallback_note, DoneWhenSeed); #337 dead `protocol_learning_lines` removed, docs match the render omission; PackagingBump 0.8.30; no new C-ID (honesty cap)
 - [x] 0.8.28: printed next CONTINUE / OPEN / STOP from collected residuals (`DiscoveryReplay`); no requirements keeps the legal next; plan ingress unchanged; PackagingBump 0.8.28; no new C-ID (honesty cap)
 - [x] 0.8.27: roast cut abandoned/cite/SPEC-EMPTY/learnings/SharedWorktree refuse/order_bind/ORDER tamper/#328 oracle packaging; PackagingBump 0.8.27; no new C-ID (honesty cap)
 
