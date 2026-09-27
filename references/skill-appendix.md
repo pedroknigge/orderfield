@@ -121,6 +121,12 @@ Do not start doing the slice yourself. If there is no ORDER, initialize it. If O
 
 `of init --force` replaces **this** field: old wave dirs are archived to `waves-archived-<old id>/` so `state.wave` stays true (no silent jump from wave 1 to wave N later) and stale packets never shadow the new mission. To keep the current field and start another in the same tree: `of new --mission "…"`. A phase of this epic: `of new --parent --mission "…"`. First `of init` still writes first-home `.orderfield/ORDER.json` (`of fields` labels that row `first`); the first `of new` promotes it under `fields/<id>/`.
 
+**Compile the mother context at init.** When the input is a long conversation, linked docs, or both, do not compress it into a thin `--source` and hope. Hand the kernel the raw material in one move: `--chat-capture-file <path>` (`-` reads stdin, the pasted conversation) promotes it to a durable capture (`docs/plans/<owner>/chat-capture-<ts>.md`, else `.orderfield/plan-source.md`) and `--cite <rel>` (repeatable, files or docs dirs) pins each linked doc with a kernel-computed sha — no hand sha. The chat hold clears with that evidence; unknown or traversal cites die before any ORDER/SPEC write. Losing the plan or the docs at the start is the weakest sum of parts: the pinned sources are what `of contrast` and the fidelity gap/invent holds measure against later. Same flags exist on `of new`; `of contend` inherits the parent's pins into every candidate.
+
+### 1b. Contest — competing plans, selection by the field
+
+When two or three genuinely different plans fit the same brief, do not debate them in chat. Contend them: `of contend --candidates 2|3 --mission "…"` opens that many sibling fields sharing the parent brief (same `spec_hash`, stamped `ORDER.contest`). Run each plan in its field (`of --field <id>` pack/spawn/collect as usual; sibling write sets stay disjoint). Then `of crown --contest <id>` contrasts every candidate and crowns only a strict, above-floor winner (`--max-gaps`, default 0): ACTIVE moves to the winner, its ORDER records the ranking, losers move to `.orderfield/archive/<id>/` with a `CONTEST.json` trail. Ties and below-floor fields exit 2 with the printed ranking — crown explicitly (`of crown --contest <id> --winner <id> --reason …`) or `escalate_up`. Not a regime, not `of merge`, no debase by persuasion: blocking-count evidence only. Do not contend a bump + obvious feature (theater).
+
 ### 2. Cut slices that match the phase (optional when owners are obvious)
 
 One phase at a time. Do not mix `explore` with `build`.

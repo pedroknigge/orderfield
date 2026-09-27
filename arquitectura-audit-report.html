@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>orderfield — Poor</title>
+  <style>
+:root {
+  --bg: #0b0f14;
+  --paper: #121821;
+  --ink: #e8eef6;
+  --muted: #9aa8b8;
+  --faint: #6e7c8c;
+  --line: #1e2833;
+  --line-strong: #2c3a4a;
+  --excellent: #3dd68c;
+  --good: #7ec8ff;
+  --fair: #e8a317;
+  --poor: #ff5d4a;
+  --na: #6e7c8c;
+  --font-display: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.sheet {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 22px 80px;
+}
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 14px;
+  margin-bottom: 28px;
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.wordmark b { display: block; font-size: 22px; letter-spacing: -0.02em; }
+.wordmark span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.mast-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.45;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) 1fr;
+  align-items: stretch;
+  margin-bottom: 36px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.score-block {
+  padding: 22px 28px 24px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+}
+.score-block .label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3.4rem, 7vw, 5.2rem);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 12px 0;
+}
+.denom {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.status-block {
+  padding: 22px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+}
+.status-block.excellent { box-shadow: inset 6px 0 0 var(--excellent); }
+.status-block.good { box-shadow: inset 6px 0 0 var(--good); }
+.status-block.fair { box-shadow: inset 6px 0 0 var(--fair); }
+.status-block.poor { box-shadow: inset 6px 0 0 var(--poor); }
+.stamp {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3.6vw, 2.5rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.stamp-excellent { color: var(--excellent); }
+.stamp-good { color: var(--good); }
+.stamp-fair { color: var(--fair); }
+.stamp-poor { color: var(--poor); }
+.hero-kicker {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 48ch;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--line-strong);
+  padding: 5px 8px;
+  color: var(--ink);
+}
+h2 {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+.scorecard { margin-bottom: 36px; }
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.cat {
+  background: var(--paper);
+  padding: 14px 16px 12px;
+}
+.cat header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.cat-name { font-weight: 600; font-size: 15px; }
+.cat-score { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.cat-score b {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  min-width: 1.4ch;
+}
+.ticks { display: flex; gap: 3px; flex: 1; }
+.ticks i { display: block; height: 8px; flex: 1; background: var(--line-strong); }
+.ticks i.on { background: var(--ink); }
+.cat.poor .ticks i.on { background: var(--poor); }
+.cat.fair .ticks i.on { background: var(--fair); }
+.cat.good .ticks i.on { background: var(--good); }
+.cat.excellent .ticks i.on { background: var(--excellent); }
+.notes { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.pill.excellent { color: var(--excellent); }
+.pill.good { color: var(--good); }
+.pill.fair { color: var(--fair); }
+.pill.poor { color: var(--poor); }
+.pill.na { color: var(--na); }
+.article {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 28px;
+}
+.article h2 {
+  font-size: 13px;
+  margin: 32px 0 12px;
+  color: var(--ink);
+  letter-spacing: 0.12em;
+}
+.article h3 {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 28px 0 10px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.article h4 { font-size: 16px; margin: 20px 0 8px; line-height: 1.35; }
+.article p { margin: 0 0 12px; max-width: 68ch; }
+.article ul, .article ol { margin: 0 0 16px; padding-left: 1.2em; max-width: 68ch; }
+.article li { margin: 0 0 8px; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: #0a1016;
+  border: 1px solid var(--line);
+  padding: 0.05em 0.35em;
+}
+pre {
+  background: #070b10;
+  border: 1px solid var(--line-strong);
+  padding: 16px 18px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+}
+pre code { background: none; border: 0; padding: 0; font-size: 13.5px; line-height: 1.55; }
+.table-wrap { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.45; }
+th, td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--paper);
+}
+.foot {
+  margin-top: 48px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .hero, .cat-grid { grid-template-columns: 1fr; }
+  .score-block { border-right: 0; border-bottom: 1px solid var(--line); min-height: 0; }
+  .masthead { flex-direction: column; align-items: flex-start; }
+  .mast-meta { text-align: left; }
+}
+@media print {
+  body { background: #fff; color: #111; }
+  .sheet { padding: 0; }
+  .hero, .cat, pre, code { background: #fff; }
+  .cat-grid, .hero { border-color: #111; background: #111; }
+  a { color: inherit; }
+}
+</style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="masthead">
+      <div class="wordmark"><b>Arquitectura</b><span>analyzer</span></div>
+      <div class="mast-meta">/Users/pedroknigge/Desktop/SKILLS/orderfield<br>2026-09-27</div>
+    </header>
+    <section class="hero">
+      <div class="score-block">
+        <div class="label">Overall score</div>
+        <div class="score">5.4</div>
+        <div class="denom">/ 10</div>
+      </div>
+      <div class="status-block poor">
+        <div class="stamp stamp-poor">Poor</div>
+        <p class="hero-kicker">dominio y disciplina de test/seguridad fuertes sobre una base de módulos monolíticos sin puertos ni DI; el coste de cambio se concentra en 4 ficheros. Rank: Poor (5.4/10, borde superior de la banda).</p>
+        <div class="chips"><span class="chip">Deep</span><span class="chip">2026-09-27</span><span class="chip">coverage 100%</span></div>
+      </div>
+    </section>
+    <section class="scorecard"><h2>Scorecard</h2><div class="cat-grid"><article class="cat poor">
+  <header>
+    <span class="cat-name">Separation of Concerns</span>
+    <span class="pill poor">4</span>
+  </header>
+  <div class="cat-score">
+    <b>4</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">scripts/of/field.py<code> (4456 LOC) mezcla locking, WAL, redacción, roster y doctor; </code>scripts/of/regime.py<code> (2725 LOC) y </code>scripts/of/cli/ops.py<code> (2606 LOC) igual de multifunción; capas existen solo de nombre (</code>scripts/of/<code>, </code>scripts/of/cli/<code>, </code>scripts/of_adapters.py`)</p>
+</article><article class="cat poor">
+  <header>
+    <span class="cat-name">High Cohesion</span>
+    <span class="pill poor">4</span>
+  </header>
+  <div class="cat-score">
+    <b>4</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">scripts/of/field.py<code>: 279 funciones / 20 clases (</code>ActiveField<code>, </code>RootStub<code>, </code>NestedField<code>, </code>FieldRoster<code>, </code>PackRoster<code>, </code>FieldLockBusy<code>, </code>DoctorSkew<code>…); </code>scripts/of/pack.py`: 124 funciones / 9 clases; crecimiento por acreción</p>
+</article><article class="cat fair">
+  <header>
+    <span class="cat-name">Low Coupling</span>
+    <span class="pill fair">5</span>
+  </header>
+  <div class="cat-score">
+    <b>5</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Imports concretos dominan: <code>from of.*</code> en 15+ módulos (<code>scripts/of/cli/ops.py</code>, <code>scripts/of/cli/wave.py</code>, <code>scripts/of/receipt.py</code>…), <code>from of_adapters import …</code> en 7 módulos, <code>sys.path.insert</code> en <code>scripts/of/__init__.py</code>; sin eventos ni contratos, aunque stdlib-only limita el radio de rotura</p>
+</article><article class="cat poor">
+  <header>
+    <span class="cat-name">Single Responsibility (Arch)</span>
+    <span class="pill poor">3</span>
+  </header>
+  <div class="cat-score">
+    <b>3</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">scripts/of/field.py<code> cambia por locking, WAL, redacción, migraciones, retención y doctor a la vez; </code>scripts/of_adapters.py` (1874 líneas, 13 clases) mezcla detección, spawn, trust, schema y worktrees</p>
+</article><article class="cat poor">
+  <header>
+    <span class="cat-name">Dependency Inversion &amp; IoC</span>
+    <span class="pill poor">4</span>
+  </header>
+  <div class="cat-score">
+    <b>4</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Cero usos de <code>ABC</code>/<code>abc</code>/<code>Protocol</code> en <code>scripts/of/</code>; <code>scripts/of/receipt.py</code> importa concreto <code>from of.field import safe_relative_path</code>; cableado por import directo, sin contenedor ni raíz de composición (más allá de <code>scripts/of.py</code> → <code>of.cli.main</code>)</p>
+</article><article class="cat fair">
+  <header>
+    <span class="cat-name">Open/Closed</span>
+    <span class="pill fair">6</span>
+  </header>
+  <div class="cat-score">
+    <b>6</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Punto de extensión real: <code>ADAPTER_ORDER</code>/<code>pick_adapter</code>/adaptador genérico en <code>scripts/of_adapters.py</code> + trust profiles; pero nuevo comportamiento kernel = editar condicionales en ficheros-dios (<code>scripts/of/regime.py</code>, <code>scripts/of/field.py</code>)</p>
+</article><article class="cat poor">
+  <header>
+    <span class="cat-name">Encapsulation &amp; Abstraction</span>
+    <span class="pill poor">4</span>
+  </header>
+  <div class="cat-score">
+    <b>4</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">scripts/of/__init__.py<code> (984 líneas) es un barril que re-exporta ~100 nombres (</code>__all__<code> con </code>AdapterBalance<code>, </code>redact_text<code>, </code>safe_relative_path<code>, </code>save_state<code>…); </code>scripts/of/cli/__init__.py<code> repite patrón con su propio </code>__all__`; todo es importable</p>
+</article><article class="cat fair">
+  <header>
+    <span class="cat-name">Modularity, Reusability &amp; Composability</span>
+    <span class="pill fair">6</span>
+  </header>
+  <div class="cat-score">
+    <b>6</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Paquetes compartidos reales: <code>scripts/of/</code> (14 módulos), <code>scripts/of/cli/</code> (7 módulos), <code>scripts/of_adapters.py</code> reutilizado por 7 importadores; DRY a nivel kernel, sin herencia frágil; fricción: layout bajo <code>scripts/</code> en vez de paquete instalable</p>
+</article><article class="cat poor">
+  <header>
+    <span class="cat-name">Scalability, Performance &amp; Efficiency</span>
+    <span class="pill poor">4</span>
+  </header>
+  <div class="cat-score">
+    <b>4</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">CLI monoproceso con WAL en fichero (<code>scripts/of/wal.py</code>) y esperas de lock (<code>FIELD_LOCK_WAIT_SECONDS</code> en <code>scripts/of/field.py</code>); sin async/colas/cachés; escala horizontal nula — coherente con una herramienta CLI local, pero sin camino horizontal</p>
+</article><article class="cat good">
+  <header>
+    <span class="cat-name">Resilience, Fault Tolerance &amp; Reliability</span>
+    <span class="pill good">7</span>
+  </header>
+  <div class="cat-score">
+    <b>7</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">WAL (<code>scripts/of/wal.py</code>, 58 <code>try/except</code>), 181 <code>try/except</code> en <code>scripts/of/field.py</code>, 67 en <code>scripts/of/regime.py</code>, <code>FieldLockBusy</code>, <code>tests/test_field_lock_race.py</code>, <code>tests/test_field_wal.py</code>, <code>tests/test_replay_policy.py</code>, comando doctor</p>
+</article><article class="cat good">
+  <header>
+    <span class="cat-name">Security by Design</span>
+    <span class="pill good">7</span>
+  </header>
+  <div class="cat-score">
+    <b>7</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">safe_relative_path<code> en </code>scripts/of/field.py<code>, </code>redact_text<code>/</code>REDACTED<code>/</code>APPROVAL_REDACTED<code> aplicados a errores, </code>WriteFloor<code> y trust profiles en </code>scripts/of_adapters.py<code>, </code>tests/test_redaction.py<code>, </code>tests/test_spawn_trust.py<code>, </code>tests/test_agy_denied_actions.py`; sin secretos hardcodeados detectados</p>
+</article><article class="cat fair">
+  <header>
+    <span class="cat-name">Maintainability, Evolvability &amp; Tech Debt</span>
+    <span class="pill fair">5</span>
+  </header>
+  <div class="cat-score">
+    <b>5</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Deuda visible: 6 ficheros &gt;1600 LOC, layout <code>scripts/</code> no instalable; contrapesos: docs extensos, <code>docs/audit/claims-matrix.md</code>, <code>scripts/check_unused_imports.py</code>, <code>scripts/check_packaging_bump.py</code>, <code>scripts/validate-skill.sh</code>, <code>CHANGELOG.md</code> disciplinado; sin ADRs</p>
+</article><article class="cat good">
+  <header>
+    <span class="cat-name">Testability &amp; Observability</span>
+    <span class="pill good">8</span>
+  </header>
+  <div class="cat-score">
+    <b>8</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">47 ficheros de test, <code>tests/test_cli_error_boundary.py</code>, <code>tests/test_evidence_receipt.py</code>, <code>.github/workflows/test.yml</code>; observabilidad CLI: <code>--json</code>/<code>OF_JSON=1</code> (<code>scripts/of/cli/__init__.py</code>), <code>docs/events.md</code>, receipts (<code>scripts/of/receipt.py</code>), WAL; sin OTel/Prometheus (innecesario en CLI)</p>
+</article><article class="cat good">
+  <header>
+    <span class="cat-name">Domain Alignment &amp; Business Logic Separation</span>
+    <span class="pill good">8</span>
+  </header>
+  <div class="cat-score">
+    <b>8</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Lenguaje ubicuo consistente (<code>field</code>, <code>wave</code>, <code>pack</code>, <code>regime</code>, <code>residual</code>, <code>scratch</code>) en código (<code>scripts/of/field.py</code>, <code>scripts/of/pack.py</code>, <code>scripts/of/regime.py</code>), tests (<code>tests/test_kernel_field.py</code>, <code>tests/test_kernel_pack.py</code>) y docs (<code>docs/glossary.md</code>, <code>docs/external-brief.md</code>); adaptadores anticorrupción (<code>scripts/of_adapters.py</code>) separan lo técnico</p>
+</article><article class="cat fair">
+  <header>
+    <span class="cat-name">Stack-Specific Best Practices</span>
+    <span class="pill fair">6</span>
+  </header>
+  <div class="cat-score">
+    <b>6</b>
+    <span class="ticks"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span>
+  </div>
+  <p class="notes">Idiomático CLI stdlib: guarda de floor 3.11 en <code>scripts/of.py</code>, <code>from __future__ import annotations</code>, checks propios, <code>test_python_floor.py</code>; anti-idiomas: lógica bajo <code>scripts/</code> sin <code>pyproject</code> instalable, barril de 984 líneas, <code>sys.path.insert</code> manual</p>
+</article></div></section>
+    <div class="article">
+      <h2 id="executive-summary">Executive Summary</h2>
+<ul><li>Fortalezas: lenguaje ubicuo de dominio muy coherente (<code>field</code>/<code>wave</code>/<code>pack</code>/<code>regime</code>/<code>residual</code>) con glosario y brief externo; pirámide de tests sólida (47 ficheros de test, ratio 0.24) con tests de frontera (WAL, redacción, lock-race, replay); resiliencia y seguridad pensadas para CLI (WAL, <code>FieldLockBusy</code>, <code>safe_relative_path</code>, <code>redact_text</code>, <code>WriteFloor</code>, trust profiles).</li><li>Debilidades críticas: ficheros-dios (<code>scripts/of/field.py</code> 4456 LOC/279 funciones/20 clases, <code>scripts/of/regime.py</code> 2725 LOC, <code>scripts/of/cli/ops.py</code> 2606 LOC) que mezclan concerns y razones de cambio; sin abstracciones (cero <code>ABC</code>/<code>Protocol</code>, cableado por imports concretos + <code>sys.path.insert</code> en <code>scripts/of/__init__.py</code>); barril de re-exportación de 984 líneas (<code>scripts/of/__init__.py</code> con <code>__all__</code> de ~100 nombres) que anula la encapsulación.</li><li>Veredicto: dominio y disciplina de test/seguridad fuertes sobre una base de módulos monolíticos sin puertos ni DI; el coste de cambio se concentra en 4 ficheros. Rank: Poor (5.4/10, borde superior de la banda).</li></ul>
+<h2 id="quantitative-snapshot">Quantitative Snapshot</h2>
+<ul><li>Languages &amp; estimated LOC: Python 58449, Markdown 5299, JSON 4931 (205 ficheros escaneados, 199 fuente).</li><li>Frameworks / Stack: stdlib-only Python CLI (floor 3.11 con guarda en <code>scripts/of.py</code>), GitHub Actions (<code>test.yml</code>), docs/ + README, sin ORM ni web framework.</li><li>Test ratio: 47 test files / 199 source ≈ 0.236; 43 ficheros en <code>tests/</code> (p. ej. <code>tests/test_kernel_field.py</code> 4644 LOC, <code>tests/test_packaging.py</code> 3421 LOC).</li><li>Top hotspots (files &gt;400 LOC): <code>scripts/of/field.py</code> (4456), <code>scripts/of/regime.py</code> (2725), <code>scripts/of/cli/ops.py</code> (2606), <code>scripts/of/cli/eval_cmd.py</code> (2360), <code>scripts/of/pack.py</code> (2115), <code>scripts/of_adapters.py</code> (1604).</li><li>Architecture folders present: <code>scripts/of/</code> (kernel), <code>scripts/of/cli/</code> (7 módulos), <code>scripts/of_adapters.py</code> (adaptadores); <code>tests/</code>; <code>docs/</code> (+ <code>docs/audit</code>, <code>docs/features/kernel</code>, <code>docs/features/adapters</code>).</li><li>Documentation signals: README sí, docs/ sí, ADRs no (<code>has_adr_or_architecture_docs: false</code>); <code>docs/glossary.md</code>, <code>docs/external-brief.md</code>, <code>docs/events.md</code>, <code>docs/audit/claims-matrix.md</code>, <code>docs/roadmap.md</code>, <code>CHANGELOG.md</code> (~250 KB).</li></ul>
+<h2 id="score-census">Score census</h2>
+<div class='table-wrap'><table><thead><tr><th>Band</th><th>Count</th></tr></thead><tbody><tr><td>9–10</td><td>0</td></tr><tr><td>7–8</td><td>4</td></tr><tr><td>5–6</td><td>5</td></tr><tr><td>3–4</td><td>6</td></tr><tr><td>0–2</td><td>0</td></tr></tbody></table></div>
+<p>Counts must sum to 15.</p>
+<h2 id="strengths">Strengths</h2>
+<ul><li>Dominio explícito y ubicuo: <code>scripts/of/field.py</code>, <code>scripts/of/pack.py</code>, <code>scripts/of/regime.py</code> hablan <code>field/wave/pack/residual</code>, respaldados por <code>docs/glossary.md</code> y <code>docs/external-brief.md</code>.</li><li>Disciplina de test en el núcleo: <code>tests/test_kernel_field.py</code> (4644 LOC), <code>tests/test_field_wal.py</code>, <code>tests/test_field_lock_race.py</code>, <code>tests/test_redaction.py</code>, <code>tests/test_cli_error_boundary.py</code>.</li><li>Seguridad CLI por diseño: <code>safe_relative_path</code> + <code>redact_text</code> en <code>scripts/of/field.py</code>, <code>WriteFloor</code> en <code>scripts/of_adapters.py</code>.</li><li>Observabilidad adecuada al stack: eventos <code>--json</code>/<code>OF_JSON=1</code> (<code>scripts/of/cli/__init__.py</code>, <code>docs/events.md</code>) + receipts (<code>scripts/of/receipt.py</code>).</li><li>Higiene de release: <code>CHANGELOG.md</code>, <code>scripts/check_packaging_bump.py</code>, <code>scripts/check_unused_imports.py</code>, <code>.github/workflows/test.yml</code>.</li></ul>
+<h2 id="weaknesses-risks">Weaknesses &amp; Risks</h2>
+<ul><li>Ficheros-dios concentran el riesgo de regresión: un cambio en <code>scripts/of/field.py</code> (279 funciones) puede romper locking, WAL y redacción a la vez (impacto alto).</li><li>Acoplamiento concreto sin puertos: <code>scripts/of/receipt.py</code> → <code>scripts/of/field.py</code> y docenas de <code>from of.*</code> hacen que el kernel sea frágil al refactor (impacto medio-alto).</li><li>Barril <code>scripts/of/__init__.py</code> (984 líneas, <code>__all__</code> ~100 nombres) expone internos y bloquea la evolución de la API (impacto medio).</li><li>Escalabilidad monoproceso con lock de fichero: dos oleadas concurrentes sobre el mismo campo se serializan o fallan con <code>FieldLockBusy</code> (impacto medio, acotado a uso local).</li><li>Sin ADRs (<code>has_adr_or_architecture_docs: false</code>): las decisiones de kernel viven en prosa dispersa, riesgo de reversión silenciosa (impacto bajo-medio).</li></ul>
+<h2 id="prioritized-roadmap">Prioritized Roadmap</h2>
+<h3 id="p0-quick-wins">P0 – Quick Wins (high leverage, low effort)</h3>
+<ul><li>Techo de tamaño en CI: fallar si un módulo supera 800 LOC (qué: gate en <code>test.yml</code>; por qué: frena el crecimiento de <code>scripts/of/field.py</code>; esfuerzo S)</li><li><code>pyproject.toml</code> + entry-point <code>of</code> y eliminar <code>sys.path.insert</code> de <code>scripts/of/__init__.py</code> (qué: empaquetado editable; por qué: acoplamiento de importación frágil; esfuerzo S)</li><li>Timeouts en todos los <code>subprocess</code> de <code>scripts/of_adapters.py</code> y <code>scripts/of/cli/wave.py</code> (qué: <code>timeout=</code> explícito; por qué: resiliencia de spawn; esfuerzo S)</li></ul>
+<h3 id="p1">P1</h3>
+<ul><li>Extraer <code>redact.py</code>, <code>lock.py</code>, <code>roster.py</code> de <code>scripts/of/field.py</code> (qué: 3 submódulos con tests existentes como red; por qué: SoC/cohesión; esfuerzo M)</li><li>Recortar <code>__all__</code> de <code>scripts/of/__init__.py</code> a API pública mínima (qué: fachada pequeña + <code>_</code> internos; por qué: encapsulación; esfuerzo S-M)</li><li>Registro de adaptadores/handlers en vez de condicionales (<code>scripts/of_adapters.py</code>, <code>scripts/of/regime.py</code>) (qué: <code>dict</code> registry + docs; por qué: Open/Closed; esfuerzo M)</li><li>Iniciar <code>docs/adr/</code> con 3 decisiones existentes (WAL en fichero, stdlib-only, trust profiles) (qué: ADRs; por qué: evolvabilidad; esfuerzo S)</li></ul>
+<h3 id="p2-strategic">P2 – Strategic</h3>
+<ul><li>Puertos <code>Protocol</code> + inyección desde <code>scripts/of.py</code> (qué: <code>FieldStore</code>/<code>Spawner</code>/<code>EventSink</code>; por qué: DIP/testabilidad del kernel; esfuerzo L)</li><li>Layout <code>src/</code> instalable y split de <code>scripts/of/regime.py</code> y <code>scripts/of/cli/ops.py</code> (qué: reestructuración; por qué: SRP/maintainability; esfuerzo L)</li><li>Contrato versionado de eventos <code>--json</code> con test de schema (qué: <code>docs/events.md</code> → JSON Schema; por qué: observabilidad estable para harnesses; esfuerzo M)</li></ul>
+<p>(For each item: what / why / effort S-M-L)</p>
+<h2 id="domain-stack-specific-notes">Domain / Stack Specific Notes</h2>
+<ul><li>Sistema de orquestación de agentes (Haken slaving): el &quot;dominio&quot; es el propio campo de trabajo (fields, waves, packets, residuals). La separación kernel/adaptadores actúa como capa anticorrupción frente a harnesses externos (Claude/Codex/Cursor…), patrón correcto para este dominio.</li><li>Stack CLI stdlib-only: la ausencia de OTel/Prometheus/colas no es deuda sino adecuación al medio; la observabilidad vía <code>--json</code>/WAL/receipts es lo idiomático. El 4 en escalabilidad refleja diseño monoproceso, no un fallo: el informe lo contextualiza pero la fórmula no pondera.</li><li>Riesgo específico del dominio: prompts y reglas de harness viven en prosa (<code>AGENTS.md</code>, <code>SKILL.md</code>) fuera del código puntuable; una deriva entre esas reglas y <code>scripts/of/regime.py</code> es el equivalente a &quot;lógica de negocio en strings&quot; — vigilar con <code>docs/audit/claims-matrix.md</code>.</li></ul>
+<h2 id="visual-suggestions">Visual Suggestions</h2>
+<ul><li>Recommend C4 Context / Container / Component diagrams.</li><li>Offer Mermaid code if useful.</li></ul>
+<pre class="lang-mermaid"><code>C4Context
+  title Orderfield — Context
+  Person(op, &quot;Operator&quot;)
+  System(of, &quot;of CLI&quot;, &quot;Haken slaving orchestration, stdlib-only&quot;)
+  System_Ext(harness, &quot;Agent harness&quot;, &quot;Claude/Codex/Cursor/generic via adapters&quot;)
+  System_Ext(field, &quot;Field on disk&quot;, &quot;.orderfield/ + WAL + residuals&quot;)
+  Rel(op, of, &quot;runs waves&quot;)
+  Rel(of, harness, &quot;spawns via of_adapters&quot;)
+  Rel(of, field, &quot;reads/writes, locked&quot;)</code></pre>
+<pre class="lang-mermaid"><code>C4Container
+  title Orderfield — Containers (actual)
+  Container(cli, &quot;CLI&quot;, &quot;scripts/of/cli/&quot;, &quot;7 modules, ops.py 2606 LOC&quot;)
+  Container(kernel, &quot;Kernel&quot;, &quot;scripts/of/&quot;, &quot;field.py 4456 + regime.py 2725 + pack.py 2115 LOC&quot;)
+  Container(adapters, &quot;Adapters&quot;, &quot;scripts/of_adapters.py&quot;, &quot;1874 lines, 13 classes&quot;)
+  ContainerDb(wal, &quot;State&quot;, &quot;WAL + JSON on disk&quot;, &quot;.orderfield/&quot;)
+  Rel(cli, kernel, &quot;from of.* imports&quot;)
+  Rel(kernel, adapters, &quot;direct imports&quot;)
+  Rel(kernel, wal, &quot;reads/writes&quot;)</code></pre>
+    </div>
+    <footer class="foot">
+      <span>arquitectura-software-analyzer</span>
+      <span>markdown + html · evidence only</span>
+    </footer>
+  </main>
+</body>
+</html>
