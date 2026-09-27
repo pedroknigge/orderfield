@@ -427,23 +427,6 @@ def resume_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
     return {"protocol": protocol, "field": field}
 
 
-def protocol_learning_lines(root: Path | None = None) -> list[str]:
-    # Child prompts read the user cache only. Field-dir protocol pins are
-    # for resume/list; a slave must not inject into the next packet by
-    # writing .orderfield/learnings/*.json.
-    _ = root
-    items = load_protocol_store()
-    items.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
-    lines: list[str] = []
-    for item in items:
-        text = _normalize_learning_text(str(item.get("text") or ""))
-        if text and text not in lines:
-            lines.append(text)
-        if len(lines) >= PROTOCOL_PROMPT_CAP:
-            break
-    return lines
-
-
 def _write_field_learning(root: Path, item: dict[str, Any]) -> None:
     folder = learnings_dir(root)
     folder.mkdir(parents=True, exist_ok=True)
@@ -639,7 +622,6 @@ class FieldLearnings:
     provenance = staticmethod(learning_provenance)
     accepted = staticmethod(learning_accepted)
     list = staticmethod(list_learnings)
-    protocol_lines = staticmethod(protocol_learning_lines)
     save = staticmethod(save_learning)
     promote = staticmethod(promote_learning)
     forget = staticmethod(forget_learning)
