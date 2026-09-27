@@ -13,6 +13,7 @@ from of.field import (
     die,
     field_home,
     field_is_file,
+    field_read_text,
     field_rel,
     load_json,
     load_order,
@@ -1578,10 +1579,7 @@ class PlanIngress:
         spec_text = ""
         spec = spec_path(root)
         if field_is_file(spec):
-            try:
-                spec_text = spec.read_text(encoding="utf-8")
-            except OSError:
-                spec_text = ""
+            spec_text = field_read_text(spec) or ""
         try:
             req_blob = json.dumps(load_requirements(root), ensure_ascii=False)
         except (OSError, TypeError, ValueError, SystemExit):
