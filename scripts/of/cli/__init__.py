@@ -1,7 +1,7 @@
 """Public CLI package: parser + dispatch; commands live in sibling modules.
 
 Public entry remains `scripts/of.py` (`from of.cli import main`).
-Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
+Command groups: init_cmd, contend_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
 """
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 from of.host_ram import AgentBand
 
 from of.cli.init_cmd import cmd_init, cmd_new
+from of.cli.contend_cmd import cmd_contend, cmd_crown
 from of.cli.ops import (
     cmd_checkpoint,
     cmd_detect,
@@ -315,6 +316,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("--force", action="store_true")
     s.add_argument(
+        "--cite",
+        dest="cite",
+        action="append",
+        help=(
+            "pin a linked doc or docs dir into the mother contract "
+            "(repeatable; kernel hashes it, no hand sha)"
+        ),
+    )
+    s.add_argument(
+        "--chat-capture-file",
+        dest="chat_capture_file",
+        help=(
+            "compile a conversation export into a pinned capture "
+            "('-' reads stdin); clears the chat hold with evidence"
+        ),
+    )
+    s.add_argument(
         "--origin",
         help=(
             "stamp ORDER.origin harness (provenance, not spawn pin); "
@@ -343,6 +361,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="verbatim brief file or '-'",
     )
     s.add_argument(
+        "--cite",
+        dest="cite",
+        action="append",
+        help=(
+            "pin a linked doc or docs dir into the mother contract "
+            "(repeatable; kernel hashes it, no hand sha)"
+        ),
+    )
+    s.add_argument(
+        "--chat-capture-file",
+        dest="chat_capture_file",
+        help=(
+            "compile a conversation export into a pinned capture "
+            "('-' reads stdin); clears the chat hold with evidence"
+        ),
+    )
+    s.add_argument(
         "--origin",
         help=(
             "stamp ORDER.origin harness (provenance, not spawn pin); "
@@ -367,6 +402,66 @@ def build_parser() -> argparse.ArgumentParser:
     )
     AgentBand.add_flags(s)
     s.set_defaults(func=cmd_new)
+
+    s = sub.add_parser(
+        "contend",
+        help="open N candidate sibling fields from one briefed parent",
+        description=(
+            "Competing plans as sibling fields sharing one brief. "
+            "Each candidate runs its plan in its field; of crown ranks "
+            "them by of-contrast evidence. Selection by the field, not debate."
+        ),
+    )
+    s.add_argument("--mission", help="contest mission (default: parent mission)")
+    s.add_argument("--phase", default="explore", choices=PHASES)
+    s.add_argument("--source", help="verbatim brief (default: parent SPEC.md)")
+    s.add_argument(
+        "--candidates",
+        type=int,
+        default=3,
+        help="candidate fields to open (2..8; default 3)",
+    )
+    s.add_argument(
+        "--max-gaps",
+        type=int,
+        default=0,
+        help="crown floor: winner blocking count must be <= this (default 0)",
+    )
+    s.add_argument(
+        "--json",
+        dest="json_out",
+        action="store_true",
+        help="print the contest object as JSON on stdout",
+    )
+    s.set_defaults(func=cmd_contend)
+
+    s = sub.add_parser(
+        "crown",
+        help="crown the contrast winner of a contest as the slow order",
+        description=(
+            "Rank contest candidates by of-contrast blocking count. "
+            "Auto-crowns only on strict improvement within the floor; "
+            "ties and below-floor fields exit 2 for a human "
+            "(of crown --contest ID --winner <id>). "
+            "Losers are archived with a CONTEST.json trail, never deleted."
+        ),
+    )
+    s.add_argument("--contest", required=True, help="contest id (ctg_…)")
+    s.add_argument("--winner", help="human pick: crown this candidate explicitly")
+    s.add_argument(
+        "--max-gaps",
+        type=int,
+        default=None,
+        help="override the floor stored at contend time",
+    )
+    s.add_argument("--reason", default="", help="recorded on the crown + archive trail")
+    s.add_argument(
+        "--json",
+        dest="json_out",
+        action="store_true",
+        help="print the crown result as JSON on stdout",
+    )
+    s.set_defaults(func=cmd_crown)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
     s.add_argument(
@@ -1168,7 +1263,7 @@ def _dispatch() -> None:
             # creating a stray .orderfield/field.lock first.
             args.func(args)
             return
-        with field_lock(root, args.cmd):
+        with field_lock(root, args.cmd, generation=args.cmd != "contend"):
             args.func(args)
     else:
         args.func(args)

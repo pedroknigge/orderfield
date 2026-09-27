@@ -42,6 +42,27 @@ from of.spec import (
 )
 
 
+def resolve_chat_capture(args: argparse.Namespace) -> str | None:
+    """Read --chat-capture-file BEFORE any field write (validation first).
+
+    `-` reads stdin (the pasted conversation). A missing, non-UTF-8, or
+    empty capture leaves the tree unchanged, like resolve_source_text.
+    """
+    raw = getattr(args, "chat_capture_file", None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    if str(raw).strip() == "-":
+        try:
+            text = sys.stdin.read()
+        except OSError as exc:
+            die(f"--chat-capture-file - unreadable: {exc}")
+    else:
+        text = read_brief_file(str(raw), flag="--chat-capture-file")
+    if not str(text or "").strip():
+        die("--chat-capture-file is empty; nothing to compile")
+    return str(text)
+
+
 def resolve_source_text(args: argparse.Namespace) -> str | None:
     """Read --source/--source-file BEFORE any field write.
 
@@ -70,6 +91,8 @@ def _stamp_and_write_new_field(
     force: bool,
     order: dict[str, Any] | None = None,
     source_text: str | None = None,
+    chat_text: str | None = None,
+    cites: list[str] | None = None,
 ) -> dict[str, Any]:
     phase = getattr(args, "phase", None) or "explore"
     if phase not in PHASES:
@@ -95,6 +118,16 @@ def _stamp_and_write_new_field(
         archive_previous_field(root, target)
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
     (target / "waves").mkdir(parents=True, exist_ok=True)
+    # Compile the mother context before PlanIngress.apply runs: explicit
+    # --cite docs are pinned (folder mode + baseline see them) and the chat
+    # capture is written so the chat branch pins it via capture_rels.
+    for rel in list(cites or []):
+        if str(rel or "").strip():
+            PlanIngress.pin_cited_docs(root, order, [str(rel)])
+    capture_rel = ""
+    capture_sha = ""
+    if chat_text is not None:
+        capture_rel, capture_sha = PlanIngress.write_chat_capture(root, order, chat_text)
     if source_text is not None:
         spec_hash = write_spec(root, source_text, revise=bool(force))
         extracted = extract_requirements_from_spec(source_text)
@@ -126,6 +159,13 @@ def _stamp_and_write_new_field(
         ingress = PlanIngress.apply(
             root, order, source_file=source_file, source_text=source_text
         )
+    # Folder mode won but a chat capture was also compiled: the chat branch
+    # never ran, so pin the capture here or the conversation stays out of
+    # the mother contract. Idempotent when the chat branch already pinned it.
+    if capture_rel and not any(
+        rel == capture_rel for rel, _digest in PlanIngress.pinned(order)
+    ):
+        PlanIngress.pin_source(order, capture_rel, capture_sha)
     PlanCoverage.emit_ingest(
         root, order, source_file=source_file, source_text=source_text
     )
@@ -156,6 +196,8 @@ def cmd_init(args: argparse.Namespace) -> None:
             "(or of init --force --field ID replaces one)"
         )
     source_text = resolve_source_text(args)
+    chat_text = resolve_chat_capture(args)
+    PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
     if homes and args.force:
         bound = bind_active_field(
             root, getattr(args, "field_id", None), cmd="init"
@@ -172,7 +214,8 @@ def cmd_init(args: argparse.Namespace) -> None:
             die(f"already exists {order_path(root)} (use --force)")
         set_field_home(target)
     order = _stamp_and_write_new_field(
-        args, root, force=bool(args.force), source_text=source_text
+        args, root, force=bool(args.force), source_text=source_text,
+        chat_text=chat_text, cites=list(getattr(args, "cite", None) or []),
     )
     print(f"initialized {order_path(root)}")
     print(f"id={order['id']} rev={order['rev']} phase={order['phase']}")
@@ -196,6 +239,8 @@ def cmd_new(args: argparse.Namespace) -> None:
         die("--mission is required")
     # Validate the brief and --parent before promoting the legacy layout.
     source_text = resolve_source_text(args)
+    chat_text = resolve_chat_capture(args)
+    PlanIngress.check_cites(root, list(getattr(args, "cite", None) or []))
     homes = list_field_homes(root)
     if not homes:
         die("no ORDER. of init --mission '...' first; of new opens a sibling")
@@ -214,7 +259,8 @@ def cmd_new(args: argparse.Namespace) -> None:
     home.mkdir(parents=True, exist_ok=True)
     set_field_home(home)
     order = _stamp_and_write_new_field(
-        args, root, force=False, order=order, source_text=source_text
+        args, root, force=False, order=order, source_text=source_text,
+        chat_text=chat_text, cites=list(getattr(args, "cite", None) or []),
     )
     emit_event("new", field=order["id"], parent=parent_id, ok=True)
     print(f"field         {order['id']}")
