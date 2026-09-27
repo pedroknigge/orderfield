@@ -5159,7 +5159,6 @@ from of.learn import (  # noqa: E402,F401
     load_protocol_store,
     page_listed,
     promote_learning,
-    protocol_learning_lines,
     protocol_learnings_path,
     protocol_store_lock,
     save_learning,
