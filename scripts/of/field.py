@@ -26,7 +26,7 @@ import sys
 import tempfile
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -226,6 +226,8 @@ FIELD_LOCK_WAIT_SECONDS = 10.0
 MUTATING_COMMANDS_ORDER = (
     "init",
     "new",
+    "contend",
+    "crown",
     "pack",
     "unpack",
     "collect",
@@ -1998,8 +2000,20 @@ class FieldLockBusy(Exception):
 
 
 @contextmanager
-def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> Any:
-    """Serialize a field mutation; flock releases automatically after owner death."""
+def field_lock(
+    root: Path,
+    command: str,
+    wait_seconds: float | None = None,
+    *,
+    generation: bool = True,
+) -> Any:
+    """Serialize a field mutation; flock releases automatically after owner death.
+
+    generation=False holds the flock without opening a WAL generation, so
+    writes go straight to live disk. Only for commands that span several
+    field homes in one process (contend): one home-relative generation
+    cannot stage N homes without their relative keys colliding.
+    """
     global _HELD_FIELD_LOCK
     require_nonsymlink_kernel_root(root)
     path = field_lock_path(root).resolve()
@@ -2058,7 +2072,7 @@ def field_lock(root: Path, command: str, wait_seconds: float | None = None) -> A
                     FieldWal.refuse_live_spec_tamper(root)
                     FieldWal.refuse_live_order_tamper(root)
                 FieldWal.materialize_current(root, overwrite=True)
-            with FieldWal.generation(root):
+            with FieldWal.generation(root) if generation else nullcontext():
                 yield
         finally:
             _HELD_FIELD_LOCK = None
@@ -5212,7 +5226,6 @@ from of.learn import (  # noqa: E402,F401
     load_protocol_store,
     page_listed,
     promote_learning,
-    protocol_learning_lines,
     protocol_learnings_path,
     protocol_store_lock,
     save_learning,

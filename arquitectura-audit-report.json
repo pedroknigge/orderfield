@@ -1,0 +1,53 @@
+{
+  "audit_mode": "Deep",
+  "census": {
+    "0\u20132": 0,
+    "3\u20134": 6,
+    "5\u20136": 5,
+    "7\u20138": 4,
+    "9\u201310": 0
+  },
+  "date": "2026-09-27",
+  "errors": [],
+  "evidence": {
+    "dependency inversion & ioc": "Cero usos de `ABC`/`abc`/`Protocol` en `scripts/of/`; `scripts/of/receipt.py` importa concreto `from of.field import safe_relative_path`; cableado por import directo, sin contenedor ni ra\u00edz de composici\u00f3n (m\u00e1s all\u00e1 de `scripts/of.py` \u2192 `of.cli.main`)",
+    "domain alignment & business logic separation": "Lenguaje ubicuo consistente (`field`, `wave`, `pack`, `regime`, `residual`, `scratch`) en c\u00f3digo (`scripts/of/field.py`, `scripts/of/pack.py`, `scripts/of/regime.py`), tests (`tests/test_kernel_field.py`, `tests/test_kernel_pack.py`) y docs (`docs/glossary.md`, `docs/external-brief.md`); adaptadores anticorrupci\u00f3n (`scripts/of_adapters.py`) separan lo t\u00e9cnico",
+    "encapsulation & abstraction": "`scripts/of/__init__.py` (984 l\u00edneas) es un barril que re-exporta ~100 nombres (`__all__` con `AdapterBalance`, `redact_text`, `safe_relative_path`, `save_state`\u2026); `scripts/of/cli/__init__.py` repite patr\u00f3n con su propio `__all__`; todo es importable",
+    "high cohesion": "`scripts/of/field.py`: 279 funciones / 20 clases (`ActiveField`, `RootStub`, `NestedField`, `FieldRoster`, `PackRoster`, `FieldLockBusy`, `DoctorSkew`\u2026); `scripts/of/pack.py`: 124 funciones / 9 clases; crecimiento por acreci\u00f3n",
+    "low coupling": "Imports concretos dominan: `from of.*` en 15+ m\u00f3dulos (`scripts/of/cli/ops.py`, `scripts/of/cli/wave.py`, `scripts/of/receipt.py`\u2026), `from of_adapters import \u2026` en 7 m\u00f3dulos, `sys.path.insert` en `scripts/of/__init__.py`; sin eventos ni contratos, aunque stdlib-only limita el radio de rotura",
+    "maintainability, evolvability & tech debt": "Deuda visible: 6 ficheros >1600 LOC, layout `scripts/` no instalable; contrapesos: docs extensos, `docs/audit/claims-matrix.md`, `scripts/check_unused_imports.py`, `scripts/check_packaging_bump.py`, `scripts/validate-skill.sh`, `CHANGELOG.md` disciplinado; sin ADRs",
+    "modularity, reusability & composability": "Paquetes compartidos reales: `scripts/of/` (14 m\u00f3dulos), `scripts/of/cli/` (7 m\u00f3dulos), `scripts/of_adapters.py` reutilizado por 7 importadores; DRY a nivel kernel, sin herencia fr\u00e1gil; fricci\u00f3n: layout bajo `scripts/` en vez de paquete instalable",
+    "open/closed": "Punto de extensi\u00f3n real: `ADAPTER_ORDER`/`pick_adapter`/adaptador gen\u00e9rico en `scripts/of_adapters.py` + trust profiles; pero nuevo comportamiento kernel = editar condicionales en ficheros-dios (`scripts/of/regime.py`, `scripts/of/field.py`)",
+    "resilience, fault tolerance & reliability": "WAL (`scripts/of/wal.py`, 58 `try/except`), 181 `try/except` en `scripts/of/field.py`, 67 en `scripts/of/regime.py`, `FieldLockBusy`, `tests/test_field_lock_race.py`, `tests/test_field_wal.py`, `tests/test_replay_policy.py`, comando doctor",
+    "scalability, performance & efficiency": "CLI monoproceso con WAL en fichero (`scripts/of/wal.py`) y esperas de lock (`FIELD_LOCK_WAIT_SECONDS` en `scripts/of/field.py`); sin async/colas/cach\u00e9s; escala horizontal nula \u2014 coherente con una herramienta CLI local, pero sin camino horizontal",
+    "security by design": "`safe_relative_path` en `scripts/of/field.py`, `redact_text`/`REDACTED`/`APPROVAL_REDACTED` aplicados a errores, `WriteFloor` y trust profiles en `scripts/of_adapters.py`, `tests/test_redaction.py`, `tests/test_spawn_trust.py`, `tests/test_agy_denied_actions.py`; sin secretos hardcodeados detectados",
+    "separation of concerns": "`scripts/of/field.py` (4456 LOC) mezcla locking, WAL, redacci\u00f3n, roster y doctor; `scripts/of/regime.py` (2725 LOC) y `scripts/of/cli/ops.py` (2606 LOC) igual de multifunci\u00f3n; capas existen solo de nombre (`scripts/of/`, `scripts/of/cli/`, `scripts/of_adapters.py`)",
+    "single responsibility (arch)": "`scripts/of/field.py` cambia por locking, WAL, redacci\u00f3n, migraciones, retenci\u00f3n y doctor a la vez; `scripts/of_adapters.py` (1874 l\u00edneas, 13 clases) mezcla detecci\u00f3n, spawn, trust, schema y worktrees",
+    "stack-specific best practices": "Idiom\u00e1tico CLI stdlib: guarda de floor 3.11 en `scripts/of.py`, `from __future__ import annotations`, checks propios, `test_python_floor.py`; anti-idiomas: l\u00f3gica bajo `scripts/` sin `pyproject` instalable, barril de 984 l\u00edneas, `sys.path.insert` manual",
+    "testability & observability": "47 ficheros de test, `tests/test_cli_error_boundary.py`, `tests/test_evidence_receipt.py`, `.github/workflows/test.yml`; observabilidad CLI: `--json`/`OF_JSON=1` (`scripts/of/cli/__init__.py`), `docs/events.md`, receipts (`scripts/of/receipt.py`), WAL; sin OTel/Prometheus (innecesario en CLI)"
+  },
+  "evidence_coverage": 100,
+  "missing": [],
+  "overall": 5.4,
+  "project": "/Users/pedroknigge/Desktop/SKILLS/orderfield",
+  "rank": "Poor",
+  "schema": "arquitectura-report/0.1",
+  "scores": {
+    "dependency inversion & ioc": 4,
+    "domain alignment & business logic separation": 8,
+    "encapsulation & abstraction": 4,
+    "high cohesion": 4,
+    "low coupling": 5,
+    "maintainability, evolvability & tech debt": 5,
+    "modularity, reusability & composability": 6,
+    "open/closed": 6,
+    "resilience, fault tolerance & reliability": 7,
+    "scalability, performance & efficiency": 4,
+    "security by design": 7,
+    "separation of concerns": 4,
+    "single responsibility (arch)": 3,
+    "stack-specific best practices": 6,
+    "testability & observability": 8
+  },
+  "version": "0.2.0"
+}

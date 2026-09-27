@@ -1368,6 +1368,93 @@ class PlanIngress:
         return out
 
     @staticmethod
+    def check_cites(root: Path, rels: list[str]) -> None:
+        """Fail fast on unknown cites before any field write (validation first).
+
+        Mirrors resolve_source_text: the authoritative pin happens later in
+        pin_cited_docs; this only refuses unknown/traversal rels early so a
+        bad --cite leaves no ORDER/SPEC behind.
+        """
+        for raw in rels or []:
+            rel = str(raw or "").strip().replace("\\", "/")
+            if not rel:
+                continue
+            if not PlanCoverage.expand(root, rel):
+                die(f"cite not found under the working tree: {rel}")
+
+    @staticmethod
+    def pin_cited_docs(
+        root: Path, order: dict[str, Any], rels: list[str]
+    ) -> list[str]:
+        """Pin explicit --cite docs with kernel-computed shas. No hand sha.
+
+        Each rel resolves under the root (traversal, absolute-outside, and
+        symlink escapes die); directories expand to *.md like brief cites.
+        Unknown rels die before any field write — the caller validates first.
+        Pinned before PlanIngress.apply so folder mode + baseline see them.
+        """
+        pinned: list[str] = []
+        for raw in rels or []:
+            rel = str(raw or "").strip().replace("\\", "/")
+            if not rel:
+                continue
+            expanded = PlanCoverage.expand(root, rel)
+            if not expanded:
+                die(f"cite not found under the working tree: {rel}")
+            for file_rel, path in expanded:
+                try:
+                    body = path.read_bytes()
+                except OSError:
+                    die(f"cite unreadable: {file_rel}")
+                if PlanIngress.pin_source(
+                    order, file_rel, sha256_text(body.decode("utf-8", "replace"))
+                ):
+                    pinned.append(file_rel)
+        return pinned
+
+    @staticmethod
+    def write_chat_capture(root: Path, order: dict[str, Any], text: str) -> tuple[str, str]:
+        """Promote conversation text to a durable capture; return (rel, sha).
+
+        docs/plans/<owner>/chat-capture-<ts>.md when the plans tree exists,
+        else .orderfield/plan-source.md. Unpinned here on purpose: the chat
+        branch of PlanIngress.apply pins it via capture_rels (keeping chat
+        mode + fail-closed); the caller pins leftovers only when folder mode
+        won and the capture would otherwise stay out of the contract.
+        """
+        body = str(text or "")
+        if not body.strip():
+            die("--chat-capture-file is empty; nothing to compile")
+        plans = Path(root) / "docs" / "plans"
+        if plans.is_dir() and not plans.is_symlink():
+            stamp = utc_now().replace(":", "").replace("-", "")
+            dest = (
+                plans
+                / PlanIngress.owner_name(root, order)
+                / f"chat-capture-{stamp}.md"
+            )
+        else:
+            dest = of_dir(root) / "plan-source.md"
+        digest = PlanIngress.write_verbatim(dest, body)
+        rel = PlanIngress.dest_rel(root, dest)
+        print(f"chat-capture {rel}  sha={digest[:12]}…")
+        return rel, digest
+
+    @staticmethod
+    def inherited_pins(order: dict[str, Any] | None) -> list[str]:
+        """Pin lines (plan_source + keep-coverage) worth inheriting by a child field."""
+        out: list[str] = []
+        for item in ((order or {}).get("constraints") or []):
+            text = str(item or "")
+            if PlanIngress.SOURCE_PIN_RE.search(text):
+                out.append(text)
+            elif text.startswith(PlanCoverage.PIN_PREFIX) and text.endswith(
+                " coverage honest"
+            ):
+                out.append(text)
+        return out
+
+    @staticmethod
     def pin_mode(order: dict[str, Any], mode: str) -> bool:
         if PlanIngress.cue_mode(order) == mode:
             return False
