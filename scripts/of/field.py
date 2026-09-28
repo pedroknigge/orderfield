@@ -520,7 +520,33 @@ class RootStub:
     KIND_LEGACY = "legacy"
     KIND_STALE = "stale"
     KIND_AMBIGUOUS = "ambiguous"
-    MIGRATE_HINT = "of migrate --field <id>"
+
+    @staticmethod
+    def migrate_hint(root: Path | None = None) -> str:
+        """A migrate command that actually runs.
+
+        The stub id itself is refused by `--field`, so the hint must name a
+        live home (prefer an open one): migrate archives the leftover stub
+        as a tree-level action. No live homes: plain `of migrate`.
+        """
+        try:
+            homes = list_field_homes(root)
+        except Exception:
+            homes = []
+        pick = ""
+        for fid, _home, order in homes:
+            try:
+                is_open = field_is_open(order)
+            except Exception:
+                is_open = False
+            if is_open:
+                pick = str(fid)
+                break
+        if not pick and homes:
+            pick = str(homes[0][0])
+        if pick:
+            return f"of migrate --field {pick}"
+        return "of migrate"
 
     @staticmethod
     def path(root: Path | None = None) -> Path:
@@ -585,7 +611,7 @@ class RootStub:
         rel = field_rel(root or find_root(), info["path"])
         return (
             f"{RootStub.LABEL.ljust(key_width)}{info['kind']:<10} {rel}  "
-            f"({RootStub.MIGRATE_HINT})"
+            f"({RootStub.migrate_hint(root)})"
         )
 
     @staticmethod
@@ -608,7 +634,8 @@ class RootStub:
             and info["field_id"] == field_id
         ):
             die(
-                f"root stub {field_id} is not a live field; {RootStub.MIGRATE_HINT}",
+                f"root stub {field_id} is not a live field; "
+                f"{RootStub.migrate_hint(root)} archives it",
                 kind="root-stub",
             )
 
@@ -1274,8 +1301,8 @@ def promote_legacy_layout(root: Path) -> Path | None:
             print(
                 f"{'why'.ljust(12)}an open pre-fields ORDER.json (id {fid}) sits "
                 "next to fields/; it is not bound and not deleted. Leader: ask "
-                f"the user whether it is still live; if not, of migrate --field "
-                f"{fid} archives it"
+                f"the user whether it is still live; if not, "
+                f"{RootStub.migrate_hint(root)} archives it"
             )
         return None
     if dest.exists():
@@ -4117,11 +4144,11 @@ class DoctorSkew:
             rel = field_rel(root, stub)
             lines.append(
                 f"  stub          {rel}  SKEW  "
-                f"({RootStub.MIGRATE_HINT})"
+                f"({RootStub.migrate_hint(root)})"
             )
             lines.append(
                 f"  migrate       required  {rel}  SKEW  "
-                f"({RootStub.MIGRATE_HINT}; not a silent delete)"
+                f"({RootStub.migrate_hint(root)}; not a silent delete)"
             )
             skewed = True
         else:

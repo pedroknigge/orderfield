@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -953,6 +954,22 @@ class RootStubAmbiguous(unittest.TestCase):
         self.assertIn("of migrate", r.stderr)
         ghost = load_json(self.tmp / ".orderfield" / "ORDER.json")
         self.assertNotIn("must not land on the stub", ghost.get("constraints") or [])
+
+    def test_stub_refuse_hint_names_a_runnable_migrate(self) -> None:
+        # The printed hint must be followable: the stub id itself is refused,
+        # so the hint has to name a live home whose migrate archives the stub.
+        self._nested_plus_stub()
+        r = run_of(self.tmp, "migrate", "--field", self.STUB_ID)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        match = re.search(r"of migrate --field (ord_[0-9a-f]{8})", r.stderr)
+        self.assertIsNotNone(match, r.stderr)
+        assert match is not None
+        live_id = match.group(1)
+        self.assertNotEqual(live_id, self.STUB_ID)
+        follow = run_of(self.tmp, "migrate", "--field", live_id)
+        self.assertEqual(follow.returncode, 0, follow.stdout + follow.stderr)
+        self.assertIn("root-stub-archive", follow.stdout)
+        self.assertFalse((self.tmp / ".orderfield" / "ORDER.json").exists())
 
     def test_patch_writes_nested_not_stub(self) -> None:
         self._nested_plus_stub()
