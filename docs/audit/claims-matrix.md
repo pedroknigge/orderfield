@@ -17,7 +17,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.30`
+**Code rev:** VERSION `0.8.31`
+- [x] 0.8.31: Haken slaving authority invariants (`refuse_child_forge` covers `of phase`, `of next-wave`, `of init`, `of new`, `of contend`, `of crown`, `of checkpoint`, and mutating `of spec`); plan contest mother-context phase inheritance when `--phase` is omitted; PackagingBump 0.8.31; no new C-ID (honesty cap)
 - [x] 2026-09-21 consumer README rewrite (C-135 / C-136): install + first close sit on the public path; First close H2 is between Install and Uninstall; locked `ReadmeProductSurface` needles stay; ceremony (InitAskSkip Large, lock set, command dump) moves below or into SKILL. `docs/external-brief.md` status stamp `0.7.57` → `0.8.29`. No new C-ID (honesty cap)
 - [x] 0.8.29: one red check is the order parameter (`DiscoveryReplay`); external check file not `artifact_sha`; two reds escalate instead of a sibling OPEN; next id is specification order; owned prompt omits other requirement texts; not a coverage win over one context; PackagingBump 0.8.29; no new C-ID (honesty cap)
 - [x] 0.8.30: plan contest (`of contend`/`of crown`, selection by contrast, mother-context compile + pin inheritance); dogfood hardening without the arena (KernelSha/ResidualPin, SensorTrust, Deliverable, CloseEvidence field labels, fallback_note, DoneWhenSeed); #337 dead `protocol_learning_lines` removed, docs match the render omission; PackagingBump 0.8.30; no new C-ID (honesty cap)

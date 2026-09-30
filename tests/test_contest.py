@@ -115,6 +115,18 @@ class ContendOpensSiblings(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertNotIn("Traceback", r.stderr)
 
+    def test_contend_inherits_parent_phase_when_omitted(self) -> None:
+        p = run_of(self.tmp, "phase", "cut", "--force", "--reason", "testing inheritance")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        r = run_of(self.tmp, "contend", "--candidates", "2", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        payload = contest_of(r.stdout)
+        ids = [str(x) for x in payload["candidates"]]
+        homes = field_homes(self.tmp)
+        for fid in ids:
+            order = read_order(homes[fid])
+            self.assertEqual(order.get("phase"), "cut")
+
 
 def active_parent(cwd: Path, ids: list[str]) -> str:
     homes = field_homes(cwd)

@@ -413,7 +413,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     s.add_argument("--mission", help="contest mission (default: parent mission)")
-    s.add_argument("--phase", default="explore", choices=PHASES)
+    s.add_argument(
+        "--phase",
+        default=None,
+        choices=PHASES,
+        help="contest phase (default: parent phase)",
+    )
     s.add_argument("--source", help="verbatim brief (default: parent SPEC.md)")
     s.add_argument(
         "--candidates",
