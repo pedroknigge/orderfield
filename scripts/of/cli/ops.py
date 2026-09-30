@@ -2734,6 +2734,7 @@ def cmd_pulse(args: argparse.Namespace) -> None:
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> None:
+    refuse_child_forge("of checkpoint")
     root = find_root()
     load_order(root)
     text = str(args.summary or "")

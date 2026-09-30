@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.31
+
+Haken slaving authority invariants and Plan Contest lifecycle phase inheritance. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.30 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **Authority invariants (Haken Slaving Principle):** A spawned child running under `OF_CHILD` is structurally refused from forging leader authority across all mutating and transition commands: `of phase`, `of next-wave`, `of init`, `of new`, `of contend`, `of crown`, `of checkpoint`, and mutating `of spec` (`--amend`, `--revise`, `--supersede`, `--bind`, `--unbind`, `--drop`, `--sync`). The slave cannot alter the macro order parameter.
+- **Plan contest phase inheritance:** `of contend` inherits the parent field's active lifecycle phase (e.g. `cut`, `build`, `verify`) when `--phase` is omitted, preserving mother-context phase continuity across candidate sibling fields instead of unconditionally resetting to `explore`.
+- **Proof:** `ChildForgeLeaderVerbs.test_patch_close_integrate_refuse_when_of_child_set` (testing `phase`, `next-wave`, `init`, `new`, `contend`, `crown`, `checkpoint`, `spec --amend` refusal under `OF_CHILD`) / `ContendOpensSiblings.test_contend_inherits_parent_phase_when_omitted` (`tests/test_contest.py`).
+- Packaging: VERSION 0.8.31; skill/alias description preview `v0.8.31. Use when…`. `install.sh` `DEFAULT_VERSION` in lockstep. Never rewrite v0.8.30 notes.
+
 ## 0.8.30
 
 Plan contest, mother-context compile, and evidence over claims. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.29 notes. Folder, chat, and prompt ingress are unchanged.

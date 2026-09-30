@@ -23,6 +23,7 @@ from typing import Any
 
 from of.field import (
     ActiveField,
+    PHASES,
     die,
     dump_bytes,
     emit_event,
@@ -75,7 +76,7 @@ def open_contest(
     mission: str | None,
     source_text: str | None,
     candidates: int,
-    phase: str,
+    phase: str | None = None,
     max_gaps: int,
     parent_id: str | None,
 ) -> tuple[str, list[str]]:
@@ -89,6 +90,9 @@ def open_contest(
         die(f"--max-gaps must be >= 0; got {max_gaps}")
     parent_fid, parent_home, parent_order = _resolve_parent(root, parent_id)
     set_field_home(parent_home)
+    cand_phase = phase or str(parent_order.get("phase") or "explore")
+    if cand_phase not in PHASES:
+        cand_phase = "explore"
     try:
         text = source_text if source_text is not None else read_spec_text(root)
     except OSError:
@@ -104,7 +108,7 @@ def open_contest(
     for cand in range(1, candidates + 1):
         ns = argparse.Namespace(
             mission=mission or str(parent_order.get("mission") or ""),
-            phase=phase,
+            phase=cand_phase,
             done_when=None,
             source=text,
             source_file=None,

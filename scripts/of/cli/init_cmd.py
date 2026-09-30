@@ -21,6 +21,7 @@ from of.field import (
     find_root,
     of_dir,
     order_path,
+    refuse_child_forge,
     resolve_init_origin,
     save_order,
     save_state,
@@ -226,6 +227,7 @@ def _stamp_and_write_new_field(
 
 
 def cmd_init(args: argparse.Namespace) -> None:
+    refuse_child_forge("of init")
     root = find_root()
     from of.field import (
         bind_active_field,
@@ -271,6 +273,7 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 def cmd_new(args: argparse.Namespace) -> None:
     """Open a sibling field. Does not archive or close the others."""
+    refuse_child_forge("of new")
     root = find_root()
     from of.field import (
         fields_dir,

@@ -11,17 +11,18 @@ import argparse
 import json
 
 from of.contest import crown, open_contest
-from of.field import die, find_root
+from of.field import die, find_root, refuse_child_forge
 
 
 def cmd_contend(args: argparse.Namespace) -> None:
+    refuse_child_forge("of contend")
     root = find_root()
     contest_id, ids = open_contest(
         root,
         mission=getattr(args, "mission", None),
         source_text=getattr(args, "source", None),
         candidates=int(getattr(args, "candidates", 3)),
-        phase=str(getattr(args, "phase", None) or "explore"),
+        phase=getattr(args, "phase", None),
         max_gaps=int(getattr(args, "max_gaps", 0)),
         parent_id=getattr(args, "field_id", None),
     )
@@ -38,6 +39,7 @@ def cmd_contend(args: argparse.Namespace) -> None:
 
 
 def cmd_crown(args: argparse.Namespace) -> None:
+    refuse_child_forge("of crown")
     root = find_root()
     if getattr(args, "field_id", None):
         die("of crown ignores --field; pick a winner with --winner <id>")

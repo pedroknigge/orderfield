@@ -333,6 +333,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
 
 
 def cmd_phase(args: argparse.Namespace) -> None:
+    refuse_child_forge("of phase")
     root = find_root()
     order = load_order(root)
     state = load_state(root)
@@ -584,6 +585,7 @@ def cmd_patch(args: argparse.Namespace) -> None:
 
 
 def cmd_next_wave(args: argparse.Namespace) -> None:
+    refuse_child_forge("of next-wave")
     root = find_root()
     order = load_order(root)
     state = load_state(root)

@@ -833,6 +833,46 @@ class ChildForgeLeaderVerbs(unittest.TestCase):
         self.assertIn("of: error: child-forge:", integ.stderr)
         self.assertIn("of integrate", integ.stderr)
 
+        phase = run_of(self.tmp, "phase", "build", env_extra=env)
+        self.assertNotEqual(phase.returncode, 0, phase.stdout + phase.stderr)
+        self.assertIn("of: error: child-forge:", phase.stderr)
+        self.assertIn("of phase", phase.stderr)
+
+        next_wave = run_of(self.tmp, "next-wave", env_extra=env)
+        self.assertNotEqual(next_wave.returncode, 0, next_wave.stdout + next_wave.stderr)
+        self.assertIn("of: error: child-forge:", next_wave.stderr)
+        self.assertIn("of next-wave", next_wave.stderr)
+
+        init = run_of(self.tmp, "init", "--mission", "subverted", env_extra=env)
+        self.assertNotEqual(init.returncode, 0, init.stdout + init.stderr)
+        self.assertIn("of: error: child-forge:", init.stderr)
+        self.assertIn("of init", init.stderr)
+
+        new = run_of(self.tmp, "new", "--mission", "subverted sibling", env_extra=env)
+        self.assertNotEqual(new.returncode, 0, new.stdout + new.stderr)
+        self.assertIn("of: error: child-forge:", new.stderr)
+        self.assertIn("of new", new.stderr)
+
+        contend = run_of(self.tmp, "contend", env_extra=env)
+        self.assertNotEqual(contend.returncode, 0, contend.stdout + contend.stderr)
+        self.assertIn("of: error: child-forge:", contend.stderr)
+        self.assertIn("of contend", contend.stderr)
+
+        crown = run_of(self.tmp, "crown", "--contest", "ctg_12345678", env_extra=env)
+        self.assertNotEqual(crown.returncode, 0, crown.stdout + crown.stderr)
+        self.assertIn("of: error: child-forge:", crown.stderr)
+        self.assertIn("of crown", crown.stderr)
+
+        checkpoint = run_of(self.tmp, "checkpoint", "--summary", "hacked", env_extra=env)
+        self.assertNotEqual(checkpoint.returncode, 0, checkpoint.stdout + checkpoint.stderr)
+        self.assertIn("of: error: child-forge:", checkpoint.stderr)
+        self.assertIn("of checkpoint", checkpoint.stderr)
+
+        spec = run_of(self.tmp, "spec", "--amend", "hacked req", env_extra=env)
+        self.assertNotEqual(spec.returncode, 0, spec.stdout + spec.stderr)
+        self.assertIn("of: error: child-forge:", spec.stderr)
+        self.assertIn("of spec", spec.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -93,6 +93,25 @@ from of.spec import (
 def cmd_spec(args: argparse.Namespace) -> None:
     """Binding-requirements ledger. Kernel does not LLM-extract; --extract is heuristic."""
     root = find_root()
+    mutating = any(
+        [
+            getattr(args, "amend", None),
+            getattr(args, "amend_file", None),
+            getattr(args, "revise", None),
+            getattr(args, "revise_file", None),
+            getattr(args, "from_file", None),
+            getattr(args, "extract", False),
+            getattr(args, "add", None),
+            getattr(args, "supersede", None),
+            getattr(args, "surface", None),
+            getattr(args, "bind", None),
+            getattr(args, "unbind", None),
+            getattr(args, "drop", None),
+            getattr(args, "sync", False),
+        ]
+    )
+    if mutating:
+        refuse_child_forge("of spec")
     # LOCK-002: SPEC.md, REQUIREMENTS and ORDER are the authority ledger.
     # `spec` is in MUTATING_COMMANDS, so the CLI path already holds the lock;
     # this nested (re-entrant, no-op) acquisition guards direct callers/tests.
