@@ -8,6 +8,16 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.32
+
+Live harness model discovery before recommendations.
+
+- `of models [--adapter HARNESS] [--json]` queries installed harnesses on each invocation: Codex app-server paginated visible `model/list`, Claude control initialization, and Grok, Cursor and Antigravity model-list commands. No inference prompts or ORDER mutation.
+- Reports model IDs, alias resolutions, descriptions, provider defaults/recommendations and reasoning efforts when available, with source and query time. Missing/unsupported/error stays explicit. New prices remain unknown; static prices remain dated references. Harness caches and account entitlement remain provider concerns.
+- Bounded reads, output and subprocess cleanup cover success, errors and timeout. The leader must consult live metadata before recommending a model; choices still follow existing consent.
+- **Proof:** `LiveModelDiscovery` (`tests/test_model_discovery.py`) / `SkillModelCatalogConsult` / `ModelCatalogHonesty`; real CLI queries against Codex, Claude, Grok, Cursor and Antigravity.
+- Packaging: VERSION 0.8.32; skill/alias previews, release installer pin and current docs in lockstep.
+
 ## 0.8.31
 
 Haken slaving authority invariants and Plan Contest lifecycle phase inheritance. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.30 notes. Folder, chat, and prompt ingress are unchanged.

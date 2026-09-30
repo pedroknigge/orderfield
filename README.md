@@ -5,19 +5,19 @@ The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of hando
 Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.8.31</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.32</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.31-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.32-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.8.31**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.8.32**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.8.31 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.8.32 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
@@ -68,7 +68,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 
 **InitAskSkip** Large (multi-slice / multi-role; once per field at init / first wave):
 
-- Consult the [model catalog](docs/model-catalog.md), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own.
+- Query `of models --adapter HARNESS --json` before any model recommendation. Codex and Claude expose protocol metadata; Grok, Cursor and agy use CLI list commands. Missing/unsupported/error stays explicit. Consult the [model catalog](docs/model-catalog.md) for supplemental prices with `last_checked` (new prices unknown), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own.
 - Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
 - **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
@@ -96,7 +96,7 @@ Two unrelated missions in the same working tree are sibling fields. `of new` ope
 
 ## Install
 
-The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.31` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.32` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
@@ -115,7 +115,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF=v0.8.31 bash install.sh --global --from-release --generic
+ORDERFIELD_REF=v0.8.32 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
