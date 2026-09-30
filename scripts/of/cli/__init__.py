@@ -26,6 +26,7 @@ from of.field import (
 )
 from of_adapters import ADAPTER_ORDER, KNOWN_TOOLS
 from of.host_ram import AgentBand
+from of.model_discovery import cmd_models
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.contend_cmd import cmd_contend, cmd_crown
@@ -193,6 +194,7 @@ __all__ = [
     "cmd_issue",
     "cmd_learn",
     "cmd_migrate",
+    "cmd_models",
     "cmd_new",
     "cmd_next_wave",
     "cmd_pack",
@@ -571,6 +573,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="list harness CLIs on PATH (present/missing; PATH≠auth)",
     )
     s.set_defaults(func=cmd_detect)
+
+    s = sub.add_parser("models", help="query live harness model metadata (no inference or routing)")
+    s.add_argument("--adapter", choices=ADAPTER_ORDER, help="omit to inventory every adapter")
+    s.add_argument("--timeout", type=float, default=15, help="seconds per adapter (default 15; maximum 120)")
+    s.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                   help="print model discovery JSON on stdout")
+    s.set_defaults(func=cmd_models)
 
     s = sub.add_parser(
         "issue",

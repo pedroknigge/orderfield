@@ -98,7 +98,9 @@ Observable via `of spawn --dry-run` (argv preview; approval flags render as
 
 ## Model hints (`ORDER.adapter_hints` / `packet.adapter_hints`)
 
-Opt-in. The kernel never invents a model. The `/of` skill consults [docs/model-catalog.md](../docs/model-catalog.md) then must propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
+Opt-in. The kernel never invents a model. Before any model recommendation, the `/of` leader runs `of models --adapter HARNESS --json`; only successful live rows support model availability. [docs/model-catalog.md](../docs/model-catalog.md) supplements prices with `last_checked`, not current availability or newly resolved prices. Propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
+
+`of models` starts Codex app-server (`initialize` + paginated visible `model/list`), Claude stream-json control initialization (`response.models`, no user messages, tools/MCP/settings disabled), `grok models`, `agent models` / `cursor-agent models`, or `agy models`. Optional `--adapter` selects one; otherwise every adapter reports explicitly. OpenCode, Orca, Qwen and generic report unsupported. `--timeout` bounds each query (15s default, max 120s). JSON stdout includes source, checked_at, IDs/resolution, descriptions, provider default/recommendation metadata, efforts and unknown price. Missing/error/unsupported never falls back to invented or static models. Provider internal caches remain possible; no inference, home scrape, routing or ORDER mutation. Processes terminate on success and failure; stderr/account banners are not exposed. Selected failure exits 2; all-adapter inventory tolerates missing/unsupported but exits 2 on errors. See the model catalog for the full output contract.
 
 ```bash
 of patch --model-hints field|wave|off

@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.31. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.32. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,13 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.31`
+**Status:** Shipped · **Current release line:** `0.8.32`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.32 — live harness model discovery
+
+- `of models` queries Codex, Claude, Grok, Cursor and Antigravity without inference prompts; output includes source, checked time, IDs, alias resolutions and available provider metadata. Missing/unsupported/error stays explicit; new prices remain unknown. The leader consults live models before recommending. Proof: `LiveModelDiscovery` / `SkillModelCatalogConsult`.
 
 ## 0.8.31 — Haken slaving authority invariants + plan contest phase inheritance
 

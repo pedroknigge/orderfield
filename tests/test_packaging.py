@@ -1030,6 +1030,17 @@ class SkillModelCatalogConsult(unittest.TestCase):
         self.assertIn("model catalog", hero)
         self.assertIn("cheap vs frontier", hero)
 
+    def test_live_discovery_precedes_any_model_recommendation(self) -> None:
+        for path in ("SKILL.md", "references/skill-appendix.md", "references/adapters.md",
+                     "docs/model-catalog.md", "README.md"):
+            with self.subTest(path=path):
+                text = (ROOT / path).read_text(encoding="utf-8")
+                self.assertIn("of models --adapter HARNESS --json", text)
+                self.assertIn("last_checked", text)
+        doc = (ROOT / "docs/model-catalog.md").read_text(encoding="utf-8")
+        self.assertIn('price_public: "unknown"', doc)
+        self.assertIn("Provider order is preserved", doc)
+
 
 class ModelCatalogHonesty(unittest.TestCase):
     """Catalog is sourced or unknown. Not IQ ranks. Not budget.tokens."""
@@ -3964,4 +3975,3 @@ class SkillProductBar(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

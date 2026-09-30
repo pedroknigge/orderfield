@@ -4,7 +4,35 @@ Advisory for the `/of` skill and the leader. Not a router. Not IQ ranks. Not `bu
 
 > Hub: [AGENTS.md](../AGENTS.md) · Hints: [glossary.md#adapter_hints](glossary.md#adapter_hints) · Signal: [efficiency-signal.md](efficiency-signal.md) · Machine: [model-catalog.json](model-catalog.json)
 
-The kernel still writes model choice only after consent (`of patch --model-hints` / `of pack --model-tier` / `--model`). This page is the living sheet the leader **consults before proposing** cheap vs frontier or a multi-harness mix. Ask. Do not silent-switch. Do not invent `$/MTok`.
+Before **any model recommendation**, run `of models --adapter HARNESS --json`. Live output determines the currently advertised model IDs and alias resolutions. This static sheet supplies supplemental price references with `last_checked`; it does not discover new models. Model choice still changes only after consent (`of patch --model-hints` / `of pack --model-tier` / `--model`). Do not silent-switch or invent `$/MTok`.
+
+## Live discovery
+
+```sh
+of models --adapter codex --json
+of models --adapter claude --json
+of models --json                    # inventory all adapters
+of models --adapter cursor --timeout 30 --json
+```
+
+Each invocation starts the installed CLI. Orderfield does not cache results, scrape home directories, send inference requests, change ORDER, or select a model. Harnesses may maintain their own catalog caches or built-in fallbacks; a fresh query is not proof of a fresh upstream fetch or guaranteed account entitlement. `checked_at` records query completion, not a release date. Provider order is preserved; lexical order and version-like names do not establish “latest” or “best”.
+
+JSON stdout is `{v: 1, kind: "model_discovery", adapters: [...]}`. Each adapter reports `adapter`, `source`, `checked_at`, `status`, `error`, and `models`. Each model exposes `model_id`, `resolved_model`, `display_name`, `description`, `is_default`, `recommendation`, `default_effort`, `efforts` (`effort`/`description`), and `price_public: "unknown"`. Missing metadata is null or an empty effort list. Defaults and Codex upgrade recommendations come only from explicit provider fields. Claude's recommended default label stays in `display_name`; no guessed rank or default boolean. Old alias prices are never transferred to newly resolved models.
+
+| adapter | live source | limits |
+|---|---|---|
+| codex | app-server `initialize`, `initialized`, paginated `model/list` (`includeHidden: false`) | visible picker metadata; no thread or turn starts |
+| claude | stream-json control `initialize` → `response.models` | no user messages; tools disabled, empty MCP and setting sources; version-dependent protocol |
+| grok | `grok models` | advertised CLI list and explicit default |
+| cursor | `agent models` (fallback binary `cursor-agent`) | account list; authentication failures explicit |
+| agy | `agy models` | tab-separated IDs/display names; no default guessed |
+| opencode / orca / qwen / generic | unsupported | no guessed list; OpenCode provider catalogs are not account entitlement |
+
+Timeout defaults to 15 seconds **per adapter**, adjustable with `--timeout` (>0, at most 120). Reads and pagination share that deadline. Processes terminate after success and failure; POSIX cleanup also signals their group (hosts denying group signals fall back to the direct child). Output is bounded. Reports omit stderr, account banners, credentials, and raw provider errors. Status is `ok`, `missing`, `unsupported`, or `error`; safe error codes distinguish missing binaries, timeout, process I/O, malformed protocol, empty lists and command/provider failures. Inspect authentication with the harness itself; discovery does not start login.
+
+Exit 0 means the selected query succeeded; exit 2 means it is missing/unsupported or failed. All-adapter inventory permits missing/unsupported rows, but exits 2 on any `error`; inspect every row. Invalid arguments exit nonzero. Harness startup can require writable runtime storage: in a sandbox with read-only Codex SQLite state, the caller can set `CODEX_SQLITE_HOME` to writable temporary storage without replacing `CODEX_HOME` or credentials.
+
+Sources: [Codex app-server protocol](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md), [model/list documentation](https://developers.openai.com/codex/app-server/#list-models-modellist), and local `codex app-server --help`, `claude --help`, `grok models --help`, `agent models --help`, `agy models --help`. Proof: `tests/test_model_discovery.py` uses subprocesses through the public CLI. On discovery failure, do not fall back silently to the static table.
 
 ## Honesty
 
@@ -55,8 +83,8 @@ agy Gemini rows use Cursor's published Google rates and tell the leader to re-ch
 
 ## How the leader uses this
 
-1. Read this page (or `docs/model-catalog.json`) before a multi-role pack or a mix ask.
-2. Propose cheap vs frontier from **tier hint + list price + notes**, not from folklore that frontier costs more tokens.
+1. Run `of models --adapter HARNESS --json` before any model recommendation; require `status=ok`. Query each proposed harness for a mix.
+2. Read this page (or `docs/model-catalog.json`) for supplemental **tier hint + list price + notes + last_checked**. Re-check stale price sources before quoting them. New models and resolutions have unknown prices until verified. Explain task tradeoffs without inventing performance ranks or assuming newer means better.
 3. Ask same-harness vs multi-harness mix. On mix, `of detect` (present / missing / PATH≠auth). Do not pick a model just because another harness lists a cheaper sheet.
 4. On yes: `of patch --model-hints` / `of pack --model-tier` / `--model NAME`. Never silent switch. Never `of pack --tokens`.
 
