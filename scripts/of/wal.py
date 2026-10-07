@@ -138,7 +138,13 @@ def _wal_snapshot_rel(rel: str) -> bool:
         return True
     if not posix.startswith("waves/"):
         return False
-    if "/packets/" in posix or "/prompts/" in posix or "/integrations/" in posix:
+    if (
+        "/packets/" in posix
+        or "/prompts/" in posix
+        or "/integrations/" in posix
+        or "/residuals/" in posix
+        or "/spawns/" in posix
+    ):
         return True
     return posix.endswith("/report.json") or posix == "report.json"
 
