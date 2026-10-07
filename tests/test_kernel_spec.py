@@ -1717,10 +1717,41 @@ class OwnedWriteGate(unittest.TestCase):
         packet = load_json(packet_path(self.tmp, "wt"))
         residual = load_json(self.tmp / str(packet["residual_path"]))
         of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
-        dest = self.tmp / str(packet["residual_path"])
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+
+    def test_respawn_preserves_initial_owned_baseline(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        packet_file = packet_path(self.tmp, "imp")
+        packet_rel = packet_file.relative_to(self.tmp).as_posix()
+        # First spawn sets baseline when src/mod.py does not exist
+        spawn1 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--dry-run")
+        self.assertEqual(spawn1.returncode, 0, spawn1.stderr)
+        
+        # Child writes the owned file
+        product = self.tmp / "src" / "mod.py"
+        product.parent.mkdir(parents=True, exist_ok=True)
+        product.write_text("print('hello')\n", encoding="utf-8")
+        
+        # Re-spawn (e.g. child was interrupted or fixing residual)
+        spawn2 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--dry-run", "--force-spawn")
+        self.assertEqual(spawn2.returncode, 0, spawn2.stderr)
+
+        # Write valid residual
+        self._write_done("imp", ensure=False)
+        packet = load_json(packet_file)
+        residual = bound_residual(self.tmp, "imp")
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
+        dest = self.tmp / str(packet["residual_path"])
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+        # Collect must recognize src/mod.py as written and NOT fail with owned_write_missing
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertNotIn("owned_write_missing", collected.stdout + collected.stderr)
+        self.assertIn("OK", collected.stdout)
+
 
 
 class ForceDeliverSpec(unittest.TestCase):
