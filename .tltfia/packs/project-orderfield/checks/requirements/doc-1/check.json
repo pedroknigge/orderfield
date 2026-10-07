@@ -1,0 +1,27 @@
+{
+  "id": "project-orderfield/requirements/doc-1",
+  "version": "1.0.0",
+  "area": "requirements",
+  "cardinality": "singleton",
+  "dimension": "project.project-orderfield.doc-1",
+  "minSeverity": null,
+  "params": {
+    "verifier": {
+      "type": "string",
+      "pattern": "\\S"
+    }
+  },
+  "impl": {
+    "kind": "primitive",
+    "primitive": "fitness",
+    "requirement": "PROJECT-DOC-001"
+  },
+  "phase": [
+    "stop",
+    "commit",
+    "ci"
+  ],
+  "feedback": {
+    "message": "PROJECT-DOC-001 needs reviewed project evidence: {symbol}."
+  }
+}

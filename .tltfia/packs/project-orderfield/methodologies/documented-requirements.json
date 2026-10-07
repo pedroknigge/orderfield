@@ -1,0 +1,248 @@
+{
+  "id": "project-orderfield/documented-requirements",
+  "version": "1.0.0",
+  "status": "preview",
+  "conflicts": [],
+  "invariants": [
+    {
+      "id": "PROJECT-DOC-001",
+      "check": "project-orderfield/requirements/doc-1",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-001"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "README.md:37; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
+        "paraphrase": "Work that will not survive one chat (long steps, a mid-run gap, a model switch, colliding writers, or a public claim that must be proven) is when to reach for `/orderfield` or `/of`."
+      },
+      "why": "Work that will not survive one chat (long steps, a mid-run gap, a model switch, colliding writers, or a public claim that must be proven) is when to reach for `/orderfield` or `/of`.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-002",
+      "check": "project-orderfield/requirements/doc-2",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-002"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "README.md:75; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
+        "paraphrase": "Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap."
+      },
+      "why": "Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-003",
+      "check": "project-orderfield/requirements/doc-3",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-003"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "README.md:138; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
+        "paraphrase": "This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both."
+      },
+      "why": "This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-004",
+      "check": "project-orderfield/requirements/doc-4",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-004"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "README.md:200; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
+        "paraphrase": "`tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel."
+      },
+      "why": "`tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-005",
+      "check": "project-orderfield/requirements/doc-5",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-005"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "README.md:243; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
+        "paraphrase": "Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime."
+      },
+      "why": "Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-006",
+      "check": "project-orderfield/requirements/doc-6",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-006"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/audit/out-of-scope.md:5; SHA-256 77f15807acfa9579b380e0353143135a1a19d3dd5e3e22e75e5d4ffe4284059b",
+        "paraphrase": "Record the miss. Do not implement a second product. Later analysis must not re-score these as defects."
+      },
+      "why": "Record the miss. Do not implement a second product. Later analysis must not re-score these as defects.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-007",
+      "check": "project-orderfield/requirements/doc-7",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-007"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/audit/pstack-v0.8.16.md:27; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
+        "paraphrase": "The 0.8.16 delta is four small honesty cuts plus packaging. The cooperative default path still matches the product. Contrast must be RESOLVED. A missing residual still blocks `of close`. Mission replace keys in a residual still do not land on ORDER. Same-child `of spawn` is serialized under `field.lock` for the claim write. Public-schema `anyOf`, string `maxLength`, and `patternProperties` now run. HITL `of issue` is the same verb in a new file. The full local suite is green."
+      },
+      "why": "The 0.8.16 delta is four small honesty cuts plus packaging. The cooperative default path still matches the product. Contrast must be RESOLVED. A missing residual still blocks `of close`. Mission replace keys in a residual still do not land on ORDER. Same-child `of spawn` is serialized under `field.lock` for the claim write. Public-schema `anyOf`, string `maxLength`, and `patternProperties` now run. HITL `of issue` is the same verb in a new file. The full local suite is green.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-008",
+      "check": "project-orderfield/requirements/doc-8",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-008"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/audit/pstack-v0.8.16.md:71; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
+        "paraphrase": "**One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node."
+      },
+      "why": "**One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-009",
+      "check": "project-orderfield/requirements/doc-9",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-009"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/audit/pstack-v0.8.16.md:246; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
+        "paraphrase": "Tag commit must be `184d7eba9c7af439dc1c42a0af2d4a0e56fc8ec7`."
+      },
+      "why": "Tag commit must be `184d7eba9c7af439dc1c42a0af2d4a0e56fc8ec7`.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-010",
+      "check": "project-orderfield/requirements/doc-10",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-010"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/audit/recovery-test-c-harness-kill.md:21; SHA-256 39cf64020b1abbfefa338bbbf0cf3d27567579ccb6ce61e8dd927ea99c5917f4",
+        "paraphrase": "First command must be `of resume` only — no reading packets, no chat memory."
+      },
+      "why": "First command must be `of resume` only — no reading packets, no chat memory.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-011",
+      "check": "project-orderfield/requirements/doc-11",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-011"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/close-honesty.md:130; SHA-256 6876b0e906e4bf11918b1e3d21ca8d628ee5c0d06d56984ec7ed6ec433cbd0ce",
+        "paraphrase": "A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED."
+      },
+      "why": "A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    },
+    {
+      "id": "PROJECT-DOC-012",
+      "check": "project-orderfield/requirements/doc-12",
+      "defaults": {
+        "verifier": "project-orderfield/PROJECT-DOC-012"
+      },
+      "severity": "deny",
+      "source": {
+        "work": "Project documentation (review before adoption)",
+        "locator": "docs/close-honesty.md:147; SHA-256 6876b0e906e4bf11918b1e3d21ca8d628ee5c0d06d56984ec7ed6ec433cbd0ce",
+        "paraphrase": "Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default."
+      },
+      "why": "Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default.",
+      "fixHint": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
+      "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
+      "examples": {
+        "pass": "pass/current",
+        "fail": "fail/no-evidence"
+      }
+    }
+  ]
+}

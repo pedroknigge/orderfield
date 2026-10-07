@@ -1,0 +1,80 @@
+{
+  "name": "python-starter",
+  "version": "1.0.0",
+  "engine": "0.2.12",
+  "sources": [
+    {
+      "ns": "core",
+      "kind": "builtin",
+      "version": "0.3.1"
+    },
+    {
+      "ns": "python",
+      "kind": "library",
+      "version": "1.0.0"
+    },
+    {
+      "kind": "path",
+      "ns": "project-orderfield",
+      "path": ".tltfia/packs/project-orderfield"
+    }
+  ],
+  "methodologies": [
+    "core/tltfia-integrity",
+    "python/quality",
+    "project-orderfield/documented-requirements"
+  ],
+  "scope": {
+    "include": [
+      "**"
+    ],
+    "exclude": [
+      "vendor/**",
+      "dist/**",
+      "build/**",
+      ".venv/**",
+      "venv/**",
+      "__pycache__/**",
+      "node_modules/**"
+    ]
+  },
+  "enforcement": "shadow",
+  "overrides": {
+    "project-orderfield/PROJECT-DOC-001": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-002": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-003": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-004": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-005": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-006": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-007": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-008": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-009": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-010": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-011": {
+      "enforcement": "shadow"
+    },
+    "project-orderfield/PROJECT-DOC-012": {
+      "enforcement": "shadow"
+    }
+  }
+}

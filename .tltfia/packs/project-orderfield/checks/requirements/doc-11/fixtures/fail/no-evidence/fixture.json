@@ -1,0 +1,26 @@
+{
+  "language": "typescript",
+  "params": {
+    "verifier": "project-orderfield/PROJECT-DOC-011"
+  },
+  "target": ".tltfia/preset.json",
+  "before": null,
+  "context": {
+    "fitness": {
+      "contractHash": "fixture-contract",
+      "inputHash": "fixture-input",
+      "command": [
+        "fixture-verifier"
+      ],
+      "receipt": null
+    }
+  },
+  "expect": {
+    "verdict": "fail",
+    "violations": [
+      {
+        "line": 1
+      }
+    ]
+  }
+}
