@@ -157,13 +157,7 @@ def _wal_snapshot_rel(rel: str) -> bool:
         return True
     if not posix.startswith("waves/"):
         return False
-    if (
-        "/packets/" in posix
-        or "/prompts/" in posix
-        or "/integrations/" in posix
-        or "/residuals/" in posix
-        or "/spawns/" in posix
-    ):
+    if "/packets/" in posix or "/prompts/" in posix or "/integrations/" in posix:
         return True
     return posix.endswith("/report.json") or posix == "report.json"
 
@@ -681,7 +675,7 @@ class _WalGeneration:
 
     def capture(self, path: Path, data: Any) -> bool:
         rel = _wal_rel(self.root, path)
-        if rel is None:
+        if rel is None or not _wal_snapshot_rel(rel):
             return False
         blob = _wal_payload_bytes(data)
         dest = self.stage_dir / rel
