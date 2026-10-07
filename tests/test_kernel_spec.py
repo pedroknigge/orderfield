@@ -1715,7 +1715,8 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertIn("owned_write_missing", empty.stdout + empty.stderr)
         (tree / "landed.py").write_text("ok\n", encoding="utf-8")
         packet = load_json(packet_path(self.tmp, "wt"))
-        residual = load_json(self.tmp / str(packet["residual_path"]))
+        dest = self.tmp / str(packet["residual_path"])
+        residual = load_json(dest)
         of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
@@ -1826,6 +1827,19 @@ class SemanticExtract(unittest.TestCase):
             "Nothing about a deadline should slip."
         )
         self.assertEqual(of.extract_requirements_from_spec(text), [])
+
+    def test_natural_brief_with_bullets_extracts_requirements(self) -> None:
+        text = (
+            "Add OAuth login to Next.js app:\n"
+            "- Google OAuth provider with refresh tokens\n"
+            "- Protected dashboard route with middleware\n"
+            "- Unit tests with mock tokens\n"
+            "- README documentation for environment variables\n"
+        )
+        reqs = of.extract_requirements_from_spec(text)
+        self.assertEqual(len(reqs), 4)
+        self.assertEqual(reqs[0]["text"], "Google OAuth provider with refresh tokens")
+
 
     def test_contrast_cites_spec_line(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-extract-cite-"))
