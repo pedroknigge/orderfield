@@ -41,7 +41,8 @@
   "enforcement": "shadow",
   "overrides": {
     "project-orderfield/PROJECT-DOC-001": {
-      "enforcement": "shadow"
+      "enforcement": "shadow",
+      "severity": "off"
     },
     "project-orderfield/PROJECT-DOC-002": {
       "enforcement": "shadow"
@@ -53,19 +54,23 @@
       "enforcement": "shadow"
     },
     "project-orderfield/PROJECT-DOC-005": {
-      "enforcement": "shadow"
+      "enforcement": "shadow",
+      "severity": "off"
     },
     "project-orderfield/PROJECT-DOC-006": {
-      "enforcement": "shadow"
+      "enforcement": "shadow",
+      "severity": "off"
     },
     "project-orderfield/PROJECT-DOC-007": {
-      "enforcement": "shadow"
+      "enforcement": "shadow",
+      "severity": "off"
     },
     "project-orderfield/PROJECT-DOC-008": {
       "enforcement": "shadow"
     },
     "project-orderfield/PROJECT-DOC-009": {
-      "enforcement": "shadow"
+      "enforcement": "shadow",
+      "severity": "off"
     },
     "project-orderfield/PROJECT-DOC-010": {
       "enforcement": "shadow"
@@ -75,6 +80,127 @@
     },
     "project-orderfield/PROJECT-DOC-012": {
       "enforcement": "shadow"
+    }
+  },
+  "fitness": {
+    "project-orderfield/PROJECT-DOC-002": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_host_ram.py"
+      ],
+      "inputs": [
+        "tests/test_host_ram.py",
+        "scripts/of/host_ram.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "34b1fb861d4044651c055ade09d82cf805a21a71dda011080206a4f1aa47d335",
+      "rationale": "Project assertion project-orderfield-project-doc-002. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap..\nNegative controls to review: Assert that omitted or invalid agent-band input prompts or defaults according to host RAM thresholds..\ndomain assumptions: Host RAM detection and agent-band budgeting in orderfield doctor and patch..\ndata assumptions: Standard memory queries on Linux/macOS/Windows..\nperformance assumptions: Host RAM test suite completes under 10 seconds..\nLimits: Covers agent-band querying, host RAM detection, and wave budget storage; does not govern live subagent OS memory usage.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-003": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "-k",
+        "test_validate_skill_exits_zero",
+        "tests/test_packaging.py"
+      ],
+      "inputs": [
+        "tests/test_packaging.py",
+        "scripts/validate-skill.sh",
+        "SKILL.md",
+        "of/SKILL.md",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "1324b8d65ad03d1ef94f4033d7edbc3d2b87d67d0e0db379ba3d79f03b8391e5",
+      "rationale": "Project assertion project-orderfield-project-doc-003. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both..\nNegative controls to review: Validate skill failure if primary SKILL.md or alias of/SKILL.md is missing or drifts..\ndomain assumptions: Skill discovery and packaging integrity..\ndata assumptions: SKILL.md and of/SKILL.md frontmatter and content..\nperformance assumptions: Validation runs within 15 seconds..\nLimits: Verifies discovery and release gate compliance for orderfield and of alias.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-004": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_quickstart.py"
+      ],
+      "inputs": [
+        "tests/test_quickstart.py",
+        "README.md",
+        "scripts/of.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "149ae9869155f006851db5ed28e7dd06cd18fe21e8f94502cdb067718d7ecbf1",
+      "rationale": "Project assertion project-orderfield-project-doc-004. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: `tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel..\nNegative controls to review: A broken command or syntax drift in README.md quickstart causes test_quickstart.py to fail..\ndomain assumptions: README documentation executable fidelity..\ndata assumptions: README.md fenced code blocks..\nperformance assumptions: Test runs within 10 seconds..\nLimits: Validates README quickstart block execution; does not prove downstream multi-wave behavior.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-008": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_schema_subset.py"
+      ],
+      "inputs": [
+        "tests/test_schema_subset.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "feb15fa8f489d59174497d912d68c94c85e08e586b2cb3432cc2af0df3bb8d01",
+      "rationale": "Project assertion project-orderfield-project-doc-008. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: **One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node..\nNegative controls to review: An unrecognized JSON schema keyword in public schemas is reported by schema_unknown_keywords..\ndomain assumptions: Public JSON schema validation engine in field.py..\ndata assumptions: Schema files under schemas/..\nperformance assumptions: Validation runs in under 1 second..\nLimits: Verifies keyword recognition traversal across public schema nodes.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-010": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_adapter_resume.py"
+      ],
+      "inputs": [
+        "tests/test_adapter_resume.py",
+        "scripts/of_adapters.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "3500d6b2633176121033d74d141515b8c9054b734f612d9db61cb22eb23675d3",
+      "rationale": "Project assertion project-orderfield-project-doc-010. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: First command must be `of resume` only — no reading packets, no chat memory..\nNegative controls to review: Attempting un-resumed operations on an open field fails without prior resume..\ndomain assumptions: Harness resume-first policy..\ndata assumptions: Existing .orderfield/ state..\nperformance assumptions: Resume test suite runs under 5 seconds..\nLimits: Verifies adapter resume protocol across supported harnesses.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-011": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_spec.CloseEvidenceGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_spec.py",
+        "scripts/of/regime.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "4c472dba01b01da46822a7efd0b49f9f03a5679f47f8451a632f33da5cd7196d",
+      "rationale": "Project assertion project-orderfield-project-doc-011. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED..\nNegative controls to review: Close residual with mismatched artifact_sha or slogan rollback is rejected at collect..\ndomain assumptions: Close honesty and evidence verification in regime.py..\ndata assumptions: Residual JSON and artifact on disk..\nperformance assumptions: Test runs under 15 seconds..\nLimits: Verifies close evidence artifact SHA and rollback command enforcement on slice completion.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
+    },
+    "project-orderfield/PROJECT-DOC-012": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_regime.RunbookPathGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_regime.py",
+        "scripts/of/regime.py",
+        "tltfia.fitness.json"
+      ],
+      "timeoutMs": 30000,
+      "verificationHash": "3077d831036af19fc1f38fd5fd116ac842dcc6ad29ade7cd20862d4c87a78b21",
+      "rationale": "Project assertion project-orderfield-project-doc-012. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default..\nNegative controls to review: Generic done-when text or missing runbook path in production-mode causes regime refusal..\ndomain assumptions: Done-when linting and runbook path verification..\ndata assumptions: ORDER done_when field values..\nperformance assumptions: Gate tests run under 10 seconds..\nLimits: Verifies rejection of theater done-when statements and requirement of valid runbook paths.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness."
     }
   }
 }

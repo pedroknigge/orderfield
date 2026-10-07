@@ -3,6 +3,127 @@
   "coreHash": "737e11c905f552af425edbecba27c4f406ab37a3e2f9d792d02a845aaac84991",
   "enforcement": "shadow",
   "engine": "0.2.12",
+  "fitness": {
+    "project-orderfield/PROJECT-DOC-002": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_host_ram.py"
+      ],
+      "inputs": [
+        "tests/test_host_ram.py",
+        "scripts/of/host_ram.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-002. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap..\nNegative controls to review: Assert that omitted or invalid agent-band input prompts or defaults according to host RAM thresholds..\ndomain assumptions: Host RAM detection and agent-band budgeting in orderfield doctor and patch..\ndata assumptions: Standard memory queries on Linux/macOS/Windows..\nperformance assumptions: Host RAM test suite completes under 10 seconds..\nLimits: Covers agent-band querying, host RAM detection, and wave budget storage; does not govern live subagent OS memory usage.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "34b1fb861d4044651c055ade09d82cf805a21a71dda011080206a4f1aa47d335"
+    },
+    "project-orderfield/PROJECT-DOC-003": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "-k",
+        "test_validate_skill_exits_zero",
+        "tests/test_packaging.py"
+      ],
+      "inputs": [
+        "tests/test_packaging.py",
+        "scripts/validate-skill.sh",
+        "SKILL.md",
+        "of/SKILL.md",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-003. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both..\nNegative controls to review: Validate skill failure if primary SKILL.md or alias of/SKILL.md is missing or drifts..\ndomain assumptions: Skill discovery and packaging integrity..\ndata assumptions: SKILL.md and of/SKILL.md frontmatter and content..\nperformance assumptions: Validation runs within 15 seconds..\nLimits: Verifies discovery and release gate compliance for orderfield and of alias.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "1324b8d65ad03d1ef94f4033d7edbc3d2b87d67d0e0db379ba3d79f03b8391e5"
+    },
+    "project-orderfield/PROJECT-DOC-004": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_quickstart.py"
+      ],
+      "inputs": [
+        "tests/test_quickstart.py",
+        "README.md",
+        "scripts/of.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-004. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: `tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel..\nNegative controls to review: A broken command or syntax drift in README.md quickstart causes test_quickstart.py to fail..\ndomain assumptions: README documentation executable fidelity..\ndata assumptions: README.md fenced code blocks..\nperformance assumptions: Test runs within 10 seconds..\nLimits: Validates README quickstart block execution; does not prove downstream multi-wave behavior.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "149ae9869155f006851db5ed28e7dd06cd18fe21e8f94502cdb067718d7ecbf1"
+    },
+    "project-orderfield/PROJECT-DOC-008": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_schema_subset.py"
+      ],
+      "inputs": [
+        "tests/test_schema_subset.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-008. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: **One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node..\nNegative controls to review: An unrecognized JSON schema keyword in public schemas is reported by schema_unknown_keywords..\ndomain assumptions: Public JSON schema validation engine in field.py..\ndata assumptions: Schema files under schemas/..\nperformance assumptions: Validation runs in under 1 second..\nLimits: Verifies keyword recognition traversal across public schema nodes.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "feb15fa8f489d59174497d912d68c94c85e08e586b2cb3432cc2af0df3bb8d01"
+    },
+    "project-orderfield/PROJECT-DOC-010": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_adapter_resume.py"
+      ],
+      "inputs": [
+        "tests/test_adapter_resume.py",
+        "scripts/of_adapters.py",
+        "scripts/of/field.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-010. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: First command must be `of resume` only — no reading packets, no chat memory..\nNegative controls to review: Attempting un-resumed operations on an open field fails without prior resume..\ndomain assumptions: Harness resume-first policy..\ndata assumptions: Existing .orderfield/ state..\nperformance assumptions: Resume test suite runs under 5 seconds..\nLimits: Verifies adapter resume protocol across supported harnesses.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "3500d6b2633176121033d74d141515b8c9054b734f612d9db61cb22eb23675d3"
+    },
+    "project-orderfield/PROJECT-DOC-011": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_spec.CloseEvidenceGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_spec.py",
+        "scripts/of/regime.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-011. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED..\nNegative controls to review: Close residual with mismatched artifact_sha or slogan rollback is rejected at collect..\ndomain assumptions: Close honesty and evidence verification in regime.py..\ndata assumptions: Residual JSON and artifact on disk..\nperformance assumptions: Test runs under 15 seconds..\nLimits: Verifies close evidence artifact SHA and rollback command enforcement on slice completion.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "4c472dba01b01da46822a7efd0b49f9f03a5679f47f8451a632f33da5cd7196d"
+    },
+    "project-orderfield/PROJECT-DOC-012": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_regime.RunbookPathGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_regime.py",
+        "scripts/of/regime.py",
+        "tltfia.fitness.json"
+      ],
+      "rationale": "Project assertion project-orderfield-project-doc-012. Declared coverage: complete for all applicable conditions of the selected requirement. Conditions: Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default..\nNegative controls to review: Generic done-when text or missing runbook path in production-mode causes regime refusal..\ndomain assumptions: Done-when linting and runbook path verification..\ndata assumptions: ORDER done_when field values..\nperformance assumptions: Gate tests run under 10 seconds..\nLimits: Verifies rejection of theater done-when statements and requirement of valid runbook paths.\nThese are project-authored coverage claims; TLTFIA has not validated their semantic completeness.",
+      "timeoutMs": 30000,
+      "verificationHash": "3077d831036af19fc1f38fd5fd116ac842dcc6ad29ade7cd20862d4c87a78b21"
+    }
+  },
   "generatedMarkers": [],
   "layers": {},
   "lockVersion": 1,
@@ -25,7 +146,7 @@
     "name": "python-starter",
     "version": "1.0.0"
   },
-  "presetHash": "bd0edd23cf52717b1663683bd9e95a709c69dc95f4027dbe01f30b1d5e154c9f",
+  "presetHash": "93a6da1fb2d9714f297db44e6b657b0a56f85a13e3bfb5e6fe114b57f8caa5bf",
   "ratchet": "no-new",
   "rules": [
     {
@@ -2730,45 +2851,6 @@
     },
     {
       "aliases": [
-        "project-orderfield/PROJECT-DOC-001"
-      ],
-      "check": "project-orderfield/requirements/doc-1@1.0.0",
-      "enforcement": "shadow",
-      "id": "project-orderfield/PROJECT-DOC-001",
-      "impl": {
-        "kind": "primitive",
-        "primitive": "fitness",
-        "requirement": "PROJECT-DOC-001"
-      },
-      "integrity": false,
-      "origin": {
-        "enforcement": "overrides.project-orderfield/PROJECT-DOC-001",
-        "params.verifier": "alias",
-        "severity": "alias"
-      },
-      "params": {
-        "exclude": [],
-        "paths": [
-          "**"
-        ],
-        "verifier": "project-orderfield/PROJECT-DOC-001"
-      },
-      "phases": [
-        "stop",
-        "commit",
-        "ci"
-      ],
-      "severity": "deny",
-      "text": {
-        "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
-        "fix": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
-        "message": "PROJECT-DOC-001 needs reviewed project evidence: {symbol}.",
-        "source": "Project documentation (review before adoption), README.md:37; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
-        "why": "Work that will not survive one chat (long steps, a mid-run gap, a model switch, colliding writers, or a public claim that must be proven) is when to reach for `/orderfield` or `/of`."
-      }
-    },
-    {
-      "aliases": [
         "project-orderfield/PROJECT-DOC-002"
       ],
       "check": "project-orderfield/requirements/doc-2@1.0.0",
@@ -2886,123 +2968,6 @@
     },
     {
       "aliases": [
-        "project-orderfield/PROJECT-DOC-005"
-      ],
-      "check": "project-orderfield/requirements/doc-5@1.0.0",
-      "enforcement": "shadow",
-      "id": "project-orderfield/PROJECT-DOC-005",
-      "impl": {
-        "kind": "primitive",
-        "primitive": "fitness",
-        "requirement": "PROJECT-DOC-005"
-      },
-      "integrity": false,
-      "origin": {
-        "enforcement": "overrides.project-orderfield/PROJECT-DOC-005",
-        "params.verifier": "alias",
-        "severity": "alias"
-      },
-      "params": {
-        "exclude": [],
-        "paths": [
-          "**"
-        ],
-        "verifier": "project-orderfield/PROJECT-DOC-005"
-      },
-      "phases": [
-        "stop",
-        "commit",
-        "ci"
-      ],
-      "severity": "deny",
-      "text": {
-        "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
-        "fix": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
-        "message": "PROJECT-DOC-005 needs reviewed project evidence: {symbol}.",
-        "source": "Project documentation (review before adoption), README.md:243; SHA-256 1cb9d59665ea2b5bab0a538b88d2c09bf000fea62f670ea87a82a0dbd726dc50",
-        "why": "Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime."
-      }
-    },
-    {
-      "aliases": [
-        "project-orderfield/PROJECT-DOC-006"
-      ],
-      "check": "project-orderfield/requirements/doc-6@1.0.0",
-      "enforcement": "shadow",
-      "id": "project-orderfield/PROJECT-DOC-006",
-      "impl": {
-        "kind": "primitive",
-        "primitive": "fitness",
-        "requirement": "PROJECT-DOC-006"
-      },
-      "integrity": false,
-      "origin": {
-        "enforcement": "overrides.project-orderfield/PROJECT-DOC-006",
-        "params.verifier": "alias",
-        "severity": "alias"
-      },
-      "params": {
-        "exclude": [],
-        "paths": [
-          "**"
-        ],
-        "verifier": "project-orderfield/PROJECT-DOC-006"
-      },
-      "phases": [
-        "stop",
-        "commit",
-        "ci"
-      ],
-      "severity": "deny",
-      "text": {
-        "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
-        "fix": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
-        "message": "PROJECT-DOC-006 needs reviewed project evidence: {symbol}.",
-        "source": "Project documentation (review before adoption), docs/audit/out-of-scope.md:5; SHA-256 77f15807acfa9579b380e0353143135a1a19d3dd5e3e22e75e5d4ffe4284059b",
-        "why": "Record the miss. Do not implement a second product. Later analysis must not re-score these as defects."
-      }
-    },
-    {
-      "aliases": [
-        "project-orderfield/PROJECT-DOC-007"
-      ],
-      "check": "project-orderfield/requirements/doc-7@1.0.0",
-      "enforcement": "shadow",
-      "id": "project-orderfield/PROJECT-DOC-007",
-      "impl": {
-        "kind": "primitive",
-        "primitive": "fitness",
-        "requirement": "PROJECT-DOC-007"
-      },
-      "integrity": false,
-      "origin": {
-        "enforcement": "overrides.project-orderfield/PROJECT-DOC-007",
-        "params.verifier": "alias",
-        "severity": "alias"
-      },
-      "params": {
-        "exclude": [],
-        "paths": [
-          "**"
-        ],
-        "verifier": "project-orderfield/PROJECT-DOC-007"
-      },
-      "phases": [
-        "stop",
-        "commit",
-        "ci"
-      ],
-      "severity": "deny",
-      "text": {
-        "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
-        "fix": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
-        "message": "PROJECT-DOC-007 needs reviewed project evidence: {symbol}.",
-        "source": "Project documentation (review before adoption), docs/audit/pstack-v0.8.16.md:27; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
-        "why": "The 0.8.16 delta is four small honesty cuts plus packaging. The cooperative default path still matches the product. Contrast must be RESOLVED. A missing residual still blocks `of close`. Mission replace keys in a residual still do not land on ORDER. Same-child `of spawn` is serialized under `field.lock` for the claim write. Public-schema `anyOf`, string `maxLength`, and `patternProperties` now run. HITL `of issue` is the same verb in a new file. The full local suite is green."
-      }
-    },
-    {
-      "aliases": [
         "project-orderfield/PROJECT-DOC-008"
       ],
       "check": "project-orderfield/requirements/doc-8@1.0.0",
@@ -3038,45 +3003,6 @@
         "message": "PROJECT-DOC-008 needs reviewed project evidence: {symbol}.",
         "source": "Project documentation (review before adoption), docs/audit/pstack-v0.8.16.md:71; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
         "why": "**One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node."
-      }
-    },
-    {
-      "aliases": [
-        "project-orderfield/PROJECT-DOC-009"
-      ],
-      "check": "project-orderfield/requirements/doc-9@1.0.0",
-      "enforcement": "shadow",
-      "id": "project-orderfield/PROJECT-DOC-009",
-      "impl": {
-        "kind": "primitive",
-        "primitive": "fitness",
-        "requirement": "PROJECT-DOC-009"
-      },
-      "integrity": false,
-      "origin": {
-        "enforcement": "overrides.project-orderfield/PROJECT-DOC-009",
-        "params.verifier": "alias",
-        "severity": "alias"
-      },
-      "params": {
-        "exclude": [],
-        "paths": [
-          "**"
-        ],
-        "verifier": "project-orderfield/PROJECT-DOC-009"
-      },
-      "phases": [
-        "stop",
-        "commit",
-        "ci"
-      ],
-      "severity": "deny",
-      "text": {
-        "avoid": "Document extraction is a suggestion. Fixtures only test the checker; they do not prove the project requirement. Reject irrelevant statements during review.",
-        "fix": "Read this requirement and its source. Bind a bounded project assertion with positive and invalid controls, reviewed input globs and a coverage rationale; run it before claiming compliance.",
-        "message": "PROJECT-DOC-009 needs reviewed project evidence: {symbol}.",
-        "source": "Project documentation (review before adoption), docs/audit/pstack-v0.8.16.md:246; SHA-256 3a103e27760228774b2903f0b00cd0269bb20bcb62851ac8eb31328d973db743",
-        "why": "Tag commit must be `184d7eba9c7af439dc1c42a0af2d4a0e56fc8ec7`."
       }
     },
     {
