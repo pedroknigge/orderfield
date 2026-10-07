@@ -2540,5 +2540,87 @@ class PackCollectWallClock(unittest.TestCase):
         )
 
 
+class MalformedResidualSuite(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-malformed-res-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        r = run_of(
+            self.tmp, "init", "--mission", "malformed test", "--phase", "explore"
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_malformed_residual_isolated_and_unpacked_with_force(self) -> None:
+        p1 = run_of(
+            self.tmp, "pack", "--slice", "slice 1", "--role", "explorer", "--child-id", "c1"
+        )
+        self.assertEqual(p1.returncode, 0, p1.stderr)
+        p2 = run_of(
+            self.tmp, "pack", "--slice", "slice 2", "--role", "explorer", "--child-id", "c2"
+        )
+        self.assertEqual(p2.returncode, 0, p2.stderr)
+
+        # Write invalid/malformed JSON for c1
+        r1_path = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "c1.json"
+        r1_path.parent.mkdir(parents=True, exist_ok=True)
+        r1_path.write_text("{this is not valid json\n", encoding="utf-8")
+
+        # Write valid residual for c2
+        pkt2 = load_json(
+            self.tmp / ".orderfield" / "waves" / "001" / "packets" / "c2.json"
+        )
+        scratch2 = self.tmp / pkt2["scratch_dir"]
+        scratch2.mkdir(parents=True, exist_ok=True)
+        (scratch2 / "notes.md").write_text("ok\n", encoding="utf-8")
+        r2_data = {
+            "v": 1,
+            "packet_id": pkt2["packet_id"],
+            "packet_hash": pkt2["packet_hash"],
+            "order_id": pkt2["order_id"],
+            "order_rev": pkt2["order_rev"],
+            "wave": 1,
+            "child_id": "c2",
+            "role": "explorer",
+            "status": "done",
+            "result_ref": pkt2["scratch_dir"] + "/notes.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "done",
+                "proposed_patch": None,
+            },
+            "metrics": {
+                "uncertainty": 0.1,
+                "tool_failures": 0,
+                "divergence": 0.0,
+                "novelty": False,
+            },
+        }
+        r2_path = self.tmp / pkt2["residual_path"]
+        r2_path.write_text(json.dumps(r2_data, indent=2) + "\n", encoding="utf-8")
+
+        # Collect must NOT crash; it must report c1 INVALID and c2 OK
+        col = run_of(self.tmp, "collect")
+        self.assertIn("INVALID c1.json", col.stdout)
+        self.assertIn("OK c2.json", col.stdout)
+        self.assertIn("wave=1 ok=1 invalid=1", col.stdout)
+
+        # c1 unpack without --force refuses
+        up_no_force = run_of(self.tmp, "unpack", "--child-id", "c1")
+        self.assertNotEqual(up_no_force.returncode, 0)
+        self.assertIn("already wrote a residual", up_no_force.stderr)
+
+        # c1 unpack with --force succeeds and removes residual and sidecar
+        up_force = run_of(self.tmp, "unpack", "--child-id", "c1", "--force")
+        self.assertEqual(up_force.returncode, 0, up_force.stderr)
+        self.assertFalse(r1_path.exists())
+        self.assertFalse(
+            (r1_path.parent / (r1_path.name + ".invalid.txt")).exists()
+        )
+
+        # Subsequent collect now shows only c2 and passes
+        col2 = run_of(self.tmp, "collect")
+        self.assertEqual(col2.returncode, 0, col2.stdout + col2.stderr)
+        self.assertIn("wave=1 ok=1 invalid=0", col2.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

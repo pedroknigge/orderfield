@@ -5228,6 +5228,7 @@ from of.wal import (  # noqa: E402,F401
     field_read_bytes,
     field_read_text,
     load_json,
+    try_load_json,
     recover_field_wal,
     wal_current_path,
     wal_home,

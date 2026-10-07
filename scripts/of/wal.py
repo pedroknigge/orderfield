@@ -57,23 +57,42 @@ _WAL_SNAPSHOT_NAMES = frozenset(
 _wal_read_current: ContextVar[bool] = ContextVar("of_wal_read_current", default=False)
 
 
-def load_json(path: Path) -> Any:
+def try_load_json(path: Path) -> tuple[Any | None, str | None]:
+    """Safe JSON loader returning (data, None) on success or (None, error_str) on error."""
     known, payload = _field_view_bytes(path)
     if known:
         if payload is None:
-            die(f"missing {path}")
+            return None, f"missing {path}"
         try:
-            return json.loads(payload.decode("utf-8"))
+            return json.loads(payload.decode("utf-8")), None
+        except UnicodeDecodeError as e:
+            return None, f"invalid UTF-8 in {path}: {e}"
         except json.JSONDecodeError as e:
-            die(f"invalid JSON in {path}: {e}")
+            return None, f"invalid JSON in {path}: {e}"
+        except (ValueError, RecursionError) as e:
+            return None, f"malformed JSON in {path}: {e}"
     try:
         if path.is_file() and not path.is_symlink():
-            return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        die(f"invalid JSON in {path}: {e}")
-    except OSError:
-        pass
-    die(f"missing {path}")
+            raw = path.read_bytes()
+            try:
+                text = raw.decode("utf-8")
+                return json.loads(text), None
+            except UnicodeDecodeError as e:
+                return None, f"invalid UTF-8 in {path}: {e}"
+            except json.JSONDecodeError as e:
+                return None, f"invalid JSON in {path}: {e}"
+            except (ValueError, RecursionError) as e:
+                return None, f"malformed JSON in {path}: {e}"
+    except OSError as e:
+        return None, f"cannot read {path}: {e}"
+    return None, f"missing {path}"
+
+
+def load_json(path: Path) -> Any:
+    data, err = try_load_json(path)
+    if err:
+        die(err)
+    return data
 
 
 def dump_json(path: Path, data: Any, skip_dir_fsync: bool = False) -> None:
