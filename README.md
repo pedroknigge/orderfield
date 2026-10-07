@@ -5,19 +5,19 @@ The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of hando
 Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.8.33</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.8.34</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.33-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.34-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.8.33**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.8.34**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.8.33 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.8.34 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
