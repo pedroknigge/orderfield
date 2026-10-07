@@ -53,6 +53,7 @@ from of.cli.ops import (
     cmd_wave,
     cmd_worktree,
     cmd_worktree_add,
+    cmd_worktree_land,
     cmd_worktree_list,
     cmd_worktree_remove,
     format_agents_note,
@@ -214,6 +215,7 @@ __all__ = [
     "cmd_wave",
     "cmd_worktree",
     "cmd_worktree_add",
+    "cmd_worktree_land",
     "cmd_worktree_list",
     "cmd_worktree_remove",
     "discover_recovery_eval_specs",
@@ -787,8 +789,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--path",
         help="destination outside the project (default: sibling <repo>-of-<child_id>)",
     )
+    wland = wt.add_parser(
+        "land", help="land/merge commits from child worktree into current branch"
+    )
+    wland.add_argument("--child-id", required=True)
     wrm = wt.add_parser("remove", help="remove a recorded worktree")
     wrm.add_argument("--child-id", required=True)
+    wrm.add_argument(
+        "--force",
+        action="store_true",
+        help="force remove even if worktree has unlanded changes",
+    )
     wt.add_parser("list", help="list recorded worktrees")
     s.set_defaults(func=cmd_worktree)
 

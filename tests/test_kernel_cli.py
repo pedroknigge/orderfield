@@ -2995,5 +2995,79 @@ class SpawnPacketRequired(unittest.TestCase):
         self.assertIn("required", blob)
 
 
+class WorktreeLandSuite(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wt-land-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.tmp)], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "config", "user.name", "Test User"], check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "config", "user.email", "test@example.com"],
+            check=True,
+        )
+        readme = self.tmp / "README.md"
+        readme.write_text("# Project\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.tmp), "add", "README.md"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "commit", "-qm", "init project"], check=True
+        )
+        r = run_of(self.tmp, "init", "--mission", "worktree test", "--phase", "build")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_worktree_land_merges_child_commits(self) -> None:
+        add = run_of(self.tmp, "worktree", "add", "--child-id", "c1")
+        self.assertEqual(add.returncode, 0, add.stderr)
+        wt_dir = self.tmp.parent / f"{self.tmp.name}-of-c1"
+        self.assertTrue(wt_dir.is_dir())
+
+        # Child works in worktree and commits
+        feat = wt_dir / "feature.py"
+        feat.write_text("def hello(): return 'world'\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(wt_dir), "add", "feature.py"], check=True)
+        subprocess.run(
+            ["git", "-C", str(wt_dir), "commit", "-qm", "feat: child work"], check=True
+        )
+
+        # Leader lands the worktree
+        land = run_of(self.tmp, "worktree", "land", "--child-id", "c1")
+        self.assertEqual(land.returncode, 0, land.stdout + land.stderr)
+        self.assertIn("landed", land.stdout)
+        self.assertIn("1 landed into HEAD", land.stdout)
+
+        # Verify feature.py is now present in leader repo
+        self.assertTrue((self.tmp / "feature.py").is_file())
+        self.assertEqual(
+            (self.tmp / "feature.py").read_text(encoding="utf-8"),
+            "def hello(): return 'world'\n",
+        )
+
+        # Remove now succeeds cleanly without --force
+        rm = run_of(self.tmp, "worktree", "remove", "--child-id", "c1")
+        self.assertEqual(rm.returncode, 0, rm.stderr)
+        self.assertFalse(wt_dir.exists())
+
+    def test_worktree_remove_refuses_unlanded_work(self) -> None:
+        add = run_of(self.tmp, "worktree", "add", "--child-id", "c2")
+        self.assertEqual(add.returncode, 0, add.stderr)
+        wt_dir = self.tmp.parent / f"{self.tmp.name}-of-c2"
+        self.assertTrue(wt_dir.is_dir())
+
+        # Child creates uncommitted or unlanded work
+        feat = wt_dir / "draft.py"
+        feat.write_text("# draft\n", encoding="utf-8")
+
+        # Plain remove must refuse
+        rm = run_of(self.tmp, "worktree", "remove", "--child-id", "c2")
+        self.assertNotEqual(rm.returncode, 0, rm.stdout + rm.stderr)
+        self.assertIn("unlanded changes", rm.stderr)
+
+        # Remove with --force succeeds
+        rm_force = run_of(self.tmp, "worktree", "remove", "--child-id", "c2", "--force")
+        self.assertEqual(rm_force.returncode, 0, rm_force.stderr)
+        self.assertFalse(wt_dir.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
