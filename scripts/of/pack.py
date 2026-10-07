@@ -1322,6 +1322,10 @@ class CloseEvidence:
         r"(?:artifact_sha|sha256)\s*[:=]\s*([0-9a-f]{64})\b",
         re.I,
     )
+    ARTIFACT_SHA_RE = re.compile(
+        r"\bartifact_sha\s*[:=]\s*([0-9a-f]{64})\b",
+        re.I,
+    )
     ROLLBACK_RE = re.compile(r"(?im)^rollback:\s*(\S.*)$")
     COMMAND_RE = re.compile(
         r"(?:"
@@ -1353,8 +1357,20 @@ class CloseEvidence:
 
     @staticmethod
     def parse_sha(evidence: str) -> str | None:
-        match = CloseEvidence.SHA_RE.search(str(evidence or ""))
+        text = str(evidence or "")
+        explicit = CloseEvidence.ARTIFACT_SHA_RE.search(text)
+        if explicit:
+            return explicit.group(1).lower()
+        match = CloseEvidence.SHA_RE.search(text)
         return match.group(1).lower() if match else None
+
+    @staticmethod
+    def all_shas(evidence: str) -> list[str]:
+        text = str(evidence or "")
+        explicit = [h.lower() for h in CloseEvidence.ARTIFACT_SHA_RE.findall(text)]
+        if explicit:
+            return explicit
+        return [h.lower() for h in CloseEvidence.SHA_RE.findall(text)]
 
     @staticmethod
     def parse_rollback(evidence: str) -> str | None:
@@ -1577,6 +1593,11 @@ class CloseEvidence:
             else:
                 wants = {CloseEvidence.digest(path) for path in candidates}
                 if got not in wants:
+                    for alt in CloseEvidence.all_shas(evidence):
+                        if alt in wants:
+                            got = alt
+                            break
+                if got not in wants:
                     errs.append(
                         CloseEvidence.format_error(
                             field,
@@ -1594,14 +1615,20 @@ class CloseEvidence:
                         "requires artifact_sha (sha256 of result_ref)",
                     )
                 )
-            elif got != want:
-                errs.append(
-                    CloseEvidence.format_error(
-                        field,
-                        "artifact_sha",
-                        "artifact sha does not match result_ref",
+            else:
+                if got != want:
+                    for alt in CloseEvidence.all_shas(evidence):
+                        if alt == want:
+                            got = alt
+                            break
+                if got != want:
+                    errs.append(
+                        CloseEvidence.format_error(
+                            field,
+                            "artifact_sha",
+                            "artifact sha does not match result_ref",
+                        )
                     )
-                )
         elif not got:
             errs.append(
                 CloseEvidence.format_error(

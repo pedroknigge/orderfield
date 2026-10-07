@@ -352,3 +352,17 @@ class EvidenceReceiptCollect(unittest.TestCase):
         self.assertNotEqual(collected.returncode, 0, blob)
         self.assertIn("INVALID", blob)
         self.assertIn("bad receipt is not green", blob)
+
+    def test_receipt_hash_does_not_mask_artifact_sha(self) -> None:
+        from of.pack import CloseEvidence
+
+        receipt_sha = "a" * 64
+        product_sha = "b" * 64
+        evidence = (
+            f"evidence_receipt: command_id=pytest sha256={receipt_sha}\n"
+            f"artifact_sha: {product_sha}\n"
+            "rollback: git checkout -- src/main.py\n"
+        )
+        self.assertEqual(CloseEvidence.parse_sha(evidence), product_sha)
+        self.assertIn(product_sha, CloseEvidence.all_shas(evidence))
+
