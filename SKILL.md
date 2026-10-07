@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.32. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.8.33. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.32"
+  version: "0.8.33"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,7 +19,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
 
-Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Mid-flight H2; first close. Compared-to: planning-with-files.
+Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
 Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
@@ -31,8 +31,8 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
-| multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Batch with init card** — explorer cheap, implementer frontier. Not smarter=costlier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
-| wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, batch in 1-turn plan card or ask — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. PATH≠login. Never silent mix. |
+| multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
+| wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
 | long mission, residuals landed / next-wave replan | quote `of status` efficiency, `of detect` present/missing, `of doctor` balance (`unknown` if unpublished). Never invent. **Must ask** before cheap/frontier or mix rebalance. Never silent. |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** Oversized `--slice` is **advisory** — **Do not refuse**. |
@@ -54,8 +54,8 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing / malformed / non-Git refuse before launch. No record → existing argv |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: refuse `shared_worktree` (`of worktree add`, series). After collect/abandon: `worker-stop` then `worker-release`; `of worktree land` then `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
-| init / first wave plan | **InitAskSkip** Large: batch in init card or ask once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not after ordinary integrate. |
-| init agent-band (once/field) | batch in init card or ask once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap. |
+| init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
+| init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --verified-contract ID --cite` → `of contrast` → `of close --checklist` → `of close` |
@@ -119,4 +119,4 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
+Stay-on-the-run, `OF_TRUST`, learn, siblings, close-is-proof: appendix.

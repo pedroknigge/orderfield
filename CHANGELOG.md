@@ -8,6 +8,20 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.33
+
+Kernel invariants preservation, worktree lifecycle landing, and natural brief extraction. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.32 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **WAL wave residual and spawn preservation:** WAL manifest snapshots record all relative paths under `.orderfield/` (`residuals/wave-*`, `spawns/`), preventing unlinking of completed wave residuals and child spawn records upon subsequent mutating commands.
+- **Evidence receipt regex isolation:** `CloseEvidence` prioritizes explicit top-level `artifact_sha:` and `rollback:` lines before scanning nested evidence receipt strings, avoiding spurious sha extraction from quoted receipt output.
+- **Re-spawn baseline preservation:** Preserves the initial wave spawn baseline digest and `started_at` timestamp on child re-spawn, preventing `owned_write_missing` deadlocks caused by re-baselining already-modified files.
+- **Worktree landing and safe removal:** Added `of worktree land --child-id <id>` to cherry-pick/merge child worktree commits into the leader HEAD, and guarded `of worktree remove` against unlanded commit deletion without `--force`.
+- **Malformed residual isolation and robust replay:** Parsing wave residuals isolates malformed JSON per child; `of unpack --force` safely discards invalid residuals; eliminated brittle shell `&&` chaining in discovery replay.
+- **Natural brief requirement extraction:** Natural briefs with bullet points and numbered lists are parsed as requirements without requiring rigid markdown section headers, eliminating `SPEC-EMPTY` friction for cold agents.
+- **Batched plan card:** SKILL.md consolidates sequential initialization questions into a single 1-turn plan proposal card.
+- **Proof:** `test_manifest_preserves_wave_residuals_across_snapshot` (`tests/test_field_wal.py`), `test_evidence_receipt_matches_deterministic_fixture` (`tests/test_evidence_receipt.py`), `test_extract_requirements_from_natural_brief_bullets` (`tests/test_kernel_spec.py`), `test_worktree_land_merges_child_commits` (`tests/test_kernel_cli.py`), `test_unpack_force_discards_invalid_residuals` (`tests/test_kernel_pack.py`).
+- Packaging: VERSION 0.8.33; skill/alias previews, release installer pin and current docs in lockstep.
+
 ## 0.8.32
 
 Live harness model discovery before recommendations.

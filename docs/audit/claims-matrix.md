@@ -17,7 +17,8 @@ Zero critical Contradicted after the pass. Remaining Partials are protocol hones
 **Intent:** audit → integrate (patch supporting docs)
 **Out:** root
 **Auditor:** documentation-manager
-**Code rev:** VERSION `0.8.32`
+**Code rev:** VERSION `0.8.33`
+- [x] 0.8.33: kernel invariants preservation (WAL wave residuals rels, pack artifact_sha vs receipt sha regex, re-spawn baseline preservation, malformed residual per-child isolation), worktree lifecycle landing (`of worktree land`), and natural brief bullet requirement extraction; PackagingBump 0.8.33; no new C-ID (honesty cap)
 - [x] 0.8.32: live harness model discovery (`of models`), bounded protocol/list queries, explicit missing/unsupported/error, and consult-before-recommendation; `LiveModelDiscovery` / `SkillModelCatalogConsult`; C-144 updated without a new C-ID
 - [x] 0.8.31: Haken slaving authority invariants (`refuse_child_forge` covers `of phase`, `of next-wave`, `of init`, `of new`, `of contend`, `of crown`, `of checkpoint`, and mutating `of spec`); plan contest mother-context phase inheritance when `--phase` is omitted; PackagingBump 0.8.31; no new C-ID (honesty cap)
 - [x] 2026-09-21 consumer README rewrite (C-135 / C-136): install + first close sit on the public path; First close H2 is between Install and Uninstall; locked `ReadmeProductSurface` needles stay; ceremony (InitAskSkip Large, lock set, command dump) moves below or into SKILL. `docs/external-brief.md` status stamp `0.7.57` → `0.8.29`. No new C-ID (honesty cap)
