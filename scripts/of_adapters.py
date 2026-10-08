@@ -489,7 +489,8 @@ class SensorTrust:
     Dogfood: the write-floor (claude ``acceptEdits``) denied ``npm test`` /
     lint / typecheck / ``gh`` / ``shasum`` in headless sensors, so every
     explorer ended ``blocked``. Sensors need to *run* read-only commands and
-    write only under ``.orderfield/`` (scratch + residual). Applies only when
+    write only their own scratch dir plus their exact residual path — never
+    ORDER, state or wal/ (``write_globs``). Applies only when
     the resolved profile is the default write-floor (auto-edit / auto);
     explicit conservative / plan / yolo are never overridden.
 
@@ -498,7 +499,7 @@ class SensorTrust:
       qwen     --approval-mode auto-edit + --allowed-tools=run_shell_command(...)
       opencode OPENCODE_PERMISSION env (bash + edit pattern maps)
       codex    --sandbox workspace-write (commands run; writes not confined
-               to .orderfield — OwnedWrite digest is the backstop)
+               to the child's scratch — collect ScopeWrite is the backstop)
       cursor / grok / agy / orca: no allowlist argv → write-floor as before
                plus a leader-directed WARN. generic: OF_AGENT's job.
     """
@@ -524,7 +525,6 @@ class SensorTrust:
         "tail", "rg", "grep", "find", "of",
     )
     CLAUDE_TOOLS = ("Read", "Grep", "Glob", "LS")
-    WRITE_GLOB = ".orderfield/**"
     NEXT = {
         "cursor": (
             "no allowlist argv; sensor keeps the write-floor (test/lint may "
@@ -553,30 +553,60 @@ class SensorTrust:
         return role in SensorTrust.ROLES and resolved in WriteFloor.WANT
 
     @staticmethod
-    def claude_allowed() -> str:
+    def write_globs(packet: Any, home_rel: str = ".orderfield") -> list[str]:
+        """The child's scratch dir and exact residual path, project-relative.
+
+        ``home_rel`` maps canonical ``.orderfield/`` onto a nested field home.
+        """
+        def physical(rel: Any) -> str:
+            text = str(rel or "").strip()
+            if text.startswith(".orderfield/") and not text.startswith(".orderfield/fields/"):
+                return home_rel.rstrip("/") + text[len(".orderfield"):]
+            return text
+
+        pkt = packet if isinstance(packet, dict) else {}
+        out: list[str] = []
+        scratch = physical(pkt.get("scratch_dir")).rstrip("/")
+        if scratch:
+            out.append(f"{scratch}/**")
+        residual = physical(pkt.get("residual_path"))
+        if residual:
+            out.append(residual)
+        return out
+
+    @staticmethod
+    def claude_allowed(writes: list[str]) -> str:
         rules = list(SensorTrust.CLAUDE_TOOLS)
         for cmd in SensorTrust.COMMANDS:
             rules.append(f"Bash({cmd})")
             rules.append(f"Bash({cmd} *)")
-        rules.append(f"Edit(./{SensorTrust.WRITE_GLOB})")
-        rules.append(f"Write(./{SensorTrust.WRITE_GLOB})")
+        for glob in writes:
+            rules.append(f"Edit(./{glob})")
+            rules.append(f"Write(./{glob})")
         return ",".join(rules)
 
     @staticmethod
-    def opencode_permission() -> str:
+    def opencode_permission(writes: list[str]) -> str:
         bash: dict[str, str] = {"*": "deny"}
         for cmd in SensorTrust.COMMANDS:
             bash[cmd] = "allow"
             bash[f"{cmd} *"] = "allow"
+        edit = {"*": "deny"}
+        edit.update({glob: "allow" for glob in writes})
         doc = {
             "bash": bash,
-            "edit": {"*": "deny", SensorTrust.WRITE_GLOB: "allow"},
+            "edit": edit,
             "webfetch": "deny",
         }
         return json.dumps(doc, separators=(",", ":"))
 
     @staticmethod
-    def flags(adapter: str, profile: str | None, packet: Any) -> list[str] | None:
+    def flags(
+        adapter: str,
+        profile: str | None,
+        packet: Any,
+        writes: list[str] | None = None,
+    ) -> list[str] | None:
         """Sensor argv replacing trust_flags, or None (use trust_flags)."""
         if not SensorTrust.applies(adapter, profile, packet):
             return None
@@ -585,7 +615,9 @@ class SensorTrust:
                 "--permission-mode",
                 "dontAsk",
                 "--allowedTools",
-                SensorTrust.claude_allowed(),
+                SensorTrust.claude_allowed(
+                    SensorTrust.write_globs(packet) if writes is None else writes
+                ),
             ]
         if adapter == "qwen":
             out = ["--approval-mode", "auto-edit"]
@@ -595,9 +627,15 @@ class SensorTrust:
         return None
 
     @staticmethod
-    def env(adapter: str, profile: str | None, packet: Any) -> dict[str, str]:
+    def env(
+        adapter: str,
+        profile: str | None,
+        packet: Any,
+        writes: list[str] | None = None,
+    ) -> dict[str, str]:
         if adapter == "opencode" and SensorTrust.applies(adapter, profile, packet):
-            return {"OPENCODE_PERMISSION": SensorTrust.opencode_permission()}
+            globs = SensorTrust.write_globs(packet) if writes is None else writes
+            return {"OPENCODE_PERMISSION": SensorTrust.opencode_permission(globs)}
         return {}
 
     @staticmethod
@@ -1127,14 +1165,17 @@ class AdapterBalance:
 
 
 def pick_adapter(explicit: str | None, preferred: str | None = None) -> str:
-    """--adapter > OF_ADAPTER > ORDER.harness > first detected."""
+    """--adapter > ORDER.harness > OF_ADAPTER > first detected.
+
+    The disk pin outranks ambient env; spawn warns on the conflict.
+    """
     if explicit:
         return explicit
+    if preferred in ADAPTER_ORDER:
+        return preferred
     env = os.environ.get("OF_ADAPTER")
     if env:
         return env
-    if preferred in ADAPTER_ORDER:
-        return preferred
     detected = detect_adapters()
     for name in ADAPTER_ORDER:
         if detected.get(name):
@@ -1613,6 +1654,7 @@ class AdapterResume:
     """
 
     KEY = "session_id"
+    ADAPTER_KEY = "session_adapter"
     # Documented resume-by-id only. --continue is id-less; never emit.
     ARGV = {
         "claude": "--resume",
@@ -1661,12 +1703,32 @@ class AdapterResume:
         return sid
 
     @staticmethod
-    def argv_flags(adapter: str, residual: dict[str, Any] | None) -> list[str]:
+    def prior_adapter(residual_abs: Path, packet: dict[str, Any]) -> str:
+        """Adapter of the last kernel spawn of this child (minted the session)."""
+        child = str((packet or {}).get("child_id") or "")
+        if not child or "/" in child:
+            return ""
+        meta = AdapterResume.load(residual_abs.parent.parent / "spawns" / f"{child}.json")
+        return str((meta or {}).get("adapter") or "").strip()
+
+    @staticmethod
+    def argv_flags(
+        adapter: str,
+        residual: dict[str, Any] | None,
+        minted_by: str = "",
+    ) -> list[str]:
+        """Resume only a session the same adapter minted (``session_adapter``,
+        else the prior spawn record). Unknown provenance keeps legacy resume."""
         sid = AdapterResume.session_id(residual)
         if not sid:
             return []
         flag = AdapterResume.ARGV.get(adapter)
         if not flag:
+            return []
+        minted = str(
+            (residual or {}).get(AdapterResume.ADAPTER_KEY) or minted_by or ""
+        ).strip()
+        if minted and minted != adapter:
             return []
         return [flag, sid]
 
@@ -1696,16 +1758,20 @@ class AdapterResume:
         return ""
 
     @staticmethod
-    def merge(residual: dict[str, Any], session_id: str) -> dict[str, Any]:
+    def merge(
+        residual: dict[str, Any], session_id: str, adapter: str = ""
+    ) -> dict[str, Any]:
+        """Add a reported session id (never overwrite) and, when given, the
+        adapter that minted it. Returns ``residual`` itself when unchanged."""
         sid = str(session_id or "").strip()
         if not sid or sid in AdapterResume.FAKE_IDS:
             return residual
-        existing = AdapterResume.session_id(residual)
-        if existing:
-            return residual
         out = dict(residual)
-        out[AdapterResume.KEY] = sid
-        return out
+        if not AdapterResume.session_id(residual):
+            out[AdapterResume.KEY] = sid
+        if adapter and not str(residual.get(AdapterResume.ADAPTER_KEY) or "").strip():
+            out[AdapterResume.ADAPTER_KEY] = adapter
+        return out if out != residual else residual
 
 
 class AgyDeniedActions:
@@ -1918,13 +1984,16 @@ def build_spawn_argv(
     residual: dict[str, Any] | None = None,
     codex_worktree: Path | None = None,
     field_home: Path | None = None,
+    sensor_writes: list[str] | None = None,
 ) -> list[str]:
     profile = resolve_trust_profile()  # unknown OF_TRUST dies for every adapter
-    sensor = SensorTrust.flags(adapter, profile, packet)
+    sensor = SensorTrust.flags(adapter, profile, packet, sensor_writes)
     trust = sensor if sensor is not None else trust_flags(adapter, profile)
     model = AdapterHints.spawn_flags(adapter, packet)
     landed = residual if isinstance(residual, dict) else AdapterResume.load(residual_abs)
-    resume = AdapterResume.argv_flags(adapter, landed)
+    resume = AdapterResume.argv_flags(
+        adapter, landed, minted_by=AdapterResume.prior_adapter(residual_abs, packet)
+    )
     env_agent = os.environ.get("OF_AGENT")
     stream = StreamJson.argv_flags(adapter)
     schema = OutputSchema.argv_flags(adapter)

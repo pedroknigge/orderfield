@@ -9,7 +9,10 @@ ResidualPin: the kernel pins sha256(residual bytes) when it observes the
 child exit (``of spawn``) and after it stamps at collect. A later collect
 that sees different bytes refuses ``rule=ResidualPin`` — a leader hand-edit
 of a child residual is not evidence. Re-spawn / resume re-pins. A deleted
-``.invalid.txt`` marker is re-written and warned. Handoff children (no
+``.invalid.txt`` marker is re-written and warned. One file per child
+(``waves/<n>/pins/<child>.json``), so parallel spawns never lose a pin; the
+v0.8.34 shared ``residual_pins.json`` is still read. A spawn that saw a
+residual but left no pin is INVALID, not unpinned. Handoff children (no
 kernel-observed exit) are not pinned (documented gap).
 """
 from __future__ import annotations
@@ -71,7 +74,8 @@ class KernelSha:
 
 
 class ResidualPin:
-    FILE = "residual_pins.json"
+    FILE = "residual_pins.json"  # v0.8.34 shared doc: read-only legacy
+    DIR = "pins"
     RULE = "ResidualPin"
 
     @staticmethod
@@ -83,15 +87,64 @@ class ResidualPin:
         return wdir / ResidualPin.FILE
 
     @staticmethod
-    def load(wdir: Path) -> dict[str, Any]:
-        path = ResidualPin._path(wdir)
+    def _child_path(wdir: Path, child: str) -> Path:
+        return wdir / ResidualPin.DIR / f"{child}.json"
+
+    @staticmethod
+    def _read(path: Path) -> Any:
         if not path.is_file():
-            return {}
+            return None
         try:
-            doc = load_json(path)
+            return load_json(path)
         except (OSError, ValueError, SystemExit):
-            return {}
-        return doc if isinstance(doc, dict) else {}
+            return None
+
+    @staticmethod
+    def load(wdir: Path) -> dict[str, Any]:
+        """Every pin in the wave: legacy doc, then per-child files win."""
+        doc = ResidualPin._read(ResidualPin._path(wdir))
+        out = dict(doc) if isinstance(doc, dict) else {}
+        pins = wdir / ResidualPin.DIR
+        if pins.is_dir():
+            for path in sorted(pins.glob("*.json")):
+                rec = ResidualPin._read(path)
+                if isinstance(rec, dict):
+                    out[path.stem] = rec
+        return out
+
+    @staticmethod
+    def record(wdir: Path, child: str) -> dict[str, Any] | None:
+        rec = ResidualPin._read(ResidualPin._child_path(wdir, child))
+        if not isinstance(rec, dict):
+            legacy = ResidualPin._read(ResidualPin._path(wdir))
+            rec = legacy.get(child) if isinstance(legacy, dict) else None
+        return rec if isinstance(rec, dict) and rec.get("sha") else None
+
+    @staticmethod
+    def required(meta: Any) -> bool:
+        """A settled, non-dry-run spawn that saw the residual must have pinned it."""
+        return (
+            isinstance(meta, dict)
+            and not meta.get("dry_run")
+            and "outcome" in meta
+            and meta.get("residual_present") is True
+        )
+
+    @staticmethod
+    def missing_error(child: str) -> str:
+        return (
+            f"rule={ResidualPin.RULE} missing: of spawn observed {child} exit "
+            "with a residual but no kernel pin exists, so its bytes cannot be "
+            "checked. Leader: re-spawn or resume the child (of spawn) to re-pin"
+        )
+
+    @staticmethod
+    def drop(wdir: Path, child: str) -> None:
+        """Unpack: a re-packed child id must not inherit the old pin."""
+        try:
+            ResidualPin._child_path(wdir, child).unlink()
+        except FileNotFoundError:
+            pass
 
     @staticmethod
     def pin(
@@ -107,8 +160,7 @@ class ResidualPin:
         generation may stage the write, so the file still has old bytes)."""
         if data is None and not residual.is_file():
             return
-        doc = ResidualPin.load(wdir)
-        if by != "spawn" and child not in doc:
+        if by != "spawn" and ResidualPin.record(wdir, child) is None:
             # Only kernel-observed children (of spawn) are pinned; collect
             # refreshes an existing pin after its own stamp.
             return
@@ -117,17 +169,18 @@ class ResidualPin:
             if data is not None
             else ResidualPin.digest(residual)
         )
-        doc[child] = {"sha": sha, "by": by}
+        rec: dict[str, Any] = {"sha": sha, "by": by}
         if invalid:
-            doc[child]["invalid"] = invalid
-        wdir.mkdir(parents=True, exist_ok=True)
-        dump_json(ResidualPin._path(wdir), doc, skip_dir_fsync=True)
+            rec["invalid"] = invalid
+        path = ResidualPin._child_path(wdir, child)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(path, rec, skip_dir_fsync=True)
 
     @staticmethod
     def check(wdir: Path, child: str, residual: Path) -> tuple[str | None, str | None]:
         """Return (error, warn). error = bytes changed since the kernel pin."""
-        rec = ResidualPin.load(wdir).get(child)
-        if not isinstance(rec, dict) or not rec.get("sha"):
+        rec = ResidualPin.record(wdir, child)
+        if rec is None:
             return None, None
         warn = None
         marker = residual.with_suffix(residual.suffix + ".invalid.txt")

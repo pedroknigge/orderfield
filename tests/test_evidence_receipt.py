@@ -315,14 +315,14 @@ class EvidenceReceiptCollect(unittest.TestCase):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
 
-    def _archive(self, *, quote: str) -> Path:
+    def _archive(self, *, quote: str, exit_code: int = 1) -> Path:
         scratch = self.tmp / ".orderfield" / "work" / "scratch" / "e1"
         data = sample_log(fail=True)
         receipt, outcome = of.EvidenceReceipt.reduce(
             scratch,
             data,
             command_id="pytest-unit",
-            exit_code=1,
+            exit_code=exit_code,
             command="python -m unittest discover -s tests",
             quotes=["FAILED tests/test_mod.py:12"],
             paths=["tests/test_mod.py"],
@@ -337,11 +337,20 @@ class EvidenceReceiptCollect(unittest.TestCase):
         return scratch / "logs" / "pytest-unit.receipt.json"
 
     def test_good_receipt_collects(self) -> None:
-        receipt = self._archive(quote="FAILED tests/test_mod.py:12")
+        # W4: status=done may cite only exit-0 receipts (exit=1 + done is INVALID).
+        receipt = self._archive(quote="FAILED tests/test_mod.py:12", exit_code=0)
         rel = receipt.relative_to(self.tmp).as_posix()
         self._stamp(f"mapped the failing test\nevidence_receipt: {rel}")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+
+    def test_done_citing_failed_receipt_is_invalid(self) -> None:
+        receipt = self._archive(quote="FAILED tests/test_mod.py:12")
+        rel = receipt.relative_to(self.tmp).as_posix()
+        self._stamp(f"mapped the failing test\nevidence_receipt: {rel}")
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 2, collected.stdout + collected.stderr)
+        self.assertIn("exit=1 cited by status=done", collected.stdout)
 
     def test_tampered_receipt_is_not_green(self) -> None:
         receipt = self._archive(quote="CUMPLE all tests passed")

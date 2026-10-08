@@ -1482,16 +1482,23 @@ class SensorTrustProfile(unittest.TestCase):
     def test_claude_sensor_allowlist(self) -> None:
         from of_adapters import SensorTrust
 
-        pkt = {"role": "explorer"}
+        # W4: writes are the child's scratch + exact residual, never .orderfield/**.
+        pkt = {
+            "role": "explorer",
+            "scratch_dir": ".orderfield/work/scratch/e1",
+            "residual_path": ".orderfield/waves/001/residuals/e1.json",
+        }
         flags = SensorTrust.flags("claude", "auto-edit", pkt)
         self.assertEqual(flags[:2], ["--permission-mode", "dontAsk"])
         allowed = flags[flags.index("--allowedTools") + 1].split(",")
         for rule in ("Bash(npm test *)", "Bash(npm run lint *)", "Bash(npx tsc *)",
                      "Bash(git diff *)", "Bash(gh pr view *)", "Bash(shasum *)",
-                     "Edit(./.orderfield/**)", "Read"):
+                     "Edit(./.orderfield/work/scratch/e1/**)",
+                     "Write(./.orderfield/waves/001/residuals/e1.json)", "Read"):
             self.assertIn(rule, allowed)
         self.assertNotIn("Bash(*)", allowed)
         self.assertNotIn("Edit", allowed)
+        self.assertNotIn("Edit(./.orderfield/**)", allowed)
 
     def test_roles_and_profiles(self) -> None:
         from of_adapters import SensorTrust
@@ -1505,7 +1512,11 @@ class SensorTrustProfile(unittest.TestCase):
     def test_qwen_opencode_codex_and_gaps(self) -> None:
         from of_adapters import SensorTrust
 
-        pkt = {"role": "verifier"}
+        pkt = {
+            "role": "verifier",
+            "scratch_dir": ".orderfield/work/scratch/v1",
+            "residual_path": ".orderfield/waves/001/residuals/v1.json",
+        }
         qwen = SensorTrust.flags("qwen", "auto-edit", pkt)
         self.assertIn("--allowed-tools=run_shell_command(npm test)", qwen)
         self.assertEqual(qwen[:2], ["--approval-mode", "auto-edit"])
@@ -1514,7 +1525,9 @@ class SensorTrustProfile(unittest.TestCase):
         self.assertEqual(next(iter(perm["bash"])), "*")
         self.assertEqual(perm["bash"]["*"], "deny")
         self.assertEqual(perm["bash"]["npm test *"], "allow")
-        self.assertEqual(perm["edit"][".orderfield/**"], "allow")
+        self.assertEqual(perm["edit"][".orderfield/work/scratch/v1/**"], "allow")
+        self.assertEqual(perm["edit"][".orderfield/waves/001/residuals/v1.json"], "allow")
+        self.assertNotIn(".orderfield/**", perm["edit"])
         self.assertEqual(SensorTrust.env("opencode", "conservative", pkt), {})
         self.assertEqual(SensorTrust.mode("codex", "auto-edit", pkt), "sandbox-workspace-write")
         for gap in ("cursor", "grok", "agy"):
