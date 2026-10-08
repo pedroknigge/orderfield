@@ -107,6 +107,11 @@ def cmd_spec(args: argparse.Namespace) -> None:
             getattr(args, "extract", False),
             getattr(args, "add", None),
             getattr(args, "supersede", None),
+            # Status stamps write REQUIREMENTS and checks/ (next's green).
+            getattr(args, "verified", None),
+            getattr(args, "verified_internal", None),
+            getattr(args, "verified_contract", None),
+            getattr(args, "failed", None),
             getattr(args, "surface", None),
             getattr(args, "bind", None),
             getattr(args, "unbind", None),
@@ -123,6 +128,25 @@ def cmd_spec(args: argparse.Namespace) -> None:
         load_order(root)  # dies "no ORDER" without creating a stray field.lock
     with field_lock(root, "spec"):
         _cmd_spec_locked(args, root)
+
+
+def requirement_checks(root: Path, data: dict[str, Any]) -> None:
+    """checks/<id>.json (DiscoveryReplay green) follows REQUIREMENTS in the
+    same generation: a verified_contract proof writes it, binding the cite's
+    sha256; any other status drops it. Never a child's or a hand-written file."""
+    from of.replay import DiscoveryReplay
+
+    for item in data.get("requirements") or []:
+        rid = str(item.get("id") or "") if isinstance(item, dict) else ""
+        rel = DiscoveryReplay.check_rel(rid)
+        if not rel:
+            continue
+        path = field_home(root) / rel
+        cite, sha = str(item.get("proof_cite") or ""), str(item.get("proof_sha") or "")
+        if item.get("status") == "verified_contract" and cite and sha:
+            dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
+        elif path.is_file():
+            path.unlink()
 
 
 def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
@@ -422,6 +446,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         changed = True
         print(f"superseded  {rid}")
     if changed:
+        requirement_checks(root, data)
         spec = spec_path(root)
         if spec.is_file():
             data["spec_hash"] = sha256_text(read_spec_text(root))
@@ -1364,6 +1389,10 @@ class CloseProof:
     V = 2
     NO_GIT = "no-git"
     LEGACY = "CLOSE.json v1 legacy (closed before evidence binding; unbound, nothing to re-verify)"
+    DOWNGRADE = (
+        "CLOSE.json v1 is not the pre-chain close adopted at WAL upgrade "
+        "(a v1 close cannot first appear in a chained generation)"
+    )
 
     @staticmethod
     def path(root: Path) -> Path:
@@ -1416,11 +1445,11 @@ class CloseProof:
         """Closed by a pre-INT-02 kernel: terminal, unbound, not re-bindable.
 
         Its scratch was wiped by that close, so binding now would refuse
-        forever. ``of close`` reports it instead of re-stamping.
+        forever. ``of close`` reports it instead of re-stamping. Only the
+        v1 close adopted from a pre-chain WAL head counts (``verify``).
         """
-        v = CloseProof.version(CloseProof.load(root))
         closed = bool(order.get("spec_closed")) and done_when_closed(order)
-        return closed and 0 < v < CloseProof.V
+        return closed and CloseProof.verify(root) == [CloseProof.LEGACY]
 
     @staticmethod
     def proof_matches(data: bytes, stored: str) -> bool:
@@ -1624,13 +1653,18 @@ class CloseProof:
         close returns exactly ``[CloseProof.LEGACY]``: terminal, nothing to
         re-verify and nothing to fix (callers report it, not as a defect).
         """
-        if field_read_bytes(CloseProof.path(root)) is None:
+        from of.wal import legacy_close_adopted
+
+        raw = field_read_bytes(CloseProof.path(root))
+        if raw is None:
             return ["CLOSE.json absent"]
         doc = CloseProof.load(root)
         if doc is None:
             return ["CLOSE.json unreadable"]
         if CloseProof.version(doc) < CloseProof.V:
-            return [CloseProof.LEGACY]
+            if legacy_close_adopted(root, raw):
+                return [CloseProof.LEGACY]
+            return [CloseProof.DOWNGRADE]
         problems: list[str] = []
         try:
             order = load_order(root)

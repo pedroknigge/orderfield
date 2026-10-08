@@ -2228,18 +2228,11 @@ def validate_against_packet(packet_path: Path, residual: Path) -> None:
     """
     root = find_root()
     packet = load_packet(packet_path)
-    wave = int(packet.get("wave") or load_state(root).get("wave") or 1)
     if not residual.is_file():
         print("INVALID")
         print(f"  - missing residual at {residual}")
         raise SystemExit(2)
-    errs = CollectGate.errors(
-        root,
-        packet,
-        residual,
-        packets=packed_children(root, wave),
-        scope=True,
-    )
+    errs = CollectGate.errors(root, packet, residual, scope=True)
     if errs:
         print("INVALID")
         for err in errs:
@@ -2973,6 +2966,11 @@ def cmd_resume(args: argparse.Namespace) -> None:
     ac_label, ac_detail = resume_auto_continue_lines(
         order, open_field_count=open_n, close_problems=plan["close_problems"]
     )
+    from of.wal import repaired_live
+
+    # The one write resume makes: live restored from CURRENT after a crash
+    # past the CURRENT flip (MATERIALIZED != CURRENT). Said, never silent.
+    repaired = repaired_live()
     payload = {
         "wave": wave,
         "field": "closed" if closed else "open",
@@ -2980,8 +2978,12 @@ def cmd_resume(args: argparse.Namespace) -> None:
         "parked": len(flying),
         "next": nxt,
         "auto_continue": ac_label,
+        "repaired": repaired,
         **NextPlan.machine(plan),
     }
+    if repaired and not bool(getattr(args, "resume_json", False)):
+        shown = ", ".join(repaired[:5]) + (" …" if len(repaired) > 5 else "")
+        print(f"repaired live from CURRENT (crash after commit): {shown}")
     if bool(getattr(args, "resume_json", False)):
         print(json.dumps({"v": 1, "ok": True, "id": order["id"], **payload}, sort_keys=True))
         emit_event("resume", ok=True, **payload)

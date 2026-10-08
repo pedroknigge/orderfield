@@ -1620,14 +1620,6 @@ class PlanIngressEval:
         dest.write_text(text or "# Invented substitute\n", encoding="utf-8")
         return dest
 
-    @staticmethod
-    def setup_invent(root: Path) -> None:
-        PlanIngressEval.setup_promote(root)
-        baseline = Path(root) / PlanIngressEval.BASELINE
-        if not baseline.is_file():
-            raise AssertionError("plan-baseline.json missing after pin")
-        PlanIngressEval.write_invented(root)
-
 
 @_register_eval_fixture("recovery_plan_ingress_promote")
 def eval_setup_recovery_plan_ingress_promote(root: Path) -> None:

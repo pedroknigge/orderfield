@@ -793,11 +793,6 @@ def merge_extracted_requirements(
     return changed
 
 
-def join_continued_lines(text: str) -> str:
-    """Join shell-style backslash continuations so CLI extract is not truncated."""
-    return "\n".join(span[2] for span in joined_lines_with_span(text))
-
-
 def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
     """1-based line spans after joining shell-style backslash continuations."""
     rows = text.splitlines()
@@ -1118,10 +1113,6 @@ def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
         text = str(item.get("text") or "")
         rows.append((requirement_verdict(item), rid, text))
     return rows
-
-
-def contrast_open(root: Path) -> bool:
-    return bool(requirement_coverage_errors(root))
 
 
 def order_text_blob(order: dict[str, Any]) -> str:

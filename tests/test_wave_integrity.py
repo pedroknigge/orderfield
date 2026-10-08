@@ -369,9 +369,11 @@ class ScopeWriteGate(unittest.TestCase):
         field = Field(self, git=True)
         field.pack("i1", "implementer", "src/app.py")
         field.pack("e1")
+        # Handoff explorer (claimed: rule=Unclaimed), diffed at collect, sees i1's path.
+        field.ok("handoff", "--packet", str(WAVE / "packets/e1.json"))
         field.ok("spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/i1.json"),
                  OF_AGENT=str(field.agent), FAKE_MODE="src/app.py=print(2)")
-        field.write_done("e1")  # handoff explorer: diffed at collect, sees i1's path
+        field.write_done("e1")
         r = field.ok("collect")
         self.assertIn("ok=2", r.stdout)
 

@@ -382,13 +382,3 @@ def _print_ranking(
             f"blocking_n={entry['blocking_n']} [{blocking}]  "
             f"verified_contract={entry['verified_contract']}"
         )
-
-
-class Contest:
-    """Namespace for the contest kernel (rank/decide/crown live here)."""
-
-    KEY = CONTEST_KEY
-    open = staticmethod(open_contest)
-    rank = staticmethod(rank)
-    decide = staticmethod(decide)
-    crown = staticmethod(crown)

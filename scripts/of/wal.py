@@ -51,6 +51,10 @@ OF_WAL_ADOPT_LIVE_ENV = "OF_WAL_ADOPT_LIVE"
 WAL_DIRNAME = "wal"
 WAL_ORPHANS = "orphans"
 WAL_MATERIALIZED = "MATERIALIZED.json"
+# sha256 of the CLOSE.json a pre-chain (v0.8.34) head held when adopted.
+# Carried by every later MANIFEST / CURRENT; a child may never change it.
+LEGACY_CLOSE_KEY = "legacy_close_sha256"
+LEGACY_CLOSE_FILE = "CLOSE.json"
 # Read-only commands that must see CURRENT, not a mixed live generation.
 _WAL_VIEW_COMMANDS = frozenset(
     {
@@ -235,7 +239,7 @@ def _wal_snapshot_rel(rel: str) -> bool:
     posix = str(rel).replace("\\", "/")
     if posix in _WAL_SNAPSHOT_NAMES:
         return True
-    if posix.startswith("spec-log/"):
+    if posix.startswith(("spec-log/", "checks/")):
         return True
     if not posix.startswith("waves/"):
         return False
@@ -481,6 +485,35 @@ def _load_wal_current(root: Path | None) -> dict[str, Any] | None:
     return data if isinstance(data, dict) and data.get("generation") else None
 
 
+def committed_bytes(root: Path, rel: str) -> bytes | None:
+    """Bytes of ``rel`` as WAL CURRENT holds them; None when CURRENT does not
+    list it or its copy does not hash to the MANIFEST. Never live."""
+    view = _committed_generation(root)
+    if view is None:
+        return None
+    gen_dir, man = view
+    files = man.get("files") if isinstance(man.get("files"), dict) else {}
+    if rel not in files:
+        return None
+    try:
+        raw = (gen_dir / rel).read_bytes()
+    except OSError:
+        return None
+    return raw if hashlib.sha256(raw).hexdigest() == str(files[rel]) else None
+
+
+def legacy_close_adopted(root: Path, data: bytes) -> bool:
+    """``data`` (a v1 CLOSE.json) is the one a pre-chain head held when the
+    chain adopted it, or CURRENT is still pre-chain. A v1 close that first
+    appears in a chained generation is not legacy: it is unproven."""
+    current = _load_wal_current(root)
+    if current is None:
+        return False
+    if _seq(current) is None:
+        return True
+    return current.get(LEGACY_CLOSE_KEY) == hashlib.sha256(data).hexdigest()
+
+
 def _committed_generation(root: Path | None = None) -> tuple[Path, dict[str, Any]] | None:
     """CURRENT generation dir + MANIFEST, or None when no committed pointer."""
     current = _load_wal_current(root)
@@ -513,6 +546,8 @@ def _publish_pointer(root: Path, gen_dir: Path, man: dict[str, Any]) -> dict[str
         "files": files,
         "deletions": list(man.get("deletions") or []),
     }
+    if man.get(LEGACY_CLOSE_KEY):
+        current[LEGACY_CLOSE_KEY] = man[LEGACY_CLOSE_KEY]
     _write_current(root, current)
     return current
 
@@ -631,6 +666,15 @@ def wal_drift(root: Path) -> list[str]:
     return sorted(out)
 
 
+# Live paths this process restored from CURRENT after a crash post-flip:
+# the one write a read verb makes (resume reports it).
+_REPAIRED: list[str] = []
+
+
+def repaired_live() -> list[str]:
+    return sorted(set(_REPAIRED))
+
+
 def _finish_materialize(root: Path, current: dict[str, Any], gen_dir: Path, man: dict[str, Any]) -> None:
     """MATERIALIZED != CURRENT: a crash after the flip. Copy CURRENT over live."""
     gid = str(current.get("generation") or "")
@@ -638,6 +682,7 @@ def _finish_materialize(root: Path, current: dict[str, Any], gen_dir: Path, man:
         return
     changed = _materialize_generation(root, gen_dir, man, overwrite=True)
     _write_materialized(root, current)
+    _REPAIRED.extend(changed)
     if changed:
         shown = ", ".join(changed[:5]) + (" …" if len(changed) > 5 else "")
         _warn(
@@ -1017,6 +1062,9 @@ def _adopt_pre_chain(root: Path, current: dict[str, Any], gen_dir: Path) -> dict
             "adopted": "pre-chain",
         }
     )
+    if files.get(LEGACY_CLOSE_FILE):
+        # The only v1 CLOSE.json a chained field accepts (CloseProof.verify).
+        adopted[LEGACY_CLOSE_KEY] = str(files[LEGACY_CLOSE_FILE])
     _write_current(root, adopted)
     if not _materialized_generation(root):
         _write_materialized(root, adopted)
@@ -1140,6 +1188,7 @@ def recover_field_wal(root: Path) -> str | None:
             cseq == head_seq + 1
             and cman.get("parent") == gid
             and cman.get("parent_manifest_sha256") == current.get("manifest_sha256")
+            and cman.get(LEGACY_CLOSE_KEY) == current.get(LEGACY_CLOSE_KEY)
             and _generation_intact(child, child.name) is not None
         ):
             candidates.append((child, cman))
@@ -1267,6 +1316,9 @@ class _WalGeneration:
             "files": files,
             "deletions": sorted(self.deleted),
         }
+        legacy = (prev or {}).get(LEGACY_CLOSE_KEY)
+        if legacy:
+            manifest[LEGACY_CLOSE_KEY] = legacy
         _write_synced(self.stage_dir / "MANIFEST.json", json_payload_bytes(manifest))
         _fsync_dir(self.stage_dir.parent)
         self._manifest_written = True

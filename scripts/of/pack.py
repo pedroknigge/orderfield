@@ -520,7 +520,8 @@ def validate_residual_for_packet(
     errs.extend(verifier_done_errors(res, packet, root))
     errs.extend(CloseEvidence.errors(res, root, packet))
     errs.extend(OwnedWrite.errors(res, packet, root))
-    errs.extend(ScopeWrite.errors(root, packet))
+    errs.extend(ScopeWrite.errors(root, packet, res))
+    errs.extend(Unclaimed.errors(root, packet))
     from of.receipt import EvidenceReceipt
 
     errs.extend(EvidenceReceipt.errors(res, root))
@@ -1933,10 +1934,16 @@ class ScopeWrite:
     """A child's world is its packet: product writes outside it are INVALID.
 
     Baseline at pack (refreshed by the first spawn / handoff): HEAD plus a
-    git blob id per dirty or untracked (non-ignored) path; ``.orderfield/``
-    (scratch, residual, control plane) is excluded. Changed = content that
-    differs from the baseline at spawn exit, or at collect for a child the
-    kernel did not watch. A changed path must sit under the child's
+    git blob id per dirty, untracked or ignored path (heavy dirs skipped),
+    ``.git/config`` and ``.git/hooks/**``; ``.orderfield/`` (scratch,
+    residual, control plane) is excluded. Changed = content that differs
+    from the baseline at spawn exit (``changed``), or at collect for a child
+    the kernel did not watch (``seen``). The verdict is recomputed from
+    that set by every reader (collect, resume, validate --packet): nothing
+    stale is stored. Each later spawn / handoff is a new attempt: a fresh
+    baseline, except the prior attempt's changed paths keep their old
+    baseline, so a re-run clears only what was reverted. A git tree that
+    stops answering fails closed. A changed path must sit under the child's
     ``owns_paths``. A path a sibling packet owns is the sibling's unless
     this residual cites it; an unowned path is the child's own violation,
     except while a sibling writer without ``owns_paths`` shares the tree.
@@ -1952,7 +1959,19 @@ class ScopeWrite:
     GONE = "-"
     NOT_GIT = "not a git work tree"
     NO_BASELINE = "no scope baseline (packed before ScopeWrite)"
+    UNREADABLE = "(git tree unreadable after this run)"
     CHUNK = 256
+    # Ignored files are watched outside these (rebuilt / tool caches).
+    HEAVY = frozenset(
+        {
+            ".orderfield", "node_modules", ".venv", "venv", "dist", "build",
+            "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+            ".tox", ".nox", ".cache", ".coverage", "target", ".gradle", ".next",
+            "htmlcov", "coverage", ".turbo", ".parcel-cache", ".svelte-kit", ".DS_Store",
+        }
+    )
+    MAX_BYTES = 5 * 1024 * 1024
+    MAX_IGNORED = 5000
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path | None:
@@ -2030,12 +2049,66 @@ class ScopeWrite:
         dirty: dict[str, str] = {}
         for entry in status.split(b"\0"):
             full = os.fsdecode(entry[3:]) if len(entry) > 3 else ""
-            if not full.startswith(prefix):
+            if not full or not full.startswith(prefix):
                 continue
             rel = full[len(prefix) :]
             dirty[rel] = ScopeWrite._blob_id(root / rel)
+        capped = ScopeWrite._unseen(root, dirty)
         head = os.fsdecode(head_raw).strip() if head_raw else None
-        return {"head": head or None, "dirty": dirty}
+        snap: dict[str, Any] = {"head": head or None, "dirty": dirty}
+        if capped:
+            snap["capped"] = capped  # files not watched (count / size cap)
+        return snap
+
+    @staticmethod
+    def _heavy(parts: list[str]) -> bool:
+        return any(x in ScopeWrite.HEAVY or x.endswith(".egg-info") for x in parts)
+
+    @staticmethod
+    def _unseen(root: Path, dirty: dict[str, str]) -> int:
+        """Add what ``git status`` hides: ignored files outside HEAVY dirs,
+        ``.git/config`` and ``.git/hooks/**``. Returns how many were capped."""
+        raw = ScopeWrite._git(
+            root, "ls-files", "-z", "--others", "--ignored", "--exclude-standard",
+            "--directory", "--", ".", ScopeWrite.EXCLUDE,
+        )
+        listed = [os.fsdecode(x) for x in (raw or b"").split(b"\0") if x]
+        files: list[tuple[str, Path]] = []
+        for rel in listed:
+            if ScopeWrite._heavy(rel.rstrip("/").split("/")):
+                continue
+            if not rel.endswith("/"):
+                files.append((rel, root / rel))
+            elif rel != "./" and not any(o != rel and o.startswith(rel) for o in listed):
+                # A wholly ignored dir: git collapsed it, walk it here.
+                for dirpath, dirnames, names in os.walk(root / rel):
+                    dirnames[:] = sorted(n for n in dirnames if not ScopeWrite._heavy([n]))
+                    base = Path(dirpath)
+                    files.extend(
+                        ((base / n).relative_to(root).as_posix(), base / n)
+                        for n in sorted(names)
+                        if not ScopeWrite._heavy([n])
+                    )
+        common = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
+        if common is not None:
+            gdir = root / os.fsdecode(common).strip()
+            files.append((".git/config", gdir / "config"))
+            for dirpath, _dirs, names in os.walk(gdir / "hooks"):
+                base = Path(dirpath)
+                files.extend(
+                    (".git/" + (base / n).relative_to(gdir).as_posix(), base / n)
+                    for n in sorted(names)
+                )
+        capped = max(0, len(files) - ScopeWrite.MAX_IGNORED)
+        for key, path in files[: ScopeWrite.MAX_IGNORED]:
+            try:
+                if path.stat().st_size > ScopeWrite.MAX_BYTES:
+                    capped += 1
+                    continue
+            except OSError:
+                continue
+            dirty.setdefault(key, ScopeWrite._blob_id(path))
+        return capped
 
     @staticmethod
     def _tree_ids(root: Path, head: str | None, paths: list[str]) -> dict[str, str]:
@@ -2074,32 +2147,62 @@ class ScopeWrite:
                 ScopeWrite.EXCLUDE,
             )
             cand |= {os.fsdecode(x) for x in (raw or b"").split(b"\0") if x}
-        b_tree = ScopeWrite._tree_ids(root, b_head, sorted(cand - set(b_dirty)))
-        a_tree = ScopeWrite._tree_ids(root, a_head, sorted(cand - set(a_dirty)))
+        tracked = {p for p in cand if not p.startswith(".git/")}
+        b_tree = ScopeWrite._tree_ids(root, b_head, sorted(tracked - set(b_dirty)))
+        a_tree = ScopeWrite._tree_ids(root, a_head, sorted(tracked - set(a_dirty)))
+        gone = ScopeWrite.GONE
         return sorted(
             p
             for p in cand
-            if b_dirty.get(p, b_tree.get(p)) != a_dirty.get(p, a_tree.get(p))
+            if b_dirty.get(p, b_tree.get(p, gone)) != a_dirty.get(p, a_tree.get(p, gone))
         )
 
     @staticmethod
     def rebase(root: Path, packet: dict[str, Any], *, fresh: bool = False) -> None:
-        """Write the baseline. Kept once a spawn recorded changes (cumulative)."""
+        """Write this attempt's baseline (pack, then every spawn / handoff).
+
+        The prior attempt's paths (``changed`` / ``seen``, else diffed now
+        when it ran unjudged: a handoff, a killed host) keep the old
+        baseline values: a re-run clears a violation only once the leader
+        reverted it. The window start and OwnedWrite digest carry.
+        """
         doc = ScopeWrite.load(root, packet)
-        if not fresh and isinstance(doc, dict) and "changed" in doc:
-            return
         snap = ScopeWrite.snapshot(root)
-        ScopeWrite._save(
-            root,
-            packet,
-            {
-                "v": 1,
-                "t0": time.time(),
-                "before": snap,
-                "skip": None if snap is not None else ScopeWrite.NOT_GIT,
-                OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
-            },
-        )
+        new: dict[str, Any] = {
+            "v": 1,
+            "t0": time.time(),
+            "before": snap,
+            "skip": None if snap is not None else ScopeWrite.NOT_GIT,
+            "ran": not fresh,
+            OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
+        }
+        old = doc.get("before") if isinstance(doc, dict) else None
+        prior = ScopeWrite._attempt(doc) if isinstance(doc, dict) else None
+        if prior is None and isinstance(old, dict) and isinstance(doc, dict) and doc.get("ran"):
+            prior = ScopeWrite.since(root, old, snap)
+        if not fresh and isinstance(old, dict) and prior is not None:
+            assert isinstance(doc, dict)
+            for key in ("t0", OwnedWrite.DIGEST_KEY):
+                new[key] = doc.get(key)
+            prior = [p for p in prior if p != ScopeWrite.UNREADABLE]
+            if snap is not None and prior:
+                was = old.get("dirty") if isinstance(old.get("dirty"), dict) else {}
+                tree = ScopeWrite._tree_ids(
+                    root, old.get("head"),
+                    sorted(p for p in prior if p not in was and not p.startswith(".git/")),
+                )
+                snap["dirty"].update(
+                    {p: was.get(p, tree.get(p, ScopeWrite.GONE)) for p in prior}
+                )
+        ScopeWrite._save(root, packet, new)
+
+    @staticmethod
+    def _attempt(doc: dict[str, Any]) -> list[str] | None:
+        """Paths the last attempt changed (spawn exit, else collect), or None."""
+        for key in ("changed", "seen"):
+            if isinstance(doc.get(key), list):
+                return [str(p) for p in doc[key]]
+        return None
 
     @staticmethod
     def record_exit(root: Path, packet: dict[str, Any]) -> None:
@@ -2107,12 +2210,15 @@ class ScopeWrite:
         doc = ScopeWrite.load(root, packet)
         if not isinstance(doc, dict) or not isinstance(doc.get("before"), dict):
             return
-        now = ScopeWrite.snapshot(root)
-        if now is None:
-            return
-        doc["changed"] = ScopeWrite.changed(root, doc["before"], now)
+        doc["changed"] = ScopeWrite.since(root, doc["before"], ScopeWrite.snapshot(root))
         doc["t1"] = time.time()
         ScopeWrite._save(root, packet, doc)
+
+    @staticmethod
+    def since(root: Path, before: dict[str, Any], now: dict[str, Any] | None) -> list[str]:
+        """Changed paths; a git tree that stopped answering (a child broke
+        .git/config, say) is itself a change outside the packet: fail closed."""
+        return [ScopeWrite.UNREADABLE] if now is None else ScopeWrite.changed(root, before, now)
 
     @staticmethod
     def _stamp(value: Any, default: float) -> float:
@@ -2223,41 +2329,51 @@ class ScopeWrite:
 
     @staticmethod
     def evaluate(
-        root: Path,
-        packet: dict[str, Any],
-        packets: list[dict[str, Any]],
-        residual: Any,
-        cache: dict[str, Any],
+        root: Path, packet: dict[str, Any], cache: dict[str, Any]
     ) -> str | None:
-        """Collect: record violations on the scope doc. Returns a skip note."""
+        """Collect: diff an unwatched child live into ``seen``. Returns a skip note."""
         doc = ScopeWrite.load(root, packet)
         if not isinstance(doc, dict):
             return ScopeWrite.NO_BASELINE
         if doc.get("skip") or not isinstance(doc.get("before"), dict):
             return str(doc.get("skip") or ScopeWrite.NO_BASELINE)
-        changed = doc.get("changed")
-        if not isinstance(changed, list):
+        if not isinstance(doc.get("changed"), list):
             if "now" not in cache:
                 cache["now"] = ScopeWrite.snapshot(root)
-            if cache["now"] is None:
-                return ScopeWrite.NOT_GIT
-            changed = ScopeWrite.changed(root, doc["before"], cache["now"])
-        doc["violations"] = ScopeWrite.violations(
-            packet,
-            packets,
-            residual,
-            changed,
-            ScopeWrite.concurrent(root, packet, packets, doc),
-        )
-        ScopeWrite._save(root, packet, doc)
+            doc["seen"] = ScopeWrite.since(root, doc["before"], cache["now"])
+            ScopeWrite._save(root, packet, doc)
         return None
 
     @staticmethod
-    def errors(root: Path, packet: dict[str, Any]) -> list[str]:
-        """Violations recorded at collect. Integrate and spawn read the same."""
+    def errors(
+        root: Path, packet: dict[str, Any], residual: Any, *, live: bool = False
+    ) -> list[str]:
+        """This attempt's verdict from its changed set (spawn exit, else the
+        last collect's ``seen``; ``live`` diffs git now instead). Collect,
+        resume, validate --packet, integrate and spawn all compute it here."""
         doc = ScopeWrite.load(root, packet)
-        bad = (doc or {}).get("violations") if isinstance(doc, dict) else None
-        if not isinstance(bad, list) or not bad:
+        if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
+            doc.get("before"), dict
+        ):
+            return []
+        changed = doc.get("changed")
+        if not isinstance(changed, list):
+            changed = (
+                ScopeWrite.since(root, doc["before"], ScopeWrite.snapshot(root))
+                if live
+                else ScopeWrite._attempt(doc) or []
+            )
+        if not changed:
+            return []
+        try:
+            packets = packed_children(root, int(packet.get("wave") or 1))
+        except SystemExit:
+            packets = [packet]
+        bad = ScopeWrite.violations(
+            packet, packets, residual, changed,
+            ScopeWrite.concurrent(root, packet, packets, doc),
+        )
+        if not bad:
             return []
         role = str(packet.get("role") or "?")
         shown = ", ".join(str(p) for p in bad[:8]) + (" …" if len(bad) > 8 else "")
@@ -2266,7 +2382,56 @@ class ScopeWrite:
             f"rule={ScopeWrite.RULE}: {role} {packet.get('child_id')} changed product "
             f"paths outside its packet: {shown} (owns_paths: {allowed}; a child "
             "writes only owns_paths, its scratch and its residual). Leader: revert "
-            "those paths, then of unpack and re-pack the slice"
+            "those paths, then re-run the child (judged against the same baseline)"
+        ]
+
+
+class Unclaimed:
+    """A residual needs a writer the field knows: a kernel spawn record or a
+    claim (``of handoff``, or the leader's ``of collect --accept-unclaimed``).
+
+    In a wave where any packet has either, a residual for a packet with
+    neither is UNCLAIMED (INVALID): a running sibling may have written it.
+    A wave with no spawn record and no claim at all (native subagents that
+    write their own residuals) is exempt. Detection, not authentication.
+    """
+
+    RULE = "Unclaimed"
+    ACCEPTED = "accepted"
+
+    @staticmethod
+    def claim_path(root: Path, packet: dict[str, Any]) -> Path:
+        wave = int(packet.get("wave") or 1)
+        return wave_dir(wave, root) / "claims" / f"{packet.get('child_id')}.json"
+
+    @staticmethod
+    def _writers(wdir: Path) -> bool:
+        # A leader's accept is not a writer: it must not flip a native wave.
+        for path in (wdir / "claims").glob("*.json"):
+            doc = _read_json_object(path)
+            if not isinstance(doc, dict) or doc.get("mode") != Unclaimed.ACCEPTED:
+                return True
+        for path in (wdir / "spawns").glob("*.json"):
+            doc = _read_json_object(path)
+            if not isinstance(doc, dict) or not doc.get("dry_run"):
+                return True
+        return False
+
+    @staticmethod
+    def errors(root: Path, packet: dict[str, Any]) -> list[str]:
+        meta = SpawnRecord.load(root, packet)
+        if isinstance(meta, dict) and not meta.get("dry_run"):
+            return []
+        if Unclaimed.claim_path(root, packet).is_file():
+            return []
+        if not Unclaimed._writers(wave_dir(int(packet.get("wave") or 1), root)):
+            return []
+        child = packet.get("child_id")
+        return [
+            f"rule={Unclaimed.RULE}: {child} has a residual but no spawn record "
+            "or handoff claim while this wave runs children through of spawn / "
+            "of handoff (a sibling may have written it). Leader: re-run it with "
+            f"of spawn / of handoff, or own it with of collect --accept-unclaimed {child}"
         ]
 
 
@@ -2832,15 +2997,6 @@ def render_prompt(
     if root is not None and scratch_nonempty(root, packet):
         text += "\nContinue from nonempty scratch. Do not restart the slice.\n"
     return text
-
-
-def current_wave_child_ids(root: Path, wave: int) -> set[str]:
-    ids: set[str] = set()
-    for packet in packed_children(root, wave):
-        child = packet.get("child_id")
-        if child:
-            ids.add(str(child))
-    return ids
 
 
 def extract_json_object(text: str) -> Any | None:

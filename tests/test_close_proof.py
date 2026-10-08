@@ -2,6 +2,7 @@
 """Verifiable close (INT-02 / INT-03 close side): CLOSE.json binds evidence."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -261,8 +262,10 @@ class CloseProofFlow(_Field):
             problems = CloseProof.verify(self.tmp)
         self.assertTrue(any("proof not bound" in p for p in problems), problems)
         self.assertTrue(any("exit=x" in p for p in problems), problems)
+        # An unreadable version is v1, and a v1 close in a chained field is
+        # not the adopted pre-chain one: unproven, never legacy.
         with mock.patch.object(CloseProof, "load", return_value={**doc, "v": "two"}):
-            self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.LEGACY])
+            self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.DOWNGRADE])
 
 
 class MultiReceiptClose(_Field):
@@ -302,6 +305,34 @@ class LegacyClosedField(_Field):
         doc = json.loads((self.home / "CLOSE.json").read_text("utf-8"))
         self.assertEqual(doc["v"], 1)
         self.assertNotIn("receipts", doc)
+        self.to_v0834_wal()
+
+    def to_v0834_wal(self) -> None:
+        """Rewrite wal/ as v0.8.34 left it: no seq/parent chain, no MATERIALIZED."""
+        walh = self.home / "wal"
+        cur = json.loads((walh / "CURRENT.json").read_text("utf-8"))
+        for gen in [p for p in walh.iterdir() if p.is_dir() and p.name != "orphans"]:
+            man = json.loads((gen / "MANIFEST.json").read_text("utf-8"))
+            new = gen.name.split("-", 1)[1]
+            man = {k: man[k] for k in ("files", "deletions", "complete")}
+            man.update({"v": 1, "generation": new})
+            (gen / "MANIFEST.json").write_text(json.dumps(man), encoding="utf-8")
+            gen.rename(walh / new)
+        legacy = {"v": 1, "generation": cur["generation"].split("-", 1)[1],
+                  "published_at": cur["published_at"], "files": cur["files"],
+                  "deletions": cur["deletions"]}
+        (walh / "CURRENT.json").write_text(json.dumps(legacy), encoding="utf-8")
+        (walh / "MATERIALIZED.json").unlink()
+
+    def test_adoption_records_the_legacy_close(self) -> None:
+        self._ok("checkpoint", "--summary", "first touch after upgrade")
+        current = json.loads((self.home / "wal" / "CURRENT.json").read_text("utf-8"))
+        self.assertEqual(
+            current["legacy_close_sha256"],
+            hashlib.sha256((self.home / "CLOSE.json").read_bytes()).hexdigest(),
+        )
+        self._ok("checkpoint", "--summary", "carried by every later generation")
+        self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.LEGACY])
 
     def test_close_is_terminal_exit_zero(self) -> None:
         closed = self._ok("close")
@@ -313,6 +344,24 @@ class LegacyClosedField(_Field):
         self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.LEGACY])
         self._ok("resume")
         self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.LEGACY])
+
+
+class CloseDowngrade(_Field):
+    """A v1 CLOSE.json that first appears in a chained generation is unproven."""
+
+    def test_chained_v1_close_is_close_unproven(self) -> None:
+        from of.field import field_lock, load_order
+
+        with field_lock(self.tmp, "test"), mock.patch.object(CloseProof, "V", 1):
+            CloseProof.stamp(self.tmp, load_order(self.tmp))
+        self.assertEqual(json.loads((self.home / "CLOSE.json").read_text("utf-8"))["v"], 1)
+        self.assertEqual(CloseProof.verify(self.tmp), [CloseProof.DOWNGRADE])
+        plan = json.loads(self._ok("resume", "--json").stdout)
+        self.assertEqual(plan["action"], "close-unproven")
+        self.assertIn("v1 is not the pre-chain close", plan["detail"])
+        # A forged generation cannot claim the adopted legacy close either.
+        current = json.loads((self.home / "wal" / "CURRENT.json").read_text("utf-8"))
+        self.assertNotIn("legacy_close_sha256", current)
 
 
 class CloseProofGit(unittest.TestCase):

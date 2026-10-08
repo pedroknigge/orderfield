@@ -645,11 +645,16 @@ class ValidateSkill(unittest.TestCase):
 
 
 class DeadDefsGate(unittest.TestCase):
-    """The dead-def scan proves its own fixtures. Not a gate on the tree yet."""
+    """Gate: no definition under scripts/ that nothing references."""
     def test_self_test_passes(self) -> None:
         proc = run(ROOT, sys.executable, str(ROOT / "scripts" / "check_dead_defs.py"), "--self-test")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("OK self-test", proc.stdout)
+
+    def test_tree_has_no_dead_defs(self) -> None:
+        proc = run(ROOT, sys.executable, str(ROOT / "scripts" / "check_dead_defs.py"))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("OK dead-defs 0 candidates", proc.stdout)
 
 
 def _load_packaging_bump() -> object:

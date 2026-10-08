@@ -3,8 +3,10 @@
 A collected residual is a revealed node. Uncollected packets stay hidden
 (prefix-only). The coding agent is unchanged. No new verb.
 
-The order parameter is one red check. Green is an external check file the
-leader writes (`.orderfield/checks/<id>.json`), not a child `artifact_sha`.
+The order parameter is one red check. Green is a check file the leader
+commits through the WAL (`of spec --verified-contract ID --cite FILE` writes
+`.orderfield/checks/<id>.json`, binding FILE's sha256), not a child
+`artifact_sha`. A check WAL CURRENT does not hold is a plant: ignored.
 While any touched requirement lacks that file, the printed next stays on the
 latest red with the same child. Two waves on that red escalate. A different
 id opens only when nothing touched is red, and then only the next unowned
@@ -157,24 +159,42 @@ class DiscoveryReplay:
         return pack
 
     @staticmethod
-    def check_path(root: Path, rid: str) -> Path:
-        return root / ".orderfield" / "checks" / f"{rid}.json"
+    def check_rel(rid: str) -> str | None:
+        return f"checks/{rid}.json" if _CHECK_ID.fullmatch(rid) else None
+
+    @staticmethod
+    def check_doc(rid: str, cite: str, sha256: str) -> dict[str, Any]:
+        """What ``of spec --verified-contract ID --cite FILE`` commits."""
+        return {"v": 1, "id": rid, "pass": True, "cite": cite, "sha256": sha256}
 
     @staticmethod
     def externally_green(root: Path, rid: str) -> bool:
-        if not _CHECK_ID.fullmatch(rid):
-            return False
-        path = DiscoveryReplay.check_path(root, rid)
-        if not path.is_file():
-            return False
+        """Green = a check WAL CURRENT holds (leader-written: a live-only file
+        is a plant) whose cited file still hashes to the bound sha256."""
+        import hashlib
+
+        from of.wal import committed_bytes
+
+        rel = DiscoveryReplay.check_rel(rid)
+        raw = committed_bytes(root, rel) if rel else None
         try:
-            doc = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+            doc = json.loads(raw) if raw is not None else None
+        except ValueError:
             return False
         if not isinstance(doc, dict) or doc.get("pass") is not True:
             return False
-        named = str(doc.get("id") or "").strip()
-        return named == rid
+        if str(doc.get("id") or "").strip() != rid:
+            return False
+        project = root.resolve()
+        cite = project / str(doc.get("cite") or "")
+        try:
+            if not doc.get("cite") or cite.is_symlink():
+                return False
+            cite.resolve().relative_to(project)
+            data = cite.read_bytes()
+        except (OSError, ValueError):
+            return False
+        return hashlib.sha256(data).hexdigest() == str(doc.get("sha256") or "")
 
     @staticmethod
     def _green(root: Path) -> set[str]:

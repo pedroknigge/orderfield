@@ -30,7 +30,8 @@ from of.model_discovery import cmd_models
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.contend_cmd import cmd_contend, cmd_crown
-from of.cli.ops import (
+# Names below that dispatch does not call are re-exported for of/__init__.py.
+from of.cli.ops import (  # noqa: F401
     cmd_checkpoint,
     cmd_detect,
     cmd_doctor,
@@ -81,7 +82,7 @@ from of.cli.field_cmd import (
     cmd_patch,
     cmd_phase,
 )
-from of.cli.spec_cmd import (
+from of.cli.spec_cmd import (  # noqa: F401
     cmd_close,
     cmd_contrast,
     cmd_spec,
@@ -97,7 +98,7 @@ from of.cli.issue_cmd import (
     ISSUE_LABELS,
     cmd_issue,
 )
-from of.cli.eval_cmd import (
+from of.cli.eval_cmd import (  # noqa: F401
     EVAL_FIXTURES,
     EVAL_UNITTEST_MODULES,
     cmd_eval,
@@ -132,107 +133,6 @@ from of.cli.eval_cmd import (
     run_recovery_eval_spec,
 )
 
-# Re-exports consumed by of/__init__.py. Keep the barrel; shrinking it
-# ImportErrors the package. Names here count as used for F401.
-__all__ = [
-    "ADAPTER_ORDER",
-    "BudgetSeconds",
-    "ERROR_MESSAGE_MAX_CHARS",
-    "EVAL_FIXTURES",
-    "EVAL_UNITTEST_MODULES",
-    "CloseChecklist",
-    "CloseProof",
-    "ContrastDiff",
-    "ContrastReport",
-    "EvaluatorPacket",
-    "EfficiencySignal",
-    "HandoffReport",
-    "DriveAfterIntegrate",
-    "ObservationPack",
-    "InFlightSignal",
-    "PulseProgress",
-    "ISSUE_LABELS",
-    "KNOWN_TOOLS",
-    "build_parser",
-    "cmd_checkpoint",
-    "cmd_close",
-    "cmd_collect",
-    "cmd_contrast",
-    "cmd_detect",
-    "cmd_doctor",
-    "cmd_eval",
-    "cmd_fields",
-    "cmd_gc",
-    "cmd_handoff",
-    "cmd_init",
-    "cmd_integrate",
-    "cmd_issue",
-    "cmd_learn",
-    "cmd_migrate",
-    "cmd_models",
-    "cmd_new",
-    "cmd_next_wave",
-    "cmd_pack",
-    "cmd_patch",
-    "cmd_phase",
-    "cmd_pulse",
-    "cmd_render",
-    "cmd_resume",
-    "cmd_retain",
-    "cmd_spawn",
-    "cmd_spec",
-    "cmd_spec_diff",
-    "StatusReport",
-    "cmd_status",
-    "cmd_unpack",
-    "cmd_validate",
-    "cmd_wave",
-    "cmd_worktree",
-    "cmd_worktree_add",
-    "cmd_worktree_land",
-    "cmd_worktree_list",
-    "cmd_worktree_remove",
-    "discover_recovery_eval_specs",
-    "eval_pack_child",
-    "eval_run_of",
-    "eval_setup_recovery_active_field_pointer",
-    "eval_setup_recovery_contrast_close",
-    "eval_setup_recovery_contrast_close_contract",
-    "eval_setup_recovery_mission_rewrite",
-    "eval_setup_recovery_midflight_amend",
-    "MidFlightAmendEval",
-    "eval_setup_recovery_multi_wave_residual",
-    "MultiWaveResidualEval",
-    "eval_setup_recovery_multi_wave_close_checklist",
-    "MultiWaveCloseChecklistEval",
-    "eval_setup_recovery_threshold_stop_spawn",
-    "ThresholdStopSpawnEval",
-    "ProcessDeathResume",
-    "WaveReportQualityEval",
-    "eval_setup_recovery_packed_age",
-    "eval_setup_recovery_doctor_one_pass",
-    "eval_setup_recovery_doctor_closed_historical",
-    "eval_setup_recovery_plan_doc_sync",
-    "eval_setup_recovery_plan_first_coverage",
-    "DriveAfterIntegrateEval",
-    "ObservationPackEval",
-    "PlanDocSyncEval",
-    "PlanCoverageEval",
-    "PlanIngressEval",
-    "eval_write_done_residual",
-    "format_agents_note",
-    "main",
-    "parked_reason",
-    "print_contrast_report",
-    "print_resume_child_owns",
-    "print_resume_completed",
-    "print_resume_in_flight",
-    "pulse_once",
-    "report_error",
-    "resume_auto_continue_lines",
-    "resume_next_lines",
-    "run_recovery_eval_spec",
-]
 
 
 def _collect_with_unverified(args: argparse.Namespace) -> None:
@@ -918,6 +818,13 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
 
     s = sub.add_parser("collect", help="validate residuals for a wave")
     s.add_argument("--wave", type=int)
+    s.add_argument(
+        "--accept-unclaimed",
+        action="append",
+        default=[],
+        metavar="CHILD_ID",
+        help="leader owns a residual no spawn record or claim backs (rule=Unclaimed)",
+    )
     s.set_defaults(func=_collect_with_unverified)
 
 

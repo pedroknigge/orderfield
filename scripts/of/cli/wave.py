@@ -97,6 +97,7 @@ from of.pack import (
     ScopeWrite,
     SharedWorktree,
     SliceLint,
+    Unclaimed,
     canonical_packet_rel,
     canonical_residual_rel,
     canonical_scratch_rel,
@@ -1658,6 +1659,12 @@ def cmd_collect(args: argparse.Namespace) -> None:
     if not complete_stale_wave_recoverable(root, packets, order):
         die_on_stale_packets(packets, order, int(wave))
     enforce_wave_child_caps(order, state, len(packets))
+    by_id = {str(p.get("child_id") or ""): p for p in packets}
+    for child in getattr(args, "accept_unclaimed", None) or []:
+        if child not in by_id:
+            die(f"--accept-unclaimed {child}: no such packet in wave {wave}")
+        ChildClaim.write(root, by_id[child], mode=Unclaimed.ACCEPTED, harness="leader")
+        print(f"accepted    {child} (leader owns its residual: rule={Unclaimed.RULE})")
     ok = 0
     bad = 0
     lost = 0
@@ -1689,10 +1696,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
             )
             continue
         pin_dir = wave_dir(int(pkt.get("wave") or wave), root)
-        # Record ScopeWrite violations first: the gate reads them back.
-        skip = ScopeWrite.evaluate(
-            root, pkt, packets, try_load_json(path)[0], scope_cache
-        )
+        # An unwatched child's changed set first: the gate judges it.
+        skip = ScopeWrite.evaluate(root, pkt, scope_cache)
         if skip:
             scope_skips.setdefault(skip, []).append(child)
         errs, data, stamped, pin_warn, pin_held = CollectGate.judge(root, pkt, path)
@@ -1714,6 +1719,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 pass
         else:
             ok += 1
+            # A repaired residual drops the last attempt's INVALID sidecar.
+            path.with_suffix(path.suffix + ".invalid.txt").unlink(missing_ok=True)
             denied = data.get("denied_actions") if isinstance(data, dict) else None
             denied_note = ""
             if isinstance(denied, list) and denied:

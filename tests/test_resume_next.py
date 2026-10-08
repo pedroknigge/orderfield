@@ -346,9 +346,33 @@ class ResumeNext(unittest.TestCase):
         before = tree_bytes(self.tmp)
         env = {"OF_NO_GC_AUTO": "0"}
         self.ok("resume", env=env)
-        self.ok("resume", "--json", env=env)
+        self.assertEqual(self.plan(env=env)["repaired"], [])
         self.ok("status", env=env)
         self.assertEqual(tree_bytes(self.tmp), before)
+
+    def test_resume_writes_only_the_said_crash_repair(self) -> None:
+        """The one exception: a crash after the CURRENT flip left live stale.
+        resume restores exactly those files from CURRENT and says so."""
+        self.pack("ex1")
+        crashed = run_of(self.tmp, "patch", "--mission", "after crash",
+                         env={"OF_WAL_CRASH": "after-current"})
+        self.assertNotEqual(crashed.returncode, 0)
+        before = tree_bytes(self.tmp)
+        plan = self.plan()
+        self.assertIn("ORDER.json", plan["repaired"])
+        after = tree_bytes(self.tmp)
+        changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        self.assertEqual(
+            changed,
+            sorted([f".orderfield/{r}" for r in plan["repaired"]] + [".orderfield/wal/MATERIALIZED.json"]),
+        )
+        self.assertNotIn("repaired live", self.ok("resume").stdout)  # once only
+        self.assertEqual(tree_bytes(self.tmp), after)
+        crashed = run_of(self.tmp, "patch", "--mission", "again",
+                         env={"OF_WAL_CRASH": "after-current"})
+        self.assertNotEqual(crashed.returncode, 0)
+        self.assertIn("repaired live from CURRENT (crash after commit): ORDER.json",
+                      self.ok("resume").stdout)
 
     # -- D8: read-side tamper --------------------------------------------
     def test_live_order_tamper_is_restore_and_from_current_fixes(self) -> None:

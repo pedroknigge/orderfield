@@ -4104,9 +4104,10 @@ class CollectGate:
     ``of validate --packet`` all judge through it; only collect writes.
 
     Order: kernel pin, JSON parse, then the packet-bound validators
-    (artifact_sha is judged as the kernel would stamp it; ScopeWrite reads
-    the violations collect recorded). ``scope=True`` also computes
-    ScopeWrite live (git); resume skips that cost.
+    (artifact_sha is judged as the kernel would stamp it; ScopeWrite judges
+    the changed set spawn exit or the last collect recorded). ``scope=True``
+    diffs git live for a child the kernel did not watch, as collect does;
+    resume skips that cost.
     """
 
     @staticmethod
@@ -4147,48 +4148,14 @@ class CollectGate:
         packet: dict[str, Any],
         path: Path,
         *,
-        packets: list[dict[str, Any]] | None = None,
         scope: bool = False,
     ) -> list[str]:
+        from of.pack import ScopeWrite
+
         errs, data, _stamped, _warn, _held = CollectGate.judge(root, packet, path)
         if scope and not errs:
-            errs = CollectGate.scope_errors(root, packet, packets or [packet], data)
+            errs = ScopeWrite.errors(root, packet, data, live=True)
         return errs
-
-    @staticmethod
-    def scope_errors(
-        root: Path,
-        packet: dict[str, Any],
-        packets: list[dict[str, Any]],
-        data: Any,
-    ) -> list[str]:
-        """ScopeWrite.evaluate without recording the violations."""
-        from of.pack import ScopeWrite, packet_owns_paths
-
-        doc = ScopeWrite.load(root, packet)
-        if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
-            doc.get("before"), dict
-        ):
-            return []
-        changed = doc.get("changed")
-        if not isinstance(changed, list):
-            now = ScopeWrite.snapshot(root)
-            if now is None:
-                return []
-            changed = ScopeWrite.changed(root, doc["before"], now)
-        bad = ScopeWrite.violations(
-            packet, packets, data, changed,
-            ScopeWrite.concurrent(root, packet, packets, doc),
-        )
-        if not bad:
-            return []
-        shown = ", ".join(str(p) for p in bad[:8]) + (" …" if len(bad) > 8 else "")
-        allowed = ", ".join(packet_owns_paths(packet)) or "none"
-        return [
-            f"rule={ScopeWrite.RULE}: {packet.get('role') or '?'} "
-            f"{packet.get('child_id')} changed product paths outside its "
-            f"packet: {shown} (owns_paths: {allowed})"
-        ]
 
 
 class ChildState:
@@ -5557,11 +5524,6 @@ class ArgvRedact:
     def preview(argv: list[str]) -> str:
         """Render the real argv. Space tokens stay quoted (shlex.join)."""
         return shlex.join(ArgvRedact.apply(argv))
-
-
-def redact_argv(argv: list[str]) -> list[str]:
-    """Redact secret values and approval flags in a spawn argv list."""
-    return ArgvRedact.apply(argv)
 
 
 def argv_preview(argv: list[str]) -> str:
