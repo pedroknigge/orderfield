@@ -91,6 +91,14 @@ def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
     )
 
 
+def surface_proof(root: Path) -> str:
+    """--cite must name a file inside the project (INT-02); free text is refused."""
+    proof = root / "surface-proof.log"
+    if not proof.is_file():
+        proof.write_text("$ curl -sS /health\n200 ok\n", encoding="utf-8")
+    return proof.name
+
+
 def bound_residual(
     root: Path,
     child_id: str,
@@ -393,7 +401,7 @@ class SpecFidelity(unittest.TestCase):
         self.assertNotEqual(refused_internal.returncode, 0)
         args = ["spec"]
         for rid in ids:
-            args.extend(["--verified-contract", rid, "--cite", "curl -sS /health"])
+            args.extend(["--verified-contract", rid, "--cite", surface_proof(self.tmp)])
         args.append("--both-sides")
         contract = run_of(self.tmp, *args)
         self.assertEqual(contract.returncode, 0, contract.stderr)
@@ -576,7 +584,7 @@ class SpecFidelity(unittest.TestCase):
         self.assertNotIn(drop, contrast.stdout)
         args = ["spec"]
         for rid in keep:
-            args.extend(["--verified-contract", rid, "--cite", "curl -sS /health"])
+            args.extend(["--verified-contract", rid, "--cite", surface_proof(self.tmp)])
         args.append("--both-sides")
         v = run_of(self.tmp, *args)
         self.assertEqual(v.returncode, 0, v.stderr)
@@ -613,12 +621,12 @@ class SpecFidelity(unittest.TestCase):
         refused = run_of(self.tmp, "close")
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp))
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp), "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
         after = run_of(self.tmp, "contrast")
@@ -689,7 +697,7 @@ class PairVerifiedContractRefuse(unittest.TestCase):
         self.assertEqual(added.returncode, 0, added.stderr)
         self.assertTrue(of.requirement_is_pair(self._item("RFI-027")))
         before = self._contract_count()
-        refused = run_of(self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", "curl -sS /health")
+        refused = run_of(self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", surface_proof(self.tmp))
         self.assertNotEqual(refused.returncode, 0, refused.stdout)
         self.assertIn("RFI-027 is a PAIR requirement", refused.stderr)
         self.assertIn("needs --both-sides", refused.stderr)
@@ -697,7 +705,7 @@ class PairVerifiedContractRefuse(unittest.TestCase):
         self.assertFalse(self._item("RFI-027").get("pair_checked"))
         self.assertEqual(self._contract_count(), before)
         sealed = run_of(
-            self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", "curl -sS /health", "--both-sides"
+            self.tmp, "spec", "--verified-contract", "RFI-027", "--cite", surface_proof(self.tmp), "--both-sides"
         )
         self.assertEqual(sealed.returncode, 0, sealed.stderr)
         self.assertEqual(self._item("RFI-027").get("status"), "verified_contract")
@@ -1078,12 +1086,12 @@ class WebhookPairGate(unittest.TestCase):
         self.assertIn("CLOSE BLOCKED", contrast.stdout)
         refused = run_of(self.tmp, "close")
         self.assertNotEqual(refused.returncode, 0)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp))
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp), "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
         after = run_of(self.tmp, "contrast")
@@ -1210,7 +1218,7 @@ class ContractSurfaceGate(unittest.TestCase):
             refused = run_of(self.tmp, "close")
             self.assertNotEqual(refused.returncode, 0)
             self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp))
             self.assertEqual(stamped.returncode, 0, stamped.stderr)
             after = run_of(self.tmp, "contrast")
             self.assertIn("VERIFIED_CONTRACT", after.stdout)
@@ -1231,7 +1239,7 @@ class ContractSurfaceGate(unittest.TestCase):
             refused = run_of(self.tmp, "close")
             self.assertNotEqual(refused.returncode, 0)
             self.assertIn("VERIFIED_INTERNAL", refused.stderr)
-            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
+            stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp))
             self.assertEqual(stamped.returncode, 0, stamped.stderr)
             after = run_of(self.tmp, "contrast")
             self.assertIn("VERIFIED_CONTRACT", after.stdout)
@@ -1293,12 +1301,12 @@ class ContractSurfaceGate(unittest.TestCase):
         self._init()
         rid = self._listed_id("idempotency")
         self.assertTrue(rid.startswith("IDEMP-"), rid)
-        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health")
+        no_pair = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp))
         self.assertNotEqual(no_pair.returncode, 0)
         self.assertIn("PAIR requirement", no_pair.stderr)
         self.assertIn("needs --both-sides", no_pair.stderr)
         both = run_of(
-            self.tmp, "spec", "--verified-contract", rid, "--cite", "curl -sS /health", "--both-sides"
+            self.tmp, "spec", "--verified-contract", rid, "--cite", surface_proof(self.tmp), "--both-sides"
         )
         self.assertEqual(both.returncode, 0, both.stderr)
 
@@ -1914,7 +1922,7 @@ class SpecEmptyCloseGate(unittest.TestCase):
         refused = run_of(self.tmp, "spec", "--verified-contract", rid)
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("--cite", refused.stderr)
-        stamped = run_of(
+        free_text = run_of(
             self.tmp,
             "spec",
             "--verified-contract",
@@ -1922,13 +1930,21 @@ class SpecEmptyCloseGate(unittest.TestCase):
             "--cite",
             "python -m demo serve --help",
         )
+        self.assertNotEqual(free_text.returncode, 0)
+        self.assertIn("not an existing file", free_text.stderr)
+        cite = surface_proof(self.tmp)
+        stamped = run_of(self.tmp, "spec", "--verified-contract", rid, "--cite", cite)
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         data = json.loads(
             (self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text(encoding="utf-8")
         )
         item = next(r for r in data["requirements"] if r["id"] == rid)
         self.assertEqual(item["status"], "verified_contract")
-        self.assertEqual(item["proof_cite"], "python -m demo serve --help")
+        self.assertEqual(item["proof_cite"], cite)
+        self.assertEqual(
+            item["proof_sha"],
+            hashlib.sha256((self.tmp / cite).read_bytes()).hexdigest(),
+        )
 
 
 class DeicticBrief(unittest.TestCase):
@@ -2370,7 +2386,7 @@ class ContrastDiffNarrative(unittest.TestCase):
             self.tmp,
             "spec",
             "--verified-contract",
-            "CLI-001", "--cite", "curl -sS /health",
+            "CLI-001", "--cite", surface_proof(self.tmp),
             "--both-sides",
         )
         self.assertEqual(contract.returncode, 0, contract.stderr)
@@ -2636,7 +2652,7 @@ class EvaluatorPacketProof(unittest.TestCase):
         of.MultiWaveResidualEval.close_child(
             self.tmp, "rev1", 4, "review residual names REV-001"
         )
-        stamped = run_of(self.tmp, "spec", "--verified-contract", "REV-001", "--cite", "curl -sS /health")
+        stamped = run_of(self.tmp, "spec", "--verified-contract", "REV-001", "--cite", surface_proof(self.tmp))
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         landed = self._doc()
         self.assertEqual(landed["evaluator"], of.EvaluatorPacket.STATUS_LANDED)
