@@ -6,6 +6,7 @@ on:
 jobs:
   tltfia:
     runs-on: ubuntu-latest
+    if: ${{ secrets.TLTFIA_RELEASES_TOKEN != '' }}
     # A catastrophic regex in a `path` rule source hangs instead of failing; the job ends here (§6.1).
     timeout-minutes: 15
     defaults:

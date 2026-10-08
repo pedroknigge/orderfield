@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.8.33. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.8.34. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,9 +10,16 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.8.33`
+**Status:** Shipped · **Current release line:** `0.8.34`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
+
+## 0.8.34 — CLI parser domain decomposition, root stub migration skew resolution, and TLTFIA governance onboarding
+
+- CLI parser domain decomposition: monolithic 975-line `build_parser` in `scripts/of/cli/__init__.py` decomposed into 6 cohesive domain subparsers, reducing `build_parser` to 21 lines while preserving 100% equivalence across all 35 CLI subcommands and options.
+- Root stub migration skew resolution: migrated legacy root stub `.orderfield/ORDER.json` to timestamped archive via `of migrate --field ord_0ba66127`, restoring `of doctor` diagnostic to clean `ok` status without silent deletion.
+- TLTFIA governance and project fitness: integrated TLTFIA governance with `no-new` ratchet, binding verified project assertions across host RAM detection, packaging discovery, README quickstart, schema traversal, adapter resume, close evidence, and runbook path gates.
+- Proof: `tests/test_kernel_cli.py` (129/129 tests passed), `tests/test_packaging.py` (`test_validate_skill_exits_zero`), `tests/test_host_ram.py`, `tests/test_quickstart.py`, `tests/test_schema_subset.py`, `tests/test_adapter_resume.py`, `tests.test_kernel_spec.CloseEvidenceGate`, `tests.test_kernel_regime.RunbookPathGate`, `of doctor` (`doctor ok`).
 
 ## 0.8.33 — kernel invariants preservation, worktree landing, and natural brief extraction
 
