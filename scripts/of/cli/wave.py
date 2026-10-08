@@ -73,6 +73,7 @@ from of.field import (
     spec_path,
     utc_now,
     wave_dir,
+    CollectGate,
     DoctorSkew,
     SpawnRecord,
 )
@@ -1109,11 +1110,11 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     )
     wdir = wave_dir(wave, root)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
-    ensure_field_slave_md(root)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
-    # One generation: the prompt (a snapshot path) and the claim land
-    # together, so the next writer neither quarantines nor loses either.
+    # One generation: SLAVE.md and the prompt (snapshot paths) and the
+    # claim land together, so LIVE == CURRENT after handoff.
     with field_lock(root, "handoff"):
+        ensure_field_slave_md(root)
         dump_text(
             prompt_path,
             render_prompt(
@@ -1263,20 +1264,24 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             mcp_speak,
             plain=f"of: note — {mcp_speak}",
         )
-    ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
     )
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
-    prompt_path.write_text(prompt, encoding="utf-8")
-    if adapter == "generic" and not os.environ.get("OF_AGENT"):
-        if not args.dry_run:
-            # A pasted prompt is a handoff: claim it like of handoff does.
-            with field_lock(root, "handoff"):
+    pasted = adapter == "generic" and not os.environ.get("OF_AGENT")
+    # Snapshot paths (SLAVE.md, the prompt, session.json) land only in a
+    # WAL generation under the lock, so LIVE == CURRENT after spawn.
+    with field_lock(root, "spawn"):
+        ensure_field_slave_md(root)
+        dump_text(prompt_path, prompt)
+        if pasted:
+            if not args.dry_run:
+                # A pasted prompt is a handoff: claim it like of handoff does.
                 ChildClaim.write(root, packet, mode="handoff", harness="generic")
                 ScopeWrite.rebase(root, packet)
-        snapshot_session(root, "spawn")
+            snapshot_session(root, "spawn")
+    if pasted:
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1378,11 +1383,22 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if "exit" not in meta:
             meta["exit"] = extra.get("exit")
         dump_json(meta_path, meta)
+
+    def settle_session(*, bump: bool = False) -> None:
+        """session.json (and the charged-children bump) in one generation."""
+        with field_lock(root, "spawn"):
+            if bump:
+                # The child may have run for hours; a sibling pack/spawn has
+                # moved state.json since we loaded it. Re-load under the lock.
+                state = load_state(root)
+                state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
+                save_state(state, root)
+            snapshot_session(root, "spawn")
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={physical_field_rel(root, residual_rel)}")
     if args.dry_run:
         finalize("dry_run", ok=True)
-        snapshot_session(root, "spawn")
+        settle_session()
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1414,7 +1430,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
 
     def fail(outcome: str, message: str, **extra: Any) -> None:
         finalize(outcome, ok=False, log=str(log_path), **extra)
-        snapshot_session(root, "spawn")
+        settle_session()
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1558,13 +1574,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                     dump_json(residual_abs, merged, skip_dir_fsync=True)
         print(f"denied_actions={','.join(denied)}")
         meta["denied_actions"] = denied
-    if not already:
-        # The child may have run for hours; a sibling pack/spawn has moved
-        # state.json since we loaded it. Re-load and bump under the lock.
-        with field_lock(root, "spawn"):
-            state = load_state(root)
-            state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
-            save_state(state, root)
     if residual_abs.is_file():
         data = load_json(residual_abs)
         _errs, stamped = KernelSha.validate(
@@ -1587,7 +1596,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         log=str(log_path),
         residual_present=residual_abs.exists(),
     )
-    snapshot_session(root, "spawn")
+    settle_session(bump=not already)
     emit_event(
         "spawn",
         adapter=adapter,
@@ -1680,31 +1689,18 @@ def cmd_collect(args: argparse.Namespace) -> None:
             )
             continue
         pin_dir = wave_dir(int(pkt.get("wave") or wave), root)
-        pin_err, pin_warn = ResidualPin.check(pin_dir, child, path)
-        if pin_warn:
-            print(pin_warn)
-        if (
-            pin_err is None
-            and ResidualPin.record(pin_dir, child) is None
-            and ResidualPin.required(SpawnRecord.load(root, pkt))
-        ):
-            pin_err = ResidualPin.missing_error(child)
-        data, parse_err = try_load_json(path)
-        skip = ScopeWrite.evaluate(root, pkt, packets, data, scope_cache)
+        # Record ScopeWrite violations first: the gate reads them back.
+        skip = ScopeWrite.evaluate(
+            root, pkt, packets, try_load_json(path)[0], scope_cache
+        )
         if skip:
             scope_skips.setdefault(skip, []).append(child)
-        stamped = False
-        if pin_err:
-            errs = [pin_err]
-        elif parse_err:
-            errs = [parse_err]
-        else:
-            errs, stamped = KernelSha.validate(
-                data, pkt, root, validate_residual_for_packet
-            )
-            if stamped:
-                dump_json(path, data, skip_dir_fsync=True)
-                print(f"artifact_sha {path.name}: computed by kernel at collect")
+        errs, data, stamped, pin_warn, pin_held = CollectGate.judge(root, pkt, path)
+        if pin_warn:
+            print(pin_warn)
+        if stamped:
+            dump_json(path, data, skip_dir_fsync=True)
+            print(f"artifact_sha {path.name}: computed by kernel at collect")
         if errs:
             bad += 1
             reason = "; ".join(errs)
@@ -1730,7 +1726,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)
-        if not pin_err:
+        if pin_held:
             # Re-pin after kernel writes (stamp / write-back) so the next
             # collect compares against the kernel's own bytes.
             ResidualPin.pin(

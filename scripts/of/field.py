@@ -2207,9 +2207,10 @@ def field_lock(
                 if command not in ("init", "new", "contend"):
                     SpawnRecord.settle_orphans(root)
             elif command in ("spawn", "handoff"):
-                # No rematerialize here (spawn writes its prompt and session
-                # live before the lock), but a generation it commits would
-                # inherit a planted or rewritten packet: refuse, RESTORE.
+                # spawn/handoff write snapshot paths only under this lock,
+                # so they re-copy CURRENT like any writer. A planted or
+                # rewritten packet is refused first: the caller already
+                # read it and would run it. RESTORE is the leader's act.
                 FieldWal.refuse_live_spec_tamper(root)
                 FieldWal.refuse_live_order_tamper(root)
                 planted = [rel for rel in refused_drift(root) if "/packets/" in rel]
@@ -2219,6 +2220,7 @@ def field_lock(
                         "refuses a packet WAL CURRENT does not hold. RESTORE: of "
                         "patch --from-current (quarantines it under wal/orphans/)"
                     )
+                FieldWal.materialize_current(root, overwrite=True)
             with FieldWal.generation(root) if generation else nullcontext():
                 yield
         finally:
@@ -4096,13 +4098,46 @@ class ResidualClass:
 
 
 class CollectGate:
-    """The per-residual gate ``of collect`` applies, without its writes.
+    """The one definition of a valid residual: ``of collect``, resume and
+    ``of validate --packet`` all judge through it; only collect writes.
 
-    Order matches collect: kernel pin, JSON parse, then the packet-bound
-    validators (artifact_sha is judged as the kernel would stamp it).
-    ``scope=True`` also computes ScopeWrite live (git), as collect records
-    it; resume skips that cost and reads only recorded violations.
+    Order: kernel pin, JSON parse, then the packet-bound validators
+    (artifact_sha is judged as the kernel would stamp it; ScopeWrite reads
+    the violations collect recorded). ``scope=True`` also computes
+    ScopeWrite live (git); resume skips that cost.
     """
+
+    @staticmethod
+    def judge(
+        root: Path, packet: dict[str, Any], path: Path
+    ) -> tuple[list[str], Any, bool, str | None, bool]:
+        """(errors, data, stamped, pin warning, pin held). ``data`` is a
+        copy, with the kernel's artifact_sha stamped in when ``stamped``;
+        pin held is False when the kernel pin refused the bytes."""
+        import copy
+
+        from of.pack import validate_residual_for_packet
+        from of.residual_pin import KernelSha, ResidualPin
+
+        child = str(packet.get("child_id") or "?")
+        pin_dir = wave_dir(int(packet.get("wave") or 1), root)
+        pin_err, pin_warn = ResidualPin.check(pin_dir, child, path)
+        if (
+            pin_err is None
+            and ResidualPin.record(pin_dir, child) is None
+            and ResidualPin.required(SpawnRecord.load(root, packet))
+        ):
+            pin_err = ResidualPin.missing_error(child)
+        if pin_err:
+            return [pin_err], None, False, pin_warn, False
+        data, parse_err = try_load_json(path)
+        if parse_err:
+            return [parse_err], None, False, pin_warn, True
+        data = copy.deepcopy(data)
+        errs, stamped = KernelSha.validate(
+            data, packet, root, validate_residual_for_packet
+        )
+        return list(errs), data, stamped, pin_warn, True
 
     @staticmethod
     def errors(
@@ -4113,31 +4148,10 @@ class CollectGate:
         packets: list[dict[str, Any]] | None = None,
         scope: bool = False,
     ) -> list[str]:
-        import copy
-
-        from of.pack import validate_residual_for_packet
-        from of.residual_pin import KernelSha, ResidualPin
-
-        child = str(packet.get("child_id") or "?")
-        pin_dir = wave_dir(int(packet.get("wave") or 1), root)
-        pin_err, _warn = ResidualPin.check(pin_dir, child, path)
-        if (
-            pin_err is None
-            and ResidualPin.record(pin_dir, child) is None
-            and ResidualPin.required(SpawnRecord.load(root, packet))
-        ):
-            pin_err = ResidualPin.missing_error(child)
-        if pin_err:
-            return [pin_err]
-        data, parse_err = try_load_json(path)
-        if parse_err:
-            return [parse_err]
-        errs, _stamped = KernelSha.validate(
-            copy.deepcopy(data), packet, root, validate_residual_for_packet
-        )
+        errs, data, _stamped, _warn, _held = CollectGate.judge(root, packet, path)
         if scope and not errs:
             errs = CollectGate.scope_errors(root, packet, packets or [packet], data)
-        return list(errs)
+        return errs
 
     @staticmethod
     def scope_errors(
@@ -5631,46 +5645,13 @@ def restore_live_from_current(root: Path) -> list[str]:
     """``of patch --from-current``: live field files ← WAL CURRENT. Leader act.
 
     The way out of LIVE!=CURRENT, which every writer refuses. The lock skips
-    the writer tamper refusal (that is the state being repaired); evidence
-    is kept: each drifted live file is copied to
-    ``wal/orphans/live-restore-<gid>/`` before CURRENT's bytes replace it,
-    unlisted snapshot files are quarantined, SPEC.md is restored too.
+    the writer tamper refusal (that is the state being repaired);
+    ``FieldWal.restore_live`` keeps the evidence under wal/orphans/.
     Returns the restored rels ([] = live already matched).
     """
-    from of.wal import (
-        WAL_ORPHANS,
-        _generation_intact,
-        _load_wal_current,
-        _materialize_generation,
-        _quarantine_live_extras,
-        _write_materialized,
-    )
-
     refuse_child_forge("of patch --from-current")
     with field_lock(root, "patch --from-current", generation=False):
-        drift = FieldWal.drift(root)
-        current = _load_wal_current(root)
-        gid = str((current or {}).get("generation") or "")
-        man = _generation_intact(wal_home(root) / gid, gid) if gid else None
-        if man is None:
-            die(
-                "no intact WAL CURRENT to restore from; the leader adopts live "
-                "with OF_WAL_ADOPT_LIVE=1 or of init --force"
-            )
-        if not drift:
-            return []
-        home = field_home(root)
-        keep = wal_home(root) / WAL_ORPHANS / f"live-restore-{gid}"
-        for rel in drift:
-            live = home / rel
-            if live.is_file() and not live.is_symlink():
-                dest = keep / rel
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(live), str(dest))
-        _quarantine_live_extras(root, gid, man)
-        _materialize_generation(root, wal_home(root) / gid, man, overwrite=True)
-        _write_materialized(root, current or {})
-        return drift
+        return FieldWal.restore_live(root)
 
 
 def remove_constraint(order: dict[str, Any], spec: str) -> str:

@@ -763,6 +763,40 @@ def _quarantine_live_extras(root: Path, gid: str, man: dict[str, Any]) -> None:
         )
 
 
+def restore_live(root: Path) -> list[str]:
+    """Live field files ← intact CURRENT; the caller holds the field lock.
+
+    The leader's way out of LIVE!=CURRENT (``of patch --from-current``).
+    Evidence is kept: each drifted live file is copied to
+    ``wal/orphans/live-restore-<gid>/`` before CURRENT's bytes replace it,
+    unlisted snapshot files are quarantined, SPEC.md is restored too.
+    Returns the restored rels ([] = live already matched).
+    """
+    current = _load_wal_current(root)
+    gid = str((current or {}).get("generation") or "")
+    man = _generation_intact(wal_home(root) / gid, gid) if gid else None
+    if current is None or man is None:
+        die(
+            "no intact WAL CURRENT to restore from; the leader adopts live "
+            f"with {OF_WAL_ADOPT_LIVE_ENV}=1 or of init --force"
+        )
+    drift = wal_drift(root)
+    if not drift:
+        return []
+    home = field_home(root)
+    keep = wal_home(root) / WAL_ORPHANS / f"live-restore-{gid}"
+    for rel in drift:
+        live = home / rel
+        if live.is_file() and not live.is_symlink():
+            dest = keep / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(live), str(dest))
+    _quarantine_live_extras(root, gid, man)
+    _materialize_generation(root, wal_home(root) / gid, man, overwrite=True)
+    _write_materialized(root, current)
+    return drift
+
+
 def _refuse_live_order_tamper(root: Path) -> None:
     """See live ORDER.json before writer rematerialize undoes a silent rewrite.
 
@@ -1292,6 +1326,7 @@ class FieldWal:
     materialize_current = staticmethod(_materialize_current_only)
     generation = staticmethod(field_generation)
     drift = staticmethod(wal_drift)
+    restore_live = staticmethod(restore_live)
     durable_fsync = staticmethod(durable_fsync)
     load_json = staticmethod(load_json)
     dump_json = staticmethod(dump_json)
