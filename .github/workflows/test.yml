@@ -17,6 +17,7 @@ permissions:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -29,8 +30,12 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Unit tests (kernel + packaging + README quickstart from a fresh temp dir)
-        run: python3 -m unittest discover -s tests -v
+      # One subprocess per tests/test_*.py, os.cpu_count() at a time, 900 s
+      # per module; prints the 20 slowest modules.
+      - name: Unit tests (parallel runner; kernel + packaging + README quickstart)
+        run: python3 scripts/run_tests.py --top 20
+      # Also proves every EVAL_UNITTEST_MODULES name still resolves in
+      # tests.test_kernel (the runner alone does not).
       - name: Recovery evals (of eval --strict --kernel)
         env:
           OF_NO_UPDATE_CHECK: "1"

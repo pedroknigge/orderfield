@@ -4,7 +4,7 @@ Stdlib. Protected `main`. No pip by accident.
 
 Done is tests, docs that match code, and a VERSION that still tells the truth.
 
-Write in `scripts/of/`, not the shim. CI is unittest plus `validate-skill.sh`. The 0.6 split already shipped.
+Write in `scripts/of/`, not the shim. CI is unittest (via `scripts/run_tests.py`) plus `validate-skill.sh`. The 0.6 split already shipped.
 
 How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH.md).
 
@@ -12,7 +12,7 @@ How to change this repo after the first ship. Publish gate: [PUBLISH.md](PUBLISH
 
 1. Behavior is covered by a unittest (or an explicit why-not in this file).
 2. Docs that claim the behavior match code (`docs/architecture.md`, feature READMEs, claims matrix when the surface is public).
-3. `python3 -m unittest discover -s tests -v` and `bash scripts/validate-skill.sh` both exit 0.
+3. `python3 scripts/run_tests.py` and `bash scripts/validate-skill.sh` both exit 0. The runner runs each `tests/test_*.py` module in its own process, `os.cpu_count()` at a time, and prints the slowest modules; `python3 -m unittest discover -s tests -v` runs the same tests serially and is much slower.
 4. `VERSION`, both skill entry points, README, current-version docs, and the latest `CHANGELOG.md` heading agree.
 
 ## How to change
