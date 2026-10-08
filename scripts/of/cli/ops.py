@@ -42,6 +42,9 @@ from of.field import (
     PULSE_STALE_MINUTES,
     child_pulse_age,
     child_pulse_verdict,
+    ChildState,
+    refused_drift,
+    CollectGate,
     CollectReady,
     DeadStartedOnly,
     LiveQuietStuck,
@@ -60,13 +63,13 @@ from of.field import (
     apply_field_retention,
     ClosedFieldArchive,
     drop_field_home,
-    maybe_safe_gc,
     print_audit_block,
     record_keep_field,
     write_gc_stamp,
     default_worktree_path,
     die,
     field_is_file,
+    field_read_bytes,
     emit_event,
     json_events_enabled,
     forget_learning,
@@ -115,6 +118,7 @@ from of.field import (
     skill_root,
     snapshot_session,
     spec_log_dir,
+    state_path,
     utc_now,
     validate_order,
     wave_dir,
@@ -589,6 +593,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         # home so a sibling layout is not read as the legacy root.
         set_field_home(field)
     print("field")
+    drift: list[str] = []
     if has_order:
         print(f"  path          {field_rel(root, field)}  writable={writable_status(field)}")
         scratch = field / "work" / "scratch"
@@ -604,6 +609,14 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         except SystemExit as exc:
             print(f"  symlink       FAIL {exc}")
             failed = True
+        from of.field import FieldWal
+
+        live_drift = FieldWal.drift(root)
+        for rel in live_drift:
+            print(f"  LIVE!=CURRENT {rel}")
+        drift = refused_drift(root, live_drift)
+        if drift:
+            print("  next          RESTORE  of patch --from-current (leader act)")
     elif list_field_homes(root):
         print("  path          -  unbound  (of fields)")
         print("  scratch       -  unbound")
@@ -745,6 +758,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
     if (
         skill_skew
+        or drift
         or wt_warn
         or open_warn
         or audit_warn
@@ -1336,32 +1350,9 @@ class DriveAfterIntegrate:
         state: dict[str, Any],
         wave: int,
     ) -> tuple[str, list[dict[str, Any]]]:
-        packets = packed_children(root, int(wave))
-        flying: list[dict[str, Any]] = (
-            []
-            if order.get("spec_closed")
-            else in_flight_children(root, int(wave))
-        )
-        integrated = field_is_file(wave_dir(int(wave), root) / "report.json")
-        covering = (not integrated) or IntegrationDigest.covers(root, state)
-        stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(
-            packets
-        )
-        action = next_legal_action(
-            state,
-            flying,
-            packets,
-            integrated=integrated,
-            covering=covering,
-            stale=stale,
-            spec_closed=bool(order.get("spec_closed")),
-            collected=CollectReady.of(root, packets, load_session(root)),
-            order_rev=int(order.get("rev") or 0),
-            spawned_flying=EscalateUnblock.launched_flying(root, flying),
-        )
-        return DriveAfterIntegrate.gate(
-            action, root, order, state, int(wave)
-        ), flying
+        """The NextPlan action (state.wave) and its not-landed packets."""
+        plan = NextPlan.compute(root, order, {**state, "wave": int(wave)})
+        return plan["action"], plan["flying"]
 
     @staticmethod
     def gate(
@@ -1518,7 +1509,7 @@ class StatusReport:
         stored = str(order.get("spec_hash") or "")
         live = spec_bytes_hash(root)
         caps = order.get("caps") if isinstance(order.get("caps"), dict) else {}
-        action, verdicts, nxt_lines = HandoffReport.next_row(
+        action, verdicts, nxt_lines, plan = HandoffReport.next_row(
             state, packets, flying, order, root, now=now
         )
         return {
@@ -1552,6 +1543,7 @@ class StatusReport:
             "next": action,
             "next_label": nxt_lines[0] if nxt_lines else action.upper(),
             "next_detail": nxt_lines[1] if len(nxt_lines) > 1 else "",
+            "next_plan": NextPlan.machine(plan),
             "last_regime": state.get("last_regime"),
             "spawn_blocked": bool(state.get("spawn_blocked")),
             "signal": FieldSignal.of(order, state, packets, session, now=now),
@@ -1643,6 +1635,7 @@ class StatusReport:
             "next": str(doc.get("next") or ""),
             "next_label": str(doc.get("next_label") or ""),
             "next_detail": str(doc.get("next_detail") or ""),
+            "next_plan": doc.get("next_plan"),
             "last_regime": doc.get("last_regime"),
             "spawn_blocked": bool(doc.get("spawn_blocked")),
             "signal": doc.get("signal"),
@@ -1733,36 +1726,15 @@ class HandoffReport:
         root: Path,
         *,
         now: float | None = None,
-    ) -> tuple[str, dict[str, str], list[str]]:
+    ) -> tuple[str, dict[str, str], list[str], dict[str, Any]]:
+        """NextPlan for the report; pulse verdicts are a displayed hint only."""
         ts = now if now is not None else time.time()
-        verdicts: dict[str, str] = {}
-        for pkt in flying:
-            cid = str(pkt.get("child_id") or "?")
-            verdicts[cid] = child_pulse_verdict(root, pkt, ts)
-        any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
-        all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
-        integrated = field_is_file(wave_dir(int(state.get("wave") or 1), root) / "report.json")
-        covering = (not integrated) or IntegrationDigest.covers(root, state)
-        stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
-        action = next_legal_action(
-            state,
-            flying,
-            packets,
-            integrated=integrated,
-            covering=covering,
-            stale=stale,
-            children_stale=all_stale,
-            children_packed=any_packed,
-            spec_closed=bool(order.get("spec_closed")),
-            collected=CollectReady.of(root, packets, load_session(root)),
-            order_rev=int(order.get("rev") or 0),
-            spawned_flying=EscalateUnblock.launched_flying(root, flying),
-        )
-        wave = int(state.get("wave") or 1)
-        action = DriveAfterIntegrate.gate(action, root, order, state, wave)
-        return action, verdicts, resume_next_lines(
-            action, root=root, flying=flying, state=state
-        )
+        verdicts = {
+            str(pkt.get("child_id") or "?"): child_pulse_verdict(root, pkt, ts)
+            for pkt in flying
+        }
+        plan = NextPlan.compute(root, order, state, now=ts)
+        return plan["action"], verdicts, [plan["label"], plan["detail"]], plan
 
     @staticmethod
     def flying_row(
@@ -1800,7 +1772,7 @@ class HandoffReport:
         now: float | None = None,
     ) -> dict[str, Any]:
         wave = int(state.get("wave") or 1)
-        action, verdicts, nxt_lines = HandoffReport.next_row(
+        action, verdicts, nxt_lines, plan = HandoffReport.next_row(
             state, packets, flying, order, root, now=now
         )
         sess = session if isinstance(session, dict) else {}
@@ -1825,6 +1797,7 @@ class HandoffReport:
             "next": action,
             "next_label": nxt_lines[0] if nxt_lines else action.upper(),
             "next_detail": nxt_lines[1] if len(nxt_lines) > 1 else "",
+            "next_plan": NextPlan.machine(plan),
             "in_flight": [
                 HandoffReport.flying_row(
                     root, pkt, wave, verdicts.get(str(pkt.get("child_id") or "?"), "")
@@ -1911,6 +1884,7 @@ class HandoffReport:
             "next": str(doc.get("next") or ""),
             "next_label": str(doc.get("next_label") or ""),
             "next_detail": str(doc.get("next_detail") or ""),
+            "next_plan": doc.get("next_plan"),
             "in_flight": flying,
             "completed_ids": [str(cid) for cid in (doc.get("completed_ids") or [])],
             "packed_age": packed,
@@ -1949,6 +1923,11 @@ class HandoffReport:
         detail = str(doc.get("next_detail") or "")
         if detail:
             lines.append(f"              {detail}")
+        plan = doc.get("next_plan")
+        if isinstance(plan, dict):
+            lines.extend(
+                "    " + line for line in NextPlan.lines(plan, indent="")[1 + bool(plan["detail"]):]
+            )
         flying = list(doc.get("in_flight") or [])
         lines.append(f"in_flight     {len(flying)}")
         for row in flying:
@@ -2052,6 +2031,16 @@ def cmd_status(args: argparse.Namespace) -> None:
     packets = packed_children(root, int(state.get("wave") or 1))
     print(f"root        {root}")
     print(f"id          {order['id']}")
+    from of.field import FieldWal
+
+    drift = FieldWal.drift(root)
+    for rel in drift:
+        print(f"LIVE!=CURRENT {rel}")
+    if refused_drift(root, drift):
+        print(
+            "next        RESTORE — of patch --from-current restores live from "
+            "WAL CURRENT (leader act; writers refuse until then)"
+        )
     pointed = ActiveField.read(root)
     if pointed:
         print(f"active      {pointed}")
@@ -2181,6 +2170,9 @@ def cmd_detect(args: argparse.Namespace) -> None:
 
 def cmd_validate(args: argparse.Namespace) -> None:
     path = Path(args.file)
+    if getattr(args, "packet", None):
+        validate_against_packet(Path(args.packet), path)
+        return
     data = load_json(path)
     kind = args.kind
     if kind == "auto":
@@ -2206,6 +2198,289 @@ def cmd_validate(args: argparse.Namespace) -> None:
             print(f"  - {e}")
         raise SystemExit(2)
     print(f"OK {kind} {path}")
+
+
+def validate_against_packet(packet_path: Path, residual: Path) -> None:
+    """``of validate --packet P R``: the collect gate on R for packet P, no writes.
+
+    Schema-only ``of validate`` passes residuals collect rejects (identity,
+    CloseEvidence, OwnedWrite, receipts, ScopeWrite). A child self-checks
+    here before exit; exit 2 + the same reasons collect would print.
+    """
+    root = find_root()
+    packet = load_packet(packet_path)
+    wave = int(packet.get("wave") or load_state(root).get("wave") or 1)
+    if not residual.is_file():
+        print("INVALID")
+        print(f"  - missing residual at {residual}")
+        raise SystemExit(2)
+    errs = CollectGate.errors(
+        root,
+        packet,
+        residual,
+        packets=packed_children(root, wave),
+        scope=True,
+    )
+    if errs:
+        print("INVALID")
+        for err in errs:
+            print(f"  - {err}")
+        raise SystemExit(2)
+    print(f"OK residual {residual} (collect gate, packet {packet.get('child_id')})")
+
+
+class NextPlan:
+    """The one ``next``: resume, status, handoff, pulse --watch and --json.
+
+    ``{action, reason_code, label, detail, targets:[{child_id, packet, argv}],
+    inputs_digest}``. A function of disk bytes (ORDER, state, report,
+    session.last_cmd, packets, residuals, spawn records, claims, WAL drift,
+    CLOSE.json) plus pid liveness and lease clocks; never mtime. The
+    arriving agent runs each non-empty ``targets[*].argv`` verbatim; an
+    empty argv is a child to wait on. ``inputs_digest`` lets two agents
+    confirm they computed the same next.
+    """
+
+    RESTORE = "restore"  # on refused_drift (writers refuse; field.py)
+    CLOSE_UNPROVEN = "close-unproven"
+    REPAIR = "repair"
+    HOLD_GENERIC = "continue existing packets; do not repack"
+    # Waiting children, most urgent first. DEAD/OVER/escalate keep their
+    # named classes (DeadStartedOnly / LiveQuietStuck / EscalateUnblock).
+    HOLD_WAIT = (
+        (ChildState.UNKNOWN, "spawn record from another host (or an ambiguous "
+         "v0.8.34 start time): liveness UNKNOWN, never dead; confirm on that "
+         "host before of spawn --force-spawn --reason"),
+        (ChildState.CLAIMED, "a handoff/native claim holds the lease; wait for "
+         "its residual, or lease_expires with no fresh PULSE heartbeat"),
+        (ChildState.UNCLAIMED, "scratch work with no claim or spawn record: a "
+         "native child may still be working (no clock expires it); wait for "
+         "its residual, or a human takes over with of spawn --force-spawn --reason"),
+        (ChildState.RUNNING, "spawn pid alive; wait for its residual"),
+    )
+    WAVE_REASON = {
+        "collect": "residuals_landed",
+        CollectReady.ACTION: "collected",
+        "next-wave": "wave_done",
+        "pack": "no_packets",
+        "closed": "close_verified",
+        "integrate --recompute": "report_digest_drift",
+        PacketRevStale.ACTION: "packet_rev_stale",
+        EscalateUnblock.ACTION: "escalate_up",
+        "handoff": ChildState.EXPIRED,
+    }
+
+    @staticmethod
+    def child_argv(row: dict[str, Any], fa: list[str]) -> list[str]:
+        state = row["state"]
+        pkt = row["packet"]
+        if state in (ChildState.PACKED, ChildState.ENDED):
+            return ["of", *fa, "spawn", "--packet", pkt]
+        if state == ChildState.DEAD:
+            return ["of", *fa, "spawn", "--packet", pkt, "--force-spawn",
+                    "--reason", "started-only pid gone"]
+        if state == ChildState.EXPIRED:
+            return ["of", *fa, "handoff", "--packet", pkt]
+        if state == ChildState.INVALID:
+            if row["lease"] != "none":
+                return ["of", *fa, "handoff", "--packet", pkt]
+            force = ["--force-spawn", "--reason", "repair invalid residual"]
+            return ["of", *fa, "spawn", "--packet", pkt, *(force if row["spawn"] == "started" else [])]
+        return []
+
+    @staticmethod
+    def wave_argv(action: str, wave: int, fa: list[str]) -> list[str]:
+        words = {
+            "collect": ["collect"],
+            CollectReady.ACTION: ["integrate", "--wave", str(wave)],
+            "integrate --recompute": ["integrate", "--wave", str(wave), "--recompute"],
+            "next-wave": ["next-wave"],
+            NextPlan.RESTORE: ["patch", "--from-current"],
+        }.get(action)
+        return ["of", *fa, *words] if words else []
+
+    @staticmethod
+    def digest(
+        root: Path,
+        wave: int,
+        session: dict[str, Any],
+        packets: list[dict[str, Any]],
+        facts: dict[str, Any],
+    ) -> str:
+        import hashlib
+
+        def sha(path: Path) -> str | None:
+            raw = field_read_bytes(path)
+            return hashlib.sha256(raw).hexdigest() if raw is not None else None
+
+        blob = {
+            "order": sha(order_path(root)),
+            "state": sha(state_path(root)),
+            "report": sha(wave_dir(wave, root) / "report.json"),
+            "last_cmd": session.get("last_cmd"),
+            "packets": sorted(str(p.get("packet_hash") or "") for p in packets),
+            **facts,
+        }
+        text = json.dumps(blob, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def compute(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        *,
+        session: dict[str, Any] | None = None,
+        homes: list[Any] | None = None,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        from of.cli.spec_cmd import CloseProof, EvaluatorPacket
+        from of.field import FIELD_ID_RE, FieldWal, field_is_open
+
+        clock = now if now is not None else time.time()
+        sess = session if session is not None else load_session(root)
+        wave = int(state.get("wave") or 1)
+        packets = packed_children(root, wave)
+        homes = homes if homes is not None else list_field_homes(root)
+        open_n = sum(1 for _fid, _home, o in homes if field_is_open(o))
+        fid = str(order.get("id") or "")
+        fa = ["--field", fid] if open_n > 1 and FIELD_ID_RE.match(fid) else []
+        drift = FieldWal.drift(root)
+        problems = CloseProof.verify(root) if order.get("spec_closed") else []
+        closed = bool(order.get("spec_closed")) and problems in ([], [CloseProof.LEGACY])
+        rows = [] if closed else [ChildState.of(root, p, now=clock) for p in packets]
+        by_id = {str(p.get("child_id") or "?"): p for p in packets}
+        waiting = [r for r in rows if r["state"] not in ChildState.SETTLED_OK]
+        flying = [by_id[r["child_id"]] for r in waiting]
+        states = {r["state"] for r in waiting}
+        if refused_drift(root, drift):
+            action = NextPlan.RESTORE
+        elif order.get("spec_closed") and not closed:
+            action = NextPlan.CLOSE_UNPROVEN
+        else:
+            integrated = field_is_file(wave_dir(wave, root) / "report.json")
+            action = next_legal_action(
+                state,
+                flying,
+                packets,
+                integrated=integrated,
+                covering=(not integrated) or IntegrationDigest.covers(root, state),
+                stale=bool(packets)
+                and len(stale_packet_ids(packets, order)) == len(packets),
+                children_stale=ChildState.EXPIRED in states,
+                children_packed=bool(states & {ChildState.PACKED, ChildState.ENDED}),
+                children_invalid=ChildState.INVALID in states,
+                spec_closed=closed,
+                collected=CollectReady.of(root, packets, sess),
+                order_rev=int(order.get("rev") or 0),
+                spawned_flying=EscalateUnblock.launched_flying(root, flying),
+            )
+            action = DriveAfterIntegrate.gate(action, root, order, state, wave)
+        reason = NextPlan.WAVE_REASON.get(action, action.replace(" ", "_"))
+        lines: list[str] | None = None
+        if action == NextPlan.RESTORE:
+            reason = "live_drift"
+            lines = [
+                "RESTORE",
+                "LIVE!=CURRENT " + ", ".join(drift) + "; of patch --from-current "
+                "restores live from WAL CURRENT (leader act; writers refuse until then)",
+            ]
+        elif action == NextPlan.CLOSE_UNPROVEN:
+            reason = "close_unproven"
+            lines = [
+                "CLOSE UNPROVEN",
+                "spec_closed but CLOSE.json does not verify: " + "; ".join(problems[:3])
+                + "; the field stays open: re-prove (of contrast, of close) or "
+                "of patch --from-current if ORDER was rewritten",
+            ]
+        elif action == NextPlan.REPAIR:
+            reason = ChildState.INVALID
+            bad = [r for r in waiting if r["state"] == ChildState.INVALID]
+            lines = [
+                "REPAIR",
+                "; ".join(f"{r['child_id']}: {r['reason']}" for r in bad)
+                + " — re-run that child on the same packet (it rewrites the "
+                "residual; of validate --packet checks it); do not collect",
+            ]
+        elif action == "spawn":
+            reason = ChildState.PACKED if ChildState.PACKED in states else ChildState.ENDED
+        elif action == "hold":
+            if ChildState.DEAD in states:
+                reason, lines = ChildState.DEAD, DeadStartedOnly.next_lines()
+            elif state.get("spawn_blocked"):
+                reason = "escalate_in_flight"
+                lines = EscalateUnblock.next_lines(root, state, flying)
+            elif ChildState.OVER in states:
+                reason, lines = ChildState.OVER, LiveQuietStuck.next_lines()
+            elif EvaluatorPacket.refused(root, state, wave):
+                reason = "evaluator_refused"
+            else:
+                reason = "in_flight"
+                for code, why in NextPlan.HOLD_WAIT:
+                    if code in states:
+                        reason = code
+                        lines = ["HOLD", f"{NextPlan.HOLD_GENERIC}; {why}"]
+                        break
+        if lines is None:
+            lines = resume_next_lines(action, root=root, flying=flying, state=state)
+        if action == PacketRevStale.ACTION:
+            targets = [
+                {"child_id": r["child_id"], "packet": r["packet"],
+                 "argv": ["of", *fa, "unpack", "--force", "--child-id", r["child_id"]]}
+                for r in waiting
+            ]
+        elif waiting and action in ("spawn", "handoff", "hold", NextPlan.REPAIR):
+            targets = [
+                {"child_id": r["child_id"], "packet": r["packet"],
+                 "argv": NextPlan.child_argv(r, fa)}
+                for r in waiting
+            ]
+            runnable = [t for t in targets if t["argv"]]
+            targets = runnable or targets
+        else:
+            argv = NextPlan.wave_argv(action, wave, fa)
+            targets = [{"child_id": None, "packet": None, "argv": argv}] if argv else []
+        facts = {
+            "children": rows,
+            "drift": drift,
+            "close": problems,
+            "open_fields": open_n,
+            "spawn_blocked": bool(state.get("spawn_blocked")),
+        }
+        return {
+            "action": action,
+            "reason_code": reason,
+            "label": lines[0] if lines else action.upper(),
+            "detail": lines[1] if len(lines) > 1 else "",
+            "targets": targets,
+            "inputs_digest": NextPlan.digest(root, wave, sess, packets, facts),
+            "children": rows,
+            "drift": drift,
+            "close_problems": problems,
+            "closed": closed,
+            "flying": flying,
+        }
+
+    @staticmethod
+    def machine(plan: dict[str, Any]) -> dict[str, Any]:
+        keys = ("action", "reason_code", "label", "detail", "targets", "inputs_digest", "drift")
+        return {key: plan[key] for key in keys}
+
+    @staticmethod
+    def lines(plan: dict[str, Any], *, indent: str = "  ") -> list[str]:
+        """Text form of the same object (label, detail, reason, targets, digest)."""
+        import shlex
+
+        out = [f"{indent}{plan['label']}"]
+        if plan["detail"]:
+            out.append(f"{indent}{plan['detail']}")
+        out.append(f"{indent}reason      {plan['reason_code']}")
+        for target in plan["targets"]:
+            who = target["child_id"] or "field"
+            argv = shlex.join(target["argv"]) if target["argv"] else "(wait)"
+            out.append(f"{indent}target      {who}  {argv}")
+        out.append(f"{indent}digest      {plan['inputs_digest']}")
+        return out
 
 
 def resume_next_lines(
@@ -2305,7 +2580,11 @@ def print_resume_child_owns(root: Path, packet: dict[str, Any]) -> None:
             print(f"      {owned_path:<24} {presence}")
 
 
-def print_resume_completed(root: Path, completed: list[dict[str, Any]]) -> None:
+def print_resume_completed(
+    root: Path,
+    completed: list[dict[str, Any]],
+    rows: dict[str, dict[str, Any]] | None = None,
+) -> None:
     if not completed:
         return
     print("completed")
@@ -2313,6 +2592,8 @@ def print_resume_completed(root: Path, completed: list[dict[str, Any]]) -> None:
         cid = str(pkt.get("child_id") or "?")
         print(f"  {cid}")
         print("    residual    present")
+        if (rows or {}).get(cid, {}).get("state") == ChildState.ORPHAN:
+            print(f"    spawn       {ChildState.ORPHAN} (pid gone; residual passes the gate)")
         ObservationPack.emit(root, pkt, key_width=12, indent="    ")
         residual = try_load_packet_residual(root, pkt)
         if residual:
@@ -2348,6 +2629,7 @@ def print_resume_in_flight(
     *,
     now: float | None = None,
     verdicts: dict[str, str] | None = None,
+    rows: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     if not flying:
         return
@@ -2358,9 +2640,17 @@ def print_resume_in_flight(
         role = str(pkt.get("role") or "?")
         scratch = "present" if scratch_nonempty(root, pkt) else "missing"
         reason = parked_reason(root, pkt)
+        row = (rows or {}).get(cid) or {}
         print(f"  {cid}")
-        extra = " (not spawned)" if reason == "not_spawned" else ""
-        print(f"    residual    MISSING{extra}")
+        if row.get("residual") == "invalid":
+            print(f"    residual    INVALID — {row.get('reason') or '?'}")
+        elif row.get("residual") == "valid":
+            print("    residual    present (spawn record unsettled)")
+        else:
+            extra = " (not spawned)" if reason == "not_spawned" else ""
+            print(f"    residual    MISSING{extra}")
+        if row.get("state"):
+            print(f"    state       {row['state']}  pid={row.get('liveness')}  lease={row.get('lease')}")
         print(f"    role        {role}")
         print(f"    scratch     {scratch}")
         print(f"    parked_reason {reason}")
@@ -2390,9 +2680,20 @@ def resume_auto_continue_lines(
     order: dict[str, Any],
     *,
     open_field_count: int = 1,
+    close_problems: list[str] | None = None,
 ) -> list[str]:
+    """``close_problems`` = CloseProof.verify; spec_closed alone is a claim.
+    None keeps the bare-flag reading for callers without a bound field."""
     if order.get("spec_closed"):
-        return ["no", "field closed (spec_closed); do not pack or spawn"]
+        from of.cli.spec_cmd import CloseProof
+
+        if close_problems is None or close_problems in ([], [CloseProof.LEGACY]):
+            return ["no", "field closed (spec_closed); do not pack or spawn"]
+        return [
+            "yes",
+            "spec_closed does not verify (" + close_problems[0] + "); "
+            "execute printed next this turn",
+        ]
     session = (os.environ.get("OF_SESSION_ID") or "").strip()
     origin = order.get("origin") if isinstance(order.get("origin"), dict) else {}
     oid = str((origin or {}).get("session_id") or "").strip()
@@ -2490,6 +2791,17 @@ def cmd_fields(args: argparse.Namespace) -> None:
     from of.field import FieldRoster, PackRoster, list_field_homes
 
     homes = list_field_homes(root)
+    use = str(getattr(args, "use_field", None) or "").strip()
+    if use:
+        from of.field import ActiveField
+
+        refuse_child_forge("of fields --use")
+        if use not in {fid for fid, _home, _order in homes}:
+            die(f"unknown field {use}; of fields lists them")
+        ActiveField.write(root, use)
+        print(f"active        {use}  (read default; writers still need --field with 2+ open fields)")
+        emit_event("fields", active=use, ok=True)
+        return
     doc = PackRoster.document(root, homes)
     if bool(getattr(args, "fields_json", False)):
         print(json.dumps(PackRoster.machine(doc), sort_keys=True))
@@ -2515,6 +2827,31 @@ def cmd_fields(args: argparse.Namespace) -> None:
     RootStub.emit(root)
     print_audit_block(root)
     emit_event("fields", **PackRoster.event_fields(doc))
+
+
+def cmd_patch_from_current(args: argparse.Namespace) -> None:
+    """``of patch --from-current``: the RESTORE next. Live ← WAL CURRENT."""
+    from of.field import restore_live_from_current
+
+    from of.cli import build_parser
+
+    # Restore is its own act: silently dropping --mission etc. is a lie.
+    base, plain = (vars(build_parser().parse_args(argv)) for argv in (["patch"], ["resume"]))
+    mixed = sorted(
+        k for k, v in vars(args).items()
+        if k in base and k not in plain and k != "from_current" and v != base[k]
+    )
+    if mixed:
+        die(f"of patch --from-current takes no other patch flags (got {', '.join(mixed)})")
+    root = find_root()
+    if not order_path(root).exists():
+        die("no ORDER. of init --mission '...'")
+    restored = restore_live_from_current(root)
+    for rel in restored:
+        print(f"restored      {rel}  (live copy kept under wal/orphans/)")
+    if not restored:
+        print("restored      0  (live already matches WAL CURRENT)")
+    emit_event("patch", from_current=True, restored=restored, ok=True)
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
@@ -2547,37 +2884,47 @@ def cmd_resume(args: argparse.Namespace) -> None:
     if not order_path(root).exists():
         print("no ORDER. of init --mission '...'")
         return
-    dumped = maybe_safe_gc(root)
-    if dumped:
-        print(f"gc auto      dumped={dumped}  (safe ephemeral; not a daemon)")
+    # Read-only: no auto-gc, no ACTIVE write, no orphan stamp (writers do).
     order = load_order(root)
     state = load_state(root)
     wave = int(state.get("wave") or 1)
     packets = packed_children(root, wave)
-    flying = [] if order.get("spec_closed") else in_flight_children(root, wave)
-    completed = completed_children(root, wave)
-    integrated = field_is_file(wave_dir(wave, root) / "report.json")
-    covering = (not integrated) or IntegrationDigest.covers(root, state)
-    stale = bool(packets) and len(stale_packet_ids(packets, order)) == len(packets)
     now = time.time()
+    session = load_session(root)
+    plan = NextPlan.compute(
+        root, order, state, session=session, homes=homes, now=now
+    )
+    nxt = plan["action"]
+    closed = plan["closed"]
+    flying = plan["flying"]
+    rows = {row["child_id"]: row for row in plan["children"]}
+    completed = (
+        completed_children(root, wave)
+        if closed
+        else [p for p in packets if str(p.get("child_id") or "?") not in
+              {str(f.get("child_id") or "?") for f in flying}]
+    )
     verdicts: dict[str, str] = {}
     for pkt in flying:
         cid = str(pkt.get("child_id") or "?")
         verdicts[cid] = child_pulse_verdict(root, pkt, now)
-    any_packed = any(v == SpawnRecord.LABEL for v in verdicts.values())
-    all_stale = bool(flying) and all(v == "STALE" for v in verdicts.values())
-    session = load_session(root)
-    nxt = next_legal_action(
-        state, flying, packets,
-        integrated=integrated, covering=covering, stale=stale,
-        children_stale=all_stale,
-        children_packed=any_packed,
-        spec_closed=bool(order.get("spec_closed")),
-        collected=CollectReady.of(root, packets, session),
-        order_rev=int(order.get("rev") or 0),
-        spawned_flying=EscalateUnblock.launched_flying(root, flying),
+    open_n = sum(1 for _fid, _home, o in homes if field_is_open(o))
+    ac_label, ac_detail = resume_auto_continue_lines(
+        order, open_field_count=open_n, close_problems=plan["close_problems"]
     )
-    nxt = DriveAfterIntegrate.gate(nxt, root, order, state, wave)
+    payload = {
+        "wave": wave,
+        "field": "closed" if closed else "open",
+        "in_flight": len(flying),
+        "parked": len(flying),
+        "next": nxt,
+        "auto_continue": ac_label,
+        **NextPlan.machine(plan),
+    }
+    if bool(getattr(args, "resume_json", False)):
+        print(json.dumps({"v": 1, "ok": True, "id": order["id"], **payload}, sort_keys=True))
+        emit_event("resume", ok=True, **payload)
+        return
     print(f"id            {order['id']}")
     try:
         home_rel = field_home(root).resolve().relative_to(root.resolve())
@@ -2592,7 +2939,12 @@ def cmd_resume(args: argparse.Namespace) -> None:
     print(f"last_regime   {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
     print(f"last_cmd      {session.get('last_cmd') or '-'}")
-    print(f"field         {'closed' if order.get('spec_closed') else 'open'}")
+    if closed or not order.get("spec_closed"):
+        print(f"field         {'closed' if closed else 'open'}")
+    else:
+        print("field         open (spec_closed does not verify)")
+    for rel in plan["drift"]:
+        print(f"LIVE!=CURRENT {rel}")
     signal = FieldSignal.of(order, state, packets, session)
     if signal:
         print(f"signal        {signal}")
@@ -2603,10 +2955,6 @@ def cmd_resume(args: argparse.Namespace) -> None:
     parent_line = NestedField.format_line(order, key_width=14)
     if parent_line:
         print(parent_line)
-    open_n = sum(1 for _fid, _home, o in homes if field_is_open(o))
-    ac_label, ac_detail = resume_auto_continue_lines(
-        order, open_field_count=open_n
-    )
     print(f"auto_continue {ac_label} — {ac_detail}")
     if not flying:
         status = "idle"
@@ -2619,15 +2967,15 @@ def cmd_resume(args: argparse.Namespace) -> None:
     PackedAge.emit(flying, now=now, key_width=14)
     if flying:
         print(InFlightSignal.banner(verdicts, key_width=14))
-    print_resume_completed(root, completed)
-    print_resume_in_flight(root, flying, now=now, verdicts=verdicts)
+    print_resume_completed(root, completed, rows)
+    print_resume_in_flight(root, flying, now=now, verdicts=verdicts, rows=rows)
     if InFlightSignal.speak_applies(verdicts):
         print(InFlightSignal.speak_line(key_width=14))
     print("next")
-    for line in resume_next_lines(nxt, root=root, flying=flying, state=state):
-        print(f"  {line}")
+    for line in NextPlan.lines(plan):
+        print(line)
     DriveAfterIntegrate.emit(
-        spec_closed=bool(order.get("spec_closed")),
+        spec_closed=closed,
         flying=flying,
         action=nxt,
         key_width=14,
@@ -2638,15 +2986,7 @@ def cmd_resume(args: argparse.Namespace) -> None:
         print("summary")
         print(summary.strip())
     print_audit_block(root)
-    emit_event(
-        "resume",
-        wave=wave,
-        field="closed" if order.get("spec_closed") else "open",
-        in_flight=len(flying),
-        parked=len(flying),
-        next=nxt,
-        ok=True,
-    )
+    emit_event("resume", ok=True, **payload)
 
 
 def pulse_once(

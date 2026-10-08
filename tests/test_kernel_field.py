@@ -796,7 +796,8 @@ class ResumeAfterIntegrate(unittest.TestCase):
         self.assertNotIn("next\n  INTEGRATE\n", done.stdout)
         self.assertNotIn("next\n  COLLECT", done.stdout)
 
-    def test_next_stays_collect_when_collect_is_invalid(self) -> None:
+    def test_next_is_repair_when_collect_is_invalid(self) -> None:
+        # W3/D5: an invalid residual is not landed; COLLECT here looped forever.
         dest = write_bound_residual(self.tmp, "c1")
         dest.write_text("{}\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect")
@@ -804,7 +805,8 @@ class ResumeAfterIntegrate(unittest.TestCase):
         self.assertIn("INVALID", collected.stdout)
         resumed = run_of(self.tmp, "resume")
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
-        self.assertIn("next\n  COLLECT", resumed.stdout)
+        self.assertIn("next\n  REPAIR", resumed.stdout)
+        self.assertNotIn("next\n  COLLECT", resumed.stdout)
         self.assertNotIn("next\n  INTEGRATE\n", resumed.stdout)
 
     def test_all_stale_packets_point_at_unpack_force_not_hold(self) -> None:
@@ -3051,8 +3053,12 @@ class ClosedFieldArchiveTrail(unittest.TestCase):
             "archive me: internal index ALG-001",
         )
         self.assertEqual(created.returncode, 0, created.stderr + created.stdout)
+        # W3/D9: two open fields: writers name the field (ACTIVE is a read default).
+        self.fid = (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
         added = run_of(
             self.tmp,
+            "--field",
+            self.fid,
             "spec",
             "--add",
             "ALG-001",
@@ -3062,12 +3068,12 @@ class ClosedFieldArchiveTrail(unittest.TestCase):
             "internal",
         )
         self.assertEqual(added.returncode, 0, added.stderr)
-        return (self.tmp / ".orderfield" / "ACTIVE").read_text(encoding="utf-8").strip()
+        return self.fid
 
     def _close_bound(self) -> None:
-        verified = run_of(self.tmp, "spec", "--verified-internal", "ALG-001")
+        verified = run_of(self.tmp, "--field", self.fid, "spec", "--verified-internal", "ALG-001")
         self.assertEqual(verified.returncode, 0, verified.stderr)
-        closed = run_of(self.tmp, "close")
+        closed = run_of(self.tmp, "--field", self.fid, "close")
         self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
         self.assertIn("CLOSE.json", closed.stdout)
 
@@ -3152,11 +3158,13 @@ class ClosedFieldArchiveTrail(unittest.TestCase):
 
     def test_abandoned_close_then_archive(self) -> None:
         fid = self._keep_and_closeable()
-        missing = run_of(self.tmp, "close", "--abandoned")
+        missing = run_of(self.tmp, "--field", fid, "close", "--abandoned")
         self.assertNotEqual(missing.returncode, 0, missing.stdout)
         self.assertIn("--reason", missing.stderr)
         closed = run_of(
             self.tmp,
+            "--field",
+            fid,
             "close",
             "--abandoned",
             "--reason",
@@ -3594,7 +3602,10 @@ class InFlightVisibility(unittest.TestCase):
         doc = json.loads(machine.stdout.strip().splitlines()[0])
         self.assertEqual(doc["in_flight"], 0)
         self.assertEqual(doc["in_flight_detail"], [])
-        self.assertEqual(doc["next"], "collect")
+        # W3/D5: present is not landed. This implementer `done` wrote no
+        # owned file, so collect rejects it (CloseEvidence/OwnedWrite): REPAIR.
+        self.assertEqual(doc["next"], "repair")
+        self.assertEqual(doc["next_plan"]["targets"][0]["child_id"], "worker")
         pulse = run_of(tmp, "pulse")
         self.assertIn("idle (nothing to watch)", pulse.stdout)
         self.assertNotIn("harness chrome", pulse.stdout)
@@ -3820,22 +3831,28 @@ class MidEpicHandoffPacket(unittest.TestCase):
         self._init(tmp)
         self._pack(tmp)
         of.PackedAge.backdate_packet(tmp, "worker", "2018-01-01T00:00:00Z")
-        dest = tmp / ".orderfield" / "waves" / "001" / "spawns" / "worker.json"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(
-            json.dumps(
-                {"child_id": "worker", "started_at": "2018-01-01T00:00:00Z"},
-                indent=2,
-            )
-            + "\n",
+        # W3/D13: stale is an expired claim lease with no fresh PULSE
+        # heartbeat, never a scratch mtime (nor packed_at alone).
+        claim = tmp / ".orderfield" / "waves" / "001" / "claims" / "worker.json"
+        claim.parent.mkdir(parents=True, exist_ok=True)
+        claim.write_text(
+            json.dumps({"mode": "handoff", "harness": "x", "session": "s",
+                        "lease_expires": "2018-01-01T00:10:00Z"}),
             encoding="utf-8",
         )
+        scratch = tmp / ".orderfield" / "work" / "scratch" / "worker"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "PULSE").write_text("2018-01-01T00:00:00Z started\n", encoding="utf-8")
         proc = run_of(tmp, "handoff", "--json")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         cli = self._load(proc.stdout)
         self.assertEqual(cli["next"], "handoff")
         self.assertEqual(cli["next_label"], "HANDOFF")
-        self.assertEqual(cli["in_flight"][0]["pulse"], "STALE")
+        self.assertEqual(cli["next_plan"]["reason_code"], "lease_expired")
+        self.assertEqual(
+            cli["next_plan"]["targets"][0]["argv"],
+            ["of", "handoff", "--packet", ".orderfield/waves/001/packets/worker.json"],
+        )
         self.assertTrue(packet_path(tmp, "worker").is_file())
         human = run_of(tmp, "handoff")
         self.assertIn("HANDOFF", human.stdout)
@@ -4043,6 +4060,15 @@ class CheckpointHandoffStayOnRun(unittest.TestCase):
         pkt["packet_hash"] = of.packet_digest(pkt)
         with of.field.field_generation(self.tmp):
             of.dump_json(pkt_path, pkt)
+        # W3/D6: HANDOFF needs an expired claim lease; unclaimed scratch
+        # (old mtime or old packed_at) is HOLD, never a second writer.
+        claim = pkt_path.parent.parent / "claims" / "worker.json"
+        claim.parent.mkdir(parents=True, exist_ok=True)
+        claim.write_text(
+            json.dumps({"mode": "handoff", "harness": "x", "session": "s",
+                        "lease_expires": "2018-01-01T00:10:00Z"}),
+            encoding="utf-8",
+        )
 
     def test_resume_says_handoff_when_children_stale(self) -> None:
         self._init_with_stale_child()

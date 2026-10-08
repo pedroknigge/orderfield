@@ -1615,6 +1615,8 @@ class StateMachineGuards(unittest.TestCase):
             "orca",
             "--dry-run",
             "--force-spawn",
+            "--reason",
+            "leader accepts the escalation",
             "--force-tool",
         )
         self.assertEqual(both.returncode, 0, both.stderr)

@@ -1,0 +1,42 @@
+{
+  "id": "recovery/truncated-residual-repair",
+  "description": "A residual cut mid-write exists but fails the collect gate: resume says REPAIR <child> with its reason, collect exits 2, and resume stays REPAIR (no COLLECT loop under auto_continue); of validate --packet runs the same gate (D5)",
+  "fixture": "recovery_truncated_residual",
+  "tags": ["recovery", "resume", "residual", "repair", "next"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "auto_continue yes",
+        "residual    INVALID",
+        "next\n  REPAIR",
+        "scout: ",
+        "reason      invalid_residual",
+        "target      scout  of spawn --packet .orderfield/waves/001/packets/scout.json"
+      ],
+      "stdout_not_contains": ["next\n  COLLECT", "all residuals landed"]
+    },
+    {
+      "run": "collect",
+      "exit": 2,
+      "stdout_contains": ["INVALID scout.json", "invalid=1"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["next\n  REPAIR"],
+      "stdout_not_contains": ["next\n  COLLECT"]
+    },
+    {
+      "run": "validate",
+      "args": [
+        "--packet",
+        ".orderfield/waves/001/packets/scout.json",
+        ".orderfield/waves/001/residuals/scout.json"
+      ],
+      "exit": 2,
+      "stdout_contains": ["INVALID"]
+    }
+  ]
+}

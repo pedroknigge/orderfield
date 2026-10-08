@@ -242,6 +242,14 @@ MUTATING_COMMANDS_ORDER = (
     "gc",
 )
 MUTATING_COMMANDS = frozenset(MUTATING_COMMANDS_ORDER)
+# Writers of ONE field's mission/wave. With 2+ open fields and
+# OF_FIELD_STRICT=1 they need an explicit --field / OF_FIELD / session bind,
+# never the shared ACTIVE pointer (opt-in until the multi-field eval
+# fixtures name their field; default prints field=<id> bound_by=ACTIVE).
+# Tree-wide verbs (migrate, gc, contend, crown) name their own targets;
+# init/new create one.
+FIELD_WRITE_COMMANDS = MUTATING_COMMANDS - {"init", "new", "contend", "crown", "migrate", "gc"}
+OF_FIELD_STRICT_ENV = "OF_FIELD_STRICT"
 
 
 def mutating_commands_prose() -> str:
@@ -435,7 +443,7 @@ class ActiveField:
     @staticmethod
     def write(root: Path, field_id: str) -> None:
         fid = require_field_id(field_id)
-        dump_bytes(ActiveField.path(root), (fid + "\n").encode("utf-8"))
+        dump_bytes(ActiveField.path(root), (fid + "\n").encode("utf-8"), durable=True)
 
     @staticmethod
     def release_closed(root: Path, field_id: str) -> None:
@@ -551,10 +559,6 @@ class RootStub:
     @staticmethod
     def path(root: Path | None = None) -> Path:
         return of_dir(root) / RootStub.FILENAME
-
-    @staticmethod
-    def tree_at(path: Path) -> bool:
-        return _field_tree_at(path)
 
     @staticmethod
     def nested_homes(
@@ -693,12 +697,21 @@ def set_field_home(path: Path) -> None:
     _active_field_home.set(path)
 
 
-def _activate_field_home(root: Path, home: Path, cmd: str = "") -> Path:
+def _activate_field_home(
+    root: Path, home: Path, cmd: str = "", fid: str = "", by: str = ""
+) -> Path:
     # View commands read CURRENT generation files, not a mixed live cache.
     set_field_home(home)
     if cmd in FieldWal.VIEW_COMMANDS:
         FieldWal.read_current.set(True)
         FieldWal.ensure_view(root)
+    # Which field a write lands on matters once the tree holds 2+ fields;
+    # single-field stderr stays one clean line (error-boundary contract).
+    if cmd in MUTATING_COMMANDS and fid and len(list_field_homes(root)) > 1:
+        if json_events_enabled():
+            emit_event("bind", field=fid, bound_by=by)
+        else:
+            print(f"field={fid} bound_by={by}", file=sys.stderr)
     return home
 
 
@@ -1169,13 +1182,6 @@ class PackRoster:
         return payload
 
 
-def format_field_roster_lines(
-    homes: list[tuple[str, Path, dict[str, Any]]],
-    **kwargs: Any,
-) -> list[str]:
-    return FieldRoster.format_lines(homes, **kwargs)
-
-
 def print_field_roster(
     homes: list[tuple[str, Path, dict[str, Any]]],
     **kwargs: Any,
@@ -1202,6 +1208,12 @@ def bind_active_field(
     then unique home. A leftover top-level ORDER stub is ignored for auto-bind
     when `fields/<id>/` homes exist. `learn` returns None when no open home
     remains so `--list` can read the protocol store (2+ closed is not ambiguous).
+
+    Binding never writes ACTIVE (init, new, crown and `of fields --use` do).
+    With 2+ open fields and OF_FIELD_STRICT=1 a mutating verb needs --field /
+    OF_FIELD / a session match: the shared ACTIVE pointer is not consent to
+    write a mission.
+    In a multi-field tree every mutating bind prints ``field=<id>`` on stderr.
     """
     explicit = (field_id or os.environ.get(OF_FIELD_ENV) or "").strip() or None
     homes = list_field_homes(root)
@@ -1211,8 +1223,8 @@ def bind_active_field(
             if fid == explicit:
                 if home.is_symlink():
                     die(f"unsafe field root {home}: kernel artifact root is a symlink")
-                ActiveField.write(root, fid)
-                return _activate_field_home(root, home, cmd)
+                by = "--field" if field_id else OF_FIELD_ENV
+                return _activate_field_home(root, home, cmd, fid, by)
         FieldRetain.archive.refuse_live(root, explicit)
         die(f"unknown field {explicit}")
     if not homes:
@@ -1223,24 +1235,39 @@ def bind_active_field(
         if session and field_is_open(order) and origin_session_id(order) == session:
             origin_hits.append((fid, home, order))
     if len(origin_hits) == 1:
-        return _activate_field_home(root, origin_hits[0][1], cmd)
+        fid, home, _order = origin_hits[0]
+        return _activate_field_home(root, home, cmd, fid, "session")
+    open_n = sum(1 for _fid, _home, order in homes if field_is_open(order))
     pointed = ActiveField.read(root)
     if pointed:
         for fid, home, _order in homes:
             if fid == pointed:
                 if home.is_symlink():
                     die(f"unsafe field root {home}: kernel artifact root is a symlink")
-                return _activate_field_home(root, home, cmd)
+                if (
+                    cmd in FIELD_WRITE_COMMANDS
+                    and open_n > 1
+                    and os.environ.get(OF_FIELD_STRICT_ENV) == "1"
+                ):
+                    die_field_roster(
+                        homes,
+                        f"{open_n} open fields; of {cmd} needs --field <id> or "
+                        f"{OF_FIELD_ENV} (ACTIVE={fid} is a read default, not "
+                        "consent to write)",
+                    )
+                return _activate_field_home(root, home, cmd, fid, "ACTIVE")
     of = of_dir(root)
     nested = [(fid, home, order) for fid, home, order in homes if home != of]
     candidates = nested if nested else homes
     if len(candidates) == 1:
-        return _activate_field_home(root, candidates[0][1], cmd)
+        fid, home, _order = candidates[0]
+        return _activate_field_home(root, home, cmd, fid, "unique")
     open_homes = [
         (fid, home, order) for fid, home, order in candidates if field_is_open(order)
     ]
     if len(open_homes) == 1:
-        return _activate_field_home(root, open_homes[0][1], cmd)
+        fid, home, _order = open_homes[0]
+        return _activate_field_home(root, home, cmd, fid, "unique-open")
     if cmd in {"resume", "status", "pulse", "fields", "gc", "retain"}:
         return None
     if cmd == "learn" and not open_homes:
@@ -1420,12 +1447,6 @@ def die(msg: str, code: int = 1, *, kind: str | None = None) -> None:
     raise SystemExit(code)
 
 
-def child_id_from_env() -> str | None:
-    """Live OF_CHILD value. Not leader authentication (see spawned_child_id)."""
-    raw = (os.environ.get(OF_CHILD_ENV) or "").strip()
-    return raw or None
-
-
 _MAX_SPAWN_ANCESTORS = 32
 _DARWIN_CTL_KERN = 1
 _DARWIN_KERN_PROCARGS2 = 49
@@ -1555,25 +1576,94 @@ def _proc_ppid(pid: int) -> int:
         return 0
 
 
-def _proc_starttime(pid: int) -> str | None:
-    """Process starttime. Survives exec; pid reuse without it is not a match."""
-    fields = _proc_stat_fields(pid)
-    if fields is not None:
-        try:
-            return str(fields[19])
-        except IndexError:
-            return None
+def _proc_lstart(pid: int) -> str | None:
+    """``ps -o lstart=`` under LC_ALL=C TZ=UTC: the same text in any harness."""
+    env = dict(os.environ)
+    env.update({"LC_ALL": "C", "LANG": "C", "TZ": "UTC"})
     try:
         proc = subprocess.run(
             ["ps", "-p", str(int(pid)), "-o", "lstart="],
             capture_output=True,
             text=True,
             timeout=1,
+            env=env,
         )
-        stamp = proc.stdout.strip()
-        return stamp or None
     except (OSError, subprocess.TimeoutExpired):
         return None
+    return " ".join(proc.stdout.split()) or None
+
+
+def _proc_starttime(pid: int) -> str | None:
+    """Process starttime token. Survives exec; pid reuse without it is not a match.
+
+    Linux: /proc stat ticks. Elsewhere: lstart in C locale and UTC, so two
+    harnesses with a different TZ or LANG read the same string.
+    """
+    fields = _proc_stat_fields(pid)
+    if fields is not None:
+        try:
+            return str(fields[19])
+        except IndexError:
+            return None
+    return _proc_lstart(pid)
+
+
+_LSTART_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def parse_lstart(text: Any, *, utc: bool) -> int | None:
+    """Epoch of a C-locale ``Thu Oct  8 11:28:27 2026``; None for other locales.
+
+    utc=False reads a v0.8.34 record (local time of whoever wrote it).
+    """
+    parts = str(text or "").split()
+    if len(parts) != 5 or parts[1] not in _LSTART_MONTHS:
+        return None
+    try:
+        hh, mm, ss = (int(x) for x in parts[3].split(":"))
+        fields = (int(parts[4]), _LSTART_MONTHS.index(parts[1]) + 1, int(parts[2]), hh, mm, ss)
+        if utc:
+            return int(datetime(*fields, tzinfo=timezone.utc).timestamp())
+        return int(time.mktime((*fields, 0, 0, -1)))
+    except (ValueError, OverflowError):
+        return None
+
+
+@lru_cache(maxsize=1)
+def _boot_epoch() -> int | None:
+    try:
+        for line in Path("/proc/stat").read_text(encoding="utf-8").splitlines():
+            if line.startswith("btime "):
+                return int(line.split()[1])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def proc_start_epoch(pid: int) -> int | None:
+    """Process start as a UTC epoch second. TZ/locale-free on every host."""
+    fields = _proc_stat_fields(pid)
+    boot = _boot_epoch()
+    if fields is not None and boot is not None:
+        try:
+            return boot + int(fields[19]) // int(os.sysconf("SC_CLK_TCK"))
+        except (IndexError, ValueError, OSError):
+            return None
+    return parse_lstart(_proc_lstart(pid), utc=True)
+
+
+@lru_cache(maxsize=1)
+def host_id() -> str:
+    """Stable id of this machine's pid namespace. A pid means nothing elsewhere."""
+    import socket
+
+    seed = socket.gethostname()
+    try:
+        seed += "|" + Path("/etc/machine-id").read_text(encoding="utf-8").strip()
+    except OSError:
+        pass
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
 
 
 def proc_pcpu(pid: int) -> str | None:
@@ -1921,8 +2011,23 @@ def json_payload_bytes(data: Any) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def dump_bytes(path: Path, payload: bytes, skip_dir_fsync: bool = False) -> None:
-    """Durably replace a file without exposing a partial write. Per-file fsync+replace."""
+def dump_bytes(
+    path: Path,
+    payload: bytes,
+    skip_dir_fsync: bool = False,
+    *,
+    durable: bool = False,
+) -> None:
+    """Durably replace a file without exposing a partial write. Per-file fsync+replace.
+
+    durable=True is the power-loss barrier (F_FULLFSYNC on darwin) for the
+    few pointer files nothing re-derives (ACTIVE, a restore). Live caches
+    of a committed generation stay plain fsync: CURRENT is the truth and
+    the next command re-materializes them.
+    """
+    from of.wal import durable_fsync
+
+    sync = durable_fsync if durable else os.fsync
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     tmp = Path(tmp_name)
@@ -1930,7 +2035,7 @@ def dump_bytes(path: Path, payload: bytes, skip_dir_fsync: bool = False) -> None
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
             handle.flush()
-            os.fsync(handle.fileno())
+            sync(handle.fileno())
         os.replace(str(tmp), str(path))
         if not skip_dir_fsync:
             try:
@@ -1939,7 +2044,7 @@ def dump_bytes(path: Path, payload: bytes, skip_dir_fsync: bool = False) -> None
                 dir_fd = None
             if dir_fd is not None:
                 try:
-                    os.fsync(dir_fd)
+                    sync(dir_fd)
                 finally:
                     os.close(dir_fd)
     finally:
@@ -2099,6 +2204,21 @@ def field_lock(
                     FieldWal.refuse_live_spec_tamper(root)
                     FieldWal.refuse_live_order_tamper(root)
                 FieldWal.materialize_current(root, overwrite=True)
+                if command not in ("init", "new", "contend"):
+                    SpawnRecord.settle_orphans(root)
+            elif command in ("spawn", "handoff"):
+                # No rematerialize here (spawn writes its prompt and session
+                # live before the lock), but a generation it commits would
+                # inherit a planted or rewritten packet: refuse, RESTORE.
+                FieldWal.refuse_live_spec_tamper(root)
+                FieldWal.refuse_live_order_tamper(root)
+                planted = [rel for rel in refused_drift(root) if "/packets/" in rel]
+                if planted:
+                    die(
+                        "LIVE!=CURRENT " + ", ".join(planted[:5]) + f"; of {command} "
+                        "refuses a packet WAL CURRENT does not hold. RESTORE: of "
+                        "patch --from-current (quarantines it under wal/orphans/)"
+                    )
             with FieldWal.generation(root) if generation else nullcontext():
                 yield
         finally:
@@ -3526,6 +3646,49 @@ class SpawnRecord:
 
         return not validate_residual_for_packet(data, packet, root)
 
+    ORPHAN_SETTLED = "orphan_settled"
+
+    @staticmethod
+    def orphan(root: Path, packet: dict[str, Any]) -> bool:
+        """Started-only record, pid gone on this host, residual passes the gate.
+
+        The leader's ``of spawn`` died (harness tool timeout, SIGKILL) while
+        the child finished: settled by disk, not by a finalize() that never
+        ran. Read path; mutating verbs stamp it (settle_orphans).
+        """
+        if not SpawnRecord.unsettled(root, packet):
+            return False
+        meta = SpawnRecord.load(root, packet)
+        if SpawnRecord.liveness(meta) != SpawnRecord.DEAD or SpawnRecord.launching(meta):
+            return False
+        return ResidualClass.of(root, packet)[0] == ResidualClass.VALID
+
+    @staticmethod
+    def settle_orphans(root: Path) -> list[str]:
+        """Under field.lock: stamp outcome=orphan_settled on live-wave orphans."""
+        if not order_path(root).is_file():
+            return []
+        stamped: list[str] = []
+        try:
+            from of.pack import packed_children
+
+            wave = int(load_state(root).get("wave") or 1)
+            for pkt in packed_children(root, wave):
+                if not SpawnRecord.orphan(root, pkt):
+                    continue
+                path = SpawnRecord.path(root, pkt)
+                meta = load_json(path)
+                meta.update(
+                    outcome=SpawnRecord.ORPHAN_SETTLED,
+                    ok=True,
+                    ended_at=utc_now(),
+                )
+                dump_bytes(path, json_payload_bytes(meta))
+                stamped.append(str(pkt.get("child_id") or "?"))
+        except (Exception, SystemExit):  # noqa: BLE001 — never abort the writer
+            return stamped  # read path still derives the same verdict
+        return stamped
+
     @staticmethod
     def outcome_for(
         returncode: int | None, residual_valid: bool
@@ -3539,9 +3702,10 @@ class SpawnRecord:
 
     @staticmethod
     def flying(root: Path, packet: dict[str, Any]) -> bool:
-        """Started-only spawn dominates a leftover residual. Not a supervisor."""
+        """Started-only spawn dominates a leftover residual, unless its pid is
+        gone and the residual passes the gate (orphan). Not a supervisor."""
         if SpawnRecord.unsettled(root, packet):
-            return True
+            return not SpawnRecord.orphan(root, packet)
         from of.pack import packet_residual_missing
 
         return packet_residual_missing(root, packet)
@@ -3578,38 +3742,104 @@ class SpawnRecord:
         pid = SpawnRecord.pid_of(meta)
         return str(pid) if pid is not None else "none"
 
+    ALIVE = "alive"
+    DEAD = "dead"
+    UNKNOWN = "unknown"
+    START_SLACK_S = 2
+    LAUNCH_GRACE_S = 60
+    # A v0.8.34 local-time lstart read under another TZ is off by a whole
+    # zone offset (15-minute steps, at most 14h): ambiguous, never dead.
+    TZ_STEP_S = 900
+    TZ_MAX_S = 14 * 3600
+
     @staticmethod
-    def proc_alive(pid: int, starttime: str | None = None) -> bool:
-        """Signal-0 plus starttime match. Not a supervisor; does not kill."""
+    def pid_liveness(
+        pid: int, start_epoch: Any = None, starttime: str | None = None
+    ) -> str:
+        """Signal-0 plus a numeric start-time match. Not a supervisor; does not kill.
+
+        ``start_epoch`` (UTC seconds) is the record format. ``starttime`` is
+        the legacy token: Linux ticks compare exactly; a v0.8.34 lstart
+        string is parsed with C-locale names as local time. A string that
+        does not parse, or is off by a TZ offset, is UNKNOWN, not dead.
+        """
         try:
             pid_n = int(pid)
         except (TypeError, ValueError):
-            return False
+            return SpawnRecord.DEAD
         if pid_n <= 1:
-            return False
+            return SpawnRecord.DEAD
         try:
             os.kill(pid_n, 0)
         except ProcessLookupError:
-            return False
+            return SpawnRecord.DEAD
         except PermissionError:
-            live_start = _proc_starttime(pid_n)
-            if (
-                starttime is not None
-                and live_start is not None
-                and str(live_start) != str(starttime)
-            ):
-                return False
-            return True
+            pass
         except OSError:
+            return SpawnRecord.DEAD
+        if isinstance(start_epoch, int) and not isinstance(start_epoch, bool):
+            live = proc_start_epoch(pid_n)
+            if live is None or abs(live - start_epoch) <= SpawnRecord.START_SLACK_S:
+                return SpawnRecord.ALIVE
+            return SpawnRecord.DEAD
+        if starttime is None:
+            return SpawnRecord.ALIVE
+        live_token = _proc_starttime(pid_n)
+        if live_token is None or str(live_token) == str(starttime):
+            return SpawnRecord.ALIVE
+        if str(starttime).isdigit():
+            return SpawnRecord.DEAD  # Linux ticks: exact or reused
+        recorded = parse_lstart(starttime, utc=False)
+        live = proc_start_epoch(pid_n)
+        if recorded is None or live is None:
+            return SpawnRecord.UNKNOWN
+        drift = abs(recorded - live)
+        if drift <= SpawnRecord.START_SLACK_S:
+            return SpawnRecord.ALIVE
+        off = drift % SpawnRecord.TZ_STEP_S
+        if drift <= SpawnRecord.TZ_MAX_S and min(off, SpawnRecord.TZ_STEP_S - off) <= SpawnRecord.START_SLACK_S:
+            return SpawnRecord.UNKNOWN
+        return SpawnRecord.DEAD
+
+    @staticmethod
+    def proc_alive(pid: int, starttime: str | None = None) -> bool:
+        """Registry check: alive only when the token says so (unknown is not alive)."""
+        return SpawnRecord.pid_liveness(pid, starttime=starttime) == SpawnRecord.ALIVE
+
+    @staticmethod
+    def liveness(meta: dict[str, Any] | None) -> str:
+        """alive | dead | unknown for a spawn record.
+
+        A record from another host_id is UNKNOWN: its pid is not ours to
+        poll, so it is never read as dead (no silent second writer).
+        """
+        if not isinstance(meta, dict):
+            return SpawnRecord.DEAD
+        recorded_host = str(meta.get("host_id") or "").strip()
+        if recorded_host and recorded_host != host_id():
+            return SpawnRecord.UNKNOWN
+        pid = SpawnRecord.pid_of(meta)
+        if pid is None:
+            cid = str(meta.get("child_id") or "")
+            if SpawnRecord.registry_live_pid(cid) is not None:
+                return SpawnRecord.ALIVE
+            return SpawnRecord.DEAD
+        return SpawnRecord.pid_liveness(
+            pid, meta.get("start_epoch"), SpawnRecord.starttime_of(meta)
+        )
+
+    @staticmethod
+    def launching(meta: dict[str, Any] | None, now: float | None = None) -> bool:
+        """Pid-less started record younger than LAUNCH_GRACE_S.
+
+        claim_started releases field.lock before run_child stamps the pid,
+        so a prior valid residual next to it is not an orphan yet.
+        """
+        if not isinstance(meta, dict) or SpawnRecord.pid_of(meta) is not None:
             return False
-        live_start = _proc_starttime(pid_n)
-        if (
-            starttime is not None
-            and live_start is not None
-            and str(live_start) != str(starttime)
-        ):
-            return False
-        return True
+        started = parse_utc(meta.get("started_at"))
+        clock = now if now is not None else time.time()
+        return started is not None and clock < started + SpawnRecord.LAUNCH_GRACE_S
 
     @staticmethod
     def registry_live_pid(child_id: str) -> int | None:
@@ -3639,7 +3869,7 @@ class SpawnRecord:
         """Recorded pid if still that process; else registry for missing pid."""
         pid = SpawnRecord.pid_of(meta)
         if pid is not None:
-            if SpawnRecord.proc_alive(pid, SpawnRecord.starttime_of(meta)):
+            if SpawnRecord.liveness(meta) == SpawnRecord.ALIVE:
                 return pid
             return None
         if not isinstance(meta, dict):
@@ -3648,7 +3878,7 @@ class SpawnRecord:
 
     @staticmethod
     def stamp_pid(path: Path, meta: dict[str, Any], pid: int) -> None:
-        """Write pid + starttime onto started-only spawn meta. Not a schema."""
+        """Write pid + start_epoch (UTC) + host_id onto started-only spawn meta."""
         try:
             pid_n = int(pid)
         except (TypeError, ValueError):
@@ -3656,9 +3886,11 @@ class SpawnRecord:
         if pid_n <= 1:
             return
         meta["pid"] = pid_n
-        start = _proc_starttime(pid_n)
+        meta["host_id"] = host_id()
+        start = proc_start_epoch(pid_n)
         if start is not None:
-            meta["starttime"] = start
+            meta["start_epoch"] = start
+        meta.pop("starttime", None)
         dump_json(path, meta)
 
     @staticmethod
@@ -3788,14 +4020,11 @@ class DeadStartedOnly:
 
     @staticmethod
     def of(root: Path, flying: list[dict[str, Any]]) -> bool:
-        for pkt in flying:
-            if not isinstance(pkt, dict):
-                continue
-            if not SpawnRecord.unsettled(root, pkt):
-                continue
-            if SpawnRecord.live_pid(SpawnRecord.load(root, pkt)) is None:
-                return True
-        return False
+        return any(
+            isinstance(pkt, dict)
+            and ChildState.of(root, pkt)["state"] == ChildState.DEAD
+            for pkt in flying
+        )
 
     @staticmethod
     def next_lines() -> list[str]:
@@ -3803,11 +4032,12 @@ class DeadStartedOnly:
 
 
 class LiveQuietStuck:
-    """live_pid + activity past pulse-stale + no residual. HOLD names HITL.
+    """live pid past started_at + budget.seconds + no residual. HOLD names HITL.
 
     Complementary to #245 (QUIET not STALE while live) and DeadStartedOnly
     (pid gone). Read-path guidance. Does not kill. Does not stamp outcome.
-    Machine next stays HOLD (do not invent PACK / HANDOFF).
+    Machine next stays HOLD (do not invent PACK / HANDOFF). The clock is
+    the packet budget against the recorded started_at, never scratch mtime.
     """
 
     ACTION = "hold"
@@ -3823,29 +4053,253 @@ class LiveQuietStuck:
         flying: list[dict[str, Any]],
         *,
         now: float | None = None,
-        stale_minutes: float = PULSE_STALE_MINUTES,
     ) -> bool:
-        from of.pack import packet_residual_missing
-
-        clock = now if now is not None else time.time()
-        stale_s = float(stale_minutes) * 60
-        for pkt in flying:
-            if not isinstance(pkt, dict):
-                continue
-            if not SpawnRecord.unsettled(root, pkt):
-                continue
-            if SpawnRecord.live_pid(SpawnRecord.load(root, pkt)) is None:
-                continue
-            if not packet_residual_missing(root, pkt):
-                continue
-            age = child_pulse_age(root, pkt, clock)
-            if age is not None and age >= stale_s:
-                return True
-        return False
+        return any(
+            isinstance(pkt, dict)
+            and ChildState.of(root, pkt, now=now)["state"] == ChildState.OVER
+            for pkt in flying
+        )
 
     @staticmethod
     def next_lines() -> list[str]:
         return [LiveQuietStuck.LABEL, LiveQuietStuck.DETAIL]
+
+
+class ResidualClass:
+    """valid | invalid(reason) | missing, by the collect gate. Read-only.
+
+    Existence is not landing: a truncated or rejected residual is INVALID
+    (next REPAIR), never "all residuals landed" (D5).
+    """
+
+    VALID = "valid"
+    INVALID = "invalid"
+    MISSING = "missing"
+
+    @staticmethod
+    def of(root: Path, packet: dict[str, Any]) -> tuple[str, str]:
+        from of.pack import packet_residual_file
+
+        try:
+            path = packet_residual_file(root, packet)
+        except SystemExit:
+            return ResidualClass.INVALID, "residual_path escapes the field"
+        if path is None:
+            return ResidualClass.MISSING, ""
+        errs = CollectGate.errors(root, packet, path)
+        if not errs:
+            return ResidualClass.VALID, ""
+        why = "; ".join(errs)
+        for prefix in {str(root.resolve()), str(root)}:
+            why = why.replace(prefix + os.sep, "")  # same reason in any copy
+        return ResidualClass.INVALID, bounded_warning_message(why)
+
+
+class CollectGate:
+    """The per-residual gate ``of collect`` applies, without its writes.
+
+    Order matches collect: kernel pin, JSON parse, then the packet-bound
+    validators (artifact_sha is judged as the kernel would stamp it).
+    ``scope=True`` also computes ScopeWrite live (git), as collect records
+    it; resume skips that cost and reads only recorded violations.
+    """
+
+    @staticmethod
+    def errors(
+        root: Path,
+        packet: dict[str, Any],
+        path: Path,
+        *,
+        packets: list[dict[str, Any]] | None = None,
+        scope: bool = False,
+    ) -> list[str]:
+        import copy
+
+        from of.pack import validate_residual_for_packet
+        from of.residual_pin import KernelSha, ResidualPin
+
+        child = str(packet.get("child_id") or "?")
+        pin_dir = wave_dir(int(packet.get("wave") or 1), root)
+        pin_err, _warn = ResidualPin.check(pin_dir, child, path)
+        if (
+            pin_err is None
+            and ResidualPin.record(pin_dir, child) is None
+            and ResidualPin.required(SpawnRecord.load(root, packet))
+        ):
+            pin_err = ResidualPin.missing_error(child)
+        if pin_err:
+            return [pin_err]
+        data, parse_err = try_load_json(path)
+        if parse_err:
+            return [parse_err]
+        errs, _stamped = KernelSha.validate(
+            copy.deepcopy(data), packet, root, validate_residual_for_packet
+        )
+        if scope and not errs:
+            errs = CollectGate.scope_errors(root, packet, packets or [packet], data)
+        return list(errs)
+
+    @staticmethod
+    def scope_errors(
+        root: Path,
+        packet: dict[str, Any],
+        packets: list[dict[str, Any]],
+        data: Any,
+    ) -> list[str]:
+        """ScopeWrite.evaluate without recording the violations."""
+        from of.pack import ScopeWrite, packet_owns_paths
+
+        doc = ScopeWrite.load(root, packet)
+        if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
+            doc.get("before"), dict
+        ):
+            return []
+        changed = doc.get("changed")
+        if not isinstance(changed, list):
+            now = ScopeWrite.snapshot(root)
+            if now is None:
+                return []
+            changed = ScopeWrite.changed(root, doc["before"], now)
+        bad = ScopeWrite.violations(
+            packet, packets, data, changed,
+            ScopeWrite.concurrent(root, packet, packets, doc),
+        )
+        if not bad:
+            return []
+        shown = ", ".join(str(p) for p in bad[:8]) + (" …" if len(bad) > 8 else "")
+        allowed = ", ".join(packet_owns_paths(packet)) or "none"
+        return [
+            f"rule={ScopeWrite.RULE}: {packet.get('role') or '?'} "
+            f"{packet.get('child_id')} changed product paths outside its "
+            f"packet: {shown} (owns_paths: {allowed})"
+        ]
+
+
+class ChildState:
+    """One packet's disk facts → one state. The input row of ``next``.
+
+    No mtime anywhere: liveness is the spawn record (pid + start_epoch +
+    host_id); a lease is a claim's lease_expires, extended while the
+    child's PULSE content heartbeat (a leading UTC stamp) is younger than
+    budget.seconds. Scratch work with no claim and no spawn record never
+    expires by clock (packed_at is not a lease): HOLD, a human or
+    --force-spawn --reason decides. Scratch mtime stays a displayed hint.
+    """
+
+    LANDED = "landed"
+    ORPHAN = SpawnRecord.ORPHAN_SETTLED
+    INVALID = "invalid_residual"
+    RUNNING = "live_spawn"
+    OVER = "live_over_budget"
+    UNKNOWN = "liveness_unknown"
+    CLAIMED = "claimed"
+    EXPIRED = "lease_expired"
+    DEAD = "dead_started_only"
+    ENDED = "ended_without_residual"
+    UNCLAIMED = "scratch_unclaimed"
+    PACKED = "packed"
+    SETTLED_OK = frozenset({LANDED, ORPHAN})
+    DEFAULT_LEASE_S = 600  # BudgetSeconds.PACK_DEFAULT
+
+    @staticmethod
+    def lease_seconds(packet: dict[str, Any]) -> int:
+        budget = packet.get("budget") if isinstance(packet.get("budget"), dict) else {}
+        seconds = budget.get("seconds")
+        if isinstance(seconds, int) and not isinstance(seconds, bool) and seconds > 0:
+            return seconds
+        return ChildState.DEFAULT_LEASE_S
+
+    @staticmethod
+    def heartbeat(root: Path, packet: dict[str, Any]) -> float | None:
+        """Newest ``<UTC> <words>`` line in scratch/<id>/PULSE (content, not mtime)."""
+        rel = packet.get("scratch_dir")
+        if not rel:
+            return None
+        try:
+            path = physical_artifact_path(root, str(rel), "packet scratch_dir") / "PULSE"
+            raw = path.read_text(encoding="utf-8", errors="replace")
+        except (OSError, SystemExit):
+            return None
+        for line in reversed(raw.splitlines()):
+            stamp = parse_utc((line.split() or [""])[0])
+            if stamp is not None:
+                return stamp
+        return None
+
+    @staticmethod
+    def of(
+        root: Path, packet: dict[str, Any], *, now: float | None = None
+    ) -> dict[str, Any]:
+        from of.pack import scratch_nonempty
+
+        clock = now if now is not None else time.time()
+        cid = str(packet.get("child_id") or "?")
+        wave = int(packet.get("wave") or 1)
+        residual, why = ResidualClass.of(root, packet)
+        meta = SpawnRecord.load(root, packet)
+        spawn = "none"
+        live = "-"
+        if isinstance(meta, dict) and not meta.get("dry_run"):
+            spawn = "settled" if SpawnRecord.settled(meta) else "started"
+            if spawn == "started":
+                live = SpawnRecord.liveness(meta)
+        claim, _err = try_load_json(wave_dir(wave, root) / "claims" / f"{cid}.json")
+        claim = claim if isinstance(claim, dict) else None
+        lease = "none"
+        if claim is not None:
+            expires = parse_utc(claim.get("lease_expires"))
+            # unreadable expiry is live: fail closed (ChildClaim.live)
+            lease = "expired" if expires is not None and expires <= clock else "live"
+            beat = ChildState.heartbeat(root, packet) if lease == "expired" else None
+            if beat is not None and clock < beat + ChildState.lease_seconds(packet):
+                lease = "live"  # the claimant is still writing its heartbeat
+        try:
+            scratch = scratch_nonempty(root, packet)
+        except SystemExit:
+            scratch = False
+        if live == SpawnRecord.ALIVE:
+            started = parse_utc((meta or {}).get("started_at"))
+            over = (
+                residual != ResidualClass.VALID
+                and started is not None
+                and clock >= started + ChildState.lease_seconds(packet)
+            )
+            state = ChildState.OVER if over else ChildState.RUNNING
+        elif live == SpawnRecord.UNKNOWN:
+            state = ChildState.UNKNOWN
+        elif (
+            spawn == "started"
+            and residual != ResidualClass.MISSING
+            and SpawnRecord.launching(meta, clock)
+        ):
+            state = ChildState.RUNNING  # it will rewrite the prior residual
+        elif residual == ResidualClass.VALID:
+            state = ChildState.ORPHAN if spawn == "started" else ChildState.LANDED
+        elif residual == ResidualClass.INVALID:
+            state = ChildState.INVALID
+        elif spawn == "started":
+            state = ChildState.DEAD
+        elif claim is not None:
+            state = ChildState.EXPIRED if lease == "expired" else ChildState.CLAIMED
+        elif spawn == "settled":
+            state = ChildState.ENDED
+        elif scratch:
+            state = ChildState.UNCLAIMED
+        else:
+            state = ChildState.PACKED
+        return {
+            "child_id": cid,
+            "packet": physical_field_rel(
+                root, f".orderfield/waves/{wave:03d}/packets/{cid}.json"
+            ),
+            "state": state,
+            "residual": residual,
+            "reason": why,
+            "spawn": spawn,
+            "liveness": live,
+            "lease": lease,
+            "scratch": scratch,
+        }
 
 
 class FieldSignal:
@@ -4819,7 +5273,10 @@ def next_legal_action(
     collected: bool = False,
     order_rev: int | None = None,
     spawned_flying: bool = False,
+    children_invalid: bool = False,
 ) -> str:
+    """Wave-level action from disk facts. ``flying`` = packets not landed
+    (an INVALID residual is not landed: ``children_invalid`` → repair)."""
     if spec_closed:
         return "closed"
     if state.get("spawn_blocked"):
@@ -4837,6 +5294,8 @@ def next_legal_action(
             return PacketRevStale.ACTION
         return "next-wave"
     if flying:
+        if children_invalid:
+            return "repair"
         if children_packed:
             return "spawn"
         if children_stale:
@@ -5152,6 +5611,66 @@ def writable_status(path: Path) -> str:
     if os.access(path, os.W_OK):
         return "yes"
     return "no"
+
+
+def refused_drift(root: Path, drift: list[str] | None = None) -> list[str]:
+    """LIVE!=CURRENT that writers refuse, so RESTORE is the only way out:
+    ORDER.json, SPEC.md, and a live packet CURRENT does not hold byte for
+    byte (planted or rewritten; spawn would run it). Other drift is printed
+    and the next writer re-materializes it from CURRENT."""
+    rels = FieldWal.drift(root) if drift is None else drift
+    home = field_home(root)
+    return [
+        rel for rel in rels
+        if rel in ("ORDER.json", "SPEC.md")
+        or ("/packets/" in rel and (home / rel).is_file())
+    ]
+
+
+def restore_live_from_current(root: Path) -> list[str]:
+    """``of patch --from-current``: live field files ← WAL CURRENT. Leader act.
+
+    The way out of LIVE!=CURRENT, which every writer refuses. The lock skips
+    the writer tamper refusal (that is the state being repaired); evidence
+    is kept: each drifted live file is copied to
+    ``wal/orphans/live-restore-<gid>/`` before CURRENT's bytes replace it,
+    unlisted snapshot files are quarantined, SPEC.md is restored too.
+    Returns the restored rels ([] = live already matched).
+    """
+    from of.wal import (
+        WAL_ORPHANS,
+        _generation_intact,
+        _load_wal_current,
+        _materialize_generation,
+        _quarantine_live_extras,
+        _write_materialized,
+    )
+
+    refuse_child_forge("of patch --from-current")
+    with field_lock(root, "patch --from-current", generation=False):
+        drift = FieldWal.drift(root)
+        current = _load_wal_current(root)
+        gid = str((current or {}).get("generation") or "")
+        man = _generation_intact(wal_home(root) / gid, gid) if gid else None
+        if man is None:
+            die(
+                "no intact WAL CURRENT to restore from; the leader adopts live "
+                "with OF_WAL_ADOPT_LIVE=1 or of init --force"
+            )
+        if not drift:
+            return []
+        home = field_home(root)
+        keep = wal_home(root) / WAL_ORPHANS / f"live-restore-{gid}"
+        for rel in drift:
+            live = home / rel
+            if live.is_file() and not live.is_symlink():
+                dest = keep / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(live), str(dest))
+        _quarantine_live_extras(root, gid, man)
+        _materialize_generation(root, wal_home(root) / gid, man, overwrite=True)
+        _write_materialized(root, current or {})
+        return drift
 
 
 def remove_constraint(order: dict[str, Any], spec: str) -> str:

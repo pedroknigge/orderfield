@@ -38,6 +38,7 @@ from of.cli.ops import (
     cmd_gc,
     cmd_learn,
     cmd_migrate,
+    cmd_patch_from_current,
     cmd_pulse,
     cmd_resume,
     cmd_retain,
@@ -495,6 +496,12 @@ def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
         default="",
         help="continue a capped of fields from this id",
     )
+    s.add_argument(
+        "--use",
+        dest="use_field",
+        metavar="FIELD_ID",
+        help="point .orderfield/ACTIVE at this field (read default; leader only)",
+    )
     s.set_defaults(func=cmd_fields)
 
 
@@ -533,6 +540,13 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser(
         "resume",
         help="one-screen continuation brief reconstructed from disk",
+    )
+    s.add_argument(
+        "--json",
+        dest="resume_json",
+        action="store_true",
+        help="print the structured next (action, reason_code, targets[].argv, "
+        "inputs_digest) as one JSON object on stdout",
     )
     s.set_defaults(func=cmd_resume)
 
@@ -807,6 +821,10 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
     s = sub.add_parser("validate", help="validate a contract JSON file")
     s.add_argument("file")
     s.add_argument("--kind", default="auto", choices=["auto", "order", "packet", "residual"])
+    s.add_argument(
+        "--packet",
+        help="run the exact of collect gate on FILE (a residual) for this packet",
+    )
     s.set_defaults(func=cmd_validate)
 
 
@@ -993,6 +1011,13 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
     s.set_defaults(func=cmd_phase)
 
     s = sub.add_parser("patch", help="explicit ORDER patch")
+    s.add_argument(
+        "--from-current",
+        dest="from_current",
+        action="store_true",
+        help="restore live field files from WAL CURRENT (the RESTORE next after "
+        "LIVE!=CURRENT); tampered bytes are kept under wal/orphans/",
+    )
     s.add_argument("--mission", help="replace the mission (reopens done_when)")
     s.add_argument("--constraints-add", action="append")
     s.add_argument(
@@ -1314,6 +1339,10 @@ def _dispatch() -> None:
     root = find_root()
     if args.cmd in FIELD_BIND_COMMANDS:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
+    if args.cmd == "patch" and getattr(args, "from_current", False):
+        # Takes its own lock: the writer tamper refusal is what it repairs.
+        cmd_patch_from_current(args)
+        return
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
         if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():
