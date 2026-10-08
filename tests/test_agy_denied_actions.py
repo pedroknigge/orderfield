@@ -168,7 +168,15 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         of.CloseEvidence.stamp(
             residual, notes, rollback="git checkout -- .orderfield/work/scratch/a1/notes.md"
         )
+        # Scratch before the first spawn is unwatched work (a second writer);
+        # the fake child rewrites these bytes (see _write_notes).
+        notes.unlink()
+        self.notes = notes
         return residual
+
+    def _write_notes(self) -> str:
+        """Fake-binary line: the child writes the notes its residual hashes."""
+        return f"Path({str(self.notes)!r}).write_text('agy notes\\n', encoding='utf-8')"
 
     def _install_agy(self, body: str) -> None:
         fake = self.bindir / "agy"
@@ -197,6 +205,7 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         self._install_agy(
             f"""
             from pathlib import Path
+            {self._write_notes()}
             dest = Path({str(dest)!r})
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text({json.dumps(json.dumps(residual))}, encoding="utf-8")
@@ -230,6 +239,7 @@ class AgyDeniedActionsSpawn(unittest.TestCase):
         self._install_agy(
             f"""
             from pathlib import Path
+            {self._write_notes()}
             dest = Path({str(dest)!r})
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text({json.dumps(json.dumps(residual))}, encoding="utf-8")

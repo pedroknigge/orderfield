@@ -16,6 +16,7 @@ from of.field import (
     dump_json,
     emit_event,
     field_generation,
+    field_rel,
     find_root,
     json_events_enabled,
     load_json,
@@ -28,7 +29,6 @@ from of.field import (
     refuse_child_forge,
     remove_constraint,
     require_public_schema,
-    residuals_without_verification_stamps,
     save_order,
     save_state,
     snapshot_session,
@@ -49,6 +49,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 from of.regime import (
+    ChildLane,
     DoneWhenLint,
     PlanCoverage,
     PlanDocSync,
@@ -123,6 +124,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     wave = args.wave or state["wave"]
     packets = packed_children(root, int(wave))
     residuals: list[dict[str, Any]] = []
+    landed: list[dict[str, Any]] = []
     skipped: list[str] = []
     partial = bool(getattr(args, "partial", False))
     reconcile_children_spawned(root, state, int(wave))
@@ -181,6 +183,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             if errs:
                 die(f"invalid residual {path.name}: {'; '.join(errs)}")
             residuals.append(data)
+            landed.append(pkt)
         if partial and not residuals:
             die(
                 f"--partial found no residuals in wave {wave}; "
@@ -189,12 +192,19 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     regime, reason = decide_regime(order, state, residuals)
     order_rev_at_decision = int(order["rev"])
     applied = None
+    observed = ChildLane.observations(
+        residuals, landed, root, escalated=regime == "escalate_up"
+    )
     if args.apply:
         before = order["rev"]
-        order = apply_patches(order, residuals, root=root)
-        req_changed = apply_requirement_patches(
-            root, residuals_without_verification_stamps(residuals)
+        order = apply_patches(
+            order,
+            residuals,
+            root,
+            packets=landed,
+            escalated=regime == "escalate_up",
         )
+        req_changed = apply_requirement_patches(root, residuals, landed)
         if req_changed:
             sync_order_spec_fields(order, root)
         if order["rev"] != before or req_changed:
@@ -269,7 +279,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         "residuals": [
             {
                 "status": r.get("status"),
-                "wants": (r.get("residual") or {}).get("wants_to_change"),
+                "wants": ChildLane.wants(r),
                 "uncertainty": (r.get("metrics") or {}).get("uncertainty"),
             }
             for r in residuals
@@ -309,6 +319,22 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         root / physical_field_rel(root, report["integration"]["record_path"]), report
     )
     dump_json(wave_dir(int(wave), root) / "report.json", report)
+    obs_path = wave_dir(int(wave), root) / "integrations" / ChildLane.OBSERVATIONS
+    if not observed:
+        obs_path.unlink(missing_ok=True)
+    else:
+        dump_json(
+            obs_path,
+            {"wave": int(wave), "input_hash": input_hash, "children": observed},
+        )
+        note = (
+            "child proposals not applied to ORDER (leader applies with of patch): "
+            + field_rel(root, obs_path)
+        )
+        if json_events_enabled():
+            emit_event("warning", ok=True, kind="child_lane", message=note)
+        else:
+            print("note: " + note, file=sys.stderr)
     save_state(state, root)
     if args.next_wave:
         errors = wave_transition_errors(root, order, state)

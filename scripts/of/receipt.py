@@ -430,13 +430,24 @@ class EvidenceReceipt:
 
     @staticmethod
     def errors(res: Any, root: Path) -> list[str]:
-        """Collect fail-closed: a cited receipt must ACCEPT."""
+        """Collect fail-closed: EVERY cited receipt must ACCEPT with exit 0.
+
+        A receipt of a failing command is honest evidence, but not of
+        ``status=done``: done citing exit != 0 is INVALID.
+        """
         if not isinstance(res, dict) or res.get("status") != "done":
             return []
         rem = res.get("residual") if isinstance(res.get("residual"), dict) else {}
-        rel = EvidenceReceipt.parse_citation(str(rem.get("evidence") or ""))
-        if not rel:
-            return []
+        cited = EvidenceReceipt.verifier_inputs(str(rem.get("evidence") or ""))
+        errs: list[str] = []
+        for rel in dict.fromkeys(cited["receipts"]):
+            errs.extend(
+                f"{msg} [{rel}]" for msg in EvidenceReceipt._citation_errors(str(rel), root)
+            )
+        return errs
+
+    @staticmethod
+    def _citation_errors(rel: str, root: Path) -> list[str]:
         try:
             receipt_path = safe_relative_path(
                 root, rel, "evidence_receipt", must_exist=False
@@ -463,10 +474,15 @@ class EvidenceReceipt:
             return ["evidence receipt source unreadable"]
         meta = EvidenceReceipt.load_meta(source_path.with_suffix(".meta.json"))
         outcome = EvidenceReceipt.verify(receipt, data, meta=meta)
-        if outcome == EvidenceReceipt.ACCEPT:
-            return []
-        reason = outcome.split(":", 1)[-1]
-        return [f"evidence receipt {reason} (bad receipt is not green)"]
+        if outcome != EvidenceReceipt.ACCEPT:
+            reason = outcome.split(":", 1)[-1]
+            return [f"evidence receipt {reason} (bad receipt is not green)"]
+        if receipt.get("exit") != 0:
+            return [
+                f"evidence receipt exit={receipt.get('exit')} cited by status=done "
+                "(a failing command is not done; report blocked/threshold)"
+            ]
+        return []
 
     @staticmethod
     def _rel(path: Path, root: Path) -> str:

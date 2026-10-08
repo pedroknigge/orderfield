@@ -1,6 +1,6 @@
 {
   "id": "recovery/mission-rewrite-refused",
-  "description": "Residual rewrite of mission/phase/constraints/done-when dies; escalate_up stays; spawn blocked",
+  "description": "Residual rewrite of mission/phase/constraints/done-when dies; constraints+ escalates (not applied); spawn blocked",
   "fixture": "recovery_mission_rewrite",
   "tags": ["recovery", "gate", "invariant", "mission"],
   "steps": [
@@ -17,7 +17,6 @@
         "mission     keep the pricing architecture",
         "phase       explore",
         "slaves do not mutate ORDER",
-        "must name the invoice currency on the order",
         "of contrast RESOLVED then of close",
         "spawn_blocked True",
         "last_regime escalate_up"
@@ -25,7 +24,8 @@
       "stdout_not_contains": [
         "child stole the mission",
         "child rewrote every constraint",
-        "child closed done-when by residual"
+        "child closed done-when by residual",
+        "must name the invoice currency on the order"
       ]
     },
     {
@@ -38,7 +38,7 @@
         "--dry-run"
       ],
       "exit": 1,
-      "stderr_contains": ["stale packet"]
+      "stderr_contains": ["spawn forbidden after escalate_up"]
     }
   ]
 }

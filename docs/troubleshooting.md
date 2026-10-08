@@ -45,6 +45,32 @@ of integrate --wave N
 
 **Recover:** The child must echo `packet_id`, `packet_hash`, `order_id`, `order_rev`, `wave`, `child_id`, and `role` exactly from its live packet. A done child must write its result first and use a canonical project-relative `result_ref`; traversal, absolute paths, missing targets, and symlink escapes are rejected. Close evidence must name `artifact_sha:` (sha256 of the proof file) and `rollback:` a verb command (`CloseEvidence`); captions, a bare filename, and mismatched hashes die. Implementer / `--owns-path` must hash owned product or a published artifact, not scratch. Implementer / `--owns-path` `status=done` must also make a content change under those paths or the recorded worktree since spawn (`OwnedWrite`); mtime-only is not a write. Empty `--owns-path` without a worktree is `owned_write_missing`. Explorer / adversary / verifier without `--owns-path` may touch zero product files. A cited `evidence_receipt:` must pass the deterministic gate (`EvidenceReceipt`); tamper/hash/exit/quote fail is INVALID, not green. Fall back to the archived original. File reads/search do not use the reducer.
 
+Start from the template pack wrote (`.orderfield/waves/NNN/prompts/<id>.RESIDUAL.template.json`, identity prefilled) and check with `of validate --packet <packet.json> <residual.json>` — it runs the exact collect gate.
+
+## `next REPAIR` / residual INVALID (`ScopeWrite`, `ResidualPin missing`, receipts)
+
+**Symptom:** resume prints `next REPAIR` (`reason invalid_residual`), or collect prints `INVALID … rule=ScopeWrite` / `ResidualPin missing` / a receipt error and writes `<residual>.invalid.txt`.
+
+**Recover:** Do not collect again; the residual exists but fails the gate (truncated JSON, wrong identity, product writes outside `owns_paths`, a cited receipt with exit ≠ 0 or a missing citation). Re-run that child on the same packet — run the printed `targets[].argv` — and let it rewrite the residual; `of validate --packet` checks it before collect. `ResidualPin missing` means the spawn had no pin (typically a pre-0.9.0 in-flight spawn): re-run it.
+
+## `next RESTORE` / `LIVE!=CURRENT`
+
+**Symptom:** resume / status / doctor print `LIVE!=CURRENT <file>` and `next RESTORE`; writers refuse.
+
+**Recover:** A live ORDER / SPEC / packet differs from the committed WAL generation (hand edit, sync tool, planted file). Leader: `of patch --from-current` restores live from CURRENT and keeps the live copy under `wal/orphans/` for inspection. If the edit was intended, make it again through `of patch` / `of spec`.
+
+## `wal-broken` refusal
+
+**Symptom:** `of: error: wal-broken: WAL refused: …` on a mutating verb (missing `wal/` at ORDER rev>1, unreadable or zeroed `CURRENT.json`, torn CURRENT generation, rewritten head MANIFEST).
+
+**Recover:** Nothing was deleted: inspect `wal/orphans/` and the live files. When live is what you want, the **leader** re-runs the command with `OF_WAL_ADOPT_LIVE=1` (adopts live as the new chain head; refused under `OF_CHILD`), or `of init --force`. A v0.8.34 field needs none of this — it is adopted automatically.
+
+## Spawn refused: live claim or unwatched scratch
+
+**Symptom:** `of spawn` dies with `has a live handoff claim` or `nonempty scratch, no residual, and no of spawn record`.
+
+**Recover:** Another writer may hold the packet (an `of handoff` claim under `waves/NNN/claims/<id>.json`, or a native child writing scratch). Wait for its residual or the lease (a fresh `PULSE` line keeps it live). To take over deliberately: `of spawn --packet … --force-spawn --reason TEXT` (recorded as a `spawn_claim_override` warning).
+
 ## Missing residual / collect exit 2
 
 **Symptom:** `of collect` prints `MISSING <child_id>` and exits 2.
@@ -102,7 +128,7 @@ of spawn --adapter generic --packet .orderfield/waves/NNN/packets/<id>.json
 
 **Meaning:** a spawned child is still flying. Bumping `ORDER.rev` would PacketRevStale every packet (`#253`).
 
-**Recover:** HOLD — continue existing packets. Put `--mission` / `--constraints` before the first pack of the wave. After HITL rewrite: `of unpack --force --child-id <id>` then `of patch`. After residuals land: `of patch` then `of next-wave`.
+**Recover:** HOLD — continue existing packets. Put `--mission` / `--constraints-add` / `--constraints-rm` before the first pack of the wave. After HITL rewrite: `of unpack --force --child-id <id>` then `of patch`. After residuals land: `of patch` then `of next-wave`.
 
 ## Integration replay or changed inputs
 

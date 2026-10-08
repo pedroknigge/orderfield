@@ -1,0 +1,52 @@
+{
+  "id": "recovery/orphan-spawn-settled",
+  "description": "Leader of spawn killed mid-run while the child finished: started-only record, pid gone on this host, residual passes the collect gate. Resume says COLLECT (never residual MISSING / force-spawn); collect stamps orphan_settled; next INTEGRATE (D4)",
+  "fixture": "recovery_orphan_settled",
+  "tags": ["recovery", "resume", "spawn", "orphan", "next"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "completed",
+        "  scout",
+        "spawn       orphan_settled",
+        "next\n  COLLECT",
+        "reason      residuals_landed",
+        "target      field  of collect",
+        "digest      "
+      ],
+      "stdout_not_contains": [
+        "residual    MISSING",
+        "force-spawn",
+        "next\n  HOLD"
+      ]
+    },
+    {
+      "run": "resume",
+      "args": ["--json"],
+      "exit": 0,
+      "stdout_contains": [
+        "\"action\": \"collect\"",
+        "\"reason_code\": \"residuals_landed\"",
+        "\"inputs_digest\""
+      ]
+    },
+    {
+      "run": "collect",
+      "exit": 0,
+      "stdout_contains": ["ok=1 invalid=0 missing=0"],
+      "file_contains": [
+        {
+          "path": ".orderfield/waves/001/spawns/scout.json",
+          "contains": ["\"outcome\": \"orphan_settled\""]
+        }
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["next\n  INTEGRATE", "of integrate --wave 1"]
+    }
+  ]
+}

@@ -4,11 +4,11 @@ You already have a coding CLI. It is fast, forgetful, and happy to declare victo
 
 Orderfield is the disk-backed contract that CLI cannot be. One leader-owned ORDER. Bounded packets with exclusive owners. Structured residuals. Close is `of contrast` RESOLVED, then `of close` — not “the tests passed.”
 
-A cut, a resume, a different model: the plan holds. Children cannot rewrite the mission. Same category as planning-with-files (disk plan); different product (authority kernel — [README Compared-to](../README.md#compared-to)).
+A cut, a resume, a clone, a different model: the plan holds. A child residual cannot rewrite the mission, and a spawned child (and its descendants, even after unsetting `OF_CHILD`) is refused leader verbs. A handoff child or an unrelated same-user process can still run leader verbs; naive hand edits of live files are detected (`LIVE!=CURRENT` → `RESTORE`), but a correctly chained forged WAL generation is not detected without the deferred leader key (W9) ([threat model](#threat-model), [known limits](#known-limits-090)). Same category as planning-with-files (disk plan); different product (authority kernel — [README Compared-to](../README.md#compared-to)).
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.8.31` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.9.0` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -26,7 +26,7 @@ Those patterns belong to other products. The written contrast is [roadmap.md](ro
 
 ## Invariants a multi-agent lab should care about
 
-1. **One leader-owned ORDER write path.** A child residual may propose. `integrate --apply` may take additive `constraints+` / `done_when+` / notes after `escalate_up`. It does not redefine mission, phase, the constraint list, or done-when. Silent rewrite dies. Threshold stays.
+1. **One leader-owned ORDER write path.** A child residual may propose; it does not write ORDER. A nonempty `constraints+` / `done_when+` is a field residual (`escalate_up`, spawn blocked) even when `wants_to_change` is empty; the leader applies it with `of patch`. Child notes go to `waves/<n>/integrations/observations.json`. Only a verifier/adversary citing an accepted evidence receipt can close `done_when`. Silent rewrite dies. Threshold stays.
 2. **Escalate-up before spawn.** A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) selects `escalate_up`. Pack and spawn in that wave stop until the leader patches and runs guarded `next-wave`.
 3. **Close is one fact.** Contrast stays OPEN while MISSING / DELIVERED / VERIFIED_INTERNAL / PAIR / FAILED remain. A public-surface ID cannot close on unit tests or slogan evidence. VERIFIED_CONTRACT, then RESOLVED, then `of close`. That stamp writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. A child-forged `verified_contract` / `spec_closed` does not land. There is no soft close. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md).
 4. **Status names the live field.** `.orderfield/ACTIVE` points at the nested field when the real work is under `fields/<id>/`. `of status` and `of resume` follow it. A leftover root ORDER stub does not steal the screen. When to `of new` vs patch: [nested-fields.md](nested-fields.md).
@@ -44,7 +44,18 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 
 | Move | What dies | Proof |
 |---|---|---|
-| Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; `constraints+` appends on leader `--apply`; replace keys stay off; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
+| Residual redefines `mission` / `phase` / `constraints` / `done_when` | `integrate --apply` keeps the leader ORDER; replace keys stay off; regime `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused`; `EvalInvariantSetup`; `MissionRewriteRefused` |
+| Residual smuggles `constraints+` / `done_when+` / notes with empty `wants_to_change` (any role, explorer included) | nothing lands in ORDER; `escalate_up`; notes → `integrations/observations.json`; explorer patch ignored | `tests/test_child_lane.py` (`test_haken02_explorer_smuggle_escalates_and_order_unchanged`, `test_int05_undeclared_constraints_and_done_when_escalate`) |
+| Child closes `done_when` or stamps a requirement it does not own | close lands only from verifier/adversary with an accepted receipt; unowned stamp refused | `tests/test_child_lane.py` |
+| Child writes product paths outside its `owns_paths` (or any product path as a read-only role) | collect INVALID `ScopeWrite` (git trees) | `tests/test_wave_integrity.py` `ScopeWriteGate` |
+| Second writer on a packet (handoff claim, unwatched scratch) | `of spawn` refuses without `--force-spawn --reason` | `tests/test_wave_integrity.py` `HandoffClaim` |
+| `done` citing a failed command, or one bad citation among several | collect INVALID (`EvidenceReceipt`; every citation verified) | `tests/test_wave_integrity.py` `Receipts` |
+| `of pack` / `of unpack` / `of spawn` from a child | `kind=child-forge` (unless the packet has `allow_nested`) | `tests/test_wave_integrity.py` `ChildForgeGuard` |
+| Clone / copy / sync reorders WAL mtimes | no rollback: recovery follows the `seq`/parent chain only | `tests/test_wal_chain.py` (`test_copy_with_older_manifests_newer_never_rolls_back`) |
+| Forged or planted WAL generation without a valid parent link; planted live packet | quarantined to `wal/orphans/`, never published | `tests/test_wal_chain.py` (`test_forged_generations_are_quarantined_not_published`, `test_planted_packet_is_quarantined_not_inherited`) |
+| `rm -r wal`, zeroed CURRENT, rewritten head MANIFEST | writers refuse `wal-broken`; readers never silently serve live | `tests/test_wal_chain.py`; `tests/test_wal_head.py` |
+| Live ORDER/SPEC edited by hand | resume/status/doctor print `LIVE!=CURRENT`; `next RESTORE`; `of patch --from-current` | `recovery/live-tamper-restore`; `tests/test_resume_next.py` |
+| Forged `spec_closed`, or `--cite 'trust me'` | `CloseProof.verify` fails → `next CLOSE UNPROVEN`, auto_continue stays on; free-text cite refused | `tests/test_resume_next.py` (`test_forged_spec_closed_keeps_auto_continue`); `tests/test_close_proof.py` |
 | Slogan close (`all tests passed`) | verifier `done` cannot collect | `recovery/slogan-evidence-refused` |
 | Caption close (no artifact SHA / no rollback command) | `status=done` cannot collect | `CloseEvidenceGate` |
 | Implementer / owns-path `done` with zero owned writes | collect INVALID `owned_write_missing` | `OwnedWriteGate` |
@@ -94,17 +105,32 @@ These are not missing features. Do not invent kernel to close them. Record: [out
 
 - **Disobedient leader.** Product files are not locked. A leader can write the tree without `of pack`. Role obedience and metric truth stay protocol.
 - **Leader session theater.** A leader can still say “we shipped” in chat. Disk wins: `of contrast` + `CLOSE.json`. Not a supervisor.
-- **Writes outside `of`.** Direct edits to ORDER, packets, residuals, or product paths bypass the CLI. The kernel validates what is routed through `of`.
+- **Writes outside `of`.** Direct edits to ORDER, packets, residuals, or product paths bypass the CLI. The kernel validates what is routed through `of`; live edits to snapshot files are made visible (`LIVE!=CURRENT`, quarantine, `wal-broken`), and product writes outside `owns_paths` are INVALID at collect.
+- **A correctly forged WAL generation.** A process running as the same OS user can write `wal/` by hand. A generation that is correctly chained (next `seq`, right parent, matching MANIFEST and CURRENT hashes) is indistinguishable from a leader commit. The chain is tamper-*evident* for accidents and naive edits, not cryptographically authenticated. Per-field leader keys (HMAC), epoch/takeover, and `--if-rev` compare-and-swap are deferred ([roadmap](roadmap.md)); even then a same-user child that can read the key is not prevented unless the host sandbox hides it.
+- **`refuse_child_forge` is not authentication.** It checks live `OF_CHILD`, its own exec-time environ, the pid+start-time spawn registry, the session leader's exec-time environ, and every ancestor's exec-time environ (`spawned_child_id` in `scripts/of/field.py`), so a spawned child and its descendants stay refused even after unsetting `OF_CHILD`. It is bypassed only by processes outside the spawn ancestry: a handoff child (never spawned by `of`), an unrelated same-user process, a process that tampers with the registry, or a detached child that outlives the spawn and acts after it ends.
 - **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`). Worktree/process bounds are honesty surfaces, not a security guarantee.
 - **Open-field checkout.** Cloning or copying a tree with open `.orderfield/` while the skill is installed to HOME dests (`~/.agents` / `~/.claude` / `~/.cursor` …) auto-continues. Operator risk, not a silent escape and not a feature to gut. Explicit pause/stop/close only. Rule 0 stays.
 - **Detect ≠ auth.** `of detect` / `of doctor` PATH inventory is not credentials or session authority (C-015). A binary on PATH is not a login.
 - **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Optional `residual.usage` is provenance when a child copies harness facts; `EfficiencySignal` may propose a model-tier ask. Do not add cost ceilings (`SCOPE-COST`). Design: [efficiency-signal.md](efficiency-signal.md).
 - **Publish / merge process.** No `of merge`. Independent GitHub approval is human merge practice (`SCOPE-REVIEW`). Test C is harness QA, not kernel CI (`SCOPE-TESTC`).
 
+### Known limits (0.9.0)
+
+An independent re-audit of the 0.9.0 tree still breaks the items below. Each one was reproduced against the 0.9.0 tree. W9 is the deferred per-field leader key ([roadmap](roadmap.md)). It is not shipped, and the list says where W9 would help and where it would not.
+
+- **Chain-valid WAL forgery, or an in-place CURRENT rewrite.** A same-user process can write a correctly chained generation (next `seq`, right parent, matching MANIFEST and CURRENT hashes). It can also rewrite `wal/CURRENT.json` and the head generation in place with consistent hashes. Resume then shows the forged ORDER, the next leader `of patch` exits 0 on top of it, and nothing warns. A forged v1 `CLOSE.json` in a chained generation is caught as a downgrade (`spec_closed does not verify`). But `CloseProof.verify` re-hashes from the same disk, so a forger who writes a v2 `CLOSE.json` whose hashes match the forged bytes is not stopped by anything in the kernel. Naive edits are still caught (`LIVE!=CURRENT` → `RESTORE`, quarantine, `wal-broken`). W9 addresses this: HMAC over MANIFEST / CURRENT / `order_bind`.
+- **A handoff child has leader authority.** `of handoff` gives an agent a packet but no `OF_CHILD`, no spawn-registry entry and no ancestry link, so `refuse_child_forge` cannot tell it from the leader. It can run `of patch --mission`, `of unpack --force` and the other leader verbs. The handoff claim only refuses a second `of spawn` on that packet. W9's leader epoch would fence it, but only if the host keeps the key from that agent.
+- **Detached, delayed escape.** A spawned child that double-forks, calls `setsid`, clears its environment and waits until its spawn has ended is no longer in the spawn ancestry: its registered ancestors have exited, and its own pid and new session were never registered. Its later `of patch --mission` lands (re-audit: an 8 s delay was enough). Unsetting `OF_CHILD` while the spawn is live is refused. W9 helps only if the child cannot read the leader key; a child running as the same OS user can, unless the host sandbox hides it.
+- **Self-attested receipts / fabricated `exit: 0`.** An evidence receipt is a file the child writes. A verifier or adversary can write `exit: 0` for a command that never ran. Collect accepts it, and `integrate --apply` then closes `done_when`. In the same way, `of spec --cite` checks that the file exists, not who wrote it or whether the command ran. Receipts are bound by sha256 at close, so an edit after close fails `CloseProof.verify`. W9 does not address this: no kernel-run command signs receipts.
+- **A raw ACTIVE write retargets a plain patch.** Writing `.orderfield/ACTIVE` by hand to point at another open field makes the next unscoped `of patch` land there. The only signal is the `field=<id> bound_by=ACTIVE` line on stderr. `OF_FIELD_STRICT=1` refuses a mutation with no explicit field when 2+ fields are open, but it is opt-in (default-on is deferred). W9 does not address this.
+- **A ScopeWrite REPAIR does not converge by argv alone.** After a ScopeWrite violation, `next` is `REPAIR` with target argv `of spawn --packet …`. The paths that must be reverted first are named only in `detail`. An agent that runs only `targets[].argv` re-spawns into the same INVALID verdict until someone reverts them. The re-run keeps the old baseline for those paths, so the violation is never cleared falsely. W9 does not address this.
+- **Unwatched writes.** `ScopeWrite` watches tracked, untracked and gitignored files plus `.git/config` and `.git/hooks/**`. It does not watch ignored files under heavy dirs (`node_modules`, `build`, `dist`, `.venv`, `target`, tool caches), files over 5 MiB, or ignored files past the first 5,000. A tree that is not a git work tree is skipped with a note. W9 does not address this.
+- **Sibling residuals in a writer-less wave.** `Unclaimed` makes a residual INVALID when its packet has no spawn record and no claim, but only in a wave where some packet has one. A wave with neither (native subagents that write their own residuals) is exempt, so there a child can write a sibling's residual. Detection, not authentication.
+
 ### How a reviewer re-runs the proof
 
 ```bash
-python3 -m unittest discover -s tests -v
+python3 scripts/run_tests.py          # parallel, one process per module
 python3 scripts/of.py eval --strict --kernel
 python3 docs/audit/check-claims.py
 bash scripts/validate-skill.sh
@@ -122,6 +148,9 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Must hold | Fixture |
 |---|---|
 | Silent mission/phase/constraints/done-when rewrite dies; `escalate_up`; spawn blocked | `recovery/mission-rewrite-refused` |
+| Leader killed mid-spawn, child residual landed: `next` is COLLECT, never force-spawn | `recovery/orphan-spawn-settled` |
+| Truncated residual: `next` is REPAIR, never a COLLECT loop | `recovery/truncated-residual-repair` |
+| Live ORDER tamper: resume shows `LIVE!=CURRENT`, `next` RESTORE, `of patch --from-current` repairs | `recovery/live-tamper-restore` |
 | Public CLI-001: child stamp + VERIFIED_INTERNAL cannot close; VERIFIED_CONTRACT → RESOLVED → CLOSED | `recovery/contrast-close-contract` |
 | Verifier slogan evidence (`all tests passed`) cannot collect | `recovery/slogan-evidence-refused` |
 | Internal ALG-001: contrast OPEN → verify internal → RESOLVED → CLOSED | `recovery/contrast-close-internal` |

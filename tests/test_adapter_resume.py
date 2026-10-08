@@ -292,12 +292,18 @@ class AdapterResumeSpawn(unittest.TestCase):
 
     def test_spawn_merges_reported_session_id(self) -> None:
         residual = self._bound_residual()
+        # Scratch before the first spawn is unwatched work (a second writer);
+        # the child writes its notes, so the fake binary does.
+        notes = self.tmp / ".orderfield/work/scratch/r1/notes.md"
+        notes_text = notes.read_text(encoding="utf-8")
+        notes.unlink()
         dest = self.tmp / ".orderfield/waves/001/residuals/r1.json"
         event = {"type": "system", "subtype": "init", "session_id": "from-stream"}
         self._install(
             "claude",
             f"""
             from pathlib import Path
+            Path({str(notes)!r}).write_text({notes_text!r}, encoding="utf-8")
             dest = Path({str(dest)!r})
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text({json.dumps(json.dumps(residual))}, encoding="utf-8")

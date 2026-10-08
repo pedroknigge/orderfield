@@ -145,9 +145,14 @@ class SpecReadBoundary(unittest.TestCase):
                     for line in body.splitlines()
                     if token in line and "order_path(root)" not in line
                 ]
-                # read_user_text itself is allowed the stdin fallback.
+                # read_user_text itself is allowed the stdin fallback; close
+                # proof hashes cited bytes (a digest, not user text).
                 remaining = [
-                    ln for ln in remaining if "return sys.stdin.read()" not in ln
+                    ln
+                    for ln in remaining
+                    if "return sys.stdin.read()" not in ln
+                    and "digest(" not in ln
+                    and "proof_matches(" not in ln
                 ]
                 self.assertEqual(remaining, [], f"{module_path.name}: {remaining}")
             if module_path.name == "spec_cmd.py":

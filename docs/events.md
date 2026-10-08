@@ -26,7 +26,9 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `wave.advanced` | After `of next-wave` | `from_wave`, `to_wave`, `ok` |
 | `wave.list` | After `of wave list` | `count`, `live`, `ok` |
 | `wave.show` | After `of wave show` | `wave`, `live`, `ok` |
-| `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `ok`; roster path uses `field=roster` |
+| `resume` | After `of resume` | `wave`, `field`, `in_flight`, `parked`, `next`, `auto_continue`, `ok`, plus the structured next (`NextPlan.machine`): `action`, `reason_code`, `label`, `detail`, `targets` (`[{child_id, packet, argv}]`), `inputs_digest`, `drift`; roster path uses `field=roster`. `of resume --json` prints the same object on stdout (`v`, `ok`, `id`, …) |
+| `patch` | After `of patch --from-current` (other patches emit no event) | `from_current=true`, `restored` (live paths restored from WAL CURRENT), `ok` |
+| `bind` | A mutating verb in a tree with 2+ fields | `field`, `bound_by` (`--field` \| `OF_FIELD` \| `session` \| `ACTIVE` \| `unique` \| `unique-open`); plain mode prints `field=<id> bound_by=<how>` on stderr |
 | `status` | After `of status` | same facts as `of status --json` (`StatusReport.event_fields`): `kind`, `id`, `wave`, `field`, `in_flight`, `in_flight_detail` (includes `progress`), `next`, `spawn_blocked`, `signal`, `packed_age`, `spec_hash`, `requirements`, `efficiency` (`propose` / `reason` / `consent` / `scored`; not a token ledger), `ok`; roster/no-ORDER use `kind=roster` / `kind=no_order` |
 | `new` | After `of new` | `field`, `ok`; `parent` when `--parent` stamped |
 | `fields` | After `of fields` | same facts as `of fields --json` (`PackRoster.event_fields`): `count`, `open`, `closed`, `archived`, `active`, `in_flight`, `packs` (`field`, `child_id`, `wave`, `role`, `residual`, `age_s`, `packet`), `ok` |
@@ -43,7 +45,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `learn` | After `of learn` | `action` (`save` \| `list` \| `forget` \| `promote`), `ok`; `kind`/`id` on save/forget/promote |
 | `issue` | After `of issue` | `action` (`create` \| `search`), `repo` (`pedroknigge/orderfield`), `ok`; `dry_run` on create and on search preview |
 | `warning` | Non-fatal note that would be prose in plain mode | `ok: true`, `kind`, `message` (one bounded line; secrets and home paths stripped). See kinds below. |
-| `error` | A deliberate refusal (`die`, `kind: refused` or a named kind) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, `child-forge` for `of learn --protocol/--promote` under `OF_CHILD`, `issue` for `of issue` (HITL missing, gh missing/unauth, OF_CHILD submit, create/list failure), `reserved` for `of pack --tokens N>0`, `budget.seconds` when spawn `--timeout` disagrees with the packet wall-clock or `--seconds` is invalid, `slice.phase` when `of pack --slice` is a whole-phase slogan, `learning.lines` when `of learn` exceeds the hard line dump bound, `wal-crash` test-only, or the exception class), `message` (one sanitized line, secrets and home paths redacted) |
+| `error` | A deliberate refusal (`die`, `kind: refused` or a named kind) or an unexpected exception at the CLI boundary in `main()` | `ok: false`, `kind` (`refused`, `child-forge` for `of learn --protocol/--promote` under `OF_CHILD`, `issue` for `of issue` (HITL missing, gh missing/unauth, OF_CHILD submit, create/list failure), `reserved` for `of pack --tokens N>0`, `budget.seconds` when spawn `--timeout` disagrees with the packet wall-clock or `--seconds` is invalid, `slice.phase` when `of pack --slice` is a whole-phase slogan, `learning.lines` when `of learn` exceeds the hard line dump bound, `wal-broken` when the WAL chain cannot be trusted (missing `wal/` at rev>1, torn/zeroed CURRENT, rewritten head MANIFEST) until the leader re-runs with `OF_WAL_ADOPT_LIVE=1`, `child-forge` also for `of pack` / `of unpack` / `of spawn` from a child, `wal-crash` test-only, or the exception class), `message` (one sanitized line, secrets and home paths redacted) |
 
 `warning.kind` values:
 
@@ -68,6 +70,15 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `process_kill` | Process-group / child kill hit `OSError` (not already-gone) |
 | `cleanup` | Scratch `rmdir` hit `OSError` other than empty/missing |
 | `mission_not_applied` | `of integrate --apply` saw a mission residual; mission is not auto-applied |
+| `child_lane` | `of integrate` recorded child proposals that did not land in ORDER (`constraints+` / `done_when+` / notes / refused close or stamps / explorer patch) under `waves/<n>/integrations/observations.json`; the leader applies with `of patch` |
+| `force_spawn` | `of spawn --force-spawn --reason` past `escalate_up` (`spawn_blocked`); message carries the reason |
+| `spawn_claim_override` | `of spawn --force-spawn --reason` overrides a live handoff claim or unwatched scratch (second writer); message carries why + reason |
+| `adapter_pin` | `OF_ADAPTER` disagrees with `ORDER.harness` and was ignored (the pin wins; `--adapter` overrides) |
+| `wal_orphan` | A WAL generation that is not the single child of CURRENT (or has a corrupt MANIFEST, or competes as a sibling) was quarantined to `wal/orphans/`, never published |
+| `wal_tamper` | Live snapshot-path files not in WAL CURRENT were quarantined to `wal/orphans/` |
+| `wal_materialize` | Live cache restored from CURRENT after a crash post-flip (`MATERIALIZED.json` ≠ CURRENT), or a committed generation whose live materialize failed (exit stays 0) |
+| `wal_current` | A reader saw ORDER rev>1 with no CURRENT, or a CURRENT generation that does not hash to its MANIFEST |
+| `wal_adopt` | The leader adopted live files as the new chain head (`OF_WAL_ADOPT_LIVE=1`, `of init`, or `of migrate` of a pre-WAL field); readers note they show untrusted live files |
 
 ## Example
 

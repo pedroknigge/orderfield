@@ -1,0 +1,52 @@
+{
+  "id": "recovery/live-tamper-restore",
+  "description": "Live ORDER.json rewritten behind WAL CURRENT: resume/status/doctor print LIVE!=CURRENT and next RESTORE; writers refuse; of patch --from-current restores live from CURRENT and keeps the tampered copy under wal/orphans (D8)",
+  "fixture": "recovery_live_tamper",
+  "tags": ["recovery", "resume", "wal", "tamper", "restore", "next"],
+  "steps": [
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": [
+        "LIVE!=CURRENT ORDER.json",
+        "next\n  RESTORE",
+        "reason      live_drift",
+        "target      field  of patch --from-current"
+      ]
+    },
+    {
+      "run": "status",
+      "exit": 0,
+      "stdout_contains": ["LIVE!=CURRENT ORDER.json", "RESTORE"]
+    },
+    {
+      "run": "doctor",
+      "stdout_contains": ["LIVE!=CURRENT ORDER.json", "of patch --from-current"]
+    },
+    {
+      "run": "patch",
+      "args": ["--constraints-add", "write through a tamper"],
+      "exit": 1,
+      "stderr_contains": ["disagrees with WAL CURRENT"]
+    },
+    {
+      "run": "patch",
+      "args": ["--from-current"],
+      "exit": 0,
+      "stdout_contains": ["restored      ORDER.json"],
+      "file_contains": [
+        {
+          "path": ".orderfield/ORDER.json",
+          "contains": ["honest mission"],
+          "not_contains": ["hijacked mission"]
+        }
+      ]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_contains": ["mission       honest mission"],
+      "stdout_not_contains": ["LIVE!=CURRENT", "RESTORE"]
+    }
+  ]
+}

@@ -281,10 +281,14 @@ class CliFieldResidual(unittest.TestCase):
         report2 = json.loads(applied.stdout)
         self.assertEqual(report2["regime"], "escalate_up")
         self.assertEqual(report2["order_rev"], expected["rev_after_apply"])
+        # constraints+ from a child escalates; only the leader's of patch writes ORDER.
         order_after = load_json(self.tmp / ".orderfield" / "ORDER.json")
-        self.assertEqual(order_after["rev"], order_before["rev"] + 1)
-        self.assertTrue(
-            any("invoicing" in c for c in order_after["constraints"]),
+        self.assertEqual(order_after["rev"], order_before["rev"])
+        self.assertFalse(
+            any(
+                expected["apply_must_not_add_constraint_substring"] in c
+                for c in order_after["constraints"]
+            ),
             order_after["constraints"],
         )
 
@@ -298,21 +302,21 @@ class CliFieldResidual(unittest.TestCase):
             "--dry-run",
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
-        blob = (spawned.stdout + spawned.stderr).lower()
-        self.assertIn("stale packet", blob)
+        self.assertIn("spawn forbidden after escalate_up", spawned.stderr)
 
-        forced = run_of(
-            self.tmp,
-            "spawn",
-            "--adapter",
-            "claude",
-            "--packet",
-            ".orderfield/waves/001/packets/explorer_demo.json",
-            "--dry-run",
-            "--force-spawn",
+        packet = ".orderfield/waves/001/packets/explorer_demo.json"
+        silent = run_of(
+            self.tmp, "spawn", "--adapter", "claude", "--packet", packet,
+            "--dry-run", "--force-spawn",
         )
-        self.assertNotEqual(forced.returncode, 0)
-        self.assertIn("stale packet", (forced.stdout + forced.stderr).lower())
+        self.assertNotEqual(silent.returncode, 0, silent.stdout + silent.stderr)
+        self.assertIn("requires --reason", silent.stderr)
+        forced = run_of(
+            self.tmp, "spawn", "--adapter", "claude", "--packet", packet,
+            "--dry-run", "--force-spawn", "--reason", "leader accepts the threshold",
+        )
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertIn("--force-spawn past escalate_up", forced.stderr)
 
     def test_done_fixture_does_not_choose_phase(self) -> None:
         expected = load_json(EVAL_DONE)
@@ -2814,7 +2818,9 @@ class MissionRewriteRefused(unittest.TestCase):
         self.assertEqual(after["phase"], before["phase"])
         self.assertEqual(after["done_when"], before["done_when"])
         self.assertIn(self.expected["constraint_must_remain"], after["constraints"])
-        self.assertIn(self.expected["appended_constraint"], after["constraints"])
+        self.assertFalse(self.expected["appended_constraint_applied"])
+        self.assertNotIn(self.expected["appended_constraint"], after["constraints"])
+        self.assertEqual(after["rev"], before["rev"])
         self.assertIn(self.expected["done_when_must_remain"], after["done_when"])
         self.assertFalse(after.get("spec_closed"))
         for stolen in (
@@ -2837,10 +2843,7 @@ class MissionRewriteRefused(unittest.TestCase):
             "--dry-run",
         )
         self.assertNotEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
-        self.assertTrue(
-            "escalate_up" in spawned.stderr or "stale packet" in spawned.stderr,
-            spawned.stderr,
-        )
+        self.assertIn("spawn forbidden after escalate_up", spawned.stderr)
 
 
 class MultiHarnessResidual(unittest.TestCase):

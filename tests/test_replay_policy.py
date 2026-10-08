@@ -78,13 +78,13 @@ def land(
             rollback=f"git checkout -- {residual['result_ref']}",
         )
         if external:
+            # Green is leader-committed through the WAL, citing its proof.
             for rid in packet.get("owns_requirements") or []:
-                check = root / ".orderfield" / "checks" / f"{rid}.json"
-                check.parent.mkdir(parents=True, exist_ok=True)
-                check.write_text(
-                    json.dumps({"id": rid, "pass": True}) + "\n",
-                    encoding="utf-8",
+                green = run_of(
+                    root, "spec", "--verified-contract", rid,
+                    "--cite", residual["result_ref"], "--both-sides",
                 )
+                assert green.returncode == 0, green.stderr
     dest = root / str(packet["residual_path"])
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")

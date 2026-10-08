@@ -512,7 +512,11 @@ class FieldWalBothSides(unittest.TestCase):
         self._assert_committed_children(["e1", "e2"], stable_hashes=stable)
 
     def test_crash_after_current_status_then_checkpoint_keeps_e2(self) -> None:
-        """WAL-002 writer: status (reader, no overwrite) then checkpoint keeps e2."""
+        """WAL-002 writer: status (reader) then checkpoint keeps e2.
+
+        CS-3: MATERIALIZED != CURRENT after the flip, so the reader finishes
+        the copy and live counters match CURRENT (no stale live cache).
+        """
         man = self._crash_pack_e2_after_current()
         stable = self._stable_committed_hashes(man)
         status = run_of(self.tmp, "status")
@@ -522,8 +526,8 @@ class FieldWalBothSides(unittest.TestCase):
         live_state = json.loads((self.home / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(
             live_state.get("children_spawned"),
-            1,
-            "reader materialize must not overwrite live counters",
+            2,
+            "reader must finish materializing a committed generation",
         )
         rec = run_of(self.tmp, "checkpoint", "--summary", "writer recover after status")
         self.assertEqual(rec.returncode, 0, rec.stderr)

@@ -1,7 +1,9 @@
 """Episodic retention / gc: plan, unlink, tree budget, HITL keep/drop."""
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -29,6 +31,7 @@ from of.field import (
     utc_now,
 )
 from of.learn import learning_kind
+from of.receipt import EvidenceReceipt
 from of.wal import dump_json, field_generation
 
 RETENTION_DAYS = 30
@@ -518,6 +521,130 @@ class Deliverable:
             print(f"deliverable {field_rel(root, path)}")
 
 
+class EvidenceStore:
+    """Content-addressed home for the evidence CLOSE.json binds.
+
+    ``<field>/deliverables/evidence/<sha256><suffix>``. Close copies every
+    bound residual, receipt, receipt source and requirement proof there
+    before the stamp; ClosedScratch.wipe re-copies any bound original whose
+    copy is missing before it deletes scratch. So close moves cited
+    evidence instead of wiping it. ``evidence`` paths are field-home
+    relative, so ``of gc --archive-field`` keeps them valid.
+    """
+
+    DIR = "deliverables/evidence"
+    LISTS = ("residuals", "receipts", "requirements")
+
+    @staticmethod
+    def digest(data: bytes) -> str:
+        return hashlib.sha256(data).hexdigest()
+
+    @staticmethod
+    def rel_for(sha: str, src: Path) -> str:
+        suffix = src.suffix if re.fullmatch(r"\.[A-Za-z0-9]{1,12}", src.suffix) else ""
+        return f"{EvidenceStore.DIR}/{sha}{suffix}"
+
+    @staticmethod
+    def _copy_ok(src: Path, dest: Path, sha: str) -> bool:
+        """Copy and re-hash. False when the copy cannot be made or does not verify."""
+        try:
+            if dest.is_file() and not dest.is_symlink():
+                if EvidenceStore.digest(dest.read_bytes()) == sha:
+                    return True
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+            return EvidenceStore.digest(dest.read_bytes()) == sha
+        except OSError:
+            return False
+
+    @staticmethod
+    def archive(home: Path, src: Path, sha: str) -> str:
+        """Copy one bound file into the store before the stamp. Dies if it cannot."""
+        rel = EvidenceStore.rel_for(sha, src)
+        if not EvidenceStore._copy_ok(src, home / rel, sha):
+            die(
+                f"of close refused: evidence {src} would be lost "
+                "(copy failed or bytes changed); re-run of close"
+            )
+        return rel
+
+    @staticmethod
+    def residuals(home: Path) -> list[tuple[Path, dict[str, Any] | None, bool, list[str]]]:
+        """Every wave residual: ``(path, doc, valid_done, cited_receipt_rels)``.
+
+        ``valid_done`` = parsed, no ``.invalid.txt`` sibling, ``status=done``:
+        collect already gated its receipts, so they are accepted evidence.
+        """
+        waves = home / "waves"
+        if not waves.is_dir() or waves.is_symlink():
+            return []
+        out: list[tuple[Path, dict[str, Any] | None, bool, list[str]]] = []
+        for path in sorted(waves.glob("*/residuals/*.json")):
+            if path.is_symlink():
+                continue
+            res = _read_json_object(path)
+            invalid = path.with_suffix(path.suffix + ".invalid.txt").exists()
+            done = res is not None and not invalid and res.get("status") == "done"
+            rem = (res or {}).get("residual")
+            evidence = str(rem.get("evidence") or "") if isinstance(rem, dict) else ""
+            rels = [str(r) for r in EvidenceReceipt.verifier_inputs(evidence)["receipts"]]
+            out.append((path, res, done, rels))
+        return out
+
+    @staticmethod
+    def cited(root: Path, home: Path) -> set[Path]:
+        """Receipts (and their sources) a valid done residual cites, resolved.
+
+        Retention keeps these on an open field: the residual is immutable,
+        so dumping its accepted receipt would refuse ``of close`` forever.
+        """
+        project = root.resolve()
+        out: set[Path] = set()
+        for _path, _res, done, rels in EvidenceStore.residuals(home):
+            if not done:
+                continue
+            for rel in rels:
+                receipt = (project / rel).resolve()
+                out.add(receipt)
+                loaded = EvidenceReceipt.load_receipt(receipt)
+                source = str((loaded or {}).get("source_path") or "")
+                if source:
+                    out.add((project / source).resolve())
+        return out
+
+    @staticmethod
+    def entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
+        """Every bound ``{path, sha256, evidence}`` row in a CLOSE.json bundle."""
+        out: list[dict[str, Any]] = []
+        for key in EvidenceStore.LISTS:
+            for row in doc.get(key) or []:
+                if not isinstance(row, dict):
+                    continue
+                if row.get("evidence"):
+                    out.append(row)
+                source = row.get("source")
+                if isinstance(source, dict) and source.get("evidence"):
+                    out.append(source)
+        return out
+
+    @staticmethod
+    def preserve(root: Path, home: Path) -> set[Path]:
+        """Archive bound originals whose copy is missing. Returns the ones it could not."""
+        doc = _read_json_object(home / "CLOSE.json")
+        kept: set[Path] = set()
+        if not doc:
+            return kept
+        for row in EvidenceStore.entries(doc):
+            sha = str(row.get("sha256") or "")
+            dest = home / str(row["evidence"])
+            src = root / str(row.get("path") or "")
+            if not sha or not src.is_file() or src.is_symlink():
+                continue
+            if not EvidenceStore._copy_ok(src, dest, sha):
+                kept.add(src.resolve())
+        return kept
+
+
 class ClosedScratch:
     """Wipe this field's work/scratch after a successful close.
 
@@ -525,6 +652,8 @@ class ClosedScratch:
     Close applies that dump immediately so media/node_modules do not linger.
     Wave logs/spawns/prompts use the same ephemeral dirs `_plan_home_waves`
     already classifies as dump when closed. No new verb. Contract files stay.
+    Evidence CLOSE.json binds is moved to EvidenceStore first; an original
+    that cannot be archived keeps its directory.
     """
 
     NOTE = "wiped work/scratch (closed-ephemeral)"
@@ -533,23 +662,28 @@ class ClosedScratch:
     @staticmethod
     def wipe(root: Path, home: Path | None = None) -> int:
         home = home or field_home(root)
-        n = ClosedScratch._wipe_children(home / "work" / "scratch")
+        kept = EvidenceStore.preserve(root, home)
+        n = ClosedScratch._wipe_children(home / "work" / "scratch", kept)
         waves = home / "waves"
         if waves.is_dir() and not waves.is_symlink():
             for wdir in waves.iterdir():
                 if not wdir.is_dir() or wdir.is_symlink():
                     continue
                 for sub in ClosedScratch.EPHEMERAL_WAVE_SUBS:
-                    n += ClosedScratch._wipe_children(wdir / sub)
+                    n += ClosedScratch._wipe_children(wdir / sub, kept)
         return n
 
     @staticmethod
-    def _wipe_children(path: Path) -> int:
+    def _wipe_children(path: Path, kept: set[Path] | None = None) -> int:
         if not path.is_dir() or path.is_symlink():
             return 0
         n = 0
         for child in list(path.iterdir()):
             if child.is_symlink():
+                continue
+            if kept and any(
+                k == child.resolve() or child.resolve() in k.parents for k in kept
+            ):
                 continue
             try:
                 _safe_unlink(child)
@@ -742,6 +876,7 @@ def _plan_home_waves(
     *,
     closed: bool,
     leftover: bool = False,
+    cited: set[Path] | None = None,
 ) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     waves = home / "waves"
@@ -765,7 +900,9 @@ def _plan_home_waves(
                     continue
                 rel = field_rel(root, path)
                 reason = _ephemeral_dump_reason(path, closed=closed)
-                if reason:
+                if cited and path.resolve() in cited:
+                    actions.append(_retention_action("keep", rel, "cited-evidence"))
+                elif reason:
                     actions.append(_retention_action("dump", rel, reason))
                 elif is_current:
                     actions.append(_retention_action("keep", rel, "current-wave"))
@@ -855,6 +992,7 @@ def _plan_home_contract_and_scratch(
     *,
     closed: bool,
     over_budget: bool,
+    cited: set[Path] | None = None,
 ) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     for name, why in (
@@ -906,7 +1044,9 @@ def _plan_home_contract_and_scratch(
             reason = _ephemeral_dump_reason(
                 child_dir, closed=closed, over_budget=over_budget and not closed
             )
-            if reason:
+            if reason and cited:
+                actions.extend(_plan_dump_except_cited(root, child_dir, cited, reason))
+            elif reason:
                 actions.append(_retention_action("dump", rel, reason))
             else:
                 actions.append(_retention_action("keep", rel, "recent-scratch"))
@@ -945,6 +1085,24 @@ def _plan_home_contract_and_scratch(
     return actions
 
 
+def _plan_dump_except_cited(
+    root: Path, path: Path, cited: set[Path], reason: str
+) -> list[dict[str, str]]:
+    """Dump ``path`` except the accepted evidence inside it (EvidenceStore.cited)."""
+    rel = field_rel(root, path)
+    resolved = path.resolve()
+    if resolved in cited:
+        return [_retention_action("keep", rel, "cited-evidence")]
+    if path.is_symlink() or not path.is_dir() or not any(
+        resolved in c.parents for c in cited
+    ):
+        return [_retention_action("dump", rel, reason)]
+    actions: list[dict[str, str]] = []
+    for child in sorted(path.iterdir()):
+        actions.extend(_plan_dump_except_cited(root, child, cited, reason))
+    return actions
+
+
 def plan_one_field_home(
     root: Path,
     home: Path,
@@ -958,10 +1116,14 @@ def plan_one_field_home(
     packed = _home_wave_child_ids(home, current_wave) if not closed else set()
     done = _home_residual_child_ids(home, current_wave) if not closed else set()
     live_children = packed - done
+    # Closed: CLOSE.json already archived its evidence (EvidenceStore).
+    cited = EvidenceStore.cited(root, home) if not closed else set()
     actions: list[dict[str, str]] = []
     actions.extend(_plan_home_learnings(root, home, order))
     actions.extend(
-        _plan_home_waves(root, home, order, current_wave, closed=closed)
+        _plan_home_waves(
+            root, home, order, current_wave, closed=closed, cited=cited
+        )
     )
     actions.extend(
         _plan_home_contract_and_scratch(
@@ -972,6 +1134,7 @@ def plan_one_field_home(
             current_wave,
             closed=closed,
             over_budget=over_budget,
+            cited=cited,
         )
     )
     return actions

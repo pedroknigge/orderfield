@@ -30,7 +30,8 @@ from of.model_discovery import cmd_models
 
 from of.cli.init_cmd import cmd_init, cmd_new
 from of.cli.contend_cmd import cmd_contend, cmd_crown
-from of.cli.ops import (
+# Names below that dispatch does not call are re-exported for of/__init__.py.
+from of.cli.ops import (  # noqa: F401
     cmd_checkpoint,
     cmd_detect,
     cmd_doctor,
@@ -38,6 +39,7 @@ from of.cli.ops import (
     cmd_gc,
     cmd_learn,
     cmd_migrate,
+    cmd_patch_from_current,
     cmd_pulse,
     cmd_resume,
     cmd_retain,
@@ -80,7 +82,7 @@ from of.cli.field_cmd import (
     cmd_patch,
     cmd_phase,
 )
-from of.cli.spec_cmd import (
+from of.cli.spec_cmd import (  # noqa: F401
     cmd_close,
     cmd_contrast,
     cmd_spec,
@@ -96,7 +98,7 @@ from of.cli.issue_cmd import (
     ISSUE_LABELS,
     cmd_issue,
 )
-from of.cli.eval_cmd import (
+from of.cli.eval_cmd import (  # noqa: F401
     EVAL_FIXTURES,
     EVAL_UNITTEST_MODULES,
     cmd_eval,
@@ -104,14 +106,8 @@ from of.cli.eval_cmd import (
     eval_pack_child,
     eval_run_of,
     eval_setup_recovery_active_field_pointer,
-    eval_setup_recovery_atomic_close,
-    eval_setup_recovery_beacon_amnesia,
-    eval_setup_recovery_budget_seconds,
     eval_setup_recovery_contrast_close,
     eval_setup_recovery_contrast_close_contract,
-    eval_setup_recovery_done_when_lint,
-    eval_setup_recovery_field_roster_ux,
-    eval_setup_recovery_cross_field_pack_roster,
     eval_setup_recovery_mission_rewrite,
     eval_setup_recovery_midflight_amend,
     MidFlightAmendEval,
@@ -122,22 +118,8 @@ from of.cli.eval_cmd import (
     eval_setup_recovery_threshold_stop_spawn,
     ThresholdStopSpawnEval,
     ProcessDeathResume,
-    eval_setup_recovery_process_death,
-    eval_setup_recovery_wave_report_quality,
     WaveReportQualityEval,
-    eval_setup_recovery_packet_sizing,
-    eval_setup_recovery_checkpoint_handoff,
-    eval_setup_recovery_multi_day_resume,
-    eval_setup_recovery_multi_harness,
-    eval_setup_recovery_pack_exclusivity,
-    eval_setup_recovery_quarry_dirty,
-    eval_setup_recovery_skip_explore,
-    eval_setup_recovery_slogan_evidence,
-    eval_setup_recovery_stale_field,
     eval_setup_recovery_packed_age,
-    eval_setup_recovery_orphan_packed,
-    eval_setup_recovery_closed_field_archive,
-    eval_setup_recovery_doctor_advisory,
     eval_setup_recovery_doctor_one_pass,
     eval_setup_recovery_doctor_closed_historical,
     eval_setup_recovery_plan_doc_sync,
@@ -145,147 +127,12 @@ from of.cli.eval_cmd import (
     PlanDocSyncEval,
     PlanCoverageEval,
     PlanIngressEval,
-    eval_setup_recovery_plan_ingress_promote,
-    eval_setup_recovery_plan_ingress_fidelity,
-    eval_setup_recovery_plan_ingress_folder,
-    eval_setup_recovery_plan_ingress_chat,
-    eval_setup_recovery_drive_after_integrate,
     DriveAfterIntegrateEval,
-    eval_setup_recovery_observation_pack,
     ObservationPackEval,
-    eval_setup_recovery_verify_build,
     eval_write_done_residual,
     run_recovery_eval_spec,
 )
 
-# Re-exports consumed by of/__init__.py. Keep the barrel; shrinking it
-# ImportErrors the package. Names here count as used for F401.
-__all__ = [
-    "ADAPTER_ORDER",
-    "BudgetSeconds",
-    "ERROR_MESSAGE_MAX_CHARS",
-    "EVAL_FIXTURES",
-    "EVAL_UNITTEST_MODULES",
-    "CloseChecklist",
-    "CloseProof",
-    "ContrastDiff",
-    "ContrastReport",
-    "EvaluatorPacket",
-    "EfficiencySignal",
-    "HandoffReport",
-    "DriveAfterIntegrate",
-    "ObservationPack",
-    "InFlightSignal",
-    "PulseProgress",
-    "ISSUE_LABELS",
-    "KNOWN_TOOLS",
-    "build_parser",
-    "cmd_checkpoint",
-    "cmd_close",
-    "cmd_collect",
-    "cmd_contrast",
-    "cmd_detect",
-    "cmd_doctor",
-    "cmd_eval",
-    "cmd_fields",
-    "cmd_gc",
-    "cmd_handoff",
-    "cmd_init",
-    "cmd_integrate",
-    "cmd_issue",
-    "cmd_learn",
-    "cmd_migrate",
-    "cmd_models",
-    "cmd_new",
-    "cmd_next_wave",
-    "cmd_pack",
-    "cmd_patch",
-    "cmd_phase",
-    "cmd_pulse",
-    "cmd_render",
-    "cmd_resume",
-    "cmd_retain",
-    "cmd_spawn",
-    "cmd_spec",
-    "cmd_spec_diff",
-    "StatusReport",
-    "cmd_status",
-    "cmd_unpack",
-    "cmd_validate",
-    "cmd_wave",
-    "cmd_worktree",
-    "cmd_worktree_add",
-    "cmd_worktree_land",
-    "cmd_worktree_list",
-    "cmd_worktree_remove",
-    "discover_recovery_eval_specs",
-    "eval_pack_child",
-    "eval_run_of",
-    "eval_setup_recovery_active_field_pointer",
-    "eval_setup_recovery_atomic_close",
-    "eval_setup_recovery_beacon_amnesia",
-    "eval_setup_recovery_budget_seconds",
-    "eval_setup_recovery_contrast_close",
-    "eval_setup_recovery_contrast_close_contract",
-    "eval_setup_recovery_done_when_lint",
-    "eval_setup_recovery_field_roster_ux",
-    "eval_setup_recovery_cross_field_pack_roster",
-    "eval_setup_recovery_mission_rewrite",
-    "eval_setup_recovery_midflight_amend",
-    "MidFlightAmendEval",
-    "eval_setup_recovery_multi_wave_residual",
-    "MultiWaveResidualEval",
-    "eval_setup_recovery_multi_wave_close_checklist",
-    "MultiWaveCloseChecklistEval",
-    "eval_setup_recovery_threshold_stop_spawn",
-    "ThresholdStopSpawnEval",
-    "ProcessDeathResume",
-    "eval_setup_recovery_process_death",
-    "eval_setup_recovery_wave_report_quality",
-    "eval_setup_recovery_packet_sizing",
-    "WaveReportQualityEval",
-    "eval_setup_recovery_checkpoint_handoff",
-    "eval_setup_recovery_multi_day_resume",
-    "eval_setup_recovery_multi_harness",
-    "eval_setup_recovery_pack_exclusivity",
-    "eval_setup_recovery_quarry_dirty",
-    "eval_setup_recovery_skip_explore",
-    "eval_setup_recovery_slogan_evidence",
-    "eval_setup_recovery_stale_field",
-    "eval_setup_recovery_packed_age",
-    "eval_setup_recovery_orphan_packed",
-    "eval_setup_recovery_closed_field_archive",
-    "eval_setup_recovery_doctor_advisory",
-    "eval_setup_recovery_doctor_one_pass",
-    "eval_setup_recovery_doctor_closed_historical",
-    "eval_setup_recovery_plan_doc_sync",
-    "eval_setup_recovery_plan_first_coverage",
-    "eval_setup_recovery_drive_after_integrate",
-    "DriveAfterIntegrateEval",
-    "eval_setup_recovery_observation_pack",
-    "ObservationPackEval",
-    "PlanDocSyncEval",
-    "PlanCoverageEval",
-    "PlanIngressEval",
-    "eval_setup_recovery_plan_ingress_promote",
-    "eval_setup_recovery_plan_ingress_fidelity",
-    "eval_setup_recovery_plan_ingress_folder",
-    "eval_setup_recovery_plan_ingress_chat",
-    "eval_setup_recovery_verify_build",
-    "eval_write_done_residual",
-    "format_agents_note",
-    "main",
-    "parked_reason",
-    "print_contrast_report",
-    "print_resume_child_owns",
-    "print_resume_completed",
-    "print_resume_in_flight",
-    "pulse_once",
-    "report_error",
-    "resume_auto_continue_lines",
-    "resume_next_lines",
-    "run_recovery_eval_spec",
-]
 
 
 def _collect_with_unverified(args: argparse.Namespace) -> None:
@@ -495,6 +342,12 @@ def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
         default="",
         help="continue a capped of fields from this id",
     )
+    s.add_argument(
+        "--use",
+        dest="use_field",
+        metavar="FIELD_ID",
+        help="point .orderfield/ACTIVE at this field (read default; leader only)",
+    )
     s.set_defaults(func=cmd_fields)
 
 
@@ -533,6 +386,13 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser(
         "resume",
         help="one-screen continuation brief reconstructed from disk",
+    )
+    s.add_argument(
+        "--json",
+        dest="resume_json",
+        action="store_true",
+        help="print the structured next (action, reason_code, targets[].argv, "
+        "inputs_digest) as one JSON object on stdout",
     )
     s.set_defaults(func=cmd_resume)
 
@@ -807,6 +667,10 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
     s = sub.add_parser("validate", help="validate a contract JSON file")
     s.add_argument("file")
     s.add_argument("--kind", default="auto", choices=["auto", "order", "packet", "residual"])
+    s.add_argument(
+        "--packet",
+        help="run the exact of collect gate on FILE (a residual) for this packet",
+    )
     s.set_defaults(func=cmd_validate)
 
 
@@ -933,6 +797,13 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         ),
     )
     s.add_argument(
+        "--reason",
+        help=(
+            "required with --force-spawn to override a live claim or "
+            "unwatched scratch"
+        ),
+    )
+    s.add_argument(
         "--force-tool",
         action="store_true",
         help="acknowledge and bypass a requires_tool capability mismatch",
@@ -947,6 +818,13 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
 
     s = sub.add_parser("collect", help="validate residuals for a wave")
     s.add_argument("--wave", type=int)
+    s.add_argument(
+        "--accept-unclaimed",
+        action="append",
+        default=[],
+        metavar="CHILD_ID",
+        help="leader owns a residual no spawn record or claim backs (rule=Unclaimed)",
+    )
     s.set_defaults(func=_collect_with_unverified)
 
 
@@ -956,7 +834,11 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
     s.add_argument(
         "--apply",
         action="store_true",
-        help="apply safe patches (constraints+/done_when+/done_when_closed)",
+        help=(
+            "apply verifier/adversary done_when_closed carrying an evidence "
+            "receipt, plus failed stamps; constraints+/done_when+ escalate_up "
+            "(leader applies with of patch)"
+        ),
     )
     s.add_argument("--next-wave", action="store_true")
     s.add_argument(
@@ -982,6 +864,13 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
     s.set_defaults(func=cmd_phase)
 
     s = sub.add_parser("patch", help="explicit ORDER patch")
+    s.add_argument(
+        "--from-current",
+        dest="from_current",
+        action="store_true",
+        help="restore live field files from WAL CURRENT (the RESTORE next after "
+        "LIVE!=CURRENT); tampered bytes are kept under wal/orphans/",
+    )
     s.add_argument("--mission", help="replace the mission (reopens done_when)")
     s.add_argument("--constraints-add", action="append")
     s.add_argument(
@@ -1138,7 +1027,10 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
         "--cite",
         dest="cite",
         default="",
-        help="with --verified-contract: path or command that exercised the surface",
+        help=(
+            "with --verified-contract: existing file inside the project "
+            "(surface-run log or evidence receipt); its sha is bound into CLOSE.json"
+        ),
     )
     s.add_argument(
         "--both-sides",
@@ -1285,7 +1177,18 @@ def build_parser() -> argparse.ArgumentParser:
     _register_wave_reduction_subparsers(sub)
     _register_spec_subparsers(sub)
 
+    _forbid_abbrev(p)
     return p
+
+
+def _forbid_abbrev(parser: argparse.ArgumentParser) -> None:
+    """No prefix matching anywhere: `--constraint` must not silently become
+    `--constraints-add`. A flag is spelled in full or argparse refuses it."""
+    parser.allow_abbrev = False
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for child in action.choices.values():
+                _forbid_abbrev(child)
 
 
 ERROR_MESSAGE_MAX_CHARS = 400
@@ -1300,6 +1203,10 @@ def _dispatch() -> None:
     root = find_root()
     if args.cmd in FIELD_BIND_COMMANDS:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
+    if args.cmd == "patch" and getattr(args, "from_current", False):
+        # Takes its own lock: the writer tamper refusal is what it repairs.
+        cmd_patch_from_current(args)
+        return
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)
         if args.cmd not in ("init", "new") and not (root / ".orderfield").is_dir():

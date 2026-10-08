@@ -68,6 +68,12 @@
     {
       "run": "spec",
       "args": ["--verified-contract", "CLI-001", "--cite", "curl -sS /health"],
+      "exit": 1,
+      "stderr_contains": ["not an existing file"]
+    },
+    {
+      "run": "spec",
+      "args": ["--verified-contract", "CLI-001", "--cite", "surface-proof.log"],
       "exit": 0
     },
     {

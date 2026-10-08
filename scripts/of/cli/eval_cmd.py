@@ -97,6 +97,21 @@ class EvalFileAssert:
         return None
 
 
+def eval_commit_home(root: Path, home: Path, docs: dict[str, Any]) -> None:
+    """Eval fixture writer: commit JSON docs to `home` through one WAL
+    generation (live-only writes are a tamper the next writer refuses)."""
+    from of.field import _active_field_home
+    from of.wal import dump_json, field_generation
+
+    token = _active_field_home.set(home)
+    try:
+        with field_generation(root):
+            for rel, data in docs.items():
+                dump_json(home / rel, data)
+    finally:
+        _active_field_home.reset(token)
+
+
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     # Recovery contain-checks must not see daily UpdateAsk lines or the
     # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
@@ -469,6 +484,10 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
             "spec_closed": True,
             "mission": "child stole the mission",
         },
+    )
+    # The leader's surface run; eval steps cite it (free-text --cite is refused).
+    (root / "surface-proof.log").write_text(
+        "$ python -m evalcli status\nexit 0\n", encoding="utf-8"
     )
 
 
@@ -915,6 +934,10 @@ class MultiWaveCloseChecklistEval:
     @staticmethod
     def setup(root: Path) -> None:
         MultiWaveResidualEval.setup(root)
+        # --cite names a file whose sha CLOSE.json binds; free text is refused.
+        (root / "surface-proof.log").write_text(
+            "$ curl -sS /health\n200 ok\n", encoding="utf-8"
+        )
         for rid in MultiWaveCloseChecklistEval.REQS:
             stamped = eval_run_of(
                 root,
@@ -922,7 +945,7 @@ class MultiWaveCloseChecklistEval:
                 "--verified-contract",
                 rid,
                 "--cite",
-                "curl -sS /health",
+                "surface-proof.log",
             )
             EvalInvariantSetup.require_ok(stamped, f"verified-contract {rid}")
 
@@ -1240,13 +1263,7 @@ def eval_setup_recovery_closed_field_archive(root: Path) -> None:
         "archive me: internal index ALG-001",
     )
     EvalInvariantSetup.require_ok(created, "new")
-    from of.field import (
-        ActiveField,
-        _read_json_object,
-        dump_bytes,
-        fields_dir,
-        json_payload_bytes,
-    )
+    from of.field import ActiveField, _read_json_object, fields_dir
     from of.retain import ClosedFieldArchive
 
     old = ActiveField.read(root)
@@ -1255,10 +1272,10 @@ def eval_setup_recovery_closed_field_archive(root: Path) -> None:
     home = fields_dir(root) / old
     data = _read_json_object(home / "ORDER.json") or {}
     data["id"] = ClosedFieldArchive.EVAL_ID
-    dump_bytes(home / "ORDER.json", json_payload_bytes(data))
     dest = fields_dir(root) / ClosedFieldArchive.EVAL_ID
     if home.resolve() != dest.resolve():
         home.rename(dest)
+    eval_commit_home(root, dest, {"ORDER.json": data})
     ActiveField.write(root, ClosedFieldArchive.EVAL_ID)
     added = eval_run_of(
         root,
@@ -1602,14 +1619,6 @@ class PlanIngressEval:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(text or "# Invented substitute\n", encoding="utf-8")
         return dest
-
-    @staticmethod
-    def setup_invent(root: Path) -> None:
-        PlanIngressEval.setup_promote(root)
-        baseline = Path(root) / PlanIngressEval.BASELINE
-        if not baseline.is_file():
-            raise AssertionError("plan-baseline.json missing after pin")
-        PlanIngressEval.write_invented(root)
 
 
 @_register_eval_fixture("recovery_plan_ingress_promote")
@@ -2250,6 +2259,13 @@ def eval_setup_recovery_checkpoint_handoff(root: Path) -> None:
     pkt["packet_hash"] = packet_digest(pkt)
     with field_generation(root):
         dump_json(pkt_path, pkt)
+    # W3/D6: HANDOFF is an expired claim lease with no fresh PULSE stamp;
+    # unclaimed scratch (old mtime or packed_at) stays HOLD.
+    dump_json(
+        pkt_path.parent.parent / "claims" / "longchild.json",
+        {"mode": "handoff", "harness": "generic", "session": "eval",
+         "lease_expires": "2018-01-01T00:10:00Z"},
+    )
 
 
 @_register_eval_fixture("recovery_partial_integrate_in_flight")
@@ -2343,6 +2359,73 @@ def eval_setup_recovery_multi_harness(root: Path) -> None:
         evidence="done residual is adapter-neutral",
         result_text="shared residual\n",
     )
+
+
+class NextFromDiskEval:
+    """W3 fixtures: next is a function of disk (orphan, truncated, tamper)."""
+
+    CHILD = "scout"
+
+    @staticmethod
+    def packed_explorer(root: Path, mission: str) -> None:
+        init = eval_run_of(root, "init", "--mission", mission, "--phase", "explore")
+        EvalInvariantSetup.require_ok(init, "init")
+        packed = eval_run_of(
+            root, "pack", "--slice", "map the entry points",
+            "--role", "explorer", "--child-id", NextFromDiskEval.CHILD,
+        )
+        EvalInvariantSetup.require_ok(packed, "pack")
+        EvalInvariantSetup.write_bound_residual(
+            root, NextFromDiskEval.CHILD,
+            evidence="entry points listed in scratch notes",
+            result_text="main.py:1 is the entry point\n",
+        )
+
+    @staticmethod
+    def residual_path(root: Path) -> Path:
+        return wave_dir(1, root) / "residuals" / f"{NextFromDiskEval.CHILD}.json"
+
+
+@_register_eval_fixture("recovery_orphan_settled")
+def eval_setup_recovery_orphan_settled(root: Path) -> None:
+    """Leader's of spawn was killed; the child finished. Started-only record,
+    pid gone on this host, residual valid: COLLECT, never force-spawn."""
+    from of.field import host_id
+
+    NextFromDiskEval.packed_explorer(root, "orphaned spawn settles by disk")
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    dest = wave_dir(1, root) / "spawns" / f"{NextFromDiskEval.CHILD}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dump_json(dest, {
+        "child_id": NextFromDiskEval.CHILD,
+        "adapter": "claude",
+        "wave": 1,
+        "started_at": utc_now(),
+        "dry_run": False,
+        "pid": gone.pid,
+        "host_id": host_id(),
+        "start_epoch": 1,
+    })
+
+
+@_register_eval_fixture("recovery_truncated_residual")
+def eval_setup_recovery_truncated_residual(root: Path) -> None:
+    """A residual cut mid-write is INVALID: next REPAIR, never a COLLECT loop."""
+    NextFromDiskEval.packed_explorer(root, "truncated residual is repair")
+    path = NextFromDiskEval.residual_path(root)
+    path.write_bytes(path.read_bytes()[:48])
+
+
+@_register_eval_fixture("recovery_live_tamper")
+def eval_setup_recovery_live_tamper(root: Path) -> None:
+    """Live ORDER.json rewritten behind the WAL: resume says RESTORE."""
+    init = eval_run_of(root, "init", "--mission", "honest mission", "--phase", "explore")
+    EvalInvariantSetup.require_ok(init, "init")
+    order = root / ".orderfield" / "ORDER.json"
+    data = json.loads(order.read_text(encoding="utf-8"))
+    data["mission"] = "hijacked mission"
+    order.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def discover_recovery_eval_specs() -> list[Path]:

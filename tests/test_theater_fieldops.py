@@ -145,7 +145,9 @@ class Loop001CollectIntegrate(unittest.TestCase):
         json.loads(integrated.stdout)
         self.assertIn("owned-but-unverified LOOP-001", integrated.stderr)
         self.assertEqual(req_status(self.tmp, "LOOP-001"), "owned")
-        stamped = run_of(self.tmp, "spec", "--verified-contract", "LOOP-001", "--cite", "curl -sS /health")
+        proof = self.tmp / "surface-proof.log"
+        proof.write_text("$ curl -sS /health\n200 ok\n", encoding="utf-8")
+        stamped = run_of(self.tmp, "spec", "--verified-contract", "LOOP-001", "--cite", proof.name)
         self.assertEqual(stamped.returncode, 0, stamped.stderr)
         self.assertEqual(req_status(self.tmp, "LOOP-001"), "verified_contract")
         collected = run_of(self.tmp, "collect")
@@ -238,7 +240,8 @@ class Dedupe001Constraints(unittest.TestCase):
         )
         self.assertNotIn("  keep   the contract kernel  ", self._constraints())
 
-    def test_apply_patches_skips_whitespace_normalized_constraints(self) -> None:
+    def test_apply_escalates_child_constraints_add(self) -> None:
+        """constraints+ from a child never writes ORDER; the leader runs of patch."""
         r = run_of(
             self.tmp,
             "pack",
@@ -255,12 +258,15 @@ class Dedupe001Constraints(unittest.TestCase):
         write_bound_residual(
             self.tmp,
             "d1",
-            patch={"constraints+": ["slaves   do not mutate ORDER"]},
+            patch={"constraints+": ["child   adds a brand new rule"]},
         )
-        before = list(self._constraints())
+        before = load_json(self.tmp / ".orderfield" / "ORDER.json")
         integrated = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
-        self.assertEqual(self._constraints(), before)
+        self.assertEqual(json.loads(integrated.stdout)["regime"], "escalate_up")
+        after = load_json(self.tmp / ".orderfield" / "ORDER.json")
+        self.assertEqual(after["constraints"], before["constraints"])
+        self.assertEqual(after["rev"], before["rev"])
 
 
 class Phase001PhaseMd(unittest.TestCase):

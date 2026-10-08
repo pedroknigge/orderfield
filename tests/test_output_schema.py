@@ -266,6 +266,8 @@ class SpawnResidualExtract(unittest.TestCase):
             notes,
             rollback="git checkout -- .orderfield/work/scratch/n1/notes.md",
         )
+        # Scratch before the first spawn is unwatched work; the child writes it.
+        notes.unlink()
         envelope = {
             "conversation_id": "agy-1",
             "status": "SUCCESS",
@@ -278,6 +280,8 @@ class SpawnResidualExtract(unittest.TestCase):
             "#!/usr/bin/env python3\n"
             + textwrap.dedent(
                 f"""
+                from pathlib import Path
+                Path({str(notes)!r}).write_text("agy notes\\n", encoding="utf-8")
                 print({json.dumps(json.dumps(envelope))})
                 """
             ).lstrip("\n"),

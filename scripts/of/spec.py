@@ -793,11 +793,6 @@ def merge_extracted_requirements(
     return changed
 
 
-def join_continued_lines(text: str) -> str:
-    """Join shell-style backslash continuations so CLI extract is not truncated."""
-    return "\n".join(span[2] for span in joined_lines_with_span(text))
-
-
 def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
     """1-based line spans after joining shell-style backslash continuations."""
     rows = text.splitlines()
@@ -1120,10 +1115,6 @@ def contrast_rows(root: Path) -> list[tuple[str, str, str]]:
     return rows
 
 
-def contrast_open(root: Path) -> bool:
-    return bool(requirement_coverage_errors(root))
-
-
 def order_text_blob(order: dict[str, Any]) -> str:
     parts = [str(order.get("mission") or "")]
     parts.extend(str(x) for x in (order.get("constraints") or []))
@@ -1235,7 +1226,44 @@ def release_requirement_owner(data: dict[str, Any], child_id: str) -> bool:
     return changed
 
 
-def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bool:
+def residual_failed_stamps(
+    res: dict[str, Any], packet: dict[str, Any] | None
+) -> tuple[list[str], list[str]]:
+    """(owned, refused) ``requirements_failed`` ids of one child residual.
+
+    An implementer stamps only the ids its packet owns; a verifier or
+    adversary may fail any id (a failed stamp only tightens, and pack
+    gives it no owned ids). Verified, contract and pair_checked stamps
+    are the leader's (``of spec``); an explorer stamps nothing.
+    """
+    from of.regime import ChildLane
+
+    patch = (res.get("residual") or {}).get("proposed_patch")
+    if not isinstance(patch, dict):
+        return [], []
+    raw = patch.get("requirements_failed")
+    ids = [str(rid) for rid in raw] if isinstance(raw, list) else []
+    pkt = packet or {}
+    role = str(pkt.get("role") or "")
+    if role == "explorer":
+        return [], ids
+    if role in ChildLane.CLOSE_ROLES:
+        return ids, []
+    owns = {str(rid) for rid in pkt.get("owns_requirements") or []}
+    return [r for r in ids if r in owns], [r for r in ids if r not in owns]
+
+
+def apply_requirement_patches(
+    root: Path,
+    residuals: list[dict[str, Any]],
+    packets: list[dict[str, Any] | None] | None = None,
+) -> bool:
+    """Land residual ``requirements_failed`` per residual_failed_stamps.
+
+    Without packets no child has a role or owned ids, so nothing lands.
+    """
+    if packets is None:
+        packets = [None] * len(residuals)
     if field_is_file(order_path(root)):
         require_spec_intact(root, load_order(root))
     data = load_requirements(root)
@@ -1243,35 +1271,9 @@ def apply_requirement_patches(root: Path, residuals: list[dict[str, Any]]) -> bo
     if not items:
         return False
     changed = False
-    for res in residuals:
-        patch = (res.get("residual") or {}).get("proposed_patch")
-        if not patch or not isinstance(patch, dict):
-            continue
-        for rid in patch.get("requirements_verified") or []:
-            item = find_requirement(data, str(rid))
-            if item is None:
-                continue
-            # Child residuals can attest internal checks only. Public-surface
-            # close requires of spec --verified-contract after exercising the CLI/API.
-            if item.get("status") not in REQ_INTERNAL_VERIFIED:
-                item["status"] = "verified_internal"
-                changed = True
-        for rid in patch.get("requirements_verified_contract") or []:
-            item = find_requirement(data, str(rid))
-            if item is None:
-                continue
-            if item.get("status") != "verified_contract":
-                item["status"] = "verified_contract"
-                changed = True
-        for rid in patch.get("requirements_pair_checked") or []:
-            item = find_requirement(data, str(rid))
-            if item is None:
-                continue
-            if not item.get("pair_checked"):
-                item["pair_checked"] = True
-                changed = True
-        for rid in patch.get("requirements_failed") or []:
-            item = find_requirement(data, str(rid))
+    for res, pkt in zip(residuals, packets):
+        for rid in residual_failed_stamps(res, pkt)[0]:
+            item = find_requirement(data, rid)
             if item is None:
                 continue
             if item.get("status") != "failed":

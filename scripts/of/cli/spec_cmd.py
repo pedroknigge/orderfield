@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,7 @@ from of.field import (
     field_home,
     field_is_file,
     field_lock,
+    field_read_bytes,
     find_root,
     load_order,
     load_state,
@@ -49,6 +52,8 @@ from of.regime import (
     done_when_closed,
     mark_done_when_closed,
 )
+from of.receipt import EvidenceReceipt
+from of.retain import EvidenceStore
 from of.pack import (
     PacketRevStale,
     in_flight_children,
@@ -68,7 +73,6 @@ from of.spec import (
     merge_extracted_requirements,
     read_brief_file,
     read_spec_text,
-    read_user_text,
     require_req_id,
     require_spec_intact,
     requirement_close_ok,
@@ -103,6 +107,11 @@ def cmd_spec(args: argparse.Namespace) -> None:
             getattr(args, "extract", False),
             getattr(args, "add", None),
             getattr(args, "supersede", None),
+            # Status stamps write REQUIREMENTS and checks/ (next's green).
+            getattr(args, "verified", None),
+            getattr(args, "verified_internal", None),
+            getattr(args, "verified_contract", None),
+            getattr(args, "failed", None),
             getattr(args, "surface", None),
             getattr(args, "bind", None),
             getattr(args, "unbind", None),
@@ -119,6 +128,25 @@ def cmd_spec(args: argparse.Namespace) -> None:
         load_order(root)  # dies "no ORDER" without creating a stray field.lock
     with field_lock(root, "spec"):
         _cmd_spec_locked(args, root)
+
+
+def requirement_checks(root: Path, data: dict[str, Any]) -> None:
+    """checks/<id>.json (DiscoveryReplay green) follows REQUIREMENTS in the
+    same generation: a verified_contract proof writes it, binding the cite's
+    sha256; any other status drops it. Never a child's or a hand-written file."""
+    from of.replay import DiscoveryReplay
+
+    for item in data.get("requirements") or []:
+        rid = str(item.get("id") or "") if isinstance(item, dict) else ""
+        rel = DiscoveryReplay.check_rel(rid)
+        if not rel:
+            continue
+        path = field_home(root) / rel
+        cite, sha = str(item.get("proof_cite") or ""), str(item.get("proof_sha") or "")
+        if item.get("status") == "verified_contract" and cite and sha:
+            dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
+        elif path.is_file():
+            path.unlink()
 
 
 def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
@@ -348,18 +376,21 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
     verified_ids = list(getattr(args, "verified_contract", None) or [])
     if verified_ids and not cite:
         die(
-            "of spec --verified-contract requires --cite <path-or-command> "
-            "(receipt of the public-surface exercise)"
+            "of spec --verified-contract requires --cite <file> "
+            "(receipt or log of the public-surface exercise)"
         )
     proof_sha = ""
-    if cite and verified_ids:
-        try:
-            cand = (root / cite).resolve()
-            cand.relative_to(root.resolve())
-            if cand.is_file() and not cand.is_symlink():
-                proof_sha = sha256_text(read_user_text(cand, flag="--cite"))
-        except (OSError, ValueError, UnicodeDecodeError):
-            proof_sha = ""
+    if verified_ids:
+        # INT-02: the cite is a file whose bytes CLOSE.json binds. Free text
+        # ("trust me", a bare command) is not proof.
+        cited = CloseProof.cite_file(root, cite)
+        if cited is None:
+            die(
+                f"of spec --cite {cite!r}: not an existing file inside the project; "
+                "save the surface run (log or evidence receipt) and cite its path"
+            )
+        cite = cited.relative_to(root.resolve()).as_posix()
+        proof_sha = EvidenceStore.digest(cited.read_bytes())
     for rid in getattr(args, "verified_internal", None) or []:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
@@ -397,8 +428,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             )
         item["status"] = "verified_contract"
         item["proof_cite"] = cite
-        if proof_sha:
-            item["proof_sha"] = proof_sha
+        item["proof_sha"] = proof_sha
         if both_sides:
             item["pair_checked"] = True
         changed = True
@@ -416,6 +446,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         changed = True
         print(f"superseded  {rid}")
     if changed:
+        requirement_checks(root, data)
         spec = spec_path(root)
         if spec.is_file():
             data["spec_hash"] = sha256_text(read_spec_text(root))
@@ -1344,18 +1375,35 @@ class CloseChecklist:
 
 
 class CloseProof:
-    """Durable close artifact. Written in the same WAL generation as ORDER."""
+    """Durable close artifact. Written in the same WAL generation as ORDER.
+
+    v2 is a verifiable bundle (INT-02): git HEAD + tree (or ``no-git``),
+    every residual ``{path, sha256}``, every cited evidence receipt
+    ``{path, sha256, exit, source}``, and every requirement
+    ``{id, status, kind, proof_sha}``. Each bound file has a content-addressed
+    copy under ``deliverables/evidence/`` (EvidenceStore). ``verify(root)``
+    re-hashes all of it from disk alone, on any harness.
+    """
 
     FILENAME = "CLOSE.json"
+    V = 2
+    NO_GIT = "no-git"
+    LEGACY = "CLOSE.json v1 legacy (closed before evidence binding; unbound, nothing to re-verify)"
+    DOWNGRADE = (
+        "CLOSE.json v1 is not the pre-chain close adopted at WAL upgrade "
+        "(a v1 close cannot first appear in a chained generation)"
+    )
 
     @staticmethod
     def path(root: Path) -> Path:
         return field_home(root) / CloseProof.FILENAME
 
     @staticmethod
-    def document(order: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "v": 1,
+    def document(
+        order: dict[str, Any], bundle: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        doc = {
+            "v": CloseProof.V,
             "verdict": "RESOLVED",
             "spec_closed": True,
             "done_when_closed": True,
@@ -1365,15 +1413,65 @@ class CloseProof:
             "phase": str(order.get("phase") or ""),
             "closed_at": utc_now(),
         }
+        doc.update(bundle or {})
+        return doc
+
+    @staticmethod
+    def load(root: Path) -> dict[str, Any] | None:
+        raw = field_read_bytes(CloseProof.path(root))
+        try:
+            doc = json.loads(raw) if raw is not None else None
+        except ValueError:
+            return None
+        return doc if isinstance(doc, dict) else None
+
+    @staticmethod
+    def version(doc: dict[str, Any] | None) -> int:
+        """0 = no readable CLOSE.json; 1 = pre-INT-02 legacy (binds nothing)."""
+        if doc is None:
+            return 0
+        try:
+            return int(doc.get("v") or 1)
+        except (TypeError, ValueError):
+            return 1
 
     @staticmethod
     def complete(root: Path, order: dict[str, Any]) -> bool:
-        return bool(order.get("spec_closed")) and done_when_closed(order) and field_is_file(
-            CloseProof.path(root)
-        )
+        bound = CloseProof.version(CloseProof.load(root)) >= CloseProof.V
+        return bool(order.get("spec_closed")) and done_when_closed(order) and bound
 
     @staticmethod
-    def stamp(root: Path, order: dict[str, Any]) -> None:
+    def legacy(root: Path, order: dict[str, Any]) -> bool:
+        """Closed by a pre-INT-02 kernel: terminal, unbound, not re-bindable.
+
+        Its scratch was wiped by that close, so binding now would refuse
+        forever. ``of close`` reports it instead of re-stamping. Only the
+        v1 close adopted from a pre-chain WAL head counts (``verify``).
+        """
+        closed = bool(order.get("spec_closed")) and done_when_closed(order)
+        return closed and CloseProof.verify(root) == [CloseProof.LEGACY]
+
+    @staticmethod
+    def proof_matches(data: bytes, stored: str) -> bool:
+        """``stored`` is the bytes digest, or the 0.8.34 text-mode digest.
+
+        0.8.34 hashed the cite read in text mode (universal newlines), so a
+        CRLF proof stamped then still matches while its bytes are unchanged.
+        """
+        if not stored:
+            return False
+        if EvidenceStore.digest(data) == stored:
+            return True
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        return sha256_text(text.replace("\r\n", "\n").replace("\r", "\n")) == stored
+
+    @staticmethod
+    def stamp(
+        root: Path, order: dict[str, Any], bundle: dict[str, Any] | None = None
+    ) -> None:
         DoneWhenLint.refuse_close(order, root=root)
         mark_done_when_closed(order)
         order["spec_closed"] = True
@@ -1383,7 +1481,299 @@ class CloseProof:
         with field_generation(root):
             save_order(order, root)
             save_state(state, root)
-            dump_json(CloseProof.path(root), CloseProof.document(order))
+            dump_json(CloseProof.path(root), CloseProof.document(order, bundle))
+
+    @staticmethod
+    def cite_file(root: Path, value: Any) -> Path | None:
+        """Resolved regular file inside the project, else None. Free text is None."""
+        text = str(value or "").strip()
+        if not text:
+            return None
+        project = root.resolve()
+        cand = Path(text) if Path(text).is_absolute() else project / text
+        try:
+            if cand.is_symlink():
+                return None
+            resolved = cand.resolve()
+            resolved.relative_to(project)
+        except (OSError, ValueError):
+            return None
+        return resolved if resolved.is_file() else None
+
+    @staticmethod
+    def _git(root: Path, *argv: str) -> str | None:
+        try:
+            proc = subprocess.run(
+                ["git", "-C", str(root), *argv],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return proc.stdout.strip() if proc.returncode == 0 else None
+
+    @staticmethod
+    def git_binding(root: Path) -> dict[str, Any] | str:
+        head = CloseProof._git(root, "rev-parse", "--verify", "-q", "HEAD")
+        tree = head and CloseProof._git(
+            root, "rev-parse", "--verify", "-q", f"{head}^{{tree}}"
+        )
+        if not head or not tree:
+            return CloseProof.NO_GIT
+        dirty = CloseProof._git(
+            root, "status", "--porcelain", "--untracked-files=no",
+            "--", ".", ":(exclude).orderfield",
+        )
+        return {"head": head, "tree": tree, "dirty": bool(dirty)}
+
+    @staticmethod
+    def _bind_file(
+        root: Path, src: Path, sources: list[tuple[Path, str]]
+    ) -> dict[str, Any]:
+        sha = EvidenceStore.digest(src.read_bytes())
+        sources.append((src, sha))
+        return {
+            "path": src.resolve().relative_to(root.resolve()).as_posix(),
+            "sha256": sha,
+            "evidence": EvidenceStore.rel_for(sha, src),
+        }
+
+    @staticmethod
+    def _bind_receipt(
+        root: Path,
+        rel: str,
+        sources: list[tuple[Path, str]],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        src = CloseProof.cite_file(root, rel)
+        if src is None:
+            return None, f"evidence receipt {rel} missing"
+        receipt = EvidenceReceipt.load_receipt(src)
+        if receipt is None or EvidenceReceipt.schema_errors(receipt):
+            return None, f"evidence receipt {rel} is not a receipt"
+        source = CloseProof.cite_file(root, receipt.get("source_path"))
+        if source is None:
+            return None, f"evidence receipt {rel} source missing"
+        entry = CloseProof._bind_file(root, src, sources)
+        entry["exit"] = int(receipt["exit"])
+        entry["source"] = CloseProof._bind_file(root, source, sources)
+        if entry["source"]["sha256"] != str(receipt["source_hash"]).lower():
+            return None, f"evidence receipt {rel} source hash mismatch"
+        return entry, None
+
+    @staticmethod
+    def bind(
+        root: Path,
+    ) -> tuple[dict[str, Any], list[tuple[Path, str]], list[str]]:
+        """CLOSE.json evidence bundle, files to archive, refusals. Writes nothing.
+
+        Gate receipts (requirement proofs, and receipts cited by a valid
+        ``status=done`` residual) must exist, hash, and exit 0: a failing
+        run is not RESOLVED.
+        """
+        sources: list[tuple[Path, str]] = []
+        problems: list[str] = []
+        receipts: dict[str, dict[str, Any]] = {}
+
+        def receipt(rel: str, gate: bool) -> dict[str, Any] | None:
+            entry = receipts.get(rel)
+            if entry is None:
+                entry, err = CloseProof._bind_receipt(root, rel, sources)
+                if err:
+                    if gate:
+                        problems.append(err)
+                    return None
+                assert entry is not None
+                entry["gate"] = False
+                receipts[rel] = entry
+            if gate:
+                entry["gate"] = True
+                if entry["exit"] != 0:
+                    problems.append(
+                        f"evidence receipt {rel} exit={entry['exit']} "
+                        "(a failing run is not RESOLVED)"
+                    )
+            return entry
+
+        residuals: list[dict[str, Any]] = []
+        for path, res, done, rels in EvidenceStore.residuals(field_home(root)):
+            entry = CloseProof._bind_file(root, path, sources)
+            valid = res is not None and not path.with_suffix(
+                path.suffix + ".invalid.txt"
+            ).exists()
+            entry.update(status=str((res or {}).get("status") or ""), valid=valid)
+            residuals.append(entry)
+            for rel in rels:
+                receipt(rel, done)
+        requirements: list[dict[str, Any]] = []
+        for item in load_requirements(root).get("requirements") or []:
+            if not isinstance(item, dict):
+                continue
+            rid = str(item.get("id") or "")
+            status = str(item.get("status") or "")
+            row: dict[str, Any] = {
+                "id": rid, "status": status, "kind": "none", "proof_sha": "",
+            }
+            requirements.append(row)
+            if status != "verified_contract":
+                continue
+            cite = str(item.get("proof_cite") or "")
+            stored = str(item.get("proof_sha") or "")
+            src = CloseProof.cite_file(root, cite)
+            redo = f"of spec --verified-contract {rid} --cite <file>"
+            if not stored or src is None:
+                problems.append(f"{rid} proof {cite!r} is not a file ({redo})")
+                continue
+            row.update(CloseProof._bind_file(root, src, sources))
+            if not CloseProof.proof_matches(src.read_bytes(), stored):
+                problems.append(f"{rid} proof {cite} changed since stamped ({redo})")
+                continue
+            row["proof_sha"] = stored
+            loaded = EvidenceReceipt.load_receipt(src)
+            if loaded is not None and not EvidenceReceipt.schema_errors(loaded):
+                row["kind"] = "receipt"
+                receipt(row["path"], True)
+            else:
+                row["kind"] = "file"
+        bundle = {
+            "git": CloseProof.git_binding(root),
+            "residuals": residuals,
+            "receipts": [receipts[k] for k in sorted(receipts)],
+            "requirements": requirements,
+        }
+        return bundle, sources, problems
+
+    @staticmethod
+    def verify(root: Path) -> list[str]:
+        """Problems with the committed CLOSE.json; empty == the close re-verifies.
+
+        Re-hashes every archived file, re-reads ORDER/SPEC/REQUIREMENTS and
+        the git tree. Read-only; never dies (resume calls it). A pre-INT-02
+        close returns exactly ``[CloseProof.LEGACY]``: terminal, nothing to
+        re-verify and nothing to fix (callers report it, not as a defect).
+        """
+        from of.wal import legacy_close_adopted
+
+        raw = field_read_bytes(CloseProof.path(root))
+        if raw is None:
+            return ["CLOSE.json absent"]
+        doc = CloseProof.load(root)
+        if doc is None:
+            return ["CLOSE.json unreadable"]
+        if CloseProof.version(doc) < CloseProof.V:
+            if legacy_close_adopted(root, raw):
+                return [CloseProof.LEGACY]
+            return [CloseProof.DOWNGRADE]
+        problems: list[str] = []
+        try:
+            order = load_order(root)
+            # No SPEC.md (init without --source) binds the empty hash; a
+            # SPEC deleted after a close that bound one still mismatches.
+            spec_hash = (
+                sha256_text(read_spec_text(root))
+                if field_read_bytes(spec_path(root)) is not None
+                else ""
+            )
+            reqs = load_requirements(root).get("requirements") or []
+        except SystemExit:
+            return ["ORDER/SPEC/REQUIREMENTS unreadable"]
+        if not order.get("spec_closed"):
+            problems.append("ORDER.spec_closed is false")
+        if str(order.get("id") or "") != str(doc.get("order_id") or ""):
+            problems.append("CLOSE.json order_id differs from ORDER")
+        if not str(doc.get("spec_hash") or "") == str(order.get("spec_hash") or "") == spec_hash:
+            problems.append("SPEC.md changed since close")
+        resolved = str(doc.get("verdict") or "") == "RESOLVED"
+        home = field_home(root)
+        gates = {
+            str(r.get("path"))
+            for r in doc.get("receipts") or []
+            if isinstance(r, dict) and r.get("gate")
+        }
+        if resolved:
+            bound = {
+                str(r.get("id")): r
+                for r in doc.get("requirements") or []
+                if isinstance(r, dict)
+            }
+            for item in reqs:
+                if not isinstance(item, dict):
+                    continue
+                rid = str(item.get("id") or "")
+                row = bound.pop(rid, None)
+                status = str(item.get("status") or "")
+                if row is None or str(row.get("status") or "") != status or (
+                    status == "verified_contract"
+                    and str(row.get("proof_sha") or "") != str(item.get("proof_sha") or "")
+                ):
+                    problems.append(f"requirement {rid} changed since close")
+                elif status == "verified_contract" and not CloseProof._proof_bound(
+                    home, row, gates
+                ):
+                    problems.append(f"requirement {rid} proof not bound to evidence")
+            for rid in bound:
+                problems.append(f"requirement {rid} removed since close")
+        for row in EvidenceStore.entries(doc):
+            rel = str(row.get("evidence") or "")
+            sha = str(row.get("sha256") or "")
+            path = home / rel
+            try:
+                ok = (
+                    Path(rel).name.startswith(sha)
+                    and path.is_file()
+                    and not path.is_symlink()
+                    and EvidenceStore.digest(path.read_bytes()) == sha
+                )
+            except OSError:
+                ok = False
+            if not ok:
+                problems.append(f"evidence {row.get('path')} ({rel}) missing or altered")
+        for row in doc.get("receipts") or []:
+            if not isinstance(row, dict):
+                continue
+            code = row.get("exit")
+            if resolved and row.get("gate") and (type(code) is not int or code != 0):
+                problems.append(f"evidence receipt {row.get('path')} exit={code}")
+            receipt = _read_json_object(home / str(row.get("evidence") or ""))
+            source = row.get("source") if isinstance(row.get("source"), dict) else {}
+            if receipt is not None and (
+                str(receipt.get("source_hash") or "").lower() != source.get("sha256")
+                or receipt.get("exit") != row.get("exit")
+            ):
+                problems.append(f"evidence receipt {row.get('path')} disagrees with its source")
+        git = doc.get("git")
+        if isinstance(git, dict):
+            # An unreachable commit (squash-merge, amend+gc, no .git) is
+            # unverifiable here, not altered; a reachable one must match.
+            head = str(git.get("head") or "")
+            tree = head and CloseProof._git(
+                root, "rev-parse", "--verify", "-q", f"{head}^{{tree}}"
+            )
+            if not head:
+                problems.append("CLOSE.json git head missing")
+            elif tree and tree != str(git.get("tree") or ""):
+                problems.append(f"git {head[:12]} tree differs")
+        elif git != CloseProof.NO_GIT:
+            problems.append("CLOSE.json git binding missing")
+        return problems
+
+    @staticmethod
+    def _proof_bound(home: Path, row: dict[str, Any], gates: set[str]) -> bool:
+        """A verified_contract row names an archived file whose bytes are its proof."""
+        kind = row.get("kind")
+        rel = str(row.get("evidence") or "")
+        proof = str(row.get("proof_sha") or "")
+        if kind not in ("file", "receipt") or not rel or not row.get("sha256"):
+            return False
+        if kind == "receipt" and str(row.get("path")) not in gates:
+            return False
+        if row.get("sha256") == proof:
+            return True
+        try:
+            return CloseProof.proof_matches((home / rel).read_bytes(), proof)
+        except OSError:
+            return False
 
     @staticmethod
     def stamp_abandoned(root: Path, order: dict[str, Any], reason: str) -> None:
@@ -1395,7 +1785,7 @@ class CloseProof:
         order["rev"] = int(order["rev"]) + 1
         state = load_state(root)
         state["spawn_blocked"] = True
-        doc = CloseProof.document(order)
+        doc = CloseProof.document(order, {"git": CloseProof.git_binding(root)})
         doc["verdict"] = "ABANDONED"
         doc["reason"] = text
         doc["done_when_closed"] = False
@@ -1500,10 +1890,27 @@ def cmd_close(args: argparse.Namespace) -> None:
         Deliverable.emit(root, Deliverable.promote(root))
         ClosedScratch.emit(ClosedScratch.wipe(root))
         return
+    if CloseProof.legacy(root, order):
+        print("close       already spec_closed (v1 legacy, unbound)")
+        Deliverable.emit(root, Deliverable.promote(root))
+        ClosedScratch.emit(ClosedScratch.wipe(root))
+        return
     repaired = bool(order.get("spec_closed"))
-    # Promote before the stamp: a lost deliverable refuses the close.
+    # Lint before archiving: a refused stamp leaves no orphan evidence copies.
+    DoneWhenLint.refuse_close(order, root=root)
+    bundle, sources, problems = CloseProof.bind(root)
+    if problems:
+        die(
+            "of close refused: evidence — "
+            + "; ".join(problems[:6])
+            + ("…" if len(problems) > 6 else "")
+        )
+    # Promote and archive before the stamp: lost evidence refuses the close.
     promoted = Deliverable.promote(root)
-    CloseProof.stamp(root, order)
+    home = field_home(root)
+    for src, sha in sources:
+        EvidenceStore.archive(home, src, sha)
+    CloseProof.stamp(root, order, bundle)
     wiped = ClosedScratch.wipe(root)
     returned = NestedField.return_active(root, order)
     snapshot_session(root, "close")
@@ -1525,6 +1932,8 @@ def cmd_close(args: argparse.Namespace) -> None:
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    if sources:
+        print(f"evidence    n={len({sha for _, sha in sources})}  {EvidenceStore.DIR}/")
     ClosedScratch.emit(wiped)
     Deliverable.emit(root, promoted)
     if returned:

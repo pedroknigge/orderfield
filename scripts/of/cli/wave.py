@@ -8,8 +8,10 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +52,11 @@ from of.field import (
     field_home,
     find_root,
     json_events_enabled,
+    list_field_homes,
     load_json,
+    parse_utc,
+    refuse_child_forge,
+    spawned_child_id,
     try_load_json,
     load_order,
     load_state,
@@ -67,6 +73,7 @@ from of.field import (
     spec_path,
     utc_now,
     wave_dir,
+    CollectGate,
     DoctorSkew,
     SpawnRecord,
 )
@@ -82,15 +89,19 @@ from of.spec import (
 )
 
 from of.pack import (
+    CHILD_ID_RE,
     CodexNullOmit,
     OwnedWrite,
     OwnsPathCoverage,
     ReviewScope,
+    ScopeWrite,
     SharedWorktree,
     SliceLint,
+    Unclaimed,
     canonical_packet_rel,
     canonical_residual_rel,
     canonical_scratch_rel,
+    canonical_template_rel,
     child_is_packed,
     complete_stale_wave_recoverable,
     copy_workspace_with_owns,
@@ -112,6 +123,7 @@ from of.pack import (
     require_owns_paths,
     require_packet_artifact_paths,
     require_registered_packet,
+    residual_template,
     same_wave_owns_path_conflict,
     scratch_nonempty,
     spawn_is_blocked,
@@ -234,6 +246,130 @@ class BudgetSeconds:
             f"timeout child_id={child_id} after {timeout_s}s log={log_path}. "
             f"budget.seconds is the spawn wall-clock; of unpack "
             f"--child-id {child_id} then of pack --seconds N to raise it"
+        )
+
+
+class ChildForge:
+    """pack / unpack / spawn / handoff are leader verbs (CC-2).
+
+    A spawned child may run them only when its own packet has
+    ``allow_nested`` and only in another (nested) field, never in the
+    field that packed it. Same heuristic identity as refuse_child_forge.
+    """
+
+    @staticmethod
+    def refuse(root: Path, action: str) -> None:
+        cid = spawned_child_id()
+        if not cid:
+            return
+        if CHILD_ID_RE.fullmatch(cid):
+            current = field_home(root).resolve()
+            homes = list_field_homes(root)
+            own = [
+                (home.resolve(), path)
+                for _fid, home, _order in homes
+                for path in home.glob(f"waves/*/packets/{cid}.json")
+            ]
+            if own and all(home != current for home, _path in own) and all(
+                (try_load_json(path)[0] or {}).get("allow_nested") is True
+                for _home, path in own
+            ):
+                return
+        refuse_child_forge(action)
+
+
+class ChildClaim:
+    """waves/<n>/claims/<id>.json: a child run outside ``of spawn``.
+
+    ``of handoff`` writes {mode, harness, session, lease_expires} under the
+    field lock; the lease is the packet's budget.seconds. A landed residual
+    releases it. ``of spawn`` refuses a live lease unless --force-spawn
+    --reason. Not a supervisor.
+    """
+
+    DIR = "claims"
+
+    @staticmethod
+    def path(root: Path, packet: dict[str, Any]) -> Path:
+        wave = int(packet.get("wave") or 1)
+        return wave_dir(wave, root) / ChildClaim.DIR / f"{packet.get('child_id')}.json"
+
+    @staticmethod
+    def write(root: Path, packet: dict[str, Any], *, mode: str, harness: str) -> None:
+        budget = packet.get("budget") if isinstance(packet.get("budget"), dict) else {}
+        seconds = budget.get("seconds")
+        if not isinstance(seconds, int) or isinstance(seconds, bool) or seconds < 1:
+            seconds = BudgetSeconds.PACK_DEFAULT
+        expires = datetime.fromtimestamp(time.time() + seconds, timezone.utc)
+        doc = {
+            "mode": mode,
+            "harness": harness or "unknown",
+            "session": uuid.uuid4().hex,
+            "lease_expires": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        path = ChildClaim.path(root, packet)
+        with field_lock(root, "handoff"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            dump_json(path, doc)
+
+    @staticmethod
+    def live(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+        if packet_residual_file(root, packet) is not None:
+            return None  # residual landed: that writer finished
+        doc, _err = try_load_json(ChildClaim.path(root, packet))
+        if not isinstance(doc, dict):
+            return None
+        expires = parse_utc(doc.get("lease_expires"))
+        if expires is not None and expires <= time.time():
+            return None
+        return doc  # unreadable expiry is live: fail closed
+
+    @staticmethod
+    def drop(root: Path, packet: dict[str, Any]) -> None:
+        try:
+            ChildClaim.path(root, packet).unlink()
+        except FileNotFoundError:
+            pass
+
+    @staticmethod
+    def refuse_second_writer(
+        root: Path, packet: dict[str, Any], *, force: bool, reason: str
+    ) -> None:
+        """A live handoff lease or unwatched scratch work is a second writer."""
+        child = str(packet.get("child_id") or "?")
+        claim = ChildClaim.live(root, packet)
+        why = ""
+        if claim is not None:
+            why = (
+                f"{child} has a live {claim.get('mode') or 'handoff'} claim "
+                f"(harness={claim.get('harness')}, lease until "
+                f"{claim.get('lease_expires')})"
+            )
+        elif (
+            packet_residual_file(root, packet) is None
+            and scratch_nonempty(root, packet)
+            and (SpawnRecord.load(root, packet) or {"dry_run": True}).get("dry_run")
+        ):
+            # Landed residual = that child finished; only in-flight work blocks.
+            # A kernel spawn record (started-only too) is claim_started's call:
+            # it checks the recorded pid and honours --force-spawn.
+            why = (
+                f"{child} has nonempty scratch, no residual, and no of spawn "
+                "record (a handoff or native child may still be working)"
+            )
+        if not why:
+            return
+        if force and reason.strip():
+            emit_wave_warning(
+                "spawn_claim_override",
+                f"{why}; overridden: {reason.strip()}",
+            )
+            ChildClaim.drop(root, packet)  # the spawn record owns it now
+            return
+        wait = " or for the lease to expire" if claim is not None else ""
+        die(
+            f"{why}; refusing a second writer on this packet. Wait for its "
+            f"residual to land{wait}, or of spawn --force-spawn --reason TEXT"
         )
 
 
@@ -510,6 +646,7 @@ def run_child(
 
 def cmd_pack(args: argparse.Namespace) -> None:
     root = find_root()
+    ChildForge.refuse(root, "of pack")
     order = load_order(root)
     if args.role not in ROLES:
         die(f"invalid role: {args.role}")
@@ -824,6 +961,14 @@ def cmd_pack(args: argparse.Namespace) -> None:
     ensure_field_slave_md(root)
     prompt = render_prompt(packet, root=root)
     dump_text(wdir / "prompts" / f"{child_id}.md", prompt, skip_dir_fsync=True)
+    dump_json(
+        field_artifact_path(
+            root, canonical_template_rel(int(wave), child_id), "residual template"
+        ),
+        residual_template(packet),
+        skip_dir_fsync=True,
+    )
+    ScopeWrite.rebase(root, packet, fresh=True)
     snapshot_session(root, "pack")
     pack_event: dict[str, Any] = {
         "child_id": child_id,
@@ -854,6 +999,7 @@ def cmd_unpack(args: argparse.Namespace) -> None:
     refund the children_spawned budget. Deleting the packet file by hand
     does NOT refund the counter — this is the legal way back."""
     root = find_root()
+    ChildForge.refuse(root, "of unpack")
     order = load_order(root)
     state = load_state(root)
     wave = args.wave or state["wave"]
@@ -883,12 +1029,19 @@ def cmd_unpack(args: argparse.Namespace) -> None:
             "pass --force to release anyway (scratch is kept)"
         )
     pkt_path.unlink()
-    prompt_path = wave_dir(int(wave), root) / "prompts" / f"{child_id}.md"
-    if prompt_path.is_file():
-        prompt_path.unlink()
-    spawn_meta = wave_dir(int(wave), root) / "spawns" / f"{child_id}.json"
-    if spawn_meta.is_file():
-        spawn_meta.unlink()
+    wdir = wave_dir(int(wave), root)
+    for leftover in (
+        wdir / "prompts" / f"{child_id}.md",
+        field_artifact_path(
+            root, canonical_template_rel(int(wave), child_id), "residual template"
+        ),
+        wdir / "spawns" / f"{child_id}.json",
+        ChildClaim.path(root, packet),
+        ScopeWrite.path(root, packet),
+    ):
+        if leftover is not None and leftover.is_file():
+            leftover.unlink()
+    ResidualPin.drop(wdir, child_id)
     scratch_rel = packet.get("scratch_dir")
     if scratch_rel:
         scratch = safe_relative_path(root, scratch_rel, "packet scratch_dir")
@@ -942,6 +1095,7 @@ def cmd_handoff(args: argparse.Namespace) -> None:
         HandoffReport.emit_cmd(machine=machine)
         return
     root = find_root()
+    ChildForge.refuse(root, "of handoff")
     order = load_order(root)
     require_spec_intact(root, order)
     state = load_state(root)
@@ -957,16 +1111,26 @@ def cmd_handoff(args: argparse.Namespace) -> None:
     )
     wdir = wave_dir(wave, root)
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
-    ensure_field_slave_md(root)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
-    prompt_path.write_text(
-        render_prompt(
+    # One generation: SLAVE.md and the prompt (snapshot paths) and the
+    # claim land together, so LIVE == CURRENT after handoff.
+    with field_lock(root, "handoff"):
+        ensure_field_slave_md(root)
+        dump_text(
+            prompt_path,
+            render_prompt(
+                packet,
+                inline=bool(getattr(args, "inline", False)),
+                root=root,
+            ),
+        )
+        ChildClaim.write(
+            root,
             packet,
-            inline=bool(getattr(args, "inline", False)),
-            root=root,
-        ),
-        encoding="utf-8",
-    )
+            mode="handoff",
+            harness=str(order.get("harness") or os.environ.get("OF_ADAPTER") or ""),
+        )
+        ScopeWrite.rebase(root, packet)
     print(f"child_id={child_id}")
     print(f"prompt={prompt_path}")
     print(f"residual (awaiting)={physical_field_rel(root, str(residual_rel))}")
@@ -987,16 +1151,34 @@ def cmd_handoff(args: argparse.Namespace) -> None:
 
 def cmd_spawn(args: argparse.Namespace) -> None:
     root = find_root()
+    ChildForge.refuse(root, "of spawn")
     order = load_order(root)
     require_spec_intact(root, order)
     state = load_state(root)
     packet = require_registered_packet(
         root, args.packet, order=order, state=state
     )
-    blocked, why = spawn_is_blocked(state, force=bool(args.force_spawn))
+    blocked, why = spawn_is_blocked(
+        state,
+        force=bool(args.force_spawn),
+        reason=str(getattr(args, "reason", None) or ""),
+    )
     if blocked:
         die(why)
+    if args.force_spawn and state.get("spawn_blocked"):
+        emit_wave_warning(
+            "force_spawn",
+            f"--force-spawn past escalate_up: {getattr(args, 'reason', '')}",
+        )
     adapter = pick_adapter(args.adapter, order.get("harness"))
+    env_adapter = (os.environ.get("OF_ADAPTER") or "").strip()
+    if not args.adapter and env_adapter and env_adapter != adapter:
+        emit_wave_warning(
+            "adapter_pin",
+            f"OF_ADAPTER={env_adapter} ignored: ORDER.harness={adapter} pins "
+            "the adapter (of spawn --adapter overrides; of patch --harness "
+            "changes the pin)",
+        )
     SpawnAdapterMissing.refuse_implicit_spawn(
         explicit=getattr(args, "adapter", None),
         picked=adapter,
@@ -1060,6 +1242,11 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
     refuse_nonzero_tokens(int((packet.get("budget") or {}).get("tokens") or 0))
     timeout_s = BudgetSeconds.resolve_spawn(packet, getattr(args, "timeout", None))
+    force_reason = str(getattr(args, "reason", None) or "")
+    if not args.dry_run:
+        ChildClaim.refuse_second_writer(
+            root, packet, force=bool(args.force_spawn), reason=force_reason
+        )
     print_cost_disclaimer()
     env_mode = spawn_env_mode()
     operator_actions = OperatorAction.actions(trust=profile, env_mode=env_mode)
@@ -1078,15 +1265,24 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             mcp_speak,
             plain=f"of: note — {mcp_speak}",
         )
-    ensure_field_slave_md(root)
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
     )
     (wdir / "prompts").mkdir(parents=True, exist_ok=True)
     prompt_path = wdir / "prompts" / f"{child_id}.md"
-    prompt_path.write_text(prompt, encoding="utf-8")
-    if adapter == "generic" and not os.environ.get("OF_AGENT"):
-        snapshot_session(root, "spawn")
+    pasted = adapter == "generic" and not os.environ.get("OF_AGENT")
+    # Snapshot paths (SLAVE.md, the prompt, session.json) land only in a
+    # WAL generation under the lock, so LIVE == CURRENT after spawn.
+    with field_lock(root, "spawn"):
+        ensure_field_slave_md(root)
+        dump_text(prompt_path, prompt)
+        if pasted:
+            if not args.dry_run:
+                # A pasted prompt is a handoff: claim it like of handoff does.
+                ChildClaim.write(root, packet, mode="handoff", harness="generic")
+                ScopeWrite.rebase(root, packet)
+            snapshot_session(root, "spawn")
+    if pasted:
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1111,6 +1307,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if adapter == "codex"
         else None
     )
+    sensor_writes = SensorTrust.write_globs(
+        packet, physical_field_rel(root, ".orderfield/ORDER.json")[: -len("/ORDER.json")]
+    )
     argv = build_spawn_argv(
         adapter,
         prompt,
@@ -1119,6 +1318,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         dry_run=bool(args.dry_run),
         codex_worktree=codex_worktree,
         field_home=field_home(root),
+        sensor_writes=sensor_writes,
     )
     meta_path = wdir / "spawns" / f"{child_id}.json"
     owned_baseline = OwnedWrite.snapshot(root, packet)
@@ -1147,6 +1347,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "mcp_mode": mcp_mode,
         OwnedWrite.DIGEST_KEY: owned_baseline,
     }
+    if force_reason.strip():
+        meta["force_reason"] = force_reason.strip()
     WriteFloor.apply_meta(meta, adapter, profile)
     OperatorAction.apply_meta(meta)
     sensor_mode = SensorTrust.mode(adapter, profile, packet)
@@ -1182,11 +1384,22 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if "exit" not in meta:
             meta["exit"] = extra.get("exit")
         dump_json(meta_path, meta)
+
+    def settle_session(*, bump: bool = False) -> None:
+        """session.json (and the charged-children bump) in one generation."""
+        with field_lock(root, "spawn"):
+            if bump:
+                # The child may have run for hours; a sibling pack/spawn has
+                # moved state.json since we loaded it. Re-load under the lock.
+                state = load_state(root)
+                state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
+                save_state(state, root)
+            snapshot_session(root, "spawn")
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={physical_field_rel(root, residual_rel)}")
     if args.dry_run:
         finalize("dry_run", ok=True)
-        snapshot_session(root, "spawn")
+        settle_session()
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1200,6 +1413,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         print(argv_preview(argv))
         return
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    ScopeWrite.rebase(root, packet)
 
     def write_log(stdout: Any, stderr: Any) -> None:
         def text_of(chunk: Any) -> str:
@@ -1217,7 +1431,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
 
     def fail(outcome: str, message: str, **extra: Any) -> None:
         finalize(outcome, ok=False, log=str(log_path), **extra)
-        snapshot_session(root, "spawn")
+        settle_session()
         emit_event(
             "spawn",
             adapter=adapter,
@@ -1234,7 +1448,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     # reads OF_FIELD, so a sibling-field child running `of spec ...` would
     # otherwise hit the roster and exit 2.
     child_env = spawn_env(adapter)
-    child_env.update(SensorTrust.env(adapter, profile, packet))
+    child_env.update(SensorTrust.env(adapter, profile, packet, sensor_writes))
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
     scratch_rel = packet.get("scratch_dir")
@@ -1291,6 +1505,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             residual_abs,
             residual_rel,
         )
+        ScopeWrite.record_exit(root, packet)
+        if residual_abs.is_file():
+            # residual_present=True below requires a pin (collect fails closed).
+            ResidualPin.pin(wdir, str(child_id), residual_abs, by="spawn")
         fail(
             "timeout",
             BudgetSeconds.timeout_fail_message(child_id, int(timeout_s), log_path),
@@ -1330,15 +1548,21 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             if hint:
                 print(hint)
             print(f"no residual yet. log={log_path}")
+    ScopeWrite.record_exit(root, packet)
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
     if reported_sid and residual_abs.is_file():
         data = load_json(residual_abs)
         if isinstance(data, dict):
-            merged = AdapterResume.merge(data, reported_sid)
-            if merged is not data and not validate_residual_for_packet(
-                merged, packet, root
+            # session_adapter lands only where the residual schema has it.
+            for merged in (
+                AdapterResume.merge(data, reported_sid, adapter),
+                AdapterResume.merge(data, reported_sid),
             ):
-                dump_json(residual_abs, merged, skip_dir_fsync=True)
+                if merged is not data and not validate_residual_for_packet(
+                    merged, packet, root
+                ):
+                    dump_json(residual_abs, merged, skip_dir_fsync=True)
+                    break
     denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
     if denied:
         if residual_abs.is_file():
@@ -1351,13 +1575,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                     dump_json(residual_abs, merged, skip_dir_fsync=True)
         print(f"denied_actions={','.join(denied)}")
         meta["denied_actions"] = denied
-    if not already:
-        # The child may have run for hours; a sibling pack/spawn has moved
-        # state.json since we loaded it. Re-load and bump under the lock.
-        with field_lock(root, "spawn"):
-            state = load_state(root)
-            state["children_spawned"] = int(state.get("children_spawned") or 0) + 1
-            save_state(state, root)
     if residual_abs.is_file():
         data = load_json(residual_abs)
         _errs, stamped = KernelSha.validate(
@@ -1380,7 +1597,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         log=str(log_path),
         residual_present=residual_abs.exists(),
     )
-    snapshot_session(root, "spawn")
+    settle_session(bump=not already)
     emit_event(
         "spawn",
         adapter=adapter,
@@ -1393,6 +1610,20 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     )
     print(f"exit={proc.returncode} outcome={meta['outcome']} log={log_path}")
     _emit_drive_after_spawn(root, order, load_state(root), int(wave))
+
+
+def _commit_open_generation() -> None:
+    """Commit the command's open WAL generation now (no-op without one).
+
+    The dispatcher's field_lock aborts on any exception; once committed
+    (MANIFEST written) that abort is a no-op, so SystemExit after this
+    reports the outcome without discarding the transaction.
+    """
+    from of import wal
+
+    gen = wal._WAL_CTX.get()
+    if gen is not None:
+        gen.commit()
 
 
 def _emit_drive_after_spawn(
@@ -1428,9 +1659,17 @@ def cmd_collect(args: argparse.Namespace) -> None:
     if not complete_stale_wave_recoverable(root, packets, order):
         die_on_stale_packets(packets, order, int(wave))
     enforce_wave_child_caps(order, state, len(packets))
+    by_id = {str(p.get("child_id") or ""): p for p in packets}
+    for child in getattr(args, "accept_unclaimed", None) or []:
+        if child not in by_id:
+            die(f"--accept-unclaimed {child}: no such packet in wave {wave}")
+        ChildClaim.write(root, by_id[child], mode=Unclaimed.ACCEPTED, harness="leader")
+        print(f"accepted    {child} (leader owns its residual: rule={Unclaimed.RULE})")
     ok = 0
     bad = 0
     lost = 0
+    scope_cache: dict[str, Any] = {}
+    scope_skips: dict[str, list[str]] = {}
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
@@ -1457,22 +1696,16 @@ def cmd_collect(args: argparse.Namespace) -> None:
             )
             continue
         pin_dir = wave_dir(int(pkt.get("wave") or wave), root)
-        pin_err, pin_warn = ResidualPin.check(pin_dir, child, path)
+        # An unwatched child's changed set first: the gate judges it.
+        skip = ScopeWrite.evaluate(root, pkt, scope_cache)
+        if skip:
+            scope_skips.setdefault(skip, []).append(child)
+        errs, data, stamped, pin_warn, pin_held = CollectGate.judge(root, pkt, path)
         if pin_warn:
             print(pin_warn)
-        data, parse_err = try_load_json(path)
-        stamped = False
-        if pin_err:
-            errs = [pin_err]
-        elif parse_err:
-            errs = [parse_err]
-        else:
-            errs, stamped = KernelSha.validate(
-                data, pkt, root, validate_residual_for_packet
-            )
-            if stamped:
-                dump_json(path, data, skip_dir_fsync=True)
-                print(f"artifact_sha {path.name}: computed by kernel at collect")
+        if stamped:
+            dump_json(path, data, skip_dir_fsync=True)
+            print(f"artifact_sha {path.name}: computed by kernel at collect")
         if errs:
             bad += 1
             reason = "; ".join(errs)
@@ -1486,6 +1719,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 pass
         else:
             ok += 1
+            # A repaired residual drops the last attempt's INVALID sidecar.
+            path.with_suffix(path.suffix + ".invalid.txt").unlink(missing_ok=True)
             denied = data.get("denied_actions") if isinstance(data, dict) else None
             denied_note = ""
             if isinstance(denied, list) and denied:
@@ -1498,7 +1733,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)
-        if not pin_err:
+        if pin_held:
             # Re-pin after kernel writes (stamp / write-back) so the next
             # collect compares against the kernel's own bytes.
             ResidualPin.pin(
@@ -1507,6 +1742,11 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 data=data if stamped else None,
             )
     snapshot_session(root, "collect")
+    scope_note = "; ".join(
+        f"{why}: {', '.join(kids)}" for why, kids in sorted(scope_skips.items())
+    )
+    if scope_note:
+        print(f"note: {ScopeWrite.RULE} skipped ({scope_note})")
     emit_event(
         "collect",
         wave=int(wave),
@@ -1514,9 +1754,14 @@ def cmd_collect(args: argparse.Namespace) -> None:
         invalid=bad,
         missing=lost,
         total=len(packets),
+        **({"scope_write_skipped": scope_note} if scope_note else {}),
     )
     print(f"wave={wave} ok={ok} invalid={bad} missing={lost} total={len(packets)}")
     if bad or lost:
+        # A partial wave is still progress: commit this generation (OK
+        # children's bookkeeping, sidecars, pins agree with CURRENT), then
+        # report exit 2. Aborting would leak the live writes (CS-7).
+        _commit_open_generation()
         raise SystemExit(2)
     DoctorSkew.emit_teardown(
         root,

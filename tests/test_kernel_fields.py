@@ -473,7 +473,9 @@ class NestedFieldLifecycle(unittest.TestCase):
         order = self.tmp / ".orderfield" / "ORDER.json"
         if order.is_file():
             return load_json(order)["id"]
-        homes = of.list_field_homes(self.tmp)
+        from of.field import list_field_homes
+
+        homes = list_field_homes(self.tmp)
         self.assertTrue(homes)
         return homes[0][0]
 
