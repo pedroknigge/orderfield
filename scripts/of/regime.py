@@ -1179,22 +1179,6 @@ class PlanIngress:
         return found
 
     @staticmethod
-    def needles_in(text: str) -> list[str]:
-        found: list[str] = []
-        seen: set[str] = set()
-        body = str(text or "")
-        for needle in PlanIngress.NEEDLES:
-            if needle in body and needle not in seen:
-                seen.add(needle)
-                found.append(needle)
-        for row in PlanCoverage.sections(body):
-            rid = str(row.get("id") or "")
-            if rid and rid not in seen:
-                seen.add(rid)
-                found.append(rid)
-        return found
-
-    @staticmethod
     def looks_detailed(text: str) -> bool:
         body = str(text or "")
         return any(needle in body for needle in PlanIngress.NEEDLES)
@@ -2573,7 +2557,8 @@ def _select_regime(
             any_threshold = True
         rem = res.get("residual") or {}
         wants = rem.get("wants_to_change") or []
-        field_hits.extend(wants)
+        # constraints+/done_when+ are field residuals even when undeclared
+        field_hits.extend(ChildLane.wants(res))
         if "mission" in wants:
             mission_hits += 1
         metrics = res.get("metrics") or {}
@@ -2635,49 +2620,130 @@ def constraint_norm(text: Any) -> str:
     return " ".join(str(text).split())
 
 
-def constraint_present(constraints: list[Any], incoming: Any) -> bool:
-    key = constraint_norm(incoming)
-    if not key:
-        return True
-    return any(constraint_norm(c) == key for c in constraints)
+class ChildLane:
+    """What one child residual may write on ``integrate --apply``.
+
+    The order parameter moves only by an explicit leader verb. A nonempty
+    ``constraints+`` / ``done_when+`` is a field residual whatever
+    ``wants_to_change`` says: escalate_up, spawn blocked, the leader
+    applies it with ``of patch`` (HAKEN-02, INT-05). ``done_when_closed``
+    lands only from a verifier/adversary citing an accepted evidence
+    receipt. ``requirements_failed`` lands on owned ids, or on any id from
+    a verifier/adversary (spec.py). Everything else (notes, refused
+    closes and stamps, an explorer's patch) is a child-attributed
+    observation, never ORDER.
+    """
+
+    FIELD_KEYS = {"constraints+": "constraints", "done_when+": "done_when"}
+    CLOSE_ROLES = frozenset({"verifier", "adversary"})
+    LEADER_STAMPS = (
+        "requirements_verified",
+        "requirements_verified_contract",
+        "requirements_pair_checked",
+    )
+    OBSERVATIONS = "observations.json"
+
+    @staticmethod
+    def patch(res: dict[str, Any]) -> dict[str, Any]:
+        patch = (res.get("residual") or {}).get("proposed_patch")
+        return patch if isinstance(patch, dict) else {}
+
+    @staticmethod
+    def field_wants(res: dict[str, Any]) -> list[str]:
+        patch = ChildLane.patch(res)
+        return [name for key, name in ChildLane.FIELD_KEYS.items() if patch.get(key)]
+
+    @staticmethod
+    def wants(res: dict[str, Any]) -> list[str]:
+        """Declared wants_to_change plus the field keys the patch touches."""
+        declared = list((res.get("residual") or {}).get("wants_to_change") or [])
+        return declared + [w for w in ChildLane.field_wants(res) if w not in declared]
+
+    @staticmethod
+    def may_close(
+        res: dict[str, Any], packet: dict[str, Any] | None, root: Path | None
+    ) -> bool:
+        from of.receipt import EvidenceReceipt
+
+        if root is None or str((packet or {}).get("role") or "") not in (
+            ChildLane.CLOSE_ROLES
+        ):
+            return False
+        evidence = str((res.get("residual") or {}).get("evidence") or "")
+        return (
+            res.get("status") == "done"
+            and EvidenceReceipt.parse_citation(evidence) is not None
+            and not EvidenceReceipt.errors(res, root)
+        )
+
+    @staticmethod
+    def observations(
+        residuals: list[dict[str, Any]],
+        packets: list[dict[str, Any] | None],
+        root: Path | None,
+        *,
+        escalated: bool,
+    ) -> list[dict[str, Any]]:
+        """Patch keys that did not land in ORDER, attributed to the child."""
+        from of.spec import residual_failed_stamps
+
+        out: list[dict[str, Any]] = []
+        for res, pkt in zip(residuals, packets):
+            patch = ChildLane.patch(res)
+            if not patch:
+                continue
+            role = str((pkt or {}).get("role") or res.get("role") or "")
+            entry: dict[str, Any] = {
+                "child_id": str((pkt or {}).get("child_id") or res.get("child_id") or "?"),
+                "role": role,
+            }
+            if role == "explorer":
+                entry["ignored_patch"] = patch
+                out.append(entry)
+                continue
+            field = {k: patch[k] for k in ChildLane.FIELD_KEYS if patch.get(k)}
+            if field:
+                entry["field_proposal"] = field
+            if isinstance(patch.get("notes"), str) and patch["notes"].strip():
+                entry["notes"] = patch["notes"].strip()
+            if patch.get("done_when_closed") is True and (
+                escalated or not ChildLane.may_close(res, pkt, root)
+            ):
+                entry["close_proposal"] = True
+            refused = residual_failed_stamps(res, pkt)[1]
+            if refused:
+                entry["refused_stamps"] = refused
+            leader = {k: patch[k] for k in ChildLane.LEADER_STAMPS if patch.get(k)}
+            if leader:
+                entry["leader_stamps"] = leader
+            if len(entry) > 2:
+                out.append(entry)
+        return out
 
 
 def apply_patches(
     order: dict[str, Any],
     residuals: list[dict[str, Any]],
     root: Path | None = None,
+    *,
+    packets: list[dict[str, Any] | None] | None = None,
+    escalated: bool = False,
 ) -> dict[str, Any]:
+    """Only ``done_when_closed`` from ChildLane.may_close reaches ORDER.
+
+    Without packets no child carries a close role, so nothing lands.
+    """
+    if escalated or packets is None:
+        return order
     changed = False
-    for res in residuals:
-        patch = (res.get("residual") or {}).get("proposed_patch")
-        if not patch or not isinstance(patch, dict):
+    for res, pkt in zip(residuals, packets):
+        if ChildLane.patch(res).get("done_when_closed") is not True:
             continue
-        if "constraints+" in patch and isinstance(patch["constraints+"], list):
-            existing = {constraint_norm(c) for c in order["constraints"]}
-            for c in patch["constraints+"]:
-                key = constraint_norm(c)
-                if key and key not in existing:
-                    order["constraints"].append(c)
-                    existing.add(key)
-                    changed = True
-        if "done_when+" in patch and isinstance(patch["done_when+"], list):
-            DoneWhenLint.refuse(list(patch["done_when+"]))
-            for c in patch["done_when+"]:
-                if c not in order["done_when"]:
-                    order["done_when"].append(c)
-                    changed = True
-        if "notes" in patch and isinstance(patch["notes"], str):
-            incoming = patch["notes"].strip()
-            prev = (order.get("notes") or "").strip()
-            if incoming and incoming != prev and (
-                not prev or ("\n" + incoming + "\n") not in ("\n" + prev + "\n")
-            ):
-                order["notes"] = (prev + "\n" + incoming).strip() if prev else incoming
-                changed = True
-        if patch.get("done_when_closed") is True:
-            DoneWhenLint.refuse_close(order, root=root)
-            if mark_done_when_closed(order):
-                changed = True
+        if not ChildLane.may_close(res, pkt, root):
+            continue
+        DoneWhenLint.refuse_close(order, root=root)
+        if mark_done_when_closed(order):
+            changed = True
     if changed:
         order["rev"] = int(order.get("rev", 1)) + 1
     return order
