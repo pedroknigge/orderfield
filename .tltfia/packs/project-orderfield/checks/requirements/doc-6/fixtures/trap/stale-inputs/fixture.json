@@ -1,0 +1,43 @@
+{
+  "language": "typescript",
+  "params": {
+    "verifier": "project-orderfield/PROJECT-DOC-006"
+  },
+  "target": ".tltfia/preset.json",
+  "before": null,
+  "context": {
+    "fitness": {
+      "contractHash": "fixture-contract",
+      "inputHash": "fixture-input",
+      "command": [
+        "fixture-verifier"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "verifier": "project-orderfield/PROJECT-DOC-006",
+        "contractHash": "fixture-contract",
+        "inputHash": "old-input",
+        "command": [
+          "fixture-verifier"
+        ],
+        "completed": true,
+        "exitCode": 0,
+        "recordedAt": "2026-10-07T00:00:00Z"
+      }
+    }
+  },
+  "expect": {
+    "verdict": "fail",
+    "violations": [
+      {
+        "line": 1
+      }
+    ]
+  },
+  "trap": {
+    "family": "stale-project-assertion",
+    "origin": "forge",
+    "discovered": "2026-10-07",
+    "note": "A prior green receipt does not establish evidence for changed inputs."
+  }
+}

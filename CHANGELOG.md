@@ -8,6 +8,31 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.8.34
+
+CLI parser domain decomposition, root stub migration skew resolution, and TLTFIA governance onboarding. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.33 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **CLI parser domain decomposition:** Decomposed monolithic 975-line `build_parser` in `scripts/of/cli/__init__.py` into 6 cohesive domain subparsers (`_register_lifecycle_subparsers`, `_register_ops_status_subparsers`, `_register_ops_maintenance_subparsers`, `_register_wave_dispatch_subparsers`, `_register_wave_reduction_subparsers`, `_register_spec_subparsers`), reducing `build_parser` to 21 lines while preserving 100% equivalence across all 35 CLI subcommands and options.
+- **Consolidation of collect completion hook:** Consolidated duplicated `_collect_with_unverified` handler in CLI entrypoint into a single canonical definition.
+- **Root stub migration skew resolution:** Migrated legacy root stub `.orderfield/ORDER.json` to timestamped archive via `of migrate --field ord_0ba66127`, restoring `of doctor` diagnostic to clean `ok` status without silent deletion.
+- **TLTFIA governance and project fitness:** Integrated TLTFIA governance with `no-new` ratchet, binding verified project assertions across host RAM detection, packaging discovery, README quickstart, schema traversal, adapter resume, close evidence, and runbook path gates.
+- **Proof:** `tests/test_kernel_cli.py` (129/129 tests passed), `tests/test_packaging.py` (`test_validate_skill_exits_zero`), `tests/test_host_ram.py`, `tests/test_quickstart.py`, `tests/test_schema_subset.py`, `tests/test_adapter_resume.py`, `tests.test_kernel_spec.CloseEvidenceGate`, `tests.test_kernel_regime.RunbookPathGate`, `of doctor` (`doctor ok`).
+- Packaging: VERSION 0.8.34; skill/alias previews, release installer pin and current docs in lockstep.
+
+## 0.8.33
+
+Kernel invariants preservation, worktree lifecycle landing, and natural brief extraction. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.8.32 notes. Folder, chat, and prompt ingress are unchanged.
+
+- **WAL wave residual and spawn preservation:** WAL manifest snapshots record all relative paths under `.orderfield/` (`residuals/wave-*`, `spawns/`), preventing unlinking of completed wave residuals and child spawn records upon subsequent mutating commands.
+- **Evidence receipt regex isolation:** `CloseEvidence` prioritizes explicit top-level `artifact_sha:` and `rollback:` lines before scanning nested evidence receipt strings, avoiding spurious sha extraction from quoted receipt output.
+- **Re-spawn baseline preservation:** Preserves the initial wave spawn baseline digest and `started_at` timestamp on child re-spawn, preventing `owned_write_missing` deadlocks caused by re-baselining already-modified files.
+- **Worktree landing and safe removal:** Added `of worktree land --child-id <id>` to cherry-pick/merge child worktree commits into the leader HEAD, and guarded `of worktree remove` against unlanded commit deletion without `--force`.
+- **Malformed residual isolation and robust replay:** Parsing wave residuals isolates malformed JSON per child; `of unpack --force` safely discards invalid residuals; eliminated brittle shell `&&` chaining in discovery replay.
+- **Natural brief requirement extraction:** Natural briefs with bullet points and numbered lists are parsed as requirements without requiring rigid markdown section headers, eliminating `SPEC-EMPTY` friction for cold agents.
+- **Batched plan card:** SKILL.md consolidates sequential initialization questions into a single 1-turn plan proposal card.
+- **Proof:** `test_manifest_preserves_wave_residuals_across_snapshot` (`tests/test_field_wal.py`), `test_evidence_receipt_matches_deterministic_fixture` (`tests/test_evidence_receipt.py`), `test_extract_requirements_from_natural_brief_bullets` (`tests/test_kernel_spec.py`), `test_worktree_land_merges_child_commits` (`tests/test_kernel_cli.py`), `test_unpack_force_discards_invalid_residuals` (`tests/test_kernel_pack.py`).
+- Packaging: VERSION 0.8.33; skill/alias previews, release installer pin and current docs in lockstep.
+
 ## 0.8.32
 
 Live harness model discovery before recommendations.

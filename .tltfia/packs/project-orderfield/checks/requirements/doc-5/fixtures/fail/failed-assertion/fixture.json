@@ -1,0 +1,37 @@
+{
+  "language": "typescript",
+  "params": {
+    "verifier": "project-orderfield/PROJECT-DOC-005"
+  },
+  "target": ".tltfia/preset.json",
+  "before": null,
+  "context": {
+    "fitness": {
+      "contractHash": "fixture-contract",
+      "inputHash": "fixture-input",
+      "command": [
+        "fixture-verifier"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "verifier": "project-orderfield/PROJECT-DOC-005",
+        "contractHash": "fixture-contract",
+        "inputHash": "fixture-input",
+        "command": [
+          "fixture-verifier"
+        ],
+        "completed": true,
+        "exitCode": 1,
+        "recordedAt": "2026-10-07T00:00:00Z"
+      }
+    }
+  },
+  "expect": {
+    "verdict": "fail",
+    "violations": [
+      {
+        "line": 1
+      }
+    ]
+  }
+}

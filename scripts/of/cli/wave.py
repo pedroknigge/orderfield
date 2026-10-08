@@ -51,6 +51,7 @@ from of.field import (
     find_root,
     json_events_enabled,
     load_json,
+    try_load_json,
     load_order,
     load_state,
     load_worktrees,
@@ -862,11 +863,20 @@ def cmd_unpack(args: argparse.Namespace) -> None:
         die(f"no packet for {child_id} in wave {wave}")
     packet = load_packet(pkt_path)
     require_packet_artifact_paths(root, packet, pkt_path)
-    if packet_residual_file(root, packet) is not None:
-        die(
-            f"{child_id} already wrote a residual; collect/integrate it "
-            "instead of unpacking"
-        )
+    res_file = packet_residual_file(root, packet)
+    if res_file is not None:
+        if not args.force:
+            die(
+                f"{child_id} already wrote a residual; collect/integrate it "
+                "instead of unpacking (pass --force to discard the residual and unpack)"
+            )
+        try:
+            res_file.unlink()
+            inv = res_file.with_suffix(res_file.suffix + ".invalid.txt")
+            if inv.is_file():
+                inv.unlink()
+        except OSError:
+            pass
     if scratch_nonempty(root, packet) and not args.force:
         die(
             f"{child_id} has nonempty scratch (work may be in flight); "
@@ -1110,6 +1120,19 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         codex_worktree=codex_worktree,
         field_home=field_home(root),
     )
+    meta_path = wdir / "spawns" / f"{child_id}.json"
+    owned_baseline = OwnedWrite.snapshot(root, packet)
+    initial_started = utc_now()
+    if meta_path.is_file():
+        try:
+            prior_data = load_json(meta_path)
+            if isinstance(prior_data, dict):
+                if isinstance(prior_data.get(OwnedWrite.DIGEST_KEY), dict):
+                    owned_baseline = prior_data[OwnedWrite.DIGEST_KEY]
+                if prior_data.get("started_at"):
+                    initial_started = prior_data["started_at"]
+        except Exception:
+            pass
     meta: dict[str, Any] = {
         "child_id": child_id,
         "adapter": adapter,
@@ -1117,12 +1140,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "wave": wave,
         "packet": str(Path(args.packet)),
         "residual": residual_rel,
-        "started_at": utc_now(),
+        "started_at": initial_started,
         "dry_run": bool(args.dry_run),
         "trust": profile,
         "env_mode": env_mode,
         "mcp_mode": mcp_mode,
-        OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
+        OwnedWrite.DIGEST_KEY: owned_baseline,
     }
     WriteFloor.apply_meta(meta, adapter, profile)
     OperatorAction.apply_meta(meta)
@@ -1132,7 +1155,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     model_name = AdapterHints.spawn_model(adapter, packet)
     if model_name:
         meta["model_hint"] = model_name
-    meta_path = wdir / "spawns" / f"{child_id}.json"
     log_path = wdir / "logs" / f"{child_id}.log"
     prior = SpawnRecord.claim_started(
         root,
@@ -1438,10 +1460,12 @@ def cmd_collect(args: argparse.Namespace) -> None:
         pin_err, pin_warn = ResidualPin.check(pin_dir, child, path)
         if pin_warn:
             print(pin_warn)
-        data = load_json(path)
+        data, parse_err = try_load_json(path)
         stamped = False
         if pin_err:
             errs = [pin_err]
+        elif parse_err:
+            errs = [parse_err]
         else:
             errs, stamped = KernelSha.validate(
                 data, pkt, root, validate_residual_for_packet

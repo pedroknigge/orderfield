@@ -53,6 +53,7 @@ from of.cli.ops import (
     cmd_wave,
     cmd_worktree,
     cmd_worktree_add,
+    cmd_worktree_land,
     cmd_worktree_list,
     cmd_worktree_remove,
     format_agents_note,
@@ -214,6 +215,7 @@ __all__ = [
     "cmd_wave",
     "cmd_worktree",
     "cmd_worktree_add",
+    "cmd_worktree_land",
     "cmd_worktree_list",
     "cmd_worktree_remove",
     "discover_recovery_eval_specs",
@@ -286,23 +288,20 @@ __all__ = [
 ]
 
 
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="of",
-        description="Orderfield kernel — order-parameter orchestration (Haken).",
-    )
-    p.add_argument(
-        "--json",
-        action="store_true",
-        help="emit machine-readable event lines on stderr (also OF_JSON=1)",
-    )
-    p.add_argument(
-        "--field",
-        dest="field_id",
-        help="operate on this field id (ord_…); OF_FIELD when omitted",
-    )
-    sub = p.add_subparsers(dest="cmd", required=True)
+def _collect_with_unverified(args: argparse.Namespace) -> None:
+    try:
+        cmd_collect(args)
+    except SystemExit as exc:
+        if exc.code not in (0, None, 2):
+            raise
+        print_owned_unverified(find_root())
+        if exc.code not in (0, None):
+            raise
+        return
+    print_owned_unverified(find_root())
 
+
+def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("init", help="create .orderfield/ORDER.json")
     s.add_argument("--mission", required=True)
     s.add_argument("--phase", default="explore", choices=PHASES)
@@ -498,6 +497,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_fields)
 
+
+def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser(
         "wave",
         help="list or show waves; * marks the live state.wave",
@@ -645,6 +646,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_doctor)
 
+
+def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser(
         "retain",
         help="show episodic keep/drop/dump plan (read-only, no transcript copy)",
@@ -787,8 +790,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--path",
         help="destination outside the project (default: sibling <repo>-of-<child_id>)",
     )
+    wland = wt.add_parser(
+        "land", help="land/merge commits from child worktree into current branch"
+    )
+    wland.add_argument("--child-id", required=True)
     wrm = wt.add_parser("remove", help="remove a recorded worktree")
     wrm.add_argument("--child-id", required=True)
+    wrm.add_argument(
+        "--force",
+        action="store_true",
+        help="force remove even if worktree has unlanded changes",
+    )
     wt.add_parser("list", help="list recorded worktrees")
     s.set_defaults(func=cmd_worktree)
 
@@ -797,6 +809,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--kind", default="auto", choices=["auto", "order", "packet", "residual"])
     s.set_defaults(func=cmd_validate)
 
+
+def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("pack", help="build a slaving packet")
     s.add_argument("--slice", required=True)
     s.add_argument("--role", required=True, choices=ROLES)
@@ -935,6 +949,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--wave", type=int)
     s.set_defaults(func=_collect_with_unverified)
 
+
+def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("integrate", help="reduce residuals and choose a regime")
     s.add_argument("--wave", type=int)
     s.add_argument(
@@ -1078,6 +1094,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_next_wave)
 
+
+def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser(
         "spec",
         help="list/add/extract/verify binding requirements (lossless contract coverage)",
@@ -1242,20 +1260,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.set_defaults(func=cmd_eval)
 
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="of",
+        description="Orderfield kernel — order-parameter orchestration (Haken).",
+    )
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable event lines on stderr (also OF_JSON=1)",
+    )
+    p.add_argument(
+        "--field",
+        dest="field_id",
+        help="operate on this field id (ord_…); OF_FIELD when omitted",
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    _register_lifecycle_subparsers(sub)
+    _register_ops_status_subparsers(sub)
+    _register_ops_maintenance_subparsers(sub)
+    _register_wave_dispatch_subparsers(sub)
+    _register_wave_reduction_subparsers(sub)
+    _register_spec_subparsers(sub)
+
     return p
-
-
-def _collect_with_unverified(args: argparse.Namespace) -> None:
-    try:
-        cmd_collect(args)
-    except SystemExit as exc:
-        if exc.code not in (0, None, 2):
-            raise
-        print_owned_unverified(find_root())
-        if exc.code not in (0, None):
-            raise
-        return
-    print_owned_unverified(find_root())
 
 
 ERROR_MESSAGE_MAX_CHARS = 400

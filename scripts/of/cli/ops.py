@@ -779,12 +779,14 @@ def cmd_worktree(args: argparse.Namespace) -> None:
     action = getattr(args, "worktree_cmd", None)
     if action == "add":
         cmd_worktree_add(args)
+    elif action == "land":
+        cmd_worktree_land(args)
     elif action == "remove":
         cmd_worktree_remove(args)
     elif action == "list":
         cmd_worktree_list(args)
     else:
-        die("of worktree requires add|remove|list")
+        die("of worktree requires add|land|remove|list")
 
 
 def cmd_worktree_add(args: argparse.Namespace) -> None:
@@ -832,12 +834,103 @@ def cmd_worktree_add(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_worktree_land(args: argparse.Namespace) -> None:
+    root = find_root()
+    if git_repo_root(root) is None:
+        die("of worktree requires a git repository; it is not a process manager")
+    child_id = require_child_id(args.child_id)
+    records = load_worktrees(root)
+    recorded = records["trees"].get(child_id)
+    if not isinstance(recorded, dict) or not recorded.get("path"):
+        die(f"no recorded worktree for child {child_id}; of worktree add first")
+    dest = Path(recorded["path"])
+    if not dest.is_dir():
+        die(f"worktree path does not exist {dest}")
+
+    # Check for uncommitted changes in the worktree; auto-commit them if present
+    status_proc = run_git(dest, "status", "--porcelain")
+    if status_proc.returncode != 0:
+        die(f"git status failed in worktree {dest}: {status_proc.stderr}")
+    uncommitted = status_proc.stdout.strip()
+    if uncommitted:
+        add_proc = run_git(dest, "add", "-A")
+        if add_proc.returncode != 0:
+            die(f"git add failed in worktree {dest}: {add_proc.stderr}")
+        commit_proc = run_git(
+            dest,
+            "commit",
+            "-m",
+            f"chore(of): land uncommitted work from child {child_id}",
+        )
+        if commit_proc.returncode != 0:
+            die(f"git commit failed in worktree {dest}: {commit_proc.stderr}")
+
+    base_head = str(recorded.get("head") or "-")
+    wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
+
+    rev_list: list[str] = []
+    if base_head and base_head != "-" and wt_head:
+        rev_proc = run_git(dest, "rev-list", "--reverse", f"{base_head}..{wt_head}")
+        if rev_proc.returncode == 0:
+            rev_list = [
+                line.strip() for line in rev_proc.stdout.splitlines() if line.strip()
+            ]
+
+    if not rev_list:
+        print(f"worktree     {dest}")
+        print(f"child_id     {child_id}")
+        print("commits      0 (no new commits to land)")
+        records["trees"][child_id]["landed"] = True
+        save_worktrees(root, records)
+        return
+
+    # Cherry-pick commits onto current branch
+    cherry = run_git(root, "cherry-pick", *rev_list)
+    if cherry.returncode != 0:
+        run_git(root, "cherry-pick", "--abort")
+        err = (cherry.stderr or cherry.stdout or "cherry-pick failed").strip()
+        die(
+            f"worktree landing failed with git conflicts:\n{err}\n"
+            f"Resolve conflicts manually or inspect worktree at {dest}"
+        )
+
+    records["trees"][child_id]["landed"] = True
+    records["trees"][child_id]["landed_at"] = utc_now()
+    save_worktrees(root, records)
+    print(f"landed       {dest}")
+    print(f"child_id     {child_id}")
+    print(f"commits      {len(rev_list)} landed into HEAD")
+
+
 def cmd_worktree_remove(args: argparse.Namespace) -> None:
     root = find_root()
     child_id = require_child_id(args.child_id)
     records = load_worktrees(root)
     recorded = records["trees"].get(child_id)
-    dest = Path(recorded["path"]) if isinstance(recorded, dict) and recorded.get("path") else default_worktree_path(root, child_id)
+    dest = (
+        Path(recorded["path"])
+        if isinstance(recorded, dict) and recorded.get("path")
+        else default_worktree_path(root, child_id)
+    )
+    force = bool(getattr(args, "force", False))
+    if (
+        not force
+        and dest.is_dir()
+        and isinstance(recorded, dict)
+        and not recorded.get("landed")
+    ):
+        status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
+        base = str(recorded.get("head") or "")
+        wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
+        has_commits = False
+        if base and base != "-" and wt_head:
+            revs = (run_git(dest, "rev-list", f"{base}..{wt_head}").stdout or "").strip()
+            has_commits = bool(revs)
+        if status or has_commits:
+            die(
+                f"worktree has unlanded changes; run 'of worktree land --child-id {child_id}' first "
+                f"(or 'of worktree remove --child-id {child_id} --force' to discard)"
+            )
     if git_repo_root(root) is not None:
         proc = run_git(root, "worktree", "remove", "--force", str(dest))
         if proc.returncode != 0 and dest.exists():

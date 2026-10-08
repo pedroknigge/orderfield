@@ -1715,12 +1715,44 @@ class OwnedWriteGate(unittest.TestCase):
         self.assertIn("owned_write_missing", empty.stdout + empty.stderr)
         (tree / "landed.py").write_text("ok\n", encoding="utf-8")
         packet = load_json(packet_path(self.tmp, "wt"))
-        residual = load_json(self.tmp / str(packet["residual_path"]))
-        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         dest = self.tmp / str(packet["residual_path"])
+        residual = load_json(dest)
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         collected = run_of(self.tmp, "collect", "--wave", "1")
         self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+
+    def test_respawn_preserves_initial_owned_baseline(self) -> None:
+        self._pack(role="implementer", child_id="imp", owns_path="src/mod.py")
+        packet_file = packet_path(self.tmp, "imp")
+        packet_rel = packet_file.relative_to(self.tmp).as_posix()
+        # First spawn sets baseline when src/mod.py does not exist
+        spawn1 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--adapter", "claude", "--dry-run")
+        self.assertEqual(spawn1.returncode, 0, spawn1.stderr)
+        
+        # Child writes the owned file
+        product = self.tmp / "src" / "mod.py"
+        product.parent.mkdir(parents=True, exist_ok=True)
+        product.write_text("print('hello')\n", encoding="utf-8")
+        
+        # Re-spawn (e.g. child was interrupted or fixing residual)
+        spawn2 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--adapter", "claude", "--dry-run", "--force-spawn")
+        self.assertEqual(spawn2.returncode, 0, spawn2.stderr)
+
+        # Write valid residual
+        self._write_done("imp", ensure=False)
+        packet = load_json(packet_file)
+        residual = bound_residual(self.tmp, "imp")
+        of.CloseEvidence.stamp_proof(residual, packet, self.tmp)
+        dest = self.tmp / str(packet["residual_path"])
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+        # Collect must recognize src/mod.py as written and NOT fail with owned_write_missing
+        collected = run_of(self.tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stdout + collected.stderr)
+        self.assertNotIn("owned_write_missing", collected.stdout + collected.stderr)
+        self.assertIn("OK", collected.stdout)
+
 
 
 class ForceDeliverSpec(unittest.TestCase):
@@ -1795,6 +1827,19 @@ class SemanticExtract(unittest.TestCase):
             "Nothing about a deadline should slip."
         )
         self.assertEqual(of.extract_requirements_from_spec(text), [])
+
+    def test_natural_brief_with_bullets_extracts_requirements(self) -> None:
+        text = (
+            "Add OAuth login to Next.js app:\n"
+            "- Google OAuth provider with refresh tokens\n"
+            "- Protected dashboard route with middleware\n"
+            "- Unit tests with mock tokens\n"
+            "- README documentation for environment variables\n"
+        )
+        reqs = of.extract_requirements_from_spec(text)
+        self.assertEqual(len(reqs), 4)
+        self.assertEqual(reqs[0]["text"], "Google OAuth provider with refresh tokens")
+
 
     def test_contrast_cites_spec_line(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-extract-cite-"))

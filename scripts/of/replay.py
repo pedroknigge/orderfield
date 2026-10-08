@@ -153,7 +153,7 @@ class DiscoveryReplay:
             return pack
         state = load_state(root)
         if int(state.get("wave") or 1) == int(waves[-1]["wave"]):
-            return "of next-wave && " + pack
+            return "of next-wave then " + pack
         return pack
 
     @staticmethod
@@ -302,7 +302,7 @@ class DiscoveryReplay:
             return {
                 "label": "CONTINUE",
                 "detail": (
-                    f"{rid} check red; same child. do not open another. "
+                    f"{rid} unverified; same child. do not open another. "
                     + pack(
                         role=str(touch["role"]),
                         child_id=str(touch["child_id"]),

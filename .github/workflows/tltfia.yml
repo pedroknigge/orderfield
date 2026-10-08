@@ -1,0 +1,41 @@
+# TLTFIA (ARCHITECTURE §4.5, MULTI-HARNESS MH-28), written by `tltfia install --ci github`: the engine
+# the committed lock pins checks every pull request, whatever harness wrote the code.
+name: TLTFIA
+on:
+  pull_request:
+jobs:
+  tltfia:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TLTFIA_RELEASES_TOKEN != '' }}
+    # A catastrophic regex in a `path` rule source hangs instead of failing; the job ends here (§6.1).
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: "."
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The releases repository is private: its downloads need a token that can read it, stored as the
+      # TLTFIA_RELEASES_TOKEN secret. Once it is public, the job's own token is enough. SHA256SUMS
+      # covers every asset of the release (MH-32); --ignore-missing skips the ones not downloaded and
+      # still fails when the tar is not listed.
+      - name: Install the engine the lock pins
+        env:
+          GH_TOKEN: ${{ secrets.TLTFIA_RELEASES_TOKEN || github.token }}
+        run: |
+          set -eu
+          version=$(jq -r .engine .tltfia/tltfia.lock.json)
+          printf '%s\n' "$version" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?'
+          tar="tltfia-$version-linux-x64.tar.gz"
+          cd "$RUNNER_TEMP"
+          gh release download "v$version" -R pedroknigge/tltfia-pilot -p "$tar" -p SHA256SUMS
+          sha256sum -c --ignore-missing SHA256SUMS
+          tar -xzf "$tar" tltfia
+          echo "TLTFIA=$RUNNER_TEMP/tltfia" >> "$GITHUB_ENV"
+      - name: Test the path rule sources
+        run: '"$TLTFIA" rules test'
+      - name: Check the change against its base
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: '"$TLTFIA" check --ratchet --base "$BASE"'

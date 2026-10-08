@@ -632,6 +632,75 @@ class FieldWalBothSides(unittest.TestCase):
         self.assertNotIn("tampered live mission", status.stdout)
         self._assert_generation_hashes_to_manifest()
 
+    def test_wal_preserves_collected_residuals_across_mutations(self) -> None:
+        packed = self.pack("e1")
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        pkt_data = json.loads(
+            (self.home / "waves" / "001" / "packets" / "e1.json").read_text(encoding="utf-8")
+        )
+        scratch = self.tmp / pkt_data["scratch_dir"]
+        scratch.mkdir(parents=True, exist_ok=True)
+        notes = scratch / "notes.md"
+        notes.write_text("finding 1\n", encoding="utf-8")
+        res_data = {
+            "v": 1,
+            "packet_id": pkt_data["packet_id"],
+            "packet_hash": pkt_data["packet_hash"],
+            "order_id": pkt_data["order_id"],
+            "order_rev": pkt_data["order_rev"],
+            "wave": 1,
+            "child_id": "e1",
+            "role": "explorer",
+            "status": "done",
+            "result_ref": pkt_data["scratch_dir"] + "/notes.md",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "observed",
+                "proposed_patch": None,
+            },
+            "metrics": {
+                "uncertainty": 0.1,
+                "tool_failures": 0,
+                "divergence": 0.0,
+                "novelty": False,
+            },
+        }
+        res_path = self.tmp / pkt_data["residual_path"]
+        res_path.parent.mkdir(parents=True, exist_ok=True)
+        res_path.write_text(json.dumps(res_data, indent=2) + "\n", encoding="utf-8")
+
+        # Collect stamps/commits the residual into the WAL
+        col = run_of(self.tmp, "collect")
+        self.assertEqual(col.returncode, 0, col.stderr)
+        self.assertTrue(res_path.is_file(), "residual must exist after collect")
+
+        # Next mutating command (e.g. packing another child) must NOT delete e1.json
+        pack2 = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "explore second slice",
+            "--role",
+            "explorer",
+            "--child-id",
+            "e2",
+        )
+        self.assertEqual(pack2.returncode, 0, pack2.stderr)
+        self.assertTrue(
+            res_path.is_file(),
+            "residual must NOT be tombstoned or unlinked by subsequent mutating pack",
+        )
+
+        # Check WAL manifest does not list e1.json under deletions
+        _gid, man = self._committed_manifest()
+        deletions = [str(x) for x in (man.get("deletions") or [])]
+        self.assertNotIn(
+            "waves/001/residuals/e1.json",
+            deletions,
+            "residual must not appear in WAL manifest deletions",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+

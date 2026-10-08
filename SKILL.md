@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.32. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.8.34. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.32"
+  version: "0.8.34"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -19,7 +19,7 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, a SPEC that survives compaction, `of contrast` before close.
 
-Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. Mid-flight H2; first close. Compared-to: planning-with-files.
+Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
 Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
@@ -53,7 +53,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | empty current wave (no packets), `done_when` closed | `of phase <next>` — nothing to integrate; do not `--force`. Packets still require integrate |
 | recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing / malformed / non-Git refuse before launch. No record → existing argv |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
-| second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: refuse `shared_worktree` (`of worktree add`, series). After collect/abandon: `worker-stop` then `worker-release`; `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
+| second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: refuse `shared_worktree` (`of worktree add`, series). After collect/abandon: `worker-stop` then `worker-release`; `of worktree land` then `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
 | init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle (`in_flight=0`) pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`; execute printed next. Missing key → unset. After close: `of learn` / `--list` (protocol if no open field), not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
 | init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
@@ -119,4 +119,4 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
 
-Stay-on-the-run, pays-vs-theater, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
+Stay-on-the-run, `OF_TRUST`, learn, siblings, close-is-proof: appendix.

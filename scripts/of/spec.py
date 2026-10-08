@@ -842,6 +842,18 @@ EXTRACT_RULE_KEYS = (
     "health",
     "deadline",
     "liveness",
+    "requirement",
+    "requerimiento",
+    "criterio",
+    "acceptance",
+    "feature",
+    "scope",
+    "alcance",
+    "task",
+    "tarea",
+    "spec",
+    "goal",
+    "objetivo",
 )
 EXTRACT_PREFIX_CUES = (
     ("LEASE", ("leaseable", "retry_wait", "stale token", "heartbeat", "lease")),
@@ -958,6 +970,19 @@ def extract_requirements_from_spec(
         # Free-prose cue lists are gone. Binding IDs come from headed
         # rule bullets, python -m lines, or of spec --add. A keyword in
         # a marketing sentence is not a TIMEOUT contract.
+    if not reqs:
+        in_fence = False
+        for start, end, raw in spans:
+            stripped = raw.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence or stripped.startswith("#"):
+                continue
+            if stripped.startswith(("-", "*")) or re.match(r"^\d+\.\s+\S", stripped):
+                body = re.sub(r"^(?:[-*]|\d+\.)\s+", "", stripped).strip()
+                if len(body) >= 8:
+                    add(classify_requirement_prefix(body), body, start, end)
     return reqs
 
 

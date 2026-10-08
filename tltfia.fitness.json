@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "assertions": [
+    {
+      "id": "project-orderfield-project-doc-002",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_host_ram.py"
+      ],
+      "inputs": [
+        "tests/test_host_ram.py",
+        "scripts/of/host_ram.py",
+        "scripts/of/field.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-002",
+          "conditions": [
+            "Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "Assert that omitted or invalid agent-band input prompts or defaults according to host RAM thresholds."
+      ],
+      "assumptions": {
+        "domain": [
+          "Host RAM detection and agent-band budgeting in orderfield doctor and patch."
+        ],
+        "data": [
+          "Standard memory queries on Linux/macOS/Windows."
+        ],
+        "performance": [
+          "Host RAM test suite completes under 10 seconds."
+        ]
+      },
+      "limits": "Covers agent-band querying, host RAM detection, and wave budget storage; does not govern live subagent OS memory usage."
+    },
+    {
+      "id": "project-orderfield-project-doc-003",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "-k",
+        "test_validate_skill_exits_zero",
+        "tests/test_packaging.py"
+      ],
+      "inputs": [
+        "tests/test_packaging.py",
+        "scripts/validate-skill.sh",
+        "SKILL.md",
+        "of/SKILL.md"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-003",
+          "conditions": [
+            "This source package exposes both `orderfield` and the shorter `of` alias. `--full-depth -s '*'` is required because the primary skill is at the repository root and the alias is nested; the release gate verifies that discovery finds both."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "Validate skill failure if primary SKILL.md or alias of/SKILL.md is missing or drifts."
+      ],
+      "assumptions": {
+        "domain": [
+          "Skill discovery and packaging integrity."
+        ],
+        "data": [
+          "SKILL.md and of/SKILL.md frontmatter and content."
+        ],
+        "performance": [
+          "Validation runs within 15 seconds."
+        ]
+      },
+      "limits": "Verifies discovery and release gate compliance for orderfield and of alias."
+    },
+    {
+      "id": "project-orderfield-project-doc-004",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_quickstart.py"
+      ],
+      "inputs": [
+        "tests/test_quickstart.py",
+        "README.md",
+        "scripts/of.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-004",
+          "conditions": [
+            "`tests/test_quickstart.py` extracts this block from the README and runs it from a fresh temp directory; every command must exit 0, so the loop cannot drift from the kernel."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "A broken command or syntax drift in README.md quickstart causes test_quickstart.py to fail."
+      ],
+      "assumptions": {
+        "domain": [
+          "README documentation executable fidelity."
+        ],
+        "data": [
+          "README.md fenced code blocks."
+        ],
+        "performance": [
+          "Test runs within 10 seconds."
+        ]
+      },
+      "limits": "Validates README quickstart block execution; does not prove downstream multi-wave behavior."
+    },
+    {
+      "id": "project-orderfield-project-doc-008",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_schema_subset.py"
+      ],
+      "inputs": [
+        "tests/test_schema_subset.py",
+        "scripts/of/field.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-008",
+          "conditions": [
+            "**One safety fact.** Every keyword in `PUBLIC_SCHEMA_FILES` is either an annotation or an applicator that `validate_schema` actually runs. `schema_unknown_keywords` must see every nested node."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "An unrecognized JSON schema keyword in public schemas is reported by schema_unknown_keywords."
+      ],
+      "assumptions": {
+        "domain": [
+          "Public JSON schema validation engine in field.py."
+        ],
+        "data": [
+          "Schema files under schemas/."
+        ],
+        "performance": [
+          "Validation runs in under 1 second."
+        ]
+      },
+      "limits": "Verifies keyword recognition traversal across public schema nodes."
+    },
+    {
+      "id": "project-orderfield-project-doc-010",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_adapter_resume.py"
+      ],
+      "inputs": [
+        "tests/test_adapter_resume.py",
+        "scripts/of_adapters.py",
+        "scripts/of/field.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-010",
+          "conditions": [
+            "First command must be `of resume` only — no reading packets, no chat memory."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "Attempting un-resumed operations on an open field fails without prior resume."
+      ],
+      "assumptions": {
+        "domain": [
+          "Harness resume-first policy."
+        ],
+        "data": [
+          "Existing .orderfield/ state."
+        ],
+        "performance": [
+          "Resume test suite runs under 5 seconds."
+        ]
+      },
+      "limits": "Verifies adapter resume protocol across supported harnesses."
+    },
+    {
+      "id": "project-orderfield-project-doc-011",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_spec.CloseEvidenceGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_spec.py",
+        "scripts/of/regime.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-011",
+          "conditions": [
+            "A residual may say `status=done` with a `result_ref`. That closes a slice. It does not close SPEC. Done close evidence must name `artifact_sha:` (sha256 of `result_ref` bytes) and `rollback:` a command — not captions (`CloseEvidence`). Collect refuses a mismatch or a slogan rollback. `integrate --apply` may set `done_when_closed` from a residual; `of phase` stays explicit; `of close` still needs RESOLVED."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "Close residual with mismatched artifact_sha or slogan rollback is rejected at collect."
+      ],
+      "assumptions": {
+        "domain": [
+          "Close honesty and evidence verification in regime.py."
+        ],
+        "data": [
+          "Residual JSON and artifact on disk."
+        ],
+        "performance": [
+          "Test runs under 15 seconds."
+        ]
+      },
+      "limits": "Verifies close evidence artifact SHA and rollback command enforcement on slice completion."
+    },
+    {
+      "id": "project-orderfield-project-doc-012",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.test_kernel_regime.RunbookPathGate"
+      ],
+      "inputs": [
+        "tests/test_kernel_regime.py",
+        "scripts/of/regime.py"
+      ],
+      "timeoutMs": 30000,
+      "claims": [
+        {
+          "rule": "project-orderfield/PROJECT-DOC-012",
+          "conditions": [
+            "Generic done-when (`current phase criteria closed with evidence`, `done.`, `all done`) dies at init/patch. Empty or theater active sets cannot stamp `done_when_closed`. That theater is `recovery/done-when-lint`. Production-mode / day-90 fields must also name a repo-relative runbook path in `done_when` before close (`RunbookPath`); toy fields stay on the contrast-bound default."
+          ],
+          "coverage": "complete"
+        }
+      ],
+      "negativeControls": [
+        "Generic done-when text or missing runbook path in production-mode causes regime refusal."
+      ],
+      "assumptions": {
+        "domain": [
+          "Done-when linting and runbook path verification."
+        ],
+        "data": [
+          "ORDER done_when field values."
+        ],
+        "performance": [
+          "Gate tests run under 10 seconds."
+        ]
+      },
+      "limits": "Verifies rejection of theater done-when statements and requirement of valid runbook paths."
+    }
+  ]
+}
