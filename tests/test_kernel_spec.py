@@ -1727,7 +1727,7 @@ class OwnedWriteGate(unittest.TestCase):
         packet_file = packet_path(self.tmp, "imp")
         packet_rel = packet_file.relative_to(self.tmp).as_posix()
         # First spawn sets baseline when src/mod.py does not exist
-        spawn1 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--dry-run")
+        spawn1 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--adapter", "claude", "--dry-run")
         self.assertEqual(spawn1.returncode, 0, spawn1.stderr)
         
         # Child writes the owned file
@@ -1736,7 +1736,7 @@ class OwnedWriteGate(unittest.TestCase):
         product.write_text("print('hello')\n", encoding="utf-8")
         
         # Re-spawn (e.g. child was interrupted or fixing residual)
-        spawn2 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--dry-run", "--force-spawn")
+        spawn2 = run_of(self.tmp, "spawn", "--packet", packet_rel, "--adapter", "claude", "--dry-run", "--force-spawn")
         self.assertEqual(spawn2.returncode, 0, spawn2.stderr)
 
         # Write valid residual
