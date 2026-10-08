@@ -242,10 +242,16 @@ class StreamJsonSpawn(unittest.TestCase):
             },
             residual,
         ]
+        # Scratch before the first spawn is unwatched work; the fake child
+        # writes the bytes its residual hashes.
+        notes = result.read_text(encoding="utf-8")
+        result.unlink()
         agent = tmp / "stream-agent.py"
         agent.write_text(
             "#!/usr/bin/env python3\n"
             "import json\n"
+            "from pathlib import Path\n"
+            f"Path({str(result)!r}).write_text({notes!r}, encoding='utf-8')\n"
             f"for ev in {events!r}:\n"
             "    print(json.dumps(ev))\n",
             encoding="utf-8",
@@ -359,9 +365,13 @@ class GrokAdapterSpawn(unittest.TestCase):
             },
             residual,
         ]
+        notes = result.read_text(encoding="utf-8")
+        result.unlink()
         bindir = self.fake_grok(
             "#!/usr/bin/env python3\n"
             "import json, sys\n"
+            "from pathlib import Path\n"
+            f"Path({str(result)!r}).write_text({notes!r}, encoding='utf-8')\n"
             f"for ev in {events!r}:\n"
             "    print(json.dumps(ev))\n"
         )
@@ -434,9 +444,13 @@ class GrokAdapterSpawn(unittest.TestCase):
         }
         for key in of.PACKET_IDENTITY_FIELDS:
             residual[key] = packet[key]
+        notes = result.read_text(encoding="utf-8")
+        result.unlink()
         bindir = self.fake_grok(
             "#!/usr/bin/env python3\n"
             "import json, sys, time\n"
+            "from pathlib import Path\n"
+            f"Path({str(result)!r}).write_text({notes!r}, encoding='utf-8')\n"
             f"print(json.dumps({residual!r}))\n"
             "sys.stdout.flush()\n"
             "time.sleep(10)\n"

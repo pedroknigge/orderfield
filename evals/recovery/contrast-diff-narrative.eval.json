@@ -60,7 +60,7 @@
     },
     {
       "run": "spec",
-      "args": ["--verified-contract", "CLI-001", "--cite", "curl -sS /health"],
+      "args": ["--verified-contract", "CLI-001", "--cite", "surface-proof.log"],
       "exit": 0
     },
     {

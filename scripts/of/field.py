@@ -4877,32 +4877,6 @@ def write_phase_md(root: Path, order: dict[str, Any]) -> None:
     dump_text(field_home(root) / "PHASE.md", "\n".join(lines))
 
 
-_REQ_STAMP_KEYS = ("requirements_verified", "requirements_verified_contract")
-
-
-def residuals_without_verification_stamps(
-    residuals: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Drop residual verified_* stamps. Leader stamps via of spec --verified-contract."""
-    out: list[dict[str, Any]] = []
-    for res in residuals:
-        residual = res.get("residual")
-        if not isinstance(residual, dict):
-            out.append(res)
-            continue
-        patch = residual.get("proposed_patch")
-        if not isinstance(patch, dict) or not any(k in patch for k in _REQ_STAMP_KEYS):
-            out.append(res)
-            continue
-        new_patch = {k: v for k, v in patch.items() if k not in _REQ_STAMP_KEYS}
-        new_residual = dict(residual)
-        new_residual["proposed_patch"] = new_patch
-        new_res = dict(res)
-        new_res["residual"] = new_residual
-        out.append(new_res)
-    return out
-
-
 def owned_unverified_ids(root: Path) -> list[str]:
     """Binding IDs that are owned and not yet verified_contract."""
     from of.spec import REQ_CONTRACT_VERIFIED, is_active_requirement, load_requirements

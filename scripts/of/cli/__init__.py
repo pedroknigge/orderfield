@@ -933,6 +933,13 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         ),
     )
     s.add_argument(
+        "--reason",
+        help=(
+            "required with --force-spawn to override a live claim or "
+            "unwatched scratch"
+        ),
+    )
+    s.add_argument(
         "--force-tool",
         action="store_true",
         help="acknowledge and bypass a requires_tool capability mismatch",
@@ -956,7 +963,11 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
     s.add_argument(
         "--apply",
         action="store_true",
-        help="apply safe patches (constraints+/done_when+/done_when_closed)",
+        help=(
+            "apply verifier/adversary done_when_closed carrying an evidence "
+            "receipt, plus failed stamps; constraints+/done_when+ escalate_up "
+            "(leader applies with of patch)"
+        ),
     )
     s.add_argument("--next-wave", action="store_true")
     s.add_argument(
@@ -1138,7 +1149,10 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
         "--cite",
         dest="cite",
         default="",
-        help="with --verified-contract: path or command that exercised the surface",
+        help=(
+            "with --verified-contract: existing file inside the project "
+            "(surface-run log or evidence receipt); its sha is bound into CLOSE.json"
+        ),
     )
     s.add_argument(
         "--both-sides",

@@ -304,7 +304,8 @@ class OriginSpawnIsolation(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("adapter=generic", r.stdout)
 
-    def test_spawn_of_adapter_wins_over_harness_and_origin(self) -> None:
+    def test_spawn_harness_pin_wins_over_of_adapter_and_origin(self) -> None:
+        """ORDER.harness is the leader's pin; OF_ADAPTER is ignored, loudly."""
         r = run_of(
             self.tmp,
             "spawn",
@@ -314,7 +315,9 @@ class OriginSpawnIsolation(unittest.TestCase):
             extra_env={"OF_ADAPTER": "codex"},
         )
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("adapter=codex", r.stdout)
+        self.assertIn("adapter=grok", r.stdout)
+        self.assertNotIn("adapter=codex", r.stdout)
+        self.assertIn("OF_ADAPTER=codex ignored", r.stderr)
 
     def test_no_fetch_command(self) -> None:
         r = run_of(self.tmp, "fetch")

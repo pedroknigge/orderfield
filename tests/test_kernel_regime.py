@@ -810,20 +810,42 @@ class CloseProtocolApply(unittest.TestCase):
             "explore",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
+        # Only a verifier/adversary citing an accepted receipt may close.
         r = run_of(
             self.tmp,
             "pack",
             "--slice",
             "close protocol",
             "--role",
-            "explorer",
+            "verifier",
             "--child-id",
-            "explorer_demo",
+            "verifier_demo",
         )
         self.assertEqual(r.returncode, 0, r.stderr)
-        residual = bound_residual(self.tmp, "explorer_demo")
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "verifier_demo"
+        log = (
+            "python -m unittest discover -s tests\nRan 1 test in 0.010s\nOK\n"
+            + "pad tests/test_mod.py line\n" * 200
+        ).encode("utf-8")
+        _receipt, outcome = of.EvidenceReceipt.reduce(
+            scratch,
+            log,
+            command_id="unit",
+            exit_code=0,
+            command="python -m unittest discover -s tests",
+            quotes=["Ran 1 test in 0.010s"],
+            paths=["tests/test_mod.py"],
+            root=self.tmp,
+        )
+        self.assertEqual(outcome, of.EvidenceReceipt.ACCEPT, outcome)
+        residual = bound_residual(self.tmp, "verifier_demo")
+        residual["residual"]["evidence"] = (
+            "ran python -m unittest on tests/test_mod.py\n"
+            + residual["residual"]["evidence"]
+            + "\nevidence_receipt: .orderfield/work/scratch/verifier_demo/logs/unit.receipt.json"
+        )
         residual["residual"]["proposed_patch"] = expected["proposed_patch"]
-        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "explorer_demo.json"
+        dest = self.tmp / ".orderfield" / "waves" / "001" / "residuals" / "verifier_demo.json"
         dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
         integrated = run_of(self.tmp, "integrate", "--wave", "1", "--apply")
         self.assertEqual(integrated.returncode, 0, integrated.stderr)
@@ -867,62 +889,30 @@ class CloseProtocolApply(unittest.TestCase):
         self.assertIn("done_when_phase:", text)
 
 
-class NotesDedup(unittest.TestCase):
-    def test_apply_patches_dedups_notes_by_exact_string(self) -> None:
+class ChildPatchNeverWritesOrder(unittest.TestCase):
+    """HAKEN-02 / INT-05: residual notes/constraints+/done_when+ stay off ORDER."""
+
+    def test_apply_patches_leaves_notes_constraints_done_when(self) -> None:
         order = of.default_order("m", "explore")
-        note = "do not symlink leader node_modules into the worktree"
+        before = json.loads(json.dumps(order))
+        res = load_json(DONE)
+        res["residual"]["proposed_patch"] = {
+            "notes": "do not symlink leader node_modules into the worktree",
+            "constraints+": ["keep the contract kernel"],
+            "done_when+": ["CLI-001 passes"],
+        }
+        pkt = {"role": "implementer", "child_id": "c1"}
+        of.apply_patches(order, [res], packets=[pkt])
+        self.assertEqual(order, before)
+        regime, reason = of.decide_regime(order, of.default_state(), [res])
+        self.assertEqual(regime, "escalate_up")
+        self.assertIn("constraints", reason)
+        from of.regime import ChildLane
 
-        def residual_with_notes(text: str) -> dict:
-            r = load_json(DONE)
-            r["residual"]["proposed_patch"] = {"notes": text}
-            return r
-
-        of.apply_patches(
-            order,
-            [
-                residual_with_notes(note),
-                residual_with_notes("  " + note + "  "),
-                residual_with_notes(note),
-            ],
-        )
-        self.assertEqual(order["notes"].count(note), 1)
-        of.apply_patches(order, [residual_with_notes(note)])
-        self.assertEqual(order["notes"].count(note), 1)
-        of.apply_patches(order, [residual_with_notes("a different isolation gotcha")])
-        self.assertEqual(order["notes"].count(note), 1)
-        self.assertIn("a different isolation gotcha", order["notes"])
-        substring = "do not symlink leader node_modules"
-        self.assertIn(substring, note)
-        of.apply_patches(order, [residual_with_notes(substring)])
-        self.assertIn(note, order["notes"])
-        self.assertIn(substring, order["notes"])
-        self.assertGreaterEqual(order["notes"].count(substring), 2)
-
-
-class ConstraintsWhitespaceDedupe(unittest.TestCase):
-    def test_apply_patches_skips_whitespace_normalized_constraint(self) -> None:
-        order = of.default_order("m", "explore")
-        existing = "slaves do not mutate ORDER"
-        self.assertIn(existing, order["constraints"])
-
-        def residual_with(text: str) -> dict:
-            r = load_json(DONE)
-            r["residual"]["proposed_patch"] = {"constraints+": [text]}
-            return r
-
-        of.apply_patches(order, [residual_with("  slaves   do not mutate ORDER  ")])
-        self.assertEqual(order["constraints"].count(existing), 1)
-        self.assertNotIn("  slaves   do not mutate ORDER  ", order["constraints"])
-        of.apply_patches(order, [residual_with("keep the contract kernel")])
-        self.assertIn("keep the contract kernel", order["constraints"])
-        of.apply_patches(order, [residual_with("keep  the   contract kernel")])
+        obs = ChildLane.observations([res], [pkt], None, escalated=True)
+        self.assertEqual(obs[0]["child_id"], "c1")
         self.assertEqual(
-            sum(
-                1
-                for c in order["constraints"]
-                if " ".join(str(c).split()) == "keep the contract kernel"
-            ),
-            1,
+            obs[0]["notes"], "do not symlink leader node_modules into the worktree"
         )
 
 
@@ -1522,7 +1512,8 @@ class StateMachineGuards(unittest.TestCase):
         self.assertFalse(state["spawn_blocked"])
         self.assertIsNone(state["blocked_at_order_rev"])
 
-    def test_escalation_apply_can_satisfy_revision_guard_in_one_command(self) -> None:
+    def test_escalation_apply_cannot_satisfy_revision_guard(self) -> None:
+        # The child's constraints+ is a field residual: only of patch lands it.
         self._pack(fixture=THRESHOLD)
         integrated = run_of(
             self.tmp,
@@ -1532,13 +1523,16 @@ class StateMachineGuards(unittest.TestCase):
             "--apply",
             "--next-wave",
         )
-        self.assertEqual(integrated.returncode, 0, integrated.stderr)
-        self.assertEqual(json.loads(integrated.stdout)["regime"], "escalate_up")
+        self.assertNotEqual(integrated.returncode, 0, integrated.stdout)
+        self.assertIn("must exceed blocked_at_order_rev", integrated.stderr)
         order = load_json(self.tmp / ".orderfield" / "ORDER.json")
         state = load_json(self.tmp / ".orderfield" / "state.json")
-        self.assertEqual(order["rev"], 2)
-        self.assertEqual(state["wave"], 2)
-        self.assertIsNone(state["blocked_at_order_rev"])
+        self.assertEqual(order["rev"], 1)
+        self.assertEqual(state["wave"], 1)
+        self.assertNotIn(
+            "must cover invoicing constraints for the target country",
+            order["constraints"],
+        )
 
     def test_integrate_rejects_partial_with_next_wave_before_writing_report(self) -> None:
         self._pack("landed")
@@ -1741,7 +1735,9 @@ class RunbookPathGate(unittest.TestCase):
             self.tmp, "spec", "--add", "CLI-001", "--text", "the CLI must print hello"
         )
         self.assertEqual(added.returncode, 0, added.stderr)
-        verified = run_of(self.tmp, "spec", "--verified-contract", "CLI-001", "--cite", "curl -sS /health")
+        proof = self.tmp / "surface-proof.log"
+        proof.write_text("$ hello\nhello\n", encoding="utf-8")
+        verified = run_of(self.tmp, "spec", "--verified-contract", "CLI-001", "--cite", proof.name)
         self.assertEqual(verified.returncode, 0, verified.stderr)
 
     def test_toy_field_can_close_without_runbook(self) -> None:

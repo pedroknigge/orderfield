@@ -485,6 +485,10 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
             "mission": "child stole the mission",
         },
     )
+    # The leader's surface run; eval steps cite it (free-text --cite is refused).
+    (root / "surface-proof.log").write_text(
+        "$ python -m evalcli status\nexit 0\n", encoding="utf-8"
+    )
 
 
 @_register_eval_fixture("recovery_close_evidence_product_sha")
@@ -930,6 +934,10 @@ class MultiWaveCloseChecklistEval:
     @staticmethod
     def setup(root: Path) -> None:
         MultiWaveResidualEval.setup(root)
+        # --cite names a file whose sha CLOSE.json binds; free text is refused.
+        (root / "surface-proof.log").write_text(
+            "$ curl -sS /health\n200 ok\n", encoding="utf-8"
+        )
         for rid in MultiWaveCloseChecklistEval.REQS:
             stamped = eval_run_of(
                 root,
@@ -937,7 +945,7 @@ class MultiWaveCloseChecklistEval:
                 "--verified-contract",
                 rid,
                 "--cite",
-                "curl -sS /health",
+                "surface-proof.log",
             )
             EvalInvariantSetup.require_ok(stamped, f"verified-contract {rid}")
 
