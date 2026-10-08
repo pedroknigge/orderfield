@@ -74,6 +74,28 @@ def committed_artifact(home: Path, rel: str) -> Path:
     return home / "wal" / str(current["generation"]) / rel
 
 
+def publish_committed(home: Path, rel: str, text: str) -> None:
+    """Fixture write the next mutator keeps: live + CURRENT generation +
+    MANIFEST (W1 quarantines unlisted live snapshot files and refuses a
+    live ORDER that disagrees with CURRENT)."""
+    import hashlib
+
+    payload = text.encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest()
+    current_path = home / "wal" / "CURRENT.json"
+    current = json.loads(current_path.read_text(encoding="utf-8"))
+    gen = home / "wal" / str(current["generation"])
+    for dest in (gen / rel, home / rel):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(payload)
+    man_path = gen / "MANIFEST.json"
+    man = json.loads(man_path.read_text(encoding="utf-8"))
+    man.setdefault("files", {})[rel] = digest
+    man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
+    current.setdefault("files", {})[rel] = digest
+    current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+
+
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
     return (
         root
@@ -2033,10 +2055,10 @@ class EpisodicRetention(unittest.TestCase):
     def test_gc_dumps_old_spec_log_keeps_current_spec(self) -> None:
         spec = self.tmp / ".orderfield" / "SPEC.md"
         spec.write_text("current contract\n", encoding="utf-8")
-        log = self.tmp / ".orderfield" / "spec-log"
-        log.mkdir(parents=True, exist_ok=True)
-        snap = log / "001-deadbeefabcd.md"
-        snap.write_text("previous contract\n", encoding="utf-8")
+        snap = self.tmp / ".orderfield" / "spec-log" / "001-deadbeefabcd.md"
+        publish_committed(
+            self.tmp / ".orderfield", "spec-log/001-deadbeefabcd.md", "previous contract\n"
+        )
         self._age(snap)
         r = run_of(self.tmp, "gc")
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -2104,7 +2126,7 @@ class EpisodicRetention(unittest.TestCase):
             if data.get("mission") == "closed sibling":
                 closed_id = data["id"]
                 data["spec_closed"] = True
-                order_file.write_text(json.dumps(data, indent=2) + "\n")
+                publish_committed(child, "ORDER.json", json.dumps(data, indent=2) + "\n")
                 log = child / "waves" / "001" / "logs" / "fresh.log"
                 log.parent.mkdir(parents=True, exist_ok=True)
                 log.write_text("closed field log\n")

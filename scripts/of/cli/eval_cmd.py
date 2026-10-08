@@ -97,6 +97,21 @@ class EvalFileAssert:
         return None
 
 
+def eval_commit_home(root: Path, home: Path, docs: dict[str, Any]) -> None:
+    """Eval fixture writer: commit JSON docs to `home` through one WAL
+    generation (live-only writes are a tamper the next writer refuses)."""
+    from of.field import _active_field_home
+    from of.wal import dump_json, field_generation
+
+    token = _active_field_home.set(home)
+    try:
+        with field_generation(root):
+            for rel, data in docs.items():
+                dump_json(home / rel, data)
+    finally:
+        _active_field_home.reset(token)
+
+
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     # Recovery contain-checks must not see daily UpdateAsk lines or the
     # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
@@ -1240,13 +1255,7 @@ def eval_setup_recovery_closed_field_archive(root: Path) -> None:
         "archive me: internal index ALG-001",
     )
     EvalInvariantSetup.require_ok(created, "new")
-    from of.field import (
-        ActiveField,
-        _read_json_object,
-        dump_bytes,
-        fields_dir,
-        json_payload_bytes,
-    )
+    from of.field import ActiveField, _read_json_object, fields_dir
     from of.retain import ClosedFieldArchive
 
     old = ActiveField.read(root)
@@ -1255,10 +1264,10 @@ def eval_setup_recovery_closed_field_archive(root: Path) -> None:
     home = fields_dir(root) / old
     data = _read_json_object(home / "ORDER.json") or {}
     data["id"] = ClosedFieldArchive.EVAL_ID
-    dump_bytes(home / "ORDER.json", json_payload_bytes(data))
     dest = fields_dir(root) / ClosedFieldArchive.EVAL_ID
     if home.resolve() != dest.resolve():
         home.rename(dest)
+    eval_commit_home(root, dest, {"ORDER.json": data})
     ActiveField.write(root, ClosedFieldArchive.EVAL_ID)
     added = eval_run_of(
         root,

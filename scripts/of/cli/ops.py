@@ -111,6 +111,7 @@ from of.field import (
     require_nonsymlink_kernel_root,
     run_git,
     save_worktrees,
+    set_field_home,
     skill_root,
     snapshot_session,
     spec_log_dir,
@@ -583,6 +584,10 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     root = find_root()
     field = DoctorSkew.inspect_home(root) or of_dir(root)
     has_order = (field / "ORDER.json").is_file()
+    if has_order:
+        # Field checks below read through field_home(); bind the inspected
+        # home so a sibling layout is not read as the legacy root.
+        set_field_home(field)
     print("field")
     if has_order:
         print(f"  path          {field_rel(root, field)}  writable={writable_status(field)}")
