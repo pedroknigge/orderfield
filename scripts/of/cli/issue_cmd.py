@@ -333,11 +333,6 @@ def issue_create_argv(
     return argv
 
 
-def issue_list_argv(*, query: str = "", gh_bin: str = "gh") -> list[str]:
-    """List-API argv. ``query`` is filtered after spawn, not passed to gh."""
-    return IssueList.argv(gh_bin=gh_bin)
-
-
 def _issue_preview(
     argv: list[str],
     *,

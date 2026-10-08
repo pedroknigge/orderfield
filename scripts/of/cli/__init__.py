@@ -105,14 +105,8 @@ from of.cli.eval_cmd import (
     eval_pack_child,
     eval_run_of,
     eval_setup_recovery_active_field_pointer,
-    eval_setup_recovery_atomic_close,
-    eval_setup_recovery_beacon_amnesia,
-    eval_setup_recovery_budget_seconds,
     eval_setup_recovery_contrast_close,
     eval_setup_recovery_contrast_close_contract,
-    eval_setup_recovery_done_when_lint,
-    eval_setup_recovery_field_roster_ux,
-    eval_setup_recovery_cross_field_pack_roster,
     eval_setup_recovery_mission_rewrite,
     eval_setup_recovery_midflight_amend,
     MidFlightAmendEval,
@@ -123,22 +117,8 @@ from of.cli.eval_cmd import (
     eval_setup_recovery_threshold_stop_spawn,
     ThresholdStopSpawnEval,
     ProcessDeathResume,
-    eval_setup_recovery_process_death,
-    eval_setup_recovery_wave_report_quality,
     WaveReportQualityEval,
-    eval_setup_recovery_packet_sizing,
-    eval_setup_recovery_checkpoint_handoff,
-    eval_setup_recovery_multi_day_resume,
-    eval_setup_recovery_multi_harness,
-    eval_setup_recovery_pack_exclusivity,
-    eval_setup_recovery_quarry_dirty,
-    eval_setup_recovery_skip_explore,
-    eval_setup_recovery_slogan_evidence,
-    eval_setup_recovery_stale_field,
     eval_setup_recovery_packed_age,
-    eval_setup_recovery_orphan_packed,
-    eval_setup_recovery_closed_field_archive,
-    eval_setup_recovery_doctor_advisory,
     eval_setup_recovery_doctor_one_pass,
     eval_setup_recovery_doctor_closed_historical,
     eval_setup_recovery_plan_doc_sync,
@@ -146,15 +126,8 @@ from of.cli.eval_cmd import (
     PlanDocSyncEval,
     PlanCoverageEval,
     PlanIngressEval,
-    eval_setup_recovery_plan_ingress_promote,
-    eval_setup_recovery_plan_ingress_fidelity,
-    eval_setup_recovery_plan_ingress_folder,
-    eval_setup_recovery_plan_ingress_chat,
-    eval_setup_recovery_drive_after_integrate,
     DriveAfterIntegrateEval,
-    eval_setup_recovery_observation_pack,
     ObservationPackEval,
-    eval_setup_recovery_verify_build,
     eval_write_done_residual,
     run_recovery_eval_spec,
 )
@@ -223,14 +196,8 @@ __all__ = [
     "eval_pack_child",
     "eval_run_of",
     "eval_setup_recovery_active_field_pointer",
-    "eval_setup_recovery_atomic_close",
-    "eval_setup_recovery_beacon_amnesia",
-    "eval_setup_recovery_budget_seconds",
     "eval_setup_recovery_contrast_close",
     "eval_setup_recovery_contrast_close_contract",
-    "eval_setup_recovery_done_when_lint",
-    "eval_setup_recovery_field_roster_ux",
-    "eval_setup_recovery_cross_field_pack_roster",
     "eval_setup_recovery_mission_rewrite",
     "eval_setup_recovery_midflight_amend",
     "MidFlightAmendEval",
@@ -241,38 +208,17 @@ __all__ = [
     "eval_setup_recovery_threshold_stop_spawn",
     "ThresholdStopSpawnEval",
     "ProcessDeathResume",
-    "eval_setup_recovery_process_death",
-    "eval_setup_recovery_wave_report_quality",
-    "eval_setup_recovery_packet_sizing",
     "WaveReportQualityEval",
-    "eval_setup_recovery_checkpoint_handoff",
-    "eval_setup_recovery_multi_day_resume",
-    "eval_setup_recovery_multi_harness",
-    "eval_setup_recovery_pack_exclusivity",
-    "eval_setup_recovery_quarry_dirty",
-    "eval_setup_recovery_skip_explore",
-    "eval_setup_recovery_slogan_evidence",
-    "eval_setup_recovery_stale_field",
     "eval_setup_recovery_packed_age",
-    "eval_setup_recovery_orphan_packed",
-    "eval_setup_recovery_closed_field_archive",
-    "eval_setup_recovery_doctor_advisory",
     "eval_setup_recovery_doctor_one_pass",
     "eval_setup_recovery_doctor_closed_historical",
     "eval_setup_recovery_plan_doc_sync",
     "eval_setup_recovery_plan_first_coverage",
-    "eval_setup_recovery_drive_after_integrate",
     "DriveAfterIntegrateEval",
-    "eval_setup_recovery_observation_pack",
     "ObservationPackEval",
     "PlanDocSyncEval",
     "PlanCoverageEval",
     "PlanIngressEval",
-    "eval_setup_recovery_plan_ingress_promote",
-    "eval_setup_recovery_plan_ingress_fidelity",
-    "eval_setup_recovery_plan_ingress_folder",
-    "eval_setup_recovery_plan_ingress_chat",
-    "eval_setup_recovery_verify_build",
     "eval_write_done_residual",
     "format_agents_note",
     "main",
@@ -1324,7 +1270,18 @@ def build_parser() -> argparse.ArgumentParser:
     _register_wave_reduction_subparsers(sub)
     _register_spec_subparsers(sub)
 
+    _forbid_abbrev(p)
     return p
+
+
+def _forbid_abbrev(parser: argparse.ArgumentParser) -> None:
+    """No prefix matching anywhere: `--constraint` must not silently become
+    `--constraints-add`. A flag is spelled in full or argparse refuses it."""
+    parser.allow_abbrev = False
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for child in action.choices.values():
+                _forbid_abbrev(child)
 
 
 ERROR_MESSAGE_MAX_CHARS = 400

@@ -644,6 +644,14 @@ class ValidateSkill(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
 
+class DeadDefsGate(unittest.TestCase):
+    """The dead-def scan proves its own fixtures. Not a gate on the tree yet."""
+    def test_self_test_passes(self) -> None:
+        proc = run(ROOT, sys.executable, str(ROOT / "scripts" / "check_dead_defs.py"), "--self-test")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("OK self-test", proc.stdout)
+
+
 def _load_packaging_bump() -> object:
     spec = importlib.util.spec_from_file_location(
         "of_check_packaging_bump",
