@@ -39,14 +39,14 @@ of resume         # parent epic
 
 `bind_active_field` picks one home. Order:
 
-1. Explicit `--field <id>` or `OF_FIELD` (writes ACTIVE)
+1. Explicit `--field <id>` or `OF_FIELD` (binds this command only; does not write ACTIVE)
 2. Unique origin session match (`ORDER.origin.session_id` == `OF_SESSION_ID`)
 3. `.orderfield/ACTIVE` if that id still has a home
 4. Unique nested home — a leftover top-level ORDER stub is ignored once `fields/<id>/` exists
 5. Unique open home
 6. Else: roster, `PICK --field | of new`, exit 2 (`resume` / `status` / `pulse`). `learn` returns None when no open home remains so `--list` can read the protocol store.
 
-`of new`, `of init`, and `--field` / `OF_FIELD` update ACTIVE. The pointer is tree-level (`.orderfield/ACTIVE`), not a field-home WAL file.
+ACTIVE is written only by `of init`, `of new`, `of crown` (the winner; archived contest candidates are released), `of fields --use <id>` (leader only), `of close` (returns ACTIVE to the parent, or releases the closed field), and field archive / `of gc` drops (release). Read verbs, `--field`, `OF_FIELD`, and children (`OF_CHILD`) never write it. The pointer is tree-level (`.orderfield/ACTIVE`), not a field-home WAL file. With 2+ open fields, `OF_FIELD_STRICT=1` makes every mutating verb require `--field` / `OF_FIELD` / a session match (ACTIVE is a read default, not consent to write); in a multi-field tree each mutation prints `field=<id> bound_by=<how>` (JSON: `bind` event).
 
 If resume prints `auto_continue no` and **foreign field**, do not execute that field's `next`. That line appears only when several open fields exist and this `OF_SESSION_ID` does not match the bound field's `ORDER.origin.session_id`. A unique open field auto-continues; origin is provenance, not resume authority. Attach with `--field` or open a sibling when it is actually foreign.
 

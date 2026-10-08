@@ -5,19 +5,19 @@ The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of hando
 Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.8.34</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.9.0</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.8.34-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.9.0-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.8.34**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.9.0**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.8.34 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.9.0 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
@@ -47,14 +47,14 @@ Stay on this session.
 
 **InitAskSkip Small** (1–2 exclusive slices; bump / obvious; owners known): skip catalog, cheap vs frontier, mix, and evaluator. Stay session. `of detect` present or HOLD. Contrast → `of close --checklist`. Never silent mix. No silent reviewers.
 
-If `.orderfield/ORDER.json` already exists, `of resume` — do not re-init.
+If `.orderfield/` already exists (nested fields too), `of resume` — do not re-init.
 
 ## It's working if
 
 - The brief is still on disk after a compacted chat, a token cut, or a model switch.
 - A mid-run error becomes an amend, a patch, or a residual, and the next packet already carries it.
 - Close is proof: `of close --checklist` (contrast + residual empty), then `of close` writes `spec_closed`, `done_when_closed`, and `CLOSE.json` together. Flying (residual MISSING) is not closed. Tests passing is not the close. Production checklist language is those verbs (`checklist → of contrast` / `of close` / residual). Not a second checklist. RFC: [docs/close-is-proof.md](docs/close-is-proof.md).
-- A child residual cannot replace the mission, the phase, or the constraint list. `constraints+` and `done_when+` append only when the leader runs `integrate --apply`.
+- A child residual cannot replace the mission, the phase, or the constraint list, and cannot append to them either: a residual `constraints+` / `done_when+` is a field residual (`escalate_up`, spawn blocked) that only the leader's `of patch` applies.
 - Two writers on one mission have exclusive owners (requirement or path).
 
 Documented first close (CI extracts the block): [First close](#first-close). One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
@@ -86,7 +86,7 @@ The plan absorbs three kinds of change and keeps its shape:
 
 - **You intervene.** `of spec --amend` dates the new ask into SPEC.md; the original stays. `of patch` rewrites constraints or done-when. The next packet already carries the new field.
 - **A child reports the field is wrong.** `status=threshold` plus evidence stops spawn in that wave. The leader patches ORDER. The child does not widen the mission on its own.
-- **A child finds something the plan missed.** `integrate --apply` takes `constraints+`, `done_when+`, notes. `of next-wave` is born from the residual, not from a fresh brief.
+- **A child finds something the plan missed.** Its `constraints+` / `done_when+` escalate (spawn blocked); child notes land in `waves/<n>/integrations/observations.json`, not ORDER. The leader reads them, runs `of patch`, and `of next-wave` is born from the residual, not from a fresh brief.
 
 Children propose. Only the leader writes mission. Amendments are dated and auditable.
 
@@ -96,7 +96,7 @@ Two unrelated missions in the same working tree are sibling fields. `of new` ope
 
 ## Install
 
-The glance above is the trusted pin (`ORDERFIELD_REF=v0.8.33` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.9.0` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
@@ -115,7 +115,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF=v0.8.33 bash install.sh --global --from-release --generic
+ORDERFIELD_REF=v0.9.0 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
@@ -236,7 +236,9 @@ Project-local ORDER state (`.orderfield/` in a working repo) is left alone — u
 
 Named adapters and generic mode transport the same disk protocol. The Haken “slow field constrains the fast” picture is an analogy, not a science claim — slaving-by-contract through `of`, not a jail. See [references/principles.md](references/principles.md).
 
-The kernel enforces public JSON schemas, atomic artifact writes, a cross-process lock for CLI field mutations, pack caps, canonical packet identity/paths/revisions, residual binding, guarded transitions, idempotent integration replay, spawn blocking, and the closed regime menu when work goes through `of`. Roles, product-workspace ownership, same-harness choice, truthful metrics, and direct writes outside the CLI remain protocol. Detect/doctor PATH is inventory, not credentials or session authority. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper — a worktree/process bound is an honesty surface, not a security guarantee or a jail.
+**Enforced when work goes through `of`:** public JSON schemas, atomic writes, a lock for CLI field mutations, pack caps, packet identity, residual binding, guarded transitions, idempotent integration replay, spawn blocking, the closed regime menu — and since 0.9.0 a causal WAL (no mtime ordering; clone/copy safe; fails closed as `wal-broken`), a closed child lane (residual `constraints+` / `done_when+` escalate, never land), a collect gate (`ScopeWrite`, receipts, pins, one writer per packet), and `CLOSE.json` bound by sha256.
+
+**Cooperative, not prevented:** roles, same-harness choice, truthful metrics, and writes outside the CLI remain protocol. A same-OS-user process can hand-edit `.orderfield/`; the WAL makes it visible (`LIVE!=CURRENT`, quarantine, refusal), but a correctly chained forged generation is not detected (leader key deferred: [roadmap](docs/roadmap.md)). `refuse_child_forge` covers the spawn ancestry, not a handoff child or unrelated process: a guard, not auth. Threat model: [external-brief](docs/external-brief.md#threat-model). Detect/doctor PATH is inventory, not credentials or session authority. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper — a worktree/process bound is an honesty surface, not a security guarantee or a jail.
 
 Token budgets, `local_budget_pct`, inherited depth, and `scale_up` / `scale_across` are **not implemented** (schema leftovers; `--tokens` dies). Only `budget.seconds` is enforced (the spawned-process wall-clock). `of status` may propose a model-tier ask from residual quality × optional usage (`EfficiencySignal`); it does not switch a model. `of doctor` prints `AdapterBalance` as **unknown** unless a published vendor payload is already in hand — never invented spend.
 
@@ -291,7 +293,7 @@ Same category as [planning-with-files](https://github.com/OthmanAdi/planning-wit
 | Punch | Context dies; the plan does not | Anyone can persist a plan; only the leader may change it |
 | Surface | `task_plan.md` / `findings.md` / `progress.md` + hooks | `.orderfield/` ORDER + SPEC; packets; residuals |
 | Who may change the plan | Agent + hooks (optional attest) | Leader / `of patch` |
-| Enforcement | Convention + Stop hook | Schema + WAL + lock + `refuse_child_forge` through `of` |
+| Enforcement | Convention + Stop hook | Schema + causal WAL + lock + collect gate through `of`; `refuse_child_forge` is a cooperative guard, not a sandbox |
 | Close | Checkboxes / Stop gate | Contrast + empty residual + `CLOSE.json` |
 | Harness | 60+ via Agent Skills + hooks | Native adapters + generic (not convention alone) |
 

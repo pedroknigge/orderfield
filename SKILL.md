@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.8.34. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.9.0. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.8.34"
+  version: "0.9.0"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -13,7 +13,7 @@ metadata:
 
 You are the leader. Do not implement the slice. Disk is the session.
 
-`/of` is this skill. Resume. Pack. Residual. Contrast. Close. Origin is a pointer, not the spawn pin.
+`/of` is this skill. Origin is a pointer, not the spawn pin.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack.
 
@@ -21,13 +21,14 @@ ORDER, packets, residuals, and regime live on disk. Use when work goes through `
 
 Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
-Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding, closed regime menu. Role obedience, ownership, same-harness, writes outside `of` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
+Kernel: public JSON schemas, causal WAL, field lock for `MUTATING_COMMANDS`, pack caps, residual binding + collect gate, closed child lane, closed regime menu. Role obedience, same-harness, same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
 ## What to type next
 
 | Disk says | You type |
 |---|---|
-| `.orderfield/ORDER.json` exists | `of resume` — then the printed `next`, same turn. Clone/checkout + installed skill: operator risk, not an escape |
+| `.orderfield/` exists | `of resume` — then the printed `next`, same turn (`--json`: run `targets[].argv`). Clone/checkout + installed skill: operator risk, not an escape |
+| next `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` | re-run child, same packet / `of patch --from-current` / re-prove. `wal-broken`: check `wal/orphans/`, `OF_WAL_ADOPT_LIVE=1` |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
 | owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
@@ -39,7 +40,7 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
 | mid-epic, next harness or human | `of handoff` / `--json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
-| spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
+| spawn / pulse `done_without_residual` | not a healthy `ok` / not ALIVE. Salvage; `of collect`. `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn --reason`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. doctor/status `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Host Write `denied_actions` ≠ `escalate_up` |
 | `of collect` prints `MISSING` | pending/unavailable. Quote adapter / trust / outcome and actual `denied_actions`. Conservative “permissions may be involved” is a possibility, not proof; conservative children may still write scratch |
 | agy residual schema / Claude `--json-schema` | `of spawn --adapter agy` `--json-schema` → `residual.codex.schema.json` (`usage` `[object,null]`). Codex-null omit. Invalid extract names `$.path`. Claude omit: inline-only (drops stream-json PULSE). Qwen omit |
 | adapter resume / continue | `of spawn` emits `--resume ID` only when `residual.session_id` is already set (claude/cursor). Cold residual (missing / blank id) is a fresh spawn. Do not invent. Never `--continue`. Not `ORDER.origin.session_id`. |
@@ -67,9 +68,9 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | VERSION/tag | proven invariant; 10-tags **Proof:** check_packaging_bump.py |
 | multi-wave ready to close | `of close --checklist` — contrast RESOLVED + residual empty; then `of close`. Flying (residual MISSING) is not closed |
 | about to claim shipped / done / closed | `of contrast` then `of close --checklist` same turn — quote the printed `speak` line (`do not claim shipped unless contrast RESOLVED and residual empty`) plus `contrast RESOLVED` + `residual empty`. If either proof row fails or that `speak` line is not quoted, do not claim shipped. Mechanical, not your judgment. Unittest/CI green is not Ready. Pair with quote-PULSE |
-| what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; wipes scratch. recovery/post-close-terminal |
-| escalate_up / field is wrong | ≠ stop. Printed next: `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
-| several unmatched open fields | `--field` (writes `.orderfield/ACTIVE`), or `of new` |
+| what closed means | [docs/close-is-proof.md](docs/close-is-proof.md) — successful close not ACTIVE / not ALIVE; spawn_blocked; `CLOSE.json` binds hashes; `--cite` a file; cited evidence kept, wipes scratch. recovery/post-close-terminal |
+| escalate_up / field is wrong | ≠ stop. Child `constraints+` never lands: printed next `of patch --<flag>` (rev must exceed N) then `of next-wave`. Flying spawned: HOLD / collect then patch; no mid-flight patch |
+| several unmatched open fields | `--field <id>`; `of fields --use <id>` moves `.orderfield/ACTIVE`; or `of new` |
 | several siblings, need flying packs | `of fields` / `--json` — open packs across homes |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — walk the verbs; do not invent a supervisor |
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
@@ -77,7 +78,6 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
 | human asks install / verify `of` | `bash docs/demo/mortal-install.sh --global` (or `--root PATH`); `of doctor` ok. SHA-256 pin: README / PUBLISH. Dests include orca/qwen when present; skill surface only (not the git tree). Unpinned npx is not trusted. Not pip. Not a daemon |
 | stderr/doctor says newer `of` | ask the user; on yes: `ORDERFIELD_VERSION=… bash install.sh --global --from-release` (release tar.gz + SHA256SUMS). once a day. Do not upgrade mid-ORDER without consent |
-| multi-harness residual / deep skill dest lost `residual.codex` | Claude/Codex/Cursor share one residual; Codex argv still names the schema |
 | audit OVER / fat scratch | `of gc --audit` then shrink **before** `of close`. WARN, not FAIL, not a close gate |
 | `of doctor` prints FAIL | leftover root ORDER.json SKEW needs `of migrate` (FAIL). Sibling fields without CLOSE are hygiene (WARN). skill SKEW and closed-field historical packs are informational (not FAIL). Do not rewrite a closed audit trail. |
 | incoming plan / cited `docs/plans/…` | classify folder\|chat\|prompt (`plan_ingress`). Materialize+fidelity **before pack**. folder: cite the path only. chat: capture or speak next. prompt: promote `--source`/ingest.md **verbatim**, pin `plan_source sha=`, discard ingest. Not `@folder` / chat paste. `--owns-requirement`/`--owns-path`. high effort on ORDER only; children medium (do not re-architect). `plan_fidelity` HOLD pack. doctor `plan_cover` orphan; `plan_cover fail-closed` HOLDs close. Green collect → write-back (checkbox / Status / Shipped). Fail-closed without OwnedWrite. HITL if plan outside root or uncited. `docs_sync=done` only after plan bytes change or skip. **Mode A default** when owns_path else **Mode B** dump+ask. Residual project finding → dump. `PlanDocSync` WARN. Not a close gate. |
@@ -90,10 +90,9 @@ Kernel: public JSON schemas, WAL, field lock for `MUTATING_COMMANDS`, pack caps,
 
 ## When to use
 
-- User invokes Orderfield, `/orderfield`, `/of`, Haken slaving, threshold delegation, or an order field.
-- A kernel, product, or multi-slice build that will not fit one context.
-- Multiple slices or writers need ownership, or multiple harnesses must coordinate.
-- `.orderfield/ORDER.json` already exists.
+- `/orderfield`, `/of`, Haken slaving, threshold delegation, or an order field.
+- Multi-slice work that will not fit one context, or writers/harnesses that need owners.
+- `.orderfield/` already exists.
 
 A harness name alone is not a trigger. Skill beats child. Typical problems: [README.md](README.md#typical-problems--what-orderfield-does).
 
@@ -103,7 +102,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 
 ONLY Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Disk (residual → integrate). Unsure → draft + HITL; default not posting.
 
-**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create. Both sides are the contract. Confirm creates; refuse / edit-later / silence does not. `of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. TTY yes or `HITL.md`+`--confirm`. Bare `--confirm` off-TTY/cloud refuses. A child **never posts**. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`). Child: [CHILD.md](CHILD.md).
+**Never create a GitHub issue without an explicit human confirmation in the same turn.** Confirm → create (`of issue --confirm` or TTY yes). `--dry-run` is **not HITL**. Refuse / edit-later / silence → do not create. Both sides are the contract. Confirm creates; refuse / edit-later / silence does not. `of issue` → `--repo pedroknigge/orderfield`. logged-in account (`gh auth`). You ask HITL, then `of issue --confirm`. Bare `--confirm` off-TTY/cloud refuses. A child **never posts**. Leader draft: `.orderfield/work/scratch/leader/` (`ISSUE.md` / `ISSUE-*.md`). `--body-file` names `.orderfield/work/scratch/<child_id>/`. Search open issues first (`of issue --search [QUERY]`). Child: [CHILD.md](CHILD.md).
 
 ## Mandatory leader process (core)
 
@@ -117,6 +116,4 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Steer policy.** In-flight text is **steered**. Deictic `dale` / `do it` / `as discussed` is **execute `next`**.
 
-**Load by verb** for steps 0–7, Forbidden, Roles, paths, Orca teardown.
-
-Stay-on-the-run, `OF_TRUST`, learn, siblings, close-is-proof: appendix.
+**Load by verb**: steps 0–7, Forbidden, Roles, Orca teardown, stay-on-the-run.

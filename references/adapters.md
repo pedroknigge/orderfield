@@ -52,7 +52,7 @@ python3 scripts/of.py detect
 Default order if you omit `--adapter`:
 `claude, codex, cursor, opencode, orca, grok, agy, qwen, generic`.
 
-Override: `OF_ADAPTER=codex` or `--adapter`.
+Override: `--adapter` > `ORDER.harness` (`of patch --harness`) > `OF_ADAPTER=codex` > detection. A pinned `ORDER.harness` outranks `OF_ADAPTER`; spawn warns (`adapter_pin`) on the conflict.
 
 Custom command: `OF_AGENT='my-binary --flags'` plus `--adapter generic`.
 `OF_AGENT` is a shell-quoted argv (`shlex.split`). Quote paths with spaces
@@ -449,7 +449,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 Default: every child in the same repo sees `.orderfield/` (shared field, scratch split by child_id).
 
-`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not enforce it, lock files, or create worktrees. A worktree/process bound is an honesty surface, not a security guarantee or a jail. Two slaves writing the same product path is a **cut error**: exclusive files belong in cut scratch plus ORDER constraints, not in `of.py`. Do not add `of claim`.
+`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not lock files or create worktrees; collect's `ScopeWrite` checks product writes against `owns_paths`. A worktree/process bound is an honesty surface, not a security guarantee or a jail. Two slaves writing the same product path is a **cut error**: exclusive files belong in `--owns-path`. Do not add `of claim` (`of handoff` writes the only claim).
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree. Disjoint `--owns-path` does not isolate HEAD or the index: two implementers need two `of worktree add` records or must run in series (`shared_worktree`).
 

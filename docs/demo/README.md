@@ -4,7 +4,7 @@ Need `of` first? One sitting: [mortal-install.md](mortal-install.md) (`bash docs
 
 The lead session dies. Fleets recover from logs and teammate messages. Nobody owns who may change the plan.
 
-Disk is the session. Children cannot rewrite the mission. Threshold does not patch ORDER.
+Disk is the session. A child residual cannot rewrite the mission (a residual `constraints+` escalates; it never lands), and a spawned child (and its descendants, even after unsetting `OF_CHILD`) is refused leader verbs. A handoff child or an unrelated same-user process can still run leader verbs; naive hand edits of live files are detected (`LIVE!=CURRENT` → `RESTORE`), but a correctly chained forged WAL generation is not detected without the deferred leader key (W9). Threshold does not patch ORDER.
 
 `of resume` → residual → `escalate_up` → patch → next-wave. Do not open the child's log.
 
