@@ -434,7 +434,7 @@ class ActiveField:
         path = ActiveField.path(root)
         try:
             text = path.read_text(encoding="utf-8").strip()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             return None
         if not FIELD_ID_RE.match(text):
             return None
@@ -2057,7 +2057,7 @@ def dump_bytes(
 def _read_json_object(path: Path) -> dict[str, Any] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError, RecursionError):  # ValueError: JSON or UTF-8
         return None
     return data if isinstance(data, dict) else None
 
@@ -2199,7 +2199,9 @@ def field_lock(
             # inherit. migrate plans from live bytes; CURRENT overwrite
             # would hide them. spec --revise-file must see the live brief;
             # pack/close still refuse a silent SPEC rewrite before inherit.
-            if command in MUTATING_COMMANDS and command != "migrate":
+            # learn: a session.json-only writer; its generation must not
+            # inherit a live tamper, so it runs the writer prelude too.
+            if (command in MUTATING_COMMANDS and command != "migrate") or command == "learn":
                 if command != "spec":
                     FieldWal.refuse_live_spec_tamper(root)
                     FieldWal.refuse_live_order_tamper(root)
@@ -5291,13 +5293,23 @@ def next_legal_action(
 ) -> str:
     """Wave-level action from disk facts. ``flying`` = packets not landed
     (an INVALID residual is not landed: ``children_invalid`` → repair)."""
+    # Every "next-wave" below is guarded like regime.wave_transition_errors:
+    # a report that no longer covers the wave is refused there, so next names
+    # the recompute instead (else next-wave loops on its own refusal).
+    wave_done = "integrate --recompute" if integrated and not covering else "next-wave"
     if spec_closed:
         return "closed"
     if state.get("spawn_blocked"):
         if spawned_flying:
             return "hold"
         if EscalateUnblock.already_bumped(state, order_rev):
-            return "next-wave"
+            if flying:
+                # Spawn stays forbidden until next-wave, and next-wave waits
+                # for these: only unpack clears a packed/invalid leftover.
+                from of.pack import PacketRevStale
+
+                return PacketRevStale.ACTION
+            return wave_done
         return EscalateUnblock.ACTION
     if packets and stale:
         # Identity-stale + still flying: spawn/handoff refuse (PacketRevStale).
@@ -5306,7 +5318,7 @@ def next_legal_action(
             from of.pack import PacketRevStale
 
             return PacketRevStale.ACTION
-        return "next-wave"
+        return wave_done
     if flying:
         if children_invalid:
             return "repair"
@@ -5317,9 +5329,7 @@ def next_legal_action(
         return "hold"
     if packets:
         if integrated:
-            if not covering:
-                return "integrate --recompute"
-            return "next-wave"
+            return wave_done
         if collected:
             return CollectReady.ACTION
         return "collect"

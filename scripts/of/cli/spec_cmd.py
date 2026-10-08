@@ -1634,7 +1634,13 @@ class CloseProof:
         problems: list[str] = []
         try:
             order = load_order(root)
-            spec_hash = sha256_text(read_spec_text(root))
+            # No SPEC.md (init without --source) binds the empty hash; a
+            # SPEC deleted after a close that bound one still mismatches.
+            spec_hash = (
+                sha256_text(read_spec_text(root))
+                if field_read_bytes(spec_path(root)) is not None
+                else ""
+            )
             reqs = load_requirements(root).get("requirements") or []
         except SystemExit:
             return ["ORDER/SPEC/REQUIREMENTS unreadable"]

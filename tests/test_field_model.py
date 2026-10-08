@@ -21,7 +21,7 @@ unittest tests.test_field_model. A failure prints the seed and the op trace.
 Kills are OF_WAL_CRASH points, so a seed replays exactly; OF_FUZZ_SIGKILL=1
 adds SIGKILL at a random real-time delay (machine-speed dependent, so such a
 walk can diverge on replay; the trace is the reproduction). Bugs found here get a
-minimal deterministic test in KnownOpen.
+minimal deterministic test in FuzzRegressions.
 """
 from __future__ import annotations
 
@@ -57,12 +57,6 @@ TZS = ("UTC", "Asia/Kathmandu", "America/St_Johns", "Pacific/Kiritimati")
 LOCALES = ("C", "en_US.UTF-8", "de_DE.UTF-8", "tr_TR.UTF-8")
 WAL_POINTS = ("after-manifest", "after-current", "after-first-live")
 TRACEBACK = "Traceback (most recent call last)"
-# Open kernel bug (see KnownOpen): while True the walk does not truncate a
-# residual of an already-integrated wave. Flip to False with the fix.
-INTEGRATED_TRUNCATION_BRICKS = True
-# Open kernel bug (see KnownOpen): while True a refused `next-wave` that names
-# --recompute is not counted as an (e) loop. Flip to False with the fix.
-NEXT_WAVE_IGNORES_DRIFT = True
 DAY = 86400.0
 REALTIME_KILL = os.environ.get("OF_FUZZ_SIGKILL") == "1"
 
@@ -179,8 +173,6 @@ class Walk:
             return
         res = json.loads(tpl.read_text(encoding="utf-8"))
         kind = kind or self.rng.choice(("valid", "valid", "valid", "invalid", "truncated", "forged"))
-        if kind == "truncated" and INTEGRATED_TRUNCATION_BRICKS and (pkt_path.parent.parent / "report.json").is_file():
-            kind = "invalid"  # KnownOpen.test_truncated_residual_in_integrated_wave carries this one
         owns = list(pkt.get("owns_paths") or [])
         for rel in owns:
             dest = self.root / rel
@@ -300,11 +292,6 @@ class Walk:
         r = self.of(*argv[1:])
         self.note(f"follow {plan.get('action')}: {' '.join(argv)} -> {r.returncode}")
         self.followed = plan.get("action")
-        if NEXT_WAVE_IGNORES_DRIFT and argv[1] == "next-wave" and "--recompute" in r.stderr:
-            # KnownOpen.test_next_wave_after_escalate_ignores_report_drift: do
-            # what the refusal says so the walk keeps going.
-            self.followed = None
-            self.note(f"known loop; integrate --recompute -> {self.of('integrate', '--recompute').returncode}")
 
     def op_kill(self) -> None:
         # Real-time SIGKILL is opt-in: where it lands depends on machine speed,
@@ -336,7 +323,8 @@ class Walk:
         if expect is not None:
             # A leader patch killed after its WAL MANIFEST may land now or be
             # rolled forward by the next mutating command: both are the leader's.
-            self.allowed.append(expect(before))
+            # An earlier pending one rolls forward under this one first.
+            self.allowed += [expect(t) for t in (before, *self.allowed)]
 
     def op_copy(self) -> None:
         """Clone without metadata, shuffle every mtime, continue on the clone."""
@@ -482,8 +470,8 @@ class FieldModelFuzz(unittest.TestCase):
                     self.fail(f"\nOF_FUZZ_SEED={seed} reproduces:\n{failure}")
 
 
-class KnownOpen(unittest.TestCase):
-    """Minimal traces of kernel bugs the fuzzer found. Remove the mark with the fix."""
+class FuzzRegressions(unittest.TestCase):
+    """Minimal traces of kernel bugs the fuzzer found, kept as regressions."""
 
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="of-known-"))
@@ -517,31 +505,27 @@ class KnownOpen(unittest.TestCase):
     def next_action(self) -> str:
         return self.plan()["action"]
 
-    @unittest.expectedFailure
     def test_truncated_residual_in_integrated_wave(self) -> None:
         """Fuzz seeds 11/105/118/121. pack c1; c1 reports; collect; integrate
         --apply; c1 rewrites its residual and dies mid-write (truncated JSON).
-        Every read verb then exits 1 `of: invalid JSON in .../residuals/c1.json`:
-        NextPlan.compute -> IntegrationDigest.covers -> regime.py
-        integration_input_digest load_json()s (die) each residual. A torn
-        residual must not brick resume/status (before integrate it is REPAIR)."""
+        Every read verb exited 1 `of: invalid JSON in .../residuals/c1.json`
+        (regime.integration_input_digest load_json()ed under covers()). A
+        torn residual reads as REPAIR, as it does before integrate."""
         body = self.blocked("src/a.py unreadable")
         self.ok("collect")
         self.ok("integrate", "--apply")
         self.residual.write_bytes(body[: len(body) // 2])
-        self.next_action()
+        self.assertEqual(self.next_action(), "repair")
         self.ok("status")
+        self.ok("resume")
 
-    @unittest.expectedFailure
     def test_next_wave_after_escalate_ignores_report_drift(self) -> None:
         """Fuzz seeds 2000-2035 (most walks). c1 proposes constraints+;
         collect; integrate (escalate_up); c1 rewrites its residual; leader
-        `of patch --constraints-add` (rev bump). next = NEXT-WAVE wave_done,
-        but `of next-wave` refuses "current wave changed after its report was
-        integrated; of integrate --wave 1 --recompute", and next never
-        changes (livelock). field.py next_legal_action returns "next-wave"
-        for spawn_blocked+already_bumped and for a fully stale wave without
-        checking `covering`; regime.py wave_transition_errors does check it."""
+        `of patch --constraints-add` (rev bump). next said NEXT-WAVE while
+        `of next-wave` refused "current wave changed after its report was
+        integrated" (livelock): next_legal_action's spawn_blocked and
+        fully-stale branches skipped the `covering` check the mutator makes."""
         self.blocked("needs a rule", {"constraints+": ["child rule"]})
         self.ok("collect")
         self.ok("integrate")
@@ -555,14 +539,55 @@ class KnownOpen(unittest.TestCase):
         run_of(self.root, *argv[1:])
         self.assertNotEqual(next_key(self.plan()), next_key(before), f"following {argv} left next unchanged")
 
-    @unittest.expectedFailure
+    def follow_changes_next(self) -> None:
+        """Invariant (e): running the printed kernel verb changes next."""
+        before = self.plan()
+        argv = next((t["argv"] for t in before.get("targets") or [] if t.get("argv")), None)
+        self.assertTrue(argv and argv[0] == "of", f"next names no kernel verb: {next_key(before)}")
+        r = run_of(self.root, *argv[1:])
+        self.assertEqual(r.returncode, 0, f"next printed {argv}, which refuses:\n{r.stderr}")
+        self.assertNotEqual(next_key(self.plan()), next_key(before), f"following {argv} left next unchanged")
+
+    def test_packed_leftover_after_partial_escalate_is_not_next_wave(self) -> None:
+        """Fuzz seed 3. pack c1, c2; c1 proposes constraints+; integrate
+        --apply --partial (escalate_up, c2 skipped in flight, never spawned);
+        leader patch (rev bump). next said NEXT-WAVE (ChildState settles
+        nothing, but spawn is forbidden while blocked) and `of next-wave`
+        refused "children still in flight: c2". next now comes from the
+        mutator's own blockers: UNPACK --FORCE c2."""
+        self.ok("pack", "--slice", "read more", "--role", "explorer", "--child-id", "c2")
+        self.blocked("needs a rule", {"constraints+": ["child rule"]})
+        self.ok("integrate", "--apply", "--partial")
+        self.ok("patch", "--constraints-add", "leader rule")
+        self.assertEqual(self.next_action(), "unpack --force")
+        self.follow_changes_next()
+        self.follow_changes_next()
+
+    def test_stale_wave_with_torn_residual_after_escalate_unpacks(self) -> None:
+        """Fuzz seeds 18/43/44/51/55/59. c1 proposes constraints+; collect;
+        integrate (escalate_up); c1 rewrites its residual invalid; leader
+        patch (rev bump stales the wave). next said INTEGRATE --RECOMPUTE,
+        which refuses "stale packets in wave 1" while next-wave refuses the
+        drifted report: a loop. A stale packet that can never land is
+        unpacked first."""
+        self.blocked("needs a rule", {"constraints+": ["child rule"]})
+        self.ok("collect")
+        self.ok("integrate")
+        body = self.blocked("needs a rule, still", {"constraints+": ["child rule"]})
+        self.residual.write_bytes(body.replace(b'"blocked"', b'"bogus"', 1))
+        self.ok("patch", "--constraints-add", "leader rule")
+        self.assertEqual(self.next_action(), "unpack --force")
+        for _ in range(3):
+            if self.next_action() in ("pack", "patch then next-wave"):
+                break
+            self.follow_changes_next()
+
     def test_abandoned_close_without_spec_reads_closed(self) -> None:
         """Fuzz seed 4025. `of init` without --source (allowed, with a note)
         writes no SPEC.md; `of close --abandoned --reason R` stamps CLOSE.json
-        and spec_closed. resume then says CLOSE-UNPROVEN, field open,
-        auto_continue yes ("ORDER/SPEC/REQUIREMENTS unreadable"):
-        spec_cmd.py CloseProof.verify read_spec_text() dies on the missing
-        SPEC.md. The leader's own abandon must read as closed."""
+        and spec_closed. resume said CLOSE-UNPROVEN ("ORDER/SPEC/REQUIREMENTS
+        unreadable": CloseProof.verify died on the missing SPEC.md). The
+        leader's own abandon reads as closed."""
         self.ok("unpack", "--child-id", "c1")
         self.ok("close", "--abandoned", "--reason", "user dropped the mission")
         self.assertEqual(self.next_action(), "closed")

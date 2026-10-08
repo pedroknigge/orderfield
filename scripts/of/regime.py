@@ -15,7 +15,6 @@ from of.field import (
     field_is_file,
     field_read_text,
     field_rel,
-    load_json,
     load_order,
     load_state,
     load_wave_report,
@@ -28,7 +27,7 @@ from of.field import (
     wave_dir,
 )
 
-from of.wal import dump_json
+from of.wal import dump_json, field_read_bytes, try_load_json
 
 from of.spec import (
     load_requirements,
@@ -2824,7 +2823,14 @@ def integration_input_digest(
         residual_path = packet_residual_file(root, packet)
         residual: Any = None
         if residual_path is not None:
-            residual = IntegrationDigest.residual(load_json(residual_path))
+            data, err = try_load_json(residual_path)
+            if err:
+                # Read paths (resume/status) reach this through covers():
+                # a torn residual is a different input, not a crash. The
+                # verbs that consume residuals refuse it on their own.
+                raw = field_read_bytes(residual_path) or b""
+                data = {"unreadable": hashlib.sha256(raw).hexdigest()}
+            residual = IntegrationDigest.residual(data)
         children.append(
             {
                 "child_id": packet.get("child_id"),
@@ -3095,12 +3101,24 @@ def phase_deliver_errors(root: Path, order: dict[str, Any]) -> list[str]:
     return errors
 
 
-def wave_transition_errors(
+class WaveBlock:
+    """Why next-wave refuses, as codes: `next` maps them to its action, so
+    the read side and the mutator share one predicate and cannot loop."""
+
+    IN_FLIGHT = "in_flight"
+    NOT_INTEGRATED = "not_integrated"
+    DRIFT = "report_drift"
+    NO_BLOCKED_REV = "no_blocked_rev"
+    REV_NOT_BUMPED = "rev_not_bumped"
+
+
+def wave_transition_blockers(
     root: Path,
     order: dict[str, Any],
     state: dict[str, Any],
-) -> list[str]:
-    errors: list[str] = []
+) -> list[tuple[str, str]]:
+    """(WaveBlock code, message) per reason next-wave refuses; [] = legal."""
+    errors: list[tuple[str, str]] = []
     wave = int(state.get("wave") or 1)
     packets = packed_children(root, wave)
     report = current_wave_report(root, state)
@@ -3115,23 +3133,34 @@ def wave_transition_errors(
         flying = in_flight_children(root, wave)
         if flying:
             children = ", ".join(str(p.get("child_id") or "?") for p in flying)
-            errors.append(f"children still in flight: {children}")
+            errors.append((WaveBlock.IN_FLIGHT, f"children still in flight: {children}"))
         if report is None:
-            errors.append(f"current wave {wave} is not integrated")
+            errors.append((WaveBlock.NOT_INTEGRATED, f"current wave {wave} is not integrated"))
         elif not wave_report_covers_packets(root, state, report):
-            errors.append(IntegrationDigest.drift_error(wave))
+            errors.append((WaveBlock.DRIFT, IntegrationDigest.drift_error(wave)))
     if state.get("spawn_blocked"):
         blocked_rev = state.get("blocked_at_order_rev")
         if blocked_rev is None and report and report.get("regime") == "escalate_up":
             blocked_rev = report.get("order_rev")
         if blocked_rev is None:
-            errors.append("escalation has no recorded blocked_at_order_rev")
-        elif int(order.get("rev") or 0) <= int(blocked_rev):
             errors.append(
-                f"ORDER.rev must exceed blocked_at_order_rev {blocked_rev} "
-                "after escalate_up"
+                (WaveBlock.NO_BLOCKED_REV, "escalation has no recorded blocked_at_order_rev")
             )
+        elif int(order.get("rev") or 0) <= int(blocked_rev):
+            errors.append((
+                WaveBlock.REV_NOT_BUMPED,
+                f"ORDER.rev must exceed blocked_at_order_rev {blocked_rev} "
+                "after escalate_up",
+            ))
     return errors
+
+
+def wave_transition_errors(
+    root: Path,
+    order: dict[str, Any],
+    state: dict[str, Any],
+) -> list[str]:
+    return [msg for _code, msg in wave_transition_blockers(root, order, state)]
 
 
 def require_wave_transition(

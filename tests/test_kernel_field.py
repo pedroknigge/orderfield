@@ -93,6 +93,7 @@ def publish_committed(home: Path, rel: str, text: str) -> None:
     man.setdefault("files", {})[rel] = digest
     man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
     current.setdefault("files", {})[rel] = digest
+    current["manifest_sha256"] = hashlib.sha256(man_path.read_bytes()).hexdigest()
     current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
 
 

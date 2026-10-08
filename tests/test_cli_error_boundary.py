@@ -141,19 +141,22 @@ class NonUtf8SourceRegression(unittest.TestCase):
         assert_clean_error(self, as_json, json_mode=True)
         self.assertEqual((self.tmp / ".orderfield" / "SPEC.md").read_bytes(), before)
 
-    def test_corrupt_non_utf8_order_hits_the_boundary(self) -> None:
+    def test_corrupt_non_utf8_live_order_reads_as_restore(self) -> None:
+        # The read path is total: a torn live ORDER is drift from WAL CURRENT,
+        # reported as next=RESTORE, never a crash; the leader restores it.
         r = run_of(self.tmp, "init", "--mission", "m")
         self.assertEqual(r.returncode, 0, r.stderr)
-        (self.tmp / ".orderfield" / "ORDER.json").write_bytes(b"\xff{")
-        plain = run_of(self.tmp, "status")
-        assert_clean_error(self, plain, json_mode=False)
-        self.assertTrue(plain.stderr.startswith("of: error: UnicodeDecodeError: "), plain.stderr)
-        as_json = run_of(self.tmp, "status", env_extra={"OF_JSON": "1"})
-        assert_clean_error(self, as_json, json_mode=True)
-        self.assertIn('"kind": "UnicodeDecodeError"', as_json.stderr)
-        debug = run_of(self.tmp, "status", env_extra={"OF_DEBUG": "1"})
-        self.assertEqual(debug.returncode, 1)
-        self.assertIn("Traceback", debug.stderr)
+        order = self.tmp / ".orderfield" / "ORDER.json"
+        order.write_bytes(b"\xff{")
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertNotIn("Traceback", status.stderr)
+        resumed = run_of(self.tmp, "resume", "--json")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn('"restore"', resumed.stdout)
+        restored = run_of(self.tmp, "patch", "--from-current")
+        self.assertEqual(restored.returncode, 0, restored.stderr)
+        self.assertEqual(json.loads(order.read_text(encoding="utf-8"))["mission"], "m")
 
 
 if __name__ == "__main__":

@@ -454,6 +454,25 @@ def _generation_intact(gen_dir: Path, gid: str) -> dict[str, Any] | None:
     return man
 
 
+def _manifest_mismatch(root: Path | None, current: dict[str, Any]) -> bool:
+    """CURRENT names its head MANIFEST's bytes and they differ. A v0.8.34
+    CURRENT carries no manifest_sha256 (adoption adds it): not checked."""
+    want = current.get("manifest_sha256")
+    if not want:
+        return False
+    gid = str(current.get("generation") or "")
+    return _sha_file(wal_home(root) / gid / "MANIFEST.json") != str(want)
+
+
+def _head_manifest(root: Path | None, current: dict[str, Any]) -> dict[str, Any] | None:
+    """MANIFEST of CURRENT's generation when intact and the one CURRENT names."""
+    gid = str(current.get("generation") or "")
+    man = _generation_intact(wal_home(root) / gid, gid)
+    if man is None or _manifest_mismatch(root, current):
+        return None
+    return man
+
+
 def _load_wal_current(root: Path | None) -> dict[str, Any] | None:
     path = wal_current_path(root)
     if not path.is_file():
@@ -594,9 +613,7 @@ def wal_drift(root: Path) -> list[str]:
     current = _load_wal_current(root)
     if not current:
         return []
-    gid = str(current.get("generation") or "")
-    gen_dir = wal_home(root) / gid
-    man = _generation_intact(gen_dir, gid)
+    man = _head_manifest(root, current)
     if man is None:
         return []
     home = field_home(root)
@@ -682,6 +699,8 @@ def _reader_guard(root: Path) -> bool:
         problem = "wal/CURRENT.json is unreadable"
     elif _committed_generation(root) is None:
         problem = f"CURRENT generation {gid} or its MANIFEST is missing"
+    elif _manifest_mismatch(root, current):
+        problem = f"CURRENT generation {gid} MANIFEST is not the one CURRENT names"
     elif _generation_intact(wal_home(root) / gid, gid) is None:
         # Reads stay on the generation's own bytes (never live).
         _warn(
@@ -718,7 +737,7 @@ def _materialize_current_only(root: Path, *, overwrite: bool = False) -> None:
         return
     gid = str(current.get("generation") or "")
     gen_dir = wal_home(root) / gid
-    man = _generation_intact(gen_dir, gid)
+    man = _head_manifest(root, current)
     if man is None:
         return
     if not overwrite:
@@ -774,7 +793,7 @@ def restore_live(root: Path) -> list[str]:
     """
     current = _load_wal_current(root)
     gid = str((current or {}).get("generation") or "")
-    man = _generation_intact(wal_home(root) / gid, gid) if gid else None
+    man = _head_manifest(root, current) if current and gid else None
     if current is None or man is None:
         die(
             "no intact WAL CURRENT to restore from; the leader adopts live "
@@ -1084,7 +1103,7 @@ def recover_field_wal(root: Path) -> str | None:
         return None
     gid = str(current.get("generation") or "")
     gen_dir = home / gid
-    man = _generation_intact(gen_dir, gid)
+    man = _head_manifest(root, current)
     if man is None:
         where = ""
         if gen_dir.exists() and not gen_dir.is_symlink():
@@ -1093,7 +1112,8 @@ def recover_field_wal(root: Path) -> str | None:
                 where = f" (quarantined to wal/{WAL_ORPHANS}/{dest.name})"
         _refuse_broken_wal(
             root,
-            f"CURRENT generation {gid} is missing or does not hash to its MANIFEST{where}",
+            f"CURRENT generation {gid} is missing, does not hash to its MANIFEST "
+            f"or its MANIFEST is not the one CURRENT names{where}",
         )
         return gid
     if _seq(current) is None:

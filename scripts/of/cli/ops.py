@@ -6,6 +6,7 @@ status/resume/doctor owner. Public CLI and `import of` names unchanged.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -44,6 +45,7 @@ from of.field import (
     child_pulse_verdict,
     ChildState,
     refused_drift,
+    field_lock,
     CollectGate,
     CollectReady,
     DeadStartedOnly,
@@ -136,6 +138,7 @@ from of.pack import (
     PacketRevStale,
     canonical_packet_rel,
     canonical_residual_rel,
+    complete_stale_wave_recoverable,
     completed_children,
     in_flight_children,
     load_packet,
@@ -155,7 +158,11 @@ from of.pack import (
 from of.regime import (
     RUNTIME_OWNERSHIP,
     IntegrationDigest,
+    WaveBlock,
     PlanCoverage,
+    existing_integration_report,
+    partial_apply_recovery_allowed,
+    wave_transition_blockers,
     PlanDocSync,
     PlanIngress,
     closed_phases,
@@ -436,6 +443,19 @@ def print_learnings(
     return meta
 
 
+@contextlib.contextmanager
+def _learn_session(root: Path, has_order: bool = True) -> Any:
+    """session.json is a WAL snapshot file: write it in a locked generation
+    (a bare live write reads as LIVE!=CURRENT on the next resume). The lock
+    wraps the store write too, so a refused writer prelude changes nothing."""
+    if not has_order:
+        yield
+        return
+    with field_lock(root, "learn"):
+        yield
+        snapshot_session(root, "learn")
+
+
 def cmd_learn(args: argparse.Namespace) -> None:
     root = find_root()
     has_order = order_path(root).is_file()
@@ -458,8 +478,8 @@ def cmd_learn(args: argparse.Namespace) -> None:
         return
     forget = str(getattr(args, "forget", None) or "").strip()
     if forget:
-        gone = forget_learning(root if has_order else None, forget)
-        snapshot_session(root, "learn") if has_order else None
+        with _learn_session(root, has_order):
+            gone = forget_learning(root if has_order else None, forget)
         emit_event("learn", action="forget", id=str(gone.get("id")), ok=True)
         print(f"forgot      {gone.get('id')}  {gone.get('text')}")
         return
@@ -468,8 +488,8 @@ def cmd_learn(args: argparse.Namespace) -> None:
         refuse_child_forge("--promote")
         if not order:
             die("of learn --promote needs an ORDER (of init first)")
-        item = promote_learning(root, promote, order)
-        snapshot_session(root, "learn")
+        with _learn_session(root):
+            item = promote_learning(root, promote, order)
         if item.pop("_already_present", False):
             emit_event("learn", action="promote", kind="protocol", id=str(item["id"]), already=True, ok=True)
             print(f"{'protocol':11} {item['id']}  {item['text']}  (already in protocol store; nothing promoted)")
@@ -493,9 +513,8 @@ def cmd_learn(args: argparse.Namespace) -> None:
             "of learn TEXT is field-local and needs an ORDER (of init first); "
             "of learn --protocol TEXT for cross-project memory"
         )
-    item = save_learning(root, text, kind=kind, order=order)
-    if has_order:
-        snapshot_session(root, "learn")
+    with _learn_session(root, has_order):
+        item = save_learning(root, text, kind=kind, order=order)
     emit_event("learn", action="save", kind=kind, id=str(item["id"]), ok=True)
     print(f"{kind:11} {item['id']}  {item['text']}")
 
@@ -2288,6 +2307,44 @@ class NextPlan:
             return ["of", *fa, "spawn", "--packet", pkt, *(force if row["spawn"] == "started" else [])]
         return []
 
+    # The refusal `of next-wave` would print, mapped to the verb that clears it.
+    WAVE_BLOCK_ACTION = (
+        (WaveBlock.IN_FLIGHT, PacketRevStale.ACTION),
+        (WaveBlock.NOT_INTEGRATED, CollectReady.ACTION),
+        (WaveBlock.DRIFT, "integrate --recompute"),
+        (WaveBlock.REV_NOT_BUMPED, EscalateUnblock.ACTION),
+        (WaveBlock.NO_BLOCKED_REV, EscalateUnblock.ACTION),
+    )
+
+    @staticmethod
+    def wave_gate(root: Path, order: dict[str, Any], state: dict[str, Any]) -> str:
+        """NEXT-WAVE only when next-wave's own predicate passes (else it loops).
+
+        In flight here means packed leftovers ChildState settles but the
+        mutator still counts (e.g. never spawned before escalate_up blocked
+        spawn): unpack --force is the only verb that clears them.
+        """
+        codes = {code for code, _msg in wave_transition_blockers(root, order, state)}
+        for code, action in NextPlan.WAVE_BLOCK_ACTION:
+            if code in codes:
+                if code == WaveBlock.DRIFT and NextPlan.recompute_refused(root, order, state):
+                    return PacketRevStale.ACTION
+                return action
+        return "next-wave"
+
+    @staticmethod
+    def recompute_refused(root: Path, order: dict[str, Any], state: dict[str, Any]) -> bool:
+        """`of integrate --recompute` would die on stale packets (same test as
+        cmd_integrate): they can never land, so unpack is the way out."""
+        wave = int(state.get("wave") or 1)
+        packets = packed_children(root, wave)
+        if not stale_packet_ids(packets, order):
+            return False
+        return not (
+            partial_apply_recovery_allowed(packets, order, existing_integration_report(root, wave))
+            or complete_stale_wave_recoverable(root, packets, order)
+        )
+
     @staticmethod
     def wave_argv(action: str, wave: int, fa: list[str]) -> list[str]:
         words = {
@@ -2375,6 +2432,8 @@ class NextPlan:
                 order_rev=int(order.get("rev") or 0),
                 spawned_flying=EscalateUnblock.launched_flying(root, flying),
             )
+            if action == "next-wave":
+                action = NextPlan.wave_gate(root, order, state)
             action = DriveAfterIntegrate.gate(action, root, order, state, wave)
         reason = NextPlan.WAVE_REASON.get(action, action.replace(" ", "_"))
         lines: list[str] | None = None
@@ -2424,10 +2483,12 @@ class NextPlan:
         if lines is None:
             lines = resume_next_lines(action, root=root, flying=flying, state=state)
         if action == PacketRevStale.ACTION:
+            # No waiting row: the stale packets that keep recompute refused.
+            stale = set(stale_packet_ids(packets, order))
             targets = [
                 {"child_id": r["child_id"], "packet": r["packet"],
                  "argv": ["of", *fa, "unpack", "--force", "--child-id", r["child_id"]]}
-                for r in waiting
+                for r in (waiting or [r for r in rows if r["child_id"] in stale])
             ]
         elif waiting and action in ("spawn", "handoff", "hold", NextPlan.REPAIR):
             targets = [
