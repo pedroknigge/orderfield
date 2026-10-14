@@ -151,21 +151,119 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
     # 0 / 4A: Pre-0.7.7 closed-field reconciliation on real repo & fixture
     # ------------------------------------------------------------------
     def test_0_real_repo_closed_field_reconciled_across_all_commands(self) -> None:
-        """Hallazgo 1 & 2: repo's own .orderfield/fields/ord_0ba66127 is closed
-        consistently across resume, doctor, and fields."""
-        res = json.loads(self.ok("resume", "--json", cwd=ROOT).stdout)
-        self.assertEqual(res["field"], "closed")
-        self.assertEqual(res["auto_continue"], "no")
-        self.assertEqual(res["action"], "closed")
-        self.assertEqual(res["reason_code"], "close_verified")
+        """Hallazgo 1 & 2: pre-0.7.7 closed field with historical order_rev pack
+        and no CLOSE.json reconciles as closed across resume, doctor, and fields."""
+        self.ok(
+            "init",
+            "--mission",
+            "legacy closed field",
+            "--phase",
+            "deliver",
+            "--source",
+            "Contract REQ-001",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-001",
+            "--text",
+            "legacy requirement",
+            "--surface",
+            "contract",
+        )
+        self.ok(
+            "pack",
+            "--slice",
+            "historical slice",
+            "--role",
+            "implementer",
+            "--child-id",
+            "fld-patch",
+            "--owns-path",
+            "src.py",
+            "--owns-requirement",
+            "REQ-001",
+        )
+        (self.tmp / "src.py").write_text("x = 1\n", encoding="utf-8")
+        self.write_done_residual("fld-patch", evidence="legacy slice done")
+        self.ok("collect")
+        self.ok("integrate")
+        # Mark requirement verified_contract and ORDER.spec_closed=True as pre-0.7.7 did
+        req_path = self.tmp / ".orderfield" / "REQUIREMENTS.json"
+        req_doc = json.loads(req_path.read_text(encoding="utf-8"))
+        for r in req_doc["requirements"]:
+            r["status"] = "verified_contract"
+        req_Bytes = (json.dumps(req_doc, indent=2) + "\n").encode("utf-8")
+        req_path.write_bytes(req_Bytes)
 
-        fields_doc = json.loads(self.ok("fields", "--json", cwd=ROOT).stdout)
-        self.assertEqual(fields_doc["open"], 0)
-        self.assertGreaterEqual(fields_doc["closed"], 1)
+        order_path = self.tmp / ".orderfield" / "ORDER.json"
+        order_doc = json.loads(order_path.read_text(encoding="utf-8"))
+        import hashlib
 
-        doc_proc = run_of(ROOT, "doctor")
-        self.assertEqual(doc_proc.returncode, 0, doc_proc.stdout + doc_proc.stderr)
-        self.assertIn("active        ord_0ba66127  closed", doc_proc.stdout)
+        order_doc["id"] = "ord_0ba66127"
+        order_doc["rev"] = int(order_doc.get("rev") or 1) + 5
+        order_doc["requirements_hash"] = hashlib.sha256(req_Bytes).hexdigest()
+        order_doc["spec_closed"] = True
+        order_path.write_text(
+            json.dumps(order_doc, indent=2) + "\n", encoding="utf-8"
+        )
+
+        # Move into multi-field layout with pre-v2 WAL (v=1 CURRENT.json) and no CLOSE.json
+        legacy_root = self.tmp / ".orderfield"
+        field_dir = legacy_root / "fields" / "ord_0ba66127"
+        target_tmp = self.tmp / "_legacy_move"
+        shutil.move(str(legacy_root), str(target_tmp))
+        field_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(target_tmp), str(field_dir))
+        (field_dir / "CLOSE.json").unlink(missing_ok=True)
+        (field_dir / "wal" / ".leader_key").unlink(missing_ok=True)
+        (legacy_root / "ACTIVE").write_text("ord_0ba66127\n", encoding="utf-8")
+
+        cur_doc = json.loads(
+            (field_dir / "wal" / "CURRENT.json").read_text(encoding="utf-8")
+        )
+        gid = str(cur_doc["generation"])
+        gen_dir = field_dir / "wal" / gid
+        files_sha = dict(cur_doc["files"])
+        for rel in ("ORDER.json", "REQUIREMENTS.json"):
+            raw = (field_dir / rel).read_bytes()
+            (gen_dir / rel).write_bytes(raw)
+            files_sha[rel] = hashlib.sha256(raw).hexdigest()
+        v1_doc = {
+            "v": 1,
+            "generation": gid,
+            "published_at": "2026-04-01T00:00:00Z",
+            "files": files_sha,
+            "deletions": [],
+        }
+        (gen_dir / "MANIFEST.json").write_text(
+            json.dumps(v1_doc, indent=2) + "\n", encoding="utf-8"
+        )
+        (field_dir / "wal" / "CURRENT.json").write_text(
+            json.dumps(v1_doc, indent=2) + "\n", encoding="utf-8"
+        )
+
+        targets = [self.tmp]
+        if (ROOT / ".orderfield" / "fields" / "ord_0ba66127").is_dir():
+            targets.append(ROOT)
+
+        for target in targets:
+            res = json.loads(self.ok("resume", "--json", cwd=target).stdout)
+            self.assertEqual(res["field"], "closed")
+            self.assertEqual(res["auto_continue"], "no")
+            self.assertEqual(res["action"], "closed")
+            self.assertEqual(res["reason_code"], "close_verified")
+
+            fields_doc = json.loads(self.ok("fields", "--json", cwd=target).stdout)
+            self.assertEqual(fields_doc["open"], 0)
+            self.assertGreaterEqual(fields_doc["closed"], 1)
+
+            doc_proc = run_of(target, "doctor")
+            self.assertEqual(doc_proc.returncode, 0, doc_proc.stdout + doc_proc.stderr)
+            self.assertIn("active        ord_0ba66127  closed", doc_proc.stdout)
+            self.assertIn("historical  (order_rev; closed)", doc_proc.stdout)
+
+
 
     # ------------------------------------------------------------------
     # 1. Kernel-Attested Verification Receipts
