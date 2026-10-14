@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: "."
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # The releases repository is private: its downloads need a token that can read it, stored as the
