@@ -2241,6 +2241,90 @@ def validate_against_packet(packet_path: Path, residual: Path) -> None:
     print(f"OK residual {residual} (collect gate, packet {packet.get('child_id')})")
 
 
+class ProtocolCompiler:
+    """Just-In-Time (JIT) protocol compiler for ``of resume``.
+
+    Emits the exact state-transition protocol hint for the current ``action``
+    and ``reason_code`` so arriving agents get state-specific flags and rules
+    without re-reading the entire reference manual on every turn.
+    """
+
+    HINTS: dict[str, str] = {
+        "pack": (
+            "1 phase at a time; exclusive --owns-paths + --owns-requirements per child; "
+            "optional --verify-cmd '<cmd>' for kernel-attested receipt; "
+            "pin shared interfaces with of patch --pin-contract <path>"
+        ),
+        "spawn": (
+            "launch packed children via targets[*].argv (of spawn --packet ...); "
+            "leader never implements the slice"
+        ),
+        "collect": (
+            "run of collect (add --revert-out-of-scope to quarantine/revert rogue edits); "
+            "packet --verify-cmd runs automatically at collect"
+        ),
+        CollectReady.ACTION: (
+            "run of integrate --wave N; inspect wants_to_change and ObservationPack handles; "
+            "if regime is escalate_up, patch ORDER before next-wave"
+        ),
+        "integrate --recompute": (
+            "wave report digest drifted; run of integrate --wave N --recompute"
+        ),
+        "next-wave": (
+            "advance wave with of next-wave, or if ready to close: "
+            "of contrast -> of spec --verified-contract -> of close"
+        ),
+        EscalateUnblock.ACTION: (
+            "escalate_up blocked spawn: patch ORDER (of patch --constraints/--done-when/--phase) "
+            "so rev > spawn_blocked_at_rev, then run of next-wave"
+        ),
+        PacketRevStale.ACTION: (
+            "packets are stale against ORDER.rev; clear each via targets[*].argv "
+            "(of unpack --force --child-id <id>)"
+        ),
+        "repair": (
+            "invalid residual: re-run child on same packet (targets[*].argv) and check with "
+            "of validate --packet <pkt> <residual>; do not collect until valid"
+        ),
+        "restore": (
+            "LIVE!=CURRENT drift detected: run of patch --from-current to restore live files "
+            "from WAL CURRENT (writers refuse until restored)"
+        ),
+        "close-unproven": (
+            "spec_closed lacks valid CLOSE.json/signature: re-run of contrast and of close, "
+            "or run of patch --from-current"
+        ),
+        "handoff": (
+            "claim lease expired: re-dispatch via targets[*].argv "
+            "(of handoff --packet <pkt> or of spawn --packet <pkt>)"
+        ),
+        "hold": (
+            "children in flight: wait for residuals or check of pulse; "
+            "do not repack or invent a consent ask"
+        ),
+        "closed": (
+            "field is closed and cryptographically verified; do not pack or spawn"
+        ),
+    }
+
+    @staticmethod
+    def hint(
+        action: str,
+        reason_code: str,
+        order: dict[str, Any] | None = None,
+        state: dict[str, Any] | None = None,
+    ) -> str:
+        base = ProtocolCompiler.HINTS.get(action, f"execute {action} ({reason_code})")
+        if action == "hold" and reason_code == ChildState.DEAD:
+            return (
+                "started-only child pid died without residual: re-spawn via targets[*].argv "
+                "(--force-spawn --reason 'started-only pid gone')"
+            )
+        if action == "hold" and reason_code == "escalate_in_flight":
+            return ProtocolCompiler.HINTS[EscalateUnblock.ACTION]
+        return base
+
+
 class NextPlan:
     """The one ``next``: resume, status, handoff, pulse --watch and --json.
 
@@ -2506,6 +2590,7 @@ class NextPlan:
             "reason_code": reason,
             "label": lines[0] if lines else action.upper(),
             "detail": lines[1] if len(lines) > 1 else "",
+            "protocol_hint": ProtocolCompiler.hint(action, reason, order, state),
             "targets": targets,
             "inputs_digest": NextPlan.digest(root, wave, sess, packets, facts),
             "children": rows,
@@ -2517,18 +2602,29 @@ class NextPlan:
 
     @staticmethod
     def machine(plan: dict[str, Any]) -> dict[str, Any]:
-        keys = ("action", "reason_code", "label", "detail", "targets", "inputs_digest", "drift")
+        keys = (
+            "action",
+            "reason_code",
+            "label",
+            "detail",
+            "protocol_hint",
+            "targets",
+            "inputs_digest",
+            "drift",
+        )
         return {key: plan[key] for key in keys}
 
     @staticmethod
     def lines(plan: dict[str, Any], *, indent: str = "  ") -> list[str]:
-        """Text form of the same object (label, detail, reason, targets, digest)."""
+        """Text form of the same object (label, detail, reason, hint, targets, digest)."""
         import shlex
 
         out = [f"{indent}{plan['label']}"]
         if plan["detail"]:
             out.append(f"{indent}{plan['detail']}")
         out.append(f"{indent}reason      {plan['reason_code']}")
+        if plan.get("protocol_hint"):
+            out.append(f"{indent}hint        {plan['protocol_hint']}")
         for target in plan["targets"]:
             who = target["child_id"] or "field"
             argv = shlex.join(target["argv"]) if target["argv"] else "(wait)"

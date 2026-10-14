@@ -586,6 +586,15 @@ of eval recovery/multi-harness-residual
 | Agent discovery | `docs/agent-discovery.md` |
 | Adapters / headless | `references/adapters.md` |
 | Schemas | `schemas/` |
+| Leader HMAC key | `.orderfield/wal/.leader_key` (`0600`, or `OF_LEADER_KEY`) — HMAC-SHA256 on WAL `MANIFEST.json`/`CURRENT.json`/`CLOSE.json` and kernel-attested receipts |
+| Quarantine patch | `.orderfield/waves/<n>/scope/<child_id>.quarantine.patch` (mirrored to `.orderfield/work/scratch/<child_id>/quarantine.patch`) from `of collect --revert-out-of-scope` |
+
+### 0.9.1 mechanical contract flags
+
+- **Kernel-attested verification (`KernelVerify`):** `of pack --verify-cmd "<cmd>"` runs `<cmd>` inside the kernel at `of collect` when the child reports `status=done`, writes `.orderfield/work/scratch/<child_id>/logs/kernel-verify.receipt.json` (`kernel_attested: true`, `attestation_hmac`), refuses non-zero exits, and auto-promotes `owns_requirements` to `verified_contract`. `of spec --verified-contract ID --run "<cmd>"` runs and attests directly.
+- **Semantic interface pinning (`pinned_contracts`):** `of patch --pin-contract <path>` / `--unpin-contract <path>` pins read-only contract files in `ORDER.json`; `of pack` hashes them into `packet.json` and renders `## Pinned contracts (read-only for children)` in the prompt; `of collect` refuses any mutation.
+- **Transactional scope quarantine (`--revert-out-of-scope`):** `of collect --revert-out-of-scope` archives out-of-scope edits to `quarantine.patch` and restores the pre-spawn baseline so valid owned writes collect cleanly.
+- **JIT protocol compiler (`ProtocolCompiler`):** `of resume` prints a `hint` line and `of resume --json` includes `protocol_hint` with the exact rule for the current `next` action.
 
 ## If you are already inside an interactive harness
 

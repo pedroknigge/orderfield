@@ -211,6 +211,11 @@
     "spec_hash": { "type": "string", "minLength": 1 },
     "requirements_ref": { "type": "string", "minLength": 1 },
     "requirements_hash": { "type": "string", "minLength": 1 },
-    "spec_closed": { "type": "boolean" }
+    "spec_closed": { "type": "boolean" },
+    "pinned_contracts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
   }
 }

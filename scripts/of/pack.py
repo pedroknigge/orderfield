@@ -319,7 +319,7 @@ def residual_template(packet: dict[str, Any]) -> dict[str, Any]:
 
 def order_bind_digest(order: dict[str, Any]) -> str:
     """Hash of fields that constrain a child. Notes/hints/band must not stale."""
-    payload = {
+    payload: dict[str, Any] = {
         "mission": order.get("mission"),
         "phase": order.get("phase"),
         "constraints": order.get("constraints") or [],
@@ -328,6 +328,8 @@ def order_bind_digest(order: dict[str, Any]) -> str:
         "spec_hash": order.get("spec_hash") or "",
         "id": order.get("id"),
     }
+    if order.get("pinned_contracts"):
+        payload["pinned_contracts"] = list(order.get("pinned_contracts") or [])
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
             "utf-8"
@@ -2277,6 +2279,26 @@ class ScopeWrite:
         return any(path == o or path.startswith(o + "/") for o in owned if o)
 
     @staticmethod
+    def _pinned_paths(packet: dict[str, Any]) -> list[str]:
+        raw: list[str] = []
+        top = packet.get("pinned_contracts")
+        if isinstance(top, dict):
+            raw.extend(str(k) for k in top)
+        elif isinstance(top, list):
+            raw.extend(str(k) for k in top)
+        embedded = packet.get("order")
+        if isinstance(embedded, dict) and isinstance(embedded.get("pinned_contracts"), list):
+            raw.extend(str(k) for k in embedded["pinned_contracts"])
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            p = posix_owns_path(item)
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+
+    @staticmethod
     def violations(
         packet: dict[str, Any],
         packets: list[dict[str, Any]],
@@ -2288,6 +2310,7 @@ class ScopeWrite:
         child = str(packet.get("child_id") or "")
         role = str(packet.get("role") or "")
         own = packet_owns_paths(packet)
+        pinned = ScopeWrite._pinned_paths(packet)
         unbounded_self = role not in ScopeWrite.READ_ONLY and not own
         siblings = [p for p in packets if str(p.get("child_id") or "") != child]
         ran = {
@@ -2307,6 +2330,9 @@ class ScopeWrite:
             cites = f"{residual.get('result_ref') or ''}\n{rem.get('evidence') or ''}"
         bad: list[str] = []
         for path in changed:
+            if pinned and ScopeWrite._within(path, pinned):
+                bad.append(f"{path} (pinned contract)")
+                continue
             if ScopeWrite._within(path, own):
                 continue
             owner = next(
@@ -2328,6 +2354,111 @@ class ScopeWrite:
         return bad
 
     @staticmethod
+    def quarantine_and_revert(
+        root: Path,
+        packet: dict[str, Any],
+        residual: Any,
+        cache: dict[str, Any] | None = None,
+    ) -> tuple[list[str], Path | None]:
+        """Save out-of-scope edits to waves/<n>/scope/<child>.quarantine.patch and restore baseline."""
+        doc = ScopeWrite.load(root, packet)
+        if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
+            doc.get("before"), dict
+        ):
+            return [], None
+        changed = doc.get("changed")
+        if not isinstance(changed, list):
+            changed = ScopeWrite._attempt(doc) or ScopeWrite.since(
+                root, doc["before"], ScopeWrite.snapshot(root)
+            )
+        if not changed or ScopeWrite.UNREADABLE in changed:
+            return [], None
+        try:
+            packets = packed_children(root, int(packet.get("wave") or 1))
+        except SystemExit:
+            packets = [packet]
+        bad = ScopeWrite.violations(
+            packet,
+            packets,
+            residual,
+            changed,
+            ScopeWrite.concurrent(root, packet, packets, doc),
+        )
+        if not bad:
+            return [], None
+        raw_paths = [str(item).split(" (", 1)[0] for item in bad]
+        raw_paths = [p for p in raw_paths if p and not p.startswith(".git/")]
+        if not raw_paths:
+            return [], None
+        wave = int(packet.get("wave") or 1)
+        child = str(packet.get("child_id") or "child")
+        patch_path = wave_dir(wave, root) / "scope" / f"{child}.quarantine.patch"
+        patch_path.parent.mkdir(parents=True, exist_ok=True)
+        before = doc["before"]
+        b_head = before.get("head")
+        b_dirty = before.get("dirty") if isinstance(before.get("dirty"), dict) else {}
+        b_tree = ScopeWrite._tree_ids(
+            root, b_head, sorted(p for p in raw_paths if p not in b_dirty)
+        )
+        patch_chunks: list[bytes] = []
+        if b_head:
+            diff_bytes = ScopeWrite._git(root, "diff", str(b_head), "--", *raw_paths)
+            if diff_bytes:
+                patch_chunks.append(diff_bytes)
+        reverted: list[str] = []
+        for rel in raw_paths:
+            target = root / rel
+            b_blob = b_dirty.get(rel, b_tree.get(rel, ScopeWrite.GONE))
+            if b_blob == ScopeWrite.GONE:
+                if target.is_file() or target.is_symlink():
+                    try:
+                        body = target.read_bytes() if not target.is_symlink() else b""
+                        patch_chunks.append(
+                            f"# untracked quarantine: {rel}\n".encode("utf-8") + body + b"\n"
+                        )
+                        target.unlink()
+                        reverted.append(rel)
+                    except OSError:
+                        pass
+            elif b_head and rel not in b_dirty:
+                try:
+                    proc = subprocess.run(
+                        ["git", "checkout", str(b_head), "--", rel],
+                        cwd=str(root),
+                        capture_output=True,
+                        stdin=subprocess.DEVNULL,
+                        timeout=30,
+                    )
+                    if proc.returncode == 0:
+                        reverted.append(rel)
+                except (OSError, subprocess.SubprocessError):
+                    pass
+        if not reverted:
+            return [], None
+        patch_bytes = b"".join(patch_chunks) or b"# quarantine empty diff\n"
+        patch_path.write_bytes(patch_bytes)
+        scratch_rel = str(packet.get("scratch_dir") or f".orderfield/work/scratch/{child}")
+        try:
+            scratch_patch = (
+                root / physical_field_rel(root, scratch_rel) / "quarantine.patch"
+            )
+            scratch_patch.parent.mkdir(parents=True, exist_ok=True)
+            scratch_patch.write_bytes(patch_bytes)
+        except OSError:
+            pass
+        now_snap = ScopeWrite.snapshot(root)
+        if isinstance(cache, dict):
+            cache["now"] = now_snap
+        new_changed = ScopeWrite.since(root, before, now_snap)
+        if "changed" in doc:
+            doc["changed"] = new_changed
+        if "seen" in doc:
+            doc["seen"] = new_changed
+        doc["quarantined"] = reverted
+        ScopeWrite._save(root, packet, doc)
+        return reverted, patch_path
+
+    @staticmethod
     def evaluate(
         root: Path, packet: dict[str, Any], cache: dict[str, Any]
     ) -> str | None:
@@ -2345,34 +2476,63 @@ class ScopeWrite:
         return None
 
     @staticmethod
+    def _pinned_digest_violations(root: Path, packet: dict[str, Any]) -> list[str]:
+        pinned = packet.get("pinned_contracts")
+        if not isinstance(pinned, dict) or not pinned:
+            return []
+        bad: list[str] = []
+        for rel, expected in sorted(pinned.items()):
+            p = posix_owns_path(str(rel))
+            if not p or not expected:
+                continue
+            target = root / p
+            if not target.is_file() or target.is_symlink():
+                bad.append(f"{p} (pinned_contract_mutated)")
+                continue
+            try:
+                actual = hashlib.sha256(target.read_bytes()).hexdigest()
+            except OSError:
+                bad.append(f"{p} (pinned_contract_mutated)")
+                continue
+            if actual != str(expected):
+                bad.append(f"{p} (pinned_contract_mutated)")
+        return bad
+
+    @staticmethod
     def errors(
         root: Path, packet: dict[str, Any], residual: Any, *, live: bool = False
     ) -> list[str]:
         """This attempt's verdict from its changed set (spawn exit, else the
         last collect's ``seen``; ``live`` diffs git now instead). Collect,
         resume, validate --packet, integrate and spawn all compute it here."""
+        pinned_bad = ScopeWrite._pinned_digest_violations(root, packet)
         doc = ScopeWrite.load(root, packet)
-        if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
-            doc.get("before"), dict
+        bad: list[str] = []
+        if (
+            isinstance(doc, dict)
+            and not doc.get("skip")
+            and isinstance(doc.get("before"), dict)
         ):
-            return []
-        changed = doc.get("changed")
-        if not isinstance(changed, list):
-            changed = (
-                ScopeWrite.since(root, doc["before"], ScopeWrite.snapshot(root))
-                if live
-                else ScopeWrite._attempt(doc) or []
-            )
-        if not changed:
-            return []
-        try:
-            packets = packed_children(root, int(packet.get("wave") or 1))
-        except SystemExit:
-            packets = [packet]
-        bad = ScopeWrite.violations(
-            packet, packets, residual, changed,
-            ScopeWrite.concurrent(root, packet, packets, doc),
-        )
+            changed = doc.get("changed")
+            if not isinstance(changed, list):
+                changed = (
+                    ScopeWrite.since(root, doc["before"], ScopeWrite.snapshot(root))
+                    if live
+                    else ScopeWrite._attempt(doc) or []
+                )
+            if changed:
+                try:
+                    packets = packed_children(root, int(packet.get("wave") or 1))
+                except SystemExit:
+                    packets = [packet]
+                bad = ScopeWrite.violations(
+                    packet, packets, residual, changed,
+                    ScopeWrite.concurrent(root, packet, packets, doc),
+                )
+        for item in pinned_bad:
+            rel_prefix = item.split(" (", 1)[0]
+            if not any(str(b).split(" (", 1)[0] == rel_prefix for b in bad):
+                bad.append(item)
         if not bad:
             return []
         role = str(packet.get("role") or "?")
@@ -2888,6 +3048,18 @@ def render_prompt(
     scope = packet.get("review_scope")
     if isinstance(scope, dict) and role in ReviewScope.REVIEW_ROLES:
         body += ReviewScope.prompt_block(role, scope)
+    pinned_map = packet.get("pinned_contracts")
+    if isinstance(pinned_map, dict) and pinned_map:
+        pinned_lines = [
+            f"- `{p}` (sha256={sha[:12]}…)" for p, sha in sorted(pinned_map.items())
+        ]
+        body += (
+            "\n## Pinned contracts (read-only for children)\n\n"
+            "Do not edit these shared interface files; any modification is "
+            "rejected by ScopeWrite at collect:\n"
+            + "\n".join(pinned_lines)
+            + "\n"
+        )
     spec_ref = packet.get("spec_ref") or (packet.get("order") or {}).get("spec_ref")
     # Paths a child must open resolve to the physical field home (sibling
     # fields live under .orderfield/fields/<id>/); the packet JSON stays canonical.
