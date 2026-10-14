@@ -222,6 +222,27 @@ class EvidenceReceipt:
         return data if isinstance(data, dict) else None
 
     @staticmethod
+    def attestation_payload(receipt: dict[str, Any]) -> bytes:
+        core = {
+            k: receipt.get(k)
+            for k in (
+                "v",
+                "kind",
+                "marker",
+                "command_id",
+                "source_path",
+                "source_hash",
+                "exit",
+                "size",
+                "command",
+            )
+            if k in receipt
+        }
+        return json.dumps(
+            core, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+
+    @staticmethod
     def make(
         data: bytes,
         *,
@@ -232,6 +253,9 @@ class EvidenceReceipt:
         quotes: list[str] | None = None,
         paths: list[str] | None = None,
         extract: bool = False,
+        kernel_attested: bool = False,
+        attestation_hmac: str | None = None,
+        root: Path | None = None,
     ) -> dict[str, Any]:
         trigger = EvidenceReceipt.trigger_of(command)
         got_quotes = list(quotes or [])
@@ -258,6 +282,16 @@ class EvidenceReceipt:
             receipt["trigger"] = trigger
         if extract:
             receipt["extracted"] = True
+        if kernel_attested:
+            receipt["kernel_attested"] = True
+            if attestation_hmac:
+                receipt["attestation_hmac"] = attestation_hmac
+            elif root is not None:
+                from of.wal import LeaderKey
+
+                receipt["attestation_hmac"] = LeaderKey.sign_bytes(
+                    root, EvidenceReceipt.attestation_payload(receipt)
+                )
         return receipt
 
     @staticmethod
@@ -304,6 +338,14 @@ class EvidenceReceipt:
         paths = receipt.get("paths")
         if not isinstance(paths, list) or any(not isinstance(item, str) for item in paths):
             errs.append("receipt schema: paths")
+        if "kernel_attested" in receipt and not isinstance(
+            receipt.get("kernel_attested"), bool
+        ):
+            errs.append("receipt schema: kernel_attested")
+        if receipt.get("kernel_attested") is True:
+            hmac_val = str(receipt.get("attestation_hmac") or "").lower()
+            if not EvidenceReceipt.SHA_RE.match(hmac_val):
+                errs.append("receipt schema: attestation_hmac")
         return errs
 
     @staticmethod
@@ -313,6 +355,7 @@ class EvidenceReceipt:
         *,
         meta: dict[str, Any] | None = None,
         expected_exit: int | None = None,
+        root: Path | None = None,
     ) -> str:
         """``ACCEPT`` or ``FALLBACK:<reason>``. Never green on a bad receipt."""
         schema = EvidenceReceipt.schema_errors(receipt)
@@ -347,6 +390,17 @@ class EvidenceReceipt:
         for path in receipt.get("paths") or []:
             if path not in text:
                 return f"{EvidenceReceipt.FALLBACK}:quote"
+        if receipt.get("kernel_attested") is True:
+            if root is not None:
+                from of.wal import LeaderKey
+
+                if not LeaderKey.verify_bytes(
+                    root,
+                    EvidenceReceipt.attestation_payload(receipt),
+                    str(receipt.get("attestation_hmac") or ""),
+                ):
+                    return f"{EvidenceReceipt.FALLBACK}:attestation"
+            return EvidenceReceipt.ACCEPT
         if len(EvidenceReceipt.dump(receipt)) >= len(source):
             return f"{EvidenceReceipt.FALLBACK}:no_size_win"
         return EvidenceReceipt.ACCEPT
@@ -473,7 +527,7 @@ class EvidenceReceipt:
         except OSError:
             return ["evidence receipt source unreadable"]
         meta = EvidenceReceipt.load_meta(source_path.with_suffix(".meta.json"))
-        outcome = EvidenceReceipt.verify(receipt, data, meta=meta)
+        outcome = EvidenceReceipt.verify(receipt, data, meta=meta, root=root)
         if outcome != EvidenceReceipt.ACCEPT:
             reason = outcome.split(":", 1)[-1]
             return [f"evidence receipt {reason} (bad receipt is not green)"]
@@ -490,3 +544,189 @@ class EvidenceReceipt:
             return path.resolve().relative_to(Path(root).resolve()).as_posix()
         except ValueError:
             return path.as_posix()
+
+
+class KernelVerify:
+    """Kernel-attested command execution for packet verify_cmd and of spec --run."""
+
+    DEFAULT_TIMEOUT_S = 120
+
+    @staticmethod
+    def attest(
+        scratch: Path,
+        data: bytes,
+        *,
+        command_id: str,
+        exit_code: int,
+        command: str,
+        root: Path,
+    ) -> tuple[dict[str, Any], Path, str]:
+        written = EvidenceReceipt.write_archive(
+            scratch,
+            command_id,
+            data,
+            exit_code=exit_code,
+            command=command,
+            root=root,
+        )
+        source_rel = EvidenceReceipt._rel(written["source"], root)
+        receipt = EvidenceReceipt.make(
+            data,
+            command_id=command_id,
+            exit_code=exit_code,
+            source_path=source_rel,
+            command=command,
+            extract=True,
+            kernel_attested=True,
+            root=root,
+        )
+        written["receipt"].write_bytes(EvidenceReceipt.dump(receipt))
+        return receipt, written["receipt"], EvidenceReceipt._rel(written["receipt"], root)
+
+    @staticmethod
+    def execute(
+        root: Path,
+        scratch: Path,
+        command: str,
+        *,
+        command_id: str = "kernel-verify",
+        timeout_s: int = DEFAULT_TIMEOUT_S,
+    ) -> tuple[dict[str, Any], str, int]:
+        import os
+        import shlex
+        import subprocess
+        from of.field import die
+
+        raw_cmd = str(command or "").strip()
+        try:
+            argv = shlex.split(raw_cmd)
+        except ValueError as exc:
+            die(f"invalid verification command {raw_cmd!r}: {exc}")
+        if not argv:
+            die("verification command must not be empty")
+        run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+        try:
+            proc = subprocess.run(
+                argv,
+                cwd=str(root),
+                shell=False,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                env=run_env,
+                timeout=timeout_s,
+            )
+            exit_code = int(proc.returncode)
+            stdout = proc.stdout or b""
+            stderr = proc.stderr or b""
+        except FileNotFoundError:
+            exit_code = 127
+            stdout = b""
+            stderr = f"binary not found: {argv[0]}\n".encode("utf-8")
+        except subprocess.TimeoutExpired as exc:
+            exit_code = 124
+            stdout = exc.stdout if isinstance(exc.stdout, bytes) else b""
+            stderr = (
+                (exc.stderr if isinstance(exc.stderr, bytes) else b"")
+                + f"\ntimeout after {timeout_s}s\n".encode("utf-8")
+            )
+        combined = stdout + ((b"\n" + stderr) if stderr else b"")
+        if not combined:
+            combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
+        receipt, _rpath, receipt_rel = KernelVerify.attest(
+            scratch,
+            combined,
+            command_id=command_id,
+            exit_code=exit_code,
+            command=raw_cmd,
+            root=root,
+        )
+        return receipt, receipt_rel, exit_code
+
+    @staticmethod
+    def run_for_packet(
+        root: Path,
+        packet: dict[str, Any],
+        residual: dict[str, Any],
+    ) -> tuple[list[str], str | None, bool]:
+        from of.field import physical_artifact_path
+
+        cmd = str(packet.get("verify_cmd") or "").strip()
+        if not cmd or not isinstance(residual, dict) or residual.get("status") != "done":
+            return [], None, False
+        scratch_rel = str(packet.get("scratch_dir") or "")
+        if not scratch_rel:
+            return [], None, False
+        scratch = physical_artifact_path(root, scratch_rel, "packet scratch_dir")
+        _receipt, receipt_rel, exit_code = KernelVerify.execute(
+            root, scratch, cmd, command_id="kernel-verify"
+        )
+        rem = residual.setdefault("residual", {})
+        if isinstance(rem, dict):
+            rem["evidence"] = EvidenceReceipt.attach(
+                str(rem.get("evidence") or ""), receipt_rel
+            )
+        if exit_code != 0:
+            return (
+                [
+                    f"rule=KernelVerify: packet verify_cmd {cmd!r} "
+                    f"failed with exit={exit_code} [{receipt_rel}]"
+                ],
+                receipt_rel,
+                True,
+            )
+        return [], receipt_rel, True
+
+    @staticmethod
+    def auto_verify_requirements(
+        root: Path,
+        packet: dict[str, Any],
+        receipt_rel: str,
+    ) -> list[str]:
+        from of.spec import (
+            find_requirement,
+            load_requirements,
+            requirement_is_pair,
+            save_requirements,
+        )
+
+        owns = [str(x).strip() for x in (packet.get("owns_requirements") or []) if str(x).strip()]
+        if not owns or not receipt_rel:
+            return []
+        try:
+            receipt_abs = safe_relative_path(
+                root, receipt_rel, "evidence_receipt", must_exist=True
+            )
+            proof_sha = EvidenceReceipt.digest(receipt_abs.read_bytes())
+        except (OSError, SystemExit):
+            return []
+        data = load_requirements(root)
+        stamped: list[str] = []
+        for rid in owns:
+            item = find_requirement(data, rid)
+            if item is None or item.get("status") in ("verified_contract", "superseded"):
+                continue
+            item["status"] = "verified_contract"
+            item["proof_cite"] = receipt_rel
+            item["proof_sha"] = proof_sha
+            if requirement_is_pair(item):
+                item["pair_checked"] = True
+            stamped.append(rid)
+        if stamped:
+            save_requirements(data, root)
+        return stamped
+
+    @staticmethod
+    def run_for_spec(
+        root: Path,
+        req_ids: list[str],
+        command: str,
+    ) -> tuple[str, int]:
+        from of.field import field_home
+
+        scratch = field_home(root) / "work" / "scratch" / "_leader_verify"
+        raw_id = req_ids[0].lower() if req_ids else "verify"
+        clean_id = re.sub(r"[^a-z0-9._-]", "-", f"spec-{raw_id}")[:64]
+        _receipt, receipt_rel, exit_code = KernelVerify.execute(
+            root, scratch, command, command_id=clean_id
+        )
+        return receipt_rel, exit_code

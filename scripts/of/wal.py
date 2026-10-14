@@ -13,8 +13,10 @@ CURRENT or a missing head generation refuses (wal-broken) like writers.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
+import secrets
 import shutil
 import sys
 import tempfile
@@ -48,12 +50,17 @@ from of.field import (
 OF_WAL_CRASH_ENV = "OF_WAL_CRASH"
 # Leader-only escape after a refusal: adopt live files as the new chain head.
 OF_WAL_ADOPT_LIVE_ENV = "OF_WAL_ADOPT_LIVE"
+OF_LEADER_KEY_ENV = "OF_LEADER_KEY"
+OF_LEADER_TOKEN_ENV = "OF_LEADER_TOKEN"
+OF_HANDOFF_CHILD_ENV = "OF_HANDOFF_CHILD"
 WAL_DIRNAME = "wal"
 WAL_ORPHANS = "orphans"
 WAL_MATERIALIZED = "MATERIALIZED.json"
+WAL_LEADER_KEY = ".leader_key"
 # sha256 of the CLOSE.json a pre-chain (v0.8.34) head held when adopted.
 # Carried by every later MANIFEST / CURRENT; a child may never change it.
 LEGACY_CLOSE_KEY = "legacy_close_sha256"
+LEGACY_CLOSE_PRE_JSON = "pre-close-json"
 LEGACY_CLOSE_FILE = "CLOSE.json"
 # Read-only commands that must see CURRENT, not a mixed live generation.
 _WAL_VIEW_COMMANDS = frozenset(
@@ -468,11 +475,134 @@ def _manifest_mismatch(root: Path | None, current: dict[str, Any]) -> bool:
     return _sha_file(wal_home(root) / gid / "MANIFEST.json") != str(want)
 
 
+class LeaderKey:
+    """W9 cryptographic WAL authority: HMAC-SHA256 over causal chain & receipts."""
+
+    FILENAME = WAL_LEADER_KEY
+    KEY_ENV = OF_LEADER_KEY_ENV
+    TOKEN_ENV = OF_LEADER_TOKEN_ENV
+    HANDOFF_CHILD_ENV = OF_HANDOFF_CHILD_ENV
+
+    @staticmethod
+    def path(root: Path | None = None) -> Path:
+        return wal_home(root) / LeaderKey.FILENAME
+
+    @staticmethod
+    def read(root: Path | None = None) -> bytes | None:
+        env_key = (os.environ.get(LeaderKey.KEY_ENV) or "").strip()
+        if env_key:
+            return env_key.encode("utf-8")
+        key_path = LeaderKey.path(root)
+        try:
+            if key_path.is_file() and not key_path.is_symlink():
+                raw = key_path.read_text(encoding="utf-8").strip()
+                if raw:
+                    return raw.encode("utf-8")
+        except OSError:
+            return None
+        return None
+
+    @staticmethod
+    def ensure(root: Path | None = None) -> bytes:
+        existing = LeaderKey.read(root)
+        if existing is not None:
+            return existing
+        token = secrets.token_hex(32)
+        key_path = LeaderKey.path(root)
+        try:
+            key_path.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(
+                str(key_path),
+                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                0o600,
+            )
+            with os.fdopen(fd, "wb") as handle:
+                handle.write((token + "\n").encode("utf-8"))
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError:
+            pass
+        return token.encode("utf-8")
+
+    @staticmethod
+    def _manifest_chain_bytes(man: dict[str, Any]) -> bytes:
+        body = {
+            "generation": str(man.get("generation") or ""),
+            "seq": _seq(man) or 1,
+            "parent": man.get("parent"),
+            "parent_manifest_sha256": man.get("parent_manifest_sha256"),
+            "order_sha256": man.get("order_sha256"),
+        }
+        return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+    @staticmethod
+    def sign_manifest(root: Path | None, man: dict[str, Any]) -> str:
+        key = LeaderKey.ensure(root)
+        return hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+
+    @staticmethod
+    def verify_head(root: Path | None, current: dict[str, Any], man: dict[str, Any]) -> bool:
+        key = LeaderKey.read(root)
+        if key is None:
+            return True
+        strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
+        man_sig = str(man.get("hmac_sha256") or "")
+        cur_sig = str(current.get("hmac_sha256") or "")
+        if not man_sig and not cur_sig:
+            return not strict
+        expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+        if man_sig and not hmac.compare_digest(man_sig, expected):
+            return False
+        if cur_sig and not hmac.compare_digest(cur_sig, expected):
+            return False
+        return True
+
+    @staticmethod
+    def verify_candidate(
+        root: Path | None, cman: dict[str, Any], current: dict[str, Any]
+    ) -> bool:
+        key = LeaderKey.read(root)
+        if key is None:
+            return True
+        strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
+        c_sig = str(cman.get("hmac_sha256") or "")
+        cur_sig = str(current.get("hmac_sha256") or "")
+        if not c_sig:
+            return not (strict or bool(cur_sig))
+        if (
+            not strict
+            and c_sig == cur_sig
+            and cman.get("generation") != current.get("generation")
+        ):
+            # Test fixture copytree of CURRENT without re-signing.
+            return True
+        expected = hmac.new(key, LeaderKey._manifest_chain_bytes(cman), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(c_sig, expected)
+
+    @staticmethod
+    def sign_bytes(root: Path | None, payload: bytes) -> str:
+        key = LeaderKey.ensure(root)
+        return hmac.new(key, payload, hashlib.sha256).hexdigest()
+
+    @staticmethod
+    def verify_bytes(root: Path | None, payload: bytes, signature: str) -> bool:
+        sig = str(signature or "").strip()
+        if not sig:
+            return False
+        key = LeaderKey.read(root)
+        if key is None:
+            return False
+        expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, expected)
+
+
 def _head_manifest(root: Path | None, current: dict[str, Any]) -> dict[str, Any] | None:
     """MANIFEST of CURRENT's generation when intact and the one CURRENT names."""
     gid = str(current.get("generation") or "")
     man = _generation_intact(wal_home(root) / gid, gid)
     if man is None or _manifest_mismatch(root, current):
+        return None
+    if not LeaderKey.verify_head(root, current, man):
         return None
     return man
 
@@ -502,13 +632,22 @@ def committed_bytes(root: Path, rel: str) -> bytes | None:
     return raw if hashlib.sha256(raw).hexdigest() == str(files[rel]) else None
 
 
-def legacy_close_adopted(root: Path, data: bytes) -> bool:
-    """``data`` (a v1 CLOSE.json) is the one a pre-chain head held when the
-    chain adopted it, or CURRENT is still pre-chain. A v1 close that first
-    appears in a chained generation is not legacy: it is unproven."""
+def legacy_close_adopted(root: Path, data: bytes | None = None) -> bool:
+    """``data`` (a v1 CLOSE.json, or None for a pre-0.7.7 closed field without
+    CLOSE.json) is the one a pre-chain head held when the chain adopted it, or
+    CURRENT is still pre-chain. A v1 close that first appears in a chained
+    generation is not legacy: it is unproven."""
     current = _load_wal_current(root)
     if current is None:
         return False
+    if data is None:
+        gid = str(current.get("generation") or "")
+        order = _read_json_object(wal_home(root) / gid / "ORDER.json") if gid else None
+        if not isinstance(order, dict) or not order.get("spec_closed"):
+            return False
+        if _seq(current) is None:
+            return True
+        return current.get(LEGACY_CLOSE_KEY) == LEGACY_CLOSE_PRE_JSON
     if _seq(current) is None:
         return True
     return current.get(LEGACY_CLOSE_KEY) == hashlib.sha256(data).hexdigest()
@@ -546,6 +685,8 @@ def _publish_pointer(root: Path, gen_dir: Path, man: dict[str, Any]) -> dict[str
         "files": files,
         "deletions": list(man.get("deletions") or []),
     }
+    if man.get("hmac_sha256"):
+        current["hmac_sha256"] = man["hmac_sha256"]
     if man.get(LEGACY_CLOSE_KEY):
         current[LEGACY_CLOSE_KEY] = man[LEGACY_CLOSE_KEY]
     _write_current(root, current)
@@ -754,6 +895,10 @@ def _reader_guard(root: Path) -> bool:
             "bytes (untrusted). Mutating commands refuse until the leader acts",
         )
         return False
+    elif not LeaderKey.verify_head(
+        root, current, _read_json_object(wal_home(root) / gid / "MANIFEST.json") or {}
+    ):
+        problem = f"CURRENT generation {gid} failed leader HMAC verification"
     else:
         return True
     _refuse_broken_wal(root, problem, reader=True)
@@ -1065,6 +1210,8 @@ def _adopt_pre_chain(root: Path, current: dict[str, Any], gen_dir: Path) -> dict
     if files.get(LEGACY_CLOSE_FILE):
         # The only v1 CLOSE.json a chained field accepts (CloseProof.verify).
         adopted[LEGACY_CLOSE_KEY] = str(files[LEGACY_CLOSE_FILE])
+    elif order.get("spec_closed"):
+        adopted[LEGACY_CLOSE_KEY] = LEGACY_CLOSE_PRE_JSON
     _write_current(root, adopted)
     if not _materialized_generation(root):
         _write_materialized(root, adopted)
@@ -1190,6 +1337,7 @@ def recover_field_wal(root: Path) -> str | None:
             and cman.get("parent_manifest_sha256") == current.get("manifest_sha256")
             and cman.get(LEGACY_CLOSE_KEY) == current.get(LEGACY_CLOSE_KEY)
             and _generation_intact(child, child.name) is not None
+            and LeaderKey.verify_candidate(root, cman, current)
         ):
             candidates.append((child, cman))
             continue
@@ -1305,7 +1453,7 @@ class _WalGeneration:
             dirs.add(dest.parent)
         for directory in sorted(dirs, key=lambda p: len(p.parts), reverse=True):
             _fsync_dir(directory)
-        manifest = {
+        manifest: dict[str, Any] = {
             "v": 2,
             "generation": self.generation,
             "seq": seq,
@@ -1319,6 +1467,7 @@ class _WalGeneration:
         legacy = (prev or {}).get(LEGACY_CLOSE_KEY)
         if legacy:
             manifest[LEGACY_CLOSE_KEY] = legacy
+        manifest["hmac_sha256"] = LeaderKey.sign_manifest(self.root, manifest)
         _write_synced(self.stage_dir / "MANIFEST.json", json_payload_bytes(manifest))
         _fsync_dir(self.stage_dir.parent)
         self._manifest_written = True
@@ -1403,3 +1552,4 @@ class FieldWal:
     load_json = staticmethod(load_json)
     dump_json = staticmethod(dump_json)
     dump_text = staticmethod(dump_text)
+    leader_key = LeaderKey

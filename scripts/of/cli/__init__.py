@@ -98,40 +98,8 @@ from of.cli.issue_cmd import (
     ISSUE_LABELS,
     cmd_issue,
 )
-from of.cli.eval_cmd import (  # noqa: F401
-    EVAL_FIXTURES,
-    EVAL_UNITTEST_MODULES,
-    cmd_eval,
-    discover_recovery_eval_specs,
-    eval_pack_child,
-    eval_run_of,
-    eval_setup_recovery_active_field_pointer,
-    eval_setup_recovery_contrast_close,
-    eval_setup_recovery_contrast_close_contract,
-    eval_setup_recovery_mission_rewrite,
-    eval_setup_recovery_midflight_amend,
-    MidFlightAmendEval,
-    eval_setup_recovery_multi_wave_residual,
-    MultiWaveResidualEval,
-    eval_setup_recovery_multi_wave_close_checklist,
-    MultiWaveCloseChecklistEval,
-    eval_setup_recovery_threshold_stop_spawn,
-    ThresholdStopSpawnEval,
-    ProcessDeathResume,
-    WaveReportQualityEval,
-    eval_setup_recovery_packed_age,
-    eval_setup_recovery_doctor_one_pass,
-    eval_setup_recovery_doctor_closed_historical,
-    eval_setup_recovery_plan_doc_sync,
-    eval_setup_recovery_plan_first_coverage,
-    PlanDocSyncEval,
-    PlanCoverageEval,
-    PlanIngressEval,
-    DriveAfterIntegrateEval,
-    ObservationPackEval,
-    eval_write_done_residual,
-    run_recovery_eval_spec,
-)
+from of.cli.eval_cmd import cmd_eval
+from of.cli.eval_cmd import *  # noqa: F401,F403
 
 
 
@@ -738,6 +706,11 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         dest="model",
         help="passthrough --model NAME for adapters that have the flag",
     )
+    s.add_argument(
+        "--verify-cmd",
+        dest="verify_cmd",
+        help="deterministic command kernel runs at collect to attest a receipt",
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser(
@@ -825,6 +798,12 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         metavar="CHILD_ID",
         help="leader owns a residual no spawn record or claim backs (rule=Unclaimed)",
     )
+    s.add_argument(
+        "--revert-out-of-scope",
+        dest="revert_out_of_scope",
+        action="store_true",
+        help="quarantine out-of-scope product writes to waves/<n>/scope/<child>.quarantine.patch and restore baseline",
+    )
     s.set_defaults(func=_collect_with_unverified)
 
 
@@ -878,6 +857,18 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
         dest="constraints_rm",
         action="append",
         help="remove a constraint by exact text, unique substring, or 1-based index",
+    )
+    s.add_argument(
+        "--pin-contract",
+        dest="pin_contract",
+        action="append",
+        help="pin a shared contract/schema path as read-only for children (repeatable)",
+    )
+    s.add_argument(
+        "--unpin-contract",
+        dest="unpin_contract",
+        action="append",
+        help="unpin a pinned contract path (repeatable; '-' clears all)",
     )
     s.add_argument(
         "--harness",
@@ -1030,6 +1021,15 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
         help=(
             "with --verified-contract: existing file inside the project "
             "(surface-run log or evidence receipt); its sha is bound into CLOSE.json"
+        ),
+    )
+    s.add_argument(
+        "--run",
+        dest="run_cmd",
+        default="",
+        help=(
+            "with --verified-contract: execute command, emit a kernel-attested "
+            "receipt, and bind it as --cite"
         ),
     )
     s.add_argument(

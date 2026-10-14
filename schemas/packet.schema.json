@@ -75,7 +75,12 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "spec_ref": { "type": "string", "minLength": 1 },
-        "spec_hash": { "type": "string", "minLength": 1 }
+        "spec_hash": { "type": "string", "minLength": 1 },
+        "pinned_contracts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
       }
     },
     "spec_ref": { "type": "string", "minLength": 1 },
@@ -88,6 +93,19 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "description": "Exclusive product paths for this packet. Same-wave overlap is a pack error; not a file lock."
+    },
+    "pinned_contracts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "description": "SHA-256 digests of pinned contracts in ORDER.pinned_contracts; read-only for children."
+    },
+    "verify_cmd": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional deterministic command the kernel runs at collect to attest a receipt."
     },
     "review_scope": {
       "type": "object",

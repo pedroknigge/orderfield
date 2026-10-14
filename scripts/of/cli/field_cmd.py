@@ -467,6 +467,35 @@ def cmd_patch(args: argparse.Namespace) -> None:
             removed = remove_constraint(order, spec)
             print(f"removed constraint: {truncate_slice(removed)}")
             changed = True
+    if getattr(args, "pin_contract", None):
+        from of.pack import require_owns_paths
+
+        pins = require_owns_paths(root, [str(x) for x in args.pin_contract if str(x).strip()])
+        current_pins = list(order.get("pinned_contracts") or [])
+        for pin in pins:
+            if pin not in current_pins:
+                current_pins.append(pin)
+                changed = True
+        if current_pins:
+            order["pinned_contracts"] = current_pins
+    if getattr(args, "unpin_contract", None):
+        from of.pack import posix_owns_path
+
+        raw_unpins = [str(x).strip() for x in args.unpin_contract if str(x).strip()]
+        if "-" in raw_unpins or "none" in raw_unpins:
+            if order.pop("pinned_contracts", None) is not None:
+                changed = True
+        else:
+            current_pins = list(order.get("pinned_contracts") or [])
+            for raw_u in raw_unpins:
+                norm_u = posix_owns_path(raw_u)
+                if norm_u in current_pins:
+                    current_pins.remove(norm_u)
+                    changed = True
+            if current_pins:
+                order["pinned_contracts"] = current_pins
+            else:
+                order.pop("pinned_contracts", None)
     if getattr(args, "harness", None):
         value = str(args.harness).strip().lower()
         if value in ("-", "none", ""):
@@ -604,6 +633,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
             summary["origin"] = order["origin"]
         if order.get("backlog"):
             summary["backlog"] = order["backlog"]
+        if order.get("pinned_contracts"):
+            summary["pinned_contracts"] = order["pinned_contracts"]
         print(json.dumps(summary, indent=2, ensure_ascii=False))
     # last line, so `... | tail -1` always answers "did it land, at what rev"
     print(f"rev={order['rev']}")

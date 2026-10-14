@@ -373,7 +373,21 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 print(f"surface     {rid} {new} (unchanged)")
     both_sides = bool(getattr(args, "both_sides", False))
     cite = str(getattr(args, "cite", "") or "").strip()
+    run_cmd = str(getattr(args, "run_cmd", "") or "").strip()
     verified_ids = list(getattr(args, "verified_contract", None) or [])
+    if run_cmd and not verified_ids:
+        die("of spec --run requires --verified-contract ID")
+    if verified_ids and run_cmd:
+        from of.receipt import KernelVerify
+
+        receipt_rel, exit_code = KernelVerify.run_for_spec(root, verified_ids, run_cmd)
+        if exit_code != 0:
+            die(
+                f"of spec --run {run_cmd!r} failed with exit={exit_code} "
+                f"(receipt: {receipt_rel})"
+            )
+        cite = receipt_rel
+        print(f"attested    {receipt_rel}  exit=0")
     if verified_ids and not cite:
         die(
             "of spec --verified-contract requires --cite <file> "
@@ -1448,7 +1462,7 @@ class CloseProof:
         forever. ``of close`` reports it instead of re-stamping. Only the
         v1 close adopted from a pre-chain WAL head counts (``verify``).
         """
-        closed = bool(order.get("spec_closed")) and done_when_closed(order)
+        closed = bool(order.get("spec_closed"))
         return closed and CloseProof.verify(root) == [CloseProof.LEGACY]
 
     @staticmethod
@@ -1657,6 +1671,8 @@ class CloseProof:
 
         raw = field_read_bytes(CloseProof.path(root))
         if raw is None:
+            if legacy_close_adopted(root, None):
+                return [CloseProof.LEGACY]
             return ["CLOSE.json absent"]
         doc = CloseProof.load(root)
         if doc is None:

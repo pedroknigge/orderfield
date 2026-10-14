@@ -810,6 +810,21 @@ def cmd_pack(args: argparse.Namespace) -> None:
     if order.get("spec_ref"):
         order_view["spec_ref"] = order["spec_ref"]
         order_view["spec_hash"] = order.get("spec_hash") or ""
+    pinned_list = [
+        str(x).strip()
+        for x in (order.get("pinned_contracts") or [])
+        if str(x).strip()
+    ]
+    if pinned_list:
+        order_view["pinned_contracts"] = list(pinned_list)
+        for owned_p in owns_paths:
+            if owned_p in pinned_list or any(
+                owned_p.startswith(pin + "/") for pin in pinned_list
+            ):
+                die(
+                    f"owns_path {owned_p} is a pinned contract in ORDER.pinned_contracts; "
+                    f"unpin with of patch --unpin-contract {owned_p} before assigning a child to write it"
+                )
     owns = [
         require_req_id(x)
         for x in (getattr(args, "owns_requirement", None) or [])
@@ -899,6 +914,28 @@ def cmd_pack(args: argparse.Namespace) -> None:
         packet["owns_requirements"] = owns
     if owns_paths:
         packet["owns_paths"] = owns_paths
+    if pinned_list:
+        import hashlib as _hashlib
+
+        pinned_map: dict[str, str] = {}
+        for pin in pinned_list:
+            p_abs = root / pin
+            if p_abs.is_file():
+                pinned_map[pin] = _hashlib.sha256(p_abs.read_bytes()).hexdigest()
+            else:
+                pinned_map[pin] = OwnedWrite.EMPTY
+        packet["pinned_contracts"] = pinned_map
+    raw_verify_cmd = str(getattr(args, "verify_cmd", None) or "").strip()
+    if raw_verify_cmd:
+        import shlex as _shlex
+
+        try:
+            parsed_vcmd = _shlex.split(raw_verify_cmd)
+        except ValueError as exc:
+            die(f"invalid --verify-cmd {raw_verify_cmd!r}: {exc}")
+        if not parsed_vcmd:
+            die("--verify-cmd must not be empty")
+        packet["verify_cmd"] = raw_verify_cmd
     if review_scope:
         packet["review_scope"] = review_scope
     packet["packet_hash"] = packet_digest(packet)
@@ -1700,7 +1737,19 @@ def cmd_collect(args: argparse.Namespace) -> None:
         skip = ScopeWrite.evaluate(root, pkt, scope_cache)
         if skip:
             scope_skips.setdefault(skip, []).append(child)
-        errs, data, stamped, pin_warn, pin_held = CollectGate.judge(root, pkt, path)
+        if getattr(args, "revert_out_of_scope", False):
+            raw_res, _ = try_load_json(path)
+            reverted_paths, patch_rel = ScopeWrite.quarantine_and_revert(
+                root, pkt, raw_res if isinstance(raw_res, dict) else None, scope_cache
+            )
+            if reverted_paths:
+                print(
+                    f"quarantined {child}: reverted {len(reverted_paths)} "
+                    f"out-of-scope path(s) -> {patch_rel}"
+                )
+        errs, data, stamped, pin_warn, pin_held = CollectGate.judge(
+            root, pkt, path, run_verify=True
+        )
         if pin_warn:
             print(pin_warn)
         if stamped:
@@ -1730,6 +1779,24 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"{data.get('residual', {}).get('wants_to_change')}{denied_note}"
             )
             PlanWriteBack.collect(root, pkt, data, order)
+            if (
+                isinstance(data, dict)
+                and data.get("status") == "done"
+                and str(pkt.get("verify_cmd") or "").strip()
+            ):
+                from of.receipt import EvidenceReceipt, KernelVerify
+
+                rem_ev = str((data.get("residual") or {}).get("evidence") or "")
+                cited_receipts = (
+                    EvidenceReceipt.verifier_inputs(rem_ev).get("receipts") or []
+                )
+                receipt_rel = str(cited_receipts[-1]) if cited_receipts else ""
+                if receipt_rel:
+                    auto_verified = KernelVerify.auto_verify_requirements(
+                        root, pkt, receipt_rel
+                    )
+                    if auto_verified:
+                        print(f"verified_by_kernel {child}: {', '.join(auto_verified)}")
             from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)

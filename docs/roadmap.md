@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.0. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.1. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.0`
+**Status:** Shipped · **Current release line:** `0.9.1`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -18,10 +18,20 @@ Orderfield remains a portable contract kernel: the harness owns processes, while
 
 Not shipped. Each item needs a product decision before code. Do not claim any of it in SKILL / README.
 
-- **W9 — leader authority.** A per-field leader key outside the repo (`~/.config/orderfield/keys/<order_id>`, mode 0600) that HMACs MANIFEST, CURRENT and `order_bind`; `.orderfield/LEADER.json {holder_harness, session, epoch}`; `of patch --takeover` bumps the epoch and fences the old leader; `--if-rev` compare-and-swap on leader mutations (resume pre-fills it); optional chain head mirrored to `refs/orderfield/<id>`. Until then the 0.9.0 WAL is tamper-evident, not authenticated: a same-user process that hand-writes a correctly chained generation (or rewrites CURRENT in place with matching hashes) is not detected, and `refuse_child_forge` — which checks live `OF_CHILD`, ancestor and session-leader exec-time environ, and the pid+start-time registry (`spawned_child_id`) — is bypassed only by processes outside the spawn ancestry (a handoff child, an unrelated same-user process, registry tamper) or a detached child acting after its spawn ends (claims-matrix C-155 / C-163 Partial; [external-brief Known limits](external-brief.md#known-limits-090)). Honest limit even after W9: a child running as the same OS user can read the key unless the host sandbox hides it.
+- **W9 — leader authority (external key / epoch takeover).** `.orderfield/wal/.leader_key` (`0600`) and `OF_LEADER_KEY` HMAC-SHA256 signing over WAL `MANIFEST.json`, `CURRENT.json`, `CLOSE.json`, and kernel-attested receipts shipped in `0.9.1` along with `OF_HANDOFF_CHILD` refusal; moving the default key outside the repo (`~/.config/orderfield/keys/<order_id>`), `.orderfield/LEADER.json {holder_harness, session, epoch}`, `of patch --takeover`, and `--if-rev` compare-and-swap stay deferred. Honest limit even after external keys: a child running as the same OS user can read the key unless the host sandbox hides it.
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
-- **`eval_cmd` out of the runtime.** `of eval` fixtures (~2.7k LOC) still ship in the installed kernel; move them to `tests/` or `tools/` and keep the recovery evals runnable from the dev tree.
+- **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.1 — first-principles upgrades: kernel-attested verification, JIT protocol compiler, semantic interface pinning, scope quarantine, W9 leader key, pre-0.7.7 close reconciliation, modularity split
+
+- Pre-`0.7.7` closed-field reconciliation (`CloseProof.LEGACY`): legacy closed fields without `CLOSE.json` reconcile across `of resume`, `of fields`, and `of doctor` (`auto_continue: no`, `action: closed`, `reason_code: close_verified`).
+- Kernel-attested verification receipts (`KernelVerify`): `of pack --verify-cmd "<cmd>"` runs at `of collect` on `status=done`, signs `kernel-verify.receipt.json` with `kernel_attested: true` and `attestation_hmac`, refuses non-zero exits, and auto-verifies `owns_requirements`; `of spec --verified-contract ID --run "<cmd>"` attests directly.
+- Just-In-Time (JIT) protocol compiler (`ProtocolCompiler`): `NextPlan.compute` emits `protocol_hint` in `of resume --json` and `hint` in `of resume`.
+- Semantic interface pinning (`pinned_contracts`): `of patch --pin-contract` / `--unpin-contract` records SHA-256 contract pins in packets, renders a read-only boundary in prompts, and refuses mutations at `of collect`.
+- Transactional scope quarantine (`--revert-out-of-scope`): `of collect --revert-out-of-scope` archives out-of-scope diffs to `quarantine.patch` and restores the pre-spawn baseline.
+- W9 leader authority (`LeaderKey` + `OF_HANDOFF_CHILD`) and modularity split (`scripts/of/doctor.py` + `scripts/eval_fixtures.py`).
+- Proof: `tests/test_first_principles_upgrades.py` (7/7 E2E tests), `python3 scripts/run_tests.py` (1510 tests in 58 modules), `of eval --strict` (60/60 passed).
 
 ## 0.9.0 — contract hardening: causal WAL, closed child lane, collect gate, close is proof, deterministic next
 
