@@ -530,7 +530,7 @@ def cmd_retain(args: argparse.Namespace) -> None:
     order, state = _load_order_state_or_empty(root)
     actions = plan_field_retention(root, order, state)
     print_audit_block(root)
-    print_retention_plan(actions)
+    print_retention_plan(actions, applied=False)
 
 
 def cmd_gc(args: argparse.Namespace) -> None:
@@ -567,9 +567,7 @@ def cmd_gc(args: argparse.Namespace) -> None:
     actions = plan_field_retention(root, order, state)
     print_audit_block(root)
     if getattr(args, "audit", False) or getattr(args, "dry_run", False):
-        print_retention_plan(actions)
-        if getattr(args, "dry_run", False):
-            print("dry-run (no deletes)")
+        print_retention_plan(actions, applied=False)
         emit_event("gc", dumped=0, ok=True, audit=True)
         return
     apply_field_retention(root, order, state, actions)
@@ -2751,6 +2749,11 @@ def print_resume_completed(
             result_ref = residual.get("result_ref")
             if result_ref:
                 print(f"    result_ref  {result_ref}")
+                from of.retain import Deliverable
+
+                note = Deliverable.cited_after_close(root, str(result_ref))
+                if note:
+                    print(f"    {note}")
         print_resume_child_owns(root, pkt)
 
 

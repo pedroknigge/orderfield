@@ -179,6 +179,57 @@ class DeliverableClose(_Base):
         self.assertTrue((home / "deliverables" / "leader" / "notes.md").is_file())
         self.assertTrue(done)
 
+    def test_resume_names_promoted_result_ref_after_scratch_wipe(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+
+        from of.cli.ops import print_resume_completed
+        from of.retain import Deliverable
+
+        home = self.tmp / ".orderfield"
+        child = "implementer_37ff66"
+        src = home / "work" / "scratch" / child / "list-formats.stdout"
+        src.parent.mkdir(parents=True)
+        src.write_text("formats\n", encoding="utf-8")
+        ref = src.relative_to(self.tmp).as_posix()
+        residual = home / "waves" / "001" / "residuals" / f"{child}.json"
+        residual.parent.mkdir(parents=True)
+        residual.write_text(
+            json.dumps({"status": "done", "result_ref": ref}),
+            encoding="utf-8",
+        )
+        Deliverable.promote(self.tmp, home)
+        src.unlink()
+        self.assertEqual(
+            Deliverable.cited_after_close(self.tmp, ref),
+            f"promoted    .orderfield/deliverables/{child}/list-formats.stdout",
+        )
+        self.assertEqual(
+            Deliverable.cited_after_close(
+                self.tmp, ".orderfield/work/scratch/c1/gone.stdout"
+            ),
+            "promoted    (scratch wiped)",
+        )
+        self.assertIsNone(Deliverable.cited_after_close(self.tmp, "notes/missing.py"))
+        src.write_text("formats\n", encoding="utf-8")
+        self.assertIsNone(Deliverable.cited_after_close(self.tmp, ref))
+        src.unlink()
+        packet = {
+            "child_id": child,
+            "residual_path": residual.relative_to(self.tmp).as_posix(),
+            "owns_paths": [],
+            "owns_requirements": [],
+        }
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            print_resume_completed(self.tmp, [packet])
+        text = buf.getvalue()
+        self.assertIn(f"result_ref  {ref}", text)
+        self.assertIn(
+            f"promoted    .orderfield/deliverables/{child}/list-formats.stdout",
+            text,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
