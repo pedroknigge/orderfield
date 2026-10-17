@@ -351,7 +351,8 @@ def print_audit_block(root: Path, usage: dict[str, Any] | None = None) -> None:
         if any(row.get("open") for row in usage.get("fields") or []):
             suffix = "  (before close)"
         print(
-            "next         of gc --audit | of gc --keep-field <id> | "
+            "next         of gc | of gc --audit (plan only) | "
+            "of gc --keep-field <id> | "
             f"of gc --drop-field <id>{suffix}"
         )
 
@@ -365,12 +366,12 @@ class AuditPressure:
     """
 
     NOTE = (
-        "audit OVER or fat scratch — of gc --audit before close "
-        "(not field FAIL)"
+        "audit OVER or fat scratch — of gc before close "
+        "(--audit is plan-only; not field FAIL)"
     )
     NEXT = (
-        "of gc --audit | of gc --keep-field <id> | shrink scratch "
-        "then of close"
+        "of gc | of gc --audit (plan only) | of gc --keep-field <id> | "
+        "shrink scratch then of close"
     )
 
     @staticmethod
@@ -514,6 +515,62 @@ class Deliverable:
                 rel = Path(src.name)
             done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel))
         return done
+
+    @staticmethod
+    def cited_after_close(root: Path, result_ref: str) -> str | None:
+        """Resume note when close wiped a scratch ``result_ref`` (#351).
+
+        ``None`` when the cited file is still on disk, or the cite is not
+        under ``work/scratch``. ``promoted    <path>`` when the close copy
+        survived. ``promoted    (scratch wiped)`` when the cite is gone and
+        no copy exists. Does not rewrite the residual.
+        """
+        text = str(result_ref or "").strip()
+        if not text:
+            return None
+        raw = Path(text)
+        if raw.is_absolute():
+            try:
+                rel = raw.resolve().relative_to(root.resolve()).as_posix()
+            except (OSError, ValueError):
+                return None
+        else:
+            rel = raw.as_posix()
+            if rel.startswith("./"):
+                rel = rel[2:]
+        cited = root / rel
+        try:
+            if cited.is_file() and not cited.is_symlink():
+                return None
+        except OSError:
+            return None
+        parts = tuple(Path(rel).parts)
+        scratch_at = None
+        for index in range(len(parts) - 1):
+            if parts[index] == "work" and parts[index + 1] == "scratch":
+                scratch_at = index
+                break
+        if scratch_at is None or scratch_at + 2 >= len(parts):
+            return None
+        child = parts[scratch_at + 2]
+        rest = (
+            Path(*parts[scratch_at + 3:])
+            if scratch_at + 3 < len(parts)
+            else None
+        )
+        home = root.joinpath(*parts[:scratch_at])
+        candidates: list[Path] = []
+        if rest is not None and rest.parts:
+            candidates.append(home / Deliverable.DIR / child / rest)
+            if child == "leader" and rest.as_posix() == Deliverable.FINAL:
+                candidates.append(home / Deliverable.FINAL)
+        for cand in candidates:
+            try:
+                if cand.is_file() and not cand.is_symlink():
+                    return f"promoted    {field_rel(root, cand)}"
+            except OSError:
+                continue
+        return "promoted    (scratch wiped)"
 
     @staticmethod
     def emit(root: Path, paths: list[Path]) -> None:
@@ -1298,7 +1355,9 @@ def apply_field_retention(
     return state
 
 
-def print_retention_plan(actions: list[dict[str, str]]) -> None:
+def print_retention_plan(
+    actions: list[dict[str, str]], *, applied: bool = True
+) -> None:
     kept = dropped = dumped = 0
     for item in actions:
         action = item["action"]
@@ -1309,11 +1368,17 @@ def print_retention_plan(actions: list[dict[str, str]]) -> None:
             dropped += 1
         elif action == "dump":
             dumped += 1
+    # ``dumped=`` means those unlinks already happened. A plan
+    # (``of retain``, ``of gc --audit``, ``of gc --dry-run``) must not
+    # use that word (#350).
+    dump_key = "dumped" if applied else "planned_dump"
     print(
-        f"retention kept={kept} dropped={dropped} dumped={dumped} "
+        f"retention kept={kept} dropped={dropped} {dump_key}={dumped} "
         f"ttl_safe={SAFE_RETENTION_DAYS}d ttl_contract={RETENTION_DAYS}d "
         f"(never copies transcripts)"
     )
+    if not applied:
+        print("dry-run (no deletes)")
     OrphanPacked.emit(OrphanPacked.rows_from_actions(actions))
 
 

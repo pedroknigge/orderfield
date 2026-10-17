@@ -1972,6 +1972,8 @@ class DoctorAuditPressure(unittest.TestCase):
         self.assertNotIn("doctor        FAIL", r.stdout)
         self.assertIn(of.AuditPressure.NOTE, r.stdout)
         self.assertIn("of gc --audit", r.stdout)
+        self.assertIn("plan only", r.stdout)
+        self.assertIn("of gc |", r.stdout)
         self.assertIn("before close", r.stdout)
 
     def test_close_checklist_warns_and_does_not_make_over_a_gate(self) -> None:
@@ -1981,6 +1983,7 @@ class DoctorAuditPressure(unittest.TestCase):
         self.assertIn(of.AuditPressure.NOTE, r.stdout)
         self.assertIn("before close", r.stdout)
         self.assertIn("of gc --audit", r.stdout)
+        self.assertIn("plan only", r.stdout)
         self.assertNotIn("of close refused: audit", r.stderr)
 
 
