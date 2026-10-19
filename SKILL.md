@@ -28,7 +28,7 @@ Kernel: public JSON schemas, causal WAL, field lock for `MUTATING_COMMANDS`, pac
 | `.orderfield/` exists | `of resume` — then the printed `next`, same turn (`--json`: run `targets[].argv`). Clone/checkout + installed skill: operator risk, not an escape |
 | next `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` | re-run child, same packet / `of patch --from-current` / re-prove. `wal-broken`: check `wal/orphans/`, `OF_WAL_ADOPT_LIVE=1` |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"` |
-| owners known | pack `--slice` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Then spawn |
+| owners known | pack `--slice` `--verify-cmd` `--verify-timeout` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
 | multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Must propose in chat first** — explorer cheap, implementer frontier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
@@ -58,7 +58,7 @@ Kernel: public JSON schemas, causal WAL, field lock for `MUTATING_COMMANDS`, pac
 | init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
-| public surface exercised | `of spec --verified-contract ID --cite` → `of contrast` → `of close --checklist` → `of close` |
+| public surface exercised | `of spec --verified-contract ID --run --timeout N` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair` |
 | timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or a release header. `ContractSurface`. Not a monitor |
 | never public | `of spec --surface internal ID` — not `--supersede` |

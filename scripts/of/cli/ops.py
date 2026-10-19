@@ -2250,7 +2250,7 @@ class ProtocolCompiler:
     HINTS: dict[str, str] = {
         "pack": (
             "1 phase at a time; exclusive --owns-paths + --owns-requirements per child; "
-            "optional --verify-cmd '<cmd>' for kernel-attested receipt; "
+            "optional --verify-cmd '<cmd>' --verify-timeout N for kernel-attested receipt; "
             "pin shared interfaces with of patch --pin-contract <path>"
         ),
         "spawn": (

@@ -711,6 +711,13 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         dest="verify_cmd",
         help="deterministic command kernel runs at collect to attest a receipt",
     )
+    s.add_argument(
+        "--verify-timeout",
+        dest="verify_timeout",
+        type=int,
+        default=None,
+        help="seconds for --verify-cmd (default 120; not spawn --timeout or budget.seconds)",
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser(
@@ -1031,6 +1038,13 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
             "with --verified-contract: execute command, emit a kernel-attested "
             "receipt, and bind it as --cite"
         ),
+    )
+    s.add_argument(
+        "--timeout",
+        dest="run_timeout",
+        type=int,
+        default=None,
+        help="with --run: seconds before the command is exit 124 (default 120)",
     )
     s.add_argument(
         "--both-sides",

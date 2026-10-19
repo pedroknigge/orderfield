@@ -936,6 +936,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
         if not parsed_vcmd:
             die("--verify-cmd must not be empty")
         packet["verify_cmd"] = raw_verify_cmd
+    verify_timeout = getattr(args, "verify_timeout", None)
+    if verify_timeout is not None:
+        if not raw_verify_cmd:
+            die("--verify-timeout requires --verify-cmd")
+        if verify_timeout < 1:
+            die("--verify-timeout must be a positive number of seconds")
+        packet["verify_timeout"] = verify_timeout
     if review_scope:
         packet["review_scope"] = review_scope
     packet["packet_hash"] = packet_digest(packet)

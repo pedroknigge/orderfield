@@ -235,6 +235,7 @@ class EvidenceReceipt:
                 "exit",
                 "size",
                 "command",
+                "timeout_s",
             )
             if k in receipt
         }
@@ -255,6 +256,7 @@ class EvidenceReceipt:
         extract: bool = False,
         kernel_attested: bool = False,
         attestation_hmac: str | None = None,
+        timeout_s: int | None = None,
         root: Path | None = None,
     ) -> dict[str, Any]:
         trigger = EvidenceReceipt.trigger_of(command)
@@ -278,6 +280,8 @@ class EvidenceReceipt:
         }
         if command:
             receipt["command"] = command
+        if timeout_s is not None:
+            receipt["timeout_s"] = int(timeout_s)
         if trigger:
             receipt["trigger"] = trigger
         if extract:
@@ -346,6 +350,10 @@ class EvidenceReceipt:
             hmac_val = str(receipt.get("attestation_hmac") or "").lower()
             if not EvidenceReceipt.SHA_RE.match(hmac_val):
                 errs.append("receipt schema: attestation_hmac")
+        if "timeout_s" in receipt:
+            bound = receipt.get("timeout_s")
+            if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
+                errs.append("receipt schema: timeout_s")
         return errs
 
     @staticmethod
@@ -560,6 +568,7 @@ class KernelVerify:
         exit_code: int,
         command: str,
         root: Path,
+        timeout_s: int | None = None,
     ) -> tuple[dict[str, Any], Path, str]:
         written = EvidenceReceipt.write_archive(
             scratch,
@@ -578,6 +587,7 @@ class KernelVerify:
             command=command,
             extract=True,
             kernel_attested=True,
+            timeout_s=timeout_s,
             root=root,
         )
         written["receipt"].write_bytes(EvidenceReceipt.dump(receipt))
@@ -638,6 +648,7 @@ class KernelVerify:
             command_id=command_id,
             exit_code=exit_code,
             command=raw_cmd,
+            timeout_s=timeout_s,
             root=root,
         )
         return receipt, receipt_rel, exit_code
@@ -657,8 +668,11 @@ class KernelVerify:
         if not scratch_rel:
             return [], None, False
         scratch = physical_artifact_path(root, scratch_rel, "packet scratch_dir")
+        bound = packet.get("verify_timeout", KernelVerify.DEFAULT_TIMEOUT_S)
+        if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
+            bound = KernelVerify.DEFAULT_TIMEOUT_S
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, cmd, command_id="kernel-verify"
+            root, scratch, cmd, command_id="kernel-verify", timeout_s=bound
         )
         rem = residual.setdefault("residual", {})
         if isinstance(rem, dict):
@@ -720,6 +734,7 @@ class KernelVerify:
         root: Path,
         req_ids: list[str],
         command: str,
+        timeout_s: int = DEFAULT_TIMEOUT_S,
     ) -> tuple[str, int]:
         from of.field import field_home
 
@@ -727,6 +742,6 @@ class KernelVerify:
         raw_id = req_ids[0].lower() if req_ids else "verify"
         clean_id = re.sub(r"[^a-z0-9._-]", "-", f"spec-{raw_id}")[:64]
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, command, command_id=clean_id
+            root, scratch, command, command_id=clean_id, timeout_s=timeout_s
         )
         return receipt_rel, exit_code

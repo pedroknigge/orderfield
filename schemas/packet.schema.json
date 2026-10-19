@@ -107,6 +107,11 @@
       "minLength": 1,
       "description": "Optional deterministic command the kernel runs at collect to attest a receipt."
     },
+    "verify_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Seconds for verify_cmd at collect. Default 120 when omitted. Not budget.seconds."
+    },
     "review_scope": {
       "type": "object",
       "additionalProperties": false,
