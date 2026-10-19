@@ -26,8 +26,11 @@ WAVE = ".orderfield/waves/001"
 # FAKE_MODE: "rel=text,..." product writes. FAKE_FORGE: a sibling id whose
 # residual this child also writes (identity read from that packet).
 AGENT = r'''#!{python}
-import hashlib, json, os, pathlib
+import hashlib, json, os, pathlib, subprocess
 root = pathlib.Path.cwd()
+wt = os.environ.get("FAKE_BRANCH_WT", "")
+if wt:
+    subprocess.check_call(["git", "-C", wt, "config", "branch.demo-354.remote", "origin"])
 pdir = root / ".orderfield/waves/001/packets"
 def land(kid, note):
     pkt = json.loads((pdir / (kid + ".json")).read_text())
@@ -99,8 +102,8 @@ class Field:
                 *flags, "--force")
 
     def child_env(self, mode: str = "", forge: str = "") -> dict[str, str]:
-        return {"OF_AGENT": str(self.agent), "OF_SPAWN_ENV": "FAKE_MODE,FAKE_FORGE",
-                "FAKE_MODE": mode, "FAKE_FORGE": forge}
+        return {"OF_AGENT": str(self.agent), "OF_SPAWN_ENV": "FAKE_MODE,FAKE_FORGE,FAKE_BRANCH_WT",
+                "FAKE_MODE": mode, "FAKE_FORGE": forge, "FAKE_BRANCH_WT": ""}
 
     def spawn(self, child: str, mode: str = "", forge: str = "", *extra: str):
         return self.ok("spawn", "--adapter", "generic", "--packet",
@@ -230,6 +233,48 @@ class ScopeWriteBlindSpots(unittest.TestCase):
         field.pack("e1")
         field.spawn("e1", ".git/config=[[[ not a config")
         self.assertIn("git tree unreadable after this run", self.collect_line(field))
+
+    def test_other_worktree_branch_section_is_not_scopewrite(self) -> None:
+        field = Field(self)
+        other = field.tmp.parent / (field.tmp.name + "-wt")
+        field.git("worktree", "add", "-q", str(other), "HEAD")
+        self.addCleanup(shutil.rmtree, other, True)
+        field.pack("i1", "implementer", "src/app.py")
+        env = field.child_env("src/app.py=print(2)")
+        env["FAKE_BRANCH_WT"] = str(other)
+        field.ok("spawn", "--adapter", "generic", "--packet", f"{WAVE}/packets/i1.json", **env)
+        cfg = (field.tmp / ".git/config").read_text(encoding="utf-8")
+        self.assertIn('[branch "demo-354"]', cfg)
+        r = field.ok("collect")
+        self.assertNotIn(".git/config", r.stdout)
+        self.assertIn("ok=1", r.stdout)
+
+    def test_revert_names_unrevertible_git_and_dirty_baseline(self) -> None:
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        (field.tmp / "README.md").write_text("dirty baseline\n", encoding="utf-8")
+        cfg = (field.tmp / ".git/config").read_text(encoding="utf-8")
+        field.spawn(
+            "i1",
+            "src/app.py=print(2),README.md=child hijack,.git/config="
+            + cfg
+            + "[core]\n\thooksPath = /tmp/x",
+        )
+        bare = field.of("collect")
+        self.assertEqual(bare.returncode, 2, bare.stdout + bare.stderr)
+        line = next(x for x in bare.stdout.splitlines() if "rule=ScopeWrite" in x)
+        self.assertIn("nothing to revert", line)
+        self.assertIn(".git/config", line)
+        self.assertIn("README.md", line)
+        self.assertIn(".git/ excluded", line)
+        self.assertIn("baseline already dirty", line)
+        flagged = field.of("collect", "--revert-out-of-scope")
+        self.assertEqual(flagged.returncode, 2, flagged.stdout + flagged.stderr)
+        self.assertIn("skipped     i1: .git/config (.git/ excluded)", flagged.stdout)
+        self.assertIn("skipped     i1: README.md (baseline already dirty)", flagged.stdout)
+        self.assertNotIn("quarantined", flagged.stdout)
+        self.assertEqual((field.tmp / "README.md").read_text(encoding="utf-8"), "child hijack\n")
+        self.assertIn("hooksPath", (field.tmp / ".git/config").read_text(encoding="utf-8"))
 
     def test_ignored_file_is_seen_heavy_dirs_are_not(self) -> None:
         field = Field(self, gitignore=".env\nnode_modules/\nlogs/\n")

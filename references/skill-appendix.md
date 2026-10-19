@@ -591,9 +591,9 @@ of eval recovery/multi-harness-residual
 
 ### 0.9.1 mechanical contract flags
 
-- **Kernel-attested verification (`KernelVerify`):** `of pack --verify-cmd "<cmd>"` runs `<cmd>` inside the kernel at `of collect` when the child reports `status=done`, writes `.orderfield/work/scratch/<child_id>/logs/kernel-verify.receipt.json` (`kernel_attested: true`, `attestation_hmac`), refuses non-zero exits, and auto-promotes `owns_requirements` to `verified_contract`. `of spec --verified-contract ID --run "<cmd>"` runs and attests directly.
+- **Kernel-attested verification (`KernelVerify`):** `of pack --verify-cmd "<cmd>"` runs `<cmd>` inside the kernel at `of collect` when the child reports `status=done`, writes `.orderfield/work/scratch/<child_id>/logs/kernel-verify.receipt.json` (`kernel_attested: true`, `attestation_hmac`), refuses non-zero exits, and auto-promotes `owns_requirements` to `verified_contract`. `status=blocked` does not run it. `of spec --verified-contract ID --run "<cmd>"` runs and attests directly.
 - **Semantic interface pinning (`pinned_contracts`):** `of patch --pin-contract <path>` / `--unpin-contract <path>` pins read-only contract files in `ORDER.json`; `of pack` hashes them into `packet.json` and renders `## Pinned contracts (read-only for children)` in the prompt; `of collect` refuses any mutation.
-- **Transactional scope quarantine (`--revert-out-of-scope`):** `of collect --revert-out-of-scope` archives out-of-scope edits to `quarantine.patch` and restores the pre-spawn baseline so valid owned writes collect cleanly.
+- **Transactional scope quarantine (`--revert-out-of-scope`):** `of collect --revert-out-of-scope` archives revertible out-of-scope edits to `quarantine.patch` and restores the pre-spawn baseline so valid owned writes collect cleanly. The leader sentence and the flag share one plan: `.git/` and a path that was already dirty at baseline are printed as skips (`nothing to revert` when that is the whole set) and are not checked out. A `[branch]` section is not `.git/config`. A path a concurrent sibling owns stays that sibling's, including when this residual names the file.
 - **JIT protocol compiler (`ProtocolCompiler`):** `of resume` prints a `hint` line and `of resume --json` includes `protocol_hint` with the exact rule for the current `next` action.
 
 ## If you are already inside an interactive harness
