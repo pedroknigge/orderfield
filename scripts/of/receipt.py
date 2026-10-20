@@ -716,7 +716,15 @@ class KernelVerify:
         stamped: list[str] = []
         for rid in owns:
             item = find_requirement(data, rid)
-            if item is None or item.get("status") in ("verified_contract", "superseded"):
+            # verified_internal or above already carries a proof. A later
+            # --verify-cmd must not replace proof_cite / proof_sha. superseded
+            # stays terminal. A weaker status (`owned`, `verified`, `failed`)
+            # may still be lifted to verified_internal.
+            if item is None or item.get("status") in (
+                "verified_internal",
+                "verified_contract",
+                "superseded",
+            ):
                 continue
             # A kernel receipt from --verify-cmd proves only that the command
             # ran and exited 0 — not that it exercised any requirement's

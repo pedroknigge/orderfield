@@ -706,6 +706,112 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         self.assertNotEqual(refused.returncode, 0, refused.stdout)
         self.assertIn("needs --both-sides", refused.stderr)
 
+    def test_1c_kernel_verify_keeps_proof_at_verified_internal_or_above(self) -> None:
+        """A later --verify-cmd receipt must not overwrite proof_cite/proof_sha
+        once a requirement is already verified_internal or verified_contract."""
+        self.ok(
+            "init",
+            "--mission",
+            "keep stronger proof",
+            "--phase",
+            "build",
+            "--source",
+            "REQ-001 REQ-002 REQ-003",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-001",
+            "--text",
+            "unit check stays internal",
+            "--surface",
+            "internal",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-002",
+            "--text",
+            "cli --version prints 1.0",
+            "--surface",
+            "contract",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-003",
+            "--text",
+            "still unproven before this receipt",
+            "--surface",
+            "internal",
+        )
+        self.ok(
+            "spec",
+            "--verified-contract",
+            "REQ-002",
+            "--run",
+            f"{sys.executable} -c \"print('contract surface')\"",
+        )
+        contract = self._requirement("REQ-002")
+        self.assertEqual(contract["status"], "verified_contract")
+        contract_cite = contract["proof_cite"]
+        contract_sha = contract["proof_sha"]
+
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "prior"
+        scratch.mkdir(parents=True)
+        _prior, cite_a, code_a = KernelVerify.execute(
+            self.tmp,
+            scratch,
+            f"{sys.executable} -c \"print('prior internal')\"",
+            command_id="prior-internal",
+        )
+        self.assertEqual(code_a, 0)
+        first = KernelVerify.auto_verify_requirements(
+            self.tmp, {"owns_requirements": ["REQ-001"]}, cite_a
+        )
+        self.assertEqual(first, ["REQ-001"])
+        internal = self._requirement("REQ-001")
+        self.assertEqual(internal["status"], "verified_internal")
+        self.assertEqual(internal["proof_cite"], cite_a)
+        internal_sha = internal["proof_sha"]
+        self.assertTrue(internal_sha)
+        self.assertFalse(internal.get("pair_checked"))
+
+        scratch_b = self.tmp / ".orderfield" / "work" / "scratch" / "later"
+        scratch_b.mkdir(parents=True)
+        _later, cite_b, code_b = KernelVerify.execute(
+            self.tmp,
+            scratch_b,
+            f"{sys.executable} -c \"print('later receipt')\"",
+            command_id="later-verify",
+        )
+        self.assertEqual(code_b, 0)
+        self.assertNotEqual(cite_b, cite_a)
+        self.assertNotEqual(cite_b, contract_cite)
+        again = KernelVerify.auto_verify_requirements(
+            self.tmp,
+            {"owns_requirements": ["REQ-001", "REQ-002", "REQ-003"]},
+            cite_b,
+        )
+        self.assertEqual(again, ["REQ-003"])
+
+        kept_internal = self._requirement("REQ-001")
+        self.assertEqual(kept_internal["status"], "verified_internal")
+        self.assertEqual(kept_internal["proof_cite"], cite_a)
+        self.assertEqual(kept_internal["proof_sha"], internal_sha)
+        self.assertFalse(kept_internal.get("pair_checked"))
+
+        kept_contract = self._requirement("REQ-002")
+        self.assertEqual(kept_contract["status"], "verified_contract")
+        self.assertEqual(kept_contract["proof_cite"], contract_cite)
+        self.assertEqual(kept_contract["proof_sha"], contract_sha)
+
+        fresh = self._requirement("REQ-003")
+        self.assertEqual(fresh["status"], "verified_internal")
+        self.assertEqual(fresh["proof_cite"], cite_b)
+        self.assertNotEqual(fresh["proof_sha"], internal_sha)
+        self.assertFalse(fresh.get("pair_checked"))
+
     def _requirement(self, rid: str) -> dict:
         reqs = json.loads(
             (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
