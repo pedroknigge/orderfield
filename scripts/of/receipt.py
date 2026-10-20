@@ -685,7 +685,6 @@ class KernelVerify:
         from of.spec import (
             find_requirement,
             load_requirements,
-            requirement_is_pair,
             save_requirements,
         )
 
@@ -705,11 +704,16 @@ class KernelVerify:
             item = find_requirement(data, rid)
             if item is None or item.get("status") in ("verified_contract", "superseded"):
                 continue
-            item["status"] = "verified_contract"
+            # A kernel receipt from --verify-cmd proves only that the command
+            # ran and exited 0 — not that it exercised any requirement's
+            # public surface, and never both sides of a PAIR (#356). Stamp
+            # verified_internal (the strongest claim a command run supports);
+            # pair_checked is left alone so the of spec --both-sides gate holds,
+            # and contract-surface requirements still need an explicit
+            # `of spec --verified-contract ID --run` to close.
+            item["status"] = "verified_internal"
             item["proof_cite"] = receipt_rel
             item["proof_sha"] = proof_sha
-            if requirement_is_pair(item):
-                item["pair_checked"] = True
             stamped.append(rid)
         if stamped:
             save_requirements(data, root)

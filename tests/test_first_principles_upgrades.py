@@ -377,8 +377,93 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
         )["requirements"]
         by_id = {r["id"]: r for r in reqs}
-        self.assertEqual(by_id["REQ-001"]["status"], "verified_contract")
+        # #356: the auto-verify at collect stamps only verified_internal — the
+        # command run is internal evidence, not a contract verification
+        self.assertEqual(by_id["REQ-001"]["status"], "verified_internal")
         self.assertEqual(by_id["REQ-002"]["status"], "verified_contract")
+
+    def test_1b_kernel_receipt_does_not_stamp_contract_or_pair_checked(self) -> None:
+        """#356: a packet's --verify-cmd receipt proves only that the command ran
+        and exited 0. It must not promote every owned requirement to
+        verified_contract, and it must never stamp pair_checked on a PAIR
+        (that would skip the of spec --both-sides gate #268/#271 added)."""
+        self.ok(
+            "init",
+            "--mission",
+            "auto verify scope",
+            "--phase",
+            "build",
+            "--source",
+            "Contract REQ-001 and IDEMP-001",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-001",
+            "--text",
+            "calc(2, 3) returns 5",
+            "--surface",
+            "contract",
+        )
+        self.ok(
+            "spec",
+            "--add",
+            "IDEMP-001",
+            "--text",
+            "sending the same payload twice creates one record",
+            "--surface",
+            "contract",
+        )
+        self.assertTrue(of.requirement_is_pair(self._requirement("IDEMP-001")))
+        verify_cmd = f"{sys.executable} -c \"import calc; assert calc.add(2, 3) == 5\""
+        self.ok(
+            "pack",
+            "--slice",
+            "implement calc.py",
+            "--role",
+            "implementer",
+            "--child-id",
+            "imp1",
+            "--owns-path",
+            "calc.py",
+            "--owns-requirement",
+            "REQ-001",
+            "--owns-requirement",
+            "IDEMP-001",
+            "--verify-cmd",
+            verify_cmd,
+        )
+        (self.tmp / "calc.py").write_text(
+            "def add(a, b):\n    return a + b\n", encoding="utf-8"
+        )
+        self.write_done_residual("imp1", evidence="calc.py implemented")
+        good_collect = self.ok("collect")
+        self.assertIn("verified_by_kernel imp1: REQ-001", good_collect.stdout)
+        self.assertIn("IDEMP-001", good_collect.stdout.split("verified_by_kernel", 1)[-1].splitlines()[0])
+
+        req1 = self._requirement("REQ-001")
+        idemp = self._requirement("IDEMP-001")
+        self.assertEqual(req1["status"], "verified_internal")
+        self.assertEqual(idemp["status"], "verified_internal")
+        # the PAIR requirement did not get pair_checked: --both-sides still owns it
+        self.assertFalse(req1.get("pair_checked"))
+        self.assertFalse(idemp.get("pair_checked"))
+        refused = run_of(
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            "IDEMP-001",
+            "--run",
+            "true",
+        )
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("needs --both-sides", refused.stderr)
+
+    def _requirement(self, rid: str) -> dict:
+        reqs = json.loads(
+            (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
+        )["requirements"]
+        return next(row for row in reqs if row["id"] == rid)
 
     # ------------------------------------------------------------------
     # 2. Just-In-Time (JIT) Protocol Compiler
