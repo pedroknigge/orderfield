@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.1. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.2. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.1`
+**Status:** Shipped · **Current release line:** `0.9.2`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,14 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.2 — gc names the deleter and the survivor; ScopeWrite stops a false blame; one verify clock
+
+- `of gc --audit` stays a plan. Doctor and close name `of gc` as the verb that deletes. After close, `of resume` keeps the residual `result_ref` and says `promoted` when that file moved into deliverables, or `(scratch wiped)` when it did not.
+- ScopeWrite fingerprints `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.*`, and `includeIf.*`. A shared `[branch]` write is not blamed on a child. Citing a sibling path is not a write.
+- `of collect --revert-out-of-scope` and the leader sentence share one revert plan (`unlink`, `checkout`, or `skip`) that names each skip.
+- `of spec --verified-contract ID --run --timeout N` and `of pack --verify-cmd --verify-timeout N` use the existing verify clock (default 120). Exit 124 does not stamp `verified_contract`.
+- Proof: `tests/test_kernel_field.py::EpisodicRetention`, `tests/test_campo_picks.py::DeliverableClose`, `tests/test_kernel_cli.py::DoctorAuditPressure`, `tests/test_packaging.py::SkillAuditPressure`, `tests/test_reaudit_gaps.py::ScopeWriteBlindSpots`, `tests/test_wave_integrity.py::ScopeWriteGate`, `tests/test_first_principles_upgrades.py::FirstPrinciplesUpgradesE2E`.
 
 ## 0.9.1 — first-principles upgrades: kernel-attested verification, JIT protocol compiler, semantic interface pinning, scope quarantine, W9 leader key, pre-0.7.7 close reconciliation, modularity split
 
