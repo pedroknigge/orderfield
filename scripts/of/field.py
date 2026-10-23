@@ -4181,9 +4181,9 @@ class CollectGate:
     ) -> list[str]:
         from of.pack import ScopeWrite
 
-        errs, data, _stamped, _warn, _held = CollectGate.judge(root, packet, path)
+        errs, _data, _stamped, _warn, _held = CollectGate.judge(root, packet, path)
         if scope and not errs:
-            errs = ScopeWrite.errors(root, packet, data, live=True)
+            errs = ScopeWrite.errors(root, packet, live=True)
         return errs
 
 

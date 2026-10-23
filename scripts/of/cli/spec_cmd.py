@@ -374,13 +374,21 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
     both_sides = bool(getattr(args, "both_sides", False))
     cite = str(getattr(args, "cite", "") or "").strip()
     run_cmd = str(getattr(args, "run_cmd", "") or "").strip()
+    run_timeout = getattr(args, "run_timeout", None)
     verified_ids = list(getattr(args, "verified_contract", None) or [])
+    if run_timeout is not None and not run_cmd:
+        die("of spec --timeout requires --run")
+    if isinstance(run_timeout, int) and run_timeout < 1:
+        die("of spec --timeout must be a positive number of seconds")
     if run_cmd and not verified_ids:
         die("of spec --run requires --verified-contract ID")
     if verified_ids and run_cmd:
         from of.receipt import KernelVerify
 
-        receipt_rel, exit_code = KernelVerify.run_for_spec(root, verified_ids, run_cmd)
+        bound = run_timeout if isinstance(run_timeout, int) else KernelVerify.DEFAULT_TIMEOUT_S
+        receipt_rel, exit_code = KernelVerify.run_for_spec(
+            root, verified_ids, run_cmd, timeout_s=bound
+        )
         if exit_code != 0:
             die(
                 f"of spec --run {run_cmd!r} failed with exit={exit_code} "

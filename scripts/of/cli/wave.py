@@ -936,6 +936,13 @@ def cmd_pack(args: argparse.Namespace) -> None:
         if not parsed_vcmd:
             die("--verify-cmd must not be empty")
         packet["verify_cmd"] = raw_verify_cmd
+    verify_timeout = getattr(args, "verify_timeout", None)
+    if verify_timeout is not None:
+        if not raw_verify_cmd:
+            die("--verify-timeout requires --verify-cmd")
+        if verify_timeout < 1:
+            die("--verify-timeout must be a positive number of seconds")
+        packet["verify_timeout"] = verify_timeout
     if review_scope:
         packet["review_scope"] = review_scope
     packet["packet_hash"] = packet_digest(packet)
@@ -1738,10 +1745,11 @@ def cmd_collect(args: argparse.Namespace) -> None:
         if skip:
             scope_skips.setdefault(skip, []).append(child)
         if getattr(args, "revert_out_of_scope", False):
-            raw_res, _ = try_load_json(path)
-            reverted_paths, patch_rel = ScopeWrite.quarantine_and_revert(
-                root, pkt, raw_res if isinstance(raw_res, dict) else None, scope_cache
+            reverted_paths, patch_rel, skips = ScopeWrite.quarantine_and_revert(
+                root, pkt, scope_cache
             )
+            for skip in skips:
+                print(f"skipped     {child}: {skip}")
             if reverted_paths:
                 print(
                     f"quarantined {child}: reverted {len(reverted_paths)} "

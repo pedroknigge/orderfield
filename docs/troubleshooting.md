@@ -51,7 +51,7 @@ Start from the template pack wrote (`.orderfield/waves/NNN/prompts/<id>.RESIDUAL
 
 **Symptom:** resume prints `next REPAIR` (`reason invalid_residual`), or collect prints `INVALID … rule=ScopeWrite` / `ResidualPin missing` / a receipt error and writes `<residual>.invalid.txt`.
 
-**Recover:** Do not collect again; the residual exists but fails the gate (truncated JSON, wrong identity, product writes outside `owns_paths`, a cited receipt with exit ≠ 0 or a missing citation). Re-run that child on the same packet — run the printed `targets[].argv` — and let it rewrite the residual; `of validate --packet` checks it before collect. `ResidualPin missing` means the spawn had no pin (typically a pre-0.9.0 in-flight spawn): re-run it.
+**Recover:** Do not collect again; the residual exists but fails the gate (truncated JSON, wrong identity, product writes outside `owns_paths`, a cited receipt with exit ≠ 0 or a missing citation). Re-run that child on the same packet — run the printed `targets[].argv` — and let it rewrite the residual; `of validate --packet` checks it before collect. A ScopeWrite line that says `nothing to revert` names a `.git/` path or a path that was already dirty at baseline: `of collect --revert-out-of-scope` prints the same skip and does not `git checkout` it; re-running the child keeps that baseline. `ResidualPin missing` means the spawn had no pin (typically a pre-0.9.0 in-flight spawn): re-run it.
 
 ## `next RESTORE` / `LIVE!=CURRENT`
 

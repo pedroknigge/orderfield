@@ -377,6 +377,42 @@ class ScopeWriteGate(unittest.TestCase):
         r = field.ok("collect")
         self.assertIn("ok=2", r.stdout)
 
+    def test_naming_a_sibling_path_does_not_take_it(self) -> None:
+        field = Field(self, git=True)
+        field.pack("ia", "implementer", "src/app.py")
+        field.ok(
+            "pack", "--slice", "slice ib", "--role", "implementer",
+            "--child-id", "ib", "--owns-path", "a.txt", "--force",
+        )
+        field.ok("handoff", "--packet", str(WAVE / "packets/ib.json"))
+        field.ok(
+            "spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/ia.json"),
+            OF_AGENT=str(field.agent), FAKE_MODE="src/app.py=print(2)",
+        )
+        owned = field.tmp / "a.txt"
+        owned.write_text("beta\n", encoding="utf-8")
+        pkt = field.packet("ib")
+        sha = hashlib.sha256(owned.read_bytes()).hexdigest()
+        data = {k: pkt[k] for k in of.PACKET_IDENTITY_FIELDS}
+        data.update(
+            status="done",
+            result_ref="a.txt",
+            residual={
+                "wants_to_change": [],
+                "evidence": (
+                    "NEEDS_FOLLOWUP src/app.py is ia's file\n"
+                    f"artifact_sha: {sha}\n"
+                    "rollback: git checkout -- a.txt"
+                ),
+                "proposed_patch": None,
+            },
+            metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False},
+        )
+        field.write_done("ib", data)
+        r = field.ok("collect")
+        self.assertNotIn("owned by ia", r.stdout)
+        self.assertIn("ok=2", r.stdout)
+
     def test_series_write_into_idle_sibling_path_is_invalid(self) -> None:
         field = Field(self, git=True)
         field.pack("ia", "implementer", "src/app.py")
