@@ -6,7 +6,9 @@ on:
 jobs:
   tltfia:
     runs-on: ubuntu-latest
-    if: ${{ secrets.TLTFIA_RELEASES_TOKEN != '' }}
+    # A job-level `if` cannot read `secrets`; without the token every step is skipped and the job passes.
+    env:
+      HAS_TOKEN: ${{ secrets.TLTFIA_RELEASES_TOKEN != '' }}
     # A catastrophic regex in a `path` rule source hangs instead of failing; the job ends here (§6.1).
     timeout-minutes: 15
     defaults:
@@ -14,6 +16,7 @@ jobs:
         working-directory: "."
     steps:
       - uses: actions/checkout@v7
+        if: env.HAS_TOKEN == 'true'
         with:
           fetch-depth: 0
       # The releases repository is private: its downloads need a token that can read it, stored as the
@@ -21,6 +24,7 @@ jobs:
       # covers every asset of the release (MH-32); --ignore-missing skips the ones not downloaded and
       # still fails when the tar is not listed.
       - name: Install the engine the lock pins
+        if: env.HAS_TOKEN == 'true'
         env:
           GH_TOKEN: ${{ secrets.TLTFIA_RELEASES_TOKEN || github.token }}
         run: |
@@ -34,8 +38,10 @@ jobs:
           tar -xzf "$tar" tltfia
           echo "TLTFIA=$RUNNER_TEMP/tltfia" >> "$GITHUB_ENV"
       - name: Test the path rule sources
+        if: env.HAS_TOKEN == 'true'
         run: '"$TLTFIA" rules test'
       - name: Check the change against its base
+        if: env.HAS_TOKEN == 'true'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: '"$TLTFIA" check --ratchet --base "$BASE"'
