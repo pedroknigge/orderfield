@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.9.2. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.9.3. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.9.2` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.9.3` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -19,6 +19,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 ## Notable behaviors (code-backed)
 
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime,doctor,receipt}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`, `eval_cmd`, `issue_cmd`). `of eval` fixture builders live in `scripts/eval_fixtures.py` (re-exported via `cli/eval_cmd.py`). HITL `of issue` lives in `cli/issue_cmd.py`. Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
+- 0.9.3 a receipt stamps only `--verify-req` IDs the child owns and hashes the project files its command ran; close copies scratch inputs to `deliverables/evidence/`. List items own their wrapped lines and sub-items, a free `PREFIX-NNN` plan ID becomes the requirement ID, and `of init --source-file … --cite` indexes the cited plan. Codex `-o` writes a `logs/<child>.last.json` sidecar; the child's valid file wins and both invalid is `residual_invalid`. `of models --headroom` is opt-in. ScopeWrite reverts with literal pathspecs and watches every non-benign repo config key. Proof: `VerifyBinding` / `ReceiptInputsE2E` / `ItemBlockSpans` / `ExtractOnCite` / `ResidualChannelSpawn` / `SlicePaths` / `UsageHeadroom` / `ScopeWriteBaseline`.
 - 0.9.2 gc names the command that deletes and the deliverable that survived close (`of gc --audit` stays plan-only; doctor and close name `of gc`; `of resume` prints `promoted` or `(scratch wiped)`). ScopeWrite fingerprints the security-relevant git-config keys, so a shared `[branch]` write is not the child's, and citing a sibling path is not a write. `--revert-out-of-scope` and the leader sentence share one revert plan that names each skip. `of spec --run --timeout N` and `of pack --verify-timeout N` use the one existing verify clock. Proof: `EpisodicRetention` / `DeliverableClose` / `ScopeWriteBlindSpots` / `ScopeWriteGate` / `FirstPrinciplesUpgradesE2E`.
 - 0.9.1 first-principles upgrades: `of pack --verify-cmd "<cmd>"` + `of spec --verified-contract ID --run "<cmd>"` (`KernelVerify` HMAC-attested receipts); `ProtocolCompiler` JIT `protocol_hint` in `of resume` / `of resume --json`; `of patch --pin-contract` / `--unpin-contract` (`pinned_contracts` SHA-256 boundary enforced at `of collect`); `of collect --revert-out-of-scope` (`ScopeWrite.quarantine_and_revert`); `.orderfield/wal/.leader_key` HMAC-SHA256 WAL/receipt signing (`LeaderKey`) + `OF_HANDOFF_CHILD` refusal; pre-`0.7.7` closed-field adoption (`CloseProof.LEGACY`). Proof: `tests/test_first_principles_upgrades.py`.
 - Session-cut: `of resume` reconstructs in-flight from disk (`state.wave` + packets/residuals; stale `session.json` does not win); prints `field`, `auto_continue`, recovery brief, `parked`/`parked_reason`/`agents_note`; a unique open field auto-continues even when `OF_SESSION_ID` differs from origin (foreign only among several open fields); a clone/checkout with open `.orderfield/` plus HOME dest skill copies is the same auto-continue (operator risk, not an escape; rule 0 stays); open fields require executing `next` same turn; after collect+integrate, idle + actionable `next` prints `DriveAfterIntegrate.speak` (report is not a stop); `of init` without `--force` dies; does not auto-spawn or dump logs. A dead spawn host is the same disk (started-only spawn metadata + incomplete WAL leftover); HOLD detail names `SPAWN --FORCE` when that started-only pid is gone. Proof: `recovery/multi-day-resume` / `DurableMultiDayResume`; `recovery/process-death-resume` / `ResumeAfterProcessDeath`; `recovery/drive-after-integrate`.

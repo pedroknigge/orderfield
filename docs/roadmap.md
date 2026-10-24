@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.2. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.3. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.2`
+**Status:** Shipped · **Current release line:** `0.9.3`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,14 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.3 — bound receipts keep their inputs; list items are requirements; the file is the residual; opt-in quota headroom
+
+- `of pack --verify-cmd CMD --verify-req ID` binds what a receipt may stamp; collect promotes only bound, owned IDs (#356). Receipts hash the project files their command ran and close preserves scratch inputs in `deliverables/evidence/` (#363).
+- List items own their wrapped lines and `a.` / `i.` sub-items; a free plan ID shaped `PREFIX-NNN` becomes the requirement ID; `plan_cover uncovered` names the rest (#357). `of init --source-file <brief> --cite <plan folder>` indexes the cited plan (#362).
+- Codex `-o` writes `logs/<child>.last.json`; the child's valid file wins, a valid sidecar replaces a missing or invalid one, and both invalid is `residual_invalid` → REPAIR (#361).
+- `owns_path_incomplete` counts path-shaped write targets only (#364). `of models --headroom` reads quota headroom and a roster on request (#365, #366).
+- Proof: `tests/test_verify_binding.py`, `tests/test_receipt_inputs.py`, `tests/test_requirement_spans.py`, `tests/test_plan_cite_extract.py`, `tests/test_residual_channel.py`, `tests/test_owns_path_coverage.py`, `tests/test_model_discovery.py::UsageHeadroom`, `tests/test_reaudit_gaps.py::ScopeWriteBaseline`.
 
 ## 0.9.2 — gc names the deleter and the survivor; ScopeWrite stops a false blame; one verify clock
 
