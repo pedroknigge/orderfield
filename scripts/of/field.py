@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from contextlib import contextmanager, nullcontext
@@ -363,6 +364,8 @@ MIGRATION_CATALOG = (
     },
 )
 _HELD_FIELD_LOCK: Path | None = None
+# Re-entry is for the holding thread only; another thread waits on the flock.
+_HELD_FIELD_LOCK_THREAD: int | None = None
 
 
 def utc_now() -> str:
@@ -2152,10 +2155,10 @@ def field_lock(
     field homes in one process (contend): one home-relative generation
     cannot stage N homes without their relative keys colliding.
     """
-    global _HELD_FIELD_LOCK
+    global _HELD_FIELD_LOCK, _HELD_FIELD_LOCK_THREAD
     require_nonsymlink_kernel_root(root)
     path = field_lock_path(root).resolve()
-    if _HELD_FIELD_LOCK == path:
+    if _HELD_FIELD_LOCK == path and _HELD_FIELD_LOCK_THREAD == threading.get_ident():
         yield
         return
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2199,6 +2202,7 @@ def field_lock(
         handle.flush()
         os.fsync(handle.fileno())
         _HELD_FIELD_LOCK = path
+        _HELD_FIELD_LOCK_THREAD = threading.get_ident()
         try:
             FieldWal.recover(root)
             # Mutating lock holders rematerialize CURRENT onto live before
@@ -2233,6 +2237,7 @@ def field_lock(
                 yield
         finally:
             _HELD_FIELD_LOCK = None
+            _HELD_FIELD_LOCK_THREAD = None
             handle.seek(0)
             handle.truncate()
             handle.flush()
@@ -3577,6 +3582,8 @@ class SpawnRecord:
     LABEL = "PACKED"
     OK = "ok"
     ENDED_WITHOUT_RESIDUAL = "done_without_residual"
+    # Exit 0, a residual file is on disk, and it fails the gate (#361).
+    RESIDUAL_INVALID = "residual_invalid"
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path:
@@ -3701,11 +3708,19 @@ class SpawnRecord:
 
     @staticmethod
     def outcome_for(
-        returncode: int | None, residual_valid: bool
+        returncode: int | None,
+        residual_valid: bool,
+        residual_present: bool = False,
     ) -> tuple[str, bool]:
-        """Harness exit 0 without a valid residual is not a healthy ok flight."""
+        """Harness exit 0 without a valid residual is not a healthy ok flight.
+
+        A present file that fails the gate is ``residual_invalid`` (next
+        REPAIR), not ``done_without_residual`` (nothing landed).
+        """
         if returncode == 0 and residual_valid:
             return SpawnRecord.OK, True
+        if returncode == 0 and residual_present:
+            return SpawnRecord.RESIDUAL_INVALID, False
         if returncode == 0:
             return SpawnRecord.ENDED_WITHOUT_RESIDUAL, False
         return "nonzero_exit", False
@@ -4971,8 +4986,9 @@ def write_phase_md(root: Path, order: dict[str, Any]) -> None:
 
 
 def owned_unverified_ids(root: Path) -> list[str]:
-    """Binding IDs that are owned and not yet verified_contract."""
-    from of.spec import REQ_CONTRACT_VERIFIED, is_active_requirement, load_requirements
+    """Binding IDs that are owned and not close-ok (the contrast oracle:
+    a PAIR without both sides is still unverified, #356)."""
+    from of.spec import is_active_requirement, load_requirements, requirement_close_ok
 
     data = load_requirements(root)
     ids: list[str] = []
@@ -4983,7 +4999,7 @@ def owned_unverified_ids(root: Path) -> list[str]:
         status = str(item.get("status") or "unowned")
         if not owners and status != "owned":
             continue
-        if status in REQ_CONTRACT_VERIFIED:
+        if requirement_close_ok(item):
             continue
         rid = str(item.get("id") or "").strip()
         if rid:
@@ -4995,7 +5011,7 @@ def format_owned_unverified_line(ids: list[str] | None = None) -> str:
     found = list(ids or [])
     if found:
         return "owned-but-unverified " + " ".join(found)
-    return "owned-but-unverified"
+    return "owned-but-unverified none"
 
 
 def print_owned_unverified(root: Path, *, file: Any = None) -> None:

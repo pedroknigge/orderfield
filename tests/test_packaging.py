@@ -231,7 +231,10 @@ class InstallScript(unittest.TestCase):
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        self.assertLessEqual(size, 1_500_000, size)
+        # 1.5 MB until the post-0.9.2 batch (ScopeWrite allow-list + operator
+        # config, --verify-req, plan-folder extraction, residual channel,
+        # headroom) grew the kernel ~73 KB. Doc growth still needs cuts.
+        self.assertLessEqual(size, 1_560_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -1037,6 +1040,8 @@ class SkillModelCatalogConsult(unittest.TestCase):
         self.assertLess(consult_at, propose_at)
         self.assertLess(consult_at, ask_at)
         self.assertIn("model-catalog", folded)
+        self.assertIn("headroom", table)
+        self.assertIn("sin dato", table)
         self.assertIn("smarter", folded)
         self.assertNotIn("budget.tokens", folded)
         hero = readme[: readme.index("## Install")].casefold()

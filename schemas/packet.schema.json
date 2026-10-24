@@ -112,6 +112,11 @@
       "minimum": 1,
       "description": "Seconds for verify_cmd at collect. Default 120 when omitted. Not budget.seconds."
     },
+    "verify_requirements": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$" },
+      "description": "Owned non-PAIR requirement IDs the verify_cmd receipt promotes to verified_contract at collect (pack --verify-req). Empty or absent: the receipt is evidence only."
+    },
     "review_scope": {
       "type": "object",
       "additionalProperties": false,

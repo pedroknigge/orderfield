@@ -26,6 +26,8 @@ the log to
 and spawn metadata to
 `.orderfield/waves/NNN/spawns/<child_id>.json`.
 Spawn metadata is finalized on **every** outcome — `ok`, `nonzero_exit`,
+`done_without_residual` (exit 0, no residual file), `residual_invalid` (exit
+0, a residual file that fails the gate; next is REPAIR),
 `timeout` (the child's whole process group is killed, so no grandchild can
 write a residual afterwards), `missing_binary`, `error`, `interrupted`,
 `dry_run` — with `outcome`, `ok`, `ended_at`, the
@@ -100,7 +102,7 @@ Observable via `of spawn --dry-run` (argv preview; approval flags render as
 
 Opt-in. The kernel never invents a model. Before any model recommendation, the `/of` leader runs `of models --adapter HARNESS --json`; only successful live rows support model availability. [docs/model-catalog.md](../docs/model-catalog.md) supplements prices with `last_checked`, not current availability or newly resolved prices. Propose a cheap vs frontier split in chat before a multi-role pack. On yes, write. Never a silent switch.
 
-`of models` starts Codex app-server (`initialize` + paginated visible `model/list`), Claude stream-json control initialization (`response.models`, no user messages, tools/MCP/settings disabled), `grok models`, `agent models` / `cursor-agent models`, or `agy models`. Optional `--adapter` selects one; otherwise every adapter reports explicitly. OpenCode, Orca, Qwen and generic report unsupported. `--timeout` bounds each query (15s default, max 120s). JSON stdout includes source, checked_at, IDs/resolution, descriptions, provider default/recommendation metadata, efforts and unknown price. Missing/error/unsupported never falls back to invented or static models. Provider internal caches remain possible; no inference, home scrape, routing or ORDER mutation. Processes terminate on success and failure; stderr/account banners are not exposed. Selected failure exits 2; all-adapter inventory tolerates missing/unsupported but exits 2 on errors. See the model catalog for the full output contract.
+`of models` starts Codex app-server (`initialize` + paginated visible `model/list`), Claude stream-json control initialization (`response.models`, no user messages, tools/MCP/settings disabled), `grok models`, `agent models` / `cursor-agent models`, or `agy models`. Optional `--adapter` selects one; otherwise every adapter reports explicitly. OpenCode, Orca, Qwen and generic report unsupported. `--timeout` bounds each query (15s default, max 120s). JSON stdout includes source, checked_at, IDs/resolution, descriptions, provider default/recommendation metadata, efforts and unknown price. Missing/error/unsupported never falls back to invented or static models. Provider internal caches remain possible; no inference, home scrape, routing or ORDER mutation. Processes terminate on success and failure; stderr/account banners are not exposed. Selected failure exits 2; all-adapter inventory tolerates missing/unsupported but exits 2 on errors. See the model catalog for the full output contract. `of models --headroom --json` (opt-in, before fan-out only) adds `headroom` and `roster`: Orca `rateLimits`, else a native usage probe that may spend a harness turn (the one exception to "no inference" above; Claude runs isolated, no session saved). Missing is `sin dato` and does not change the exit. The user does not run the command.
 
 ```bash
 of patch --model-hints field|wave|off
@@ -224,11 +226,17 @@ Headless:
 ```bash
 codex exec --json \
   --output-schema schemas/residual.codex.schema.json \
-  -o .orderfield/waves/NNN/residuals/CHILD.json \
+  -o .orderfield/waves/NNN/logs/CHILD.last.json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`--json` is the event stream. Residual still lands at `-o`. Spawn appends stream milestones to the same PULSE.
+`--json` is the event stream. Spawn appends stream milestones to the same PULSE.
+`-o` is codex's last message, a sidecar log, never the residual path (#361):
+the child writes `.orderfield/waves/NNN/residuals/CHILD.json` and that file is
+the residual. At spawn end, if that file is missing or fails the
+`of validate --packet` gate and the sidecar passes it, spawn promotes the
+sidecar and prints `residual source=harness_sidecar` (a rejected child file is
+kept as `logs/CHILD.rejected.json`). A valid child file always wins.
 
 Write-floor default / `OF_TRUST=auto-edit` adds `--sandbox workspace-write`
 so the child can write the residual without bypassing approvals (worktree

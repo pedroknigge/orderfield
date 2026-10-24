@@ -1,0 +1,24 @@
+{
+  "id": "recovery/plan-cite-list-items",
+  "description": "Bullet-item plan folder with IDs and lettered acceptance + a partial hand-written spec: doctor names the list-item orphans and the dropped acceptance lines as WARN, never HOLD",
+  "fixture": "recovery_plan_cite_list_items",
+  "tags": ["recovery", "doctor", "plan-first", "plan-ingress"],
+  "steps": [
+    {
+      "run": "doctor",
+      "exit": 0,
+      "stdout_contains": [
+        "plan_cover     orphan  W1-R1 REQ-002",
+        "plan_fidelity     gap",
+        "docs/plans/p/wave-1.md:12",
+        "docs/plans/p/wave-1.md:13",
+        "WARN; not a close gate",
+        "doctor        WARN"
+      ],
+      "stdout_not_contains": [
+        "doctor        FAIL",
+        "sections (HOLD)"
+      ]
+    }
+  ]
+}

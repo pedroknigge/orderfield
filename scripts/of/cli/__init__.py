@@ -406,6 +406,8 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("models", help="query live harness model metadata (no inference or routing)")
     s.add_argument("--adapter", choices=ADAPTER_ORDER, help="omit to inventory every adapter")
     s.add_argument("--timeout", type=float, default=15, help="seconds per adapter (default 15; maximum 120)")
+    s.add_argument("--headroom", action="store_true",
+                   help="also read quota headroom + roster before fan-out (a probe may spend a turn)")
     s.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
                    help="print model discovery JSON on stdout")
     s.set_defaults(func=cmd_models)
@@ -717,6 +719,16 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         type=int,
         default=None,
         help="seconds for --verify-cmd (default 120; not spawn --timeout or budget.seconds)",
+    )
+    s.add_argument(
+        "--verify-req",
+        dest="verify_req",
+        action="append",
+        metavar="ID",
+        help=(
+            "owned requirement the --verify-cmd receipt proves at the contract "
+            "(repeatable; unbound IDs stay unverified; never a PAIR)"
+        ),
     )
     s.set_defaults(func=cmd_pack)
 

@@ -34,7 +34,9 @@ from of.host_ram import AgentBand
 from of.spec import (
     archive_previous_field,
     discard_disposable_ingest,
+    extract_requirements_from_plan,
     extract_requirements_from_spec,
+    merge_extracted_requirements,
     read_brief_file,
     save_requirements,
     sync_order_spec_fields,
@@ -125,6 +127,76 @@ class DoneWhenSeed:
         return out
 
 
+class PlanCiteExtract:
+    """``of init --cite``: index the cited plan files verbatim (#362).
+
+    The SPEC extractor runs over each cited plan file (list items with
+    their wrapped / lettered lines, ID-bearing items and headings).
+    ``source.path`` names the plan file, so the leader amends rather than
+    transcribes. A cite with zero recognised sections warns instead of
+    staying silent.
+    """
+
+    NOTE_ZERO = (
+        "plan_ingest  WARN 0 requirement sections recognised in cited {where}; "
+        "put list items under a Requirements / Acceptance heading or start "
+        "items and headings with an ID (REQ-002, W1-R1, R1)"
+    )
+    NOTE_UNINDEXED = (
+        "plan_ingest  note cited plan not indexed — no --source/--source-file "
+        "so there is no SPEC to bind; pass the brief to index {where}"
+    )
+
+    @staticmethod
+    def requirements(
+        root: Path, cites: list[str] | None, existing: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], list[str], int]:
+        """(new requirements, cited files, recognised section count)."""
+        data: dict[str, Any] = {"requirements": list(existing)}
+        files: list[str] = []
+        recognised = 0
+        for file_rel, text in PlanCiteExtract.texts(root, cites):
+            files.append(file_rel)
+            found = extract_requirements_from_plan(
+                text, file_rel, existing=data["requirements"]
+            )
+            recognised += len(found) + len(PlanCoverage.sections(text))
+            merge_extracted_requirements(data, found)
+        return data["requirements"][len(existing):], files, recognised
+
+    @staticmethod
+    def texts(root: Path, cites: list[str] | None) -> list[tuple[str, str]]:
+        """(file rel, text) for each readable *.md the cites expand to."""
+        out: list[tuple[str, str]] = []
+        rels = [str(r or "").strip().replace("\\", "/") for r in cites or []]
+        for file_rel, path in [
+            pair for rel in rels if rel for pair in PlanCoverage.expand(root, rel)
+        ]:
+            try:
+                out.append((file_rel, path.read_text(encoding="utf-8")))
+            except (OSError, UnicodeDecodeError):
+                continue
+        return out
+
+    @staticmethod
+    def emit(cited: list[dict[str, Any]], files: list[str], recognised: int) -> None:
+        if not files:
+            return
+        where = " ".join(files[:3])
+        if not recognised:
+            print(PlanCiteExtract.NOTE_ZERO.format(where=where))
+            return
+        print(f"plan_ingest  {len(cited)} requirements from cited {where}")
+
+    @staticmethod
+    def emit_unindexed(root: Path, cites: list[str] | None) -> None:
+        files = [rel for rel, _text in PlanCiteExtract.texts(root, cites)]
+        if files:
+            print(
+                PlanCiteExtract.NOTE_UNINDEXED.format(where=" ".join(files[:3])),
+                file=sys.stderr,
+            )
+
 
 def _stamp_and_write_new_field(
     args: argparse.Namespace,
@@ -172,7 +244,9 @@ def _stamp_and_write_new_field(
         capture_rel, capture_sha = PlanIngress.write_chat_capture(root, order, chat_text)
     if source_text is not None:
         spec_hash = write_spec(root, source_text, revise=bool(force))
-        extracted = extract_requirements_from_spec(source_text)
+        spec_reqs = extract_requirements_from_spec(source_text)
+        cite_report = PlanCiteExtract.requirements(root, cites, spec_reqs)
+        extracted = spec_reqs + cite_report[0]
         seeded = DoneWhenSeed.requirements(extracted, phase, args.done_when)
         extracted = extracted or seeded
         save_requirements(
@@ -189,6 +263,7 @@ def _stamp_and_write_new_field(
             f"requirements {len(extracted)} {label}  unowned {unowned_n}  "
             "(of pack --owns-requirement ID; do not implement without a packet)"
         )
+        PlanCiteExtract.emit(*cite_report)
         src_path = Path(source_file) if source_file and str(source_file) != "-" else None
         ingress = PlanIngress.apply(
             root, order, source_file=src_path, source_text=source_text
@@ -201,6 +276,7 @@ def _stamp_and_write_new_field(
             "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
             file=sys.stderr,
         )
+        PlanCiteExtract.emit_unindexed(root, cites)
         ingress = PlanIngress.apply(
             root, order, source_file=source_file, source_text=source_text
         )

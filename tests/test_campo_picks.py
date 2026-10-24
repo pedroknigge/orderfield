@@ -204,12 +204,15 @@ class DeliverableClose(_Base):
             Deliverable.cited_after_close(self.tmp, ref),
             f"promoted    .orderfield/deliverables/{child}/list-formats.stdout",
         )
+        gone = ".orderfield/work/scratch/c1/gone.stdout"
         self.assertEqual(
-            Deliverable.cited_after_close(
-                self.tmp, ".orderfield/work/scratch/c1/gone.stdout"
-            ),
-            "promoted    (scratch wiped)",
+            Deliverable.cited_after_close(self.tmp, gone), "missing     (not on disk)"
         )
+        (home / "CLOSE.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(
+            Deliverable.cited_after_close(self.tmp, gone), "not promoted (scratch wiped)"
+        )
+        (home / "CLOSE.json").unlink()
         self.assertIsNone(Deliverable.cited_after_close(self.tmp, "notes/missing.py"))
         src.write_text("formats\n", encoding="utf-8")
         self.assertIsNone(Deliverable.cited_after_close(self.tmp, ref))
@@ -228,6 +231,46 @@ class DeliverableClose(_Base):
         self.assertIn(
             f"promoted    .orderfield/deliverables/{child}/list-formats.stdout",
             text,
+        )
+
+    def test_resume_finds_the_copy_in_a_sibling_field(self) -> None:
+        from of import field
+        from of.retain import Deliverable
+
+        home = self.tmp / ".orderfield" / "fields" / "ord_bbbbbbbb"
+        field.set_field_home(home)
+        self.addCleanup(field.set_field_home, None)
+        src = home / "work" / "scratch" / "c1" / "out.txt"
+        src.parent.mkdir(parents=True)
+        src.write_text("out\n", encoding="utf-8")
+        ref = ".orderfield/work/scratch/c1/out.txt"  # logical, as residuals cite
+        self.assertIsNone(Deliverable.cited_after_close(self.tmp, ref, "c1"))
+        copy = home / "deliverables" / "c1" / "out.txt"
+        copy.parent.mkdir(parents=True)
+        copy.write_text("out\n", encoding="utf-8")
+        src.unlink()
+        self.assertEqual(
+            Deliverable.cited_after_close(self.tmp, ref, "c1"),
+            "promoted    .orderfield/fields/ord_bbbbbbbb/deliverables/c1/out.txt",
+        )
+
+    def test_resume_finds_a_cross_child_cite_under_the_residual_child(self) -> None:
+        from of.retain import Deliverable
+
+        home = self.tmp / ".orderfield"
+        src = home / "work" / "scratch" / "b" / "deep" / "report.md"
+        src.parent.mkdir(parents=True)
+        src.write_text("r\n", encoding="utf-8")
+        ref = src.relative_to(self.tmp).as_posix()
+        residual = home / "waves" / "001" / "residuals" / "a.json"
+        residual.parent.mkdir(parents=True)
+        residual.write_text(json.dumps({"status": "done", "result_ref": ref}), encoding="utf-8")
+        Deliverable.promote(self.tmp, home)
+        src.unlink()
+        self.assertTrue((home / "deliverables" / "a" / "report.md").is_file())
+        self.assertEqual(
+            Deliverable.cited_after_close(self.tmp, ref, "a"),
+            "promoted    .orderfield/deliverables/a/report.md",
         )
 
 

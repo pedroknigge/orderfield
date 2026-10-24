@@ -745,6 +745,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("catalog")
     for line in ModelCatalog.doctor_lines():
         print(f"  {line}")
+    print("headroom")
+    print("  read of models --headroom --json before fan-out "
+          "(smallest-window margin, earliest reset; sin dato never blocks)")
     print("efficiency")
     for line in EfficiencySignal.doctor_lines():
         print(f"  {line}")
@@ -2250,7 +2253,8 @@ class ProtocolCompiler:
     HINTS: dict[str, str] = {
         "pack": (
             "1 phase at a time; exclusive --owns-paths + --owns-requirements per child; "
-            "optional --verify-cmd '<cmd>' --verify-timeout N for kernel-attested receipt; "
+            "optional --verify-cmd '<cmd>' --verify-timeout N for kernel-attested receipt "
+            "(--verify-req ID names the owned IDs it proves); "
             "pin shared interfaces with of patch --pin-contract <path>"
         ),
         "spawn": (
@@ -2751,7 +2755,7 @@ def print_resume_completed(
                 print(f"    result_ref  {result_ref}")
                 from of.retain import Deliverable
 
-                note = Deliverable.cited_after_close(root, str(result_ref))
+                note = Deliverable.cited_after_close(root, str(result_ref), cid)
                 if note:
                     print(f"    {note}")
         print_resume_child_owns(root, pkt)

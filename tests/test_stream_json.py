@@ -72,7 +72,7 @@ class StreamJsonParse(unittest.TestCase):
         )
         self.assertIn("--json", codex)
         self.assertIn("-o", codex)
-        self.assertEqual(codex[codex.index("-o") + 1], str(residual))
+        self.assertEqual(codex[codex.index("-o") + 1], str(of.OutputSchema.sidecar(residual)))
         self.assertNotIn("--verbose", codex)
         for adapter, fmt in (("agy", "json"), ("qwen", "json")):
             argv = of.build_spawn_argv(

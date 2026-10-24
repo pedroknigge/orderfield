@@ -80,7 +80,11 @@ class OutputSchemaArgv(unittest.TestCase):
     def test_codex_still_uses_output_schema_and_dash_o(self) -> None:
         argv = self.argv("codex")
         self.assertIn("-o", argv)
-        self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
+        # -o is the last-message sidecar log, never the residual path (#361).
+        self.assertEqual(
+            argv[argv.index("-o") + 1], str(of.OutputSchema.sidecar(self.residual))
+        )
+        self.assertNotEqual(argv[argv.index("-o") + 1], str(self.residual))
         self.assertIn("--output-schema", argv)
         schema_path = Path(argv[argv.index("--output-schema") + 1])
         self.assertEqual(schema_path, CODEX_RESIDUAL_SCHEMA)

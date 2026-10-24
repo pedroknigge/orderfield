@@ -23,7 +23,7 @@ No `of plan`. No ORDER key. No REQUIREMENTS auto-`--add` (that would fail-close 
 
 1. **Cite** = a project-relative plan file (`docs/plans/…`) or directory (`docs/plans/`, `docs/plan/`) named in mission / ORDER / `--source` / `--source-file`, plus `--source-file` when that path itself is a planish on-disk file. Disposable `.orderfield/ingest.md` is not a cite.
 2. **Directory** → `*.md` under it (cap 32, no symlinks). `RunbookPath.PATH_RE` still requires a suffix; `PlanCoverage.DIR_RE` is the extra matcher.
-3. **Extract** = existing `sections()` (`AUTH-001` in an ATX `##` / `###` title). Meta headings stay out.
+3. **Extract** = existing `sections()` (`AUTH-001` in an ATX `##` / `###` title, or an ID at the start of a list item: `- W1-R1:`, `- REQ-002:`; #362). Meta headings stay out. An explicit `of init --cite <plan>` also runs the SPEC requirement extractor over the cited files: requirements land verbatim with `source.path` + line span, and zero recognised sections prints `plan_ingest  WARN 0 requirement sections recognised`.
 4. **Disk wins.** Heading IDs that exist only in `--source` / SPEC.md / `@folder` paste are **not** ingested. Init prints `plan_ingest none — chat paste / @folder is not ingest`.
 5. **Pin** = `keep <rel> coverage honest` on `ORDER.constraints` when ingest finds on-disk paths (especially `--source-file` of the plan itself, whose SPEC body omits its path). Reuses `PlanDocSync.cited`. No new ORDER key. No scratch ledger.
 
