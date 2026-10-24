@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from contextlib import contextmanager, nullcontext
@@ -363,6 +364,8 @@ MIGRATION_CATALOG = (
     },
 )
 _HELD_FIELD_LOCK: Path | None = None
+# Re-entry is for the holding thread only; another thread waits on the flock.
+_HELD_FIELD_LOCK_THREAD: int | None = None
 
 
 def utc_now() -> str:
@@ -2152,10 +2155,10 @@ def field_lock(
     field homes in one process (contend): one home-relative generation
     cannot stage N homes without their relative keys colliding.
     """
-    global _HELD_FIELD_LOCK
+    global _HELD_FIELD_LOCK, _HELD_FIELD_LOCK_THREAD
     require_nonsymlink_kernel_root(root)
     path = field_lock_path(root).resolve()
-    if _HELD_FIELD_LOCK == path:
+    if _HELD_FIELD_LOCK == path and _HELD_FIELD_LOCK_THREAD == threading.get_ident():
         yield
         return
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2199,6 +2202,7 @@ def field_lock(
         handle.flush()
         os.fsync(handle.fileno())
         _HELD_FIELD_LOCK = path
+        _HELD_FIELD_LOCK_THREAD = threading.get_ident()
         try:
             FieldWal.recover(root)
             # Mutating lock holders rematerialize CURRENT onto live before
@@ -2233,6 +2237,7 @@ def field_lock(
                 yield
         finally:
             _HELD_FIELD_LOCK = None
+            _HELD_FIELD_LOCK_THREAD = None
             handle.seek(0)
             handle.truncate()
             handle.flush()
