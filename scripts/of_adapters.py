@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shlex
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +46,119 @@ ADAPTER_BINS = {
     "agy": ["agy"],
     "qwen": ["qwen"],
     "generic": [],
+}
+
+# One headroom row per harness. argv is appended to the binary; the parser
+# reads stdout. Codex is a protocol read (parser None). Missing stays sin dato.
+SIN_DATO = "sin dato"
+USAGE_ORDER = ("claude", "codex", "cursor", "grok", "agy")
+_WINDOW_MINUTES = {
+    "session": 300, "five_hour": 300, "fiveHour": 300,
+    "weekly": 10080, "seven_day": 10080, "sevenDay": 10080, "fableWeekly": 10080,
+    "monthly": 43200,
+}
+
+
+def _usage_num(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        number = float(value)
+    except ValueError:
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _usage_reset(value: Any) -> str | None:
+    if isinstance(value, str):
+        text = value.strip()
+        if not text or len(text) > 80 or "@" in text or "token" in text.lower():
+            return None
+        return text
+    number = _usage_num(value)
+    if not number or number <= 0:
+        return None
+    if number > 10_000_000_000:
+        number /= 1000.0
+    try:
+        return datetime.fromtimestamp(number, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def usage_windows(node: Any, inherited: float | None = None, out: list | None = None) -> list:
+    """Smallest-window candidates from an undocumented usage blob."""
+    found = out if out is not None else []
+    if isinstance(node, dict):
+        used = _usage_num(node.get("usedPercent", node.get("used_percent", node.get("used_percentage"))))
+        if used is None:
+            util = _usage_num(node.get("utilization"))
+            used = None if util is None else util * 100
+        mins = _usage_num(node.get("windowMinutes", node.get("windowDurationMins", node.get("window_minutes"))))
+        if mins is None:
+            named = _WINDOW_MINUTES.get(str(node.get("rateLimitType") or ""))
+            mins = inherited if named is None else named
+        if used is not None or mins is not None:
+            found.append((math.inf if mins is None else mins, used, _usage_reset(
+                node.get("resetsAt", node.get("resets_at")))))
+        for key, child in node.items():
+            if key in {"accounts", "error", "usageMetadata", "extraUsage"}:
+                continue
+            usage_windows(child, _WINDOW_MINUTES.get(key), found)
+    elif isinstance(node, list):
+        for child in node:
+            usage_windows(child, inherited, found)
+    return found
+
+
+def parse_usage(text: str) -> tuple[float | None, str | None] | None:
+    """Best-effort stdout parser. No window → None (caller says sin dato)."""
+    blobs: list[Any] = []
+    raw = text.strip()
+    if not raw:
+        return None
+    try:
+        blobs.append(json.loads(raw))
+    except ValueError:
+        for line in raw.splitlines():
+            try:
+                blobs.append(json.loads(line))
+            except ValueError:
+                continue
+    found: list = []
+    for blob in blobs:
+        usage_windows(blob, out=found)
+    if not found:
+        return None
+    _mins, used, reset = min(found, key=lambda item: item[0])
+    return used, reset
+
+
+def orca_rate_limits(payload: Any) -> dict | None:
+    """Return the rateLimits object, or None when this payload is not Orca's."""
+    if not isinstance(payload, dict):
+        return None
+    nodes = [payload]
+    result = payload.get("result")
+    if isinstance(result, dict):
+        nodes.append(result)
+    for node in nodes:
+        limits = node.get("rateLimits")
+        if isinstance(limits, dict):
+            return limits
+    return None
+
+
+# (argv, parser). Codex handshake lives in probe_usage; parser stays None.
+USAGE = {
+    # Same isolation as model discovery, and no saved session.
+    "claude": (["-p", "ping", "--output-format", "stream-json", "--verbose", "--tools", "",
+                "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+                "--setting-sources", "", "--no-session-persistence"], parse_usage),
+    "codex": (["app-server"], None),
+    "cursor": (["-p", "/usage"], parse_usage),
+    "grok": (["-p", "/usage"], parse_usage),
+    "agy": (["-p", "/usage", "--output-format", "json"], parse_usage),
 }
 
 # Coarse capability map. Used only by --requires-tool at pack/spawn.
@@ -1031,10 +1146,9 @@ class AdapterBalance:
     | `budget.tokens` | reserved | Stays reserved |
 
     Vendors publish interactive ``/usage`` (claude, codex) and Claude
-    statusLine ``rate_limits`` JSON during an interactive session. No
-    documented headless read-only balance CLI exists for native
-    adapters. The kernel therefore never runs a probe and never
-    invents a number.
+    statusLine ``rate_limits`` JSON during an interactive session.
+    AdapterBalance never runs a probe and never invents a number.
+    Quota headroom is the separate ``of models --json`` list.
 
     ``parse_published`` accepts an already-provided Claude statusLine
     payload. Missing/garbage → unknown. Does not scrape home dirs or
@@ -1157,7 +1271,7 @@ class AdapterBalance:
     def doctor_lines() -> list[str]:
         lines = [
             f"honesty     {AdapterBalance.HONESTY}",
-            "never       invent spend, budget.tokens, headless /usage scrape",
+            "never       invent spend or budget.tokens; headroom is of models --json",
         ]
         for row in AdapterBalance.inventory():
             lines.append(AdapterBalance.format_row(row))
@@ -1598,7 +1712,12 @@ class StreamJson:
 class OutputSchema:
     """Harness residual-schema flag. Reuse residual.codex.schema.json.
 
-    Codex ``--output-schema PATH`` writes the residual via ``-o``.
+    The child-written ``packet.residual_path`` is the one residual channel
+    (#361). Codex ``--output-schema PATH`` shapes its last message, and
+    ``-o`` writes that message to a sidecar (``waves/<n>/logs/<child>.last.json``),
+    never to the residual path: a final summary must not overwrite a
+    residual the child already validated. Spawn promotes the sidecar only
+    when the child's file is missing or fails the gate (``ResidualLanding``).
     agy ``--json-schema PATH`` is a documented file-path flag on the
     existing ``--output-format json`` envelope; extract still uses
     ``StreamJson.residual`` (now also ``structured_output``).
@@ -1642,6 +1761,15 @@ class OutputSchema:
         if not schema.exists():
             return []
         return [flag, str(schema)]
+
+    SIDECAR_SUFFIX = ".last.json"
+
+    @staticmethod
+    def sidecar(residual_abs: Path) -> Path:
+        """Harness last-message file for canonical ``waves/<n>/residuals/<child>.json``:
+        ``waves/<n>/logs/<child>.last.json``, a log next to ``<child>.log``."""
+        name = f"{residual_abs.stem}{OutputSchema.SIDECAR_SUFFIX}"
+        return residual_abs.parent.parent / "logs" / name
 
 
 class AdapterResume:
@@ -2016,8 +2144,8 @@ def build_spawn_argv(
             *trust,
             *roots,
             *stream,
-            "-o",
-            str(residual_abs),
+            "-o",  # last message -> sidecar log, never the residual (#361)
+            str(OutputSchema.sidecar(residual_abs)),
         ]
         argv += schema
         argv.append(prompt)

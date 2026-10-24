@@ -34,6 +34,7 @@ from of_adapters import (
     spawn_env_mode,
     HostMcp,
     OperatorAction,
+    OutputSchema,
     SensorTrust,
     WriteFloor,
 )
@@ -131,6 +132,7 @@ from of.pack import (
     validate_residual_for_packet,
 )
 
+from of.receipt import KernelVerify
 from of.residual_pin import KernelSha, ResidualPin
 from of.regime import PlanCoverage, PlanIngress, PlanWriteBack, done_when_for
 
@@ -559,6 +561,121 @@ class SpawnResidual:
         print(f"residual extracted from stdout -> {rel}")
 
 
+class ResidualLanding:
+    """Spawn end: which bytes are the residual. One rule for every adapter (#361).
+
+    The child-written ``packet.residual_path`` is the channel. Harness
+    output (the codex ``-o`` sidecar ``OutputSchema.sidecar``, then the
+    stream/stdout residual) is a fallback: promoted only when the child's
+    file is missing or fails the gate, and the printed line names the
+    source. A rejected child file is kept as ``logs/<child>.rejected.json``.
+    Both fail: the child's file stays and the outcome is ``residual_invalid``.
+    The gate is ``of validate --packet`` minus the pin (spawn pins next)
+    and ScopeWrite (one changed set judges either source).
+    """
+
+    CHILD = "child_file"
+    SIDECAR = "harness_sidecar"
+    STDOUT = "harness_stdout"
+
+    @staticmethod
+    def errors(data: Any, packet: dict[str, Any], root: Path) -> list[str]:
+        import copy
+
+        if not isinstance(data, dict):
+            return ["residual is not a JSON object"]
+        errs, _stamped = KernelSha.validate(
+            copy.deepcopy(data), packet, root, validate_residual_for_packet
+        )
+        return list(errs)
+
+    @staticmethod
+    def file_errors(path: Path, packet: dict[str, Any], root: Path) -> list[str] | None:
+        """None = no file; [] = the file passes the gate."""
+        if not path.is_file():
+            return None
+        data, err = try_load_json(path)
+        if err:
+            return [str(err)]
+        return ResidualLanding.errors(data, packet, root)
+
+    @staticmethod
+    def sidecar_payload(path: Path) -> dict[str, Any] | None:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+        return SpawnResidual.from_event(extract_json_object(text))
+
+    @staticmethod
+    def promote(
+        payload: dict[str, Any] | None,
+        packet: dict[str, Any],
+        root: Path,
+        dest: Path,
+    ) -> list[str]:
+        """Write ``payload`` over ``dest`` when it passes; [] = promoted."""
+        if not isinstance(payload, dict):
+            return ["no residual JSON object"]
+        viewed = CodexNullOmit.for_residual(payload)
+        if not isinstance(viewed, dict):
+            viewed = payload
+        errs = ResidualLanding.errors(viewed, packet, root)
+        if errs:
+            return errs
+        if dest.is_file():
+            keep = dest.parent.parent / "logs" / f"{dest.stem}.rejected.json"
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_bytes(dest.read_bytes())
+        dump_json(dest, viewed, skip_dir_fsync=True)
+        return []
+
+    @staticmethod
+    def settle(
+        packet: dict[str, Any],
+        root: Path,
+        dest: Path,
+        rel: str,
+        stdout_payload: dict[str, Any] | None,
+    ) -> str | None:
+        """Land the residual at ``dest``; return the source used, or None."""
+        sidecar = OutputSchema.sidecar(dest)
+        child = ResidualLanding.file_errors(dest, packet, root)
+        if child == []:
+            if sidecar.is_file():
+                print(
+                    f"residual source={ResidualLanding.CHILD} -> {rel} "
+                    f"(harness output kept as log {sidecar.name})"
+                )
+            return ResidualLanding.CHILD
+        why = "missing" if child is None else f"invalid: {child[0]}"
+        refused: list[str] = []
+        candidates: list[tuple[str, dict[str, Any] | None]] = []
+        if sidecar.is_file():
+            candidates.append(
+                (ResidualLanding.SIDECAR, ResidualLanding.sidecar_payload(sidecar))
+            )
+        if child is not None:
+            candidates.append((ResidualLanding.STDOUT, stdout_payload))
+        for label, payload in candidates:
+            errs = ResidualLanding.promote(payload, packet, root, dest)
+            if not errs:
+                print(f"residual source={label} -> {rel} (child file {why})")
+                return label
+            refused.append(f"{label}: {errs[0]}")
+        if child is None:
+            for line in refused:
+                print(f"harness output not promoted ({line})")
+            # Missing file, no passing sidecar: the stdout extract (unchanged).
+            SpawnResidual.write(stdout_payload, packet, root, dest, rel)
+            return ResidualLanding.STDOUT if dest.is_file() else None
+        print(
+            f"{SpawnRecord.RESIDUAL_INVALID} {rel}: child file {why}; "
+            + ("; ".join(refused) or "no harness output")
+        )
+        return None
+
+
 def cleanup_scratch_dir(path: Path) -> None:
     """Remove an empty scratch dir. Nonempty is evidence; other OSError warns."""
     try:
@@ -772,6 +889,8 @@ def cmd_pack(args: argparse.Namespace) -> None:
         role=str(args.role),
         slice_text=slice_text,
         owns=owns_paths,
+        root=root,
+        order=order,
     ):
         emit_wave_warning(
             kind,
@@ -925,17 +1044,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
             else:
                 pinned_map[pin] = OwnedWrite.EMPTY
         packet["pinned_contracts"] = pinned_map
-    raw_verify_cmd = str(getattr(args, "verify_cmd", None) or "").strip()
-    if raw_verify_cmd:
-        import shlex as _shlex
-
-        try:
-            parsed_vcmd = _shlex.split(raw_verify_cmd)
-        except ValueError as exc:
-            die(f"invalid --verify-cmd {raw_verify_cmd!r}: {exc}")
-        if not parsed_vcmd:
-            die("--verify-cmd must not be empty")
-        packet["verify_cmd"] = raw_verify_cmd
+    packet.update(KernelVerify.pack_fields(args, reqs, owns))
     if review_scope:
         packet["review_scope"] = review_scope
     packet["packet_hash"] = packet_digest(packet)
@@ -1450,6 +1559,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         print(argv_preview(argv))
         return
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    OutputSchema.sidecar(residual_abs).unlink(missing_ok=True)  # not a prior flight's
     ScopeWrite.rebase(root, packet)
 
     def write_log(stdout: Any, stderr: Any) -> None:
@@ -1569,22 +1679,18 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             plain=f"spawn exit={proc.returncode} log={log_path}",
             exit=proc.returncode,
         )
-    # best-effort: if residual missing, reuse stream residual or stdout JSON
+    # The child's file is the channel; harness output is a named fallback.
+    ResidualLanding.settle(
+        packet, root, residual_abs, residual_rel,
+        SpawnResidual.payload(last_residual, proc.stdout),
+    )
     if not residual_abs.exists():
-        SpawnResidual.write(
-            SpawnResidual.payload(last_residual, proc.stdout),
-            packet,
-            root,
-            residual_abs,
-            residual_rel,
+        hint = SpawnResidual.harness_refuse_hint(
+            f"{proc.stdout or ''}\n{proc.stderr or ''}"
         )
-        if not residual_abs.exists():
-            hint = SpawnResidual.harness_refuse_hint(
-                f"{proc.stdout or ''}\n{proc.stderr or ''}"
-            )
-            if hint:
-                print(hint)
-            print(f"no residual yet. log={log_path}")
+        if hint:
+            print(hint)
+        print(f"no residual yet. log={log_path}")
     ScopeWrite.record_exit(root, packet)
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
     if reported_sid and residual_abs.is_file():
@@ -1626,6 +1732,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     outcome, ok = SpawnRecord.outcome_for(
         proc.returncode,
         SpawnRecord.residual_valid(root, packet, residual_abs),
+        residual_present=residual_abs.exists(),
     )
     finalize(
         outcome,
@@ -1685,6 +1792,42 @@ def _emit_drive_after_spawn(
     )
 
 
+def _kernel_verify_lines(
+    root: Path, pkt: dict[str, Any], data: Any
+) -> list[str]:
+    """Collect lines for a done packet with ``verify_cmd`` (#356).
+
+    Only ``--verify-req`` IDs are promoted from the kernel receipt. Every
+    other owned ID is named: the receipt is evidence for it, not a stamp.
+    """
+    from of.receipt import EvidenceReceipt
+
+    if not isinstance(data, dict) or data.get("status") != "done":
+        return []
+    if not str(pkt.get("verify_cmd") or "").strip():
+        return []
+    rem_ev = str((data.get("residual") or {}).get("evidence") or "")
+    cited = EvidenceReceipt.verifier_inputs(rem_ev).get("receipts") or []
+    receipt_rel = str(cited[-1]) if cited else ""
+    if not receipt_rel:
+        return []
+    child = str(pkt.get("child_id") or "?")
+    stamped = KernelVerify.auto_verify_requirements(root, pkt, receipt_rel)
+    left = [
+        str(rid) for rid in (pkt.get("owns_requirements") or [])
+        if str(rid) not in stamped
+    ]
+    lines: list[str] = []
+    if stamped:
+        lines.append(f"verified_by_kernel {child}: {', '.join(stamped)}")
+    if left:
+        lines.append(
+            f"receipt_only {child}: {' '.join(left)} "
+            f"(not --verify-req; {receipt_rel} is evidence, not a stamp)"
+        )
+    return lines
+
+
 def cmd_collect(args: argparse.Namespace) -> None:
     root = find_root()
     order = load_order(root)
@@ -1737,11 +1880,15 @@ def cmd_collect(args: argparse.Namespace) -> None:
         skip = ScopeWrite.evaluate(root, pkt, scope_cache)
         if skip:
             scope_skips.setdefault(skip, []).append(child)
+        operator_note = ScopeWrite.operator_note(root, pkt)
+        if operator_note:
+            print(operator_note)
         if getattr(args, "revert_out_of_scope", False):
-            raw_res, _ = try_load_json(path)
-            reverted_paths, patch_rel = ScopeWrite.quarantine_and_revert(
-                root, pkt, raw_res if isinstance(raw_res, dict) else None, scope_cache
+            reverted_paths, patch_rel, skips = ScopeWrite.quarantine_and_revert(
+                root, pkt, scope_cache
             )
+            for skip in skips:
+                print(f"skipped     {child}: {skip}")
             if reverted_paths:
                 print(
                     f"quarantined {child}: reverted {len(reverted_paths)} "
@@ -1779,24 +1926,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
                 f"{data.get('residual', {}).get('wants_to_change')}{denied_note}"
             )
             PlanWriteBack.collect(root, pkt, data, order)
-            if (
-                isinstance(data, dict)
-                and data.get("status") == "done"
-                and str(pkt.get("verify_cmd") or "").strip()
-            ):
-                from of.receipt import EvidenceReceipt, KernelVerify
-
-                rem_ev = str((data.get("residual") or {}).get("evidence") or "")
-                cited_receipts = (
-                    EvidenceReceipt.verifier_inputs(rem_ev).get("receipts") or []
-                )
-                receipt_rel = str(cited_receipts[-1]) if cited_receipts else ""
-                if receipt_rel:
-                    auto_verified = KernelVerify.auto_verify_requirements(
-                        root, pkt, receipt_rel
-                    )
-                    if auto_verified:
-                        print(f"verified_by_kernel {child}: {', '.join(auto_verified)}")
+            for line in _kernel_verify_lines(root, pkt, data):
+                print(line)
             from of.cli.ops import ObservationPack
 
             ObservationPack.emit(root, pkt)

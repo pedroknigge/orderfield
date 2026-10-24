@@ -8,7 +8,7 @@ A cut, a resume, a clone, a different model: the plan holds. A child residual ca
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.9.1` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.9.2` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -124,7 +124,7 @@ An independent re-audit of the 0.9.0 tree still breaks the items below. Each one
 - **Self-attested receipts / fabricated `exit: 0`.** An evidence receipt is a file the child writes. A verifier or adversary can write `exit: 0` for a command that never ran. Collect accepts it, and `integrate --apply` then closes `done_when`. In the same way, `of spec --cite` checks that the file exists, not who wrote it or whether the command ran. Receipts are bound by sha256 at close, so an edit after close fails `CloseProof.verify`. W9 does not address this: no kernel-run command signs receipts.
 - **A raw ACTIVE write retargets a plain patch.** Writing `.orderfield/ACTIVE` by hand to point at another open field makes the next unscoped `of patch` land there. The only signal is the `field=<id> bound_by=ACTIVE` line on stderr. `OF_FIELD_STRICT=1` refuses a mutation with no explicit field when 2+ fields are open, but it is opt-in (default-on is deferred). W9 does not address this.
 - **A ScopeWrite REPAIR does not converge by argv alone.** After a ScopeWrite violation, `next` is `REPAIR` with target argv `of spawn --packet …`. The paths that must be reverted first are named only in `detail`. An agent that runs only `targets[].argv` re-spawns into the same INVALID verdict until someone reverts them. The re-run keeps the old baseline for those paths, so the violation is never cleared falsely. W9 does not address this.
-- **Unwatched writes.** `ScopeWrite` watches tracked, untracked and gitignored files plus `.git/config` and `.git/hooks/**`. It does not watch ignored files under heavy dirs (`node_modules`, `build`, `dist`, `.venv`, `target`, tool caches), files over 5 MiB, or ignored files past the first 5,000. A tree that is not a git work tree is skipped with a note. W9 does not address this.
+- **Unwatched writes.** `ScopeWrite` watches tracked, untracked and gitignored files plus the security keys of effective git config (`core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include` / `includeIf`, stored as `.git/config`) and `.git/hooks/**`. A `[branch]` section is not a change. It does not watch ignored files under heavy dirs (`node_modules`, `build`, `dist`, `.venv`, `target`, tool caches), files over 5 MiB, or ignored files past the first 5,000. A tree that is not a git work tree is skipped with a note. W9 does not address this.
 - **Sibling residuals in a writer-less wave.** `Unclaimed` makes a residual INVALID when its packet has no spawn record and no claim, but only in a wave where some packet has one. A wave with neither (native subagents that write their own residuals) is exempt, so there a child can write a sibling's residual. Detection, not authentication.
 
 ### How a reviewer re-runs the proof

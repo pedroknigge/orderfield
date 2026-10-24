@@ -530,7 +530,7 @@ def cmd_retain(args: argparse.Namespace) -> None:
     order, state = _load_order_state_or_empty(root)
     actions = plan_field_retention(root, order, state)
     print_audit_block(root)
-    print_retention_plan(actions)
+    print_retention_plan(actions, applied=False)
 
 
 def cmd_gc(args: argparse.Namespace) -> None:
@@ -567,9 +567,7 @@ def cmd_gc(args: argparse.Namespace) -> None:
     actions = plan_field_retention(root, order, state)
     print_audit_block(root)
     if getattr(args, "audit", False) or getattr(args, "dry_run", False):
-        print_retention_plan(actions)
-        if getattr(args, "dry_run", False):
-            print("dry-run (no deletes)")
+        print_retention_plan(actions, applied=False)
         emit_event("gc", dumped=0, ok=True, audit=True)
         return
     apply_field_retention(root, order, state, actions)
@@ -747,6 +745,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("catalog")
     for line in ModelCatalog.doctor_lines():
         print(f"  {line}")
+    print("headroom")
+    print("  read of models --headroom --json before fan-out "
+          "(smallest-window margin, earliest reset; sin dato never blocks)")
     print("efficiency")
     for line in EfficiencySignal.doctor_lines():
         print(f"  {line}")
@@ -2252,7 +2253,8 @@ class ProtocolCompiler:
     HINTS: dict[str, str] = {
         "pack": (
             "1 phase at a time; exclusive --owns-paths + --owns-requirements per child; "
-            "optional --verify-cmd '<cmd>' for kernel-attested receipt; "
+            "optional --verify-cmd '<cmd>' --verify-timeout N for kernel-attested receipt "
+            "(--verify-req ID names the owned IDs it proves); "
             "pin shared interfaces with of patch --pin-contract <path>"
         ),
         "spawn": (
@@ -2751,6 +2753,11 @@ def print_resume_completed(
             result_ref = residual.get("result_ref")
             if result_ref:
                 print(f"    result_ref  {result_ref}")
+                from of.retain import Deliverable
+
+                note = Deliverable.cited_after_close(root, str(result_ref), cid)
+                if note:
+                    print(f"    {note}")
         print_resume_child_owns(root, pkt)
 
 

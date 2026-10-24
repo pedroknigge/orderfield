@@ -1,7 +1,7 @@
 {
   "name": "python-starter",
   "version": "1.0.0",
-  "engine": "0.2.12",
+  "engine": "0.2.25",
   "sources": [
     {
       "ns": "core",
@@ -11,7 +11,7 @@
     {
       "ns": "python",
       "kind": "library",
-      "version": "1.0.0"
+      "version": "1.2.0"
     },
     {
       "kind": "path",
@@ -38,7 +38,7 @@
       "node_modules/**"
     ]
   },
-  "enforcement": "shadow",
+  "enforcement": "advisor",
   "overrides": {
     "project-orderfield/PROJECT-DOC-001": {
       "enforcement": "shadow",

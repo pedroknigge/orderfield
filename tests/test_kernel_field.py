@@ -2053,6 +2053,21 @@ class EpisodicRetention(unittest.TestCase):
         r = run_of(self.tmp, "gc", "--dry-run")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dry-run", r.stdout)
+        self.assertIn("planned_dump=", r.stdout)
+        self.assertNotIn("dumped=", r.stdout)
+        self.assertTrue(old_log.is_file())
+
+    def test_gc_audit_is_plan_only(self) -> None:
+        logs = self.tmp / ".orderfield" / "waves" / "001" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        old_log = logs / "c1.log"
+        old_log.write_text("log\n")
+        self._age(old_log)
+        r = run_of(self.tmp, "gc", "--audit")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dry-run (no deletes)", r.stdout)
+        self.assertIn("planned_dump=", r.stdout)
+        self.assertNotIn("dumped=", r.stdout)
         self.assertTrue(old_log.is_file())
 
     def test_gc_dumps_old_spec_log_keeps_current_spec(self) -> None:

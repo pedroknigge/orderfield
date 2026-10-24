@@ -685,7 +685,10 @@ class HeadlessArgv(unittest.TestCase):
     def test_codex_keeps_the_residual_output_contract(self) -> None:
         argv = self.argv("codex")
         self.assertIn("-o", argv)
-        self.assertEqual(argv[argv.index("-o") + 1], str(self.residual))
+        # -o is the last-message sidecar; the child writes the residual (#361).
+        self.assertEqual(
+            argv[argv.index("-o") + 1], str(of.OutputSchema.sidecar(self.residual))
+        )
         if CODEX_RESIDUAL_SCHEMA.exists():
             self.assertIn("--output-schema", argv)
             self.assertEqual(
@@ -1972,6 +1975,8 @@ class DoctorAuditPressure(unittest.TestCase):
         self.assertNotIn("doctor        FAIL", r.stdout)
         self.assertIn(of.AuditPressure.NOTE, r.stdout)
         self.assertIn("of gc --audit", r.stdout)
+        self.assertIn("plan only", r.stdout)
+        self.assertIn("of gc |", r.stdout)
         self.assertIn("before close", r.stdout)
 
     def test_close_checklist_warns_and_does_not_make_over_a_gate(self) -> None:
@@ -1981,6 +1986,7 @@ class DoctorAuditPressure(unittest.TestCase):
         self.assertIn(of.AuditPressure.NOTE, r.stdout)
         self.assertIn("before close", r.stdout)
         self.assertIn("of gc --audit", r.stdout)
+        self.assertIn("plan only", r.stdout)
         self.assertNotIn("of close refused: audit", r.stderr)
 
 

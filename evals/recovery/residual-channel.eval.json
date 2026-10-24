@@ -1,0 +1,19 @@
+{
+  "id": "recovery/residual-channel",
+  "description": "Codex child wrote and validated its residual; codex -o sent a shorter last message to logs/<child>.last.json. Collect judges the child's file, not the sidecar: OK, no REPAIR. #361",
+  "fixture": "recovery_residual_channel",
+  "tags": ["recovery", "collect", "spawn", "codex"],
+  "steps": [
+    {
+      "run": "collect",
+      "exit": 0,
+      "stdout_contains": ["OK coder.json", "ok=1 invalid=0"],
+      "stdout_not_contains": ["INVALID", "CloseEvidence.rollback"]
+    },
+    {
+      "run": "resume",
+      "exit": 0,
+      "stdout_not_contains": ["REPAIR", "residual_invalid", "done_without_residual"]
+    }
+  ]
+}

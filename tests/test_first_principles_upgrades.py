@@ -314,6 +314,8 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             "REQ-001",
             "--verify-cmd",
             verify_cmd,
+            "--verify-req",
+            "REQ-001",
         )
         pkt = json.loads(
             (self.tmp / ".orderfield/waves/001/packets/imp1.json").read_text(
@@ -321,6 +323,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             )
         )
         self.assertEqual(pkt["verify_cmd"], verify_cmd)
+        self.assertEqual(pkt["verify_requirements"], ["REQ-001"])
 
         # Child writes wrong implementation first -> collect must reject!
         (self.tmp / "calc.py").write_text(
@@ -333,7 +336,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         self.assertIn("failed with exit=1", bad_collect.stdout)
 
         # Child fixes implementation -> collect runs verify_cmd, attests receipt,
-        # and auto-verifies REQ-001!
+        # and promotes REQ-001, the ID pack bound with --verify-req (#356).
         (self.tmp / "calc.py").write_text(
             "def add(a, b):\n    return a + b\n", encoding="utf-8"
         )
@@ -349,6 +352,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         self.assertTrue(receipt.get("kernel_attested"))
         self.assertTrue(receipt.get("attestation_hmac"))
+        self.assertEqual(receipt.get("timeout_s"), KernelVerify.DEFAULT_TIMEOUT_S)
         source_bytes = (self.tmp / receipt["source_path"]).read_bytes()
         self.assertEqual(
             EvidenceReceipt.verify(receipt, source_bytes, root=self.tmp),
@@ -373,12 +377,260 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         )
         self.assertIn("attested    .orderfield/work/scratch/_leader_verify/logs/spec-req-002.receipt.json  exit=0", spec_run.stdout)
         self.assertIn("REQ-002      verified_contract", spec_run.stdout)
+        spec_receipt = json.loads(
+            (
+                self.tmp
+                / ".orderfield/work/scratch/_leader_verify/logs/spec-req-002.receipt.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(spec_receipt.get("timeout_s"), KernelVerify.DEFAULT_TIMEOUT_S)
+        self.assertEqual(spec_receipt.get("exit"), 0)
         reqs = json.loads(
             (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
         )["requirements"]
         by_id = {r["id"]: r for r in reqs}
         self.assertEqual(by_id["REQ-001"]["status"], "verified_contract")
         self.assertEqual(by_id["REQ-002"]["status"], "verified_contract")
+
+    def _load_receipt(self, rel: str) -> tuple[dict, bytes]:
+        path = self.tmp / rel
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+        source = (self.tmp / receipt["source_path"]).read_bytes()
+        self.assertEqual(
+            EvidenceReceipt.verify(receipt, source, root=self.tmp),
+            EvidenceReceipt.ACCEPT,
+        )
+        return receipt, source
+
+    def test_spec_run_timeout_records_the_bound_and_does_not_stamp(self) -> None:
+        """The spec clock is KernelVerify.execute's existing bound."""
+        self.ok("init", "--mission", "spec run timeout", "--phase", "verify")
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-001",
+            "--text",
+            "the surface command finishes",
+            "--surface",
+            "contract",
+        )
+        slow = f'{sys.executable} -c "import time; time.sleep(3)"'
+        timed = run_of(
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            "REQ-001",
+            "--run",
+            slow,
+            "--timeout",
+            "1",
+        )
+        self.assertEqual(timed.returncode, 1, timed.stderr)
+        self.assertIn("exit=124", timed.stderr)
+        receipt_rel = (
+            ".orderfield/work/scratch/_leader_verify/logs/spec-req-001.receipt.json"
+        )
+        self.assertIn(receipt_rel, timed.stderr)
+        receipt, _source = self._load_receipt(receipt_rel)
+        self.assertEqual(receipt["exit"], 124)
+        self.assertEqual(receipt["timeout_s"], 1)
+        reqs = json.loads(
+            (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
+        )["requirements"]
+        self.assertNotEqual(reqs[0]["status"], "verified_contract")
+
+        fast = self.ok(
+            "spec",
+            "--verified-contract",
+            "REQ-001",
+            "--run",
+            f'{sys.executable} -c "print(1)"',
+            "--timeout",
+            "5",
+        )
+        self.assertIn("exit=0", fast.stdout)
+        stamped, _source = self._load_receipt(
+            ".orderfield/work/scratch/_leader_verify/logs/spec-req-001.receipt.json"
+        )
+        self.assertEqual(stamped["exit"], 0)
+        self.assertEqual(stamped["timeout_s"], 5)
+        reqs = json.loads(
+            (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
+        )["requirements"]
+        self.assertEqual(reqs[0]["status"], "verified_contract")
+
+    def test_pack_verify_timeout_records_exit_124_and_the_bound(self) -> None:
+        """A done residual runs verify_cmd under the packet bound."""
+        self.ok("init", "--mission", "pack verify timeout", "--phase", "verify")
+        self.ok(
+            "spec", "--add", "REQ-001", "--text", "slow gate", "--surface", "contract"
+        )
+        slow = f'{sys.executable} -c "import time; time.sleep(3)"'
+        self.ok(
+            "pack",
+            "--slice",
+            "slow gate",
+            "--role",
+            "implementer",
+            "--child-id",
+            "slow1",
+            "--owns-path",
+            "slow.py",
+            "--owns-requirement",
+            "REQ-001",
+            "--verify-cmd",
+            slow,
+            "--verify-timeout",
+            "1",
+        )
+        packet = json.loads(
+            (self.tmp / ".orderfield/waves/001/packets/slow1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(packet["verify_timeout"], 1)
+        (self.tmp / "slow.py").write_text("x = 1\n", encoding="utf-8")
+        self.write_done_residual("slow1", evidence="slow.py implemented")
+        collected = run_of(self.tmp, "collect")
+        self.assertEqual(collected.returncode, 2, collected.stdout + collected.stderr)
+        self.assertIn("failed with exit=124", collected.stdout)
+        self.assertNotIn("verified_by_kernel", collected.stdout)
+        receipt, _source = self._load_receipt(
+            ".orderfield/work/scratch/slow1/logs/kernel-verify.receipt.json"
+        )
+        self.assertEqual(receipt["exit"], 124)
+        self.assertEqual(receipt["timeout_s"], 1)
+        reqs = json.loads(
+            (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
+        )["requirements"]
+        self.assertNotEqual(reqs[0]["status"], "verified_contract")
+
+    def test_blocked_residual_does_not_run_verify_cmd(self) -> None:
+        """verify_cmd stays status=done. A blocked residual leaves no receipt."""
+        self.ok("init", "--mission", "blocked skips verify", "--phase", "verify")
+        self.ok(
+            "spec", "--add", "REQ-001", "--text", "blocked gate", "--surface", "contract"
+        )
+        boom = f'{sys.executable} -c "raise SystemExit(1)"'
+        self.ok(
+            "pack",
+            "--slice",
+            "blocked gate",
+            "--role",
+            "implementer",
+            "--child-id",
+            "blk1",
+            "--owns-path",
+            "block.py",
+            "--owns-requirement",
+            "REQ-001",
+            "--verify-cmd",
+            boom,
+            "--verify-timeout",
+            "5",
+        )
+        blocked = self.write_done_residual("blk1", evidence="could not land block.py")
+        doc = json.loads(blocked.read_text(encoding="utf-8"))
+        doc["status"] = "blocked"
+        blocked.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        collected = self.ok("collect")
+        self.assertIn("status=blocked", collected.stdout)
+        self.assertNotIn("rule=KernelVerify", collected.stdout)
+        self.assertFalse(
+            (
+                self.tmp / ".orderfield/work/scratch/blk1/logs/kernel-verify.receipt.json"
+            ).exists()
+        )
+
+    def test_pack_verify_timeout_on_success_records_the_bound(self) -> None:
+        self.ok("init", "--mission", "fast verify bound", "--phase", "verify")
+        self.ok(
+            "spec", "--add", "REQ-001", "--text", "fast gate", "--surface", "contract"
+        )
+        self.ok(
+            "pack",
+            "--slice",
+            "fast gate",
+            "--role",
+            "implementer",
+            "--child-id",
+            "fast1",
+            "--owns-path",
+            "fast.py",
+            "--owns-requirement",
+            "REQ-001",
+            "--verify-cmd",
+            f'{sys.executable} -c "print(1)"',
+            "--verify-timeout",
+            "5",
+            "--verify-req",
+            "REQ-001",
+        )
+        (self.tmp / "fast.py").write_text("z = 1\n", encoding="utf-8")
+        self.write_done_residual("fast1", evidence="fast.py implemented")
+        good = self.ok("collect")
+        self.assertIn("verified_by_kernel fast1: REQ-001", good.stdout)
+        receipt, _source = self._load_receipt(
+            ".orderfield/work/scratch/fast1/logs/kernel-verify.receipt.json"
+        )
+        self.assertEqual(receipt["exit"], 0)
+        self.assertEqual(receipt["timeout_s"], 5)
+
+    def test_verify_clock_flags_require_their_command(self) -> None:
+        self.ok("init", "--mission", "timeout flags", "--phase", "verify")
+        bare = run_of(self.tmp, "spec", "--timeout", "5")
+        self.assertEqual(bare.returncode, 1)
+        self.assertIn("requires --run", bare.stderr)
+        zero = run_of(
+            self.tmp,
+            "spec",
+            "--run",
+            f'{sys.executable} -c "print(1)"',
+            "--timeout",
+            "0",
+        )
+        self.assertEqual(zero.returncode, 1)
+        self.assertIn("positive", zero.stderr)
+        negative = run_of(
+            self.tmp,
+            "spec",
+            "--run",
+            f'{sys.executable} -c "print(1)"',
+            "--timeout",
+            "-1",
+        )
+        self.assertEqual(negative.returncode, 1)
+        self.assertIn("positive", negative.stderr)
+        no_cmd = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "no command",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ex1",
+            "--verify-timeout",
+            "5",
+        )
+        self.assertEqual(no_cmd.returncode, 1)
+        self.assertIn("requires --verify-cmd", no_cmd.stderr)
+        bad_bound = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "bad bound",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ex2",
+            "--verify-cmd",
+            f'{sys.executable} -c "print(1)"',
+            "--verify-timeout",
+            "0",
+        )
+        self.assertEqual(bad_bound.returncode, 1)
+        self.assertIn("positive", bad_bound.stderr)
 
     # ------------------------------------------------------------------
     # 2. Just-In-Time (JIT) Protocol Compiler
@@ -389,6 +641,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         self.assertEqual(res_pack["action"], "pack")
         self.assertIn("--owns-paths", res_pack["protocol_hint"])
         self.assertIn("--verify-cmd", res_pack["protocol_hint"])
+        self.assertIn("--verify-timeout", res_pack["protocol_hint"])
 
         text_pack = self.ok("resume").stdout
         self.assertIn("hint        1 phase at a time;", text_pack)
