@@ -2192,6 +2192,42 @@ def eval_setup_recovery_spawn_ended_without_residual(root: Path) -> None:
     SpawnEndedWithoutResidualEval.setup(root)
 
 
+class ResidualChannelEval:
+    """Codex child wrote a valid residual; its last message went to the
+    ``-o`` sidecar and says less. The file is the channel. #361."""
+
+    CHILD = "coder"
+    REQ = "CHAN-001"
+    SUMMARY = "Implemented and validated. Residual passed of validate."
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        init = eval_run_of(root, "init", "--mission", "residual channel", "--phase", "build")
+        EvalInvariantSetup.require_ok(init, "init")
+        added = eval_run_of(
+            root, "spec", "--add", ResidualChannelEval.REQ, "--text",
+            "the child residual is the one collect judges",
+        )
+        EvalInvariantSetup.require_ok(added, "spec add")
+        eval_pack_child(
+            root, ResidualChannelEval.CHILD, "app/coder.py", ResidualChannelEval.REQ,
+            "Write app/coder.py and the residual",
+        )
+        eval_write_done_residual(root, ResidualChannelEval.CHILD)
+        wave = root / ".orderfield" / "waves" / "001"
+        sidecar = wave / "logs" / f"{ResidualChannelEval.CHILD}.last.json"
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(
+            sidecar,
+            {"status": "done", "residual": {"evidence": ResidualChannelEval.SUMMARY}},
+        )
+
+
+@_register_eval_fixture("recovery_residual_channel")
+def eval_setup_recovery_residual_channel(root: Path) -> None:
+    ResidualChannelEval.setup(root)
+
+
 @_register_eval_fixture("recovery_multi_day_resume")
 def eval_setup_recovery_multi_day_resume(root: Path) -> None:
     """Aged wave-2 in-flight + stale session.json. Resume must reconstruct."""

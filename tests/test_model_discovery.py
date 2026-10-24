@@ -117,8 +117,10 @@ class LiveModelDiscovery(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_cli(self, adapter='codex', mode='ok', timeout='6', global_json=False, proc_timeout=12):
+    def run_cli(self, adapter='codex', mode='ok', timeout='6', global_json=False, proc_timeout=12,
+                headroom=False):
         args = ['--json', 'models'] if global_json else ['models', '--json']
+        args += ['--headroom'] if headroom else []
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), *args,
                                  '--adapter', adapter, '--timeout', timeout],
                                 cwd=self.root, env={**self.env, 'FIXTURE_MODE':mode},
@@ -156,7 +158,8 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertIsNone(rows[1]['is_default'])
         methods = [r.get('method') for r in self.requests()]
         self.assertEqual(methods[:4], ['initialize','initialized','model/list','model/list'])
-        self.assertEqual(methods[4:], ['initialize','initialized','account/rateLimits/read'])
+        self.assertEqual(methods[4:], [])  # no usage probe unless --headroom
+        self.assertNotIn('headroom', json.loads(result.stdout))
         self.assertFalse(self.requests()[2]['params']['includeHidden'])
         self.assertEqual(self.requests()[3]['params']['cursor'], 'page2')
         self.assertFalse((self.root/'.orderfield').exists())
@@ -181,13 +184,18 @@ class LiveModelDiscovery(unittest.TestCase):
     def test_list_commands_preserve_provider_order_and_default(self):
         for adapter in ('grok','cursor'):
             with self.subTest(adapter=adapter):
+                for log in ('argv.jsonl', 'usage_calls'):
+                    (self.root / log).unlink(missing_ok=True)
                 result, report = self.run_cli(adapter)
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(len(report['models']), 2)
                 self.assertTrue(report['models'][0]['is_default'])
                 self.assertNotIn('account@', result.stdout)
                 argvs = [json.loads(line) for line in (self.root/'argv.jsonl').read_text().splitlines()]
-                self.assertEqual(argvs[0], ['models'])
+                self.assertNotIn(['-p', '/usage'], argvs)  # no /usage turn by default
+                self.assertFalse((self.root / 'usage_calls').exists())
+                result, _report = self.run_cli(adapter, headroom=True)
+                argvs = [json.loads(line) for line in (self.root/'argv.jsonl').read_text().splitlines()]
                 self.assertEqual(argvs[-1], ['-p', '/usage'])
 
     def test_protocol_errors_are_explicit_without_raw_provider_details(self):
@@ -333,7 +341,8 @@ class UsageHeadroom(unittest.TestCase):
             }},
         }))
         result = subprocess.run(
-            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--timeout', '6'],
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--headroom',
+             '--timeout', '6'],
             cwd=self.root, env=self.env, capture_output=True, text=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
         body = json.loads(result.stdout)
@@ -358,7 +367,7 @@ class UsageHeadroom(unittest.TestCase):
             "primary": {"usedPercent": 0, "windowDurationMins": 10080, "resetsAt": 2000000000000},
             "secondary": {"usedPercent": 40, "windowDurationMins": 300, "resetsAt": 1900000000000},
         }}))
-        result, _report = self.run_cli('codex')
+        result, _report = self.run_cli('codex', headroom=True)
         body = json.loads(result.stdout)
         row = body['headroom'][0]
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -372,7 +381,8 @@ class UsageHeadroom(unittest.TestCase):
         empty = self.root / 'bin'
         empty.mkdir()
         result = subprocess.run(
-            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--timeout', '6'],
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--headroom',
+             '--timeout', '6'],
             cwd=self.root, env={**self.env, 'PATH': str(empty)},
             capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -393,7 +403,7 @@ class UsageHeadroom(unittest.TestCase):
                     marker.unlink()
                 result = subprocess.run(
                     [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json',
-                     '--adapter', 'agy', '--timeout', '6'],
+                     '--headroom', '--adapter', 'agy', '--timeout', '6'],
                     cwd=self.root, env={**self.env, 'FAKE_VERSION': version},
                     capture_output=True, text=True, timeout=12)
                 self.assertEqual(result.returncode, 0, result.stderr)
@@ -414,16 +424,20 @@ class UsageHeadroom(unittest.TestCase):
             json.dumps({"type": "rate_limit_event", "rate_limit_info": {
                 "rateLimitType": "five_hour", "utilization": 0.25, "resetsAt": 1900000000}}),
         ]))
-        result, report = self.run_cli('claude')
+        result, report = self.run_cli('claude', headroom=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         row = json.loads(result.stdout)['headroom'][0]
         self.assertEqual(row['used_percent'], 25.0)
+        usage_argv = json.loads((self.root/'argv.jsonl').read_text().splitlines()[-1])
+        self.assertIn('--strict-mcp-config', usage_argv)
+        self.assertIn('--no-session-persistence', usage_argv)
+        self.assertEqual(usage_argv[usage_argv.index('--setting-sources')+1], '')
         self.assertEqual(row['source'], 'native')
         self.assertEqual(report['status'], 'ok')
         self.assertNotIn('secret', result.stdout)
         failed = subprocess.run(
             [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json',
-             '--adapter', 'grok', '--timeout', '6'],
+             '--headroom', '--adapter', 'grok', '--timeout', '6'],
             cwd=self.root, env={**self.env, 'USAGE_FAIL': '1'},
             capture_output=True, text=True, timeout=12)
         self.assertEqual(failed.returncode, 0, failed.stderr)
@@ -441,8 +455,19 @@ class UsageHeadroom(unittest.TestCase):
             capture_output=True, text=True, timeout=20)
         self.assertIn('headroom', result.stdout)
         self.assertIn('sin dato', result.stdout)
-        self.assertIn('of models --json', result.stdout)
+        self.assertIn('of models --headroom --json', result.stdout)
         self.assertFalse((self.root / 'usage_calls').exists())
+
+    def test_a_parser_crash_is_sin_dato_not_a_lost_list(self):
+        from unittest import mock
+        from of import model_discovery
+
+        with mock.patch.object(model_discovery, '_orca_rows', side_effect=RecursionError):
+            room = model_discovery.headroom(1, None)
+        self.assertEqual([row['harness'] for row in room['headroom']],
+                         ['claude', 'codex', 'cursor', 'grok', 'agy'])
+        self.assertTrue(all(row['source'] == 'none' for row in room['headroom']))
+        self.assertEqual(room['roster'], [])
         self.assertFalse((self.root / 'pid').exists())
 
 

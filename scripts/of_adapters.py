@@ -151,7 +151,10 @@ def orca_rate_limits(payload: Any) -> dict | None:
 
 # (argv, parser). Codex handshake lives in probe_usage; parser stays None.
 USAGE = {
-    "claude": (["-p", "ping", "--output-format", "stream-json", "--verbose", "--tools", ""], parse_usage),
+    # Same isolation as model discovery, and no saved session.
+    "claude": (["-p", "ping", "--output-format", "stream-json", "--verbose", "--tools", "",
+                "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+                "--setting-sources", "", "--no-session-persistence"], parse_usage),
     "codex": (["app-server"], None),
     "cursor": (["-p", "/usage"], parse_usage),
     "grok": (["-p", "/usage"], parse_usage),

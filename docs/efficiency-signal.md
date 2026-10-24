@@ -56,7 +56,7 @@ Mid-mission (residuals landed, or next-wave replan) the leader **must ask** befo
 | PATH present / missing | `of detect` / `AdapterDetect` | No. PATH ≠ auth. |
 | Session remaining / account balance | `AdapterBalance` + a published vendor payload already in hand | **unknown** if the harness has no headless probe. Never invent. |
 
-Claude and Codex publish interactive `/usage`. Claude statusLine `rate_limits` is a published JSON shape (`AdapterBalance.parse_published`). AdapterBalance does not run a probe and does not scrape home dirs. Before fan-out, `of models --json` `headroom` may probe (Orca first, else native); missing is `sin dato`. `residual.usage.tokens` is not a balance. `budget.tokens` stays reserved.
+Claude and Codex publish interactive `/usage`. Claude statusLine `rate_limits` is a published JSON shape (`AdapterBalance.parse_published`). AdapterBalance does not run a probe and does not scrape home dirs. Before fan-out, `of models --headroom --json` may probe (Orca first, else native); missing is `sin dato`. `residual.usage.tokens` is not a balance. `budget.tokens` stays reserved.
 
 `of doctor` prints the `balance` honesty table. Consent argv stays the existing verbs: `of patch --model-hints` / `--model-tier` / `--harness`, then `of detect` and spawn present only.
 

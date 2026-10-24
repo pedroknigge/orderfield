@@ -406,6 +406,8 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("models", help="query live harness model metadata (no inference or routing)")
     s.add_argument("--adapter", choices=ADAPTER_ORDER, help="omit to inventory every adapter")
     s.add_argument("--timeout", type=float, default=15, help="seconds per adapter (default 15; maximum 120)")
+    s.add_argument("--headroom", action="store_true",
+                   help="also read quota headroom + roster before fan-out (a probe may spend a turn)")
     s.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
                    help="print model discovery JSON on stdout")
     s.set_defaults(func=cmd_models)

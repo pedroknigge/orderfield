@@ -1,4 +1,8 @@
-"""Live harness model metadata; no inference, routing, or price lookup."""
+"""Live harness model metadata; no inference, routing, or price lookup.
+
+``--headroom`` is the one opt-in exception: a native usage probe may spend
+a harness turn, so it runs only when the leader asks before fan-out.
+"""
 from __future__ import annotations
 
 import json
@@ -321,8 +325,9 @@ def _filled(harness: str, parsed, source: str) -> dict:
 def _agy_ready(binary: str) -> bool:
     # /usage costs a turn below 1.1.11 and is not a usage command there.
     try:
-        proc = subprocess.run([binary, "--version"], capture_output=True, text=True, timeout=3)
-    except (OSError, subprocess.TimeoutExpired):
+        proc = subprocess.run([binary, "--version"], capture_output=True, text=True,
+                              errors="replace", stdin=subprocess.DEVNULL, timeout=3)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return False
     match = re.search(r"(\d+)\.(\d+)\.(\d+)", (proc.stdout or "") + (proc.stderr or ""))
     return bool(match) and tuple(int(part) for part in match.groups()) >= (1, 1, 11)
@@ -338,6 +343,8 @@ def probe_usage(adapter: str, timeout: float = 15) -> dict:
     probe = None
     try:
         probe = Probe([binary, *argv], timeout)
+        if adapter != "codex":
+            probe.proc.stdin.close()  # print mode reads a piped stdin until EOF
         if adapter == "codex":
             _codex_handshake(probe)
             probe.send({"id": 2, "method": "account/rateLimits/read", "params": {}})
@@ -408,16 +415,20 @@ def roster(rows: list[dict]) -> list[str]:
 
 
 def headroom(timeout: float = 15, adapter: str | None = None) -> dict:
-    """Orca rateLimits short-circuits native probes. Never raises."""
-    if adapter and adapter not in USAGE:
-        rows = [_blank(adapter)]
-    else:
-        rows = _orca_rows(timeout)
-        names = (adapter,) if adapter else USAGE_ORDER
-        if rows is None:
-            rows = [probe_usage(name, timeout) for name in names]
-        elif adapter:
-            rows = [next((row for row in rows if row["harness"] == adapter), _blank(adapter))]
+    """Orca rateLimits short-circuits native probes. Never raises: an
+    undocumented payload that breaks a parser is sin dato, not a lost list."""
+    names = (adapter,) if adapter else USAGE_ORDER
+    try:
+        if adapter and adapter not in USAGE:
+            rows = [_blank(adapter)]
+        else:
+            rows = _orca_rows(timeout)
+            if rows is None:
+                rows = [probe_usage(name, timeout) for name in names]
+            elif adapter:
+                rows = [next((row for row in rows if row["harness"] == adapter), _blank(adapter))]
+    except Exception:  # noqa: BLE001 - headroom must never fail of models
+        rows = [_blank(name) for name in names]
     return {"headroom": rows, "roster": roster(rows)}
 
 
@@ -425,9 +436,9 @@ def cmd_models(args) -> None:
     if not math.isfinite(args.timeout) or not 0 < args.timeout <= 120:
         raise ValueError("--timeout must be finite, > 0 and <= 120 seconds")
     reports = [discover(name, args.timeout) for name in ([args.adapter] if args.adapter else ADAPTER_ORDER)]
-    room = headroom(args.timeout, args.adapter)
+    room = headroom(args.timeout, args.adapter) if getattr(args, "headroom", False) else None
     if args.json:
-        print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports, **room},
+        print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports, **(room or {})},
                          ensure_ascii=False))
     else:
         for report in reports:
@@ -438,9 +449,10 @@ def cmd_models(args) -> None:
                 print(f"  {row['model_id']} resolved={row['resolved_model']} default={row['is_default']} price=unknown")
                 print(f"    {row['display_name']} — {row['description']}")
                 print(f"    efforts={row['efforts']} default_effort={row['default_effort']} recommendation={row['recommendation']}")
-        for row in room["headroom"]:
+        for row in (room or {}).get("headroom", []):
             print(f"headroom {row['harness']}: used={row['used_percent']} reset={row['resets_at']} source={row['source']}")
-        print("roster " + (" ".join(room["roster"]) if room["roster"] else SIN_DATO))
+        if room is not None:
+            print("roster " + (" ".join(room["roster"]) if room["roster"] else SIN_DATO))
     # All-adapter inventory includes unsupported adapters normally; selected failure is nonzero.
     failed = any(r["status"] == "error" for r in reports)
     if failed or (args.adapter and reports[0]["status"] != "ok"):
