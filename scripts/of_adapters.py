@@ -1598,7 +1598,12 @@ class StreamJson:
 class OutputSchema:
     """Harness residual-schema flag. Reuse residual.codex.schema.json.
 
-    Codex ``--output-schema PATH`` writes the residual via ``-o``.
+    The child-written ``packet.residual_path`` is the one residual channel
+    (#361). Codex ``--output-schema PATH`` shapes its last message, and
+    ``-o`` writes that message to a sidecar (``waves/<n>/logs/<child>.last.json``),
+    never to the residual path: a final summary must not overwrite a
+    residual the child already validated. Spawn promotes the sidecar only
+    when the child's file is missing or fails the gate (``ResidualLanding``).
     agy ``--json-schema PATH`` is a documented file-path flag on the
     existing ``--output-format json`` envelope; extract still uses
     ``StreamJson.residual`` (now also ``structured_output``).
@@ -1642,6 +1647,15 @@ class OutputSchema:
         if not schema.exists():
             return []
         return [flag, str(schema)]
+
+    SIDECAR_SUFFIX = ".last.json"
+
+    @staticmethod
+    def sidecar(residual_abs: Path) -> Path:
+        """Harness last-message file for canonical ``waves/<n>/residuals/<child>.json``:
+        ``waves/<n>/logs/<child>.last.json``, a log next to ``<child>.log``."""
+        name = f"{residual_abs.stem}{OutputSchema.SIDECAR_SUFFIX}"
+        return residual_abs.parent.parent / "logs" / name
 
 
 class AdapterResume:
@@ -2016,8 +2030,8 @@ def build_spawn_argv(
             *trust,
             *roots,
             *stream,
-            "-o",
-            str(residual_abs),
+            "-o",  # last message -> sidecar log, never the residual (#361)
+            str(OutputSchema.sidecar(residual_abs)),
         ]
         argv += schema
         argv.append(prompt)

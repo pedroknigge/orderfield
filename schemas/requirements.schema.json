@@ -62,7 +62,17 @@
             "additionalProperties": false,
             "properties": {
               "spec_line_start": { "type": "integer", "minimum": 1 },
-              "spec_line_end": { "type": "integer", "minimum": 1 }
+              "spec_line_end": { "type": "integer", "minimum": 1 },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Cited plan file the line span points into (of init --cite); absent means SPEC.md"
+              },
+              "plan_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Requirement ID the plan item or heading carries verbatim (REQ-002, W1-R1, R1)"
+              }
             }
           }
         }

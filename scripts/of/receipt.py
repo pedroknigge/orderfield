@@ -236,6 +236,7 @@ class EvidenceReceipt:
                 "size",
                 "command",
                 "timeout_s",
+                "inputs",
             )
             if k in receipt
         }
@@ -339,9 +340,7 @@ class EvidenceReceipt:
             not isinstance(item, str) for item in quotes
         ):
             errs.append("receipt schema: quotes")
-        paths = receipt.get("paths")
-        if not isinstance(paths, list) or any(not isinstance(item, str) for item in paths):
-            errs.append("receipt schema: paths")
+        errs.extend(EvidenceReceipt._path_errors(receipt))
         if "kernel_attested" in receipt and not isinstance(
             receipt.get("kernel_attested"), bool
         ):
@@ -354,6 +353,25 @@ class EvidenceReceipt:
             bound = receipt.get("timeout_s")
             if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
                 errs.append("receipt schema: timeout_s")
+        return errs
+
+    @staticmethod
+    def _path_errors(receipt: dict[str, Any]) -> list[str]:
+        """``paths`` is list[str]; optional ``inputs`` rows are ``{path, sha256}``."""
+        errs: list[str] = []
+        paths = receipt.get("paths")
+        if not isinstance(paths, list) or any(not isinstance(item, str) for item in paths):
+            errs.append("receipt schema: paths")
+        if "inputs" in receipt:
+            rows = receipt.get("inputs")
+            if not isinstance(rows, list) or any(
+                not isinstance(row, dict)
+                or not isinstance(row.get("path"), str)
+                or not str(row.get("path") or "").strip()
+                or not EvidenceReceipt.SHA_RE.match(str(row.get("sha256") or ""))
+                for row in rows
+            ):
+                errs.append("receipt schema: inputs")
         return errs
 
     @staticmethod
@@ -395,19 +413,15 @@ class EvidenceReceipt:
                 return f"{EvidenceReceipt.FALLBACK}:quote"
             if EvidenceReceipt.credential_suspicion(quote):
                 return f"{EvidenceReceipt.FALLBACK}:credential"
+        attested = receipt.get("kernel_attested") is True
+        signed = KernelVerify.signed_input_rows(root, receipt)
+        if attested and root is not None and signed is None:
+            return f"{EvidenceReceipt.FALLBACK}:attestation"
         for path in receipt.get("paths") or []:
-            if path not in text:
+            # #363: a signed input the command ran need not appear in its output.
+            if path not in text and path not in (signed or {}):
                 return f"{EvidenceReceipt.FALLBACK}:quote"
-        if receipt.get("kernel_attested") is True:
-            if root is not None:
-                from of.wal import LeaderKey
-
-                if not LeaderKey.verify_bytes(
-                    root,
-                    EvidenceReceipt.attestation_payload(receipt),
-                    str(receipt.get("attestation_hmac") or ""),
-                ):
-                    return f"{EvidenceReceipt.FALLBACK}:attestation"
+        if attested:
             return EvidenceReceipt.ACCEPT
         if len(EvidenceReceipt.dump(receipt)) >= len(source):
             return f"{EvidenceReceipt.FALLBACK}:no_size_win"
@@ -569,6 +583,7 @@ class KernelVerify:
         command: str,
         root: Path,
         timeout_s: int | None = None,
+        inputs: list[dict[str, str]] | None = None,
     ) -> tuple[dict[str, Any], Path, str]:
         written = EvidenceReceipt.write_archive(
             scratch,
@@ -586,12 +601,114 @@ class KernelVerify:
             source_path=source_rel,
             command=command,
             extract=True,
-            kernel_attested=True,
             timeout_s=timeout_s,
-            root=root,
         )
+        KernelVerify._seal(receipt, inputs, root)
         written["receipt"].write_bytes(EvidenceReceipt.dump(receipt))
         return receipt, written["receipt"], EvidenceReceipt._rel(written["receipt"], root)
+
+    @staticmethod
+    def _seal(
+        receipt: dict[str, Any], inputs: list[dict[str, str]] | None, root: Path
+    ) -> None:
+        """Bind the hashed inputs (#363), then sign. ``paths`` stays list[str]:
+        each input path is listed there too, ``inputs`` carries its sha256
+        under the HMAC."""
+        from of.wal import LeaderKey
+
+        if inputs is not None:
+            receipt["inputs"] = [dict(row) for row in inputs]
+            listed = set(receipt["paths"])
+            receipt["paths"].extend(
+                row["path"] for row in inputs if row["path"] not in listed
+            )
+        receipt["kernel_attested"] = True
+        receipt["attestation_hmac"] = LeaderKey.sign_bytes(
+            root, EvidenceReceipt.attestation_payload(receipt)
+        )
+
+    @staticmethod
+    def argv_paths(root: Path, command: str, *, must_exist: bool = True) -> list[str]:
+        """Project-relative paths the argv tokens of ``command`` name.
+
+        ``--flag=value`` counts by its value. A token that resolves outside
+        the project root (a venv interpreter symlink, ``/usr/bin/env``) is
+        not an input. ``must_exist`` keeps regular files only.
+        """
+        import shlex
+
+        try:
+            argv = shlex.split(str(command or ""))
+        except ValueError:
+            return []
+        project = Path(root).resolve()
+        out: list[str] = []
+        for token in argv:
+            rel = KernelVerify._token_path(project, token, must_exist)
+            if rel and rel not in out:
+                out.append(rel)
+        return out
+
+    @staticmethod
+    def _token_path(project: Path, token: str, must_exist: bool) -> str | None:
+        raw = token.split("=", 1)[1] if token.startswith("-") and "=" in token else token
+        if not raw or raw.startswith("-") or "\x00" in raw:
+            return None
+        try:
+            cand = (Path(raw) if Path(raw).is_absolute() else project / raw).resolve()
+            rel = cand.relative_to(project).as_posix()
+            exists = cand.is_file()
+        except (OSError, ValueError, RuntimeError):
+            return None
+        if rel == "." or (must_exist and not exists):
+            return None
+        return rel
+
+    @staticmethod
+    def _hash_inputs(root: Path, command: str) -> list[dict[str, str]]:
+        """``[{path, sha256}]`` of each project file ``command`` names, before it runs."""
+        rows: list[dict[str, str]] = []
+        for rel in KernelVerify.argv_paths(root, command):
+            sha = KernelVerify._file_sha(Path(root).resolve() / rel)
+            if sha:
+                rows.append({"path": rel, "sha256": sha})
+        return rows
+
+    @staticmethod
+    def _file_sha(path: Path) -> str | None:
+        try:
+            return EvidenceReceipt.digest(path.read_bytes())
+        except OSError:
+            return None
+
+    @staticmethod
+    def input_rows(receipt: Any) -> dict[str, str]:
+        """``{path: sha256}`` of the inputs a kernel receipt hashed before it ran."""
+        rows = receipt.get("inputs") if isinstance(receipt, dict) else None
+        return {
+            str(row["path"]): str(row.get("sha256") or "")
+            for row in (rows if isinstance(rows, list) else [])
+            if isinstance(row, dict) and row.get("path")
+        }
+
+    @staticmethod
+    def signed_input_rows(root: Path | None, receipt: Any) -> dict[str, str] | None:
+        """``input_rows`` only when the leader HMAC covers them, else ``None``.
+
+        ``inputs`` sits under the attestation only on a kernel receipt: a
+        hand or child receipt that lists them is not trusted (#363 review).
+        """
+        from of.wal import LeaderKey
+
+        if not isinstance(receipt, dict) or receipt.get("kernel_attested") is not True:
+            return None
+        if root is None or not LeaderKey.verify_bytes(
+            root,
+            EvidenceReceipt.attestation_payload(receipt),
+            str(receipt.get("attestation_hmac") or ""),
+        ):
+            return None
+        return KernelVerify.input_rows(receipt)
 
     @staticmethod
     def execute(
@@ -602,9 +719,8 @@ class KernelVerify:
         command_id: str = "kernel-verify",
         timeout_s: int = DEFAULT_TIMEOUT_S,
     ) -> tuple[dict[str, Any], str, int]:
-        import os
         import shlex
-        import subprocess
+
         from of.field import die
 
         raw_cmd = str(command or "").strip()
@@ -614,6 +730,29 @@ class KernelVerify:
             die(f"invalid verification command {raw_cmd!r}: {exc}")
         if not argv:
             die("verification command must not be empty")
+        # #363: hash what will run before it runs.
+        inputs = KernelVerify._hash_inputs(root, raw_cmd)
+        exit_code, combined = KernelVerify._run(root, argv, timeout_s)
+        if not combined:
+            combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
+        receipt, _rpath, receipt_rel = KernelVerify.attest(
+            scratch,
+            combined,
+            command_id=command_id,
+            exit_code=exit_code,
+            command=raw_cmd,
+            timeout_s=timeout_s,
+            root=root,
+            inputs=inputs,
+        )
+        return receipt, receipt_rel, exit_code
+
+    @staticmethod
+    def _run(root: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
+        """``(exit, stdout + stderr)``. 127 = binary not found, 124 = timeout."""
+        import os
+        import subprocess
+
         run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
         try:
             proc = subprocess.run(
@@ -639,19 +778,7 @@ class KernelVerify:
                 (exc.stderr if isinstance(exc.stderr, bytes) else b"")
                 + f"\ntimeout after {timeout_s}s\n".encode("utf-8")
             )
-        combined = stdout + ((b"\n" + stderr) if stderr else b"")
-        if not combined:
-            combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
-        receipt, _rpath, receipt_rel = KernelVerify.attest(
-            scratch,
-            combined,
-            command_id=command_id,
-            exit_code=exit_code,
-            command=raw_cmd,
-            timeout_s=timeout_s,
-            root=root,
-        )
-        return receipt, receipt_rel, exit_code
+        return exit_code, stdout + ((b"\n" + stderr) if stderr else b"")
 
     @staticmethod
     def run_for_packet(
@@ -696,6 +823,14 @@ class KernelVerify:
         packet: dict[str, Any],
         receipt_rel: str,
     ) -> list[str]:
+        """Promote only the IDs pack bound with ``--verify-req`` (#356).
+
+        No binding: the receipt stays evidence and nothing is promoted. A
+        PAIR is never stamped here; ``pair_checked`` has one writer, ``of
+        spec --verified-contract ID --both-sides``. Each stamp also writes
+        ``checks/<id>.json`` (as ``of spec`` does), so integrate's printed
+        next agrees with contrast and ``close --checklist`` on one disk state.
+        """
         from of.spec import (
             find_requirement,
             load_requirements,
@@ -703,8 +838,8 @@ class KernelVerify:
             save_requirements,
         )
 
-        owns = [str(x).strip() for x in (packet.get("owns_requirements") or []) if str(x).strip()]
-        if not owns or not receipt_rel:
+        bound = KernelVerify._bound_requirements(packet)
+        if not bound or not receipt_rel:
             return []
         try:
             receipt_abs = safe_relative_path(
@@ -715,19 +850,95 @@ class KernelVerify:
             return []
         data = load_requirements(root)
         stamped: list[str] = []
-        for rid in owns:
+        for rid in bound:
             item = find_requirement(data, rid)
             if item is None or item.get("status") in ("verified_contract", "superseded"):
+                continue
+            if requirement_is_pair(item):
                 continue
             item["status"] = "verified_contract"
             item["proof_cite"] = receipt_rel
             item["proof_sha"] = proof_sha
-            if requirement_is_pair(item):
-                item["pair_checked"] = True
             stamped.append(rid)
         if stamped:
             save_requirements(data, root)
+            KernelVerify._write_checks(root, stamped, receipt_rel, proof_sha)
         return stamped
+
+    @staticmethod
+    def pack_fields(
+        args: Any, reqs: dict[str, Any], owns: list[str]
+    ) -> dict[str, Any]:
+        """Packet ``verify_cmd`` / ``verify_timeout`` / ``verify_requirements``.
+
+        ``--verify-req`` binds the receipt to IDs this pack owns (#356). A
+        PAIR cannot be bound: one command is not both sides.
+        """
+        import shlex
+
+        from of.field import die
+        from of.spec import find_requirement, require_req_id, requirement_is_pair
+
+        out: dict[str, Any] = {}
+        cmd = str(getattr(args, "verify_cmd", None) or "").strip()
+        if cmd:
+            try:
+                parsed = shlex.split(cmd)
+            except ValueError as exc:
+                die(f"invalid --verify-cmd {cmd!r}: {exc}")
+            if not parsed:
+                die("--verify-cmd must not be empty")
+            out["verify_cmd"] = cmd
+        bound = getattr(args, "verify_timeout", None)
+        if bound is not None:
+            if not cmd:
+                die("--verify-timeout requires --verify-cmd")
+            if bound < 1:
+                die("--verify-timeout must be a positive number of seconds")
+            out["verify_timeout"] = bound
+        ids = list(dict.fromkeys(
+            require_req_id(x) for x in (getattr(args, "verify_req", None) or [])
+        ))
+        if ids and not cmd:
+            die("--verify-req requires --verify-cmd")
+        for rid in ids:
+            if rid not in owns:
+                die(
+                    f"--verify-req {rid} is not an --owns-requirement of this pack; "
+                    "bind only IDs this packet owns"
+                )
+            item = find_requirement(reqs, rid)
+            if item is not None and requirement_is_pair(item):
+                die(
+                    f"--verify-req {rid} is a PAIR requirement; one verify command "
+                    "cannot check both sides. After collect run "
+                    f"of spec --verified-contract {rid} --both-sides --run '<cmd>'"
+                )
+        if ids:
+            out["verify_requirements"] = ids
+        return out
+
+    @staticmethod
+    def _bound_requirements(packet: dict[str, Any]) -> list[str]:
+        """``verify_requirements`` that the packet also owns, in pack order."""
+        owns = {str(x).strip() for x in (packet.get("owns_requirements") or [])}
+        return [
+            str(rid).strip()
+            for rid in (packet.get("verify_requirements") or [])
+            if str(rid).strip() and str(rid).strip() in owns
+        ]
+
+    @staticmethod
+    def _write_checks(root: Path, ids: list[str], cite: str, sha: str) -> None:
+        """The DiscoveryReplay green ``of spec --verified-contract`` writes."""
+        from of.field import field_home
+        from of.replay import DiscoveryReplay
+        from of.wal import dump_json
+
+        for rid in ids:
+            rel = DiscoveryReplay.check_rel(rid)
+            if rel:
+                dump_json(field_home(root) / rel, DiscoveryReplay.check_doc(rid, cite, sha))
 
     @staticmethod
     def run_for_spec(

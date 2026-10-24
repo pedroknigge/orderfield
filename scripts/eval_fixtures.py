@@ -1599,6 +1599,70 @@ def eval_setup_recovery_plan_ingress_chat(root: Path) -> None:
     PlanIngressEval.setup_chat(root)
 
 
+class PlanCiteListEval:
+    """Bullet-item plan folder + partial hand-written spec. #362.
+
+    The plan carries IDs on ``-`` items (``W1-R1``, ``REQ-002``) and
+    lettered acceptance sub-items, not ``##`` headings. The brief names the
+    folder (no ``--cite``), so nothing is extracted; the leader transcribes
+    one paraphrase. Doctor must still name the list-item orphans and the
+    dropped acceptance lines. Eval/unittest writer only.
+    """
+
+    PLAN = "docs/plans/p/wave-1.md"
+    TEXT = (
+        "# Wave 1\n"
+        "\n"
+        "## Requirements\n"
+        "\n"
+        "- W1-R1: Add a `--lines` flag. When given together with `--stdin`, each\n"
+        "  line is processed independently.\n"
+        "- REQ-002: `--lines` without `--stdin` exits 2.\n"
+        "\n"
+        "## Acceptance\n"
+        "\n"
+        "- Tests cover:\n"
+        "  a. three lines in, three out;\n"
+        "  b. blank line preserved.\n"
+    )
+    BRIEF = "/of execute the plan in docs/plans/p/\n"
+    PARTIAL = ("LINES-001", "--lines flag processes each stdin line")
+
+    @staticmethod
+    def write_plan(root: Path) -> Path:
+        plan = Path(root) / PlanCiteListEval.PLAN
+        plan.parent.mkdir(parents=True, exist_ok=True)
+        plan.write_text(PlanCiteListEval.TEXT, encoding="utf-8")
+        return plan
+
+    @staticmethod
+    def setup(root: Path) -> None:
+        PlanCiteListEval.write_plan(root)
+        init = eval_run_of(
+            root,
+            "init",
+            "--mission",
+            "execute docs/plans/p",
+            "--phase",
+            "build",
+            "--source",
+            PlanCiteListEval.BRIEF,
+        )
+        EvalInvariantSetup.require_ok(init, "init")
+        req_id, text = PlanCiteListEval.PARTIAL
+        added = eval_run_of(root, "spec", "--add", req_id, f"--text={text}")
+        EvalInvariantSetup.require_ok(added, f"spec add {req_id}")
+        eval_pack_child(
+            root, "lines", "src/lines.py", req_id, f"Implement {req_id}"
+        )
+
+
+@_register_eval_fixture("recovery_plan_cite_list_items")
+def eval_setup_recovery_plan_cite_list_items(root: Path) -> None:
+    """List-item plan folder + partial spec: plan_cover / plan_fidelity name the drop."""
+    PlanCiteListEval.setup(root)
+
+
 class DriveAfterIntegrateEval:
     """Money-plan shape: one wave collect+integrate, idle + NEXT-WAVE."""
 

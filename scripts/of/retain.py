@@ -668,23 +668,49 @@ class EvidenceStore:
         Retention keeps these on an open field: the residual is immutable,
         so dumping its accepted receipt would refuse ``of close`` forever.
         """
-        project = root.resolve()
         out: set[Path] = set()
         for _path, _res, done, rels in EvidenceStore.residuals(home):
             if not done:
                 continue
             for rel in rels:
-                receipt = (project / rel).resolve()
-                out.add(receipt)
-                loaded = EvidenceReceipt.load_receipt(receipt)
-                source = str((loaded or {}).get("source_path") or "")
-                if source:
-                    out.add((project / source).resolve())
+                out |= EvidenceStore._receipt_files(root, home, rel)
         return out
 
     @staticmethod
+    def _receipt_files(root: Path, home: Path, rel: str) -> set[Path]:
+        """A receipt, its source, and the scratch inputs its command ran (#363)."""
+        project = root.resolve()
+        receipt = (project / rel).resolve()
+        loaded = EvidenceReceipt.load_receipt(receipt) or {}
+        out = {receipt}
+        source = str(loaded.get("source_path") or "")
+        if source:
+            out.add((project / source).resolve())
+        out.update(
+            (project / path).resolve()
+            for path, _sha in ReceiptInputs.scratch(root, home, loaded)
+        )
+        return out
+
+    @staticmethod
+    def holds(path: Path, sha: str) -> bool:
+        """A regular, non-symlink file whose bytes hash to ``sha``."""
+        try:
+            return (
+                path.is_file()
+                and not path.is_symlink()
+                and EvidenceStore.digest(path.read_bytes()) == sha
+            )
+        except OSError:
+            return False
+
+    @staticmethod
     def entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
-        """Every bound ``{path, sha256, evidence}`` row in a CLOSE.json bundle."""
+        """Every bound ``{path, sha256, evidence}`` row in a CLOSE.json bundle.
+
+        A receipt row carries its ``source`` and the scratch ``inputs`` its
+        command ran (#363); each is an archived row of its own.
+        """
         out: list[dict[str, Any]] = []
         for key in EvidenceStore.LISTS:
             for row in doc.get(key) or []:
@@ -692,9 +718,10 @@ class EvidenceStore:
                     continue
                 if row.get("evidence"):
                     out.append(row)
-                source = row.get("source")
-                if isinstance(source, dict) and source.get("evidence"):
-                    out.append(source)
+                extra = [row.get("source"), *(row.get("inputs") or [])]
+                out.extend(
+                    x for x in extra if isinstance(x, dict) and x.get("evidence")
+                )
         return out
 
     @staticmethod
@@ -713,6 +740,115 @@ class EvidenceStore:
             if not EvidenceStore._copy_ok(src, dest, sha):
                 kept.add(src.resolve())
         return kept
+
+
+class ReceiptInputs:
+    """Scratch files a kernel receipt's command ran (#363).
+
+    ``of spec --run`` / packet ``verify_cmd`` hash every argv file inside
+    the project before running (``inputs``). Close copies the ones under
+    this field's work/scratch into EvidenceStore and the CLOSE.json receipt
+    row names where they went, before scratch is wiped. ``of close
+    --checklist`` names a receipt whose scratch input is gone and was not
+    preserved. Tracked repo files are hashed, never copied.
+    """
+
+    @staticmethod
+    def scratch(
+        root: Path, home: Path, receipt: dict[str, Any]
+    ) -> list[tuple[str, str]]:
+        """``(path, sha256)`` of each receipt input under ``home``/work/scratch.
+
+        A receipt made before #363, or whose ``inputs`` the leader HMAC does
+        not cover, has its scratch files from ``command`` with sha ``""``
+        (never bound, so never preserved, never a close gate).
+        """
+        from of.receipt import KernelVerify
+
+        signed = KernelVerify.signed_input_rows(root, receipt)
+        if signed is not None:
+            rows = list(signed.items())
+        else:
+            command = str(receipt.get("command") or "")
+            rows = [
+                (path, "")
+                for path in KernelVerify.argv_paths(root, command, must_exist=False)
+            ]
+        scratch = (home / "work" / "scratch").resolve()
+        project = root.resolve()
+        return [
+            (path, sha)
+            for path, sha in rows
+            if scratch in (project / path).resolve().parents
+        ]
+
+    @staticmethod
+    def kept(root: Path, home: Path, path: str, sha: str) -> bool:
+        """The bytes a receipt ran still exist: in place, or in the store."""
+        if not sha:
+            return (root / path).is_file()
+        return any(
+            EvidenceStore.holds(cand, sha)
+            for cand in (root / path, home / EvidenceStore.rel_for(sha, Path(path)))
+        )
+
+    @staticmethod
+    def lost(root: Path, home: Path) -> list[dict[str, Any]]:
+        """``{receipt, path, gate}`` for every scratch input gone and not preserved.
+
+        ``gate``: a requirement proof, or a receipt a valid ``status=done``
+        residual cites, whose input was hashed. ``of close`` refuses it. A
+        pre-#363 command path is named, not blocking: nothing could keep it.
+        """
+        from of.spec import load_requirements
+
+        gates: dict[str, bool] = {}
+        for _path, _res, done, rels in EvidenceStore.residuals(home):
+            for rel in rels:
+                gates[rel] = gates.get(rel, False) or done
+        proofs = [
+            str(item.get("proof_cite") or "")
+            for item in load_requirements(root).get("requirements") or []
+            if isinstance(item, dict) and item.get("status") == "verified_contract"
+        ]
+        gates.update({cite: True for cite in proofs if cite})
+        out: list[dict[str, Any]] = []
+        for rel in sorted(gates):
+            loaded = EvidenceReceipt.load_receipt(root / rel) or {}
+            out.extend(
+                {"receipt": rel, "path": path, "gate": gates[rel] and bool(sha)}
+                for path, sha in ReceiptInputs.scratch(root, home, loaded)
+                if not ReceiptInputs.kept(root, home, path, sha)
+            )
+        return out
+
+    @staticmethod
+    def bind(
+        root: Path, receipt: dict[str, Any], bind_file: Any
+    ) -> list[dict[str, Any]]:
+        """CLOSE.json ``inputs`` rows for one receipt's hashed scratch inputs.
+
+        In scratch: ``bind_file(src)`` binds it and queues the archive copy.
+        Already in the store (a repaired close after the wipe): named there.
+        Gone: ``lost: true`` and no evidence; close refuses it on a gate.
+        """
+        home = field_home(root)
+        rows: list[dict[str, Any]] = []
+        for path, sha in ReceiptInputs.scratch(root, home, receipt):
+            if not sha:
+                continue
+            if EvidenceStore.holds(root / path, sha):
+                rows.append(bind_file(root / path))
+                continue
+            row: dict[str, Any] = {
+                "path": path,
+                "sha256": sha,
+                "evidence": EvidenceStore.rel_for(sha, Path(path)),
+            }
+            if not EvidenceStore.holds(home / row["evidence"], sha):
+                row.update(evidence="", lost=True)
+            rows.append(row)
+        return rows
 
 
 class ClosedScratch:

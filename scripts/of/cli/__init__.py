@@ -718,6 +718,16 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         default=None,
         help="seconds for --verify-cmd (default 120; not spawn --timeout or budget.seconds)",
     )
+    s.add_argument(
+        "--verify-req",
+        dest="verify_req",
+        action="append",
+        metavar="ID",
+        help=(
+            "owned requirement the --verify-cmd receipt proves at the contract "
+            "(repeatable; unbound IDs stay unverified; never a PAIR)"
+        ),
+    )
     s.set_defaults(func=cmd_pack)
 
     s = sub.add_parser(

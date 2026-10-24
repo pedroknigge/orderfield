@@ -811,6 +811,80 @@ def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
     return out
 
 
+LIST_ITEM_RE = re.compile(r"^(?:[-*]|\d+\.)\s+\S")
+SUB_ITEM_RE = re.compile(r"^(?:[a-z]|[ivx]{1,4})[.)]\s+(\S.*)$")
+PLAN_ID_RE = re.compile(
+    r"(?P<id>[A-Z][A-Z0-9]{0,15}-(?:[0-9]{3,4}|[A-Z]{1,4}[0-9]{1,4})"
+    r"|[A-Z]{1,4}[0-9]{1,4})"
+)
+PLAN_ID_DASHES = ":—–-)"
+# Standards, versions and priorities share the ID shape: SHA-256, V2, P1.
+NOT_PLAN_ID = re.compile(r"^(?:SHA|ISO|RFC|UTF|TLS|SSL|HTTP|IPV|MD|AES|CRC|PEP|V|P)-?\d")
+
+
+def plan_item_id(body: str, *, heading: bool = False) -> str | None:
+    """Requirement ID at the start of a plan item or heading title (#362).
+
+    Shapes seen in real plans: ``REQ-002`` / ``ABC-123``, ``W1-R1`` and a
+    bare ``R1``. An item ID needs a delimiter (``:`` / dash / ``.`` / ``)``
+    or wrapping ``**``/``[]``) so ``SHA-256 checksums`` stays prose; only a
+    heading may follow a hyphenated ID with a plain space.
+    """
+    raw = str(body or "").strip()
+    text = re.sub(r"^[*_`\[]+", "", raw)
+    match = PLAN_ID_RE.match(text)
+    if not match or NOT_PLAN_ID.match(match.group("id")):
+        return None
+    rid = match.group("id")
+    tail = text[match.end():]
+    rest = tail.lstrip("*_`]")
+    if not rest or rest[0] in ":—–)" or (text != raw and rest != tail):
+        return rid
+    if rest[0] == "." and (len(rest) == 1 or rest[1].isspace()):
+        return rid
+    if not rest[0].isspace():
+        return None
+    nxt = rest.lstrip()
+    if (heading and "-" in rid) or nxt[0] in PLAN_ID_DASHES:
+        return rid
+    return None
+
+
+def _indent(raw: str) -> int:
+    expanded = raw.expandtabs(4)
+    return len(expanded) - len(expanded.lstrip())
+
+
+def list_item_block(
+    spans: list[tuple[int, int, str]], k: int
+) -> tuple[int, list[int], str]:
+    """One list item plus the lines it owns: (end line, span indices, text).
+
+    #357: an item extends over following lines indented deeper than its
+    marker (wrapped prose, ``a.`` / ``i.`` sub-items) until a sibling, a
+    dedent to the marker column, a heading or a fence. Nested ``-`` /
+    ``*`` / ``1.`` items stop the block: they stay their own requirement.
+    Sub-item markers stay in the joined text so ``a.``/``b.`` read apart.
+    """
+    _start, end, raw = spans[k]
+    col = _indent(raw)
+    parts = [raw.strip()]
+    owned: list[int] = []
+    for j in range(k + 1, len(spans)):
+        _s, e, row = spans[j]
+        stripped = row.strip()
+        if not stripped:
+            continue
+        if _indent(row) <= col:
+            break
+        if stripped.startswith(("#", "```")) or LIST_ITEM_RE.match(stripped):
+            break
+        parts.append(stripped)
+        owned.append(j)
+        end = e
+    return end, owned, " ".join(parts)
+
+
 EXTRACT_RULE_KEYS = (
     "regla",
     "rule",
@@ -896,89 +970,266 @@ def classify_requirement_prefix(body: str, default: str = "REQ") -> str:
     return default
 
 
-def extract_requirements_from_spec(
-    text: str, existing: list[dict[str, Any]] | None = None
-) -> list[dict[str, Any]]:
-    """Deterministic index over SPEC. Leader may of spec --add. Precision over recall."""
-    counters: dict[str, int] = {}
-    for raw in existing or []:
-        rid = str(raw.get("id") or "")
-        if not REQ_ID_RE.match(rid):
-            continue
-        prefix, num = rid.rsplit("-", 1)
-        counters[prefix] = max(counters.get(prefix, 0), int(num))
+def _cli_line(stripped: str) -> str | None:
+    cli = stripped.lstrip("`").rstrip("`").lstrip("$ ").strip()
+    if cli.startswith("python -m") or cli.startswith("python3 -m"):
+        return cli
+    return None
 
-    def next_id(prefix: str) -> str:
-        counters[prefix] = counters.get(prefix, 0) + 1
-        return f"{prefix}-{counters[prefix]:03d}"
 
-    reqs: list[dict[str, Any]] = []
-    seen: set[str] = set()
+def _starts_item(stripped: str) -> bool:
+    return stripped.startswith(("-", "*")) or bool(re.match(r"^\d+\.\s+\S", stripped))
 
-    def add(prefix: str, body: str, start: int, end: int) -> None:
+
+class RequirementScan:
+    """One extract pass over SPEC / plan text (#357 / #362).
+
+    IDs are assigned at the end: a free ``REQ-002`` the plan carries wins
+    over a generated one.
+    """
+
+    def __init__(self, text: str, existing: list[dict[str, Any]] | None = None):
+        self.spans = joined_lines_with_span(text)
+        self.taken: set[str] = set()
+        self.counters: dict[str, int] = {}
+        for raw in existing or []:
+            rid = str(raw.get("id") or "")
+            if not REQ_ID_RE.match(rid):
+                continue
+            self.taken.add(rid)
+            prefix, num = rid.rsplit("-", 1)
+            self.counters[prefix] = max(self.counters.get(prefix, 0), int(num))
+        self.pending: list[tuple[str, str | None, dict[str, Any]]] = []
+        self.seen: set[str] = set()
+        self.absorbed: set[int] = set()
+        # Plan cites only: in SPEC a heading ID stays the leader's to add.
+        self.headings = False
+
+    def next_id(self, prefix: str) -> str:
+        while True:
+            self.counters[prefix] = self.counters.get(prefix, 0) + 1
+            rid = f"{prefix}-{self.counters[prefix]:03d}"
+            if rid not in self.taken:
+                self.taken.add(rid)
+                return rid
+
+    def add(self, prefix: str, body: str, start: int, end: int) -> bool:
         item = " ".join(body.split())
-        if len(item) < 8 or item in seen:
-            return
-        seen.add(item)
-        reqs.append(
-            decorate_requirement(
+        if len(item) < 8 or item in self.seen:
+            return False
+        self.seen.add(item)
+        source: dict[str, Any] = {"spec_line_start": int(start), "spec_line_end": int(end)}
+        plan_id = plan_item_id(item)
+        if plan_id:
+            source["plan_id"] = plan_id
+        self.pending.append(
+            (
+                prefix,
+                plan_id,
                 {
-                    "id": next_id(prefix),
+                    "id": "",
                     "text": item,
                     "binding": True,
                     "owned_by": [],
                     "status": "unowned",
                     "origin": "extracted",
-                    "source": {
-                        "spec_line_start": int(start),
-                        "spec_line_end": int(end),
-                    },
-                }
+                    "source": source,
+                },
             )
         )
+        return True
 
-    spans = joined_lines_with_span(text)
-    in_fence = False
-    in_rules = False
-    for start, end, raw in spans:
-        stripped = raw.strip()
-        if stripped.startswith("```"):
-            in_fence = not in_fence
-            in_rules = False
-            cli = stripped.lstrip("`").rstrip("`").lstrip("$ ").strip()
-            if cli.startswith("python -m") or cli.startswith("python3 -m"):
-                add("CLI", cli, start, end)
-            continue
-        cli = stripped.lstrip("`").rstrip("`").lstrip("$ ").strip()
-        if cli.startswith("python -m") or cli.startswith("python3 -m"):
-            add("CLI", cli, start, end)
-        if stripped.startswith("#"):
-            title = stripped.lstrip("#").strip().lower().rstrip(":")
-            in_rules = any(key in title for key in EXTRACT_RULE_KEYS)
-            continue
-        if in_rules and not in_fence and stripped.startswith(("-", "*")):
-            body = stripped.lstrip("-* ").strip()
-            add(classify_requirement_prefix(body), body, start, end)
-            continue
-        if in_fence:
-            continue
-        # Free-prose cue lists are gone. Binding IDs come from headed
-        # rule bullets, python -m lines, or of spec --add. A keyword in
-        # a marketing sentence is not a TIMEOUT contract.
-    if not reqs:
+    def add_item(self, k: int, *, rule: bool) -> None:
+        start = self.spans[k][0]
+        end, owned, block = list_item_block(self.spans, k)
+        self.absorbed.update(owned)
+        if rule and block.startswith(("-", "*")):
+            body = block.lstrip("-* ").strip()
+        else:
+            body = re.sub(r"^(?:[-*]|\d+\.)\s+", "", block).strip()
+        self.add(classify_requirement_prefix(body), body, start, end)
+
+    def add_heading(self, raw_title: str, start: int, end: int) -> int:
+        """#362: an ID-bearing heading in a cited plan is a requirement section."""
+        plan_id = plan_item_id(raw_title, heading=True) if self.headings else None
+        if not plan_id or not self.add(
+            classify_requirement_prefix(raw_title), raw_title, start, end
+        ):
+            return 0
+        prefix, _old, item = self.pending[-1]
+        item["source"]["plan_id"] = plan_id
+        self.pending[-1] = (prefix, plan_id, item)
+        return 1
+
+    def headed(self) -> int:
+        """Rule-heading items plus ``python -m`` lines; returns heading-req count."""
+        headed_n = 0
         in_fence = False
-        for start, end, raw in spans:
+        in_rules = False
+        for k, (start, end, raw) in enumerate(self.spans):
+            stripped = raw.strip()
+            cli = _cli_line(stripped)
+            if stripped.startswith("```"):
+                in_fence, in_rules = not in_fence, False
+            if cli and k not in self.absorbed:
+                self.add("CLI", cli, start, end)
+            if stripped.startswith("```") or k in self.absorbed:
+                continue
+            if stripped.startswith("#"):
+                raw_title = stripped.lstrip("#").strip()
+                title = raw_title.lower().rstrip(":")
+                in_rules = any(key in title for key in EXTRACT_RULE_KEYS)
+                headed_n += 0 if in_fence else self.add_heading(raw_title, start, end)
+            elif in_rules and not in_fence and _starts_item(stripped):
+                self.add_item(k, rule=True)
+            # Free-prose cue lists are gone. Binding IDs come from headed
+            # rule bullets, python -m lines, or of spec --add. A keyword in
+            # a marketing sentence is not a TIMEOUT contract.
+        return headed_n
+
+    def fallback(self) -> None:
+        """Every list item outside fences and headings (no rule heading hit)."""
+        self.absorbed = set()
+        in_fence = False
+        for k, (_start, _end, raw) in enumerate(self.spans):
             stripped = raw.strip()
             if stripped.startswith("```"):
                 in_fence = not in_fence
                 continue
-            if in_fence or stripped.startswith("#"):
+            if in_fence or stripped.startswith("#") or k in self.absorbed:
                 continue
-            if stripped.startswith(("-", "*")) or re.match(r"^\d+\.\s+\S", stripped):
-                body = re.sub(r"^(?:[-*]|\d+\.)\s+", "", stripped).strip()
-                if len(body) >= 8:
-                    add(classify_requirement_prefix(body), body, start, end)
+            if _starts_item(stripped):
+                self.add_item(k, rule=False)
+
+    def requirements(self) -> list[dict[str, Any]]:
+        for _prefix, plan_id, item in self.pending:
+            if plan_id and REQ_ID_RE.match(plan_id) and plan_id not in self.taken:
+                item["id"] = plan_id
+                self.taken.add(plan_id)
+        reqs: list[dict[str, Any]] = []
+        for prefix, _plan_id, item in self.pending:
+            if not item["id"]:
+                item["id"] = self.next_id(prefix)
+            reqs.append(decorate_requirement(item))
+        return reqs
+
+
+def _scan_requirements(
+    text: str,
+    existing: list[dict[str, Any]] | None = None,
+    *,
+    headings: bool = False,
+) -> list[dict[str, Any]]:
+    scan = RequirementScan(text, existing)
+    scan.headings = headings
+    if scan.headed() == len(scan.pending):
+        scan.fallback()
+    return scan.requirements()
+
+
+def extract_requirements_from_spec(
+    text: str, existing: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """Deterministic index over SPEC. Leader may of spec --add. Precision over recall.
+
+    A list item owns its wrapped and lettered sub-lines (#357). A plan ID
+    at the start of an item (``REQ-002``) becomes the requirement ID when
+    free; other shapes (``W1-R1``) stay in the verbatim text and
+    ``source.plan_id`` (#362).
+    """
+    return _scan_requirements(text, existing)
+
+
+def extract_requirements_from_plan(
+    text: str, rel: str, existing: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """Same extractor over a cited plan file; ``source.path`` names it (#362).
+
+    Here an ID-bearing heading (``## AUTH-001 Login``) is a requirement
+    too: the plan is the contract, so the leader amends, not transcribes.
+    """
+    reqs = _scan_requirements(text, existing, headings=True)
+    for item in reqs:
+        item["source"]["path"] = str(rel).replace("\\", "/")
     return reqs
+
+
+def uncovered_list_lines(
+    text: str, requirements: list[dict[str, Any]] | None
+) -> list[tuple[int, int]]:
+    """SPEC line ranges inside a list item that no requirement span covers.
+
+    #357 safety net: every list item outside fences, whichever extract
+    branch ran (items under a non-rule heading, items next to a ``python
+    -m`` line), extended over deeper lines and lazy (unindented, no blank)
+    continuation lines. Any non-blank line there outside every SPEC-sourced
+    span is reported, not silently dropped. Plan-sourced requirements
+    (``source.path``) do not cover SPEC lines.
+    """
+    spans = joined_lines_with_span(text)
+    covered: set[int] = set()
+    for item in requirements or []:
+        covered.update(_spec_span_lines(item))
+    region: set[int] = set()
+    in_fence = False
+    for k, (_s, _e, raw) in enumerate(spans):
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and LIST_ITEM_RE.match(stripped):
+            region.update(_item_region(spans, k))
+    lines = sorted(n for n in region if n not in covered)
+    out: list[tuple[int, int]] = []
+    for n in lines:
+        if out and out[-1][1] == n - 1:
+            out[-1] = (out[-1][0], n)
+        else:
+            out.append((n, n))
+    return out
+
+
+def _spec_span_lines(item: Any) -> range:
+    """SPEC lines a requirement's source span covers (none for a plan cite)."""
+    src = item.get("source") if isinstance(item, dict) else None
+    if not isinstance(src, dict) or src.get("path"):
+        return range(0)
+    start = src.get("spec_line_start")
+    end = src.get("spec_line_end", start)
+    if not isinstance(start, int) or not isinstance(end, int):
+        return range(0)
+    return range(start, end + 1)
+
+
+def _item_region(spans: list[tuple[int, int, str]], k: int) -> set[int]:
+    """Lines an item at ``k`` may own: deeper lines plus lazy continuations.
+
+    A fence indented under the item is skipped, not a stop, so prose after
+    it still counts.
+    """
+    col = _indent(spans[k][2])
+    region = set(range(spans[k][0], spans[k][1] + 1))
+    lazy = True
+    in_fence = False
+    for s, e, row in spans[k + 1:]:
+        stripped = row.strip()
+        if stripped.startswith("```") and _indent(row) > col:
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not stripped:
+            lazy = False
+            continue
+        dedent = _indent(row) <= col and (not lazy or LIST_ITEM_RE.match(stripped))
+        if dedent or stripped.startswith(("#", "```")):
+            break
+        region.update(range(s, e + 1))
+    return region
+
+
+def format_line_ranges(ranges: list[tuple[int, int]], label: str = "SPEC.md") -> str:
+    parts = [f"{a}" if a == b else f"{a}-{b}" for a, b in ranges]
+    return f"{label}:{','.join(parts)}" if parts else ""
 
 
 def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
@@ -1098,9 +1349,10 @@ def requirement_source_cite(item: dict[str, Any]) -> str:
     end = src.get("spec_line_end")
     if not isinstance(start, int) or start < 1:
         return ""
+    where = str(src.get("path") or "") or "SPEC.md"
     if isinstance(end, int) and end != start:
-        return f"SPEC.md:{start}-{end}"
-    return f"SPEC.md:{start}"
+        return f"{where}:{start}-{end}"
+    return f"{where}:{start}"
 
 
 def contrast_rows(root: Path) -> list[tuple[str, str, str]]:

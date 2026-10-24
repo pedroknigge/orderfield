@@ -314,6 +314,8 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             "REQ-001",
             "--verify-cmd",
             verify_cmd,
+            "--verify-req",
+            "REQ-001",
         )
         pkt = json.loads(
             (self.tmp / ".orderfield/waves/001/packets/imp1.json").read_text(
@@ -321,6 +323,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             )
         )
         self.assertEqual(pkt["verify_cmd"], verify_cmd)
+        self.assertEqual(pkt["verify_requirements"], ["REQ-001"])
 
         # Child writes wrong implementation first -> collect must reject!
         (self.tmp / "calc.py").write_text(
@@ -333,7 +336,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         self.assertIn("failed with exit=1", bad_collect.stdout)
 
         # Child fixes implementation -> collect runs verify_cmd, attests receipt,
-        # and auto-verifies REQ-001!
+        # and promotes REQ-001, the ID pack bound with --verify-req (#356).
         (self.tmp / "calc.py").write_text(
             "def add(a, b):\n    return a + b\n", encoding="utf-8"
         )
@@ -560,6 +563,8 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             f'{sys.executable} -c "print(1)"',
             "--verify-timeout",
             "5",
+            "--verify-req",
+            "REQ-001",
         )
         (self.tmp / "fast.py").write_text("z = 1\n", encoding="utf-8")
         self.write_done_residual("fast1", evidence="fast.py implemented")

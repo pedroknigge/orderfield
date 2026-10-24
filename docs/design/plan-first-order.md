@@ -20,7 +20,7 @@ The next quality step is how the leader writes the ORDER, not how many children 
 
 ## Coverage checklist (plan section → wave/packet)
 
-1. **Section** = an ATX `##` / `###` heading whose title contains a requirement ID (`[A-Z][A-Z0-9]{0,15}-[0-9]{3}`). Meta headings without an ID (`Why`, `Out of scope`, …) are not sections.
+1. **Section** = an ATX `##` / `###` heading whose title contains a requirement ID (`[A-Z][A-Z0-9]{0,15}-[0-9]{3}`) or starts with a plan ID shape (`W1-R1`, `R1`), or a `-` / `*` / `1.` / `a.` list item whose body starts with one (`- REQ-002: …`; #362). Meta headings without an ID (`Why`, `Out of scope`, …) are not sections. A packet owning an extracted requirement also covers the plan ID it carries (`source.plan_id`).
 2. **Sources** = cited `docs/plans/…` files (`PlanDocSync`) plus SPEC.md (lossless `--source-file` ingest), deduped by path.
 3. **Covered** = some packed child (any wave) lists that ID in `owns_requirements` or names it in `slice` / `child_id`. The packet already carries `wave`.
 4. **Orphan** = extracted ID with no covering packet. Doctor / close `--checklist` / integrate stderr print `plan_cover orphan ID`. WARN, exit 0, not FAIL, not a close gate.

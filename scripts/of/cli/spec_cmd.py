@@ -53,7 +53,7 @@ from of.regime import (
     mark_done_when_closed,
 )
 from of.receipt import EvidenceReceipt
-from of.retain import EvidenceStore
+from of.retain import EvidenceStore, ReceiptInputs
 from of.pack import (
     PacketRevStale,
     in_flight_children,
@@ -147,6 +147,21 @@ def requirement_checks(root: Path, data: dict[str, Any]) -> None:
             dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
         elif path.is_file():
             path.unlink()
+
+
+def refuse_one_sided_pair(
+    data: dict[str, Any], ids: list[str], both_sides: bool
+) -> None:
+    """Die on an unknown ID or a PAIR without ``--both-sides``. Writes nothing."""
+    for rid in ids:
+        item = find_requirement(data, require_req_id(rid))
+        if item is None:
+            die(f"unknown requirement {rid}")
+        if requirement_is_pair(item) and not both_sides:
+            die(
+                f"{rid} is a PAIR requirement; --verified-contract needs --both-sides "
+                "(exercise both sides at the public surface first)"
+            )
 
 
 def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
@@ -382,6 +397,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         die("of spec --timeout must be a positive number of seconds")
     if run_cmd and not verified_ids:
         die("of spec --run requires --verified-contract ID")
+    # #356: refuse a PAIR without --both-sides before --run executes anything.
+    refuse_one_sided_pair(data, verified_ids, both_sides)
     if verified_ids and run_cmd:
         from of.receipt import KernelVerify
 
@@ -443,11 +460,6 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
             die(f"unknown requirement {rid}")
-        if requirement_is_pair(item) and not both_sides:
-            die(
-                f"{rid} is a PAIR requirement; --verified-contract needs --both-sides "
-                "(exercise both sides at the public surface first)"
-            )
         item["status"] = "verified_contract"
         item["proof_cite"] = cite
         item["proof_sha"] = proof_sha
@@ -1246,6 +1258,7 @@ class CloseChecklist:
         residual_empty: bool,
         live: int,
         contrast_next: str,
+        lost: list[str] | None = None,
     ) -> str:
         parts: list[str] = []
         if not residual_empty:
@@ -1255,9 +1268,23 @@ class CloseChecklist:
             )
         if not contrast_ok:
             parts.append(contrast_next or ContrastReport.NEXT_BLOCKED)
+        if lost:
+            parts.append(
+                f"inputs LOST {' '.join(lost)} — re-run "
+                "of spec --verified-contract ID --run '<cmd>'"
+            )
         if not parts:
             return CloseChecklist.NEXT_READY
         return "; ".join(parts)
+
+    @staticmethod
+    def _lost_inputs(root: Path) -> tuple[list[str], list[str]]:
+        """``receipt:path`` of scratch inputs gone and not preserved (#363):
+        every one, and the gate ones ``of close`` refuses."""
+        lost = ReceiptInputs.lost(root, field_home(root))
+        named = [f"{row['receipt']}:{row['path']}" for row in lost]
+        blocked = [f"{row['receipt']}:{row['path']}" for row in lost if row["gate"]]
+        return named, blocked
 
     @staticmethod
     def document(
@@ -1275,9 +1302,11 @@ class CloseChecklist:
         waves = WaveRoster.numbers(root, state)
         gate = str(contrast.get("gate") or "")
         evaluator = EvaluatorPacket.document(root, state, order)
+        named, blocked = CloseChecklist._lost_inputs(root)
         return {
             "v": 1,
-            "ok": contrast_ok and residual_empty,
+            "ok": contrast_ok and residual_empty and not blocked,
+            "lost_inputs": named,
             "kind": CloseChecklist.KIND,
             "contrast": gate,
             "contrast_ok": contrast_ok,
@@ -1307,6 +1336,7 @@ class CloseChecklist:
                 residual_empty=residual_empty,
                 live=live,
                 contrast_next=str(contrast.get("next") or ""),
+                lost=blocked,
             ),
         }
 
@@ -1320,6 +1350,7 @@ class CloseChecklist:
             "in_flight": int(doc.get("in_flight") or 0),
             "in_flight_ids": [str(cid) for cid in (doc.get("in_flight_ids") or [])],
             "kind": CloseChecklist.KIND,
+            "lost_inputs": [str(x) for x in (doc.get("lost_inputs") or [])],
             "next": str(doc.get("next") or ""),
             "ok": bool(doc.get("ok")),
             "residual": str(doc.get("residual") or ""),
@@ -1366,6 +1397,9 @@ class CloseChecklist:
             f"in_flight {int(doc.get('in_flight') or 0)}",
             f"blocking     {' '.join(blocking) if blocking else 'none'}",
         ]
+        lost = [str(x) for x in (doc.get("lost_inputs") or [])]
+        if lost:
+            lines.append(f"inputs       LOST {' '.join(lost)}")
         nxt = str(doc.get("next") or "")
         if nxt:
             lines.append(f"next         {nxt}")
@@ -1582,7 +1616,29 @@ class CloseProof:
         entry["source"] = CloseProof._bind_file(root, source, sources)
         if entry["source"]["sha256"] != str(receipt["source_hash"]).lower():
             return None, f"evidence receipt {rel} source hash mismatch"
+        inputs = ReceiptInputs.bind(
+            root, receipt, lambda path: CloseProof._bind_file(root, path, sources)
+        )
+        if inputs:
+            entry["inputs"] = inputs
         return entry, None
+
+    @staticmethod
+    def _gate_problems(rel: str, entry: dict[str, Any]) -> list[str]:
+        """A gate receipt must exit 0 and keep the scratch bytes it ran (#363)."""
+        problems: list[str] = []
+        if entry["exit"] != 0:
+            problems.append(
+                f"evidence receipt {rel} exit={entry['exit']} "
+                "(a failing run is not RESOLVED)"
+            )
+        lost = [str(row["path"]) for row in entry.get("inputs") or [] if row.get("lost")]
+        if lost:
+            problems.append(
+                f"evidence receipt {rel} ran {', '.join(lost)}, gone from scratch "
+                "and not preserved (re-run of spec --verified-contract ID --run)"
+            )
+        return problems
 
     @staticmethod
     def bind(
@@ -1611,11 +1667,7 @@ class CloseProof:
                 receipts[rel] = entry
             if gate:
                 entry["gate"] = True
-                if entry["exit"] != 0:
-                    problems.append(
-                        f"evidence receipt {rel} exit={entry['exit']} "
-                        "(a failing run is not RESOLVED)"
-                    )
+                problems.extend(CloseProof._gate_problems(rel, entry))
             return entry
 
         residuals: list[dict[str, Any]] = []

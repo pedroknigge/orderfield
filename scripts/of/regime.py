@@ -30,9 +30,15 @@ from of.field import (
 from of.wal import dump_json, field_read_bytes, try_load_json
 
 from of.spec import (
+    AMEND_RE,
+    LIST_ITEM_RE,
+    SUB_ITEM_RE,
+    format_line_ranges,
     load_requirements,
+    plan_item_id,
     requirement_coverage_errors,
     spec_bytes_hash,
+    uncovered_list_lines,
 )
 
 from of.pack import (
@@ -575,6 +581,129 @@ class PlanDocSync:
         return True
 
 
+def plan_line_id(stripped: str, items: bool = True) -> tuple[str, str, int] | None:
+    """(id, title, level) when a heading or list item carries an ID.
+
+    Headings: an ``ABC-123`` anywhere in a ``##``/``###`` title, or a plan
+    ID shape (``W1-R1``, ``R1``) at its start. #362: with ``items``, a
+    ``-``/``*``/``1.``/``a.`` item whose body starts with an ID counts too
+    (level 0), so a bullet plan is not invisible to plan_cover.
+    """
+    match = PlanCoverage.HEADING_RE.match(stripped)
+    if match:
+        title = match.group(2).strip()
+        found = PlanCoverage.ID_RE.search(title)
+        rid = found.group(1) if found else plan_item_id(title, heading=True)
+        return (rid, title, len(match.group(1))) if rid else None
+    if not items:
+        return None
+    sub = SUB_ITEM_RE.match(stripped)
+    if LIST_ITEM_RE.match(stripped):
+        body = re.sub(r"^(?:[-*]|\d+\.)\s+", "", stripped).strip()
+    elif sub:
+        body = sub.group(1).strip()
+    else:
+        return None
+    rid = plan_item_id(body)
+    return (rid, body, 0) if rid else None
+
+
+class PlanItemCover:
+    """List-item lines the requirement index must not drop (#357 / #362).
+
+    ``acceptance``: lettered / roman sub-items of a cited plan; plan_fidelity
+    reports one whose text reaches neither SPEC nor the index. ``spec``:
+    SPEC list-item lines outside every requirement span; init and doctor
+    print them as ``plan_cover uncovered`` instead of staying silent.
+    """
+
+    KIND = "plan_cover"
+    NOTE = (
+        "plan_cover uncovered — SPEC list-item lines in no requirement "
+        "span; of spec --add ID --text '…' (or indent them under their item)"
+    )
+
+    @staticmethod
+    def norm(text: str) -> str:
+        return " ".join(str(text or "").split())
+
+    @staticmethod
+    def acceptance(text: str) -> list[tuple[int, str]]:
+        """(line, body) for each ``a.`` / ``ii)`` sub-item outside fences."""
+        out: list[tuple[int, str]] = []
+        in_fence = False
+        for n, raw in enumerate(str(text or "").splitlines(), 1):
+            stripped = raw.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            match = None if in_fence else SUB_ITEM_RE.match(stripped)
+            if match:
+                out.append((n, PlanItemCover.norm(match.group(1))))
+        return out
+
+    @staticmethod
+    def req_blob(root: Path) -> str:
+        """REQUIREMENTS.json as JSON plus raw texts (quotes stay unescaped)."""
+        try:
+            data = load_requirements(root)
+        except (OSError, TypeError, ValueError, SystemExit):
+            return ""
+        texts = "\n".join(
+            str(r.get("text") or "")
+            for r in (data.get("requirements") or [])
+            if isinstance(r, dict)
+        )
+        return f"{json.dumps(data, ensure_ascii=False)}\n{texts}"
+
+    @staticmethod
+    def aliases(root: Path) -> dict[str, set[str]]:
+        """Requirement ID -> plan IDs it carries (``source.plan_id``)."""
+        try:
+            reqs = load_requirements(root).get("requirements") or []
+        except (OSError, TypeError, ValueError, SystemExit):
+            return {}
+        out: dict[str, set[str]] = {}
+        for item in reqs:
+            src = item.get("source") if isinstance(item, dict) else None
+            plan_id = str(src.get("plan_id") or "") if isinstance(src, dict) else ""
+            if plan_id:
+                out.setdefault(str(item.get("id") or ""), set()).add(plan_id)
+        return out
+
+    @staticmethod
+    def spec(root: Path) -> list[tuple[int, int]]:
+        """Uncovered list-item ranges in the original brief (amendments excluded)."""
+        spec = spec_path(root)
+        if not field_is_file(spec):
+            return []
+        text = field_read_text(spec) or ""
+        amend = AMEND_RE.search(text)
+        if amend:
+            text = text[: amend.start()]
+        try:
+            reqs = load_requirements(root).get("requirements") or []
+        except (OSError, TypeError, ValueError, SystemExit):
+            return []
+        return uncovered_list_lines(text, reqs)
+
+    @staticmethod
+    def lines(root: Path, *, indent: str = "") -> list[str]:
+        ranges = PlanItemCover.spec(root)
+        if not ranges:
+            return []
+        where = format_line_ranges(ranges)
+        if indent:
+            return [
+                f"{indent}{PlanItemCover.KIND}     uncovered  {where}",
+                f"{indent}note          {PlanItemCover.NOTE}",
+            ]
+        return [
+            f"note         {PlanItemCover.NOTE}",
+            f"{PlanItemCover.KIND}   uncovered {where}",
+        ]
+
+
 class PlanCoverage:
     """Cited on-disk plan heading IDs must map to a wave/packet.
 
@@ -625,8 +754,8 @@ class PlanCoverage:
     )
 
     @staticmethod
-    def sections(text: str) -> list[dict[str, Any]]:
-        """ATX ## / ### headings that carry a requirement ID."""
+    def sections(text: str, items: bool = True) -> list[dict[str, Any]]:
+        """ATX ## / ### headings and (with ``items``) list items carrying an ID."""
         out: list[dict[str, Any]] = []
         seen: set[str] = set()
         in_fence = False
@@ -637,14 +766,10 @@ class PlanCoverage:
                 continue
             if in_fence:
                 continue
-            match = PlanCoverage.HEADING_RE.match(stripped)
-            if not match:
-                continue
-            title = match.group(2).strip()
-            found = PlanCoverage.ID_RE.search(title)
+            found = plan_line_id(stripped, items)
             if not found:
                 continue
-            rid = found.group(1)
+            rid, title, level = found
             if rid in seen:
                 continue
             seen.add(rid)
@@ -652,7 +777,7 @@ class PlanCoverage:
                 {
                     "id": rid,
                     "title": title,
-                    "level": len(match.group(1)),
+                    "level": level,
                 }
             )
         return out
@@ -831,7 +956,10 @@ class PlanCoverage:
 
     @staticmethod
     def paste_ids(text: str) -> list[str]:
-        return [str(row.get("id") or "") for row in PlanCoverage.sections(text)]
+        return [
+            str(row.get("id") or "")
+            for row in PlanCoverage.sections(text, items=False)
+        ]
 
     @staticmethod
     def plan_texts(
@@ -865,11 +993,18 @@ class PlanCoverage:
 
     @staticmethod
     def orphans(
-        sections: list[dict[str, Any]], packets: list[dict[str, Any]]
+        sections: list[dict[str, Any]],
+        packets: list[dict[str, Any]],
+        aliases: dict[str, set[str]] | None = None,
     ) -> list[dict[str, Any]]:
+        """Sections no packet claims. ``aliases`` maps a requirement ID to
+        the plan IDs it carries (``source.plan_id``, #362), so owning the
+        extracted ``REQ-001`` also claims its ``W1-R1`` section."""
         claimed: set[str] = set()
         for packet in packets:
             claimed.update(PlanCoverage.claimed(packet))
+        for rid in list(claimed):
+            claimed.update((aliases or {}).get(rid, set()))
         return [
             section
             for section in sections
@@ -903,8 +1038,8 @@ class PlanCoverage:
                 row = dict(section)
                 row["rel"] = rel
                 sections.append(row)
-        packets = PlanCoverage.packets(root)
-        orphans = PlanCoverage.orphans(sections, packets)
+        aliases = PlanItemCover.aliases(root)
+        orphans = PlanCoverage.orphans(sections, PlanCoverage.packets(root), aliases)
         paste: list[str] = []
         if source_text is not None:
             paste = [
@@ -953,8 +1088,9 @@ class PlanCoverage:
         root: Path, order: dict[str, Any] | None = None
     ) -> tuple[list[str], bool]:
         doc = PlanCoverage.document(root, order)
+        uncovered = PlanItemCover.lines(root, indent="  ")
         if not doc["hot"]:
-            return [], False
+            return uncovered, bool(uncovered)
         status = str(doc.get("status") or PlanCoverage.STATUS_ORPHAN)
         if status == PlanCoverage.STATUS_PASTE:
             who = " ".join(str(i) for i in (doc.get("paste_ids") or [])[:8])
@@ -969,7 +1105,7 @@ class PlanCoverage:
         ]
         if doc.get("next"):
             lines.append(f"  next          {doc['next']}")
-        return (lines, True)
+        return (lines + uncovered, True)
 
     @staticmethod
     def emit(
@@ -1033,6 +1169,8 @@ class PlanCoverage:
                 print(f"{PlanCoverage.KIND}   {ids}", file=file)
         elif doc.get("status") == PlanCoverage.STATUS_PASTE:
             print(PlanCoverage.NOTE_PASTE, file=file)
+        for line in PlanItemCover.lines(root):
+            print(line, file=file)
         return doc
 
     @staticmethod
@@ -1130,6 +1268,12 @@ class PlanIngress:
     NOTE_GAP = (
         "plan_fidelity gap — SPEC/requirements drop mandatory source "
         "sections (HOLD)"
+    )
+    # #362: a gap that blocks neither pack nor close must not read "HOLD"
+    # next to a CLOSED stamp.
+    NOTE_GAP_WARN = (
+        "plan_fidelity gap — SPEC/requirements drop mandatory source "
+        "sections (WARN; not a close gate unless plan_fidelity fail-closed)"
     )
     NOTE_INVENT = (
         "plan_fidelity invent — a plan MD was written after pin that "
@@ -1259,7 +1403,8 @@ class PlanIngress:
         if PlanIngress.looks_detailed(text):
             return PlanIngress.MODE_PROMPT
         if disposable and (
-            PlanIngress.looks_detailed(text) or PlanCoverage.sections(text)
+            PlanIngress.looks_detailed(text)
+            or PlanCoverage.sections(text, items=False)
         ):
             return PlanIngress.MODE_PROMPT
         if PlanIngress.looks_chat(text):
@@ -1591,8 +1736,15 @@ class PlanIngress:
         ]
 
     @staticmethod
-    def missing_needles(source: str, spec_text: str, req_blob: str) -> list[str]:
-        """Prose needles must remain in SPEC; IDs may live in the index."""
+    def missing_needles(
+        source: str, spec_text: str, req_blob: str, rel: str = ""
+    ) -> list[str]:
+        """Prose needles must remain in SPEC; IDs may live in the index.
+
+        #362: an ``a.`` / ``i.`` acceptance sub-item has no ID, so its
+        verbatim text is the needle (whitespace-folded); a dropped one is
+        named by ``rel:line``.
+        """
         spec = str(spec_text or "")
         reqs = str(req_blob or "")
         missing: list[str] = []
@@ -1603,6 +1755,10 @@ class PlanIngress:
             rid = str(row.get("id") or "")
             if rid and rid not in spec and rid not in reqs:
                 missing.append(rid)
+        folded = f"{PlanItemCover.norm(spec)}\n{PlanItemCover.norm(reqs)}"
+        for line, body in PlanItemCover.acceptance(source):
+            if body and body not in folded:
+                missing.append(f"{rel}:{line}" if rel else f"L{line}")
         return missing
 
     @staticmethod
@@ -1650,15 +1806,12 @@ class PlanIngress:
         spec = spec_path(root)
         if field_is_file(spec):
             spec_text = field_read_text(spec) or ""
-        try:
-            req_blob = json.dumps(load_requirements(root), ensure_ascii=False)
-        except (OSError, TypeError, ValueError, SystemExit):
-            req_blob = ""
+        req_blob = PlanItemCover.req_blob(root)
         for rel, _digest in pins:
             text = PlanIngress.read_rel(root, rel)
             if text is None:
                 continue
-            for needle in PlanIngress.missing_needles(text, spec_text, req_blob):
+            for needle in PlanIngress.missing_needles(text, spec_text, req_blob, rel):
                 if needle not in gaps:
                     gaps.append(needle)
         captures = PlanIngress.capture_rels(root)
@@ -1673,7 +1826,7 @@ class PlanIngress:
             nxt = PlanIngress.NEXT_CHAT
         elif gaps and (hold or pins):
             status = PlanIngress.STATUS_GAP
-            note = PlanIngress.NOTE_GAP
+            note = PlanIngress.NOTE_GAP if hold else PlanIngress.NOTE_GAP_WARN
             nxt = PlanIngress.NEXT_GAP
         elif pins or (
             mode == PlanIngress.MODE_FOLDER

@@ -26,6 +26,8 @@ the log to
 and spawn metadata to
 `.orderfield/waves/NNN/spawns/<child_id>.json`.
 Spawn metadata is finalized on **every** outcome — `ok`, `nonzero_exit`,
+`done_without_residual` (exit 0, no residual file), `residual_invalid` (exit
+0, a residual file that fails the gate; next is REPAIR),
 `timeout` (the child's whole process group is killed, so no grandchild can
 write a residual afterwards), `missing_binary`, `error`, `interrupted`,
 `dry_run` — with `outcome`, `ok`, `ended_at`, the
@@ -224,11 +226,17 @@ Headless:
 ```bash
 codex exec --json \
   --output-schema schemas/residual.codex.schema.json \
-  -o .orderfield/waves/NNN/residuals/CHILD.json \
+  -o .orderfield/waves/NNN/logs/CHILD.last.json \
   "$(python3 scripts/of.py render --packet PACKET.json)"
 ```
 
-`--json` is the event stream. Residual still lands at `-o`. Spawn appends stream milestones to the same PULSE.
+`--json` is the event stream. Spawn appends stream milestones to the same PULSE.
+`-o` is codex's last message, a sidecar log, never the residual path (#361):
+the child writes `.orderfield/waves/NNN/residuals/CHILD.json` and that file is
+the residual. At spawn end, if that file is missing or fails the
+`of validate --packet` gate and the sidecar passes it, spawn promotes the
+sidecar and prints `residual source=harness_sidecar` (a rejected child file is
+kept as `logs/CHILD.rejected.json`). A valid child file always wins.
 
 Write-floor default / `OF_TRUST=auto-edit` adds `--sandbox workspace-write`
 so the child can write the residual without bypassing approvals (worktree

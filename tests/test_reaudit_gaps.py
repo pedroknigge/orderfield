@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -314,6 +315,64 @@ class ScopeWriteBlindSpots(unittest.TestCase):
         r = field.ok("collect")
         self.assertNotIn(".git/config", r.stdout)
         self.assertIn("ok=1", r.stdout)
+        # Not judged, but not unseen: the leader gets a note naming the file.
+        self.assertIn(
+            "ScopeWrite note: operator git config changed during i1's run "
+            "(~/.gitconfig); not judged",
+            r.stdout,
+        )
+
+    def test_include_outside_the_repo_is_the_operators(self) -> None:
+        field = Field(self)
+        outside = field.tmp.parent / (field.tmp.name + "-work.gitconfig")
+        outside.write_text("[user]\n\tname = op\n", encoding="utf-8")
+        self.addCleanup(outside.unlink, True)
+        field.git("config", "include.path", str(outside))
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", f"src/app.py=print(2),{outside}=[core]\n\tsshCommand = ssh -v")
+        r = field.ok("collect")
+        self.assertNotIn(".git/config", r.stdout)
+        self.assertIn("ok=1", r.stdout)
+        self.assertIn("operator git config changed during i1's run", r.stdout)
+        self.assertIn(outside.name, r.stdout)
+
+    def test_glob_named_path_reverts_only_itself(self) -> None:
+        field = Field(self)
+        for rel in ("assets/a[1].png", "assets/a1.png"):
+            (field.tmp / rel).parent.mkdir(parents=True, exist_ok=True)
+            (field.tmp / rel).write_text("base\n", encoding="utf-8")
+        field.git("add", "-A")
+        field.git("commit", "-q", "-m", "assets")
+        field.pack("i1", "implementer", "assets/a1.png")
+        field.spawn("i1", "assets/a1.png=owned edit,assets/a[1].png=hijack")
+        self.assertIn("assets/a[1].png", self.collect_line(field))
+        r = field.ok("collect", "--revert-out-of-scope")
+        self.assertIn("reverted 1 out-of-scope path(s)", r.stdout)
+        self.assertEqual((field.tmp / "assets/a[1].png").read_text(encoding="utf-8"), "base\n")
+        self.assertEqual(
+            (field.tmp / "assets/a1.png").read_text(encoding="utf-8"), "owned edit\n"
+        )
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root ignores modes")
+    def test_patch_holds_only_what_was_reverted(self) -> None:
+        field = Field(self)
+        (field.tmp / "lock").mkdir()
+        (field.tmp / "lock/t.txt").write_text("base\n", encoding="utf-8")
+        field.git("add", "-A")
+        field.git("commit", "-q", "-m", "lock")
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),README.md=hijack,"
+                          "lock/t.txt=tracked hijack,lock/new.txt=untracked hijack")
+        (field.tmp / "lock").chmod(0o555)  # checkout and unlink in lock/ fail
+        self.addCleanup((field.tmp / "lock").chmod, 0o755)
+        r = field.of("collect", "--revert-out-of-scope")
+        self.assertIn("reverted 1 out-of-scope path(s)", r.stdout)
+        self.assertIn("lock/t.txt (git checkout failed", r.stdout)
+        self.assertIn("lock/new.txt (unlink failed", r.stdout)
+        patch = (field.tmp / WAVE / "scope/i1.quarantine.patch").read_text(encoding="utf-8")
+        self.assertIn("README.md", patch)
+        self.assertNotIn("lock/t.txt", patch)
+        self.assertNotIn("lock/new.txt", patch)
 
     def test_failed_checkout_is_reported_not_dropped(self) -> None:
         field = Field(self)
@@ -387,6 +446,157 @@ class ScopeWriteBaseline(unittest.TestCase):
         errs = self.sw.errors(field.tmp, packet)
         self.assertEqual(len(errs), 1)
         self.assertIn("git tree unreadable at baseline", errs[0])
+
+    def test_unreadable_re_spawn_does_not_launder(self) -> None:
+        from unittest import mock
+
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),README.md=hijack")
+        packet = json.loads((field.tmp / WAVE / "packets/i1.json").read_text())
+        with mock.patch.object(self.sw, "snapshot", return_value=None):
+            self.sw.rebase(field.tmp, packet)  # re-spawn while git is broken
+            self.sw.record_exit(field.tmp, packet)
+        doc = self.sw.load(field.tmp, packet)
+        self.assertTrue(doc["unreadable"])
+        self.assertIsInstance(doc["before"], dict)
+        self.assertIn("README.md", doc["changed"])
+        self.sw.rebase(field.tmp, packet)  # git fixed, the leader re-runs
+        doc = self.sw.load(field.tmp, packet)
+        self.assertNotIn("unreadable", doc)
+        now = self.sw.snapshot(field.tmp)
+        self.assertIn("README.md", self.sw.since(field.tmp, doc["before"], now, doc["t0"]))
+
+    def test_write_during_unreadable_attempt_is_not_laundered(self) -> None:
+        from unittest import mock
+
+        for exited in (True, False):  # spawn exit ran, or the host was killed
+            with self.subTest(exited=exited):
+                field = Field(self)
+                field.pack("i1", "implementer", "src/app.py")
+                field.spawn("i1", "src/app.py=print(2),README.md=hijack")
+                packet = json.loads((field.tmp / WAVE / "packets/i1.json").read_text())
+                with mock.patch.object(self.sw, "snapshot", return_value=None):
+                    self.sw.rebase(field.tmp, packet)  # re-spawn while git is broken
+                    (field.tmp / "other.txt").write_text("written while unreadable\n")
+                    if exited:
+                        self.sw.record_exit(field.tmp, packet)
+                self.sw.rebase(field.tmp, packet)  # git fixed, the leader re-runs
+                doc = self.sw.load(field.tmp, packet)
+                now = self.sw.snapshot(field.tmp)
+                got = self.sw.since(field.tmp, doc["before"], now, doc["t0"])
+                self.assertIn("README.md", got)
+                self.assertIn("other.txt", got)
+
+    def test_subdirectory_root_is_in_git_when_git_is_silent(self) -> None:
+        from unittest import mock
+
+        field = Field(self)
+        sub = field.tmp / "pkg" / "app"
+        sub.mkdir(parents=True)
+        with mock.patch.object(self.sw, "_git", return_value=None):
+            self.assertTrue(self.sw._in_git(sub))
+        outside = Path(tempfile.mkdtemp(prefix="of-nogit-"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        with mock.patch.object(self.sw, "_git", return_value=None):
+            self.assertFalse(self.sw._in_git(outside))
+
+    def test_untagged_capped_baseline_judges_git_keys_by_mtime(self) -> None:
+        import time
+
+        field = Field(self)
+        snap = self.sw.snapshot(field.tmp)
+        hooks = [k for k in snap["dirty"] if k.startswith(".git/hooks/")]
+        self.assertTrue(hooks)  # git init's .sample hooks
+        # 0.9.1 / 0.9.2 shape: no config tag, hooks and config cut by the cap.
+        before = {
+            "head": snap["head"],
+            "dirty": {k: v for k, v in snap["dirty"].items() if not k.startswith(".git/")},
+            "capped": 7,
+        }
+        time.sleep(0.05)
+        t0 = time.time()
+        time.sleep(0.05)
+        self.assertEqual(self.sw.changed(field.tmp, before, self.sw.snapshot(field.tmp), t0), [])
+        self.assertEqual(self.sw.changed(field.tmp, before, self.sw.snapshot(field.tmp)), [])
+        (field.tmp / ".git/hooks/pre-commit").write_text("echo pwned\n", encoding="utf-8")
+        now = self.sw.snapshot(field.tmp)
+        self.assertEqual(self.sw.changed(field.tmp, before, now, t0), [".git/hooks/pre-commit"])
+        field.git("config", "core.sshCommand", "ssh -v")
+        now = self.sw.snapshot(field.tmp)
+        self.assertEqual(
+            self.sw.changed(field.tmp, before, now, t0),
+            [".git/config", ".git/hooks/pre-commit"],
+        )
+        # A tagged baseline, or an uncapped one, stays strict.
+        for strict in ({**before, "config": self.sw.CONFIG_SCHEME}, {**before, "capped": 0}):
+            self.assertIn(hooks[0], self.sw.changed(field.tmp, strict, now, t0))
+
+    def test_legacy_all_scope_value_survives_an_operator_edit(self) -> None:
+        import time
+        from unittest import mock
+
+        field = Field(self)
+        home = Path(tempfile.mkdtemp(prefix="of-home-"))
+        self.addCleanup(shutil.rmtree, home, True)
+        env = {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
+        with mock.patch.dict(os.environ, env):
+            after = self.sw.snapshot(field.tmp)
+            cfg = self.sw.CONFIG
+            legacy_all = self.sw._fingerprint(  # 0.9.2: global scope folded in
+                self.sw._config_lines(field.tmp, self.sw.LEGACY_CONFIG_KEYS) or []
+            )
+            before = {"head": after["head"], "dirty": {**after["dirty"], cfg: legacy_all}}
+            time.sleep(0.05)
+            t0 = time.time()
+            time.sleep(0.05)
+            (home / ".gitconfig").write_text("[core]\n\tsshCommand = ssh -v\n", encoding="utf-8")
+            now = self.sw.snapshot(field.tmp)
+            self.assertEqual(self.sw.changed(field.tmp, before, now, t0), [])
+            self.assertEqual(self.sw._operator_changed(after, now), ["~/.gitconfig"])
+            field.git("config", "core.fsmonitor", "/tmp/x")  # the repo's own file moves
+            now = self.sw.snapshot(field.tmp)
+            self.assertEqual(self.sw.changed(field.tmp, before, now, t0), [cfg])
+
+    def test_every_non_benign_config_key_is_watched(self) -> None:
+        field = Field(self)
+        before = self.sw.snapshot(field.tmp)
+        watched = (
+            ("core.alternateRefsCommand", "/tmp/x"),
+            ("protocol.ext.allow", "always"),
+            ("submodule.x.update", "!/tmp/x"),
+            ("trailer.sign.command", "/tmp/x"),
+            ("gpg.ssh.defaultKeyCommand", "/tmp/x"),
+        )
+        benign = (
+            ("remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"),
+            ("gc.auto", "0"),
+            ("branch.main.remote", "origin"),
+            ("user.name", "someone"),
+        )
+        for key, value in watched + benign:
+            field.git("config", key, value)
+            now = self.sw.snapshot(field.tmp)
+            want = [self.sw.CONFIG] if (key, value) in watched else []
+            self.assertEqual(self.sw.changed(field.tmp, before, now), want, key)
+            field.git("config", "--unset", key)
+
+    def test_revert_plan_skips_a_directory_up_front(self) -> None:
+        field = Field(self)
+        before = self.sw.snapshot(field.tmp)
+        (field.tmp / "vendor/sub").mkdir(parents=True)
+        (field.tmp / "vendor/sub/x.txt").write_text("x\n", encoding="utf-8")
+        plan = self.sw.revert_plan(field.tmp, before, ["vendor/sub/", "a.txt"])
+        self.assertEqual(
+            plan,
+            [
+                ("vendor/sub/", "skip", "not a file; revert by hand"),
+                ("a.txt", "checkout", "tracked and clean at baseline"),
+            ],
+        )
+        clause = self.sw._revert_clause(plan)
+        self.assertIn("Leader: revert a.txt,", clause)
+        self.assertIn("vendor/sub/ (not a file; revert by hand)", clause)
 
 
 class UnclaimedSibling(unittest.TestCase):

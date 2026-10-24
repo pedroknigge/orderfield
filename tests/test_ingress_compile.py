@@ -85,8 +85,15 @@ class CompileMotherContext(unittest.TestCase):
         rel = capture[0].split(" ")[1]
         body = (self.tmp / rel).read_text(encoding="utf-8")
         self.assertIn("must exit zero", body)
+        # #362: the cited doc's rule is indexed verbatim, so the slice owns it.
+        req_path = self.tmp / ".orderfield" / "REQUIREMENTS.json"
+        reqs = json.loads(req_path.read_text(encoding="utf-8"))["requirements"]
+        self.assertEqual(reqs[0]["source"]["path"], "docs/plan.md")
         # The mother contract holds: pack is not refused for chat.
-        r = run_of(self.tmp, "pack", "--slice", "map the plan", "--role", "explorer")
+        r = run_of(
+            self.tmp, "pack", "--slice", "map the plan", "--role", "explorer",
+            "--owns-requirement", reqs[0]["id"],
+        )
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
 
     def test_chat_capture_stdin_dash(self) -> None:
