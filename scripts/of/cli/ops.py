@@ -2751,7 +2751,7 @@ def print_resume_completed(
                 print(f"    result_ref  {result_ref}")
                 from of.retain import Deliverable
 
-                note = Deliverable.cited_after_close(root, str(result_ref))
+                note = Deliverable.cited_after_close(root, str(result_ref), cid)
                 if note:
                     print(f"    {note}")
         print_resume_child_owns(root, pkt)

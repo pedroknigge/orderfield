@@ -1965,6 +1965,8 @@ class ScopeWrite:
     NOT_GIT = "not a git work tree"
     NO_BASELINE = "no scope baseline (packed before ScopeWrite)"
     UNREADABLE = "(git tree unreadable after this run)"
+    BASELINE_UNREADABLE = "(git tree unreadable at baseline)"
+    UNJUDGED = frozenset({UNREADABLE, BASELINE_UNREADABLE})
     CHUNK = 256
     # Ignored files are watched outside these (rebuilt / tool caches).
     HEAVY = frozenset(
@@ -1977,9 +1979,23 @@ class ScopeWrite:
     )
     MAX_BYTES = 5 * 1024 * 1024
     MAX_IGNORED = 5000
-    # Effective config, not the whole file: a [branch] edit must not show up.
-    # Git lowercases key names. includeIf.<cond>.path matches includeif.*
-    CONFIG_KEYS = r"^(core\.(hookspath|fsmonitor|sshcommand)|include(if)?\..+)$"
+    # Keys that make git run a program, not the whole file: a [branch] edit
+    # must not show up. Git lowercases section and key names.
+    # includeIf.<cond>.path matches includeif.*
+    CONFIG_KEYS = (
+        r"^(core\.(hookspath|fsmonitor|sshcommand|pager|editor|askpass|gitproxy"
+        r"|worktree|attributesfile)|sequence\.editor|pager\..+|alias\..+"
+        r"|filter\..+|diff\.external|diff\..+\.(textconv|command)"
+        r"|(diff|merge)tool\..+\.cmd|merge\..+\.driver|credential\.(.+\.)?helper"
+        r"|gpg\.(.+\.)?program|remote\..+\.(uploadpack|receivepack|proxy)"
+        r"|uploadpack\..+|include(if)?\..+|extensions\..+)$"
+    )
+    # Snapshot "config" tag: repo-local scope (+ its includes) over CONFIG_KEYS.
+    # A baseline without it stored the file's blob (0.9.1) or an all-scope
+    # fingerprint over LEGACY_CONFIG_KEYS (0.9.2).
+    CONFIG_SCHEME = "local-v2"
+    LEGACY_CONFIG_KEYS = r"^(core\.(hookspath|fsmonitor|sshcommand)|include(if)?\..+)$"
+    CONFIG = ".git/config"
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path | None:
@@ -2026,21 +2042,69 @@ class ScopeWrite:
         return proc.stdout
 
     @staticmethod
-    def _config_id(root: Path) -> str | None:
-        """Blob id of the security-relevant effective config.
-
-        Exit 1 with no stdout is an empty listing (no such keys). Any other
-        failure is None: the snapshot fails closed.
-        """
-        proc = ScopeWrite._git_proc(root, "config", "--get-regexp", ScopeWrite.CONFIG_KEYS)
+    def _config_lines(root: Path, keys: str, *scope: str) -> list[bytes] | None:
+        """``git config --get-regexp`` lines; exit 1 with no stdout is an
+        empty listing. Any other failure is None."""
+        proc = ScopeWrite._git_proc(root, "config", *scope, "--get-regexp", keys)
         if proc is None:
             return None
-        if proc.returncode == 0 or (proc.returncode == 1 and not proc.stdout):
-            lines = sorted(proc.stdout.splitlines()) if proc.returncode == 0 else []
-            listing = b"\n".join(lines) + (b"\n" if lines else b"")
-        else:
-            return None
+        if proc.returncode == 0:
+            return proc.stdout.splitlines()
+        if proc.returncode == 1 and not proc.stdout:
+            return []
+        return None
+
+    @staticmethod
+    def _fingerprint(lines: list[bytes]) -> str:
+        listing = b"\n".join(sorted(lines)) + (b"\n" if lines else b"")
         return hashlib.sha1(b"blob %d\0" % len(listing) + listing).hexdigest()
+
+    @staticmethod
+    def _config_id(root: Path) -> str | None:
+        """Fingerprint of CONFIG_KEYS in the repo's own config (local, and
+        the worktree file when extensions.worktreeConfig is on), following
+        includes. Global and system scope are the operator's, not a
+        child's. None when git cannot answer: the snapshot fails closed.
+        """
+        lines = ScopeWrite._config_lines(
+            root, ScopeWrite.CONFIG_KEYS, "--local", "--includes"
+        )
+        if lines is None:
+            return None
+        worktree_on = ScopeWrite._git(
+            root, "config", "--local", "--type=bool", "--get", "extensions.worktreeconfig"
+        )
+        if (worktree_on or b"").strip() == b"true":
+            wt = ScopeWrite._config_lines(
+                root, ScopeWrite.CONFIG_KEYS, "--worktree", "--includes"
+            )
+            if wt is None:
+                return None
+            lines = lines + [b"worktree " + line for line in wt]
+        return ScopeWrite._fingerprint(lines)
+
+    @staticmethod
+    def _legacy_config_ids(root: Path) -> set[str]:
+        """Values a baseline without a ``config`` tag would hold now when the
+        config is unchanged: the file's blob (0.9.1) or the all-scope
+        fingerprint (0.9.2)."""
+        out: set[str] = set()
+        common = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
+        if common is not None:
+            out.add(ScopeWrite._blob_id(root / os.fsdecode(common).strip() / "config"))
+        lines = ScopeWrite._config_lines(root, ScopeWrite.LEGACY_CONFIG_KEYS)
+        if lines is not None:
+            out.add(ScopeWrite._fingerprint(lines))
+        out.discard(ScopeWrite.GONE)
+        return out
+
+    @staticmethod
+    def _legacy_config_same(root: Path, before: dict[str, Any], value: Any) -> bool:
+        """True when ``before`` predates CONFIG_SCHEME and ``value`` (its
+        ``.git/config`` entry) still matches the config on disk."""
+        return before.get("config") != ScopeWrite.CONFIG_SCHEME and (
+            value in ScopeWrite._legacy_config_ids(root)
+        )
 
     @staticmethod
     def _blob_id(path: Path) -> str:
@@ -2088,7 +2152,11 @@ class ScopeWrite:
         if capped is None:
             return None
         head = os.fsdecode(head_raw).strip() if head_raw else None
-        snap: dict[str, Any] = {"head": head or None, "dirty": dirty}
+        snap: dict[str, Any] = {
+            "head": head or None,
+            "dirty": dirty,
+            "config": ScopeWrite.CONFIG_SCHEME,
+        }
         if capped:
             snap["capped"] = capped  # files not watched (count / size cap)
         return snap
@@ -2123,15 +2191,6 @@ class ScopeWrite:
                         for n in sorted(names)
                         if not ScopeWrite._heavy([n])
                     )
-        common = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
-        if common is not None:
-            gdir = root / os.fsdecode(common).strip()
-            for dirpath, _dirs, names in os.walk(gdir / "hooks"):
-                base = Path(dirpath)
-                files.extend(
-                    (".git/" + (base / n).relative_to(gdir).as_posix(), base / n)
-                    for n in sorted(names)
-                )
         capped = max(0, len(files) - ScopeWrite.MAX_IGNORED)
         for key, path in files[: ScopeWrite.MAX_IGNORED]:
             try:
@@ -2141,10 +2200,19 @@ class ScopeWrite:
             except OSError:
                 continue
             dirty.setdefault(key, ScopeWrite._blob_id(path))
+        # Hooks run code: always watched, outside the count and size caps.
+        common = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
+        if common is not None:
+            gdir = root / os.fsdecode(common).strip()
+            for dirpath, _dirs, names in os.walk(gdir / "hooks"):
+                base = Path(dirpath)
+                for n in sorted(names):
+                    key = ".git/" + (base / n).relative_to(gdir).as_posix()
+                    dirty[key] = ScopeWrite._blob_id(base / n)
         config_id = ScopeWrite._config_id(root)
         if config_id is None:
             return None
-        dirty[".git/config"] = config_id
+        dirty[ScopeWrite.CONFIG] = config_id
         return capped
 
     @staticmethod
@@ -2168,6 +2236,9 @@ class ScopeWrite:
         b_dirty = before.get("dirty") if isinstance(before.get("dirty"), dict) else {}
         a_dirty = after.get("dirty") if isinstance(after.get("dirty"), dict) else {}
         b_head, a_head = before.get("head"), after.get("head")
+        cfg = ScopeWrite.CONFIG
+        if cfg in b_dirty and ScopeWrite._legacy_config_same(root, before, b_dirty[cfg]):
+            a_dirty = {**a_dirty, cfg: b_dirty[cfg]}
         cand = set(b_dirty) | set(a_dirty)
         if b_head != a_head:
             raw = ScopeWrite._git(
@@ -2205,14 +2276,22 @@ class ScopeWrite:
         """
         doc = ScopeWrite.load(root, packet)
         snap = ScopeWrite.snapshot(root)
+        # No snapshot in a git work tree (timeout, broken config) fails
+        # closed; only a tree git does not know is a skip.
+        in_git = snap is None and (
+            os.path.lexists(root / ".git")
+            or ScopeWrite._git(root, "rev-parse", "--is-inside-work-tree") == b"true\n"
+        )
         new: dict[str, Any] = {
             "v": 1,
             "t0": time.time(),
             "before": snap,
-            "skip": None if snap is not None else ScopeWrite.NOT_GIT,
+            "skip": None if snap is not None or in_git else ScopeWrite.NOT_GIT,
             "ran": not fresh,
             OwnedWrite.DIGEST_KEY: OwnedWrite.snapshot(root, packet),
         }
+        if in_git:
+            new["unreadable"] = True
         old = doc.get("before") if isinstance(doc, dict) else None
         prior = ScopeWrite._attempt(doc) if isinstance(doc, dict) else None
         if prior is None and isinstance(old, dict) and isinstance(doc, dict) and doc.get("ran"):
@@ -2221,9 +2300,17 @@ class ScopeWrite:
             assert isinstance(doc, dict)
             for key in ("t0", OwnedWrite.DIGEST_KEY):
                 new[key] = doc.get(key)
-            prior = [p for p in prior if p != ScopeWrite.UNREADABLE]
+            prior = [p for p in prior if p not in ScopeWrite.UNJUDGED]
             if snap is not None and prior:
                 was = old.get("dirty") if isinstance(old.get("dirty"), dict) else {}
+                cfg = ScopeWrite.CONFIG
+                if cfg in prior and old.get("config") != ScopeWrite.CONFIG_SCHEME:
+                    if ScopeWrite._legacy_config_same(root, old, was.get(cfg)):
+                        prior = [p for p in prior if p != cfg]  # reverted
+                    else:
+                        # The carried value is pre-scheme: keep its tag so
+                        # changed() still compares it the legacy way.
+                        snap["config"] = old.get("config")
                 tree = ScopeWrite._tree_ids(
                     root, old.get("head"),
                     sorted(p for p in prior if p not in was and not p.startswith(".git/")),
@@ -2339,11 +2426,12 @@ class ScopeWrite:
         packets: list[dict[str, Any]],
         changed: list[str],
         concurrent: set[str] | None = None,
-    ) -> list[str]:
-        """``concurrent`` = siblings that ran in this child's window (None: all).
+    ) -> list[tuple[str, str]]:
+        """``(path, why)`` pairs; ``why`` is "" for a plain out-of-scope write.
+        ``concurrent`` = siblings that ran in this child's window (None: all).
 
         A concurrent sibling that owns the path keeps it. Evidence text is
-        not a write.
+        not a write. Paths stay structured: a path may contain " (".
         """
         child = str(packet.get("child_id") or "")
         role = str(packet.get("role") or "")
@@ -2362,10 +2450,10 @@ class ScopeWrite:
             and str(p.get("child_id") or "") in ran
             for p in siblings
         )
-        bad: list[str] = []
+        bad: list[tuple[str, str]] = []
         for path in changed:
             if pinned and ScopeWrite._within(path, pinned):
-                bad.append(f"{path} (pinned contract)")
+                bad.append((path, "pinned contract"))
                 continue
             if ScopeWrite._within(path, own):
                 continue
@@ -2379,12 +2467,17 @@ class ScopeWrite:
             )
             if owner is not None:
                 if owner not in ran and not unbounded_sibling:
-                    bad.append(f"{path} (owned by {owner})")
+                    bad.append((path, f"owned by {owner}"))
                 continue
             if unbounded_self or unbounded_sibling:
                 continue
-            bad.append(path)
+            bad.append((path, ""))
         return bad
+
+    @staticmethod
+    def _label(item: tuple[str, str]) -> str:
+        path, why = item
+        return f"{path} ({why})" if why else path
 
     @staticmethod
     def revert_plan(
@@ -2402,7 +2495,10 @@ class ScopeWrite:
         need = [
             p
             for p in paths
-            if p and not p.startswith(".git/") and p != ScopeWrite.UNREADABLE and p not in b_dirty
+            if p
+            and not p.startswith(".git/")
+            and p not in ScopeWrite.UNJUDGED
+            and p not in b_dirty
         ]
         tree = (
             ScopeWrite._tree_ids(root, str(b_head) if b_head else None, sorted(set(need)))
@@ -2411,8 +2507,8 @@ class ScopeWrite:
         )
         plan: list[tuple[str, str, str]] = []
         for rel in paths:
-            if not rel or rel.startswith(".git/") or rel == ScopeWrite.UNREADABLE:
-                why = "git tree unreadable" if rel == ScopeWrite.UNREADABLE else ".git/ excluded"
+            if not rel or rel.startswith(".git/") or rel in ScopeWrite.UNJUDGED:
+                why = "git tree unreadable" if rel in ScopeWrite.UNJUDGED else ".git/ excluded"
                 plan.append((rel, "skip", why))
                 continue
             blob = b_dirty.get(rel, tree.get(rel, ScopeWrite.GONE))
@@ -2456,6 +2552,8 @@ class ScopeWrite:
         ``revert_plan`` and are not a silent success.
         """
         doc = ScopeWrite.load(root, packet)
+        if isinstance(doc, dict) and doc.get("unreadable"):
+            return [], None, [f"{ScopeWrite.BASELINE_UNREADABLE} (no baseline to revert to)"]
         if not isinstance(doc, dict) or doc.get("skip") or not isinstance(
             doc.get("before"), dict
         ):
@@ -2479,7 +2577,7 @@ class ScopeWrite:
         )
         if not bad:
             return [], None, []
-        raw_paths = [str(item).split(" (", 1)[0] for item in bad]
+        raw_paths = [path for path, _why in bad]
         before = doc["before"]
         plan = ScopeWrite.revert_plan(root, before, raw_paths)
         skips = [f"{path} ({why})" for path, action, why in plan if action == "skip"]
@@ -2501,16 +2599,19 @@ class ScopeWrite:
         for rel, action in actions:
             target = root / rel
             if action == "unlink":
-                if target.is_file() or target.is_symlink():
-                    try:
-                        body = target.read_bytes() if not target.is_symlink() else b""
-                        patch_chunks.append(
-                            f"# untracked quarantine: {rel}\n".encode("utf-8") + body + b"\n"
-                        )
-                        target.unlink()
-                        reverted.append(rel)
-                    except OSError:
-                        pass
+                if not (target.is_file() or target.is_symlink()):
+                    if os.path.lexists(target):
+                        skips.append(f"{rel} (not a file; revert by hand)")
+                    continue
+                try:
+                    body = target.read_bytes() if not target.is_symlink() else b""
+                    patch_chunks.append(
+                        f"# untracked quarantine: {rel}\n".encode("utf-8") + body + b"\n"
+                    )
+                    target.unlink()
+                    reverted.append(rel)
+                except OSError as exc:
+                    skips.append(f"{rel} (unlink failed: {exc.strerror or exc})")
             elif action == "checkout" and b_head:
                 try:
                     proc = subprocess.run(
@@ -2520,10 +2621,16 @@ class ScopeWrite:
                         stdin=subprocess.DEVNULL,
                         timeout=30,
                     )
-                    if proc.returncode == 0:
-                        reverted.append(rel)
-                except (OSError, subprocess.SubprocessError):
-                    pass
+                except (OSError, subprocess.SubprocessError) as exc:
+                    skips.append(f"{rel} (git checkout failed: {exc})")
+                    continue
+                if proc.returncode == 0:
+                    reverted.append(rel)
+                else:
+                    err = os.fsdecode(proc.stderr).strip().splitlines()
+                    skips.append(
+                        f"{rel} (git checkout failed: {err[-1] if err else proc.returncode})"
+                    )
         if not reverted:
             return [], None, skips
         patch_bytes = b"".join(patch_chunks) or b"# quarantine empty diff\n"
@@ -2557,6 +2664,8 @@ class ScopeWrite:
         doc = ScopeWrite.load(root, packet)
         if not isinstance(doc, dict):
             return ScopeWrite.NO_BASELINE
+        if doc.get("unreadable"):
+            return None  # not a skip: errors() fails it
         if doc.get("skip") or not isinstance(doc.get("before"), dict):
             return str(doc.get("skip") or ScopeWrite.NO_BASELINE)
         if not isinstance(doc.get("changed"), list):
@@ -2567,26 +2676,28 @@ class ScopeWrite:
         return None
 
     @staticmethod
-    def _pinned_digest_violations(root: Path, packet: dict[str, Any]) -> list[str]:
+    def _pinned_digest_violations(
+        root: Path, packet: dict[str, Any]
+    ) -> list[tuple[str, str]]:
         pinned = packet.get("pinned_contracts")
         if not isinstance(pinned, dict) or not pinned:
             return []
-        bad: list[str] = []
+        bad: list[tuple[str, str]] = []
         for rel, expected in sorted(pinned.items()):
             p = posix_owns_path(str(rel))
             if not p or not expected:
                 continue
             target = root / p
             if not target.is_file() or target.is_symlink():
-                bad.append(f"{p} (pinned_contract_mutated)")
+                bad.append((p, "pinned_contract_mutated"))
                 continue
             try:
                 actual = hashlib.sha256(target.read_bytes()).hexdigest()
             except OSError:
-                bad.append(f"{p} (pinned_contract_mutated)")
+                bad.append((p, "pinned_contract_mutated"))
                 continue
             if actual != str(expected):
-                bad.append(f"{p} (pinned_contract_mutated)")
+                bad.append((p, "pinned_contract_mutated"))
         return bad
 
     @staticmethod
@@ -2598,7 +2709,15 @@ class ScopeWrite:
         resume, validate --packet, integrate and spawn all compute it here."""
         pinned_bad = ScopeWrite._pinned_digest_violations(root, packet)
         doc = ScopeWrite.load(root, packet)
-        bad: list[str] = []
+        if isinstance(doc, dict) and doc.get("unreadable"):
+            return [
+                f"rule={ScopeWrite.RULE}: {packet.get('role') or '?'} "
+                f"{packet.get('child_id')} ran with {ScopeWrite.BASELINE_UNREADABLE}: "
+                "its writes cannot be judged. Leader: fix what git reports "
+                "(git status, git config --local --list), then re-run the child "
+                "(of spawn / of handoff retakes the baseline)"
+            ]
+        bad: list[tuple[str, str]] = []
         if (
             isinstance(doc, dict)
             and not doc.get("skip")
@@ -2620,16 +2739,16 @@ class ScopeWrite:
                     packet, packets, changed,
                     ScopeWrite.concurrent(root, packet, packets, doc),
                 )
-        for item in pinned_bad:
-            rel_prefix = item.split(" (", 1)[0]
-            if not any(str(b).split(" (", 1)[0] == rel_prefix for b in bad):
-                bad.append(item)
+        flagged = {path for path, _why in bad}
+        bad.extend(item for item in pinned_bad if item[0] not in flagged)
         if not bad:
             return []
         role = str(packet.get("role") or "?")
-        shown = ", ".join(str(p) for p in bad[:8]) + (" …" if len(bad) > 8 else "")
+        shown = ", ".join(ScopeWrite._label(b) for b in bad[:8]) + (
+            " …" if len(bad) > 8 else ""
+        )
         allowed = ", ".join(packet_owns_paths(packet)) or "none"
-        raw = [str(p).split(" (", 1)[0] for p in bad]
+        raw = [path for path, _why in bad]
         before = doc.get("before") if isinstance(doc, dict) else None
         clause = (
             ScopeWrite._revert_clause(ScopeWrite.revert_plan(root, before, raw))

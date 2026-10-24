@@ -517,14 +517,20 @@ class Deliverable:
         return done
 
     @staticmethod
-    def cited_after_close(root: Path, result_ref: str) -> str | None:
-        """Resume note when close wiped a scratch ``result_ref`` (#351).
+    def cited_after_close(
+        root: Path, result_ref: str, child: str | None = None
+    ) -> str | None:
+        """Resume note when a scratch ``result_ref`` is gone (#351).
 
+        ``child`` is the residual's child id: promote files a cite under it.
         ``None`` when the cited file is still on disk, or the cite is not
         under ``work/scratch``. ``promoted    <path>`` when the close copy
-        survived. ``promoted    (scratch wiped)`` when the cite is gone and
-        no copy exists. Does not rewrite the residual.
+        survived. ``not promoted (scratch wiped)`` when the field closed and
+        no copy exists; ``missing     (not on disk)`` while it is open.
+        Does not rewrite the residual.
         """
+        from of.field import physical_field_rel
+
         text = str(result_ref or "").strip()
         if not text:
             return None
@@ -538,6 +544,7 @@ class Deliverable:
             rel = raw.as_posix()
             if rel.startswith("./"):
                 rel = rel[2:]
+        rel = physical_field_rel(root, rel)  # a sibling field's real home
         cited = root / rel
         try:
             if cited.is_file() and not cited.is_symlink():
@@ -552,7 +559,7 @@ class Deliverable:
                 break
         if scratch_at is None or scratch_at + 2 >= len(parts):
             return None
-        child = parts[scratch_at + 2]
+        owner = parts[scratch_at + 2]
         rest = (
             Path(*parts[scratch_at + 3:])
             if scratch_at + 3 < len(parts)
@@ -561,8 +568,12 @@ class Deliverable:
         home = root.joinpath(*parts[:scratch_at])
         candidates: list[Path] = []
         if rest is not None and rest.parts:
-            candidates.append(home / Deliverable.DIR / child / rest)
-            if child == "leader" and rest.as_posix() == Deliverable.FINAL:
+            # Mirror promote(): filed under the residual's child, at the
+            # path inside its own scratch, else by file name.
+            filer = child or owner
+            inner = rest if filer == owner else Path(rest.name)
+            candidates.append(home / Deliverable.DIR / filer / inner)
+            if owner == "leader" and rest.as_posix() == Deliverable.FINAL:
                 candidates.append(home / Deliverable.FINAL)
         for cand in candidates:
             try:
@@ -570,7 +581,9 @@ class Deliverable:
                     return f"promoted    {field_rel(root, cand)}"
             except OSError:
                 continue
-        return "promoted    (scratch wiped)"
+        if (home / "CLOSE.json").is_file():
+            return "not promoted (scratch wiped)"
+        return "missing     (not on disk)"
 
     @staticmethod
     def emit(root: Path, paths: list[Path]) -> None:

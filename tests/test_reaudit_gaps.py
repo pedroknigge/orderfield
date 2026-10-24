@@ -286,12 +286,107 @@ class ScopeWriteBlindSpots(unittest.TestCase):
         self.assertIn("logs/deep/run.log", line)
         self.assertNotIn("node_modules", line)
 
+    def test_path_with_paren_is_reverted_whole(self) -> None:
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),assets/Screenshot (1).png=x")
+        self.assertIn("assets/Screenshot (1).png", self.collect_line(field))
+        r = field.ok("collect", "--revert-out-of-scope")
+        self.assertIn("reverted 1 out-of-scope path(s)", r.stdout)
+        self.assertFalse((field.tmp / "assets/Screenshot (1).png").exists())
+
+    def test_code_running_config_key_is_seen(self) -> None:
+        field = Field(self)
+        field.pack("e1")
+        cfg = (field.tmp / ".git/config").read_text(encoding="utf-8")
+        field.spawn("e1", ".git/config=" + cfg + "[alias]\n\tst = !touch /tmp/pwned")
+        self.assertIn(".git/config", self.collect_line(field))
+
+    def test_global_config_edit_is_not_the_childs(self) -> None:
+        from _harness import hermetic_env
+
+        gitconfig = Path(hermetic_env()["HOME"]) / ".gitconfig"
+        self.addCleanup(gitconfig.unlink, True)
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", f"src/app.py=print(2),{gitconfig}=[core]\n\tsshCommand = ssh -v")
+        self.assertIn("sshCommand", gitconfig.read_text(encoding="utf-8"))
+        r = field.ok("collect")
+        self.assertNotIn(".git/config", r.stdout)
+        self.assertIn("ok=1", r.stdout)
+
+    def test_failed_checkout_is_reported_not_dropped(self) -> None:
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),README.md=hijack")
+        lock = field.tmp / ".git/index.lock"
+        lock.write_text("", encoding="utf-8")
+        self.addCleanup(lock.unlink, True)
+        r = field.of("collect", "--revert-out-of-scope")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("README.md (git checkout failed", r.stdout)
+        self.assertEqual((field.tmp / "README.md").read_text(encoding="utf-8"), "hijack\n")
+
     def test_ignored_tool_output_is_not_a_write(self) -> None:
         field = Field(self, gitignore="*.egg-info/\n.DS_Store\nhtmlcov/\n")
         field.pack("i1", "implementer", "src/app.py")
         field.spawn("i1", "src/app.py=print(2),app.egg-info/PKG-INFO=x,.DS_Store=x,"
                           "src/.DS_Store=x,htmlcov/index.html=x")
         self.assertIn("ok=1", field.ok("collect").stdout)
+
+
+class ScopeWriteBaseline(unittest.TestCase):
+    """Snapshot internals the CLI cannot reach: caps, old baselines, a
+    baseline git could not answer."""
+
+    def setUp(self) -> None:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        self.addCleanup(sys.path.remove, sys.path[0])
+        from of.pack import ScopeWrite
+
+        self.sw = ScopeWrite
+
+    def test_hooks_are_watched_past_the_ignored_cap(self) -> None:
+        from unittest import mock
+
+        field = Field(self, gitignore="data/\n")
+        for n in range(3):
+            (field.tmp / f"data/f{n}.bin").parent.mkdir(exist_ok=True)
+            (field.tmp / f"data/f{n}.bin").write_text(str(n), encoding="utf-8")
+        (field.tmp / ".git/hooks/pre-commit").write_text("echo x\n", encoding="utf-8")
+        with mock.patch.object(self.sw, "MAX_IGNORED", 1):
+            snap = self.sw.snapshot(field.tmp)
+        self.assertIn(".git/hooks/pre-commit", snap["dirty"])
+        self.assertEqual(snap["capped"], 2)
+
+    def test_pre_scheme_baseline_is_not_a_config_change(self) -> None:
+        field = Field(self)
+        after = self.sw.snapshot(field.tmp)
+        cfg = self.sw.CONFIG
+        legacy_file = self.sw._blob_id(field.tmp / ".git/config")  # 0.9.1
+        legacy_all = self.sw._fingerprint(  # 0.9.2
+            self.sw._config_lines(field.tmp, self.sw.LEGACY_CONFIG_KEYS) or []
+        )
+        for value in (legacy_file, legacy_all):
+            before = {"head": after["head"], "dirty": {**after["dirty"], cfg: value}}
+            self.assertEqual(self.sw.changed(field.tmp, before, after), [])
+        before = {"head": after["head"], "dirty": {**after["dirty"], cfg: "0" * 40}}
+        self.assertEqual(self.sw.changed(field.tmp, before, after), [cfg])
+
+    def test_unreadable_baseline_fails_closed(self) -> None:
+        from unittest import mock
+
+        field = Field(self)
+        field.pack("e1")
+        packet = json.loads((field.tmp / WAVE / "packets/e1.json").read_text())
+        with mock.patch.object(self.sw, "snapshot", return_value=None):
+            self.sw.rebase(field.tmp, packet)
+        doc = self.sw.load(field.tmp, packet)
+        self.assertIsNone(doc["skip"])
+        self.assertIsNone(self.sw.evaluate(field.tmp, packet, {}))
+        errs = self.sw.errors(field.tmp, packet)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("git tree unreadable at baseline", errs[0])
 
 
 class UnclaimedSibling(unittest.TestCase):
