@@ -745,6 +745,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("catalog")
     for line in ModelCatalog.doctor_lines():
         print(f"  {line}")
+    print("headroom")
+    print("  read of models --json before fan-out "
+          "(smallest-window margin, earliest reset; sin dato never blocks)")
     print("efficiency")
     for line in EfficiencySignal.doctor_lines():
         print(f"  {line}")
