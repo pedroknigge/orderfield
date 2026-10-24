@@ -21,8 +21,27 @@ from pathlib import Path
 root = Path(os.environ['FIXTURE_HOME'])
 mode = os.environ.get('FIXTURE_MODE', 'ok')
 name = Path(sys.argv[0]).name
-(root / 'argv.json').write_text(json.dumps(sys.argv[1:]))
+argv_line = json.dumps(sys.argv[1:])
+(root / 'argv.json').write_text(argv_line)
+with (root / 'argv.jsonl').open('a') as log:
+    log.write(argv_line + '\n')
 (root / 'pid').write_text(str(os.getpid()))
+if '--version' in sys.argv or sys.argv[1:] == ['-v']:
+    print(os.environ.get('FAKE_VERSION', '0.0.0'))
+    sys.exit(0)
+if name == 'orca':
+    if os.environ.get('ORCA_FAIL') == '1':
+        sys.exit(7)
+    path = root / 'orca.json'
+    print(path.read_text() if path.exists() else '{"ok":false}')
+    sys.exit(0)
+if '/usage' in sys.argv or (name == 'claude' and '-p' in sys.argv and '--input-format' not in sys.argv):
+    (root / 'usage_calls').write_text(name)
+    if os.environ.get('USAGE_FAIL') == '1':
+        sys.exit(7)
+    path = root / 'usage_stdout.txt'
+    sys.stdout.write(path.read_text() if path.exists() else '')
+    sys.exit(0)
 if mode == 'timeout':
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
     time.sleep(60)
@@ -61,6 +80,12 @@ for line in sys.stdin:
     method = request.get('method')
     if method == 'initialized':
         continue
+    if method == 'account/rateLimits/read':
+        (root / 'usage_calls').write_text('codex')
+        path = root / 'codex_limits.json'
+        result = json.loads(path.read_text()) if path.exists() else {}
+        print(json.dumps({'id': request['id'], 'result': result}), flush=True)
+        continue
     if method == 'initialize':
         result = {'userAgent':'secret'}
     else:
@@ -92,12 +117,12 @@ class LiveModelDiscovery(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_cli(self, adapter='codex', mode='ok', timeout='6', global_json=False):
+    def run_cli(self, adapter='codex', mode='ok', timeout='6', global_json=False, proc_timeout=12):
         args = ['--json', 'models'] if global_json else ['models', '--json']
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), *args,
                                  '--adapter', adapter, '--timeout', timeout],
                                 cwd=self.root, env={**self.env, 'FIXTURE_MODE':mode},
-                                capture_output=True, text=True, timeout=12)
+                                capture_output=True, text=True, timeout=proc_timeout)
         report = json.loads(result.stdout)['adapters'][0]
         return result, report
 
@@ -129,8 +154,9 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertEqual(rows[0]['efforts'], [{'effort':'ultra','description':'Deep'}])
         self.assertTrue(all(r['price_public']=='unknown' for r in rows))
         self.assertIsNone(rows[1]['is_default'])
-        self.assertEqual([r['method'] for r in self.requests()],
-                         ['initialize','initialized','model/list','model/list'])
+        methods = [r.get('method') for r in self.requests()]
+        self.assertEqual(methods[:4], ['initialize','initialized','model/list','model/list'])
+        self.assertEqual(methods[4:], ['initialize','initialized','account/rateLimits/read'])
         self.assertFalse(self.requests()[2]['params']['includeHidden'])
         self.assertEqual(self.requests()[3]['params']['cursor'], 'page2')
         self.assertFalse((self.root/'.orderfield').exists())
@@ -145,7 +171,7 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertEqual(report['models'][0]['display_name'],'Default (recommended)')
         self.assertEqual(self.requests(), [{'type':'control_request','request_id':'models',
                                            'request':{'subtype':'initialize'}}])
-        argv = json.loads((self.root/'argv.json').read_text())
+        argv = json.loads((self.root/'argv.jsonl').read_text().splitlines()[0])
         self.assertEqual(argv[argv.index('--tools')+1], '')
         self.assertIn('--strict-mcp-config', argv)
         self.assertEqual(argv[argv.index('--setting-sources')+1], '')
@@ -160,7 +186,9 @@ class LiveModelDiscovery(unittest.TestCase):
                 self.assertEqual(len(report['models']), 2)
                 self.assertTrue(report['models'][0]['is_default'])
                 self.assertNotIn('account@', result.stdout)
-                self.assertEqual(json.loads((self.root/'argv.json').read_text()), ['models'])
+                argvs = [json.loads(line) for line in (self.root/'argv.jsonl').read_text().splitlines()]
+                self.assertEqual(argvs[0], ['models'])
+                self.assertEqual(argvs[-1], ['-p', '/usage'])
 
     def test_protocol_errors_are_explicit_without_raw_provider_details(self):
         for adapter, mode, error in [('codex','rpc-error','model_list_failed'),
@@ -188,10 +216,11 @@ class LiveModelDiscovery(unittest.TestCase):
 
     def test_timeout_kills_uncooperative_process_within_bound(self):
         start = time.monotonic()
-        result, report = self.run_cli('codex','timeout','6')
+        result, report = self.run_cli('codex','timeout','6', proc_timeout=20)
         self.assertEqual(result.returncode, 2)
         self.assertEqual(report['error'], 'timeout')
-        self.assertLess(time.monotonic()-start, 10)
+        # Model list and the usage probe each die inside the same bound.
+        self.assertLess(time.monotonic()-start, 16)
         self.assert_stopped()
 
     @unittest.skipUnless(os.name=='posix', 'POSIX process group cleanup')
@@ -217,7 +246,7 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertNotEqual(a['checked_at'],b['checked_at'])
         self.assertEqual(len(self.requests()),2)
         result = subprocess.run([sys.executable,str(ROOT/'scripts/of.py'),'models','--json'],
-                                env=self.env,cwd=self.root,capture_output=True,text=True,timeout=8)
+                                env=self.env,cwd=self.root,capture_output=True,text=True,timeout=20)
         self.assertEqual(result.returncode,0)
         self.assertEqual(len(json.loads(result.stdout)['adapters']),9)
 
@@ -243,6 +272,178 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertEqual(report['models'][0]['display_name'],'Future Z')
         self.assertEqual(report['models'][1]['display_name'],'Future A')
         self.assertFalse(report['models'][1]['is_default'])
+
+
+class UsageHeadroom(unittest.TestCase):
+    """Orca-first headroom. sin dato never fails the model command."""
+
+    setUp = LiveModelDiscovery.setUp
+    tearDown = LiveModelDiscovery.tearDown
+    run_cli = LiveModelDiscovery.run_cli
+
+    def test_parser_smallest_window_and_roster_tie_break(self):
+        from of.model_discovery import roster
+        from of_adapters import orca_rate_limits, parse_usage
+
+        parsed = parse_usage(json.dumps({
+            "rateLimits": {
+                "primary": {"usedPercent": 0, "windowDurationMins": 10080, "resetsAt": 2000000000000},
+                "secondary": {"usedPercent": 40, "windowDurationMins": 300, "resetsAt": 1900000000000},
+            }
+        }))
+        self.assertEqual(parsed[0], 40.0)
+        claude = parse_usage("\n".join([
+            json.dumps({"type": "rate_limit_event", "rate_limit_info": {
+                "rateLimitType": "seven_day", "utilization": 0.5, "resetsAt": 2000000000}}),
+            json.dumps({"type": "rate_limit_event", "rate_limit_info": {
+                "rateLimitType": "five_hour", "utilization": 0.25, "resetsAt": 1900000000}}),
+        ]))
+        self.assertEqual(claude[0], 25.0)
+        partial = parse_usage(json.dumps({
+            "rate_limit_info": {"rateLimitType": "five_hour", "resetsAt": 1900000000}}))
+        self.assertIsNone(partial[0])
+        self.assertIsNotNone(partial[1])
+        self.assertIsNone(parse_usage("not-json"))
+        self.assertIsNone(orca_rate_limits({"ok": True, "email": "account@example.com"}))
+        self.assertEqual(roster([
+            {"harness": "grok", "used_percent": 10.0, "resets_at": "2027-01-01T00:00:00Z"},
+            {"harness": "codex", "used_percent": 10.0, "resets_at": "2026-01-01T00:00:00Z"},
+            {"harness": "agy", "used_percent": 5.0, "resets_at": "2026-06-01T00:00:00Z"},
+            {"harness": "cursor", "used_percent": "sin dato", "resets_at": "sin dato"},
+        ]), ["agy", "codex", "grok"])
+
+    def _install(self, name):
+        file = self.root / name
+        file.write_text(f'#!{sys.executable}\n' + FIXTURE)
+        file.chmod(0o755)
+
+    def test_orca_short_circuit_uses_smallest_window(self):
+        self._install('orca')
+        (self.root / 'orca.json').write_text(json.dumps({
+            "ok": True, "email": "account@example.com", "token": "secret",
+            "result": {"rateLimits": {
+                "claude": {
+                    "session": {"usedPercent": 80, "windowMinutes": 300, "resetsAt": 1800000000000},
+                    "weekly": {"usedPercent": 10, "windowMinutes": 10080, "resetsAt": 1900000000000},
+                },
+                "codex": {"weekly": {"usedPercent": 10, "windowMinutes": 10080, "resetsAt": 1700000000000}},
+                "grok": {"weekly": {"usedPercent": 10, "windowMinutes": 10080, "resetsAt": 2000000000000}},
+                "cursor": None,
+                "antigravity": {"session": {"usedPercent": 5, "windowMinutes": 300, "resetsAt": 1800000000000}},
+            }},
+        }))
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--timeout', '6'],
+            cwd=self.root, env=self.env, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        body = json.loads(result.stdout)
+        rows = {row['harness']: row for row in body['headroom']}
+        self.assertEqual(list(rows), ['claude', 'codex', 'cursor', 'grok', 'agy'])
+        self.assertEqual(rows['claude']['used_percent'], 80.0)
+        self.assertEqual(rows['claude']['source'], 'orca')
+        self.assertEqual(rows['agy']['used_percent'], 5.0)
+        self.assertEqual(rows['cursor']['used_percent'], 'sin dato')
+        self.assertEqual(rows['cursor']['source'], 'orca')
+        self.assertEqual(body['roster'], ['agy', 'codex', 'grok', 'claude'])
+        self.assertNotIn('secret', result.stdout)
+        self.assertNotIn('account@', result.stdout)
+        self.assertFalse((self.root / 'usage_calls').exists())
+        requests = (self.root / 'requests.jsonl').read_text()
+        self.assertNotIn('account/rateLimits/read', requests)
+
+    def test_missing_rate_limits_fall_through_to_native_codex(self):
+        self._install('orca')
+        (self.root / 'orca.json').write_text('{"ok":true,"email":"account@example.com"}')
+        (self.root / 'codex_limits.json').write_text(json.dumps({"rateLimits": {
+            "primary": {"usedPercent": 0, "windowDurationMins": 10080, "resetsAt": 2000000000000},
+            "secondary": {"usedPercent": 40, "windowDurationMins": 300, "resetsAt": 1900000000000},
+        }}))
+        result, _report = self.run_cli('codex')
+        body = json.loads(result.stdout)
+        row = body['headroom'][0]
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(row['harness'], 'codex')
+        self.assertEqual(row['used_percent'], 40.0)
+        self.assertEqual(row['source'], 'native')
+        self.assertEqual((self.root / 'usage_calls').read_text(), 'codex')
+        self.assertNotIn('account@', result.stdout)
+
+    def test_missing_harness_is_sin_dato_and_exit_zero(self):
+        empty = self.root / 'bin'
+        empty.mkdir()
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json', '--timeout', '6'],
+            cwd=self.root, env={**self.env, 'PATH': str(empty)},
+            capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        body = json.loads(result.stdout)
+        self.assertEqual([row['harness'] for row in body['headroom']],
+                         ['claude', 'codex', 'cursor', 'grok', 'agy'])
+        self.assertTrue(all(row['used_percent'] == 'sin dato' and row['source'] == 'none'
+                            and row['resets_at'] == 'sin dato' for row in body['headroom']))
+        self.assertEqual(body['roster'], [])
+
+    def test_agy_usage_is_version_gated(self):
+        payload = json.dumps({"usedPercent": 12, "windowMinutes": 300, "resetsAt": 1900000000})
+        (self.root / 'usage_stdout.txt').write_text(payload)
+        for version, called in (('1.1.10', False), ('1.1.11', True), ('unknown', False)):
+            with self.subTest(version=version):
+                marker = self.root / 'usage_calls'
+                if marker.exists():
+                    marker.unlink()
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json',
+                     '--adapter', 'agy', '--timeout', '6'],
+                    cwd=self.root, env={**self.env, 'FAKE_VERSION': version},
+                    capture_output=True, text=True, timeout=12)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                row = json.loads(result.stdout)['headroom'][0]
+                self.assertEqual(marker.exists(), called)
+                if called:
+                    self.assertEqual(row['used_percent'], 12.0)
+                    self.assertEqual(row['source'], 'native')
+                    self.assertEqual(marker.read_text(), 'agy')
+                else:
+                    self.assertEqual(row['used_percent'], 'sin dato')
+                    self.assertEqual(row['source'], 'none')
+
+    def test_claude_stream_event_and_usage_failure_does_not_fail(self):
+        (self.root / 'usage_stdout.txt').write_text("\n".join([
+            json.dumps({"type": "rate_limit_event", "rate_limit_info": {
+                "rateLimitType": "seven_day", "utilization": 0.5, "resetsAt": 2000000000}}),
+            json.dumps({"type": "rate_limit_event", "rate_limit_info": {
+                "rateLimitType": "five_hour", "utilization": 0.25, "resetsAt": 1900000000}}),
+        ]))
+        result, report = self.run_cli('claude')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        row = json.loads(result.stdout)['headroom'][0]
+        self.assertEqual(row['used_percent'], 25.0)
+        self.assertEqual(row['source'], 'native')
+        self.assertEqual(report['status'], 'ok')
+        self.assertNotIn('secret', result.stdout)
+        failed = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'models', '--json',
+             '--adapter', 'grok', '--timeout', '6'],
+            cwd=self.root, env={**self.env, 'USAGE_FAIL': '1'},
+            capture_output=True, text=True, timeout=12)
+        self.assertEqual(failed.returncode, 0, failed.stderr)
+        grow = json.loads(failed.stdout)
+        self.assertEqual(grow['adapters'][0]['status'], 'ok')
+        self.assertEqual(grow['headroom'][0]['source'], 'none')
+        self.assertEqual(grow['headroom'][0]['used_percent'], 'sin dato')
+
+    def test_doctor_points_at_headroom_without_probing(self):
+        empty = self.root / 'bin'
+        empty.mkdir()
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/of.py'), 'doctor'],
+            cwd=self.root, env={**self.env, 'PATH': str(empty), 'HOME': str(self.root)},
+            capture_output=True, text=True, timeout=20)
+        self.assertIn('headroom', result.stdout)
+        self.assertIn('sin dato', result.stdout)
+        self.assertIn('of models --json', result.stdout)
+        self.assertFalse((self.root / 'usage_calls').exists())
+        self.assertFalse((self.root / 'pid').exists())
 
 
 if __name__ == '__main__':

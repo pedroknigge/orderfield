@@ -1037,6 +1037,8 @@ class SkillModelCatalogConsult(unittest.TestCase):
         self.assertLess(consult_at, propose_at)
         self.assertLess(consult_at, ask_at)
         self.assertIn("model-catalog", folded)
+        self.assertIn("headroom", table)
+        self.assertIn("sin dato", table)
         self.assertIn("smarter", folded)
         self.assertNotIn("budget.tokens", folded)
         hero = readme[: readme.index("## Install")].casefold()

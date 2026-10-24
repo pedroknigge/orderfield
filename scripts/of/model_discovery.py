@@ -13,7 +13,10 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from of_adapters import ADAPTER_BINS, ADAPTER_ORDER
+from of_adapters import (
+    ADAPTER_BINS, ADAPTER_ORDER, SIN_DATO, USAGE, USAGE_ORDER,
+    orca_rate_limits, usage_windows,
+)
 
 
 class DiscoveryError(Exception):
@@ -166,7 +169,7 @@ def _models(items, adapter: str) -> list[dict]:
     return rows
 
 
-def _codex(probe: Probe) -> list[dict]:
+def _codex_handshake(probe: Probe) -> None:
     probe.send({"id": 1, "method": "initialize", "params": {
         "clientInfo": {"name": "orderfield_models", "version": "1"},
         "capabilities": {},
@@ -177,6 +180,10 @@ def _codex(probe: Probe) -> list[dict]:
     if not isinstance(first.get("result"), dict):
         raise DiscoveryError("invalid_initialize")
     probe.send({"method": "initialized", "params": {}})
+
+
+def _codex(probe: Probe) -> list[dict]:
+    _codex_handshake(probe)
     rows, cursors = [], set()
     cursor = None
     request_id = 2
@@ -258,8 +265,7 @@ def discover(adapter: str, timeout: float = 15) -> dict:
     try:
         if source is None:
             return report
-        binary = next((path for name in ADAPTER_BINS[adapter]
-                       if (path := shutil.which(name))), None)
+        binary = _binary(adapter)
         if not binary:
             report.update(status="missing", error="missing_binary")
             return report
@@ -288,12 +294,141 @@ def discover(adapter: str, timeout: float = 15) -> dict:
     return report
 
 
+def _binary(adapter: str) -> str | None:
+    return next((path for name in ADAPTER_BINS.get(adapter, ())
+                 if (path := shutil.which(name))), None)
+
+
+def _blank(harness: str) -> dict:
+    return {"harness": harness, "used_percent": SIN_DATO, "resets_at": SIN_DATO, "source": "none"}
+
+
+def _filled(harness: str, parsed, source: str) -> dict:
+    row = _blank(harness)
+    used = reset = None
+    if parsed:
+        used, reset = parsed
+    if isinstance(used, (int, float)) or reset:
+        row["used_percent"] = used if isinstance(used, (int, float)) else SIN_DATO
+        row["resets_at"] = reset or SIN_DATO
+        row["source"] = source
+    elif source == "orca":
+        # Orca answered and short-circuited native probes; the number is still missing.
+        row["source"] = "orca"
+    return row
+
+
+def _agy_ready(binary: str) -> bool:
+    # /usage costs a turn below 1.1.11 and is not a usage command there.
+    try:
+        proc = subprocess.run([binary, "--version"], capture_output=True, text=True, timeout=3)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    match = re.search(r"(\d+)\.(\d+)\.(\d+)", (proc.stdout or "") + (proc.stderr or ""))
+    return bool(match) and tuple(int(part) for part in match.groups()) >= (1, 1, 11)
+
+
+def probe_usage(adapter: str, timeout: float = 15) -> dict:
+    """Bounded native usage read. Failure is sin dato, never a raise."""
+    spec = USAGE.get(adapter)
+    binary = _binary(adapter) if spec else None
+    if not binary or (adapter == "agy" and not _agy_ready(binary)):
+        return _blank(adapter)
+    argv, parser = spec
+    probe = None
+    try:
+        probe = Probe([binary, *argv], timeout)
+        if adapter == "codex":
+            _codex_handshake(probe)
+            probe.send({"id": 2, "method": "account/rateLimits/read", "params": {}})
+            reply = probe.response(lambda message: message.get("id") == 2)
+            if "error" in reply:
+                return _blank(adapter)
+            found = usage_windows(reply.get("result", reply))
+            parsed = None if not found else min(found, key=lambda item: item[0])[1:]
+        else:
+            parsed = parser(probe.text())
+        return _filled(adapter, parsed, "native")
+    except (DiscoveryError, OSError):
+        return _blank(adapter)
+    finally:
+        if probe is not None:
+            probe.close()
+
+
+def _json_blob(text: str):
+    raw = text.strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        start, end = raw.find("{"), raw.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            return json.loads(raw[start:end + 1])
+        except ValueError:
+            return None
+
+
+def _orca_rows(timeout: float) -> list[dict] | None:
+    binary = _binary("orca")
+    if not binary:
+        return None
+    probe = None
+    try:
+        probe = Probe([binary, "account", "list", "--json"], timeout)
+        payload = _json_blob(probe.text())
+    except (DiscoveryError, OSError):
+        return None
+    finally:
+        if probe is not None:
+            probe.close()
+    limits = orca_rate_limits(payload)
+    if limits is None:
+        return None
+    rows = []
+    for name in USAGE_ORDER:
+        key = "antigravity" if name == "agy" else name
+        found = usage_windows(limits.get(key))
+        parsed = None if not found else min(found, key=lambda item: item[0])[1:]
+        rows.append(_filled(name, parsed, "orca"))
+    return rows
+
+
+def roster(rows: list[dict]) -> list[str]:
+    """Most margin in the smallest window, then earliest reset. sin dato stays off."""
+    def key(row: dict):
+        reset = row["resets_at"]
+        missing = not isinstance(reset, str) or reset == SIN_DATO
+        return (row["used_percent"], missing, "" if missing else reset, row["harness"])
+    ranked = [row for row in rows if isinstance(row["used_percent"], (int, float))]
+    return [row["harness"] for row in sorted(ranked, key=key)]
+
+
+def headroom(timeout: float = 15, adapter: str | None = None) -> dict:
+    """Orca rateLimits short-circuits native probes. Never raises."""
+    if adapter and adapter not in USAGE:
+        rows = [_blank(adapter)]
+    else:
+        rows = _orca_rows(timeout)
+        names = (adapter,) if adapter else USAGE_ORDER
+        if rows is None:
+            rows = [probe_usage(name, timeout) for name in names]
+        elif adapter:
+            rows = [next((row for row in rows if row["harness"] == adapter), _blank(adapter))]
+    return {"headroom": rows, "roster": roster(rows)}
+
+
 def cmd_models(args) -> None:
     if not math.isfinite(args.timeout) or not 0 < args.timeout <= 120:
         raise ValueError("--timeout must be finite, > 0 and <= 120 seconds")
     reports = [discover(name, args.timeout) for name in ([args.adapter] if args.adapter else ADAPTER_ORDER)]
+    room = headroom(args.timeout, args.adapter)
     if args.json:
-        print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports}, ensure_ascii=False))
+        print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports, **room},
+                         ensure_ascii=False))
     else:
         for report in reports:
             print(f"{report['adapter']}: {report['status']} checked_at={report['checked_at']} source={report['source']}")
@@ -303,6 +438,9 @@ def cmd_models(args) -> None:
                 print(f"  {row['model_id']} resolved={row['resolved_model']} default={row['is_default']} price=unknown")
                 print(f"    {row['display_name']} — {row['description']}")
                 print(f"    efforts={row['efforts']} default_effort={row['default_effort']} recommendation={row['recommendation']}")
+        for row in room["headroom"]:
+            print(f"headroom {row['harness']}: used={row['used_percent']} reset={row['resets_at']} source={row['source']}")
+        print("roster " + (" ".join(room["roster"]) if room["roster"] else SIN_DATO))
     # All-adapter inventory includes unsupported adapters normally; selected failure is nonzero.
     failed = any(r["status"] == "error" for r in reports)
     if failed or (args.adapter and reports[0]["status"] != "ok"):
