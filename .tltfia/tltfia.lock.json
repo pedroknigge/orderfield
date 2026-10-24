@@ -1,8 +1,8 @@
 {
   "core": "0.3.1",
   "coreHash": "737e11c905f552af425edbecba27c4f406ab37a3e2f9d792d02a845aaac84991",
-  "enforcement": "shadow",
-  "engine": "0.2.12",
+  "enforcement": "advisor",
+  "engine": "0.2.25",
   "fitness": {
     "project-orderfield/PROJECT-DOC-002": {
       "command": [
@@ -146,7 +146,7 @@
     "name": "python-starter",
     "version": "1.0.0"
   },
-  "presetHash": "93a6da1fb2d9714f297db44e6b657b0a56f85a13e3bfb5e6fe114b57f8caa5bf",
+  "presetHash": "c194c363c1f7275977319f4c3c7e25250bf56724ca7c0e651b7ebc085e566891",
   "ratchet": "no-new",
   "rules": [
     {
@@ -154,7 +154,7 @@
         "core/CORE-INV-001"
       ],
       "check": "core/invariants/reason-for-change@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-001",
       "impl": {
         "kind": "primitive",
@@ -163,7 +163,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -193,7 +193,7 @@
         "core/CORE-INV-002"
       ],
       "check": "core/invariants/cohesion-and-coupling@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-002",
       "impl": {
         "kind": "primitive",
@@ -202,7 +202,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -232,7 +232,7 @@
         "core/CORE-INV-003"
       ],
       "check": "core/invariants/information-hiding@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-003",
       "impl": {
         "kind": "primitive",
@@ -241,7 +241,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -271,7 +271,7 @@
         "core/CORE-INV-004"
       ],
       "check": "core/invariants/observable-contract@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-004",
       "impl": {
         "kind": "primitive",
@@ -280,7 +280,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -310,7 +310,7 @@
         "core/CORE-INV-005"
       ],
       "check": "core/invariants/stable-dependencies@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-005",
       "impl": {
         "kind": "primitive",
@@ -319,7 +319,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -349,7 +349,7 @@
         "core/CORE-INV-006"
       ],
       "check": "core/invariants/evidenced-abstraction@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-006",
       "impl": {
         "kind": "primitive",
@@ -358,7 +358,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -388,7 +388,7 @@
         "core/CORE-INV-007"
       ],
       "check": "core/invariants/single-change-reason@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-007",
       "impl": {
         "kind": "primitive",
@@ -397,7 +397,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -427,7 +427,7 @@
         "core/CORE-INV-008"
       ],
       "check": "core/invariants/explicit-dependencies@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-008",
       "impl": {
         "kind": "primitive",
@@ -436,7 +436,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -466,7 +466,7 @@
         "core/CORE-INV-009"
       ],
       "check": "core/invariants/collaborator-knowledge@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-009",
       "impl": {
         "kind": "primitive",
@@ -475,7 +475,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -505,7 +505,7 @@
         "core/CORE-INV-010"
       ],
       "check": "core/invariants/composition@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-010",
       "impl": {
         "kind": "primitive",
@@ -514,7 +514,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -544,7 +544,7 @@
         "core/CORE-INV-011"
       ],
       "check": "core/invariants/narrow-interfaces@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-011",
       "impl": {
         "kind": "primitive",
@@ -553,7 +553,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -583,7 +583,7 @@
         "core/CORE-INV-012"
       ],
       "check": "core/invariants/source-of-truth@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-012",
       "impl": {
         "kind": "primitive",
@@ -592,7 +592,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -622,7 +622,7 @@
         "core/CORE-INV-013"
       ],
       "check": "core/invariants/domain-validation@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-013",
       "impl": {
         "kind": "primitive",
@@ -631,7 +631,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -661,7 +661,7 @@
         "core/CORE-INV-014"
       ],
       "check": "core/invariants/valid-state@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-014",
       "impl": {
         "kind": "primitive",
@@ -670,7 +670,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -700,7 +700,7 @@
         "core/CORE-INV-015"
       ],
       "check": "core/invariants/shared-immutability@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-015",
       "impl": {
         "kind": "primitive",
@@ -709,7 +709,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -739,7 +739,7 @@
         "core/CORE-INV-016"
       ],
       "check": "core/invariants/explicit-time-and-identity@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-016",
       "impl": {
         "kind": "primitive",
@@ -748,7 +748,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -778,7 +778,7 @@
         "core/CORE-INV-017"
       ],
       "check": "core/invariants/command-query-effects@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-017",
       "impl": {
         "kind": "primitive",
@@ -787,7 +787,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -817,7 +817,7 @@
         "core/CORE-INV-018"
       ],
       "check": "core/invariants/domain-language@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-018",
       "impl": {
         "kind": "primitive",
@@ -826,7 +826,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -856,7 +856,7 @@
         "core/CORE-INV-019"
       ],
       "check": "core/invariants/invariant-failure@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-019",
       "impl": {
         "kind": "primitive",
@@ -865,7 +865,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -895,7 +895,7 @@
         "core/CORE-INV-020"
       ],
       "check": "core/invariants/failure-classification@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-020",
       "impl": {
         "kind": "primitive",
@@ -904,7 +904,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -934,7 +934,7 @@
         "core/CORE-INV-021"
       ],
       "check": "core/invariants/idempotency@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-021",
       "impl": {
         "kind": "primitive",
@@ -943,7 +943,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -973,7 +973,7 @@
         "core/CORE-INV-022"
       ],
       "check": "core/invariants/remote-call-budget@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-022",
       "impl": {
         "kind": "primitive",
@@ -982,7 +982,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1012,7 +1012,7 @@
         "core/CORE-INV-023"
       ],
       "check": "core/invariants/failure-isolation@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-023",
       "impl": {
         "kind": "primitive",
@@ -1021,7 +1021,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1051,7 +1051,7 @@
         "core/CORE-INV-024"
       ],
       "check": "core/invariants/effects-at-boundaries@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-024",
       "impl": {
         "kind": "primitive",
@@ -1060,7 +1060,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1090,7 +1090,7 @@
         "core/CORE-INV-025"
       ],
       "check": "core/invariants/concurrency-conflicts@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-025",
       "impl": {
         "kind": "primitive",
@@ -1099,7 +1099,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1129,7 +1129,7 @@
         "core/CORE-INV-026"
       ],
       "check": "core/invariants/demonstrated-need@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-026",
       "impl": {
         "kind": "primitive",
@@ -1138,7 +1138,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1168,7 +1168,7 @@
         "core/CORE-INV-027"
       ],
       "check": "core/invariants/sufficient-simplicity@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-027",
       "impl": {
         "kind": "primitive",
@@ -1177,7 +1177,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1207,7 +1207,7 @@
         "core/CORE-INV-028"
       ],
       "check": "core/invariants/replaceable-modules@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-028",
       "impl": {
         "kind": "primitive",
@@ -1216,7 +1216,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1246,7 +1246,7 @@
         "core/CORE-INV-029"
       ],
       "check": "core/invariants/vertical-slices@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-029",
       "impl": {
         "kind": "primitive",
@@ -1255,7 +1255,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1285,7 +1285,7 @@
         "core/CORE-INV-030"
       ],
       "check": "core/invariants/observed-change-axis@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-030",
       "impl": {
         "kind": "primitive",
@@ -1294,7 +1294,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1324,7 +1324,7 @@
         "core/CORE-INV-031"
       ],
       "check": "core/invariants/explicit-compatibility@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-031",
       "impl": {
         "kind": "primitive",
@@ -1333,7 +1333,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1363,7 +1363,7 @@
         "core/CORE-INV-032"
       ],
       "check": "core/invariants/clear-code@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-032",
       "impl": {
         "kind": "primitive",
@@ -1372,7 +1372,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1402,7 +1402,7 @@
         "core/CORE-INV-033"
       ],
       "check": "core/invariants/predictable-names@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-033",
       "impl": {
         "kind": "primitive",
@@ -1411,7 +1411,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1441,7 +1441,7 @@
         "core/CORE-INV-034"
       ],
       "check": "core/invariants/abstraction-level@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-034",
       "impl": {
         "kind": "primitive",
@@ -1450,7 +1450,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1480,7 +1480,7 @@
         "core/CORE-INV-035"
       ],
       "check": "core/invariants/least-power@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-035",
       "impl": {
         "kind": "primitive",
@@ -1489,7 +1489,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1519,7 +1519,7 @@
         "core/CORE-INV-036"
       ],
       "check": "core/invariants/named-policies@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-036",
       "impl": {
         "kind": "primitive",
@@ -1528,7 +1528,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1558,7 +1558,7 @@
         "core/CORE-INV-037"
       ],
       "check": "core/invariants/dead-code@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-037",
       "impl": {
         "kind": "primitive",
@@ -1567,7 +1567,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1597,7 +1597,7 @@
         "core/CORE-INV-038"
       ],
       "check": "core/invariants/minimum-privilege@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-038",
       "impl": {
         "kind": "primitive",
@@ -1606,7 +1606,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1636,7 +1636,7 @@
         "core/CORE-INV-039"
       ],
       "check": "core/invariants/boundary-validation@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-039",
       "impl": {
         "kind": "primitive",
@@ -1645,7 +1645,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1675,7 +1675,7 @@
         "core/CORE-INV-040"
       ],
       "check": "core/invariants/secret-isolation@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-040",
       "impl": {
         "kind": "primitive",
@@ -1684,7 +1684,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1714,7 +1714,7 @@
         "core/CORE-INV-041"
       ],
       "check": "core/invariants/decision-authorization@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-041",
       "impl": {
         "kind": "primitive",
@@ -1723,7 +1723,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1753,7 +1753,7 @@
         "core/CORE-INV-042"
       ],
       "check": "core/invariants/closed-failure@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-042",
       "impl": {
         "kind": "primitive",
@@ -1762,7 +1762,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1792,7 +1792,7 @@
         "core/CORE-INV-043"
       ],
       "check": "core/invariants/boundary-observability@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-043",
       "impl": {
         "kind": "primitive",
@@ -1801,7 +1801,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1831,7 +1831,7 @@
         "core/CORE-INV-044"
       ],
       "check": "core/invariants/isolated-verification@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-044",
       "impl": {
         "kind": "primitive",
@@ -1840,7 +1840,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1870,7 +1870,7 @@
         "core/CORE-INV-045"
       ],
       "check": "core/invariants/startup-validation@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-045",
       "impl": {
         "kind": "primitive",
@@ -1879,7 +1879,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1909,7 +1909,7 @@
         "core/CORE-INV-046"
       ],
       "check": "core/invariants/latency-isolation@1.0.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-046",
       "impl": {
         "kind": "primitive",
@@ -1918,7 +1918,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1948,7 +1948,7 @@
         "core/CORE-INV-047"
       ],
       "check": "core/invariants/resource-budgets@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-047",
       "impl": {
         "kind": "primitive",
@@ -1957,7 +1957,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -1987,7 +1987,7 @@
         "core/CORE-INV-048"
       ],
       "check": "core/invariants/repeatable-migrations@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-048",
       "impl": {
         "kind": "primitive",
@@ -1996,7 +1996,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2026,7 +2026,7 @@
         "core/CORE-INV-049"
       ],
       "check": "core/invariants/pinned-dependencies@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-049",
       "impl": {
         "kind": "primitive",
@@ -2035,7 +2035,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2065,7 +2065,7 @@
         "core/CORE-INV-050"
       ],
       "check": "core/invariants/locked-build@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-050",
       "impl": {
         "kind": "primitive",
@@ -2074,7 +2074,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2104,7 +2104,7 @@
         "core/CORE-INV-051"
       ],
       "check": "core/invariants/dependency-update-schedule@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-051",
       "impl": {
         "kind": "primitive",
@@ -2113,7 +2113,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2143,7 +2143,7 @@
         "core/CORE-INV-052"
       ],
       "check": "core/invariants/vulnerability-fix-window@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-052",
       "impl": {
         "kind": "primitive",
@@ -2152,7 +2152,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2182,7 +2182,7 @@
         "core/CORE-INV-053"
       ],
       "check": "core/invariants/supported-runtime@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-053",
       "impl": {
         "kind": "primitive",
@@ -2191,7 +2191,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2221,7 +2221,7 @@
         "core/CORE-INV-054"
       ],
       "check": "core/invariants/standard-value-facilities@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-054",
       "impl": {
         "kind": "primitive",
@@ -2230,7 +2230,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2260,7 +2260,7 @@
         "core/CORE-INV-055"
       ],
       "check": "core/invariants/defect-regression@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-055",
       "impl": {
         "kind": "primitive",
@@ -2269,7 +2269,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2299,7 +2299,7 @@
         "core/CORE-INV-056"
       ],
       "check": "core/invariants/static-analysis-merge-gate@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-056",
       "impl": {
         "kind": "primitive",
@@ -2308,7 +2308,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2338,7 +2338,7 @@
         "core/CORE-INV-057"
       ],
       "check": "core/invariants/release-rollback@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-057",
       "impl": {
         "kind": "primitive",
@@ -2347,7 +2347,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2377,7 +2377,7 @@
         "core/CORE-INV-058"
       ],
       "check": "core/invariants/controlled-risk-flags@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-058",
       "impl": {
         "kind": "primitive",
@@ -2386,7 +2386,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2416,7 +2416,7 @@
         "core/CORE-INV-059"
       ],
       "check": "core/invariants/automated-deployment@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-059",
       "impl": {
         "kind": "primitive",
@@ -2425,7 +2425,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2455,7 +2455,7 @@
         "core/CORE-INV-060"
       ],
       "check": "core/invariants/operational-runbooks@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-060",
       "impl": {
         "kind": "primitive",
@@ -2464,7 +2464,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2494,7 +2494,7 @@
         "core/CORE-INV-061"
       ],
       "check": "core/invariants/alert-ownership@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-061",
       "impl": {
         "kind": "primitive",
@@ -2503,7 +2503,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2533,7 +2533,7 @@
         "core/CORE-INV-062"
       ],
       "check": "core/invariants/architecture-decision-record@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-062",
       "impl": {
         "kind": "primitive",
@@ -2542,7 +2542,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2572,7 +2572,7 @@
         "core/CORE-INV-063"
       ],
       "check": "core/invariants/reproducible-onboarding@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-063",
       "impl": {
         "kind": "primitive",
@@ -2581,7 +2581,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2611,7 +2611,7 @@
         "core/CORE-INV-064"
       ],
       "check": "core/invariants/debt-ownership@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/CORE-INV-064",
       "impl": {
         "kind": "primitive",
@@ -2620,7 +2620,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.verifier": "alias",
         "severity": "alias"
       },
@@ -2650,7 +2650,7 @@
         "core/EVA-GEN-001"
       ],
       "check": "core/integrity/new-generated-marker@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/EVA-GEN-001",
       "impl": {
         "count": "markers",
@@ -2660,7 +2660,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.markers": "alias",
         "severity": "alias"
       },
@@ -2689,7 +2689,7 @@
         "core/EVA-GEN-002"
       ],
       "check": "core/integrity/edit-generated-or-excluded@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/EVA-GEN-002",
       "impl": {
         "cases": [
@@ -2700,7 +2700,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "severity": "alias"
       },
       "params": {
@@ -2727,7 +2727,7 @@
         "core/EVA-SCOPE-001"
       ],
       "check": "core/integrity/out-of-scope-file@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/EVA-SCOPE-001",
       "impl": {
         "cases": [
@@ -2739,7 +2739,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.extensions": "alias",
         "severity": "alias"
       },
@@ -2806,7 +2806,7 @@
         "core/EVA-SUP-001"
       ],
       "check": "core/integrity/new-inline-suppression@1.1.0",
-      "enforcement": "enforce",
+      "enforcement": "advisor",
       "id": "core/EVA-SUP-001",
       "impl": {
         "count": "markers",
@@ -2816,7 +2816,7 @@
       },
       "integrity": true,
       "origin": {
-        "enforcement": "core",
+        "enforcement": "preset",
         "params.markers": "alias",
         "severity": "alias"
       },
@@ -3124,10 +3124,62 @@
     },
     {
       "aliases": [
+        "python/PY-ASSERT-001"
+      ],
+      "check": "python/errors/no-assert-tuple@1.0.0",
+      "enforcement": "advisor",
+      "id": "python/PY-ASSERT-001",
+      "impl": {
+        "kind": "pattern",
+        "patterns": {
+          "python": [
+            {
+              "id": "assert-tuple",
+              "rule": {
+                "has": {
+                  "kind": "tuple"
+                },
+                "kind": "assert_statement"
+              }
+            }
+          ]
+        }
+      },
+      "integrity": false,
+      "languages": [
+        "python"
+      ],
+      "origin": {
+        "enforcement": "preset",
+        "severity": "alias"
+      },
+      "params": {
+        "exclude": [],
+        "paths": [
+          "**"
+        ]
+      },
+      "phases": [
+        "pre",
+        "stop",
+        "commit",
+        "ci"
+      ],
+      "severity": "deny",
+      "text": {
+        "avoid": "Do not enclose assert condition and error message inside parentheses or leave a trailing comma in assert (x,).",
+        "fix": "Remove parentheses: write assert x > 0, 'must be positive'.",
+        "message": "{symbol}: assert (condition, message) checks a non-empty tuple which is always True. Write assert condition, message without outer parentheses.",
+        "source": "Python Reference Manual & Flake8-Bugbear, B011 / assert statement syntax",
+        "why": "A non-empty tuple is always truthy in Python. assert (x > 0, 'must be positive') never fails, disabling the assertion completely."
+      }
+    },
+    {
+      "aliases": [
         "python/PY-CLASS-001"
       ],
       "check": "python/complexity/class-max-public-methods@1.0.0",
-      "enforcement": "shadow",
+      "enforcement": "advisor",
       "id": "python/PY-CLASS-001",
       "impl": {
         "kind": "primitive",
@@ -3167,10 +3219,117 @@
     },
     {
       "aliases": [
+        "python/PY-DEFAULT-001"
+      ],
+      "check": "python/state/no-mutable-default@1.0.0",
+      "enforcement": "advisor",
+      "id": "python/PY-DEFAULT-001",
+      "impl": {
+        "kind": "pattern",
+        "patterns": {
+          "python": [
+            {
+              "id": "mutable-default",
+              "rule": {
+                "any": [
+                  {
+                    "kind": "default_parameter"
+                  },
+                  {
+                    "kind": "typed_default_parameter"
+                  }
+                ],
+                "has": {
+                  "field": "value",
+                  "matches": "mutable-value"
+                },
+                "not": {
+                  "has": {
+                    "field": "name",
+                    "regex": "^_"
+                  }
+                }
+              },
+              "utils": {
+                "mutable-value": {
+                  "any": [
+                    {
+                      "kind": "list"
+                    },
+                    {
+                      "kind": "dictionary"
+                    },
+                    {
+                      "kind": "set"
+                    },
+                    {
+                      "kind": "list_comprehension"
+                    },
+                    {
+                      "kind": "dictionary_comprehension"
+                    },
+                    {
+                      "kind": "set_comprehension"
+                    },
+                    {
+                      "has": {
+                        "any": [
+                          {
+                            "kind": "identifier",
+                            "regex": "^(list|dict|set|bytearray|defaultdict|deque|OrderedDict|Counter)$"
+                          },
+                          {
+                            "kind": "attribute",
+                            "regex": "^collections\\s*\\.\\s*(defaultdict|deque|OrderedDict|Counter)$"
+                          }
+                        ],
+                        "field": "function"
+                      },
+                      "kind": "call"
+                    }
+                  ]
+                }
+              },
+              "x-note": "The default is evaluated once, when def or lambda runs, so every call shares one list, dict or set. A parameter whose name starts with an underscore is the documented private-cache idiom and stays allowed. Tuples, strings, frozensets, None and other constructors pass."
+            }
+          ]
+        }
+      },
+      "integrity": false,
+      "languages": [
+        "python"
+      ],
+      "origin": {
+        "enforcement": "preset",
+        "severity": "alias"
+      },
+      "params": {
+        "exclude": [],
+        "paths": [
+          "**"
+        ]
+      },
+      "phases": [
+        "pre",
+        "stop",
+        "commit",
+        "ci"
+      ],
+      "severity": "warn",
+      "text": {
+        "avoid": "Do not hide the shared value behind list(), dict(), set() or a collections constructor. A deliberate shared cache keeps the FAQ's underscore name, such as _cache={}.",
+        "fix": "Default to None and create the value in the body: items = [] if items is None else items. Use field(default_factory=list) in a dataclass.",
+        "message": "{symbol}: A mutable default is created once and shared by every call.",
+        "source": "Python documentation, The Python Tutorial and Programming FAQ, https://docs.python.org/3/tutorial/controlflow.html#default-argument-values (Important warning); https://docs.python.org/3/faq/programming.html#why-are-default-values-shared-between-objects",
+        "why": "Every call that relies on the default reads and changes the same list, dict or set, so state leaks from one call into the next."
+      }
+    },
+    {
+      "aliases": [
         "python/PY-EXCEPT-001"
       ],
       "check": "python/errors/no-bare-except@1.0.0",
-      "enforcement": "shadow",
+      "enforcement": "advisor",
       "id": "python/PY-EXCEPT-001",
       "impl": {
         "kind": "pattern",
@@ -3220,7 +3379,7 @@
         "python/PY-FN-001"
       ],
       "check": "python/complexity/fn-max-lines@1.0.0",
-      "enforcement": "shadow",
+      "enforcement": "advisor",
       "id": "python/PY-FN-001",
       "impl": {
         "kind": "primitive",
@@ -3263,7 +3422,7 @@
         "python/PY-FN-002"
       ],
       "check": "python/complexity/fn-max-params@1.0.0",
-      "enforcement": "shadow",
+      "enforcement": "advisor",
       "id": "python/PY-FN-002",
       "impl": {
         "kind": "primitive",
@@ -3303,10 +3462,130 @@
     },
     {
       "aliases": [
+        "python/PY-IS-001"
+      ],
+      "check": "python/comparison/no-is-literal@1.0.0",
+      "enforcement": "advisor",
+      "id": "python/PY-IS-001",
+      "impl": {
+        "kind": "pattern",
+        "patterns": {
+          "python": [
+            {
+              "id": "is-literal",
+              "rule": {
+                "has": {
+                  "any": [
+                    {
+                      "follows": {
+                        "regex": "^is(\\s+not)?$"
+                      }
+                    },
+                    {
+                      "precedes": {
+                        "regex": "^is(\\s+not)?$"
+                      }
+                    }
+                  ],
+                  "matches": "literal"
+                },
+                "kind": "comparison_operator"
+              },
+              "utils": {
+                "literal": {
+                  "any": [
+                    {
+                      "kind": "integer"
+                    },
+                    {
+                      "kind": "float"
+                    },
+                    {
+                      "matches": "plain-string"
+                    },
+                    {
+                      "kind": "concatenated_string",
+                      "not": {
+                        "has": {
+                          "kind": "string",
+                          "not": {
+                            "matches": "plain-string"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "has": {
+                        "any": [
+                          {
+                            "kind": "integer"
+                          },
+                          {
+                            "kind": "float"
+                          }
+                        ],
+                        "field": "argument"
+                      },
+                      "kind": "unary_operator"
+                    },
+                    {
+                      "has": {
+                        "matches": "literal"
+                      },
+                      "kind": "parenthesized_expression"
+                    }
+                  ]
+                },
+                "plain-string": {
+                  "kind": "string",
+                  "not": {
+                    "has": {
+                      "kind": "string_start",
+                      "regex": "[fFtT]"
+                    }
+                  }
+                }
+              },
+              "x-note": "The operand directly beside is or is not is a number, string or bytes literal, which CPython reports as a SyntaxWarning. None, True, False, Ellipsis and f-strings are not covered; == against a literal passes."
+            }
+          ]
+        }
+      },
+      "integrity": false,
+      "languages": [
+        "python"
+      ],
+      "origin": {
+        "enforcement": "preset",
+        "severity": "alias"
+      },
+      "params": {
+        "exclude": [],
+        "paths": [
+          "**"
+        ]
+      },
+      "phases": [
+        "pre",
+        "stop",
+        "commit",
+        "ci"
+      ],
+      "severity": "deny",
+      "text": {
+        "avoid": "Do not wrap the literal in parentheses, negate it or move it to the left side; those are still literals.",
+        "fix": "Compare values with == or != . Keep is only for None, True, False and sentinel objects.",
+        "message": "{symbol}: is compares identity; a literal's identity is not guaranteed, so compare the value with ==.",
+        "source": "Python documentation, What's New In Python 3.8, https://docs.python.org/3/whatsnew/3.8.html#changes-in-python-behavior (SyntaxWarning for is with a literal)",
+        "why": "is compares object identity. Whether two equal numbers or strings are the same object is an interpreter detail, so the check can flip between runs, versions or values."
+      }
+    },
+    {
+      "aliases": [
         "python/PY-NEST-001"
       ],
       "check": "python/control/max-nesting@1.0.0",
-      "enforcement": "shadow",
+      "enforcement": "advisor",
       "id": "python/PY-NEST-001",
       "impl": {
         "kind": "primitive",
@@ -3343,6 +3622,125 @@
         "source": "TLTFIA language starter policies, python control.nesting, revision 1",
         "why": "Control-flow nesting exceeds the selected limit."
       }
+    },
+    {
+      "aliases": [
+        "python/PY-RAISE-001"
+      ],
+      "check": "python/errors/no-raise-notimplemented@1.0.0",
+      "enforcement": "advisor",
+      "id": "python/PY-RAISE-001",
+      "impl": {
+        "kind": "pattern",
+        "patterns": {
+          "python": [
+            {
+              "id": "raise-notimplemented",
+              "rule": {
+                "has": {
+                  "any": [
+                    {
+                      "kind": "identifier",
+                      "regex": "^NotImplemented$"
+                    },
+                    {
+                      "has": {
+                        "field": "function",
+                        "regex": "^NotImplemented$"
+                      },
+                      "kind": "call"
+                    }
+                  ]
+                },
+                "kind": "raise_statement"
+              }
+            }
+          ]
+        }
+      },
+      "integrity": false,
+      "languages": [
+        "python"
+      ],
+      "origin": {
+        "enforcement": "preset",
+        "severity": "alias"
+      },
+      "params": {
+        "exclude": [],
+        "paths": [
+          "**"
+        ]
+      },
+      "phases": [
+        "pre",
+        "stop",
+        "commit",
+        "ci"
+      ],
+      "severity": "deny",
+      "text": {
+        "avoid": "Do not raise NotImplemented or NotImplemented() in abstract methods or stubs.",
+        "fix": "Use raise NotImplementedError() instead of raise NotImplemented.",
+        "message": "{symbol}: raise NotImplemented raises a constant, not an exception. Use raise NotImplementedError() instead.",
+        "source": "Python Reference Manual: Built-in Constants, NotImplemented",
+        "why": "NotImplemented is not an Exception class. Raising it raises a TypeError at runtime when caught by an except clause expecting Exception."
+      }
+    },
+    {
+      "aliases": [
+        "python/PY-STAR-001"
+      ],
+      "check": "python/dependencies/no-wildcard-import@1.0.0",
+      "enforcement": "advisor",
+      "id": "python/PY-STAR-001",
+      "impl": {
+        "kind": "pattern",
+        "patterns": {
+          "python": [
+            {
+              "id": "wildcard",
+              "rule": {
+                "has": {
+                  "kind": "wildcard_import"
+                },
+                "kind": "import_from_statement"
+              },
+              "x-note": "A package initializer that republishes its internal modules is the defensible use PEP 8 names, so __init__.py is not checked."
+            }
+          ]
+        }
+      },
+      "integrity": false,
+      "languages": [
+        "python"
+      ],
+      "origin": {
+        "enforcement": "preset",
+        "severity": "alias"
+      },
+      "params": {
+        "exclude": [
+          "**/__init__.py"
+        ],
+        "paths": [
+          "**"
+        ]
+      },
+      "phases": [
+        "pre",
+        "stop",
+        "commit",
+        "ci"
+      ],
+      "severity": "warn",
+      "text": {
+        "avoid": "Package __init__.py files that republish submodules are not checked. An accelerator-module fallback elsewhere needs a reviewed exclusion, not a copied name list.",
+        "fix": "Import the names the module uses, or import the module and qualify its names.",
+        "message": "{symbol}: A wildcard import hides which names the module brings in.",
+        "source": "PEP 8, Style Guide for Python Code, https://peps.python.org/pep-0008/#imports (wildcard imports)",
+        "why": "A wildcard import hides where a name comes from and lets a later change in the imported module silently shadow local names."
+      }
     }
   ],
   "scope": {
@@ -3362,5 +3760,5 @@
   "sourceDirs": [
     ".tltfia/packs/project-orderfield"
   ],
-  "sourcesHash": "121885af5e5015b3206c7e6562f91d054bde513dc21362233cd17f126671bdc1"
+  "sourcesHash": "eaadc259493cd554e8d41db4afbaf74042c52f47cd72d5ee99570838a074cbdf"
 }
