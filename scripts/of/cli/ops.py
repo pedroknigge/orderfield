@@ -1021,7 +1021,7 @@ class PulseProgress:
         rel = packet.get("scratch_dir")
         if not rel:
             return None
-        scratch = physical_artifact_path(root, str(rel), "packet scratch_dir")
+        scratch = physical_artifact_path(root, str(rel), "packet scratch_dir", reject_symlinks=True)
         return scratch / PulseProgress.NAME
 
     @staticmethod
@@ -1055,9 +1055,12 @@ class PulseProgress:
             last_body = " ".join(existing[-1].split()[1:])
             if last_body == body:
                 return
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
+        from of.field import append_field_text, physical_artifact_path
+
+        scratch = physical_artifact_path(
+            root, str(packet.get("scratch_dir")), "packet scratch_dir", reject_symlinks=True
+        )
+        append_field_text(scratch, target, line + "\n")
 
     @staticmethod
     def lines(root: Path, packet: dict[str, Any]) -> list[str]:

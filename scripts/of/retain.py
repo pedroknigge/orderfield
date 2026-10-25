@@ -444,15 +444,21 @@ class Deliverable:
     DIR = "deliverables"
 
     @staticmethod
-    def _copy(src: Path, dest: Path) -> Path:
+    def _copy(src: Path, dest: Path, home: Path) -> Path:
         import hashlib
 
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        from of.field import verify_no_symlink_under, write_field_bytes
+
+        # dest is under the field home, whose subdirs a child can plant as symlinks.
+        # Refuse any symlinked component instead of following it out of the field,
+        # and do not carry the source's mode bits (no child-chosen executable copy).
+        verify_no_symlink_under(home, dest)
         try:
-            shutil.copy2(src, dest)
+            payload = src.read_bytes()
+            leaf = write_field_bytes(home, dest, payload)
             ok = (
-                hashlib.sha256(src.read_bytes()).hexdigest()
-                == hashlib.sha256(dest.read_bytes()).hexdigest()
+                hashlib.sha256(payload).hexdigest()
+                == hashlib.sha256(leaf.read_bytes()).hexdigest()
             )
         except OSError as exc:
             die(
@@ -461,7 +467,7 @@ class Deliverable:
             )
         if not ok:
             die(f"of close refused: deliverable copy of {src} did not verify")
-        return dest
+        return leaf
 
     @staticmethod
     def _result_refs(root: Path, home: Path, scratch: Path) -> list[tuple[str, Path]]:
@@ -500,20 +506,20 @@ class Deliverable:
         leader = scratch / "leader"
         final = leader / Deliverable.FINAL
         if final.is_file() and not final.is_symlink():
-            done.append(Deliverable._copy(final, home / Deliverable.FINAL))
+            done.append(Deliverable._copy(final, home / Deliverable.FINAL, home))
         if leader.is_dir() and not leader.is_symlink():
             for md in sorted(leader.glob("*.md")):
                 if md.name == Deliverable.FINAL or md.is_symlink():
                     continue
                 done.append(
-                    Deliverable._copy(md, home / Deliverable.DIR / "leader" / md.name)
+                    Deliverable._copy(md, home / Deliverable.DIR / "leader" / md.name, home)
                 )
         for child, src in Deliverable._result_refs(root, home, scratch):
             try:
                 rel = src.resolve().relative_to((scratch / child).resolve())
             except (OSError, ValueError):
                 rel = Path(src.name)
-            done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel))
+            done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel, home))
         return done
 
     @staticmethod

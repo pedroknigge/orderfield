@@ -2063,6 +2063,73 @@ def dump_bytes(
             pass
 
 
+def verify_no_symlink_under(base: Path, target: Path) -> Path:
+    """Refuse any symlink between ``base`` and ``target`` (leaf included), creating
+    missing intermediate directories as real dirs. ``target`` must be lexically under
+    ``base``. Returns the verified leaf. A child can write ``.orderfield/`` and plant a
+    symlink there; this keeps a leader write from following it outside the field.
+
+    ``base`` is the caller's already-containment-checked path and is used as given
+    (not re-resolved), so ``target`` stays lexically under it on symlinked prefixes
+    such as macOS ``/var`` -> ``/private/var``."""
+    if base.is_symlink():
+        die(f"unsafe field write: base {base} is a symlink")
+    base.mkdir(parents=True, exist_ok=True)
+    if base.is_symlink() or not base.is_dir():
+        die(f"unsafe field write: base {base} is not a real directory")
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe field write: {target} is not under {base}")
+    if not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        die(f"unsafe field write: {target!r} is not a canonical path under {base}")
+    cur = base
+    for part in rel.parts[:-1]:
+        cur = cur / part
+        if cur.is_symlink():
+            die(f"unsafe field write: symlink component {cur}")
+        try:
+            cur.mkdir(exist_ok=True)
+        except FileExistsError:
+            pass
+        if cur.is_symlink() or not cur.is_dir():
+            die(f"unsafe field write: component {cur} is not a real directory")
+    leaf = cur / rel.parts[-1]
+    if leaf.is_symlink():
+        die(f"unsafe field write: symlink leaf {leaf}")
+    return leaf
+
+
+def write_field_bytes(base: Path, target: Path, payload: bytes) -> Path:
+    """Replace ``target`` (under ``base``) with ``payload`` without following a
+    symlinked leaf or any planted parent. Atomic temp+rename inside the verified dir."""
+    leaf = verify_no_symlink_under(base, target)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{leaf.name}.", suffix=".tmp", dir=str(leaf.parent))
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+        os.replace(str(tmp), str(leaf))
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+    return leaf
+
+
+def append_field_text(base: Path, target: Path, text: str) -> None:
+    """Append one line to ``target`` (under ``base``) opening the leaf no-follow, so a
+    child-planted symlink at the leaf or a parent cannot redirect the append."""
+    leaf = verify_no_symlink_under(base, target)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(leaf), flags, 0o644)
+    try:
+        os.write(fd, text.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
 def _read_json_object(path: Path) -> dict[str, Any] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -3062,10 +3129,15 @@ def require_git() -> str:
     return bin_
 
 
+# Repository config and hooks are child-writable (shared .git); leader-side git
+# must never run them. Applied to every kernel git invocation.
+GIT_HARDEN = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null")
+
+
 def run_git(root: Path, *git_args: str) -> subprocess.CompletedProcess[str]:
     bin_ = require_git()
     return subprocess.run(
-        [bin_, "-C", str(root), *git_args],
+        [bin_, "-C", str(root), *GIT_HARDEN, *git_args],
         capture_output=True,
         text=True,
     )
@@ -3497,7 +3569,7 @@ def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str]
 
     try:
         res = subprocess.run(
-            ["git", "ls-files", "-z", "-c", "-o", "--exclude-standard"],
+            ["git", *GIT_HARDEN, "ls-files", "-z", "-c", "-o", "--exclude-standard"],
             cwd=path, capture_output=True, text=False, check=True
         )
         files = res.stdout.split(b'\0')

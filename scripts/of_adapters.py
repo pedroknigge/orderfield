@@ -24,6 +24,11 @@ def skill_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+# Same flags as of.field.GIT_HARDEN (this module does not import of.field):
+# child-writable repository config and hooks never run in leader-side git.
+GIT_HARDEN = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null")
+
+
 ADAPTER_ORDER = [
     "claude",
     "codex",
@@ -2062,45 +2067,61 @@ class CodexWorktree:
         path = worktree.expanduser().resolve()
         if not path.is_dir():
             CodexWorktree.refuse(child_id, f"path is missing or not a directory: {path}")
-        git = shutil.which("git")
-        if not git:
-            CodexWorktree.refuse(child_id, "git is not on PATH")
-        proc = subprocess.run(
-            [git, "-C", str(path), "rev-parse", "--show-toplevel", "--git-common-dir"],
-            capture_output=True,
-            text=True,
-        )
-        lines = (proc.stdout or "").splitlines()
-        if proc.returncode != 0 or len(lines) != 2:
-            detail = (proc.stderr or proc.stdout or "git rev-parse failed").strip()
-            CodexWorktree.refuse(child_id, f"{path} is not a usable Git worktree ({detail})")
-        top = Path(lines[0]).expanduser().resolve()
+        if field_home is None:
+            CodexWorktree.refuse(child_id, "canonical field home is unavailable")
+        top, common, gitdir = CodexWorktree._rev_parse(path, child_id)
         if top != path:
             CodexWorktree.refuse(
                 child_id,
                 f"recorded path is not the worktree root ({path}; Git root is {top})",
             )
-        common_raw = Path(lines[1]).expanduser()
-        common = (
-            common_raw.resolve()
-            if common_raw.is_absolute()
-            else (path / common_raw).resolve()
-        )
         if not common.is_dir():
             CodexWorktree.refuse(
                 child_id,
                 f"Git common directory is missing or not a directory: {common}",
             )
-        if field_home is None:
-            CodexWorktree.refuse(child_id, "canonical field home is unavailable")
-        return [
-            "-C",
-            str(path),
-            "--add-dir",
-            str(field_home.resolve()),
-            "--add-dir",
-            str(common),
-        ]
+        CodexWorktree._require_field_repo(path, common, field_home, child_id)
+        # Grant only what a commit writes. config and hooks stay out of reach:
+        # they execute in leader-side git (core.fsmonitor, hooks).
+        argv = ["-C", str(path), "--add-dir", str(field_home.resolve())]
+        for extra in (gitdir, common / "objects", common / "refs", common / "logs"):
+            if extra.is_dir():
+                argv += ["--add-dir", str(extra)]
+        return argv
+
+    @staticmethod
+    def _rev_parse(cwd: Path, child_id: str) -> tuple[Path, Path, Path]:
+        """(toplevel, common dir, absolute git dir) for cwd, all resolved."""
+        git = shutil.which("git")
+        if not git:
+            CodexWorktree.refuse(child_id, "git is not on PATH")
+        proc = subprocess.run(
+            [git, "-C", str(cwd), *GIT_HARDEN, "rev-parse", "--show-toplevel",
+             "--git-common-dir", "--absolute-git-dir"],
+            capture_output=True,
+            text=True,
+        )
+        lines = (proc.stdout or "").splitlines()
+        if proc.returncode != 0 or len(lines) != 3:
+            detail = (proc.stderr or proc.stdout or "git rev-parse failed").strip()
+            CodexWorktree.refuse(child_id, f"{cwd} is not a usable Git worktree ({detail})")
+        common = Path(lines[1]).expanduser()
+        common = common if common.is_absolute() else cwd / common
+        return (
+            Path(lines[0]).expanduser().resolve(),
+            common.resolve(),
+            Path(lines[2]).expanduser().resolve(),
+        )
+
+    @staticmethod
+    def _require_field_repo(path: Path, common: Path, field_home: Path, child_id: str) -> None:
+        """The recorded path is child-writable state: it must be a linked
+        worktree of the field's own repository, never another repo or the main tree."""
+        home_top, home_common, _ = CodexWorktree._rev_parse(field_home, child_id)
+        if common != home_common:
+            CodexWorktree.refuse(child_id, f"{path} is not a worktree of this field's repository")
+        if path == home_top:
+            CodexWorktree.refuse(child_id, f"{path} is the main worktree, not a child worktree")
 
 
 def build_spawn_argv(

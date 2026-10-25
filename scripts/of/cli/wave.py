@@ -51,6 +51,7 @@ from of.field import (
     emit_event,
     field_lock,
     field_home,
+    write_field_bytes,
     find_root,
     json_events_enabled,
     list_field_homes,
@@ -625,8 +626,7 @@ class ResidualLanding:
             return errs
         if dest.is_file():
             keep = dest.parent.parent / "logs" / f"{dest.stem}.rejected.json"
-            keep.parent.mkdir(parents=True, exist_ok=True)
-            keep.write_bytes(dest.read_bytes())
+            write_field_bytes(field_home(root), keep, dest.read_bytes())
         dump_json(dest, viewed, skip_dir_fsync=True)
         return []
 
@@ -1570,11 +1570,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                 return chunk.decode("utf-8", errors="replace")
             return str(chunk)
 
-        log_path.write_text(
-            f"# stdout\n{redact_text(text_of(stdout))}\n\n"
-            f"# stderr\n{redact_text(text_of(stderr))}\n",
-            encoding="utf-8",
-        )
+        body = (f"# stdout\n{redact_text(text_of(stdout))}\n\n"
+                f"# stderr\n{redact_text(text_of(stderr))}\n")
+        write_field_bytes(field_home(root), log_path, body.encode("utf-8"))
 
     def fail(outcome: str, message: str, **extra: Any) -> None:
         finalize(outcome, ok=False, log=str(log_path), **extra)
@@ -1907,11 +1905,10 @@ def cmd_collect(args: argparse.Namespace) -> None:
             reason = "; ".join(errs)
             print(f"INVALID {path.name}: {reason}")
             # Sidecar (not residual JSON — schema forbids unknown residual keys).
+            sidecar = path.with_suffix(path.suffix + ".invalid.txt")
             try:
-                path.with_suffix(path.suffix + ".invalid.txt").write_text(
-                    reason + "\n", encoding="utf-8"
-                )
-            except OSError:
+                write_field_bytes(field_home(root), sidecar, (reason + "\n").encode("utf-8"))
+            except (OSError, SystemExit):
                 pass
         else:
             ok += 1

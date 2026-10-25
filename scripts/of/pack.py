@@ -15,6 +15,7 @@ from typing import Any
 
 from of.field import (
     FIELD_SLAVE_MD,
+    GIT_HARDEN,
     PHASES,
     PROTOCOL_WRITABLE_KEY,
     ROLE_CONTRACTS,
@@ -37,6 +38,7 @@ from of.field import (
     validate_public_schema,
     wal_staged_items,
     wave_dir,
+    write_field_bytes,
 )
 
 from of.spec import (
@@ -2084,7 +2086,7 @@ class ScopeWrite:
         try:
             return subprocess.run(
                 # Read-only: parallel spawns must not race on index.lock.
-                ["git", "--no-optional-locks", *args],
+                ["git", "--no-optional-locks", *GIT_HARDEN, *args],
                 cwd=str(root),
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -2804,7 +2806,7 @@ class ScopeWrite:
         diff = ScopeWrite._git(root, "diff", b_head, "--", *spec) or b""
         try:
             proc = subprocess.run(
-                ["git", "checkout", b_head, "--", *spec],
+                ["git", *GIT_HARDEN, "checkout", b_head, "--", *spec],
                 cwd=str(root),
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -2864,7 +2866,6 @@ class ScopeWrite:
         wave = int(packet.get("wave") or 1)
         child = str(packet.get("child_id") or "child")
         patch_path = wave_dir(wave, root) / "scope" / f"{child}.quarantine.patch"
-        patch_path.parent.mkdir(parents=True, exist_ok=True)
         b_head = str(before.get("head") or "")
         patch_chunks: list[bytes] = []
         reverted: list[str] = []
@@ -2878,15 +2879,16 @@ class ScopeWrite:
         if not reverted:
             return [], None, skips
         patch_bytes = b"".join(patch_chunks) or b"# quarantine empty diff\n"
-        patch_path.write_bytes(patch_bytes)
+        home = field_home(root)
+        write_field_bytes(home, patch_path, patch_bytes)
         scratch_rel = str(packet.get("scratch_dir") or f".orderfield/work/scratch/{child}")
         try:
-            scratch_patch = (
-                root / physical_field_rel(root, scratch_rel) / "quarantine.patch"
+            scratch_dir = safe_relative_path(
+                root, physical_field_rel(root, scratch_rel), "packet scratch_dir",
+                reject_symlinks=True,
             )
-            scratch_patch.parent.mkdir(parents=True, exist_ok=True)
-            scratch_patch.write_bytes(patch_bytes)
-        except OSError:
+            write_field_bytes(scratch_dir, scratch_dir / "quarantine.patch", patch_bytes)
+        except (OSError, SystemExit):
             pass
         now_snap = ScopeWrite.snapshot(root)
         if isinstance(cache, dict):
