@@ -10,7 +10,7 @@ import re
 import subprocess
 import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from of.field import (
@@ -1986,6 +1986,19 @@ class OwnedWrite:
         return written
 
 
+def _unsafe_revert_rel(rel: str) -> bool:
+    """True when a scope-doc path must not be reverted: absolute, contains '..', a
+    backslash, or under .orderfield/. Keeps root / rel inside the work tree. A
+    trailing-slash directory is left to the existing not-a-file handling."""
+    p = PurePosixPath(rel)
+    return (
+        rel.startswith(".orderfield/")
+        or "\\" in rel
+        or p.is_absolute()
+        or ".." in p.parts
+    )
+
+
 class ScopeWrite:
     """A child's world is its packet: product writes outside it are INVALID.
 
@@ -2750,6 +2763,12 @@ class ScopeWrite:
             if not rel or rel.startswith(".git/") or rel in ScopeWrite.UNJUDGED:
                 why = "git tree unreadable" if rel in ScopeWrite.UNJUDGED else ".git/ excluded"
                 plan.append((rel, "skip", why))
+                continue
+            # The scope doc is child-writable; an absolute or ".." entry would make
+            # root / rel unlink/checkout a file outside the work tree. Revert only
+            # canonical project-relative paths, never under .orderfield/.
+            if _unsafe_revert_rel(rel):
+                plan.append((rel, "skip", "not a project-relative path"))
                 continue
             target = root / rel
             if os.path.lexists(target) and not (target.is_symlink() or target.is_file()):

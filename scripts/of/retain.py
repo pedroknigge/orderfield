@@ -622,23 +622,28 @@ class EvidenceStore:
         return f"{EvidenceStore.DIR}/{sha}{suffix}"
 
     @staticmethod
-    def _copy_ok(src: Path, dest: Path, sha: str) -> bool:
-        """Copy and re-hash. False when the copy cannot be made or does not verify."""
+    def _copy_ok(src: Path, dest: Path, sha: str, home: Path) -> bool:
+        """Copy and re-hash inside ``home``, following no symlinked component. False
+        when the copy cannot be made, escapes the home, or does not verify."""
+        from of.field import write_field_bytes
+
         try:
             if dest.is_file() and not dest.is_symlink():
                 if EvidenceStore.digest(dest.read_bytes()) == sha:
                     return True
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest)
-            return EvidenceStore.digest(dest.read_bytes()) == sha
-        except OSError:
+            payload = src.read_bytes()
+            if EvidenceStore.digest(payload) != sha:
+                return False
+            leaf = write_field_bytes(home, dest, payload)
+            return EvidenceStore.digest(leaf.read_bytes()) == sha
+        except (OSError, SystemExit):
             return False
 
     @staticmethod
     def archive(home: Path, src: Path, sha: str) -> str:
         """Copy one bound file into the store before the stamp. Dies if it cannot."""
         rel = EvidenceStore.rel_for(sha, src)
-        if not EvidenceStore._copy_ok(src, home / rel, sha):
+        if not EvidenceStore._copy_ok(src, home / rel, sha, home):
             die(
                 f"of close refused: evidence {src} would be lost "
                 "(copy failed or bytes changed); re-run of close"
@@ -738,13 +743,30 @@ class EvidenceStore:
         kept: set[Path] = set()
         if not doc:
             return kept
+        from of.field import safe_relative_path
+
         for row in EvidenceStore.entries(doc):
             sha = str(row.get("sha256") or "")
-            dest = home / str(row["evidence"])
-            src = root / str(row.get("path") or "")
-            if not sha or not src.is_file() or src.is_symlink():
+            rel = str(row.get("path") or "")
+            ev = str(row.get("evidence") or "")
+            # CLOSE.json is child-writable: accept only the canonical shape the
+            # leader itself stamps (deliverables/evidence/<sha>), and contain both
+            # ends under the field so an absolute/.. value cannot escape.
+            if not re.fullmatch(r"[0-9a-f]{64}", sha) or not rel:
                 continue
-            if not EvidenceStore._copy_ok(src, dest, sha):
+            try:
+                src = safe_relative_path(root, rel, "evidence path", reject_symlinks=True)
+            except SystemExit:
+                continue
+            if ev != EvidenceStore.rel_for(sha, src):
+                continue
+            try:
+                dest = safe_relative_path(home, ev, "evidence copy", reject_symlinks=True)
+            except SystemExit:
+                continue
+            if not src.is_file() or src.is_symlink():
+                continue
+            if not EvidenceStore._copy_ok(src, dest, sha, home):
                 kept.add(src.resolve())
         return kept
 
