@@ -792,6 +792,37 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("doctor        ok")
 
 
+def _refuse_unmigrated_drift(root: Path, actions: list[dict]) -> None:
+    """migrate plans from live bytes and signs the generation it commits. A file
+    that is LIVE!=CURRENT but that migrate is NOT rewriting would be inherited and
+    signed as-is -- a child could tamper a hash-consistent packet (or ORDER/SPEC)
+    that migrate leaves unchanged. Refuse that drift; a migrated file is expected
+    to differ and is exempt. Skipped for a pre-WAL field (no CURRENT to compare)."""
+    from of.field import field_home, refused_drift
+    from of.wal import wal_current_path
+
+    if not wal_current_path(root).is_file():
+        return
+    home = field_home(root)
+
+    def _rel(action: dict) -> str | None:
+        path = action.get("path")
+        if not isinstance(path, Path):
+            return None
+        try:
+            return path.relative_to(home).as_posix()
+        except ValueError:
+            return None
+
+    planned = {rel for rel in (_rel(a) for a in actions) if rel}
+    unexpected = [rel for rel in refused_drift(root) if rel not in planned]
+    if unexpected:
+        die(
+            "LIVE!=CURRENT " + ", ".join(sorted(unexpected)[:5]) + "; of migrate refuses "
+            "snapshot drift it is not migrating. RESTORE: of patch --from-current"
+        )
+
+
 def cmd_migrate(args: argparse.Namespace) -> None:
     """Versioned artifact rewrite. Does not invent telemetry or rename SLAVE.md."""
     if getattr(args, "list", False):
@@ -801,6 +832,7 @@ def cmd_migrate(args: argparse.Namespace) -> None:
     if not order_path(root).exists():
         die("no ORDER. of init --mission '...'")
     actions = plan_field_migrations(root)
+    _refuse_unmigrated_drift(root, actions)
     print_migration_plan(actions)
     if getattr(args, "dry_run", False):
         print("dry-run (no writes)")

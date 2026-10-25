@@ -155,6 +155,42 @@ class SensorAllowlist(unittest.TestCase):
         self.assertIn("gh pr view", of_adapters.SensorTrust.COMMANDS)
 
 
+class MigrateDrift(unittest.TestCase):
+    """F08: of migrate must not sign live snapshot drift it is not itself migrating."""
+
+    def setUp(self) -> None:
+        from tests._harness import run_of
+
+        self.run_of = run_of
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-migdrift-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.assertEqual(
+            run_of(self.tmp, "init", "--mission", "m", "--phase", "explore").returncode, 0
+        )
+        r = run_of(
+            self.tmp, "pack", "--slice", "s", "--role", "explorer",
+            "--child-id", "c1", "--verify-cmd", "python3 -c pass",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.packet = self.tmp / ".orderfield/waves/001/packets/c1.json"
+
+    def test_migrate_refuses_hash_consistent_live_packet_tamper(self) -> None:
+        import of  # the kernel package
+
+        doc = json.loads(self.packet.read_text(encoding="utf-8"))
+        doc["verify_cmd"] = "touch /tmp/of-sec-should-not-run"
+        if "packet_hash" in doc:
+            doc["packet_hash"] = of.packet_digest(doc)  # keep it self-consistent
+        self.packet.write_text(json.dumps(doc), encoding="utf-8")
+        r = self.run_of(self.tmp, "migrate")
+        self.assertNotEqual(r.returncode, 0, r.stdout)
+        self.assertIn("LIVE!=CURRENT", r.stdout + r.stderr)
+
+    def test_migrate_clean_field_is_allowed(self) -> None:
+        r = self.run_of(self.tmp, "migrate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 class AncestorCap(unittest.TestCase):
     def test_f16_cap_is_large_and_sentinel_is_not_a_child_id(self) -> None:
         self.assertGreaterEqual(field._MAX_SPAWN_ANCESTORS, 4096)

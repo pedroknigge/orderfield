@@ -565,11 +565,15 @@ class LeaderKey:
         strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
         man_sig = str(man.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
-        # Both unsigned: a pre-W9 / default-mode head (the on-disk key may have been
-        # auto-created by a later write). strict mode (OF_LEADER_KEY env) requires a
-        # signature. A present signature is always checked, over the v2 body that now
-        # binds the files map so content cannot be rewritten while the HMAC verifies.
+        # Both unsigned. A chained (seq-bearing) generation is from the signing era:
+        # every writer signs it, so a missing signature with a key present is a
+        # stripped signature -> fail closed in any mode. A pre-chain legacy
+        # generation (no seq, e.g. adopted v0.8.34) has no signature by design and
+        # stays lenient unless strict. A present signature is always checked over the
+        # v2 body that binds the files map, so content cannot be rewritten in place.
         if not man_sig and not cur_sig:
+            if _seq(man) is not None:
+                return False
             return not strict
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
         if man_sig and not hmac.compare_digest(man_sig, expected):
@@ -589,6 +593,10 @@ class LeaderKey:
         c_sig = str(cman.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
+            # A chained candidate must carry a signature; only a pre-chain legacy
+            # one may be unsigned (and not in strict mode / after a signed head).
+            if _seq(cman) is not None:
+                return False
             return not (strict or bool(cur_sig))
         if (
             not strict
