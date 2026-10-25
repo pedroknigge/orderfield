@@ -536,12 +536,19 @@ class LeaderKey:
 
     @staticmethod
     def _manifest_chain_bytes(man: dict[str, Any]) -> bytes:
+        files = man.get("files") if isinstance(man.get("files"), dict) else {}
         body = {
+            # v2 binds the per-file digest map and deletions, so a generation's
+            # contents (packets, ORDER, SPEC, CLOSE.json) cannot be rewritten while
+            # the HMAC still verifies. Existing heads re-sign on the next write.
+            "v": 2,
             "generation": str(man.get("generation") or ""),
             "seq": _seq(man) or 1,
             "parent": man.get("parent"),
             "parent_manifest_sha256": man.get("parent_manifest_sha256"),
             "order_sha256": man.get("order_sha256"),
+            "files": {str(k): str(v) for k, v in sorted(files.items())},
+            "deletions": sorted(str(d) for d in (man.get("deletions") or [])),
         }
         return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -558,6 +565,10 @@ class LeaderKey:
         strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
         man_sig = str(man.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
+        # Both unsigned: a pre-W9 / default-mode head (the on-disk key may have been
+        # auto-created by a later write). strict mode (OF_LEADER_KEY env) requires a
+        # signature. A present signature is always checked, over the v2 body that now
+        # binds the files map so content cannot be rewritten while the HMAC verifies.
         if not man_sig and not cur_sig:
             return not strict
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
