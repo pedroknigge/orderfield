@@ -26,6 +26,7 @@ from of.field import (
     of_dir,
     parse_utc,
     require_field_id,
+    require_physical_under,
     set_field_home,
     state_path,
     utc_now,
@@ -875,6 +876,9 @@ class ClosedScratch:
     def wipe(root: Path, home: Path | None = None) -> int:
         home = home or field_home(root)
         kept = EvidenceStore.preserve(root, home)
+        # A child can plant a symlink at home/work (not WAL-walked) so the wipe
+        # deletes an outside dir's children. Refuse a symlinked ancestor.
+        require_physical_under(home, home / "work" / "scratch")
         n = ClosedScratch._wipe_children(home / "work" / "scratch", kept)
         waves = home / "waves"
         if waves.is_dir() and not waves.is_symlink():
@@ -882,6 +886,7 @@ class ClosedScratch:
                 if not wdir.is_dir() or wdir.is_symlink():
                     continue
                 for sub in ClosedScratch.EPHEMERAL_WAVE_SUBS:
+                    require_physical_under(home, wdir / sub)
                     n += ClosedScratch._wipe_children(wdir / sub, kept)
         return n
 
@@ -1559,7 +1564,12 @@ class ClosedFieldArchive:
 
     @staticmethod
     def dest(root: Path, field_id: str) -> Path:
-        dest = ClosedFieldArchive.dir(root) / field_id
+        # field_id may come from child-writable ORDER.json (crown losers): a
+        # traversal id would escape the archive dir, so require the canonical form.
+        base = ClosedFieldArchive.dir(root)
+        dest = base / require_field_id(field_id)
+        if base.resolve() not in dest.resolve().parents:
+            die(f"of: archive destination {dest} escapes {base}")
         if not dest.exists():
             return dest
         stamp = utc_now().replace(":", "").replace("-", "")
@@ -1685,6 +1695,10 @@ class ClosedFieldArchive:
         if dry_run:
             print(f"dry-run archive {rel} -> {dest_rel}")
             return dest_rel
+        # .orderfield/archive is child-writable: a planted symlink there would
+        # relocate the moved home (and its wal/.leader_key) outside the field.
+        require_physical_under(of_dir(root), dest.parent)
+        require_physical_under(of_dir(root), home)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(home), str(dest))
         ClosedFieldArchive._release_active(root, fid)
@@ -1760,7 +1774,9 @@ def drop_field_home(
     if dry_run:
         print(f"dry-run drop {rel}")
         return rel
-    _safe_unlink(home.resolve())
+    # resolve()-based containment above is defeated by a symlinked fields/; refuse
+    # a symlinked ancestor and unlink the physical path (not the symlink target).
+    _safe_unlink(require_physical_under(of_dir(root), home))
     if ActiveField.read(root) == fid:
         try:
             ActiveField.path(root).unlink()

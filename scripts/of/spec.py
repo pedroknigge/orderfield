@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from of.field import (
+    FIELD_ID_RE,
     FIELD_REQUIREMENTS_JSON,
     FIELD_SPEC_MD,
     die,
@@ -641,6 +642,10 @@ def archive_previous_field(root: Path, target: Path) -> None:
             old_id = json.loads(order_path(root).read_text(encoding="utf-8")).get("id")
     except (OSError, json.JSONDecodeError):
         pass
+    # old_id comes from the child-writable ORDER.json and becomes a path
+    # component; a traversal value would escape target. Use it only when canonical.
+    if not (isinstance(old_id, str) and FIELD_ID_RE.match(old_id)):
+        old_id = None
     stamp = old_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     dest = target / f"waves-archived-{stamp}"
     n = 0

@@ -30,6 +30,8 @@ from of.field import (
     field_home,
     field_is_open,
     list_field_homes,
+    of_dir,
+    require_physical_under,
     load_order,
     save_order,
     set_field_home,
@@ -253,6 +255,8 @@ def _archive_live_candidate(
     )
     rel = home.relative_to(root).as_posix()
     dest_rel = dest.relative_to(root).as_posix()
+    require_physical_under(of_dir(root), dest.parent)
+    require_physical_under(of_dir(root), home)
     shutil.move(str(home), str(dest))
     ClosedFieldArchive._release_active(root, field_id)
     keeps = load_gc_keep(root)

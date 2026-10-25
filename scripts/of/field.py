@@ -583,7 +583,11 @@ class RootStub:
             if not order_file.is_file():
                 continue
             data = _read_json_object(order_file) or {}
-            fid = str(data.get("id") or child.name)
+            # ORDER.json is child-writable and its id flows into archive/drop
+            # paths (crown, gc). Trust it only when canonical; else use the
+            # leader-created directory name, which is the real field id.
+            raw = str(data.get("id") or "")
+            fid = raw if FIELD_ID_RE.match(raw) else child.name
             out.append((fid, child, data))
         return out
 
@@ -2098,6 +2102,27 @@ def verify_no_symlink_under(base: Path, target: Path) -> Path:
     if leaf.is_symlink():
         die(f"unsafe field write: symlink leaf {leaf}")
     return leaf
+
+
+def require_physical_under(base: Path, target: Path) -> Path:
+    """Refuse unless every component from ``base`` to ``target`` is a real (non-symlink)
+    path, creating nothing. For leader rmtree/move/unlink whose path contains a
+    child-writable component (home/work, .orderfield/fields, .orderfield/archive): a
+    planted symlink there must not redirect the operation outside the field."""
+    if base.is_symlink():
+        die(f"unsafe field path: base {base} is a symlink")
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe field path: {target} is not under {base}")
+    if any(part in ("", ".", "..") for part in rel.parts):
+        die(f"unsafe field path: {target!r} is not canonical under {base}")
+    cur = base
+    for part in rel.parts:
+        cur = cur / part
+        if cur.is_symlink():
+            die(f"unsafe field path: symlink component {cur}")
+    return cur
 
 
 def write_field_bytes(base: Path, target: Path, payload: bytes) -> Path:
