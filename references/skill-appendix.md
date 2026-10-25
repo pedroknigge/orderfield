@@ -598,6 +598,20 @@ of eval recovery/multi-harness-residual
 - **Transactional scope quarantine (`--revert-out-of-scope`):** `of collect --revert-out-of-scope` archives revertible out-of-scope edits to `quarantine.patch` and restores the pre-spawn baseline so valid owned writes collect cleanly. The leader sentence and the flag share one plan: `.git/` and a path that was already dirty at baseline are printed as skips (`nothing to revert` when that is the whole set) and are not checked out. A `[branch]` section is not `.git/config`. A path a concurrent sibling owns stays that sibling's, including when this residual names the file.
 - **JIT protocol compiler (`ProtocolCompiler`):** `of resume` prints a `hint` line and `of resume --json` includes `protocol_hint` with the exact rule for the current `next` action.
 
+### Complete flag surface (less-common)
+
+Reference, not a second contract — the verbs above are the path. The remaining user-facing flags the kernel registers, so the appendix names every capability:
+
+- `of spec --add ID --text "<req>"` (text for the add); `--non-binding` (advisory, not binding); `--verified ID` / `--verified-internal ID` stamp `VERIFIED_INTERNAL` (repeatable; a public claim still needs `--verified-contract` + evidence); `--failed ID` marks it failed.
+- `of collect --accept-unclaimed CHILD_ID` (repeatable): accept a residual from an unclaimed child — an explicit override of the collect gate.
+- `of spawn --force-tool`: acknowledge and bypass a `requires_tool` mismatch (otherwise refused).
+- `of patch --notes "<text>"`: attach operator notes to the ORDER patch.
+- `of gc --keep-field ID`: HITL keep — silence the audit nag for an open field (7d or until size doubles). Pairs with `--drop-field` / `--archive-field`.
+- `of worktree add --child-id <id> --path <dir>`: `--path` sets the worktree dest (default sibling `<repo>-of-<child_id>`).
+- `of validate --kind auto|order|packet|residual` (default `auto`; `--packet` is the shorthand).
+- `of pulse --watch --interval N`: seconds between refreshes (default 30); pair with `--stale-min`.
+- `of close --abandoned --reason "<why>"`: stamp `CLOSE.json` verdict `ABANDONED` without contrast — the close path for a field given up rather than delivered.
+
 ## If you are already inside an interactive harness
 
 You do not need headless spawn for every child. The current session can be the leader. Then:

@@ -67,6 +67,28 @@ class NoFollowWrites(TmpCase):
         self.assertEqual(leaf.read_bytes(), b"ok\n")
         self.assertFalse(leaf.is_symlink())
 
+    def test_f02_dump_bytes_refuses_symlinked_parent_under_field(self) -> None:
+        victim = self.tmp / "victim"
+        victim.mkdir()
+        (self.home / "waves").symlink_to(victim)
+        with self.assertRaises(SystemExit):
+            field.dump_bytes(self.home / "waves" / "001" / "x.json", b"CHILD\n")
+        self.assertFalse((victim / "001").exists())
+
+    def test_f02_dump_bytes_refuses_symlinked_leaf_under_field(self) -> None:
+        outside = self.tmp / "outside.json"
+        outside.write_text("ORIGINAL\n", encoding="utf-8")
+        (self.home / "CURRENT.json").symlink_to(outside)
+        with self.assertRaises(SystemExit):
+            field.dump_bytes(self.home / "CURRENT.json", b"CHILD\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "ORIGINAL\n")
+
+    def test_f02_dump_bytes_outside_field_is_unaffected(self) -> None:
+        # Non-.orderfield writes keep plain create-parents behavior.
+        target = self.tmp / "plain" / "note.json"
+        field.dump_bytes(target, b"ok\n")
+        self.assertEqual(target.read_bytes(), b"ok\n")
+
 
 class PhysicalAncestor(TmpCase):
     def test_f09_require_physical_under_refuses_symlinked_ancestor(self) -> None:

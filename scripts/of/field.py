@@ -2031,6 +2031,17 @@ def json_payload_bytes(data: Any) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def _field_base_for(path: Path) -> Path | None:
+    """The nearest enclosing ``.orderfield`` directory of ``path`` (the field home),
+    or ``None`` when ``path`` is not under one. Uses the deepest ``.orderfield``
+    component so a nested field binds to its own home."""
+    parts = path.parts
+    for i in range(len(parts) - 1, -1, -1):
+        if parts[i] == ".orderfield":
+            return Path(*parts[: i + 1])
+    return None
+
+
 def dump_bytes(
     path: Path,
     payload: bytes,
@@ -2048,7 +2059,13 @@ def dump_bytes(
     from of.wal import durable_fsync
 
     sync = durable_fsync if durable else os.fsync
-    path.parent.mkdir(parents=True, exist_ok=True)
+    base = _field_base_for(path)
+    if base is not None:
+        # The target is under a child-writable .orderfield/; refuse a planted
+        # symlink at the leaf or any parent so the write cannot land outside it.
+        verify_no_symlink_under(base, path)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     tmp = Path(tmp_name)
     try:

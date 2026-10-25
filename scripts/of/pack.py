@@ -3429,8 +3429,10 @@ def ensure_field_slave_md(root: Path) -> Path | None:
     except OSError:
         current = None
     if current != body:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_text(body, encoding="utf-8")
+        # SLAVE.md is shared at the top-level .orderfield/ (not the per-field home)
+        # and is child-writable; a child could plant it as a symlink. Write
+        # no-follow, based at of_dir, so the leader cannot be redirected outside.
+        write_field_bytes(of_dir(root), dst, body.encode("utf-8"))
     return dst
 
 

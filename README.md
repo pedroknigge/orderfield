@@ -5,19 +5,19 @@ The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of hando
 Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
-  <strong>v0.9.3</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.9.4</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.9.3-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.9.4-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.9.3**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.9.4**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.9.3 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.9.4 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
@@ -96,7 +96,7 @@ Two unrelated missions in the same working tree are sibling fields. `of new` ope
 
 ## Install
 
-The glance above is the trusted pin (`ORDERFIELD_REF=v0.9.3` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+The glance above is the trusted pin (`ORDERFIELD_REF=v0.9.4` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
@@ -115,7 +115,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF=v0.9.3 bash install.sh --global --from-release --generic
+ORDERFIELD_REF=v0.9.4 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
@@ -238,7 +238,7 @@ Named adapters and generic mode transport the same disk protocol. The Haken “s
 
 **Enforced when work goes through `of`:** public JSON schemas, atomic writes, a lock for CLI field mutations, pack caps, packet identity, residual binding, guarded transitions, idempotent integration replay, spawn blocking, the closed regime menu — and since 0.9.0 a causal WAL (no mtime ordering; clone/copy safe; fails closed as `wal-broken`), a closed child lane (residual `constraints+` / `done_when+` escalate, never land), a collect gate (`ScopeWrite`, receipts, pins, one writer per packet), and `CLOSE.json` bound by sha256.
 
-**Cooperative, not prevented:** roles, same-harness choice, truthful metrics, and writes outside the CLI remain protocol. A same-OS-user process can hand-edit `.orderfield/`; the WAL makes it visible (`LIVE!=CURRENT`, quarantine, refusal), but a correctly chained forged generation is not detected (leader key deferred: [roadmap](docs/roadmap.md)). `refuse_child_forge` covers the spawn ancestry, not a handoff child or unrelated process: a guard, not auth. Threat model: [external-brief](docs/external-brief.md#threat-model). Detect/doctor PATH is inventory, not credentials or session authority. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper — a worktree/process bound is an honesty surface, not a security guarantee or a jail.
+**Cooperative, not prevented:** roles, same-harness choice, truthful metrics, and writes outside the CLI remain protocol. A same-OS-user process can hand-edit `.orderfield/`; the WAL makes it visible (`LIVE!=CURRENT`, quarantine, refusal) and, by default, authenticates it with the per-field leader-key HMAC (shipped 0.9.1; v2 binds file contents in 0.9.4). The standing limit is that a same-user child can read the on-disk key in default mode, so a correctly chained generation it signs is not detected unless the host sandbox hides the key ([roadmap](docs/roadmap.md): external key, epoch/takeover and `--if-rev` CAS stay deferred). `refuse_child_forge` covers the spawn ancestry, not a handoff child or unrelated process: a guard, not auth. Threat model: [external-brief](docs/external-brief.md#threat-model). Detect/doctor PATH is inventory, not credentials or session authority. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper — a worktree/process bound is an honesty surface, not a security guarantee or a jail.
 
 Token budgets, `local_budget_pct`, inherited depth, and `scale_up` / `scale_across` are **not implemented** (schema leftovers; `--tokens` dies). Only `budget.seconds` is enforced (the spawned-process wall-clock). `of status` may propose a model-tier ask from residual quality × optional usage (`EfficiencySignal`); it does not switch a model. `of doctor` prints `AdapterBalance` as **unknown** unless a published vendor payload is already in hand — never invented spend.
 
