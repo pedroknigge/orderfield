@@ -7,6 +7,8 @@ Zero behavior change. No new verb.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import os
 import shutil
 import subprocess
@@ -175,35 +177,62 @@ class IssueConfirm:
         return None
 
     @staticmethod
-    def proof_ok(
-        *,
-        proof: bool | None = None,
-        root: Path | None = None,
-    ) -> bool:
-        if proof is not None:
-            return bool(proof)
+    def argv_digest(argv: list[str]) -> str:
+        """sha256 over the create argv past the gh binary (title, body, label)."""
+        payload = "\n".join(str(a) for a in argv[1:]).encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def proof_path(root: Path | None = None) -> Path | None:
         project = find_root(root).resolve()
         cursor = project
         for part in Path(IssueConfirm.PROOF_REL).parts:
             cursor = cursor / part
             if cursor.is_symlink():
+                return None
+        return cursor
+
+    @staticmethod
+    def consume_proof(root: Path | None = None) -> None:
+        """Single-use: drop the proof so one human yes authorizes one post, never
+        a later, different issue on the same note."""
+        cursor = IssueConfirm.proof_path(root)
+        if cursor is not None and cursor.is_file():
+            try:
+                cursor.unlink()
+            except OSError:
+                pass
+
+    @staticmethod
+    def proof_ok(
+        *,
+        proof: bool | None = None,
+        root: Path | None = None,
+        argv_digest: str | None = None,
+    ) -> bool:
+        if proof is not None:
+            return bool(proof)
+        cursor = IssueConfirm.proof_path(root)
+        if cursor is None or not cursor.is_file():
+            return False
+        try:
+            if cursor.stat().st_size > IssueConfirm.PROOF_MAX_BYTES:
                 return False
-        if not cursor.is_file():
-            return False
-        try:
-            size = cursor.stat().st_size
-        except OSError:
-            return False
-        if size > IssueConfirm.PROOF_MAX_BYTES:
-            return False
-        try:
             text = cursor.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             return False
         for line in text.splitlines():
             token = line.strip()
-            if token:
-                return IssueConfirm.yes(token)
+            if not token:
+                continue
+            parts = token.split()
+            if not IssueConfirm.yes(parts[0]):
+                return False
+            # A bound proof (`yes <sha>`) must name this exact create argv; a bare
+            # `yes` is accepted but consumed, so it authorizes only one post.
+            if len(parts) > 1 and argv_digest is not None:
+                return hmac.compare_digest(parts[1], argv_digest)
+            return True
         return False
 
     @staticmethod
@@ -216,6 +245,7 @@ class IssueConfirm:
         cloud: bool | None = None,
         env: dict[str, str] | None = None,
         root: Path | None = None,
+        argv_digest: str | None = None,
     ) -> bool:
         live = tty is None
         if tty is None:
@@ -224,7 +254,7 @@ class IssueConfirm:
             cloud = bool(IssueConfirm.cloud_marker(env)) if live else False
         if (not tty) or cloud:
             return bool(confirm) and IssueConfirm.proof_ok(
-                proof=proof, root=root
+                proof=proof, root=root, argv_digest=argv_digest
             )
         if confirm:
             return True
@@ -241,9 +271,15 @@ class IssueConfirm:
         confirm: bool,
         tty: bool | None = None,
         prompt: Any = None,
+        root: Path | None = None,
+        argv_digest: str | None = None,
     ) -> None:
-        if not IssueConfirm.allowed(confirm=confirm, tty=tty, prompt=prompt):
+        if not IssueConfirm.allowed(
+            confirm=confirm, tty=tty, prompt=prompt, root=root, argv_digest=argv_digest
+        ):
             _issue_die(IssueConfirm.REFUSE)
+        # Consume any scratch proof so it authorizes exactly this one create.
+        IssueConfirm.consume_proof(root)
 
 
 def _print_gh_stdout(proc: subprocess.CompletedProcess[str]) -> None:
@@ -563,7 +599,8 @@ def cmd_issue(args: argparse.Namespace) -> None:
         _issue_preview(argv, action="create", dry_run=True)
         return
 
-    IssueConfirm.require(confirm=bool(getattr(args, "confirm", False)))
+    _digest = IssueConfirm.argv_digest(argv)
+    IssueConfirm.require(confirm=bool(getattr(args, "confirm", False)), argv_digest=_digest)
     gh_bin = _require_gh()
     _require_gh_auth(gh_bin)
     argv[0] = gh_bin

@@ -981,8 +981,15 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
     else:
         dest = default_worktree_path(root, child_id)
     force = bool(getattr(args, "force", False))
-    # Recompute unlanded state from git; never trust a child-settable `landed` flag.
-    if not force and dest.is_dir():
+    # The recorded path is now bound to the leader-created worktree
+    # (_verified_worktree_dest), so `landed` can only affect this child's own
+    # worktree; honoring it keeps the normal land->remove flow working.
+    if (
+        not force
+        and dest.is_dir()
+        and isinstance(recorded, dict)
+        and not recorded.get("landed")
+    ):
         status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
         base = str(recorded.get("head") or "") if isinstance(recorded, dict) else ""
         wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()

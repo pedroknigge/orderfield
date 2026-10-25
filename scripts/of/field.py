@@ -1454,7 +1454,14 @@ def die(msg: str, code: int = 1, *, kind: str | None = None) -> None:
     raise SystemExit(code)
 
 
-_MAX_SPAWN_ANCESTORS = 32
+# Walk far enough that a spawned harness pid stays in the ancestor chain even
+# behind a setsid + deeply nested descendant (the old cap of 32 let that chain
+# outrun the registry match and fail open to "leader").
+_MAX_SPAWN_ANCESTORS = 4096
+# Cap exhausted without reaching pid 1: ancestry is unproven, so treat the caller
+# as spawned (fail closed) rather than as the leader. Not a CHILD_ID_RE id, so the
+# leader-only guards still refuse.
+_ANCESTRY_UNBOUNDED = "<ancestry-unbounded>"
 _DARWIN_CTL_KERN = 1
 _DARWIN_KERN_PROCARGS2 = 49
 _POPEN_ORIG = subprocess.Popen
@@ -1907,7 +1914,7 @@ def spawned_child_id() -> str | None:
         if inherited:
             return inherited
         pid = _proc_ppid(pid)
-    return None
+    return _ANCESTRY_UNBOUNDED
 
 
 def persist_learning_source() -> str:
