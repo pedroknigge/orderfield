@@ -75,6 +75,17 @@ def publish_committed(home: Path, rel: str, text: str) -> None:
     man = json.loads(man_path.read_text(encoding="utf-8"))
     files = man.setdefault("files", {})
     files[rel] = digest
+    # Re-sign like the real writer: the leader HMAC binds the files map.
+    key_file = home / "wal" / ".leader_key"
+    if key_file.is_file() and (man.get("hmac_sha256") or current.get("hmac_sha256")):
+        import hmac as _hmac
+
+        from of.wal import LeaderKey
+
+        key = key_file.read_text(encoding="utf-8").strip().encode("utf-8")
+        sig = _hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+        man["hmac_sha256"] = sig
+        current["hmac_sha256"] = sig
     man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
     current.setdefault("files", {})[rel] = digest
     current["manifest_sha256"] = hashlib.sha256(man_path.read_bytes()).hexdigest()

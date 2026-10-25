@@ -813,8 +813,37 @@ def cmd_migrate(args: argparse.Namespace) -> None:
     print(f"protocol     workspace.{PROTOCOL_WRITABLE_KEY}  {PROTOCOL_SLAVE_MD}")
 
 
+def _verified_worktree_dest(root: Path, child_id: str, recorded: dict) -> Path:
+    """Resolve a recorded worktree path, bound to leader-created state.
+
+    worktrees.json is child-writable, so land/remove must not act on a path a
+    child rewrote to point at a sibling worktree or the project root. Require the
+    recorded path to be the one `of worktree add` created (default_worktree_path,
+    unless add stored an explicit custom path), to be a git-registered linked
+    worktree of this repository, and never the project root or main worktree."""
+    dest = Path(recorded["path"]).expanduser().resolve()
+    expected = default_worktree_path(root, child_id).resolve()
+    if not recorded.get("custom_path") and dest != expected:
+        die(f"worktree record for {child_id} was edited (expected {expected}); refusing")
+    if dest == root.resolve():
+        die(f"worktree record for {child_id} points at the project root; refusing")
+    listed = run_git(root, "worktree", "list", "--porcelain").stdout or ""
+    roots = {
+        Path(line[len("worktree "):]).resolve()
+        for line in listed.splitlines()
+        if line.startswith("worktree ")
+    }
+    if dest not in roots:
+        die(f"{dest} is not a linked worktree of this repository; refusing")
+    main = run_git(root, "rev-parse", "--show-toplevel").stdout.strip()
+    if main and dest == Path(main).resolve():
+        die(f"worktree record for {child_id} is the main worktree; refusing")
+    return dest
+
+
 def cmd_worktree(args: argparse.Namespace) -> None:
     """Opt-in git worktree helper. Does not spawn, kill, or supervise children."""
+    refuse_child_forge("of worktree")
     action = getattr(args, "worktree_cmd", None)
     if action == "add":
         cmd_worktree_add(args)
@@ -861,6 +890,7 @@ def cmd_worktree_add(args: argparse.Namespace) -> None:
         "path": str(dest),
         "added_at": utc_now(),
         "head": head,
+        "custom_path": bool(getattr(args, "path", None)),
     }
     save_worktrees(root, records)
     print(f"worktree     {dest}")
@@ -882,7 +912,7 @@ def cmd_worktree_land(args: argparse.Namespace) -> None:
     recorded = records["trees"].get(child_id)
     if not isinstance(recorded, dict) or not recorded.get("path"):
         die(f"no recorded worktree for child {child_id}; of worktree add first")
-    dest = Path(recorded["path"])
+    dest = _verified_worktree_dest(root, child_id, recorded)
     if not dest.is_dir():
         die(f"worktree path does not exist {dest}")
 
@@ -946,20 +976,15 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
     child_id = require_child_id(args.child_id)
     records = load_worktrees(root)
     recorded = records["trees"].get(child_id)
-    dest = (
-        Path(recorded["path"])
-        if isinstance(recorded, dict) and recorded.get("path")
-        else default_worktree_path(root, child_id)
-    )
+    if isinstance(recorded, dict) and recorded.get("path"):
+        dest = _verified_worktree_dest(root, child_id, recorded)
+    else:
+        dest = default_worktree_path(root, child_id)
     force = bool(getattr(args, "force", False))
-    if (
-        not force
-        and dest.is_dir()
-        and isinstance(recorded, dict)
-        and not recorded.get("landed")
-    ):
+    # Recompute unlanded state from git; never trust a child-settable `landed` flag.
+    if not force and dest.is_dir():
         status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
-        base = str(recorded.get("head") or "")
+        base = str(recorded.get("head") or "") if isinstance(recorded, dict) else ""
         wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
         has_commits = False
         if base and base != "-" and wt_head:
