@@ -1,0 +1,144 @@
+"""Regression tests for the run-1 security audit fixes (F01-F16).
+
+Each test pins one invariant a fix established. They are unit-level and exercise
+the kernel functions directly with dummy files; nothing runs a real harness, gh,
+or the network.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+import of.field as field  # noqa: E402
+import of.wal as wal  # noqa: E402
+import of_adapters  # noqa: E402
+from of.pack import _unsafe_revert_rel  # noqa: E402
+
+
+class TmpCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-sec-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.home = self.tmp / ".orderfield"
+        self.home.mkdir()
+
+
+class GitHardening(unittest.TestCase):
+    def test_f01_run_git_neutralizes_fsmonitor_and_hooks(self) -> None:
+        self.assertEqual(
+            field.GIT_HARDEN,
+            ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"),
+        )
+        self.assertEqual(field.GIT_HARDEN, of_adapters.GIT_HARDEN)
+
+
+class NoFollowWrites(TmpCase):
+    def test_f02_write_field_bytes_refuses_symlinked_leaf(self) -> None:
+        outside = self.tmp / "outside.txt"
+        outside.write_text("ORIGINAL\n", encoding="utf-8")
+        (self.home / "FINAL.md").symlink_to(outside)
+        with self.assertRaises(SystemExit):
+            field.write_field_bytes(self.home, self.home / "FINAL.md", b"CHILD\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "ORIGINAL\n")
+
+    def test_f02_write_field_bytes_refuses_symlinked_parent(self) -> None:
+        victim = self.tmp / "victim"
+        victim.mkdir()
+        (self.home / "work").symlink_to(victim)
+        with self.assertRaises(SystemExit):
+            field.write_field_bytes(
+                self.home, self.home / "work" / "scratch" / "x", b"CHILD\n"
+            )
+        self.assertFalse((victim / "scratch").exists())
+
+    def test_f02_write_field_bytes_replaces_plain_file_atomically(self) -> None:
+        leaf = field.write_field_bytes(self.home, self.home / "a" / "b.txt", b"ok\n")
+        self.assertEqual(leaf.read_bytes(), b"ok\n")
+        self.assertFalse(leaf.is_symlink())
+
+
+class PhysicalAncestor(TmpCase):
+    def test_f09_require_physical_under_refuses_symlinked_ancestor(self) -> None:
+        victim = self.tmp / "victim"
+        (victim / "scratch").mkdir(parents=True)
+        (self.home / "work").symlink_to(victim)
+        with self.assertRaises(SystemExit):
+            field.require_physical_under(self.home, self.home / "work" / "scratch")
+
+    def test_f09_require_physical_under_allows_real_tree(self) -> None:
+        (self.home / "work" / "scratch").mkdir(parents=True)
+        got = field.require_physical_under(self.home, self.home / "work" / "scratch")
+        self.assertEqual(got, self.home / "work" / "scratch")
+
+
+class GenerationIds(unittest.TestCase):
+    def test_f04_valid_generation_id_accepts_minted_and_legacy(self) -> None:
+        self.assertTrue(wal.valid_generation_id("00000002-adef9684fca7"))
+        self.assertTrue(wal.valid_generation_id("627b95c5a89e"))
+        self.assertTrue(wal.valid_generation_id("00000099-forged"))
+
+    def test_f04_valid_generation_id_rejects_traversal(self) -> None:
+        for bad in ("/scratch/a/.ssh", "../../../.ssh", "a/b", "..", "", ".x"):
+            self.assertFalse(wal.valid_generation_id(bad), bad)
+
+
+class ScopeRevert(unittest.TestCase):
+    def test_f10_unsafe_revert_rel(self) -> None:
+        for bad in ("/etc/passwd", "../x", ".orderfield/ORDER.json", "a\\b"):
+            self.assertTrue(_unsafe_revert_rel(bad), bad)
+        for ok in ("app.py", "src/mod.py", "vendor/sub/"):
+            self.assertFalse(_unsafe_revert_rel(ok), ok)
+
+
+class WalHmacBindsFiles(unittest.TestCase):
+    def test_f11_signed_body_includes_files_map(self) -> None:
+        base = {
+            "generation": "00000001-abcdefabcdef",
+            "seq": 1,
+            "parent": None,
+            "parent_manifest_sha256": None,
+            "order_sha256": "x",
+            "files": {"ORDER.json": "aaa"},
+            "deletions": [],
+        }
+        tampered = dict(base, files={"ORDER.json": "aaa", "packets/c1.json": "bbb"})
+        self.assertNotEqual(
+            wal.LeaderKey._manifest_chain_bytes(base),
+            wal.LeaderKey._manifest_chain_bytes(tampered),
+        )
+
+    def test_f11_hmac_differs_when_a_file_is_added(self) -> None:
+        key = b"k" * 32
+        man = {
+            "generation": "00000001-abcdefabcdef", "seq": 1, "parent": None,
+            "parent_manifest_sha256": None, "order_sha256": "x",
+            "files": {"ORDER.json": "aaa"}, "deletions": [],
+        }
+        sig1 = hmac.new(key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+        man["files"]["checks/REQ-001.json"] = "ccc"
+        sig2 = hmac.new(key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+        self.assertNotEqual(sig1, sig2)
+
+
+class AncestorCap(unittest.TestCase):
+    def test_f16_cap_is_large_and_sentinel_is_not_a_child_id(self) -> None:
+        self.assertGreaterEqual(field._MAX_SPAWN_ANCESTORS, 4096)
+        # The fail-closed sentinel is truthy (so guards refuse) but not a valid id.
+        from of.pack import CHILD_ID_RE
+
+        self.assertTrue(field._ANCESTRY_UNBOUNDED)
+        self.assertIsNone(CHILD_ID_RE.fullmatch(field._ANCESTRY_UNBOUNDED))
+
+
+if __name__ == "__main__":
+    unittest.main()

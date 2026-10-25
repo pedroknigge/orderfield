@@ -20,7 +20,6 @@ from of.field import (
     field_rel,
     find_root,
     json_events_enabled,
-    load_json,
     load_order,
     load_state,
     patch_origin,
