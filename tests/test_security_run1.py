@@ -137,6 +137,28 @@ class WalHmac(unittest.TestCase):
             self.assertFalse(wal.LeaderKey.verify_candidate(None, chained, chained))
 
 
+class VerifyCmdEnv(unittest.TestCase):
+    """F03: a packet verify_cmd runs as the leader but must not see the WAL
+    signing key/token, even though the command string is leader-committed."""
+
+    def test_f03_run_strips_leader_key_and_token(self) -> None:
+        import of.receipt as receipt
+
+        tmp = Path(tempfile.mkdtemp(prefix="of-sec-env-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        probe = (
+            "import os,sys;"
+            "sys.stdout.write('LEAK' if (os.environ.get('OF_LEADER_KEY') "
+            "or os.environ.get('OF_LEADER_TOKEN')) else 'CLEAN')"
+        )
+        env = {"OF_LEADER_KEY": "secret-key", "OF_LEADER_TOKEN": "secret-token"}
+        with mock.patch.dict(os.environ, env):
+            code, out = receipt.KernelVerify._run(tmp, [sys.executable, "-c", probe], 30)
+        self.assertEqual(code, 0, out)
+        self.assertIn(b"CLEAN", out)
+        self.assertNotIn(b"LEAK", out)
+
+
 class SessionIdArgv(unittest.TestCase):
     def test_nv1_session_id_rejects_flag_like_values(self) -> None:
         for bad in ("--dangerously-skip-permissions", "--force", "-x", "--allowedTools=Bash"):
