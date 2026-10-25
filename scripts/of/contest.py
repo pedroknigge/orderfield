@@ -48,6 +48,33 @@ def new_contest_id() -> str:
     return f"ctg_{uuid.uuid4().hex[:8]}"
 
 
+def _bind_home_checked(root: Path, home: Path, fid: str) -> None:
+    """Bind a non-ACTIVE field home and refuse its uncommitted drift.
+
+    Contest verbs switch homes with set_field_home after the writer-lock prelude,
+    which only guards the bound home. Without this a child's live edit to a
+    candidate's REQUIREMENTS.json / SPEC.md / ORDER.json (never committed) would
+    steer the crown decision or seed a tampered brief. Apply the same refusal the
+    bound-home prelude does, plus REQUIREMENTS.json which refused_drift omits."""
+    from of.field import refused_drift
+    from of.wal import FieldWal
+
+    set_field_home(home)
+    FieldWal.recover(root)
+    FieldWal.refuse_live_spec_tamper(root)
+    FieldWal.refuse_live_order_tamper(root)
+    drift = sorted(
+        set(refused_drift(root))
+        | {r for r in FieldWal.drift(root) if r == "REQUIREMENTS.json"}
+    )
+    if drift:
+        die(
+            "LIVE!=CURRENT " + ", ".join(drift[:5]) + f" in field {fid}; contest "
+            f"refuses uncommitted state. RESTORE: of --field {fid} patch --from-current",
+            2,
+        )
+
+
 def _resolve_parent(root: Path, explicit: str | None) -> tuple[str, Path, dict[str, Any]]:
     homes = list_field_homes(root)
     if not homes:
@@ -91,7 +118,9 @@ def open_contest(
     if max_gaps < 0:
         die(f"--max-gaps must be >= 0; got {max_gaps}")
     parent_fid, parent_home, parent_order = _resolve_parent(root, parent_id)
-    set_field_home(parent_home)
+    # The parent brief seeds every candidate's committed first generation, so a
+    # child's live edit of the parent SPEC/REQUIREMENTS/ORDER must be refused first.
+    _bind_home_checked(root, parent_home, parent_fid)
     cand_phase = phase or str(parent_order.get("phase") or "explore")
     if cand_phase not in PHASES:
         cand_phase = "explore"
@@ -180,7 +209,7 @@ def rank(root: Path, contest_id: str) -> tuple[list[dict[str, Any]], str]:
     spec_hash = ""
     try:
         for fid, home, _order in members:
-            set_field_home(home)
+            _bind_home_checked(root, home, fid)
             live = load_order(root)
             if not field_is_open(live):
                 continue

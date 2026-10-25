@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import json
 import os
 import signal
 import subprocess
@@ -261,23 +262,49 @@ class ChildForge:
     """
 
     @staticmethod
+    def _committed_allows_nested(root: Path, home: Path, path: Path) -> bool:
+        """allow_nested is True in this packet's WAL-committed bytes (not live)."""
+        from of.wal import committed_bytes
+
+        set_field_home(home)
+        cur = committed_bytes(root, path.relative_to(home).as_posix())
+        if cur is None:
+            return False
+        try:
+            doc = json.loads(cur.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return False
+        return isinstance(doc, dict) and doc.get("allow_nested") is True
+
+    @staticmethod
+    def _granted(root: Path, cid: str) -> bool:
+        """True only when the nesting grant is leader-committed. allow_nested is a
+        leader-set flag; read it from each own packet's WAL CURRENT, not the
+        child-writable live bytes, so a child cannot self-grant by editing its packet."""
+        current = field_home(root).resolve()
+        own = [
+            (home.resolve(), path)
+            for _fid, home, _order in list_field_homes(root)
+            for path in home.glob(f"waves/*/packets/{cid}.json")
+        ]
+        if not own or any(home == current for home, _path in own):
+            return False
+        saved = field_home(root)
+        try:
+            return all(
+                ChildForge._committed_allows_nested(root, home, path)
+                for home, path in own
+            )
+        finally:
+            set_field_home(saved)
+
+    @staticmethod
     def refuse(root: Path, action: str) -> None:
         cid = spawned_child_id()
         if not cid:
             return
-        if CHILD_ID_RE.fullmatch(cid):
-            current = field_home(root).resolve()
-            homes = list_field_homes(root)
-            own = [
-                (home.resolve(), path)
-                for _fid, home, _order in homes
-                for path in home.glob(f"waves/*/packets/{cid}.json")
-            ]
-            if own and all(home != current for home, _path in own) and all(
-                (try_load_json(path)[0] or {}).get("allow_nested") is True
-                for _home, path in own
-            ):
-                return
+        if CHILD_ID_RE.fullmatch(cid) and ChildForge._granted(root, cid):
+            return
         refuse_child_forge(action)
 
 
