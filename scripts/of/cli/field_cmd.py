@@ -12,6 +12,7 @@ from of.host_ram import AgentBand
 
 from of.field import (
     PHASES,
+    CollectGate,
     die,
     dump_json,
     emit_event,
@@ -46,7 +47,6 @@ from of.pack import (
     reconcile_children_spawned,
     require_packet_residual,
     truncate_slice,
-    validate_residual_for_packet,
 )
 from of.regime import (
     ChildLane,
@@ -178,10 +178,12 @@ def cmd_integrate(args: argparse.Namespace) -> None:
                 skipped.append(str(pkt.get("child_id") or "?"))
                 continue
             path = require_packet_residual(root, pkt)
-            data = load_json(path)
-            errs = validate_residual_for_packet(data, pkt, root)
-            if errs:
-                die(f"invalid residual {path.name}: {'; '.join(errs)}")
+            # Judge through the same gate collect uses: this enforces the spawn-exit
+            # ResidualPin (and the missing-pin rule), so a sibling child cannot
+            # overwrite another packet's residual and land done_when_closed here.
+            errs, data, _stamped, _pin_warn, held = CollectGate.judge(root, pkt, path)
+            if errs or not held or data is None:
+                die(f"invalid residual {path.name}: {'; '.join(errs) or 'pin refused'}")
             residuals.append(data)
             landed.append(pkt)
         if partial and not residuals:
