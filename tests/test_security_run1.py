@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -100,34 +101,40 @@ class ScopeRevert(unittest.TestCase):
             self.assertFalse(_unsafe_revert_rel(ok), ok)
 
 
-class WalHmacBindsFiles(unittest.TestCase):
-    def test_f11_signed_body_includes_files_map(self) -> None:
-        base = {
-            "generation": "00000001-abcdefabcdef",
-            "seq": 1,
-            "parent": None,
-            "parent_manifest_sha256": None,
-            "order_sha256": "x",
-            "files": {"ORDER.json": "aaa"},
-            "deletions": [],
-        }
-        tampered = dict(base, files={"ORDER.json": "aaa", "packets/c1.json": "bbb"})
-        self.assertNotEqual(
-            wal.LeaderKey._manifest_chain_bytes(base),
-            wal.LeaderKey._manifest_chain_bytes(tampered),
-        )
+class WalHmac(unittest.TestCase):
+    """F11: the leader HMAC binds the generation file map, and a signing-era
+    (chained) generation with a stripped signature is rejected."""
 
-    def test_f11_hmac_differs_when_a_file_is_added(self) -> None:
-        key = b"k" * 32
+    KEY = "leader-secret-not-in-child-env"
+
+    def _man(self, *, seq, files, signed):
         man = {
-            "generation": "00000001-abcdefabcdef", "seq": 1, "parent": None,
-            "parent_manifest_sha256": None, "order_sha256": "x",
-            "files": {"ORDER.json": "aaa"}, "deletions": [],
+            "generation": "00000005-abcdefabcdef", "seq": seq, "parent": "p",
+            "parent_manifest_sha256": "pm", "order_sha256": "o",
+            "files": dict(files), "deletions": [],
         }
-        sig1 = hmac.new(key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
-        man["files"]["checks/REQ-001.json"] = "ccc"
-        sig2 = hmac.new(key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
-        self.assertNotEqual(sig1, sig2)
+        if signed:
+            key = self.KEY.encode("utf-8")
+            man["hmac_sha256"] = hmac.new(
+                key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256
+            ).hexdigest()
+        return man
+
+    def test_f11_tampered_files_map_fails_verification(self) -> None:
+        with mock.patch.dict(os.environ, {wal.LeaderKey.KEY_ENV: self.KEY}):
+            man = self._man(seq=5, files={"ORDER.json": "aaa"}, signed=True)
+            self.assertTrue(wal.LeaderKey.verify_head(None, man, man))
+            # Child rewrites a committed packet into the files map; signature stale.
+            forged = dict(man, files={"ORDER.json": "aaa", "waves/001/packets/c1.json": "bbb"})
+            self.assertFalse(wal.LeaderKey.verify_head(None, forged, forged))
+
+    def test_f11_chained_unsigned_head_is_rejected(self) -> None:
+        # Legacy (no-seq) lenience is covered by tests.test_wal_chain's v0.8.34
+        # adoption tests; here we pin that a chained head must be signed.
+        with mock.patch.dict(os.environ, {wal.LeaderKey.KEY_ENV: self.KEY}):
+            chained = self._man(seq=5, files={"ORDER.json": "aaa"}, signed=False)
+            self.assertFalse(wal.LeaderKey.verify_head(None, chained, chained))
+            self.assertFalse(wal.LeaderKey.verify_candidate(None, chained, chained))
 
 
 class SessionIdArgv(unittest.TestCase):
