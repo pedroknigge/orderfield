@@ -759,7 +759,11 @@ class KernelVerify:
         import os
         import subprocess
 
+        # verify_cmd runs project code; never expose the kernel's own WAL signing
+        # key/token to it, even though the command itself is leader-committed.
         run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+        for secret in ("OF_LEADER_KEY", "OF_LEADER_TOKEN"):
+            run_env.pop(secret, None)
         try:
             proc = subprocess.run(
                 argv,

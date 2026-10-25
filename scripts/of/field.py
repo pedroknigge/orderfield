@@ -2232,6 +2232,23 @@ class FieldLockBusy(Exception):
     """Non-blocking lock acquire failed. Resume opportunistic gc skips."""
 
 
+def _refuse_migrate_drift(root: Path) -> None:
+    """migrate plans from live bytes, so it cannot rematerialize CURRENT. Without
+    this it would re-hash and sign a child's edited packet, ORDER or SPEC into the
+    head. Refuse that drift so the leader RESTOREs first (no-op when there is no
+    CURRENT yet: a pre-chain / wal-less field has nothing to drift against)."""
+    if not wal_current_path(root).is_file():
+        return
+    FieldWal.refuse_live_spec_tamper(root)
+    FieldWal.refuse_live_order_tamper(root)
+    drift = refused_drift(root)
+    if drift:
+        die(
+            "LIVE!=CURRENT " + ", ".join(drift[:5]) + "; of migrate refuses drifted "
+            "snapshot files. RESTORE: of patch --from-current"
+        )
+
+
 @contextmanager
 def field_lock(
     root: Path,
@@ -2310,6 +2327,8 @@ def field_lock(
                 FieldWal.materialize_current(root, overwrite=True)
                 if command not in ("init", "new", "contend"):
                     SpawnRecord.settle_orphans(root)
+            elif command == "migrate":
+                _refuse_migrate_drift(root)
             elif command in ("spawn", "handoff"):
                 # spawn/handoff write snapshot paths only under this lock,
                 # so they re-copy CURRENT like any writer. A planted or
@@ -2925,8 +2944,16 @@ def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], lis
         out["packet_hash"] = packet_digest(out)
         notes.append("computed packet_hash")
     elif out.get("packet_hash") != packet_digest(out):
-        out["packet_hash"] = packet_digest(out)
-        notes.append("recomputed packet_hash after protocol-key rewrite")
+        # Only re-hash when a migration step (workspace normalize) actually rewrote
+        # the packet AND the stored hash matched the pre-migration bytes. A plain
+        # mismatch is child tamper, not a migration artifact: leave it so
+        # validate_packet flags it INVALID instead of signing the child's edit.
+        if ws_notes and packet.get("packet_hash") == packet_digest(packet):
+            out["packet_hash"] = packet_digest(out)
+            notes.append("recomputed packet_hash after protocol-key rewrite")
+        else:
+            notes.append("refused: packet_hash mismatch is not a migration (RESTORE)")
+            return dict(packet), notes
     return out, notes
 
 

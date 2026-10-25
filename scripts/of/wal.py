@@ -1296,6 +1296,9 @@ def _recover_without_current(root: Path) -> str | None:
             return child.name
     if rev > 1:
         what = "wal/" if not wal.is_dir() else "wal/CURRENT.json"
+        # A genuinely pre-WAL field (no wal/ ever) is adopted by the leader's own
+        # `of migrate`; when wal/CURRENT is merely missing, _refuse_migrate_drift
+        # has already refused any ORDER/SPEC/packet tamper before we reach here.
         _refuse_broken_wal(
             root, f"ORDER rev {rev} but {what} is missing", migrate=not wal.is_dir()
         )
