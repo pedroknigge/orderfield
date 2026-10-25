@@ -331,7 +331,10 @@ def load_field_learnings(root: Path) -> list[dict[str, Any]]:
         if path.is_symlink():
             continue
         item = _read_json_object(path)
-        if isinstance(item, dict) and item.get("text"):
+        # Anchor each item to its own file: _write_field_learning names files
+        # <id>.json, so a child-planted shadow (0-shadow.json with a genuine
+        # note's id) is skipped and promote cannot resolve to it.
+        if isinstance(item, dict) and item.get("text") and str(item.get("id") or "") == path.stem:
             out.append(item)
     return _filter_learnings(out, "field learnings", for_prompt=False)
 
@@ -541,6 +544,8 @@ def promote_learning(
             f"--promote refused: {key!r} is not a field learning of ORDER "
             f"{order.get('id')} (of learn --list)"
         )
+    if len(hits) != 1:
+        die(f"--promote refused: {key!r} is ambiguous ({len(hits)} items carry this id)")
     source = hits[0]
     text = _normalize_learning_text(str(source.get("text") or ""))
     for existing in load_protocol_store():
@@ -603,10 +608,23 @@ def forget_learning(root: Path | None, needle: str) -> dict[str, Any]:
             [i for i in _load_protocol_store_raw() if str(i.get("id")) != tid]
         )
     if root is not None:
-        path = learnings_dir(root) / f"{tid}.json"
-        if path.is_file() and not path.is_symlink():
-            path.unlink()
+        _unlink_field_learnings_with_id(learnings_dir(root), tid)
     return target
+
+
+def _unlink_field_learnings_with_id(folder: Path, tid: str) -> None:
+    """Remove every field file carrying ``tid``, not just <tid>.json, so a
+    child-planted shadow (e.g. 0-shadow.json with a genuine id) cannot survive
+    --forget."""
+    if not folder.is_dir() or folder.is_symlink():
+        return
+    for path in sorted(folder.glob("*.json")):
+        if path.is_symlink():
+            continue
+        item = _read_json_object(path)
+        has_id = isinstance(item, dict) and str(item.get("id") or "") == tid
+        if path.stem == tid or has_id:
+            path.unlink()
 
 
 class FieldLearnings:

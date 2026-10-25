@@ -900,7 +900,7 @@ class CodexRecordedWorktree(unittest.TestCase):
         return dest
 
     @unittest.skipUnless(shutil.which("git"), "git not on PATH")
-    def test_codex_dry_run_authorizes_worktree_field_and_git_common_dir(self) -> None:
+    def test_codex_dry_run_authorizes_worktree_field_and_git_commit_dirs(self) -> None:
         worktree = self._record_worktree()
         proc = run_of(
             self.tmp,
@@ -916,24 +916,31 @@ class CodexRecordedWorktree(unittest.TestCase):
         preview = dry_run_preview(proc)
         preview_tokens = preview.split()
         self.assertIn("-C", preview_tokens)
-        self.assertEqual(preview_tokens.count("--add-dir"), 2)
         self.assertIn("--sandbox workspace-write", preview)
         roots = of_adapters.CodexWorktree.argv_flags(
             worktree,
             self.tmp / ".orderfield",
             "wt1",
         )
-        self.assertEqual(
-            roots,
-            [
-                "-C",
-                str(worktree.resolve()),
-                "--add-dir",
-                str((self.tmp / ".orderfield").resolve()),
-                "--add-dir",
-                str((self.tmp / ".git").resolve()),
-            ],
-        )
+        common = (self.tmp / ".git").resolve()
+        granted = [roots[i + 1] for i, tok in enumerate(roots) if tok == "--add-dir"]
+        self.assertEqual(roots[:2], ["-C", str(worktree.resolve())])
+        self.assertIn(str((self.tmp / ".orderfield").resolve()), granted)
+        self.assertIn(str(common / "objects"), granted)
+        self.assertIn(str(common / "refs"), granted)
+        # config and hooks run in leader-side git: never granted to the child.
+        self.assertNotIn(str(common), granted)
+        self.assertEqual(preview_tokens.count("--add-dir"), len(granted))
+
+    @unittest.skipUnless(shutil.which("git"), "git not on PATH")
+    def test_codex_refuses_record_naming_main_worktree_or_foreign_repo(self) -> None:
+        with self.assertRaises(SystemExit):
+            of_adapters.CodexWorktree.argv_flags(self.tmp, self.tmp / ".orderfield", "wt1")
+        other = Path(tempfile.mkdtemp(prefix="of-foreign-"))
+        self.addCleanup(shutil.rmtree, other, True)
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        with self.assertRaises(SystemExit):
+            of_adapters.CodexWorktree.argv_flags(other, self.tmp / ".orderfield", "wt1")
 
     def test_codex_refuses_stale_record_before_spawn(self) -> None:
         missing = self.tmp.parent / f"{self.tmp.name}-missing"

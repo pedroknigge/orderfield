@@ -184,8 +184,9 @@ class EvidenceReceipt:
         if not EvidenceReceipt.ID_RE.match(command_id):
             raise ValueError(f"bad command_id {command_id!r}")
         paths = EvidenceReceipt.archive_paths(scratch, command_id)
-        paths["source"].parent.mkdir(parents=True, exist_ok=True)
-        paths["source"].write_bytes(data)
+        from of.field import write_field_bytes
+
+        write_field_bytes(scratch, paths["source"], data)
         source_rel = EvidenceReceipt._rel(paths["source"], root or scratch)
         meta = {
             "command_id": command_id,
@@ -195,9 +196,10 @@ class EvidenceReceipt:
             "size": len(data),
             "command": str(command or ""),
         }
-        paths["meta"].write_text(
-            json.dumps(meta, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+        write_field_bytes(
+            scratch,
+            paths["meta"],
+            (json.dumps(meta, indent=2, sort_keys=True) + "\n").encode("utf-8"),
         )
         return paths
 
@@ -471,7 +473,9 @@ class EvidenceReceipt:
         )
         if outcome != EvidenceReceipt.ACCEPT:
             return None, outcome
-        written["receipt"].write_bytes(EvidenceReceipt.dump(receipt))
+        from of.field import write_field_bytes
+
+        write_field_bytes(scratch, written["receipt"], EvidenceReceipt.dump(receipt))
         return receipt, EvidenceReceipt.ACCEPT
 
     @staticmethod
@@ -604,7 +608,9 @@ class KernelVerify:
             timeout_s=timeout_s,
         )
         KernelVerify._seal(receipt, inputs, root)
-        written["receipt"].write_bytes(EvidenceReceipt.dump(receipt))
+        from of.field import write_field_bytes
+
+        write_field_bytes(scratch, written["receipt"], EvidenceReceipt.dump(receipt))
         return receipt, written["receipt"], EvidenceReceipt._rel(written["receipt"], root)
 
     @staticmethod
@@ -753,7 +759,11 @@ class KernelVerify:
         import os
         import subprocess
 
+        # verify_cmd runs project code; never expose the kernel's own WAL signing
+        # key/token to it, even though the command itself is leader-committed.
         run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+        for secret in ("OF_LEADER_KEY", "OF_LEADER_TOKEN"):
+            run_env.pop(secret, None)
         try:
             proc = subprocess.run(
                 argv,
@@ -794,7 +804,7 @@ class KernelVerify:
         scratch_rel = str(packet.get("scratch_dir") or "")
         if not scratch_rel:
             return [], None, False
-        scratch = physical_artifact_path(root, scratch_rel, "packet scratch_dir")
+        scratch = physical_artifact_path(root, scratch_rel, "packet scratch_dir", reject_symlinks=True)
         bound = packet.get("verify_timeout", KernelVerify.DEFAULT_TIMEOUT_S)
         if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
             bound = KernelVerify.DEFAULT_TIMEOUT_S
@@ -947,9 +957,12 @@ class KernelVerify:
         command: str,
         timeout_s: int = DEFAULT_TIMEOUT_S,
     ) -> tuple[str, int]:
-        from of.field import field_home
+        from of.field import field_home, verify_no_symlink_under
 
-        scratch = field_home(root) / "work" / "scratch" / "_leader_verify"
+        home = field_home(root)
+        scratch = home / "work" / "scratch" / "_leader_verify"
+        # Refuse a child-planted symlink at work/, scratch/ or _leader_verify/.
+        verify_no_symlink_under(home, scratch / ".keep")
         raw_id = req_ids[0].lower() if req_ids else "verify"
         clean_id = re.sub(r"[^a-z0-9._-]", "-", f"spec-{raw_id}")[:64]
         _receipt, receipt_rel, exit_code = KernelVerify.execute(

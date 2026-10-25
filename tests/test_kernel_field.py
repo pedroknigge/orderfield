@@ -74,6 +74,24 @@ def committed_artifact(home: Path, rel: str) -> Path:
     return home / "wal" / str(current["generation"]) / rel
 
 
+def _resign_manifest(home: Path, man: dict, current: dict) -> None:
+    """Re-sign a fixture MANIFEST/CURRENT like the real writer. The leader HMAC
+    binds the files map, so changing files without re-signing would fail verify.
+    Signs with this field's own wal/.leader_key (``home`` may be a nested field)."""
+    import hashlib
+    import hmac as _hmac
+
+    key_file = home / "wal" / ".leader_key"
+    if not key_file.is_file() or not (man.get("hmac_sha256") or current.get("hmac_sha256")):
+        return
+    from of.wal import LeaderKey
+
+    key = key_file.read_text(encoding="utf-8").strip().encode("utf-8")
+    sig = _hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
+    man["hmac_sha256"] = sig
+    current["hmac_sha256"] = sig
+
+
 def publish_committed(home: Path, rel: str, text: str) -> None:
     """Fixture write the next mutator keeps: live + CURRENT generation +
     MANIFEST (W1 quarantines unlisted live snapshot files and refuses a
@@ -91,6 +109,7 @@ def publish_committed(home: Path, rel: str, text: str) -> None:
     man_path = gen / "MANIFEST.json"
     man = json.loads(man_path.read_text(encoding="utf-8"))
     man.setdefault("files", {})[rel] = digest
+    _resign_manifest(home, man, current)
     man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
     current.setdefault("files", {})[rel] = digest
     current["manifest_sha256"] = hashlib.sha256(man_path.read_bytes()).hexdigest()

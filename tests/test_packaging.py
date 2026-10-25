@@ -233,8 +233,10 @@ class InstallScript(unittest.TestCase):
         size = sum(p.stat().st_size for p in files)
         # 1.5 MB until the post-0.9.2 batch (ScopeWrite allow-list + operator
         # config, --verify-req, plan-folder extraction, residual channel,
-        # headroom) grew the kernel ~73 KB. Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_560_000, size)
+        # headroom) grew the kernel ~73 KB. 0.9.4 added the run-1 security
+        # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
+        # the appendix complete-flag-surface section. Doc growth still needs cuts.
+        self.assertLessEqual(size, 1_565_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))

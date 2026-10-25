@@ -24,6 +24,11 @@ def skill_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+# Same flags as of.field.GIT_HARDEN (this module does not import of.field):
+# child-writable repository config and hooks never run in leader-side git.
+GIT_HARDEN = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null")
+
+
 ADAPTER_ORDER = [
     "claude",
     "codex",
@@ -636,7 +641,10 @@ class SensorTrust:
         "git rev-parse", "git ls-files", "git blame",
         "gh pr view", "gh pr list", "gh pr diff", "gh pr checks",
         "gh issue view", "gh issue list", "gh run view", "gh run list",
-        "gh api", "shasum", "sha256sum", "ls", "cat", "wc", "head",
+        # No bare `gh api`: a read-only sensor keeps the operator's gh credentials
+        # (HOME is forwarded) and `gh api -X POST|DELETE` would mutate GitHub state.
+        # The gh read subcommands above cover a sensor's needs.
+        "shasum", "sha256sum", "ls", "cat", "wc", "head",
         "tail", "rg", "grep", "find", "of",
     )
     CLAUDE_TOOLS = ("Read", "Grep", "Glob", "LS")
@@ -1799,16 +1807,23 @@ class AdapterResume:
         "generic": "OF_AGENT owns flags",
     }
     FAKE_IDS = frozenset({"-1", "0"})
+    # A session id goes into the spawn argv after --resume. Restrict it to an
+    # opaque token (never starting with '-'), so a child-written residual cannot
+    # smuggle a harness option flag (e.g. a permission-bypass flag) as the value.
+    ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
+
+    @staticmethod
+    def _clean_id(text: str) -> str:
+        text = str(text or "").strip()
+        if not text or text in AdapterResume.FAKE_IDS or not AdapterResume.ID_RE.match(text):
+            return ""
+        return text
 
     @staticmethod
     def session_id(residual: dict[str, Any] | None) -> str:
         if not isinstance(residual, dict):
             return ""
-        raw = residual.get(AdapterResume.KEY)
-        text = str(raw or "").strip()
-        if not text or text in AdapterResume.FAKE_IDS:
-            return ""
-        return text
+        return AdapterResume._clean_id(str(residual.get(AdapterResume.KEY) or ""))
 
     @staticmethod
     def load(path: Path) -> dict[str, Any] | None:
@@ -1865,8 +1880,8 @@ class AdapterResume:
         if not isinstance(event, dict):
             return ""
         for key in ("session_id", "sessionId", "chat_id"):
-            text = str(event.get(key) or "").strip()
-            if text and text not in AdapterResume.FAKE_IDS:
+            text = AdapterResume._clean_id(str(event.get(key) or ""))
+            if text:
                 return text
         for nest in ("session", "result"):
             inner = event.get(nest)
@@ -2062,45 +2077,61 @@ class CodexWorktree:
         path = worktree.expanduser().resolve()
         if not path.is_dir():
             CodexWorktree.refuse(child_id, f"path is missing or not a directory: {path}")
-        git = shutil.which("git")
-        if not git:
-            CodexWorktree.refuse(child_id, "git is not on PATH")
-        proc = subprocess.run(
-            [git, "-C", str(path), "rev-parse", "--show-toplevel", "--git-common-dir"],
-            capture_output=True,
-            text=True,
-        )
-        lines = (proc.stdout or "").splitlines()
-        if proc.returncode != 0 or len(lines) != 2:
-            detail = (proc.stderr or proc.stdout or "git rev-parse failed").strip()
-            CodexWorktree.refuse(child_id, f"{path} is not a usable Git worktree ({detail})")
-        top = Path(lines[0]).expanduser().resolve()
+        if field_home is None:
+            CodexWorktree.refuse(child_id, "canonical field home is unavailable")
+        top, common, gitdir = CodexWorktree._rev_parse(path, child_id)
         if top != path:
             CodexWorktree.refuse(
                 child_id,
                 f"recorded path is not the worktree root ({path}; Git root is {top})",
             )
-        common_raw = Path(lines[1]).expanduser()
-        common = (
-            common_raw.resolve()
-            if common_raw.is_absolute()
-            else (path / common_raw).resolve()
-        )
         if not common.is_dir():
             CodexWorktree.refuse(
                 child_id,
                 f"Git common directory is missing or not a directory: {common}",
             )
-        if field_home is None:
-            CodexWorktree.refuse(child_id, "canonical field home is unavailable")
-        return [
-            "-C",
-            str(path),
-            "--add-dir",
-            str(field_home.resolve()),
-            "--add-dir",
-            str(common),
-        ]
+        CodexWorktree._require_field_repo(path, common, field_home, child_id)
+        # Grant only what a commit writes. config and hooks stay out of reach:
+        # they execute in leader-side git (core.fsmonitor, hooks).
+        argv = ["-C", str(path), "--add-dir", str(field_home.resolve())]
+        for extra in (gitdir, common / "objects", common / "refs", common / "logs"):
+            if extra.is_dir():
+                argv += ["--add-dir", str(extra)]
+        return argv
+
+    @staticmethod
+    def _rev_parse(cwd: Path, child_id: str) -> tuple[Path, Path, Path]:
+        """(toplevel, common dir, absolute git dir) for cwd, all resolved."""
+        git = shutil.which("git")
+        if not git:
+            CodexWorktree.refuse(child_id, "git is not on PATH")
+        proc = subprocess.run(
+            [git, "-C", str(cwd), *GIT_HARDEN, "rev-parse", "--show-toplevel",
+             "--git-common-dir", "--absolute-git-dir"],
+            capture_output=True,
+            text=True,
+        )
+        lines = (proc.stdout or "").splitlines()
+        if proc.returncode != 0 or len(lines) != 3:
+            detail = (proc.stderr or proc.stdout or "git rev-parse failed").strip()
+            CodexWorktree.refuse(child_id, f"{cwd} is not a usable Git worktree ({detail})")
+        common = Path(lines[1]).expanduser()
+        common = common if common.is_absolute() else cwd / common
+        return (
+            Path(lines[0]).expanduser().resolve(),
+            common.resolve(),
+            Path(lines[2]).expanduser().resolve(),
+        )
+
+    @staticmethod
+    def _require_field_repo(path: Path, common: Path, field_home: Path, child_id: str) -> None:
+        """The recorded path is child-writable state: it must be a linked
+        worktree of the field's own repository, never another repo or the main tree."""
+        home_top, home_common, _ = CodexWorktree._rev_parse(field_home, child_id)
+        if common != home_common:
+            CodexWorktree.refuse(child_id, f"{path} is not a worktree of this field's repository")
+        if path == home_top:
+            CodexWorktree.refuse(child_id, f"{path} is the main worktree, not a child worktree")
 
 
 def build_spawn_argv(

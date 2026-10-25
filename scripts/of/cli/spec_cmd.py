@@ -15,6 +15,7 @@ from typing import Any
 
 from of.field import (
     FIELD_SPEC_MD,
+    GIT_HARDEN,
     ActiveField,
     AuditPressure,
     ClosedScratch,
@@ -1560,7 +1561,7 @@ class CloseProof:
     def _git(root: Path, *argv: str) -> str | None:
         try:
             proc = subprocess.run(
-                ["git", "-C", str(root), *argv],
+                ["git", "-C", str(root), *GIT_HARDEN, *argv],
                 capture_output=True,
                 text=True,
                 timeout=30,

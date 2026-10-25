@@ -26,6 +26,7 @@ from of.field import (
     of_dir,
     parse_utc,
     require_field_id,
+    require_physical_under,
     set_field_home,
     state_path,
     utc_now,
@@ -444,15 +445,21 @@ class Deliverable:
     DIR = "deliverables"
 
     @staticmethod
-    def _copy(src: Path, dest: Path) -> Path:
+    def _copy(src: Path, dest: Path, home: Path) -> Path:
         import hashlib
 
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        from of.field import verify_no_symlink_under, write_field_bytes
+
+        # dest is under the field home, whose subdirs a child can plant as symlinks.
+        # Refuse any symlinked component instead of following it out of the field,
+        # and do not carry the source's mode bits (no child-chosen executable copy).
+        verify_no_symlink_under(home, dest)
         try:
-            shutil.copy2(src, dest)
+            payload = src.read_bytes()
+            leaf = write_field_bytes(home, dest, payload)
             ok = (
-                hashlib.sha256(src.read_bytes()).hexdigest()
-                == hashlib.sha256(dest.read_bytes()).hexdigest()
+                hashlib.sha256(payload).hexdigest()
+                == hashlib.sha256(leaf.read_bytes()).hexdigest()
             )
         except OSError as exc:
             die(
@@ -461,7 +468,7 @@ class Deliverable:
             )
         if not ok:
             die(f"of close refused: deliverable copy of {src} did not verify")
-        return dest
+        return leaf
 
     @staticmethod
     def _result_refs(root: Path, home: Path, scratch: Path) -> list[tuple[str, Path]]:
@@ -500,20 +507,20 @@ class Deliverable:
         leader = scratch / "leader"
         final = leader / Deliverable.FINAL
         if final.is_file() and not final.is_symlink():
-            done.append(Deliverable._copy(final, home / Deliverable.FINAL))
+            done.append(Deliverable._copy(final, home / Deliverable.FINAL, home))
         if leader.is_dir() and not leader.is_symlink():
             for md in sorted(leader.glob("*.md")):
                 if md.name == Deliverable.FINAL or md.is_symlink():
                     continue
                 done.append(
-                    Deliverable._copy(md, home / Deliverable.DIR / "leader" / md.name)
+                    Deliverable._copy(md, home / Deliverable.DIR / "leader" / md.name, home)
                 )
         for child, src in Deliverable._result_refs(root, home, scratch):
             try:
                 rel = src.resolve().relative_to((scratch / child).resolve())
             except (OSError, ValueError):
                 rel = Path(src.name)
-            done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel))
+            done.append(Deliverable._copy(src, home / Deliverable.DIR / child / rel, home))
         return done
 
     @staticmethod
@@ -615,23 +622,28 @@ class EvidenceStore:
         return f"{EvidenceStore.DIR}/{sha}{suffix}"
 
     @staticmethod
-    def _copy_ok(src: Path, dest: Path, sha: str) -> bool:
-        """Copy and re-hash. False when the copy cannot be made or does not verify."""
+    def _copy_ok(src: Path, dest: Path, sha: str, home: Path) -> bool:
+        """Copy and re-hash inside ``home``, following no symlinked component. False
+        when the copy cannot be made, escapes the home, or does not verify."""
+        from of.field import write_field_bytes
+
         try:
             if dest.is_file() and not dest.is_symlink():
                 if EvidenceStore.digest(dest.read_bytes()) == sha:
                     return True
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest)
-            return EvidenceStore.digest(dest.read_bytes()) == sha
-        except OSError:
+            payload = src.read_bytes()
+            if EvidenceStore.digest(payload) != sha:
+                return False
+            leaf = write_field_bytes(home, dest, payload)
+            return EvidenceStore.digest(leaf.read_bytes()) == sha
+        except (OSError, SystemExit):
             return False
 
     @staticmethod
     def archive(home: Path, src: Path, sha: str) -> str:
         """Copy one bound file into the store before the stamp. Dies if it cannot."""
         rel = EvidenceStore.rel_for(sha, src)
-        if not EvidenceStore._copy_ok(src, home / rel, sha):
+        if not EvidenceStore._copy_ok(src, home / rel, sha, home):
             die(
                 f"of close refused: evidence {src} would be lost "
                 "(copy failed or bytes changed); re-run of close"
@@ -731,13 +743,30 @@ class EvidenceStore:
         kept: set[Path] = set()
         if not doc:
             return kept
+        from of.field import safe_relative_path
+
         for row in EvidenceStore.entries(doc):
             sha = str(row.get("sha256") or "")
-            dest = home / str(row["evidence"])
-            src = root / str(row.get("path") or "")
-            if not sha or not src.is_file() or src.is_symlink():
+            rel = str(row.get("path") or "")
+            ev = str(row.get("evidence") or "")
+            # CLOSE.json is child-writable: accept only the canonical shape the
+            # leader itself stamps (deliverables/evidence/<sha>), and contain both
+            # ends under the field so an absolute/.. value cannot escape.
+            if not re.fullmatch(r"[0-9a-f]{64}", sha) or not rel:
                 continue
-            if not EvidenceStore._copy_ok(src, dest, sha):
+            try:
+                src = safe_relative_path(root, rel, "evidence path", reject_symlinks=True)
+            except SystemExit:
+                continue
+            if ev != EvidenceStore.rel_for(sha, src):
+                continue
+            try:
+                dest = safe_relative_path(home, ev, "evidence copy", reject_symlinks=True)
+            except SystemExit:
+                continue
+            if not src.is_file() or src.is_symlink():
+                continue
+            if not EvidenceStore._copy_ok(src, dest, sha, home):
                 kept.add(src.resolve())
         return kept
 
@@ -869,6 +898,9 @@ class ClosedScratch:
     def wipe(root: Path, home: Path | None = None) -> int:
         home = home or field_home(root)
         kept = EvidenceStore.preserve(root, home)
+        # A child can plant a symlink at home/work (not WAL-walked) so the wipe
+        # deletes an outside dir's children. Refuse a symlinked ancestor.
+        require_physical_under(home, home / "work" / "scratch")
         n = ClosedScratch._wipe_children(home / "work" / "scratch", kept)
         waves = home / "waves"
         if waves.is_dir() and not waves.is_symlink():
@@ -876,6 +908,7 @@ class ClosedScratch:
                 if not wdir.is_dir() or wdir.is_symlink():
                     continue
                 for sub in ClosedScratch.EPHEMERAL_WAVE_SUBS:
+                    require_physical_under(home, wdir / sub)
                     n += ClosedScratch._wipe_children(wdir / sub, kept)
         return n
 
@@ -1553,7 +1586,12 @@ class ClosedFieldArchive:
 
     @staticmethod
     def dest(root: Path, field_id: str) -> Path:
-        dest = ClosedFieldArchive.dir(root) / field_id
+        # field_id may come from child-writable ORDER.json (crown losers): a
+        # traversal id would escape the archive dir, so require the canonical form.
+        base = ClosedFieldArchive.dir(root)
+        dest = base / require_field_id(field_id)
+        if base.resolve() not in dest.resolve().parents:
+            die(f"of: archive destination {dest} escapes {base}")
         if not dest.exists():
             return dest
         stamp = utc_now().replace(":", "").replace("-", "")
@@ -1679,6 +1717,10 @@ class ClosedFieldArchive:
         if dry_run:
             print(f"dry-run archive {rel} -> {dest_rel}")
             return dest_rel
+        # .orderfield/archive is child-writable: a planted symlink there would
+        # relocate the moved home (and its wal/.leader_key) outside the field.
+        require_physical_under(of_dir(root), dest.parent)
+        require_physical_under(of_dir(root), home)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(home), str(dest))
         ClosedFieldArchive._release_active(root, fid)
@@ -1754,7 +1796,9 @@ def drop_field_home(
     if dry_run:
         print(f"dry-run drop {rel}")
         return rel
-    _safe_unlink(home.resolve())
+    # resolve()-based containment above is defeated by a symlinked fields/; refuse
+    # a symlinked ancestor and unlink the physical path (not the symlink target).
+    _safe_unlink(require_physical_under(of_dir(root), home))
     if ActiveField.read(root) == fid:
         try:
             ActiveField.path(root).unlink()

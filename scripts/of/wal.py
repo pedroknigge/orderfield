@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import shutil
 import sys
@@ -55,6 +56,15 @@ OF_LEADER_TOKEN_ENV = "OF_LEADER_TOKEN"
 OF_HANDOFF_CHILD_ENV = "OF_HANDOFF_CHILD"
 WAL_DIRNAME = "wal"
 WAL_ORPHANS = "orphans"
+# A generation id read from a child-writable CURRENT/MANIFEST is joined onto
+# wal/ as a path component, so it must be a single safe filename: no separators,
+# no "..", no leading dot. Authenticity of the named generation is the leader
+# HMAC's job (W9); this check only stops the id itself escaping wal/.
+GEN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
+
+
+def valid_generation_id(gid: Any) -> bool:
+    return isinstance(gid, str) and ".." not in gid and bool(GEN_ID_RE.match(gid))
 WAL_MATERIALIZED = "MATERIALIZED.json"
 WAL_LEADER_KEY = ".leader_key"
 # sha256 of the CLOSE.json a pre-chain (v0.8.34) head held when adopted.
@@ -526,12 +536,19 @@ class LeaderKey:
 
     @staticmethod
     def _manifest_chain_bytes(man: dict[str, Any]) -> bytes:
+        files = man.get("files") if isinstance(man.get("files"), dict) else {}
         body = {
+            # v2 binds the per-file digest map and deletions, so a generation's
+            # contents (packets, ORDER, SPEC, CLOSE.json) cannot be rewritten while
+            # the HMAC still verifies. Existing heads re-sign on the next write.
+            "v": 2,
             "generation": str(man.get("generation") or ""),
             "seq": _seq(man) or 1,
             "parent": man.get("parent"),
             "parent_manifest_sha256": man.get("parent_manifest_sha256"),
             "order_sha256": man.get("order_sha256"),
+            "files": {str(k): str(v) for k, v in sorted(files.items())},
+            "deletions": sorted(str(d) for d in (man.get("deletions") or [])),
         }
         return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -548,7 +565,15 @@ class LeaderKey:
         strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
         man_sig = str(man.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
+        # Both unsigned. A chained (seq-bearing) generation is from the signing era:
+        # every writer signs it, so a missing signature with a key present is a
+        # stripped signature -> fail closed in any mode. A pre-chain legacy
+        # generation (no seq, e.g. adopted v0.8.34) has no signature by design and
+        # stays lenient unless strict. A present signature is always checked over the
+        # v2 body that binds the files map, so content cannot be rewritten in place.
         if not man_sig and not cur_sig:
+            if _seq(man) is not None:
+                return False
             return not strict
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
         if man_sig and not hmac.compare_digest(man_sig, expected):
@@ -568,6 +593,10 @@ class LeaderKey:
         c_sig = str(cman.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
+            # A chained candidate must carry a signature; only a pre-chain legacy
+            # one may be unsigned (and not in strict mode / after a signed head).
+            if _seq(cman) is not None:
+                return False
             return not (strict or bool(cur_sig))
         if (
             not strict
@@ -612,7 +641,12 @@ def _load_wal_current(root: Path | None) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     data = _read_json_object(path)
-    return data if isinstance(data, dict) and data.get("generation") else None
+    # A child can write CURRENT; the generation becomes a path component (home / gid).
+    # Require the minted format so an absolute or "../" value is treated as no CURRENT
+    # (callers then refuse wal-broken) rather than resolving outside wal/.
+    if not isinstance(data, dict) or not valid_generation_id(data.get("generation")):
+        return None
+    return data
 
 
 def committed_bytes(root: Path, rel: str) -> bytes | None:
@@ -768,6 +802,11 @@ def _materialize_generation(
 def _quarantine(root: Path, src: Path, label: str) -> Path | None:
     """Move src under wal/orphans/ (never delete evidence). Returns the dest."""
     orphans = wal_home(root) / WAL_ORPHANS
+    # Defense in depth: only ever relocate a direct child of wal/. A caller that
+    # built src from a child-controlled id must not move a dir from outside wal/.
+    if src.is_symlink() or src.parent.resolve() != wal_home(root).resolve():
+        warn_oserror("wal_quarantine", OSError(f"refusing to quarantine {src} outside wal/"))
+        return None
     dest = orphans / f"{label}-{src.name}"
     if dest.exists():
         dest = orphans / f"{label}-{src.name}-{uuid.uuid4().hex[:8]}"
@@ -1160,17 +1199,23 @@ def _adopt_misplaced_wal(root: Path) -> None:
         for home in homes:
             cur = _read_json_object(home / WAL_DIRNAME / "CURRENT.json") or {}
             gid = str(cur.get("generation") or "")
+            # gid is child-writable and becomes a path component on both sides of
+            # the move; an absolute or "../" value would move a dir outside wal/.
+            if not valid_generation_id(gid):
+                continue
             src = legacy_wal / gid
             dest = home / WAL_DIRNAME / gid
-            if gid and src.is_dir() and not src.is_symlink() and not dest.exists():
+            if src.is_dir() and not src.is_symlink() and not dest.exists():
                 shutil.move(str(src), str(dest))
         legacy_current = _read_json_object(legacy_wal / "CURRENT.json") or {}
         lgid = str(legacy_current.get("generation") or "")
         owner = ""
-        if lgid:
+        if valid_generation_id(lgid):
             order = _read_json_object(legacy_wal / lgid / "ORDER.json") or {}
             owner = str(order.get("id") or "")
-        target = fields_dir(root) / owner if owner else None
+        from of.field import FIELD_ID_RE
+
+        target = fields_dir(root) / owner if owner and FIELD_ID_RE.match(owner) else None
         if target is None or not (target / "ORDER.json").is_file():
             return
         wal = target / WAL_DIRNAME
@@ -1270,6 +1315,9 @@ def _recover_without_current(root: Path) -> str | None:
             return child.name
     if rev > 1:
         what = "wal/" if not wal.is_dir() else "wal/CURRENT.json"
+        # A genuinely pre-WAL field (no wal/ ever) is adopted by the leader's own
+        # `of migrate`; when wal/CURRENT is merely missing, _refuse_migrate_drift
+        # has already refused any ORDER/SPEC/packet tamper before we reach here.
         _refuse_broken_wal(
             root, f"ORDER rev {rev} but {what} is missing", migrate=not wal.is_dir()
         )

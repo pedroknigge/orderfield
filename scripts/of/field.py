@@ -583,7 +583,11 @@ class RootStub:
             if not order_file.is_file():
                 continue
             data = _read_json_object(order_file) or {}
-            fid = str(data.get("id") or child.name)
+            # ORDER.json is child-writable and its id flows into archive/drop
+            # paths (crown, gc). Trust it only when canonical; else use the
+            # leader-created directory name, which is the real field id.
+            raw = str(data.get("id") or "")
+            fid = raw if FIELD_ID_RE.match(raw) else child.name
             out.append((fid, child, data))
         return out
 
@@ -1450,7 +1454,14 @@ def die(msg: str, code: int = 1, *, kind: str | None = None) -> None:
     raise SystemExit(code)
 
 
-_MAX_SPAWN_ANCESTORS = 32
+# Walk far enough that a spawned harness pid stays in the ancestor chain even
+# behind a setsid + deeply nested descendant (the old cap of 32 let that chain
+# outrun the registry match and fail open to "leader").
+_MAX_SPAWN_ANCESTORS = 4096
+# Cap exhausted without reaching pid 1: ancestry is unproven, so treat the caller
+# as spawned (fail closed) rather than as the leader. Not a CHILD_ID_RE id, so the
+# leader-only guards still refuse.
+_ANCESTRY_UNBOUNDED = "<ancestry-unbounded>"
 _DARWIN_CTL_KERN = 1
 _DARWIN_KERN_PROCARGS2 = 49
 _POPEN_ORIG = subprocess.Popen
@@ -1903,7 +1914,7 @@ def spawned_child_id() -> str | None:
         if inherited:
             return inherited
         pid = _proc_ppid(pid)
-    return None
+    return _ANCESTRY_UNBOUNDED
 
 
 def persist_learning_source() -> str:
@@ -2020,6 +2031,17 @@ def json_payload_bytes(data: Any) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def _field_base_for(path: Path) -> Path | None:
+    """The nearest enclosing ``.orderfield`` directory of ``path`` (the field home),
+    or ``None`` when ``path`` is not under one. Uses the deepest ``.orderfield``
+    component so a nested field binds to its own home."""
+    parts = path.parts
+    for i in range(len(parts) - 1, -1, -1):
+        if parts[i] == ".orderfield":
+            return Path(*parts[: i + 1])
+    return None
+
+
 def dump_bytes(
     path: Path,
     payload: bytes,
@@ -2037,7 +2059,13 @@ def dump_bytes(
     from of.wal import durable_fsync
 
     sync = durable_fsync if durable else os.fsync
-    path.parent.mkdir(parents=True, exist_ok=True)
+    base = _field_base_for(path)
+    if base is not None:
+        # The target is under a child-writable .orderfield/; refuse a planted
+        # symlink at the leaf or any parent so the write cannot land outside it.
+        verify_no_symlink_under(base, path)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     tmp = Path(tmp_name)
     try:
@@ -2061,6 +2089,94 @@ def dump_bytes(
             tmp.unlink()
         except FileNotFoundError:
             pass
+
+
+def verify_no_symlink_under(base: Path, target: Path) -> Path:
+    """Refuse any symlink between ``base`` and ``target`` (leaf included), creating
+    missing intermediate directories as real dirs. ``target`` must be lexically under
+    ``base``. Returns the verified leaf. A child can write ``.orderfield/`` and plant a
+    symlink there; this keeps a leader write from following it outside the field.
+
+    ``base`` is the caller's already-containment-checked path and is used as given
+    (not re-resolved), so ``target`` stays lexically under it on symlinked prefixes
+    such as macOS ``/var`` -> ``/private/var``."""
+    if base.is_symlink():
+        die(f"unsafe field write: base {base} is a symlink")
+    base.mkdir(parents=True, exist_ok=True)
+    if base.is_symlink() or not base.is_dir():
+        die(f"unsafe field write: base {base} is not a real directory")
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe field write: {target} is not under {base}")
+    if not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        die(f"unsafe field write: {target!r} is not a canonical path under {base}")
+    cur = base
+    for part in rel.parts[:-1]:
+        cur = cur / part
+        if cur.is_symlink():
+            die(f"unsafe field write: symlink component {cur}")
+        try:
+            cur.mkdir(exist_ok=True)
+        except FileExistsError:
+            pass
+        if cur.is_symlink() or not cur.is_dir():
+            die(f"unsafe field write: component {cur} is not a real directory")
+    leaf = cur / rel.parts[-1]
+    if leaf.is_symlink():
+        die(f"unsafe field write: symlink leaf {leaf}")
+    return leaf
+
+
+def require_physical_under(base: Path, target: Path) -> Path:
+    """Refuse unless every component from ``base`` to ``target`` is a real (non-symlink)
+    path, creating nothing. For leader rmtree/move/unlink whose path contains a
+    child-writable component (home/work, .orderfield/fields, .orderfield/archive): a
+    planted symlink there must not redirect the operation outside the field."""
+    if base.is_symlink():
+        die(f"unsafe field path: base {base} is a symlink")
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe field path: {target} is not under {base}")
+    if any(part in ("", ".", "..") for part in rel.parts):
+        die(f"unsafe field path: {target!r} is not canonical under {base}")
+    cur = base
+    for part in rel.parts:
+        cur = cur / part
+        if cur.is_symlink():
+            die(f"unsafe field path: symlink component {cur}")
+    return cur
+
+
+def write_field_bytes(base: Path, target: Path, payload: bytes) -> Path:
+    """Replace ``target`` (under ``base``) with ``payload`` without following a
+    symlinked leaf or any planted parent. Atomic temp+rename inside the verified dir."""
+    leaf = verify_no_symlink_under(base, target)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{leaf.name}.", suffix=".tmp", dir=str(leaf.parent))
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+        os.replace(str(tmp), str(leaf))
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+    return leaf
+
+
+def append_field_text(base: Path, target: Path, text: str) -> None:
+    """Append one line to ``target`` (under ``base``) opening the leaf no-follow, so a
+    child-planted symlink at the leaf or a parent cannot redirect the append."""
+    leaf = verify_no_symlink_under(base, target)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(leaf), flags, 0o644)
+    try:
+        os.write(fd, text.encode("utf-8"))
+    finally:
+        os.close(fd)
 
 
 def _read_json_object(path: Path) -> dict[str, Any] | None:
@@ -2833,8 +2949,16 @@ def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], lis
         out["packet_hash"] = packet_digest(out)
         notes.append("computed packet_hash")
     elif out.get("packet_hash") != packet_digest(out):
-        out["packet_hash"] = packet_digest(out)
-        notes.append("recomputed packet_hash after protocol-key rewrite")
+        # Only re-hash when a migration step (workspace normalize) actually rewrote
+        # the packet AND the stored hash matched the pre-migration bytes. A plain
+        # mismatch is child tamper, not a migration artifact: leave it so
+        # validate_packet flags it INVALID instead of signing the child's edit.
+        if ws_notes and packet.get("packet_hash") == packet_digest(packet):
+            out["packet_hash"] = packet_digest(out)
+            notes.append("recomputed packet_hash after protocol-key rewrite")
+        else:
+            notes.append("refused: packet_hash mismatch is not a migration (RESTORE)")
+            return dict(packet), notes
     return out, notes
 
 
@@ -3062,10 +3186,15 @@ def require_git() -> str:
     return bin_
 
 
+# Repository config and hooks are child-writable (shared .git); leader-side git
+# must never run them. Applied to every kernel git invocation.
+GIT_HARDEN = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null")
+
+
 def run_git(root: Path, *git_args: str) -> subprocess.CompletedProcess[str]:
     bin_ = require_git()
     return subprocess.run(
-        [bin_, "-C", str(root), *git_args],
+        [bin_, "-C", str(root), *GIT_HARDEN, *git_args],
         capture_output=True,
         text=True,
     )
@@ -3497,7 +3626,7 @@ def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str]
 
     try:
         res = subprocess.run(
-            ["git", "ls-files", "-z", "-c", "-o", "--exclude-standard"],
+            ["git", *GIT_HARDEN, "ls-files", "-z", "-c", "-o", "--exclude-standard"],
             cwd=path, capture_output=True, text=False, check=True
         )
         files = res.stdout.split(b'\0')

@@ -792,6 +792,37 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("doctor        ok")
 
 
+def _refuse_unmigrated_drift(root: Path, actions: list[dict]) -> None:
+    """migrate plans from live bytes and signs the generation it commits. A file
+    that is LIVE!=CURRENT but that migrate is NOT rewriting would be inherited and
+    signed as-is -- a child could tamper a hash-consistent packet (or ORDER/SPEC)
+    that migrate leaves unchanged. Refuse that drift; a migrated file is expected
+    to differ and is exempt. Skipped for a pre-WAL field (no CURRENT to compare)."""
+    from of.field import field_home, refused_drift
+    from of.wal import wal_current_path
+
+    if not wal_current_path(root).is_file():
+        return
+    home = field_home(root)
+
+    def _rel(action: dict) -> str | None:
+        path = action.get("path")
+        if not isinstance(path, Path):
+            return None
+        try:
+            return path.relative_to(home).as_posix()
+        except ValueError:
+            return None
+
+    planned = {rel for rel in (_rel(a) for a in actions) if rel}
+    unexpected = [rel for rel in refused_drift(root) if rel not in planned]
+    if unexpected:
+        die(
+            "LIVE!=CURRENT " + ", ".join(sorted(unexpected)[:5]) + "; of migrate refuses "
+            "snapshot drift it is not migrating. RESTORE: of patch --from-current"
+        )
+
+
 def cmd_migrate(args: argparse.Namespace) -> None:
     """Versioned artifact rewrite. Does not invent telemetry or rename SLAVE.md."""
     if getattr(args, "list", False):
@@ -801,6 +832,7 @@ def cmd_migrate(args: argparse.Namespace) -> None:
     if not order_path(root).exists():
         die("no ORDER. of init --mission '...'")
     actions = plan_field_migrations(root)
+    _refuse_unmigrated_drift(root, actions)
     print_migration_plan(actions)
     if getattr(args, "dry_run", False):
         print("dry-run (no writes)")
@@ -813,8 +845,37 @@ def cmd_migrate(args: argparse.Namespace) -> None:
     print(f"protocol     workspace.{PROTOCOL_WRITABLE_KEY}  {PROTOCOL_SLAVE_MD}")
 
 
+def _verified_worktree_dest(root: Path, child_id: str, recorded: dict) -> Path:
+    """Resolve a recorded worktree path, bound to leader-created state.
+
+    worktrees.json is child-writable, so land/remove must not act on a path a
+    child rewrote to point at a sibling worktree or the project root. Require the
+    recorded path to be the one `of worktree add` created (default_worktree_path,
+    unless add stored an explicit custom path), to be a git-registered linked
+    worktree of this repository, and never the project root or main worktree."""
+    dest = Path(recorded["path"]).expanduser().resolve()
+    expected = default_worktree_path(root, child_id).resolve()
+    if not recorded.get("custom_path") and dest != expected:
+        die(f"worktree record for {child_id} was edited (expected {expected}); refusing")
+    if dest == root.resolve():
+        die(f"worktree record for {child_id} points at the project root; refusing")
+    listed = run_git(root, "worktree", "list", "--porcelain").stdout or ""
+    roots = {
+        Path(line[len("worktree "):]).resolve()
+        for line in listed.splitlines()
+        if line.startswith("worktree ")
+    }
+    if dest not in roots:
+        die(f"{dest} is not a linked worktree of this repository; refusing")
+    main = run_git(root, "rev-parse", "--show-toplevel").stdout.strip()
+    if main and dest == Path(main).resolve():
+        die(f"worktree record for {child_id} is the main worktree; refusing")
+    return dest
+
+
 def cmd_worktree(args: argparse.Namespace) -> None:
     """Opt-in git worktree helper. Does not spawn, kill, or supervise children."""
+    refuse_child_forge("of worktree")
     action = getattr(args, "worktree_cmd", None)
     if action == "add":
         cmd_worktree_add(args)
@@ -861,6 +922,7 @@ def cmd_worktree_add(args: argparse.Namespace) -> None:
         "path": str(dest),
         "added_at": utc_now(),
         "head": head,
+        "custom_path": bool(getattr(args, "path", None)),
     }
     save_worktrees(root, records)
     print(f"worktree     {dest}")
@@ -882,7 +944,7 @@ def cmd_worktree_land(args: argparse.Namespace) -> None:
     recorded = records["trees"].get(child_id)
     if not isinstance(recorded, dict) or not recorded.get("path"):
         die(f"no recorded worktree for child {child_id}; of worktree add first")
-    dest = Path(recorded["path"])
+    dest = _verified_worktree_dest(root, child_id, recorded)
     if not dest.is_dir():
         die(f"worktree path does not exist {dest}")
 
@@ -946,12 +1008,14 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
     child_id = require_child_id(args.child_id)
     records = load_worktrees(root)
     recorded = records["trees"].get(child_id)
-    dest = (
-        Path(recorded["path"])
-        if isinstance(recorded, dict) and recorded.get("path")
-        else default_worktree_path(root, child_id)
-    )
+    if isinstance(recorded, dict) and recorded.get("path"):
+        dest = _verified_worktree_dest(root, child_id, recorded)
+    else:
+        dest = default_worktree_path(root, child_id)
     force = bool(getattr(args, "force", False))
+    # The recorded path is now bound to the leader-created worktree
+    # (_verified_worktree_dest), so `landed` can only affect this child's own
+    # worktree; honoring it keeps the normal land->remove flow working.
     if (
         not force
         and dest.is_dir()
@@ -959,7 +1023,7 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
         and not recorded.get("landed")
     ):
         status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
-        base = str(recorded.get("head") or "")
+        base = str(recorded.get("head") or "") if isinstance(recorded, dict) else ""
         wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
         has_commits = False
         if base and base != "-" and wt_head:
@@ -1021,7 +1085,7 @@ class PulseProgress:
         rel = packet.get("scratch_dir")
         if not rel:
             return None
-        scratch = physical_artifact_path(root, str(rel), "packet scratch_dir")
+        scratch = physical_artifact_path(root, str(rel), "packet scratch_dir", reject_symlinks=True)
         return scratch / PulseProgress.NAME
 
     @staticmethod
@@ -1055,9 +1119,12 @@ class PulseProgress:
             last_body = " ".join(existing[-1].split()[1:])
             if last_body == body:
                 return
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
+        from of.field import append_field_text, physical_artifact_path
+
+        scratch = physical_artifact_path(
+            root, str(packet.get("scratch_dir")), "packet scratch_dir", reject_symlinks=True
+        )
+        append_field_text(scratch, target, line + "\n")
 
     @staticmethod
     def lines(root: Path, packet: dict[str, Any]) -> list[str]:

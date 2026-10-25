@@ -10,11 +10,12 @@ import re
 import subprocess
 import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from of.field import (
     FIELD_SLAVE_MD,
+    GIT_HARDEN,
     PHASES,
     PROTOCOL_WRITABLE_KEY,
     ROLE_CONTRACTS,
@@ -37,6 +38,7 @@ from of.field import (
     validate_public_schema,
     wal_staged_items,
     wave_dir,
+    write_field_bytes,
 )
 
 from of.spec import (
@@ -1984,6 +1986,19 @@ class OwnedWrite:
         return written
 
 
+def _unsafe_revert_rel(rel: str) -> bool:
+    """True when a scope-doc path must not be reverted: absolute, contains '..', a
+    backslash, or under .orderfield/. Keeps root / rel inside the work tree. A
+    trailing-slash directory is left to the existing not-a-file handling."""
+    p = PurePosixPath(rel)
+    return (
+        rel.startswith(".orderfield/")
+        or "\\" in rel
+        or p.is_absolute()
+        or ".." in p.parts
+    )
+
+
 class ScopeWrite:
     """A child's world is its packet: product writes outside it are INVALID.
 
@@ -2084,7 +2099,7 @@ class ScopeWrite:
         try:
             return subprocess.run(
                 # Read-only: parallel spawns must not race on index.lock.
-                ["git", "--no-optional-locks", *args],
+                ["git", "--no-optional-locks", *GIT_HARDEN, *args],
                 cwd=str(root),
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -2749,6 +2764,12 @@ class ScopeWrite:
                 why = "git tree unreadable" if rel in ScopeWrite.UNJUDGED else ".git/ excluded"
                 plan.append((rel, "skip", why))
                 continue
+            # The scope doc is child-writable; an absolute or ".." entry would make
+            # root / rel unlink/checkout a file outside the work tree. Revert only
+            # canonical project-relative paths, never under .orderfield/.
+            if _unsafe_revert_rel(rel):
+                plan.append((rel, "skip", "not a project-relative path"))
+                continue
             target = root / rel
             if os.path.lexists(target) and not (target.is_symlink() or target.is_file()):
                 plan.append((rel, "skip", ScopeWrite.NOT_A_FILE))
@@ -2804,7 +2825,7 @@ class ScopeWrite:
         diff = ScopeWrite._git(root, "diff", b_head, "--", *spec) or b""
         try:
             proc = subprocess.run(
-                ["git", "checkout", b_head, "--", *spec],
+                ["git", *GIT_HARDEN, "checkout", b_head, "--", *spec],
                 cwd=str(root),
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -2864,7 +2885,6 @@ class ScopeWrite:
         wave = int(packet.get("wave") or 1)
         child = str(packet.get("child_id") or "child")
         patch_path = wave_dir(wave, root) / "scope" / f"{child}.quarantine.patch"
-        patch_path.parent.mkdir(parents=True, exist_ok=True)
         b_head = str(before.get("head") or "")
         patch_chunks: list[bytes] = []
         reverted: list[str] = []
@@ -2878,15 +2898,16 @@ class ScopeWrite:
         if not reverted:
             return [], None, skips
         patch_bytes = b"".join(patch_chunks) or b"# quarantine empty diff\n"
-        patch_path.write_bytes(patch_bytes)
+        home = field_home(root)
+        write_field_bytes(home, patch_path, patch_bytes)
         scratch_rel = str(packet.get("scratch_dir") or f".orderfield/work/scratch/{child}")
         try:
-            scratch_patch = (
-                root / physical_field_rel(root, scratch_rel) / "quarantine.patch"
+            scratch_dir = safe_relative_path(
+                root, physical_field_rel(root, scratch_rel), "packet scratch_dir",
+                reject_symlinks=True,
             )
-            scratch_patch.parent.mkdir(parents=True, exist_ok=True)
-            scratch_patch.write_bytes(patch_bytes)
-        except OSError:
+            write_field_bytes(scratch_dir, scratch_dir / "quarantine.patch", patch_bytes)
+        except (OSError, SystemExit):
             pass
         now_snap = ScopeWrite.snapshot(root)
         if isinstance(cache, dict):
@@ -3408,8 +3429,10 @@ def ensure_field_slave_md(root: Path) -> Path | None:
     except OSError:
         current = None
     if current != body:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_text(body, encoding="utf-8")
+        # SLAVE.md is shared at the top-level .orderfield/ (not the per-field home)
+        # and is child-writable; a child could plant it as a symlink. Write
+        # no-follow, based at of_dir, so the leader cannot be redirected outside.
+        write_field_bytes(of_dir(root), dst, body.encode("utf-8"))
     return dst
 
 
