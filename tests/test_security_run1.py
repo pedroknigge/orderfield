@@ -130,6 +130,31 @@ class WalHmacBindsFiles(unittest.TestCase):
         self.assertNotEqual(sig1, sig2)
 
 
+class SessionIdArgv(unittest.TestCase):
+    def test_nv1_session_id_rejects_flag_like_values(self) -> None:
+        for bad in ("--dangerously-skip-permissions", "--force", "-x", "--allowedTools=Bash"):
+            self.assertEqual(
+                of_adapters.AdapterResume.session_id({"session_id": bad}), "", bad
+            )
+            self.assertEqual(
+                of_adapters.AdapterResume.argv_flags("claude", {"session_id": bad}), []
+            )
+
+    def test_nv1_session_id_accepts_opaque_token(self) -> None:
+        sid = "abc123_DEF-45:67.ef"
+        self.assertEqual(of_adapters.AdapterResume.session_id({"session_id": sid}), sid)
+        flags = of_adapters.AdapterResume.argv_flags("claude", {"session_id": sid})
+        self.assertEqual(flags, ["--resume", sid])
+        self.assertFalse(any(f.startswith("-") and f != "--resume" for f in flags[1:]))
+
+
+class SensorAllowlist(unittest.TestCase):
+    def test_nv2_gh_api_is_not_sensor_allowlisted(self) -> None:
+        self.assertNotIn("gh api", of_adapters.SensorTrust.COMMANDS)
+        # read-only gh subcommands a sensor actually needs remain.
+        self.assertIn("gh pr view", of_adapters.SensorTrust.COMMANDS)
+
+
 class AncestorCap(unittest.TestCase):
     def test_f16_cap_is_large_and_sentinel_is_not_a_child_id(self) -> None:
         self.assertGreaterEqual(field._MAX_SPAWN_ANCESTORS, 4096)

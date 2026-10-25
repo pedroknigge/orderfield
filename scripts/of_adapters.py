@@ -641,7 +641,10 @@ class SensorTrust:
         "git rev-parse", "git ls-files", "git blame",
         "gh pr view", "gh pr list", "gh pr diff", "gh pr checks",
         "gh issue view", "gh issue list", "gh run view", "gh run list",
-        "gh api", "shasum", "sha256sum", "ls", "cat", "wc", "head",
+        # No bare `gh api`: a read-only sensor keeps the operator's gh credentials
+        # (HOME is forwarded) and `gh api -X POST|DELETE` would mutate GitHub state.
+        # The gh read subcommands above cover a sensor's needs.
+        "shasum", "sha256sum", "ls", "cat", "wc", "head",
         "tail", "rg", "grep", "find", "of",
     )
     CLAUDE_TOOLS = ("Read", "Grep", "Glob", "LS")
@@ -1804,16 +1807,23 @@ class AdapterResume:
         "generic": "OF_AGENT owns flags",
     }
     FAKE_IDS = frozenset({"-1", "0"})
+    # A session id goes into the spawn argv after --resume. Restrict it to an
+    # opaque token (never starting with '-'), so a child-written residual cannot
+    # smuggle a harness option flag (e.g. a permission-bypass flag) as the value.
+    ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
+
+    @staticmethod
+    def _clean_id(text: str) -> str:
+        text = str(text or "").strip()
+        if not text or text in AdapterResume.FAKE_IDS or not AdapterResume.ID_RE.match(text):
+            return ""
+        return text
 
     @staticmethod
     def session_id(residual: dict[str, Any] | None) -> str:
         if not isinstance(residual, dict):
             return ""
-        raw = residual.get(AdapterResume.KEY)
-        text = str(raw or "").strip()
-        if not text or text in AdapterResume.FAKE_IDS:
-            return ""
-        return text
+        return AdapterResume._clean_id(str(residual.get(AdapterResume.KEY) or ""))
 
     @staticmethod
     def load(path: Path) -> dict[str, Any] | None:
@@ -1870,8 +1880,8 @@ class AdapterResume:
         if not isinstance(event, dict):
             return ""
         for key in ("session_id", "sessionId", "chat_id"):
-            text = str(event.get(key) or "").strip()
-            if text and text not in AdapterResume.FAKE_IDS:
+            text = AdapterResume._clean_id(str(event.get(key) or ""))
+            if text:
                 return text
         for nest in ("session", "result"):
             inner = event.get(nest)
