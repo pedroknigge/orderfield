@@ -66,6 +66,45 @@ def resolve_chat_capture(args: argparse.Namespace) -> str | None:
     return str(text)
 
 
+def _literal_newline_escapes(text: str) -> int:
+    """`\\n` used as a line break, not a path prefix (`\\new`, `\\name`)."""
+    needle = "\\" + "n"
+    count = 0
+    start = 0
+    while True:
+        found = text.find(needle, start)
+        if found < 0:
+            return count
+        nxt = text[found + 2:found + 3]
+        if nxt.isalpha() or nxt == "_":
+            start = found + 2
+            continue
+        count += 1
+        start = found + 2
+
+
+def warn_if_literal_newline_escapes(text: str, *, flag: str) -> bool:
+    """Advisory when a brief arrived as one line of literal `\\n` (#370).
+
+    The requirement extractor is line-based. A shell string keeps the two
+    characters backslash and n, so a numbered list extracts nothing and a
+    later paraphrase becomes the contract. SPEC stays the verbatim argument:
+    the kernel does not unescape. Any real newline stays silent.
+    """
+    body = str(text or "")
+    if len(body.splitlines()) > 1 or _literal_newline_escapes(body) < 2:
+        return False
+    print(
+        f"of: note — {flag} contains literal \\n escapes and no real newline, "
+        "so SPEC stays one line and list items are not extracted. "
+        "Pass the conversation with --chat-capture-file - or the brief with "
+        "--source-file (real newlines). Do not paraphrase into of spec --add. "
+        "The SPEC was still written.",
+        file=sys.stderr,
+    )
+    return True
+
+
 def resolve_source_text(args: argparse.Namespace) -> str | None:
     """Read --source/--source-file BEFORE any field write.
 
@@ -79,10 +118,12 @@ def resolve_source_text(args: argparse.Namespace) -> str | None:
     if source_file:
         text = read_brief_file(str(source_file), flag="--source-file")
         warn_if_deictic_brief(text, flag="--source-file")
+        warn_if_literal_newline_escapes(text, flag="--source-file")
         return text
     if source_inline:
         text = str(source_inline)
         warn_if_deictic_brief(text, flag="--source")
+        warn_if_literal_newline_escapes(text, flag="--source")
         return text
     return None
 
@@ -270,12 +311,20 @@ def _stamp_and_write_new_field(
         )
         discard_disposable_ingest(root, src_path, order=order)
     else:
-        print(
-            "of: note — no --source/--source-file; ORDER may compress the contract. "
-            "Pass the verbatim user brief with --source or --source-file "
-            "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
-            file=sys.stderr,
-        )
+        if chat_text is None:
+            print(
+                "of: note — no --source/--source-file; ORDER may compress the contract. "
+                "Pass the verbatim user brief with --source or --source-file "
+                "(.orderfield/ingest.md). Do not write PROMPT.md at the project root.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "of: note — --chat-capture-file is pinned; SPEC.md was not written. "
+                "Pass the verbatim brief with --source or --source-file if list items "
+                "should become requirements.",
+                file=sys.stderr,
+            )
         PlanCiteExtract.emit_unindexed(root, cites)
         ingress = PlanIngress.apply(
             root, order, source_file=source_file, source_text=source_text
