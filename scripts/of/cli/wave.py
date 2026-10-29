@@ -128,6 +128,7 @@ from of.pack import (
     require_registered_packet,
     residual_template,
     same_wave_owns_path_conflict,
+    ScratchBind,
     scratch_nonempty,
     spawn_is_blocked,
     validate_packet,
@@ -377,10 +378,12 @@ class ChildClaim:
             )
         elif (
             packet_residual_file(root, packet) is None
-            and scratch_nonempty(root, packet)
+            and ScratchBind.blocks(root, packet)
             and (SpawnRecord.load(root, packet) or {"dry_run": True}).get("dry_run")
         ):
             # Landed residual = that child finished; only in-flight work blocks.
+            # Scratch is keyed by child_id. Bytes that still match this
+            # packet's scratch_bind predate it (prior wave, or empty at pack).
             # A kernel spawn record (started-only too) is claim_started's call:
             # it checks the recorded pid and honours --force-spawn.
             why = (
@@ -1074,6 +1077,17 @@ def cmd_pack(args: argparse.Namespace) -> None:
     packet.update(KernelVerify.pack_fields(args, reqs, owns))
     if review_scope:
         packet["review_scope"] = review_scope
+    # Bind scratch before the hash. The dir may already hold a prior wave's
+    # notes; those bytes are this packet's baseline, not a second writer.
+    scratch_abs = root / physical_field_rel(root, scratch)
+    scratch_abs.mkdir(parents=True, exist_ok=True)
+    try:
+        packet[ScratchBind.KEY] = ScratchBind.digest_tree(scratch_abs)
+    except OSError as exc:
+        die(
+            f"cannot bind scratch for {child_id}: "
+            f"{exc.strerror or exc.__class__.__name__}"
+        )
     packet["packet_hash"] = packet_digest(packet)
     require_public_schema(packet, "packet.schema.json", "packet")
     errors = validate_packet(packet)

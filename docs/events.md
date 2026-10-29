@@ -72,7 +72,7 @@ Every nonempty stderr line is exactly one JSON event object with an `event` key.
 | `mission_not_applied` | `of integrate --apply` saw a mission residual; mission is not auto-applied |
 | `child_lane` | `of integrate` recorded child proposals that did not land in ORDER (`constraints+` / `done_when+` / notes / refused close or stamps / explorer patch) under `waves/<n>/integrations/observations.json`; the leader applies with `of patch` |
 | `force_spawn` | `of spawn --force-spawn --reason` past `escalate_up` (`spawn_blocked`); message carries the reason |
-| `spawn_claim_override` | `of spawn --force-spawn --reason` overrides a live handoff claim or unwatched scratch (second writer); message carries why + reason |
+| `spawn_claim_override` | `of spawn --force-spawn --reason` overrides a live handoff claim or scratch whose bytes differ from that packet's `scratch_bind` (second writer); message carries why + reason. A matching bind (same child_id, next wave) is not this warning |
 | `adapter_pin` | `OF_ADAPTER` disagrees with `ORDER.harness` and was ignored (the pin wins; `--adapter` overrides) |
 | `wal_orphan` | A WAL generation that is not the single child of CURRENT (or has a corrupt MANIFEST, or competes as a sibling) was quarantined to `wal/orphans/`, never published |
 | `wal_tamper` | Live snapshot-path files not in WAL CURRENT were quarantined to `wal/orphans/` |
