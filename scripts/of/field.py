@@ -4386,7 +4386,7 @@ class ChildState:
     def of(
         root: Path, packet: dict[str, Any], *, now: float | None = None
     ) -> dict[str, Any]:
-        from of.pack import scratch_nonempty
+        from of.pack import ScratchBind, scratch_nonempty
 
         clock = now if now is not None else time.time()
         cid = str(packet.get("child_id") or "?")
@@ -4411,8 +4411,11 @@ class ChildState:
                 lease = "live"  # the claimant is still writing its heartbeat
         try:
             scratch = scratch_nonempty(root, packet)
+            # Byte bind, not mtime: a prior wave's scratch does not hold next.
+            unclaimed_scratch = ScratchBind.blocks(root, packet)
         except SystemExit:
             scratch = False
+            unclaimed_scratch = False
         if live == SpawnRecord.ALIVE:
             started = parse_utc((meta or {}).get("started_at"))
             over = (
@@ -4439,7 +4442,7 @@ class ChildState:
             state = ChildState.EXPIRED if lease == "expired" else ChildState.CLAIMED
         elif spawn == "settled":
             state = ChildState.ENDED
-        elif scratch:
+        elif unclaimed_scratch:
             state = ChildState.UNCLAIMED
         else:
             state = ChildState.PACKED
