@@ -457,7 +457,7 @@ The portable skill path is always `.agents/skills/orderfield/` — that is the g
 
 Default: every child in the same repo sees `.orderfield/` (shared field, scratch split by child_id).
 
-`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not lock files or create worktrees; collect's `ScopeWrite` checks product writes against `owns_paths`. A worktree/process bound is an honesty surface, not a security guarantee or a jail. Two slaves writing the same product path is a **cut error**: exclusive files belong in `--owns-path`. Do not add `of claim` (`of handoff` writes the only claim).
+`ORDER.workspace` (`readable` / `writable_by_slaves` / `forbidden`) is documentation packed into the packet. The kernel does not lock files or create worktrees; collect's `ScopeWrite` checks product writes against `owns_paths` in the child's recorded worktree when that path is a worktree of this repository, otherwise in the field checkout. A worktree/process bound is an honesty surface, not a security guarantee or a jail. Two slaves writing the same product path is a **cut error**: exclusive files belong in `--owns-path`. Do not add `of claim` (`of handoff` writes the only claim).
 
 Scale-out that would collide on product files: the leader assigns non-overlapping slices, or uses an Orca worktree. Disjoint `--owns-path` does not isolate HEAD or the index: two implementers need two `of worktree add` records or must run in series (`shared_worktree`).
 
