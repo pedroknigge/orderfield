@@ -2023,7 +2023,10 @@ class ScopeWrite:
     without ``owns_paths`` shares the tree.
     A sibling excuses a path only if it ran during this child's window
     (``t0`` baseline .. ``t1`` exit): a series sibling cannot. Read-only roles own nothing but leader-granted ``owns_paths``. A
-    non-git tree is skipped with a note. Detection, not a sandbox.
+    non-git tree is skipped with a note. The checkout is the child's
+    recorded worktree when that path is a worktree of this repository:
+    a write in the field checkout during the window is the leader's.
+    No recorded worktree keeps the field checkout. Detection, not a sandbox.
     """
 
     RULE = "ScopeWrite"
@@ -2280,6 +2283,77 @@ class ScopeWrite:
         return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
     @staticmethod
+    def checkout(root: Path, packet: dict[str, Any]) -> Path:
+        """Git checkout whose writes belong to this child.
+
+        A recorded path is that checkout only when git lists it as a
+        linked worktree of this repository (what ``of worktree add``
+        registers). Field-checkout writes in the same window are the
+        leader's. No record, or a path git does not list, stays ``root``
+        so a child without a worktree keeps today's tree.
+        """
+        for base in OwnedWrite.bases(root, packet):
+            if base == root:
+                continue
+            if ScopeWrite._linked(root, base):
+                return base
+        return root
+
+    @staticmethod
+    def _common(root: Path) -> str | None:
+        """Absolute git common dir, or None when git cannot answer."""
+        raw = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
+        if not raw:
+            return None
+        text = os.fsdecode(raw).strip()
+        if not text:
+            return None
+        path = Path(text)
+        if not path.is_absolute():
+            path = root / path
+        try:
+            return os.path.realpath(path)
+        except OSError:
+            return None
+
+    @staticmethod
+    def _same_repo(field: Path, other: Path) -> bool:
+        here = ScopeWrite._common(field)
+        return here is not None and here == ScopeWrite._common(other)
+
+    @staticmethod
+    def _linked(field: Path, other: Path) -> bool:
+        """True when ``other`` is a linked worktree of ``field``'s repository.
+
+        A path that merely sits in the repo (or in some other repo) is not
+        the child's checkout: judging it would miss writes. No such path
+        keeps the field checkout.
+        """
+        if not ScopeWrite._same_repo(field, other):
+            return False
+        raw = ScopeWrite._git(field, "worktree", "list", "--porcelain")
+        if not raw:
+            return False
+        try:
+            want = os.path.realpath(other)
+            here = os.path.realpath(field)
+        except OSError:
+            return False
+        if want == here:
+            return False
+        prefix = b"worktree "
+        for line in raw.splitlines():
+            if not line.startswith(prefix):
+                continue
+            path = os.fsdecode(line[len(prefix):]).strip()
+            try:
+                if os.path.realpath(path) == want:
+                    return True
+            except OSError:
+                continue
+        return False
+
+    @staticmethod
     def snapshot(root: Path) -> dict[str, Any] | None:
         """{head, dirty: {path: blob id}} for the product tree, or None (no git)."""
         prefix_raw = ScopeWrite._git(root, "rev-parse", "--show-prefix")
@@ -2479,10 +2553,11 @@ class ScopeWrite:
         diffs to now (the unreadable attempt's own writes).
         """
         doc = ScopeWrite.load(root, packet)
-        snap = ScopeWrite.snapshot(root)
+        git_root = ScopeWrite.checkout(root, packet)
+        snap = ScopeWrite.snapshot(git_root)
         # No snapshot in a git work tree (timeout, broken config) fails
         # closed; only a tree git does not know is a skip.
-        in_git = snap is None and ScopeWrite._in_git(root)
+        in_git = snap is None and ScopeWrite._in_git(git_root)
         if in_git and not fresh and ScopeWrite._keep_unreadable(root, packet, doc):
             return
         new: dict[str, Any] = {
@@ -2496,7 +2571,7 @@ class ScopeWrite:
         if in_git:
             new["unreadable"] = True
         old = doc.get("before") if isinstance(doc, dict) else None
-        prior = ScopeWrite._prior(root, doc, snap)
+        prior = ScopeWrite._prior(git_root, doc, snap)
         if not fresh and isinstance(old, dict) and prior is not None:
             assert isinstance(doc, dict)
             for key in ("t0", OwnedWrite.DIGEST_KEY):
@@ -2506,14 +2581,14 @@ class ScopeWrite:
                 was = old.get("dirty") if isinstance(old.get("dirty"), dict) else {}
                 cfg = ScopeWrite.CONFIG
                 if cfg in prior and old.get("config") != ScopeWrite.CONFIG_SCHEME:
-                    if ScopeWrite._legacy_config_same(root, old, was.get(cfg), doc.get("t0")):
+                    if ScopeWrite._legacy_config_same(git_root, old, was.get(cfg), doc.get("t0")):
                         prior = [p for p in prior if p != cfg]  # reverted
                     else:
                         # The carried value is pre-scheme: keep its tag so
                         # changed() still compares it the legacy way.
                         snap["config"] = old.get("config")
                 tree = ScopeWrite._tree_ids(
-                    root, old.get("head"),
+                    git_root, old.get("head"),
                     sorted(p for p in prior if p not in was and not p.startswith(".git/")),
                 )
                 snap["dirty"].update(
@@ -2556,8 +2631,9 @@ class ScopeWrite:
         doc = ScopeWrite.load(root, packet)
         if not isinstance(doc, dict) or not isinstance(doc.get("before"), dict):
             return
-        now = ScopeWrite.snapshot(root)
-        changed = ScopeWrite.since(root, doc["before"], now, doc.get("t0"))
+        git_root = ScopeWrite.checkout(root, packet)
+        now = ScopeWrite.snapshot(git_root)
+        changed = ScopeWrite.since(git_root, doc["before"], now, doc.get("t0"))
         if doc.get("unreadable"):
             # An unjudged attempt on a kept baseline adds to the prior
             # attempt's record, never replaces it.
@@ -2857,9 +2933,10 @@ class ScopeWrite:
         ):
             return [], None, []
         changed = doc.get("changed")
+        git_root = ScopeWrite.checkout(root, packet)
         if not isinstance(changed, list):
             changed = ScopeWrite._attempt(doc) or ScopeWrite.since(
-                root, doc["before"], ScopeWrite.snapshot(root), doc.get("t0")
+                git_root, doc["before"], ScopeWrite.snapshot(git_root), doc.get("t0")
             )
         if not changed:
             return [], None, []
@@ -2877,7 +2954,7 @@ class ScopeWrite:
             return [], None, []
         raw_paths = [path for path, _why in bad]
         before = doc["before"]
-        plan = ScopeWrite.revert_plan(root, before, raw_paths)
+        plan = ScopeWrite.revert_plan(git_root, before, raw_paths)
         skips = [f"{path} ({why})" for path, action, why in plan if action == "skip"]
         actions = [(path, action) for path, action, _why in plan if action != "skip"]
         if not actions:
@@ -2889,7 +2966,7 @@ class ScopeWrite:
         patch_chunks: list[bytes] = []
         reverted: list[str] = []
         for rel, action in actions:
-            chunk, why = ScopeWrite._revert_one(root, b_head, rel, action)
+            chunk, why = ScopeWrite._revert_one(git_root, b_head, rel, action)
             if why is not None:
                 skips.append(f"{rel} ({why})")
                 continue
@@ -2909,10 +2986,10 @@ class ScopeWrite:
             write_field_bytes(scratch_dir, scratch_dir / "quarantine.patch", patch_bytes)
         except (OSError, SystemExit):
             pass
-        now_snap = ScopeWrite.snapshot(root)
-        if isinstance(cache, dict):
+        now_snap = ScopeWrite.snapshot(git_root)
+        if isinstance(cache, dict) and git_root == root:
             cache["now"] = now_snap
-        new_changed = ScopeWrite.since(root, before, now_snap, doc.get("t0"))
+        new_changed = ScopeWrite.since(git_root, before, now_snap, doc.get("t0"))
         if "changed" in doc:
             doc["changed"] = new_changed
         if "seen" in doc:
@@ -2934,11 +3011,16 @@ class ScopeWrite:
         if doc.get("skip") or not isinstance(doc.get("before"), dict):
             return str(doc.get("skip") or ScopeWrite.NO_BASELINE)
         if not isinstance(doc.get("changed"), list):
-            if "now" not in cache:
-                cache["now"] = ScopeWrite.snapshot(root)
-            doc["seen"] = ScopeWrite.since(root, doc["before"], cache["now"], doc.get("t0"))
+            git_root = ScopeWrite.checkout(root, packet)
+            if git_root == root:
+                if "now" not in cache:
+                    cache["now"] = ScopeWrite.snapshot(root)
+                now = cache["now"]
+            else:
+                now = ScopeWrite.snapshot(git_root)
+            doc["seen"] = ScopeWrite.since(git_root, doc["before"], now, doc.get("t0"))
             doc[ScopeWrite.OPERATOR_KEY] = ScopeWrite._operator_changed(
-                doc["before"], cache["now"]
+                doc["before"], now
             )
             ScopeWrite._save(root, packet, doc)
         return None
@@ -2986,16 +3068,18 @@ class ScopeWrite:
                 "(of spawn / of handoff retakes the baseline)"
             ]
         bad: list[tuple[str, str]] = []
+        git_root = root
         if (
             isinstance(doc, dict)
             and not doc.get("skip")
             and isinstance(doc.get("before"), dict)
         ):
             changed = doc.get("changed")
+            git_root = ScopeWrite.checkout(root, packet)
             if not isinstance(changed, list):
                 changed = (
                     ScopeWrite.since(
-                        root, doc["before"], ScopeWrite.snapshot(root), doc.get("t0")
+                        git_root, doc["before"], ScopeWrite.snapshot(git_root), doc.get("t0")
                     )
                     if live
                     else ScopeWrite._attempt(doc) or []
@@ -3021,7 +3105,7 @@ class ScopeWrite:
         raw = [path for path, _why in bad]
         before = doc.get("before") if isinstance(doc, dict) else None
         clause = (
-            ScopeWrite._revert_clause(ScopeWrite.revert_plan(root, before, raw))
+            ScopeWrite._revert_clause(ScopeWrite.revert_plan(git_root, before, raw))
             if isinstance(before, dict)
             else "Leader: revert those paths, then re-run the child "
             "(judged against the same baseline)"

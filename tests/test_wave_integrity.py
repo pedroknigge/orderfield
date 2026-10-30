@@ -437,6 +437,116 @@ class ScopeWriteGate(unittest.TestCase):
         self.assertIn("ScopeWrite skipped (not a git work tree: e1)", r.stdout)
 
 
+# FAKE_MODE: "wt:rel=text" commits in the child's recorded worktree;
+# "field:rel=text" commits in the field checkout during the same flight.
+WT_AGENT = r'''#!{python}
+import hashlib, json, os, pathlib, subprocess
+root = pathlib.Path.cwd()
+kid = os.environ["OF_CHILD"]
+pkt = json.loads((root / ".orderfield/waves/001/packets" / (kid + ".json")).read_text())
+records = json.loads((root / ".orderfield/work/worktrees.json").read_text())
+wt = pathlib.Path(records["trees"][kid]["path"])
+
+def git(cwd, *args):
+    subprocess.check_call(
+        ["git", "-c", "user.email=w4@example.invalid", "-c", "user.name=w4",
+         "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+        cwd=cwd,
+    )
+
+def write(base, rel, text):
+    dest = base / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text + "\n")
+
+wt_files = []
+for spec in filter(None, os.environ.get("FAKE_MODE", "").split(",")):
+    where, _, rest = spec.partition(":")
+    rel, _, text = rest.partition("=")
+    if where == "wt":
+        write(wt, rel, text)
+        wt_files.append(rel)
+    elif where == "field":
+        write(root, rel, text)
+        git(root, "add", "--", rel)
+        git(root, "commit", "-q", "-m", "leader " + rel)
+if wt_files:
+    git(wt, "add", "--", *wt_files)
+    git(wt, "commit", "-q", "-m", "child " + kid)
+
+owns = pkt.get("owns_paths") or []
+proof = wt / owns[0]
+sha = hashlib.sha256(proof.read_bytes()).hexdigest()
+evidence = (
+    "mapped " + owns[0] + "\nartifact_sha: " + sha
+    + "\nrollback: git checkout -- " + owns[0]
+)
+res = {k: pkt[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
+res.update({
+    "status": "done",
+    "result_ref": owns[0],
+    "residual": {"wants_to_change": [], "evidence": evidence, "proposed_patch": None},
+    "metrics": {"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False},
+})
+out = root / pkt["residual_path"]
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(json.dumps(res))
+'''
+
+
+class ScopeWriteWorktree(unittest.TestCase):
+    """A recorded worktree is the checkout ScopeWrite judges (#375)."""
+
+    def field(self) -> Field:
+        field = Field(self, git=True)
+        wt = field.tmp.parent / f"{field.tmp.name}-of-i1"
+        self.addCleanup(shutil.rmtree, wt, True)
+        field.agent.write_text(WT_AGENT.replace("{python}", sys.executable), encoding="utf-8")
+        field.agent.chmod(0o755)
+        field.ok("worktree", "add", "--child-id", "i1")
+        field.pack("i1", "implementer", "src/app.py")
+        return field
+
+    def names(self, cwd: Path, base: str, head: str = "HEAD") -> list[str]:
+        out = subprocess.check_output(
+            ["git", "-C", str(cwd), "diff", "--name-only", base, head], text=True,
+        )
+        return [line for line in out.splitlines() if line]
+
+    def test_leader_field_commit_is_not_the_childs(self) -> None:
+        field = self.field()
+        field.ok(
+            "spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/i1.json"),
+            OF_AGENT=str(field.agent),
+            FAKE_MODE="wt:src/app.py=print(2),field:docs/plan.md=leader plan",
+        )
+        records = json.loads((field.tmp / ".orderfield/work/worktrees.json").read_text())
+        base = records["trees"]["i1"]["head"]
+        wt = Path(records["trees"]["i1"]["path"])
+        self.assertEqual(self.names(wt, base), ["src/app.py"])
+        self.assertIn("docs/plan.md", self.names(field.tmp, base))
+        scope = json.loads((field.tmp / WAVE / "scope/i1.json").read_text())
+        self.assertIn("src/app.py", scope["changed"])
+        self.assertNotIn("docs/plan.md", scope["changed"])
+        r = field.ok("collect")
+        self.assertIn("ok=1", r.stdout)
+        self.assertNotIn("rule=ScopeWrite", r.stdout)
+        self.assertNotIn("docs/plan.md", r.stdout)
+
+    def test_worktree_write_outside_owns_paths_is_invalid(self) -> None:
+        field = self.field()
+        field.ok(
+            "spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/i1.json"),
+            OF_AGENT=str(field.agent),
+            FAKE_MODE="wt:src/app.py=print(2),wt:README.md=hijack",
+        )
+        r = field.of("collect")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        line = next(x for x in r.stdout.splitlines() if "rule=ScopeWrite" in x)
+        self.assertIn("README.md", line)
+        self.assertNotIn("src/app.py,", line)
+
+
 class OwnedWriteWhitespace(unittest.TestCase):
     def test_one_newline_is_not_an_owned_write(self) -> None:
         field = Field(self)
