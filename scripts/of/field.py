@@ -3216,6 +3216,72 @@ def worktree_path_inside_project(root: Path, path: Path) -> bool:
         return False
 
 
+def proof_checkout(root: Path, child_id: str) -> Path:
+    """Linked worktree recorded for this child, else the field checkout.
+
+    A path git does not list as a worktree of this repository stays the
+    field, so a rewritten ``worktrees.json`` cannot move proof. #377's
+    ``ScopeWrite.checkout`` should call this.
+    """
+    field = Path(root).resolve()
+    child = str(child_id or "").strip()
+    if not child:
+        return field
+    recorded = (load_worktrees(root).get("trees") or {}).get(child)
+    if not isinstance(recorded, dict) or not recorded.get("path"):
+        return field
+    try:
+        dest = Path(str(recorded["path"])).expanduser().resolve()
+    except OSError:
+        return field
+    if not dest.is_dir() or dest == field:
+        return field
+    if not _linked_worktree(field, dest):
+        return field
+    return dest
+
+
+def _git_common_dir(cwd: Path) -> str | None:
+    proc = run_git(cwd, "rev-parse", "--git-common-dir")
+    if proc.returncode != 0:
+        return None
+    text = (proc.stdout or "").strip()
+    if not text:
+        return None
+    path = Path(text)
+    if not path.is_absolute():
+        path = cwd / path
+    try:
+        return os.path.realpath(path)
+    except OSError:
+        return None
+
+
+def _linked_worktree(field: Path, other: Path) -> bool:
+    here = _git_common_dir(field)
+    if here is None or here != _git_common_dir(other):
+        return False
+    listed = run_git(field, "worktree", "list", "--porcelain")
+    if listed.returncode != 0:
+        return False
+    try:
+        want = os.path.realpath(other)
+    except OSError:
+        return False
+    if want == os.path.realpath(field):
+        return False
+    for line in (listed.stdout or "").splitlines():
+        if not line.startswith("worktree "):
+            continue
+        path = line[len("worktree "):].strip()
+        try:
+            if os.path.realpath(path) == want:
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def open_backlog(order: dict[str, Any]) -> list[str]:
     """Ordered, still-open backlog items. This is the user's binding order."""
     return [

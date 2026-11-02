@@ -724,6 +724,7 @@ class KernelVerify:
         *,
         command_id: str = "kernel-verify",
         timeout_s: int = DEFAULT_TIMEOUT_S,
+        checkout: Path | None = None,
     ) -> tuple[dict[str, Any], str, int]:
         import shlex
 
@@ -736,9 +737,10 @@ class KernelVerify:
             die(f"invalid verification command {raw_cmd!r}: {exc}")
         if not argv:
             die("verification command must not be empty")
-        # #363: hash what will run before it runs.
-        inputs = KernelVerify._hash_inputs(root, raw_cmd)
-        exit_code, combined = KernelVerify._run(root, argv, timeout_s)
+        # Hash and run in the child's checkout. The receipt and HMAC stay on root.
+        tree = Path(checkout) if checkout is not None else Path(root)
+        inputs = KernelVerify._hash_inputs(tree, raw_cmd)
+        exit_code, combined = KernelVerify._run(tree, argv, timeout_s)
         if not combined:
             combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
         receipt, _rpath, receipt_rel = KernelVerify.attest(
@@ -754,7 +756,7 @@ class KernelVerify:
         return receipt, receipt_rel, exit_code
 
     @staticmethod
-    def _run(root: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
+    def _run(cwd: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
         """``(exit, stdout + stderr)``. 127 = binary not found, 124 = timeout."""
         import os
         import subprocess
@@ -767,7 +769,7 @@ class KernelVerify:
         try:
             proc = subprocess.run(
                 argv,
-                cwd=str(root),
+                cwd=str(cwd),
                 shell=False,
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -796,7 +798,7 @@ class KernelVerify:
         packet: dict[str, Any],
         residual: dict[str, Any],
     ) -> tuple[list[str], str | None, bool]:
-        from of.field import physical_artifact_path
+        from of.field import physical_artifact_path, proof_checkout
 
         cmd = str(packet.get("verify_cmd") or "").strip()
         if not cmd or not isinstance(residual, dict) or residual.get("status") != "done":
@@ -809,7 +811,12 @@ class KernelVerify:
         if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
             bound = KernelVerify.DEFAULT_TIMEOUT_S
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, cmd, command_id="kernel-verify", timeout_s=bound
+            root,
+            scratch,
+            cmd,
+            command_id="kernel-verify",
+            timeout_s=bound,
+            checkout=proof_checkout(root, str(packet.get("child_id") or "")),
         )
         rem = residual.setdefault("residual", {})
         if isinstance(rem, dict):
@@ -874,6 +881,45 @@ class KernelVerify:
             save_requirements(data, root)
             KernelVerify._write_checks(root, stamped, receipt_rel, proof_sha)
         return stamped
+
+    @staticmethod
+    def kernel_receipt_rel(child_id: str) -> str:
+        from of.pack import canonical_scratch_rel
+
+        return f"{canonical_scratch_rel(child_id)}/logs/kernel-verify.receipt.json"
+
+    @staticmethod
+    def withdraw_discarded(root: Path, child_id: str) -> list[str]:
+        """Revert ``verified_contract`` stamps this child's kernel receipt proved."""
+        from of.cli.spec_cmd import requirement_checks
+        from of.field import field_lock
+        from of.spec import load_requirements, save_requirements
+        from of.wal import FieldWal
+
+        cite = KernelVerify.kernel_receipt_rel(child_id)
+        with field_lock(root, "worktree"):
+            FieldWal.refuse_live_spec_tamper(root)
+            FieldWal.refuse_live_order_tamper(root)
+            FieldWal.materialize_current(root, overwrite=True)
+            data = load_requirements(root)
+            withdrawn: list[str] = []
+            for item in data.get("requirements") or []:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("status") != "verified_contract":
+                    continue
+                if str(item.get("proof_cite") or "") != cite:
+                    continue
+                owners = item.get("owned_by") or []
+                item["status"] = "owned" if owners else "unowned"
+                item.pop("proof_cite", None)
+                item.pop("proof_sha", None)
+                withdrawn.append(str(item.get("id") or ""))
+            if not withdrawn:
+                return []
+            save_requirements(data, root)
+            requirement_checks(root, data)
+            return withdrawn
 
     @staticmethod
     def pack_fields(
