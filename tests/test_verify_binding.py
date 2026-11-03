@@ -8,6 +8,7 @@ receipt. integrate, contrast and ``close --checklist`` read one disk state.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -120,11 +121,11 @@ class VerifyBinding(unittest.TestCase):
             *extra,
         )
 
-    def land_child(self) -> None:
+    def land_child(self, wave: str = "001") -> None:
         """What the issue's fake child does: edit app.py, report done."""
         with (self.tmp / "app.py").open("a", encoding="utf-8") as fh:
             fh.write("def g():\n    return 2\n")
-        pkt_path = self.tmp / ".orderfield/waves/001/packets/c1.json"
+        pkt_path = self.tmp / f".orderfield/waves/{wave}/packets/c1.json"
         pkt = json.loads(pkt_path.read_text(encoding="utf-8"))
         res = json.loads(
             (ROOT / "assets/fixtures/residual.done.json").read_text(encoding="utf-8")
@@ -329,6 +330,101 @@ class VerifyBinding(unittest.TestCase):
                 item["owned_by"] = ["c9"]
         doc_path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         self.assertIn("IDEMP-001", owned_unverified_ids(self.tmp))
+
+    def test_two_waves_same_child_keeps_receipts_and_closes(self) -> None:
+        """#372: wave 2 of c1 must not eat wave 1's receipt or lie about --verify-req.
+
+        A varying verify command, same child_id. Close succeeds with no manual
+        ``of spec --verified-contract``, and both receipts are in CLOSE.json.
+        """
+        self.ok("spec", "--supersede", "IDEMP-001")
+        cmd = (
+            f'{sys.executable} -c '
+            '"print(open(\'nonce.txt\', encoding=\'utf-8\').read())"'
+        )
+        nonce = self.tmp / "nonce.txt"
+        nonce.write_text("1\n", encoding="utf-8")
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--role", "implementer",
+            "--child-id", "c1",
+            "--owns-requirement", "REQ-001",
+            "--owns-requirement", "REQ-002",
+            "--owns-path", "app.py",
+            "--verify-cmd", cmd,
+            "--verify-req", "REQ-001",
+            "--verify-req", "REQ-002",
+            "--slice", "add g() to app.py",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stdout + packed.stderr)
+        self.land_child("001")
+        first = self.ok("collect", "--wave", "1")
+        self.assertIn("verified_by_kernel c1: REQ-001, REQ-002", first.stdout)
+        logs = self.tmp / ".orderfield/work/scratch/c1/logs"
+        wave1 = logs / "kernel-verify.receipt.json"
+        self.assertTrue(wave1.is_file(), "wave 1 receipt")
+        wave1_bytes = wave1.read_bytes()
+        self.ok("integrate", "--wave", "1")
+        self.ok("next-wave")
+        nonce.write_text("2\n", encoding="utf-8")
+        packed = run_of(
+            self.tmp,
+            "pack",
+            "--role", "implementer",
+            "--child-id", "c1",
+            "--owns-requirement", "REQ-002",
+            "--owns-path", "app.py",
+            "--verify-cmd", cmd,
+            "--verify-req", "REQ-002",
+            "--slice", "tweak g() again",
+        )
+        self.assertEqual(packed.returncode, 0, packed.stdout + packed.stderr)
+        self.land_child("002")
+        second = self.ok("collect", "--wave", "2")
+        self.assertIn("verified_by_kernel c1: REQ-002", second.stdout)
+        self.assertNotIn("not --verify-req", second.stdout)
+        wave2 = logs / "kernel-verify-2.receipt.json"
+        self.assertTrue(wave2.is_file(), "wave 2 receipt")
+        self.assertEqual(wave1.read_bytes(), wave1_bytes)
+        self.assertNotEqual(wave1.read_bytes(), wave2.read_bytes())
+        by_id = self.statuses()
+        self.assertEqual(
+            by_id["REQ-001"]["proof_cite"],
+            ".orderfield/work/scratch/c1/logs/kernel-verify.receipt.json",
+        )
+        self.assertEqual(
+            by_id["REQ-002"]["proof_cite"],
+            ".orderfield/work/scratch/c1/logs/kernel-verify-2.receipt.json",
+        )
+        self.assertEqual(
+            by_id["REQ-001"]["proof_sha"],
+            hashlib.sha256(wave1_bytes).hexdigest(),
+        )
+        self.assertEqual(
+            by_id["REQ-002"]["proof_sha"],
+            hashlib.sha256(wave2.read_bytes()).hexdigest(),
+        )
+        self.ok("integrate", "--wave", "2")
+        checklist = self.ok("close", "--checklist")
+        self.assertIn("blocking     none", checklist.stdout)
+        self.assertIn("next         of close", checklist.stdout)
+        closed = self.ok("close")
+        self.assertIn("CLOSED", closed.stdout)
+        doc = json.loads((self.tmp / ".orderfield/CLOSE.json").read_text(encoding="utf-8"))
+        cited = {str(row.get("path") or "") for row in doc["receipts"]}
+        self.assertIn(
+            ".orderfield/work/scratch/c1/logs/kernel-verify.receipt.json", cited
+        )
+        self.assertIn(
+            ".orderfield/work/scratch/c1/logs/kernel-verify-2.receipt.json", cited
+        )
+        home = self.tmp / ".orderfield"
+        for row in doc["receipts"]:
+            if str(row.get("path") or "").endswith("kernel-verify.receipt.json") or str(
+                row.get("path") or ""
+            ).endswith("kernel-verify-2.receipt.json"):
+                self.assertTrue((home / row["evidence"]).is_file(), row)
 
 
 if __name__ == "__main__":

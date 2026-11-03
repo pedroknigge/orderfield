@@ -1852,10 +1852,13 @@ def _kernel_verify_lines(
         return []
     child = str(pkt.get("child_id") or "?")
     stamped = KernelVerify.auto_verify_requirements(root, pkt, receipt_rel)
-    left = [
-        str(rid) for rid in (pkt.get("owns_requirements") or [])
-        if str(rid) not in stamped
-    ]
+    stamped_set = set(stamped)
+    bound = set(KernelVerify._bound_requirements(pkt))
+    owned = [str(rid) for rid in (pkt.get("owns_requirements") or [])]
+    # "not --verify-req" only for ids the packet did not bind. A bound id
+    # that this receipt did not stamp (PAIR, superseded) must not wear that label.
+    left = [rid for rid in owned if rid not in stamped_set and rid not in bound]
+    held = [rid for rid in owned if rid not in stamped_set and rid in bound]
     lines: list[str] = []
     if stamped:
         lines.append(f"verified_by_kernel {child}: {', '.join(stamped)}")
@@ -1863,6 +1866,11 @@ def _kernel_verify_lines(
         lines.append(
             f"receipt_only {child}: {' '.join(left)} "
             f"(not --verify-req; {receipt_rel} is evidence, not a stamp)"
+        )
+    if held:
+        lines.append(
+            f"receipt_only {child}: {' '.join(held)} "
+            f"(bound --verify-req, not stamped; {receipt_rel} is evidence, not a stamp)"
         )
     return lines
 

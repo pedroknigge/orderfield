@@ -574,6 +574,13 @@ class ContrastReport:
             for item in (data.get("requirements") or [])
             if isinstance(item, dict)
         }
+        # Staleness is the pre-close question. A closed field's cite may
+        # already have been wiped; CLOSE.json is the proof after that.
+        proof_rows = (
+            [] if order.get("spec_closed") else CloseProof.proof_problems(root)
+        )
+        proof_ids = {rid for rid, _msg in proof_rows}
+        proof = [msg for _rid, msg in proof_rows]
         rows: list[dict[str, Any]] = []
         for verdict, rid, text in contrast_rows(root):
             item = by_id.get(rid) or {}
@@ -583,10 +590,10 @@ class ContrastReport:
                     "verdict": verdict,
                     "cite": requirement_source_cite(item),
                     "text": text[:80],
-                    "blocking": not requirement_close_ok(item),
+                    "blocking": (not requirement_close_ok(item)) or rid in proof_ids,
                 }
             )
-        errors = requirement_coverage_errors(root)
+        errors = [*requirement_coverage_errors(root), *proof]
         spec_ok = spec.is_file()
         digest = sha256_text(read_spec_text(root)) if spec_ok else ""
         if not spec_ok and counts["total"] == 0:
@@ -598,7 +605,11 @@ class ContrastReport:
             gate = "CLOSE_BLOCKED"
             verdict = "OPEN"
             ok = False
-            nxt = ContrastReport.NEXT_BLOCKED
+            parts: list[str] = []
+            if any(err not in proof for err in errors):
+                parts.append(ContrastReport.NEXT_BLOCKED)
+            parts.extend(proof)
+            nxt = "; ".join(parts) if parts else ContrastReport.NEXT_BLOCKED
         else:
             gate = "RESOLVED"
             verdict = "RESOLVED"
@@ -614,6 +625,7 @@ class ContrastReport:
             "coverage": counts,
             "rows": rows,
             "errors": errors,
+            "proof": proof,
             "next": nxt,
         }
 
@@ -1642,6 +1654,44 @@ class CloseProof:
         return problems
 
     @staticmethod
+    def proof_problem(root: Path, rid: str, cite: str, stored: str) -> str | None:
+        """The sentence ``of close`` refuses with when a stamp's bytes moved.
+
+        ``None`` when the cite is still the file that was stamped.
+        """
+        redo = f"of spec --verified-contract {rid} --cite <file>"
+        src = CloseProof.cite_file(root, cite)
+        if not stored or src is None:
+            return f"{rid} proof {cite!r} is not a file ({redo})"
+        try:
+            ok = CloseProof.proof_matches(src.read_bytes(), stored)
+        except OSError:
+            return f"{rid} proof {cite!r} is not a file ({redo})"
+        if not ok:
+            return f"{rid} proof {cite} changed since stamped ({redo})"
+        return None
+
+    @staticmethod
+    def proof_problems(root: Path) -> list[tuple[str, str]]:
+        """``(id, sentence)`` for every ``verified_contract`` whose cite is stale."""
+        out: list[tuple[str, str]] = []
+        for item in load_requirements(root).get("requirements") or []:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("status") or "") != "verified_contract":
+                continue
+            rid = str(item.get("id") or "")
+            msg = CloseProof.proof_problem(
+                root,
+                rid,
+                str(item.get("proof_cite") or ""),
+                str(item.get("proof_sha") or ""),
+            )
+            if msg:
+                out.append((rid, msg))
+        return out
+
+    @staticmethod
     def bind(
         root: Path,
     ) -> tuple[dict[str, Any], list[tuple[Path, str]], list[str]]:
@@ -1695,15 +1745,14 @@ class CloseProof:
                 continue
             cite = str(item.get("proof_cite") or "")
             stored = str(item.get("proof_sha") or "")
+            problem = CloseProof.proof_problem(root, rid, cite, stored)
+            if problem:
+                problems.append(problem)
+                continue
             src = CloseProof.cite_file(root, cite)
-            redo = f"of spec --verified-contract {rid} --cite <file>"
-            if not stored or src is None:
-                problems.append(f"{rid} proof {cite!r} is not a file ({redo})")
+            if src is None:
                 continue
             row.update(CloseProof._bind_file(root, src, sources))
-            if not CloseProof.proof_matches(src.read_bytes(), stored):
-                problems.append(f"{rid} proof {cite} changed since stamped ({redo})")
-                continue
             row["proof_sha"] = stored
             loaded = EvidenceReceipt.load_receipt(src)
             if loaded is not None and not EvidenceReceipt.schema_errors(loaded):
@@ -1929,6 +1978,13 @@ def cmd_close(args: argparse.Namespace) -> None:
     if print_contrast_report(root, order):
         doc = ContrastReport.document(root, order)
         errors = [str(e) for e in (doc.get("errors") or []) if e]
+        proof = [str(p) for p in (doc.get("proof") or []) if p]
+        if proof:
+            die(
+                "of close refused: evidence — "
+                + "; ".join(proof[:6])
+                + ("…" if len(proof) > 6 else "")
+            )
         if errors and all(str(e).startswith("SPEC-EMPTY") for e in errors):
             die(
                 "of close refused: SPEC-EMPTY — "
