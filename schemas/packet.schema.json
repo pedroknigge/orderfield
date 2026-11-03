@@ -160,6 +160,11 @@
     },
     "residual_path": { "type": "string", "minLength": 1 },
     "scratch_dir": { "type": "string", "minLength": 1 },
+    "scratch_bind": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of scratch paths and file bytes at pack, not mtimes. A match is the prior writer."
+    },
     "allow_nested": { "type": "boolean", "default": false },
     "requires_tool": {
       "type": "array",

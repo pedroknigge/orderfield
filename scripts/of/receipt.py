@@ -578,6 +578,27 @@ class KernelVerify:
     DEFAULT_TIMEOUT_S = 120
 
     @staticmethod
+    def _free_command_id(scratch: Path, command_id: str) -> str:
+        """An id whose receipt file is not already in this scratch.
+
+        Scratch is keyed by child_id across waves. Replacing
+        ``kernel-verify.receipt.json`` would change bytes a stamp cites.
+        The next run takes ``<id>-2``, ``<id>-3``, … in the same ``logs/``.
+        """
+        from of.field import die
+
+        n = 1
+        cand = command_id
+        while True:
+            if not EvidenceReceipt.ID_RE.match(cand):
+                die(f"verification receipt name exhausted for {command_id}")
+            path = EvidenceReceipt.archive_paths(scratch, cand)["receipt"]
+            if not path.exists():
+                return cand
+            n += 1
+            cand = f"{command_id}-{n}"
+
+    @staticmethod
     def attest(
         scratch: Path,
         data: bytes,
@@ -589,6 +610,10 @@ class KernelVerify:
         timeout_s: int | None = None,
         inputs: list[dict[str, str]] | None = None,
     ) -> tuple[dict[str, Any], Path, str]:
+        # Packet verify shares one scratch across waves. A spec --run
+        # rewrites its own cite in the same command, so it may replace the file.
+        if command_id == "kernel-verify" or command_id.startswith("kernel-verify-"):
+            command_id = KernelVerify._free_command_id(scratch, "kernel-verify")
         written = EvidenceReceipt.write_archive(
             scratch,
             command_id,
@@ -724,6 +749,7 @@ class KernelVerify:
         *,
         command_id: str = "kernel-verify",
         timeout_s: int = DEFAULT_TIMEOUT_S,
+        checkout: Path | None = None,
     ) -> tuple[dict[str, Any], str, int]:
         import shlex
 
@@ -736,9 +762,10 @@ class KernelVerify:
             die(f"invalid verification command {raw_cmd!r}: {exc}")
         if not argv:
             die("verification command must not be empty")
-        # #363: hash what will run before it runs.
-        inputs = KernelVerify._hash_inputs(root, raw_cmd)
-        exit_code, combined = KernelVerify._run(root, argv, timeout_s)
+        # Hash and run in the child's checkout. The receipt and HMAC stay on root.
+        tree = Path(checkout) if checkout is not None else Path(root)
+        inputs = KernelVerify._hash_inputs(tree, raw_cmd)
+        exit_code, combined = KernelVerify._run(tree, argv, timeout_s)
         if not combined:
             combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
         receipt, _rpath, receipt_rel = KernelVerify.attest(
@@ -754,7 +781,7 @@ class KernelVerify:
         return receipt, receipt_rel, exit_code
 
     @staticmethod
-    def _run(root: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
+    def _run(cwd: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
         """``(exit, stdout + stderr)``. 127 = binary not found, 124 = timeout."""
         import os
         import subprocess
@@ -767,7 +794,7 @@ class KernelVerify:
         try:
             proc = subprocess.run(
                 argv,
-                cwd=str(root),
+                cwd=str(cwd),
                 shell=False,
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
@@ -796,7 +823,7 @@ class KernelVerify:
         packet: dict[str, Any],
         residual: dict[str, Any],
     ) -> tuple[list[str], str | None, bool]:
-        from of.field import physical_artifact_path
+        from of.field import physical_artifact_path, proof_checkout
 
         cmd = str(packet.get("verify_cmd") or "").strip()
         if not cmd or not isinstance(residual, dict) or residual.get("status") != "done":
@@ -809,7 +836,12 @@ class KernelVerify:
         if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
             bound = KernelVerify.DEFAULT_TIMEOUT_S
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, cmd, command_id="kernel-verify", timeout_s=bound
+            root,
+            scratch,
+            cmd,
+            command_id="kernel-verify",
+            timeout_s=bound,
+            checkout=proof_checkout(root, str(packet.get("child_id") or "")),
         )
         rem = residual.setdefault("residual", {})
         if isinstance(rem, dict):
@@ -836,15 +868,19 @@ class KernelVerify:
         """Promote only the IDs pack bound with ``--verify-req`` (#356).
 
         No binding: the receipt stays evidence and nothing is promoted. A
-        PAIR is never stamped here; ``pair_checked`` has one writer, ``of
-        spec --verified-contract ID --both-sides``. Each stamp also writes
-        ``checks/<id>.json`` (as ``of spec`` does), so integrate's printed
-        next agrees with contrast and ``close --checklist`` on one disk state.
+        bound id already ``verified_contract`` is stamped again from this
+        receipt (same writer, new cite). A PAIR is never stamped here;
+        ``pair_checked`` has one writer, ``of spec --verified-contract ID
+        --both-sides``. Each stamp also writes ``checks/<id>.json`` (as
+        ``of spec`` does), so integrate's printed next agrees with contrast
+        and ``close --checklist`` on one disk state.
         """
+        from of.pack import try_load_packet_residual
         from of.spec import (
             find_requirement,
             load_requirements,
             requirement_is_pair,
+            residual_failed_stamps,
             save_requirements,
         )
 
@@ -858,13 +894,24 @@ class KernelVerify:
             proof_sha = EvidenceReceipt.digest(receipt_abs.read_bytes())
         except (OSError, SystemExit):
             return []
+        residual = try_load_packet_residual(root, packet) or {}
+        failed = set(residual_failed_stamps(residual, packet)[0])
         data = load_requirements(root)
         stamped: list[str] = []
         for rid in bound:
             item = find_requirement(data, rid)
-            if item is None or item.get("status") in ("verified_contract", "superseded"):
+            if item is None or item.get("status") == "superseded":
+                continue
+            if rid in failed:
                 continue
             if requirement_is_pair(item):
+                continue
+            if (
+                item.get("status") == "verified_contract"
+                and str(item.get("proof_cite") or "") == receipt_rel
+                and str(item.get("proof_sha") or "") == proof_sha
+            ):
+                stamped.append(rid)
                 continue
             item["status"] = "verified_contract"
             item["proof_cite"] = receipt_rel
@@ -874,6 +921,67 @@ class KernelVerify:
             save_requirements(data, root)
             KernelVerify._write_checks(root, stamped, receipt_rel, proof_sha)
         return stamped
+
+    @staticmethod
+    def kernel_receipt_rel(child_id: str, cite: str | None = None) -> str:
+        """Relative path of this child's kernel receipt.
+
+        No ``cite``: the first file, ``logs/kernel-verify.receipt.json``.
+        A ``cite`` is returned when its name is that file or a later wave's
+        ``kernel-verify-<n>.receipt.json``. Anything else is empty, so a
+        stamp from ``of spec --run`` is not withdrawn with this child.
+        """
+        from of.pack import canonical_scratch_rel
+
+        logs = f"{canonical_scratch_rel(child_id)}/logs/"
+        first = f"{logs}kernel-verify.receipt.json"
+        if cite is None:
+            return first
+        rel = str(cite)
+        name = rel[len(logs):] if rel.startswith(logs) else ""
+        if name == "kernel-verify.receipt.json":
+            return rel
+        stem = "kernel-verify-"
+        suffix = ".receipt.json"
+        if name.startswith(stem) and name.endswith(suffix):
+            n = name[len(stem):-len(suffix)]
+            if n.isdigit() and int(n) >= 2:
+                return rel
+        return ""
+
+    @staticmethod
+    def withdraw_discarded(root: Path, child_id: str) -> list[str]:
+        """Revert ``verified_contract`` stamps this child's kernel receipts proved."""
+        from of.cli.spec_cmd import requirement_checks
+        from of.field import field_lock
+        from of.spec import load_requirements, save_requirements
+        from of.wal import FieldWal
+
+        with field_lock(root, "worktree"):
+            FieldWal.refuse_live_spec_tamper(root)
+            FieldWal.refuse_live_order_tamper(root)
+            FieldWal.materialize_current(root, overwrite=True)
+            data = load_requirements(root)
+            withdrawn: list[str] = []
+            for item in data.get("requirements") or []:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("status") != "verified_contract":
+                    continue
+                if not KernelVerify.kernel_receipt_rel(
+                    child_id, str(item.get("proof_cite") or "")
+                ):
+                    continue
+                owners = item.get("owned_by") or []
+                item["status"] = "owned" if owners else "unowned"
+                item.pop("proof_cite", None)
+                item.pop("proof_sha", None)
+                withdrawn.append(str(item.get("id") or ""))
+            if not withdrawn:
+                return []
+            save_requirements(data, root)
+            requirement_checks(root, data)
+            return withdrawn
 
     @staticmethod
     def pack_fields(
@@ -956,6 +1064,7 @@ class KernelVerify:
         req_ids: list[str],
         command: str,
         timeout_s: int = DEFAULT_TIMEOUT_S,
+        checkout: Path | None = None,
     ) -> tuple[str, int]:
         from of.field import field_home, verify_no_symlink_under
 
@@ -966,6 +1075,11 @@ class KernelVerify:
         raw_id = req_ids[0].lower() if req_ids else "verify"
         clean_id = re.sub(r"[^a-z0-9._-]", "-", f"spec-{raw_id}")[:64]
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, command, command_id=clean_id, timeout_s=timeout_s
+            root,
+            scratch,
+            command,
+            command_id=clean_id,
+            timeout_s=timeout_s,
+            checkout=checkout,
         )
         return receipt_rel, exit_code

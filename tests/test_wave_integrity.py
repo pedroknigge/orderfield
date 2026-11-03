@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -317,6 +318,85 @@ class HandoffClaim(unittest.TestCase):
         r = field.spawn("c1")
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("nonempty scratch", r.stderr)
+        self.assertFalse((field.tmp / WAVE / "spawns/c1.json").exists())
+
+    def _wave2_same_child(self) -> tuple[Field, Path]:
+        """Wave 1 c1 collected, then c1 packed again on wave 2. Scratch kept."""
+        field = Field(self)
+        field.ok("patch", "--evaluator-consent", "no")
+        field.pack("c1")
+        spawned = field.spawn("c1")
+        self.assertEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        field.ok("collect")
+        field.ok("integrate", "--wave", "1")
+        field.ok("next-wave")
+        field.ok(
+            "pack", "--slice", "tweak the slice again", "--role", "explorer",
+            "--child-id", "c1",
+        )
+        packet = field.tmp / ".orderfield/waves/002/packets/c1.json"
+        self.assertTrue(packet.is_file(), "wave 2 packet")
+        return field, packet
+
+    def test_same_child_next_wave_spawns_without_force(self) -> None:
+        field, _packet = self._wave2_same_child()
+        scratch = field.tmp / ".orderfield/work/scratch/c1"
+        now = time.time()
+        for path in scratch.rglob("*"):
+            os.utime(path, (now, now))
+        os.utime(scratch, (now, now))
+        plan = json.loads(field.ok("resume", "--json").stdout)
+        self.assertEqual(plan["action"], "spawn", plan)
+        argv = plan["targets"][0]["argv"]
+        self.assertIn("spawn", argv)
+        self.assertNotIn("--force-spawn", argv)
+        agent = field.aux / "wave_agent.py"
+        # Stock agent reads waves/001 only. Continue c1 on the latest packet.
+        agent.write_text(
+            AGENT.replace("{python}", sys.executable).replace(
+                'pkt = json.loads((root / ".orderfield/waves/001/packets" / (kid + ".json")).read_text())',
+                'pkt = json.loads(sorted((root / ".orderfield/waves").glob("*/packets/" + kid + ".json"))[-1].read_text())',
+            ),
+            encoding="utf-8",
+        )
+        agent.chmod(0o755)
+        spawned = field.of(
+            "spawn", "--adapter", "generic", "--packet",
+            ".orderfield/waves/002/packets/c1.json",
+            OF_AGENT=str(agent),
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        self.assertNotIn("refusing a second writer", spawned.stderr)
+        self.assertNotIn("--force-spawn", spawned.stderr)
+        record = json.loads(
+            (field.tmp / ".orderfield/waves/002/spawns/c1.json").read_text()
+        )
+        self.assertEqual(record.get("outcome"), "ok", record)
+        self.assertNotIn("force_reason", record)
+
+    def test_scratch_changed_on_this_packet_still_refuses(self) -> None:
+        field, packet = self._wave2_same_child()
+        pkt = json.loads(packet.read_text())
+        pulse = field.tmp / pkt["scratch_dir"] / "PULSE"
+        pulse.write_text("still working on wave 2\n", encoding="utf-8")
+        plan = json.loads(field.ok("resume", "--json").stdout)
+        self.assertEqual(
+            (plan["action"], plan["reason_code"]),
+            ("hold", "scratch_unclaimed"),
+            plan,
+        )
+        self.assertEqual(plan["targets"][0]["argv"], [])
+        refused = field.of(
+            "spawn", "--adapter", "generic", "--packet",
+            ".orderfield/waves/002/packets/c1.json",
+            OF_AGENT=str(field.agent),
+        )
+        self.assertNotEqual(refused.returncode, 0, refused.stdout + refused.stderr)
+        self.assertIn("nonempty scratch", refused.stderr)
+        self.assertIn("refusing a second writer", refused.stderr)
+        self.assertFalse(
+            (field.tmp / ".orderfield/waves/002/spawns/c1.json").exists()
+        )
 
 
 class ResidualTemplate(unittest.TestCase):
@@ -435,6 +515,116 @@ class ScopeWriteGate(unittest.TestCase):
         (field.tmp / "stray.txt").write_text("x\n", encoding="utf-8")
         r = field.ok("collect")
         self.assertIn("ScopeWrite skipped (not a git work tree: e1)", r.stdout)
+
+
+# FAKE_MODE: "wt:rel=text" commits in the child's recorded worktree;
+# "field:rel=text" commits in the field checkout during the same flight.
+WT_AGENT = r'''#!{python}
+import hashlib, json, os, pathlib, subprocess
+root = pathlib.Path.cwd()
+kid = os.environ["OF_CHILD"]
+pkt = json.loads((root / ".orderfield/waves/001/packets" / (kid + ".json")).read_text())
+records = json.loads((root / ".orderfield/work/worktrees.json").read_text())
+wt = pathlib.Path(records["trees"][kid]["path"])
+
+def git(cwd, *args):
+    subprocess.check_call(
+        ["git", "-c", "user.email=w4@example.invalid", "-c", "user.name=w4",
+         "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+        cwd=cwd,
+    )
+
+def write(base, rel, text):
+    dest = base / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text + "\n")
+
+wt_files = []
+for spec in filter(None, os.environ.get("FAKE_MODE", "").split(",")):
+    where, _, rest = spec.partition(":")
+    rel, _, text = rest.partition("=")
+    if where == "wt":
+        write(wt, rel, text)
+        wt_files.append(rel)
+    elif where == "field":
+        write(root, rel, text)
+        git(root, "add", "--", rel)
+        git(root, "commit", "-q", "-m", "leader " + rel)
+if wt_files:
+    git(wt, "add", "--", *wt_files)
+    git(wt, "commit", "-q", "-m", "child " + kid)
+
+owns = pkt.get("owns_paths") or []
+proof = wt / owns[0]
+sha = hashlib.sha256(proof.read_bytes()).hexdigest()
+evidence = (
+    "mapped " + owns[0] + "\nartifact_sha: " + sha
+    + "\nrollback: git checkout -- " + owns[0]
+)
+res = {k: pkt[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
+res.update({
+    "status": "done",
+    "result_ref": owns[0],
+    "residual": {"wants_to_change": [], "evidence": evidence, "proposed_patch": None},
+    "metrics": {"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False},
+})
+out = root / pkt["residual_path"]
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(json.dumps(res))
+'''
+
+
+class ScopeWriteWorktree(unittest.TestCase):
+    """A recorded worktree is the checkout ScopeWrite judges (#375)."""
+
+    def field(self) -> Field:
+        field = Field(self, git=True)
+        wt = field.tmp.parent / f"{field.tmp.name}-of-i1"
+        self.addCleanup(shutil.rmtree, wt, True)
+        field.agent.write_text(WT_AGENT.replace("{python}", sys.executable), encoding="utf-8")
+        field.agent.chmod(0o755)
+        field.ok("worktree", "add", "--child-id", "i1")
+        field.pack("i1", "implementer", "src/app.py")
+        return field
+
+    def names(self, cwd: Path, base: str, head: str = "HEAD") -> list[str]:
+        out = subprocess.check_output(
+            ["git", "-C", str(cwd), "diff", "--name-only", base, head], text=True,
+        )
+        return [line for line in out.splitlines() if line]
+
+    def test_leader_field_commit_is_not_the_childs(self) -> None:
+        field = self.field()
+        field.ok(
+            "spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/i1.json"),
+            OF_AGENT=str(field.agent),
+            FAKE_MODE="wt:src/app.py=print(2),field:docs/plan.md=leader plan",
+        )
+        records = json.loads((field.tmp / ".orderfield/work/worktrees.json").read_text())
+        base = records["trees"]["i1"]["head"]
+        wt = Path(records["trees"]["i1"]["path"])
+        self.assertEqual(self.names(wt, base), ["src/app.py"])
+        self.assertIn("docs/plan.md", self.names(field.tmp, base))
+        scope = json.loads((field.tmp / WAVE / "scope/i1.json").read_text())
+        self.assertIn("src/app.py", scope["changed"])
+        self.assertNotIn("docs/plan.md", scope["changed"])
+        r = field.ok("collect")
+        self.assertIn("ok=1", r.stdout)
+        self.assertNotIn("rule=ScopeWrite", r.stdout)
+        self.assertNotIn("docs/plan.md", r.stdout)
+
+    def test_worktree_write_outside_owns_paths_is_invalid(self) -> None:
+        field = self.field()
+        field.ok(
+            "spawn", "--adapter", "generic", "--packet", str(WAVE / "packets/i1.json"),
+            OF_AGENT=str(field.agent),
+            FAKE_MODE="wt:src/app.py=print(2),wt:README.md=hijack",
+        )
+        r = field.of("collect")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        line = next(x for x in r.stdout.splitlines() if "rule=ScopeWrite" in x)
+        self.assertIn("README.md", line)
+        self.assertNotIn("src/app.py,", line)
 
 
 class OwnedWriteWhitespace(unittest.TestCase):

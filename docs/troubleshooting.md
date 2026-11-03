@@ -263,6 +263,12 @@ Recovery without migrate still works for collect/integrate on identity-free pack
 
 **Recover:** `of worktree add --child-id <id>` creates a **detached** worktree *outside* the project (git refuses nested worktrees). It does not spawn, kill, or supervise the child. Install inside that worktree; do not symlink `node_modules` or `.orderfield`. After collect or abandon, `of worktree remove --child-id <id>` drops it. Spawn never calls this helper. `of doctor` / close WARN when a recorded entry is orphaned vs a settled child (advisory; not FAIL; not an Orca process poll).
 
+**Symptom:** `of worktree land` dies with `Author identity unknown`, and `of worktree remove` only offers `--force`.
+
+**Meaning:** The land commit needed a git author. A machine with no `user.name` / `user.email` (CI, a fresh cloud box) failed, and `--force` discards the worktree.
+
+**Recover:** `of worktree land --child-id <id>`. When git has no author, that command passes a kernel identity for the invocation and does not write git config. The worktree stays either way. A conflict prints the same command and the worktree path. `of worktree remove --force` still discards; it is not the recovery.
+
 ## Orca worker retain leak
 
 **Symptom:** After `/of` in OrcaDev, `orca orchestration worker-list` shows succeeded workers with `terminal=retained`. Host resources / pooler stay held.

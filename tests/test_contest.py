@@ -8,6 +8,7 @@ with a CONTEST.json trail, never deleted.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -69,9 +70,16 @@ def stamp_verified(home: Path) -> str:
     data = json.loads(req_path.read_text(encoding="utf-8"))
     reqs = [r for r in (data.get("requirements") or []) if isinstance(r, dict)]
     assert reqs, "contest brief must extract at least one requirement"
+    root = home.parents[2]
+    proof = root / "surface.log"
+    proof.write_text("ok\n", encoding="utf-8")
+    rel = proof.relative_to(root).as_posix()
+    sha = hashlib.sha256(proof.read_bytes()).hexdigest()
     for req in reqs:
         req["status"] = "verified_contract"
         req["owned_by"] = ["simulated-landing"]
+        req["proof_cite"] = rel
+        req["proof_sha"] = sha
     req_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
     return str(reqs[0].get("id"))
 

@@ -53,6 +53,11 @@
             "pattern": "^[a-f0-9]{64}$",
             "description": "sha256 of a cited file when the cite is a project path"
           },
+          "takeover": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Leader re-owned a failed requirement while stamping verified_contract"
+          },
           "origin": {
             "type": "string",
             "enum": ["extracted", "added", "from-file"]

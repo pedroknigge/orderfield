@@ -32,6 +32,7 @@ from of.field import (
     order_path,
     physical_artifact_path,
     physical_field_rel,
+    proof_checkout,
     safe_relative_path,
     skill_root,
     SpawnRecord,
@@ -2023,7 +2024,10 @@ class ScopeWrite:
     without ``owns_paths`` shares the tree.
     A sibling excuses a path only if it ran during this child's window
     (``t0`` baseline .. ``t1`` exit): a series sibling cannot. Read-only roles own nothing but leader-granted ``owns_paths``. A
-    non-git tree is skipped with a note. Detection, not a sandbox.
+    non-git tree is skipped with a note. The checkout is the child's
+    recorded worktree when that path is a worktree of this repository:
+    a write in the field checkout during the window is the leader's.
+    No recorded worktree keeps the field checkout. Detection, not a sandbox.
     """
 
     RULE = "ScopeWrite"
@@ -2280,6 +2284,16 @@ class ScopeWrite:
         return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
     @staticmethod
+    def checkout(root: Path, packet: dict[str, Any]) -> Path:
+        """Git checkout whose writes belong to this child.
+
+        The recorded linked worktree (``proof_checkout``), else the field.
+        A field-checkout write in the same window is the leader's. No
+        record, or a path git does not list, stays the field checkout.
+        """
+        return proof_checkout(root, str(packet.get("child_id") or ""))
+
+    @staticmethod
     def snapshot(root: Path) -> dict[str, Any] | None:
         """{head, dirty: {path: blob id}} for the product tree, or None (no git)."""
         prefix_raw = ScopeWrite._git(root, "rev-parse", "--show-prefix")
@@ -2479,10 +2493,11 @@ class ScopeWrite:
         diffs to now (the unreadable attempt's own writes).
         """
         doc = ScopeWrite.load(root, packet)
-        snap = ScopeWrite.snapshot(root)
+        git_root = ScopeWrite.checkout(root, packet)
+        snap = ScopeWrite.snapshot(git_root)
         # No snapshot in a git work tree (timeout, broken config) fails
         # closed; only a tree git does not know is a skip.
-        in_git = snap is None and ScopeWrite._in_git(root)
+        in_git = snap is None and ScopeWrite._in_git(git_root)
         if in_git and not fresh and ScopeWrite._keep_unreadable(root, packet, doc):
             return
         new: dict[str, Any] = {
@@ -2496,7 +2511,7 @@ class ScopeWrite:
         if in_git:
             new["unreadable"] = True
         old = doc.get("before") if isinstance(doc, dict) else None
-        prior = ScopeWrite._prior(root, doc, snap)
+        prior = ScopeWrite._prior(git_root, doc, snap)
         if not fresh and isinstance(old, dict) and prior is not None:
             assert isinstance(doc, dict)
             for key in ("t0", OwnedWrite.DIGEST_KEY):
@@ -2506,14 +2521,14 @@ class ScopeWrite:
                 was = old.get("dirty") if isinstance(old.get("dirty"), dict) else {}
                 cfg = ScopeWrite.CONFIG
                 if cfg in prior and old.get("config") != ScopeWrite.CONFIG_SCHEME:
-                    if ScopeWrite._legacy_config_same(root, old, was.get(cfg), doc.get("t0")):
+                    if ScopeWrite._legacy_config_same(git_root, old, was.get(cfg), doc.get("t0")):
                         prior = [p for p in prior if p != cfg]  # reverted
                     else:
                         # The carried value is pre-scheme: keep its tag so
                         # changed() still compares it the legacy way.
                         snap["config"] = old.get("config")
                 tree = ScopeWrite._tree_ids(
-                    root, old.get("head"),
+                    git_root, old.get("head"),
                     sorted(p for p in prior if p not in was and not p.startswith(".git/")),
                 )
                 snap["dirty"].update(
@@ -2556,8 +2571,9 @@ class ScopeWrite:
         doc = ScopeWrite.load(root, packet)
         if not isinstance(doc, dict) or not isinstance(doc.get("before"), dict):
             return
-        now = ScopeWrite.snapshot(root)
-        changed = ScopeWrite.since(root, doc["before"], now, doc.get("t0"))
+        git_root = ScopeWrite.checkout(root, packet)
+        now = ScopeWrite.snapshot(git_root)
+        changed = ScopeWrite.since(git_root, doc["before"], now, doc.get("t0"))
         if doc.get("unreadable"):
             # An unjudged attempt on a kept baseline adds to the prior
             # attempt's record, never replaces it.
@@ -2857,9 +2873,10 @@ class ScopeWrite:
         ):
             return [], None, []
         changed = doc.get("changed")
+        git_root = ScopeWrite.checkout(root, packet)
         if not isinstance(changed, list):
             changed = ScopeWrite._attempt(doc) or ScopeWrite.since(
-                root, doc["before"], ScopeWrite.snapshot(root), doc.get("t0")
+                git_root, doc["before"], ScopeWrite.snapshot(git_root), doc.get("t0")
             )
         if not changed:
             return [], None, []
@@ -2877,7 +2894,7 @@ class ScopeWrite:
             return [], None, []
         raw_paths = [path for path, _why in bad]
         before = doc["before"]
-        plan = ScopeWrite.revert_plan(root, before, raw_paths)
+        plan = ScopeWrite.revert_plan(git_root, before, raw_paths)
         skips = [f"{path} ({why})" for path, action, why in plan if action == "skip"]
         actions = [(path, action) for path, action, _why in plan if action != "skip"]
         if not actions:
@@ -2889,7 +2906,7 @@ class ScopeWrite:
         patch_chunks: list[bytes] = []
         reverted: list[str] = []
         for rel, action in actions:
-            chunk, why = ScopeWrite._revert_one(root, b_head, rel, action)
+            chunk, why = ScopeWrite._revert_one(git_root, b_head, rel, action)
             if why is not None:
                 skips.append(f"{rel} ({why})")
                 continue
@@ -2909,10 +2926,10 @@ class ScopeWrite:
             write_field_bytes(scratch_dir, scratch_dir / "quarantine.patch", patch_bytes)
         except (OSError, SystemExit):
             pass
-        now_snap = ScopeWrite.snapshot(root)
-        if isinstance(cache, dict):
+        now_snap = ScopeWrite.snapshot(git_root)
+        if isinstance(cache, dict) and git_root == root:
             cache["now"] = now_snap
-        new_changed = ScopeWrite.since(root, before, now_snap, doc.get("t0"))
+        new_changed = ScopeWrite.since(git_root, before, now_snap, doc.get("t0"))
         if "changed" in doc:
             doc["changed"] = new_changed
         if "seen" in doc:
@@ -2934,11 +2951,16 @@ class ScopeWrite:
         if doc.get("skip") or not isinstance(doc.get("before"), dict):
             return str(doc.get("skip") or ScopeWrite.NO_BASELINE)
         if not isinstance(doc.get("changed"), list):
-            if "now" not in cache:
-                cache["now"] = ScopeWrite.snapshot(root)
-            doc["seen"] = ScopeWrite.since(root, doc["before"], cache["now"], doc.get("t0"))
+            git_root = ScopeWrite.checkout(root, packet)
+            if git_root == root:
+                if "now" not in cache:
+                    cache["now"] = ScopeWrite.snapshot(root)
+                now = cache["now"]
+            else:
+                now = ScopeWrite.snapshot(git_root)
+            doc["seen"] = ScopeWrite.since(git_root, doc["before"], now, doc.get("t0"))
             doc[ScopeWrite.OPERATOR_KEY] = ScopeWrite._operator_changed(
-                doc["before"], cache["now"]
+                doc["before"], now
             )
             ScopeWrite._save(root, packet, doc)
         return None
@@ -2986,16 +3008,18 @@ class ScopeWrite:
                 "(of spawn / of handoff retakes the baseline)"
             ]
         bad: list[tuple[str, str]] = []
+        git_root = root
         if (
             isinstance(doc, dict)
             and not doc.get("skip")
             and isinstance(doc.get("before"), dict)
         ):
             changed = doc.get("changed")
+            git_root = ScopeWrite.checkout(root, packet)
             if not isinstance(changed, list):
                 changed = (
                     ScopeWrite.since(
-                        root, doc["before"], ScopeWrite.snapshot(root), doc.get("t0")
+                        git_root, doc["before"], ScopeWrite.snapshot(git_root), doc.get("t0")
                     )
                     if live
                     else ScopeWrite._attempt(doc) or []
@@ -3021,7 +3045,7 @@ class ScopeWrite:
         raw = [path for path, _why in bad]
         before = doc.get("before") if isinstance(doc, dict) else None
         clause = (
-            ScopeWrite._revert_clause(ScopeWrite.revert_plan(root, before, raw))
+            ScopeWrite._revert_clause(ScopeWrite.revert_plan(git_root, before, raw))
             if isinstance(before, dict)
             else "Leader: revert those paths, then re-run the child "
             "(judged against the same baseline)"
@@ -3365,6 +3389,84 @@ def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
     except StopIteration:
         return False
     return True
+
+
+class ScratchBind:
+    """sha256 of scratch paths and file bytes at pack. Not mtimes.
+
+    Scratch is keyed by child_id across waves. A match is the prior writer.
+    A nonempty mismatch is unwatched work on this packet. ``NextPlan`` stays
+    bytes, never mtime.
+    """
+
+    KEY = "scratch_bind"
+
+    @staticmethod
+    def _of_entries(entries: list[list[str]]) -> str:
+        blob = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _file_sha(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _walk(root: Path, path: Path, entries: list[list[str]]) -> None:
+        for child in sorted(path.iterdir(), key=lambda item: item.name):
+            rel = child.relative_to(root).as_posix()
+            if child.is_symlink():
+                entries.append(["l", rel, os.readlink(child)])
+                continue
+            if child.is_dir():
+                entries.append(["d", rel, ""])
+                ScratchBind._walk(root, child, entries)
+                continue
+            if child.is_file():
+                entries.append(["f", rel, ScratchBind._file_sha(child)])
+                continue
+            entries.append(["o", rel, ""])
+
+    @staticmethod
+    def digest_tree(path: Path) -> str:
+        """Bind of one scratch directory. Missing or empty is one digest."""
+        entries: list[list[str]] = []
+        if path.is_dir() and not path.is_symlink():
+            ScratchBind._walk(path, path, entries)
+        return ScratchBind._of_entries(entries)
+
+    @staticmethod
+    def digest(root: Path, packet: dict[str, Any]) -> str:
+        rel = packet.get("scratch_dir")
+        if not rel:
+            return ScratchBind._of_entries([])
+        require_packet_artifact_paths(root, packet)
+        path = physical_artifact_path(root, str(rel), "packet scratch_dir")
+        return ScratchBind.digest_tree(path)
+
+    @staticmethod
+    def blocks(root: Path, packet: dict[str, Any]) -> bool:
+        """True when scratch is an unwatched writer on this packet.
+
+        No bind (pre-field packets): any nonempty scratch, as before.
+        A matching bind is leftover bytes from before this packet.
+        An empty tree is not a writer, even if files were removed.
+        Unreadable bytes fail closed.
+        """
+        recorded = packet.get(ScratchBind.KEY)
+        legacy = not (isinstance(recorded, str) and re.fullmatch(r"[0-9a-f]{64}", recorded))
+        if legacy:
+            return scratch_nonempty(root, packet)
+        if not scratch_nonempty(root, packet):
+            return False
+        try:
+            current = ScratchBind.digest(root, packet)
+        except OSError:
+            return True
+        return current != recorded
 
 
 def truncate_slice(text: str, limit: int = SLICE_BRIEF_CHARS) -> str:
