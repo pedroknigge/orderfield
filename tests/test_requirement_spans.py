@@ -21,6 +21,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "scripts"))
 from _harness import run_of  # noqa: E402
 from of.spec import (  # noqa: E402
+    _rule_heading,
     extract_requirements_from_spec,
     plan_item_id,
     uncovered_list_lines,
@@ -253,6 +254,151 @@ class UncoveredSpeaks(unittest.TestCase):
         self.assertIn("plan_cover   uncovered SPEC.md:9-10", out)
         doctor = run_of(tmp, "doctor")
         self.assertIn("plan_cover     uncovered  SPEC.md:9-10", doctor.stdout)
+
+
+#379: a heading word that merely contains a rule key must not switch the
+# brief into rule-heading mode. The three init repros are the issue's.
+PARTS = "## Part A\n\n1. Alpha does a.\n\n## Part B\n\n2. Beta does b.\n"
+RELEASE = "## Release prep\n\n1. Alpha does a.\n\n## Part B\n\n2. Beta does b.\n"
+ABANDONED = (
+    "## Part A\n\n1. Alpha does a.\n\n"
+    "## Abandoned ideas to revisit\n\n- Gamma maybe.\n\n"
+    "## Part B\n\n2. Beta does b.\n"
+)
+OUT_OF_SCOPE = (
+    "## Part A\n\n1. Alpha does a.\n\n"
+    "## Out of scope\n\n- Gamma maybe.\n\n"
+    "## Part B\n\n2. Beta does b.\n"
+)
+CLI_FEATURES = "## CLI features\n\n1. Alpha does a.\n\n## Part B\n\n2. Beta does b.\n"
+WAVE = (
+    "## Wave 1 — CLI features (the command)\n"
+    "\n"
+    "1. Add the lines flag.\n"
+    "2. Reject a missing path.\n"
+    "\n"
+    "## Wave 2 — docs (the manual)\n"
+    "\n"
+    "3. Document the command where:\n"
+    "   3.1 install steps are listed;\n"
+    "   3.2 usage is shown;\n"
+    "   3.3 flags are tabled.\n"
+)
+
+
+class RuleHeadingWords(unittest.TestCase):
+    """A rule heading is the head word, not a substring of the title (#379)."""
+
+    def test_head_word_matches_plurals_and_stems_only(self) -> None:
+        for title in (
+            "Requirements",
+            "Rules:",
+            "Acceptance criteria",
+            "Done when",
+            "Lease",
+            "Features",
+            "1. Requirements",
+            "**Requirements**",
+            "Idempotency",
+            "Restricciones",
+            "Scope",
+        ):
+            self.assertTrue(_rule_heading(title), title)
+        for title in (
+            "Release prep",
+            "Abandoned ideas to revisit",
+            "Out of scope",
+            "CLI features",
+            "Wave 1 — CLI features (the command)",
+            "Inspection",
+            "Part A",
+            "Part B",
+        ):
+            self.assertFalse(_rule_heading(title), title)
+
+    def test_lease_and_idempotency_heads_still_scope(self) -> None:
+        text = (
+            "## Lease\n"
+            "\n"
+            "- Only queued jobs whose available_at is due may be leased.\n"
+            "\n"
+            "## Notes\n"
+            "\n"
+            "- context bullet that is not a requirement\n"
+        )
+        reqs = extract_requirements_from_spec(text)
+        self.assertEqual(
+            [r["text"] for r in reqs],
+            ["Only queued jobs whose available_at is due may be leased."],
+        )
+        self.assertEqual(reqs[0]["id"], "LEASE-001")
+        self.assertEqual(uncovered_list_lines(text, reqs), [(7, 7)])
+        stemmed = (
+            "## Idempotency\n"
+            "\n"
+            "- The handler is idempotent for the same key.\n"
+            "\n"
+            "## Notes\n"
+            "\n"
+            "- context bullet that is not a requirement\n"
+        )
+        stemmed_reqs = extract_requirements_from_spec(stemmed)
+        self.assertEqual(
+            [r["text"] for r in stemmed_reqs],
+            ["The handler is idempotent for the same key."],
+        )
+        self.assertEqual(stemmed_reqs[0]["id"], "IDEMP-001")
+        self.assertEqual(uncovered_list_lines(stemmed, stemmed_reqs), [(7, 7)])
+
+
+class Issue379Init(unittest.TestCase):
+    """The issue's init repros, through the CLI."""
+
+    def _init(self, text: str) -> tuple[str, list[dict]]:
+        tmp = Path(tempfile.mkdtemp(prefix="of-req-379-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        brief = tmp / "brief.md"
+        brief.write_text(text, encoding="utf-8")
+        r = run_of(tmp, "init", "--mission", "m", "--source-file", str(brief))
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        reqs = json.loads(
+            (tmp / ".orderfield" / "REQUIREMENTS.json").read_text(encoding="utf-8")
+        )["requirements"]
+        return r.stdout, reqs
+
+    def _texts(self, text: str, *expected: str) -> None:
+        out, reqs = self._init(text)
+        self.assertIn(f"requirements {len(expected)} extracted", out)
+        self.assertNotIn("uncovered", out)
+        self.assertEqual([r["text"] for r in reqs], list(expected))
+        self.assertTrue(all(r["binding"] for r in reqs))
+
+    def test_plain_parts_extract_both(self) -> None:
+        self._texts(PARTS, "Alpha does a.", "Beta does b.")
+
+    def test_release_prep_keeps_the_other_heading(self) -> None:
+        self._texts(RELEASE, "Alpha does a.", "Beta does b.")
+
+    def test_abandoned_list_is_not_the_only_requirement(self) -> None:
+        self._texts(ABANDONED, "Alpha does a.", "Gamma maybe.", "Beta does b.")
+
+    def test_out_of_scope_does_not_replace_the_contract(self) -> None:
+        self._texts(OUT_OF_SCOPE, "Alpha does a.", "Gamma maybe.", "Beta does b.")
+
+    def test_cli_features_keeps_the_other_heading(self) -> None:
+        self._texts(CLI_FEATURES, "Alpha does a.", "Beta does b.")
+
+    def test_wave_headings_keep_the_docs_item(self) -> None:
+        out, reqs = self._init(WAVE)
+        self.assertIn("requirements 3 extracted", out)
+        self.assertNotIn("uncovered", out)
+        self.assertEqual(
+            [r["text"] for r in reqs[:2]],
+            ["Add the lines flag.", "Reject a missing path."],
+        )
+        self.assertIn("3.1 install steps are listed;", reqs[2]["text"])
+        self.assertIn("3.2 usage is shown;", reqs[2]["text"])
+        self.assertIn("3.3 flags are tabled.", reqs[2]["text"])
 
 
 if __name__ == "__main__":
