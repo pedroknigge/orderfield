@@ -3051,6 +3051,15 @@ class WorktreeLandSuite(unittest.TestCase):
             (self.tmp / "feature.py").read_text(encoding="utf-8"),
             "def hello(): return 'world'\n",
         )
+        # A configured identity stays the committer. Land must not stamp
+        # the kernel fallback over it.
+        who = subprocess.run(
+            ["git", "-C", str(self.tmp), "log", "-1", "--format=%ce"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(who.stdout.strip(), "test@example.com")
 
         # Remove now succeeds cleanly without --force
         rm = run_of(self.tmp, "worktree", "remove", "--child-id", "c1")
@@ -3076,6 +3085,162 @@ class WorktreeLandSuite(unittest.TestCase):
         rm_force = run_of(self.tmp, "worktree", "remove", "--child-id", "c2", "--force")
         self.assertEqual(rm_force.returncode, 0, rm_force.stderr)
         self.assertFalse(wt_dir.exists())
+
+    def test_land_conflict_keeps_worktree_and_names_retry(self) -> None:
+        mod = self.tmp / "mod.py"
+        mod.write_text("x = 1\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.tmp), "add", "mod.py"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "commit", "-qm", "add mod"], check=True
+        )
+        add = run_of(self.tmp, "worktree", "add", "--child-id", "c3")
+        self.assertEqual(add.returncode, 0, add.stderr)
+        wt_dir = self.tmp.parent / f"{self.tmp.name}-of-c3"
+        self.addCleanup(shutil.rmtree, wt_dir, True)
+        self.assertTrue(wt_dir.is_dir())
+
+        mod.write_text("x = 9\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.tmp), "add", "mod.py"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "commit", "-qm", "field edit"], check=True
+        )
+        (wt_dir / "mod.py").write_text("y = 2\n", encoding="utf-8")
+
+        land = run_of(self.tmp, "worktree", "land", "--child-id", "c3")
+        self.assertNotEqual(land.returncode, 0, land.stdout + land.stderr)
+        blob = land.stderr
+        self.assertIn("work kept at", blob)
+        self.assertIn(str(wt_dir), blob)
+        self.assertIn("nothing discarded", blob)
+        self.assertIn("of worktree land --child-id c3", blob)
+        self.assertNotIn("--force", blob)
+        self.assertEqual((wt_dir / "mod.py").read_text(encoding="utf-8"), "y = 2\n")
+        self.assertEqual(mod.read_text(encoding="utf-8"), "x = 9\n")
+        # Auto-commit in the worktree used the configured identity.
+        who = subprocess.run(
+            ["git", "-C", str(wt_dir), "log", "-1", "--format=%ae %ce"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(who.stdout.strip(), "test@example.com test@example.com")
+
+        rm = run_of(self.tmp, "worktree", "remove", "--child-id", "c3")
+        self.assertNotEqual(rm.returncode, 0, rm.stdout + rm.stderr)
+        self.assertIn("nothing discarded", rm.stderr)
+        self.assertIn("of worktree land --child-id c3", rm.stderr)
+        self.assertTrue(wt_dir.is_dir())
+        self.assertEqual((wt_dir / "mod.py").read_text(encoding="utf-8"), "y = 2\n")
+
+
+class WorktreeLandNoIdentity(unittest.TestCase):
+    """#380: no user.name/user.email. Land must not discard the child's work."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-wt-noid-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.blank = self.tmp / "blank-home"
+        self.blank.mkdir()
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(
+            {
+                "HOME": str(self.blank),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": str(self.blank / "no-global-gitconfig"),
+                "GIT_CONFIG_SYSTEM": str(self.blank / "no-system-gitconfig"),
+                "OF_NO_UPDATE_CHECK": "1",
+                "OF_LEARNINGS": str(self.tmp / "learnings.json"),
+            }
+        )
+        self.env = env
+        subprocess.run(
+            ["git", "init", "-q", "-b", "main", str(self.tmp)],
+            check=True,
+            env=self.env,
+        )
+        # Force the issue's "Author identity unknown" even if this git would
+        # guess a name from the hostname. Do not set user.name or user.email.
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "config", "user.useConfigOnly", "true"],
+            check=True,
+            env=self.env,
+        )
+        (self.tmp / "mod.py").write_text("x = 1\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "-C", str(self.tmp), "add", "mod.py"], check=True, env=self.env
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.tmp),
+                "-c",
+                "user.email=a@b",
+                "-c",
+                "user.name=a",
+                "commit",
+                "-qm",
+                "init",
+            ],
+            check=True,
+            env=self.env,
+        )
+        init = subprocess.run(
+            [sys.executable, str(OF_PY), "init", "--mission", "m", "--phase", "build"],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+        )
+        self.assertEqual(init.returncode, 0, init.stderr)
+
+    def _of(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(OF_PY), *args],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+        )
+
+    def test_issue_380_land_without_git_identity(self) -> None:
+        wt_dir = self.tmp.parent / f"{self.tmp.name}-of-c1"
+        self.addCleanup(shutil.rmtree, wt_dir, True)
+        add = self._of("worktree", "add", "--child-id", "c1")
+        self.assertEqual(add.returncode, 0, add.stderr)
+        self.assertTrue(wt_dir.is_dir())
+        with (wt_dir / "mod.py").open("a", encoding="utf-8") as fh:
+            fh.write("y = 2\n")
+
+        land = self._of("worktree", "land", "--child-id", "c1")
+        self.assertEqual(land.returncode, 0, land.stdout + land.stderr)
+        self.assertIn("y = 2\n", (self.tmp / "mod.py").read_text(encoding="utf-8"))
+        self.assertIn("y = 2\n", (wt_dir / "mod.py").read_text(encoding="utf-8"))
+        self.assertFalse((self.blank / ".gitconfig").exists())
+        self.assertFalse((self.blank / "no-global-gitconfig").exists())
+        landed = subprocess.run(
+            ["git", "-C", str(self.tmp), "show", "HEAD:mod.py"],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=True,
+        )
+        self.assertIn("y = 2\n", landed.stdout)
+        who = subprocess.run(
+            ["git", "-C", str(self.tmp), "log", "-1", "--format=%ae %ce"],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=True,
+        )
+        self.assertEqual(who.stdout.strip(), "orderfield@localhost orderfield@localhost")
+
+        rm = self._of("worktree", "remove", "--child-id", "c1")
+        self.assertEqual(rm.returncode, 0, rm.stderr)
+        self.assertFalse(wt_dir.exists())
+        self.assertIn("y = 2\n", (self.tmp / "mod.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

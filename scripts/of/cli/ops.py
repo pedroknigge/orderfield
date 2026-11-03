@@ -935,6 +935,42 @@ def cmd_worktree_add(args: argparse.Namespace) -> None:
     )
 
 
+# Last-resort committer for `of worktree land` when git has no author.
+# Passed as `git -c` on that invocation only. Never written to git config.
+_LAND_IDENTITY = (
+    "-c",
+    "user.name=orderfield",
+    "-c",
+    "user.email=orderfield@localhost",
+)
+
+
+def _land_identity_args(repo: Path) -> tuple[str, ...]:
+    """`-c` identity for a commit-creating land call when git has none.
+
+    Empty when both author and committer already resolve (env or config),
+    so a configured operator keeps their name. Does not write git config.
+    """
+    author = run_git(repo, "var", "GIT_AUTHOR_IDENT")
+    committer = run_git(repo, "var", "GIT_COMMITTER_IDENT")
+    if (
+        author.returncode == 0
+        and committer.returncode == 0
+        and (author.stdout or "").strip()
+        and (committer.stdout or "").strip()
+    ):
+        return ()
+    return _LAND_IDENTITY
+
+
+def _land_kept(dest: Path, child_id: str, why: str) -> None:
+    """Land failed. The worktree stays; discard is not the next step."""
+    die(
+        f"{why} work kept at {dest}; nothing discarded. "
+        f"retry without discarding: of worktree land --child-id {child_id}"
+    )
+
+
 def cmd_worktree_land(args: argparse.Namespace) -> None:
     root = find_root()
     if git_repo_root(root) is None:
@@ -948,23 +984,36 @@ def cmd_worktree_land(args: argparse.Namespace) -> None:
     if not dest.is_dir():
         die(f"worktree path does not exist {dest}")
 
-    # Check for uncommitted changes in the worktree; auto-commit them if present
+    # Commit-creating calls (auto-commit and cherry-pick) need an author.
+    # A box with no user.email must still land; do not ask the operator to
+    # edit global git config.
+    ident = _land_identity_args(dest)
     status_proc = run_git(dest, "status", "--porcelain")
     if status_proc.returncode != 0:
-        die(f"git status failed in worktree {dest}: {status_proc.stderr}")
+        _land_kept(
+            dest,
+            child_id,
+            f"git status failed in worktree {dest}: {status_proc.stderr}",
+        )
     uncommitted = status_proc.stdout.strip()
     if uncommitted:
         add_proc = run_git(dest, "add", "-A")
         if add_proc.returncode != 0:
-            die(f"git add failed in worktree {dest}: {add_proc.stderr}")
+            _land_kept(
+                dest,
+                child_id,
+                f"git add failed in worktree {dest}: {add_proc.stderr}",
+            )
         commit_proc = run_git(
             dest,
+            *ident,
             "commit",
             "-m",
             f"chore(of): land uncommitted work from child {child_id}",
         )
         if commit_proc.returncode != 0:
-            die(f"git commit failed in worktree {dest}: {commit_proc.stderr}")
+            err = (commit_proc.stderr or commit_proc.stdout or "git commit failed").strip()
+            _land_kept(dest, child_id, f"git commit failed in worktree {dest}: {err}")
 
     base_head = str(recorded.get("head") or "-")
     wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
@@ -985,15 +1034,19 @@ def cmd_worktree_land(args: argparse.Namespace) -> None:
         save_worktrees(root, records)
         return
 
-    # Cherry-pick commits onto current branch
-    cherry = run_git(root, "cherry-pick", *rev_list)
+    # Cherry-pick commits onto current branch. This creates commits, so it
+    # needs the same identity fallback as the auto-commit above.
+    cherry = run_git(root, *ident, "cherry-pick", *rev_list)
     if cherry.returncode != 0:
-        run_git(root, "cherry-pick", "--abort")
+        abort = run_git(root, "cherry-pick", "--abort")
         err = (cherry.stderr or cherry.stdout or "cherry-pick failed").strip()
-        die(
-            f"worktree landing failed with git conflicts:\n{err}\n"
-            f"Resolve conflicts manually or inspect worktree at {dest}"
-        )
+        detail = f"worktree landing failed with git conflicts: {err}"
+        if abort.returncode != 0:
+            detail += (
+                " cherry-pick --abort also failed; "
+                "field checkout may still be mid-merge."
+            )
+        _land_kept(dest, child_id, detail)
 
     records["trees"][child_id]["landed"] = True
     records["trees"][child_id]["landed_at"] = utc_now()
@@ -1031,7 +1084,8 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
             has_commits = bool(revs)
         if status or has_commits:
             die(
-                f"worktree has unlanded changes; run 'of worktree land --child-id {child_id}' first "
+                f"worktree has unlanded changes at {dest}; nothing discarded. "
+                f"run 'of worktree land --child-id {child_id}' first "
                 f"(or 'of worktree remove --child-id {child_id} --force' to discard)"
             )
     if git_repo_root(root) is not None:
