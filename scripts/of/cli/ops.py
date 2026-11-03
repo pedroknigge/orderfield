@@ -1003,6 +1003,18 @@ def cmd_worktree_land(args: argparse.Namespace) -> None:
     print(f"commits      {len(rev_list)} landed into HEAD")
 
 
+def _worktree_unlanded(dest: Path, recorded: dict) -> bool:
+    """True when the worktree has commits or a dirty tree since it was added."""
+    status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
+    base = str(recorded.get("head") or "")
+    wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
+    has_commits = False
+    if base and base != "-" and wt_head:
+        revs = (run_git(dest, "rev-list", f"{base}..{wt_head}").stdout or "").strip()
+        has_commits = bool(revs)
+    return bool(status or has_commits)
+
+
 def cmd_worktree_remove(args: argparse.Namespace) -> None:
     root = find_root()
     child_id = require_child_id(args.child_id)
@@ -1016,23 +1028,24 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
     # The recorded path is now bound to the leader-created worktree
     # (_verified_worktree_dest), so `landed` can only affect this child's own
     # worktree; honoring it keeps the normal land->remove flow working.
-    if (
-        not force
-        and dest.is_dir()
+    unlanded = (
+        dest.is_dir()
         and isinstance(recorded, dict)
         and not recorded.get("landed")
-    ):
-        status = (run_git(dest, "status", "--porcelain").stdout or "").strip()
-        base = str(recorded.get("head") or "") if isinstance(recorded, dict) else ""
-        wt_head = (run_git(dest, "rev-parse", "HEAD").stdout or "").strip()
-        has_commits = False
-        if base and base != "-" and wt_head:
-            revs = (run_git(dest, "rev-list", f"{base}..{wt_head}").stdout or "").strip()
-            has_commits = bool(revs)
-        if status or has_commits:
-            die(
-                f"worktree has unlanded changes; run 'of worktree land --child-id {child_id}' first "
-                f"(or 'of worktree remove --child-id {child_id} --force' to discard)"
+        and _worktree_unlanded(dest, recorded)
+    )
+    if not force and unlanded:
+        die(
+            f"worktree has unlanded changes; run 'of worktree land --child-id {child_id}' first "
+            f"(or 'of worktree remove --child-id {child_id} --force' to discard)"
+        )
+    if force and unlanded:
+        from of.receipt import KernelVerify
+
+        for rid in KernelVerify.withdraw_discarded(root, child_id):
+            print(
+                f"unstamped    {rid} "
+                f"(discarded unlanded worktree {child_id})"
             )
     if git_repo_root(root) is not None:
         proc = run_git(root, "worktree", "remove", "--force", str(dest))
