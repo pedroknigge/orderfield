@@ -848,10 +848,12 @@ class KernelVerify:
         ``checks/<id>.json`` (as ``of spec`` does), so integrate's printed
         next agrees with contrast and ``close --checklist`` on one disk state.
         """
+        from of.pack import try_load_packet_residual
         from of.spec import (
             find_requirement,
             load_requirements,
             requirement_is_pair,
+            residual_failed_stamps,
             save_requirements,
         )
 
@@ -865,11 +867,15 @@ class KernelVerify:
             proof_sha = EvidenceReceipt.digest(receipt_abs.read_bytes())
         except (OSError, SystemExit):
             return []
+        residual = try_load_packet_residual(root, packet) or {}
+        failed = set(residual_failed_stamps(residual, packet)[0])
         data = load_requirements(root)
         stamped: list[str] = []
         for rid in bound:
             item = find_requirement(data, rid)
             if item is None or item.get("status") in ("verified_contract", "superseded"):
+                continue
+            if rid in failed:
                 continue
             if requirement_is_pair(item):
                 continue
@@ -1002,6 +1008,7 @@ class KernelVerify:
         req_ids: list[str],
         command: str,
         timeout_s: int = DEFAULT_TIMEOUT_S,
+        checkout: Path | None = None,
     ) -> tuple[str, int]:
         from of.field import field_home, verify_no_symlink_under
 
@@ -1012,6 +1019,11 @@ class KernelVerify:
         raw_id = req_ids[0].lower() if req_ids else "verify"
         clean_id = re.sub(r"[^a-z0-9._-]", "-", f"spec-{raw_id}")[:64]
         _receipt, receipt_rel, exit_code = KernelVerify.execute(
-            root, scratch, command, command_id=clean_id, timeout_s=timeout_s
+            root,
+            scratch,
+            command,
+            command_id=clean_id,
+            timeout_s=timeout_s,
+            checkout=checkout,
         )
         return receipt_rel, exit_code

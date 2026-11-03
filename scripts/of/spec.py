@@ -1536,6 +1536,45 @@ def residual_failed_stamps(
     return [r for r in ids if r in owns], [r for r in ids if r not in owns]
 
 
+def failure_hold(root: Path, item: dict[str, Any]) -> str | None:
+    """Child id still failing this requirement, ``""`` if it is failed with
+    no later owner ``done``, or None when a stamp may keep the owner.
+
+    Waves run oldest first. A later packet that owns the id and reports
+    ``done`` without listing it in ``requirements_failed`` clears it.
+    """
+    from of.field import wave_numbers
+    from of.pack import packed_children, try_load_packet_residual
+
+    rid = str(item.get("id") or "")
+    blocked: dict[str, str] = {}
+    cleared: set[str] = set()
+    for wave in wave_numbers(root):
+        for pkt in packed_children(root, wave):
+            res = try_load_packet_residual(root, pkt)
+            if not isinstance(res, dict):
+                continue
+            failed, _refused = residual_failed_stamps(res, pkt)
+            child = str(pkt.get("child_id") or "?")
+            for failed_id in failed:
+                blocked[failed_id] = child
+                cleared.discard(failed_id)
+            if str(res.get("status") or "") != "done":
+                continue
+            owns = {str(x) for x in (pkt.get("owns_requirements") or [])}
+            failed_set = set(failed)
+            for owned_id in owns:
+                if owned_id in failed_set:
+                    continue
+                blocked.pop(owned_id, None)
+                cleared.add(owned_id)
+    if rid in blocked:
+        return blocked[rid]
+    if str(item.get("status") or "") == "failed" and rid not in cleared:
+        return ""
+    return None
+
+
 def apply_requirement_patches(
     root: Path,
     residuals: list[dict[str, Any]],
@@ -1543,6 +1582,7 @@ def apply_requirement_patches(
 ) -> bool:
     """Land residual ``requirements_failed`` per residual_failed_stamps.
 
+    Every ``of integrate`` lands these. ``--apply`` is not required.
     Without packets no child has a role or owned ids, so nothing lands.
     """
     if packets is None:

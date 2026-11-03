@@ -68,6 +68,7 @@ from of.spec import (
     decorate_requirement,
     discard_disposable_ingest,
     extract_requirements_from_spec,
+    failure_hold,
     find_requirement,
     load_requirements,
     load_user_json,
@@ -148,6 +149,56 @@ def requirement_checks(root: Path, data: dict[str, Any]) -> None:
             dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
         elif path.is_file():
             path.unlink()
+
+
+def _failure_holds(
+    root: Path, data: dict[str, Any], ids: list[str]
+) -> list[tuple[str, str]]:
+    holds: list[tuple[str, str]] = []
+    for raw in ids:
+        rid = require_req_id(raw)
+        item = find_requirement(data, rid)
+        if item is None:
+            die(f"unknown requirement {rid}")
+        hold = failure_hold(root, item)
+        if hold is not None:
+            holds.append((rid, hold))
+    return holds
+
+
+def _refuse_failure_holds(holds: list[tuple[str, str]]) -> None:
+    parts = [
+        f"{rid} failed by {child}" if child else f"{rid} is failed"
+        for rid, child in holds
+    ]
+    nxt = " ".join(
+        f"of spec --verified-contract {rid} --takeover" for rid, _child in holds
+    )
+    die("; ".join(parts) + "; next: " + nxt + " --cite <file> or --run '<cmd>'")
+
+
+def _stamp_checkout(
+    root: Path, data: dict[str, Any], ids: list[str], takeover: bool
+) -> Path:
+    """Field checkout for a leader takeover; the owner's worktree otherwise."""
+    if takeover or not ids:
+        return root
+    owners: list[tuple[str, ...]] = []
+    for raw in ids:
+        item = find_requirement(data, require_req_id(raw))
+        if item is None:
+            return root
+        owned = tuple(
+            str(owner)
+            for owner in (item.get("owned_by") or [])
+            if str(owner) and str(owner) != "leader"
+        )
+        owners.append(owned)
+    if len(set(owners)) == 1 and len(owners[0]) == 1:
+        from of.field import proof_checkout
+
+        return proof_checkout(root, owners[0][0])
+    return root
 
 
 def refuse_one_sided_pair(
@@ -392,6 +443,9 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
     run_cmd = str(getattr(args, "run_cmd", "") or "").strip()
     run_timeout = getattr(args, "run_timeout", None)
     verified_ids = list(getattr(args, "verified_contract", None) or [])
+    takeover = bool(getattr(args, "takeover", False))
+    if takeover and not verified_ids:
+        die("of spec --takeover requires --verified-contract ID")
     if run_timeout is not None and not run_cmd:
         die("of spec --timeout requires --run")
     if isinstance(run_timeout, int) and run_timeout < 1:
@@ -400,12 +454,30 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         die("of spec --run requires --verified-contract ID")
     # #356: refuse a PAIR without --both-sides before --run executes anything.
     refuse_one_sided_pair(data, verified_ids, both_sides)
+    holds: list[tuple[str, str]] = []
+    if verified_ids:
+        holds = _failure_holds(root, data, verified_ids)
+        if takeover:
+            held_ids = {rid for rid, _child in holds}
+            clean = [
+                require_req_id(raw)
+                for raw in verified_ids
+                if require_req_id(raw) not in held_ids
+            ]
+            if clean:
+                die(" ".join(clean) + " is not failed; drop --takeover")
+        elif holds:
+            _refuse_failure_holds(holds)
     if verified_ids and run_cmd:
         from of.receipt import KernelVerify
 
         bound = run_timeout if isinstance(run_timeout, int) else KernelVerify.DEFAULT_TIMEOUT_S
         receipt_rel, exit_code = KernelVerify.run_for_spec(
-            root, verified_ids, run_cmd, timeout_s=bound
+            root,
+            verified_ids,
+            run_cmd,
+            timeout_s=bound,
+            checkout=_stamp_checkout(root, data, verified_ids, takeover),
         )
         if exit_code != 0:
             die(
@@ -457,10 +529,19 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 "(unit tests are VERIFIED_INTERNAL, not close).",
                 file=sys.stderr,
             )
+    hold_by = {rid: child for rid, child in holds}
     for rid in verified_ids:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
             die(f"unknown requirement {rid}")
+        if takeover:
+            child = hold_by.get(require_req_id(rid), "")
+            item["owned_by"] = ["leader"]
+            item["takeover"] = (
+                f"leader takeover from {child}" if child else "leader takeover"
+            )
+        else:
+            item.pop("takeover", None)
         item["status"] = "verified_contract"
         item["proof_cite"] = cite
         item["proof_sha"] = proof_sha
@@ -577,12 +658,16 @@ class ContrastReport:
         rows: list[dict[str, Any]] = []
         for verdict, rid, text in contrast_rows(root):
             item = by_id.get(rid) or {}
+            owners = ",".join(
+                str(owner) for owner in (item.get("owned_by") or []) if str(owner)
+            ) or "-"
             rows.append(
                 {
                     "id": rid,
                     "verdict": verdict,
                     "cite": requirement_source_cite(item),
                     "text": text[:80],
+                    "owners": owners,
                     "blocking": not requirement_close_ok(item),
                 }
             )
@@ -683,7 +768,10 @@ class ContrastReport:
                 rid = str(row.get("id") or "")
                 verdict = str(row.get("verdict") or "")
                 text = str(row.get("text") or "")
-                lines.append(f"{verdict:20} {rid:12} {extra}{text}")
+                owners = str(row.get("owners") or "-")
+                lines.append(
+                    f"{verdict:20} {rid:12} {extra}owners={owners} {text}"
+                )
             lines.append("")
         counts = doc.get("coverage") or {}
         lines.append(

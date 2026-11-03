@@ -834,8 +834,9 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
         action="store_true",
         help=(
             "apply verifier/adversary done_when_closed carrying an evidence "
-            "receipt, plus failed stamps; constraints+/done_when+ escalate_up "
-            "(leader applies with of patch)"
+            "receipt; constraints+/done_when+ escalate_up "
+            "(leader applies with of patch). Owned requirements_failed "
+            "land on every integrate"
         ),
     )
     s.add_argument("--next-wave", action="store_true")
@@ -1063,6 +1064,14 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
         dest="both_sides",
         action="store_true",
         help="with --verified-contract: pair-shaped requirement had both sides at the surface",
+    )
+    s.add_argument(
+        "--takeover",
+        action="store_true",
+        help=(
+            "with --verified-contract: re-own a failed requirement as leader "
+            "and record the reason"
+        ),
     )
     s.add_argument(
         "--surface",
