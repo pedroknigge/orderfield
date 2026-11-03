@@ -196,8 +196,8 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     observed = ChildLane.observations(
         residuals, landed, root, escalated=regime == "escalate_up"
     )
+    before = order["rev"]
     if args.apply:
-        before = order["rev"]
         order = apply_patches(
             order,
             residuals,
@@ -205,19 +205,22 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             packets=landed,
             escalated=regime == "escalate_up",
         )
-        req_changed = apply_requirement_patches(root, residuals, landed)
-        if req_changed:
-            sync_order_spec_fields(order, root)
-        if order["rev"] != before or req_changed:
-            if order["rev"] == before and req_changed:
-                order["rev"] = int(order["rev"]) + 1
-            save_order(order, root)
-            applied = {
-                "rev": order["rev"],
-                "constraints": order["constraints"],
-                "done_when_closed": done_when_closed(order),
-                "done_when_closed_phases": closed_phases(order),
-            }
+    # A child-reported failure is not an ORDER proposal. It lands with or
+    # without --apply, so integrate cannot drop it.
+    req_changed = apply_requirement_patches(root, residuals, landed)
+    if req_changed:
+        sync_order_spec_fields(order, root)
+    if order["rev"] != before or req_changed:
+        if order["rev"] == before and req_changed:
+            order["rev"] = int(order["rev"]) + 1
+        save_order(order, root)
+        applied = {
+            "rev": order["rev"],
+            "constraints": order["constraints"],
+            "done_when_closed": done_when_closed(order),
+            "done_when_closed_phases": closed_phases(order),
+        }
+    if args.apply:
         # Must not call decide_regime again after apply.
         if done_when_closed(order) and "done_when still open" in reason:
             reason = (

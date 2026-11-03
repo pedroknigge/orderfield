@@ -2773,15 +2773,16 @@ def constraint_norm(text: Any) -> str:
 
 
 class ChildLane:
-    """What one child residual may write on ``integrate --apply``.
+    """What one child residual may write into the field.
 
     The order parameter moves only by an explicit leader verb. A nonempty
     ``constraints+`` / ``done_when+`` is a field residual whatever
     ``wants_to_change`` says: escalate_up, spawn blocked, the leader
     applies it with ``of patch`` (HAKEN-02, INT-05). ``done_when_closed``
-    lands only from a verifier/adversary citing an accepted evidence
-    receipt. ``requirements_failed`` lands on owned ids, or on any id from
-    a verifier/adversary (spec.py). Everything else (notes, refused
+    lands only from ``integrate --apply``, and only from a verifier or
+    adversary citing an accepted evidence receipt. ``requirements_failed``
+    lands on every ``of integrate``: owned ids, or any id from a
+    verifier/adversary (spec.py). Everything else (notes, refused
     closes and stamps, an explorer's patch) is a child-attributed
     observation, never ORDER.
     """
