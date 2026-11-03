@@ -170,9 +170,9 @@ class VerifyWorktree(unittest.TestCase):
         self.worktrees.append(path)
         return path
 
-    def land_residual(self, proof: Path) -> None:
+    def land_residual(self, proof: Path, wave: str = "001") -> None:
         pkt = json.loads(
-            (self.tmp / ".orderfield/waves/001/packets/c1.json").read_text(
+            (self.tmp / f".orderfield/waves/{wave}/packets/c1.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -297,3 +297,72 @@ class VerifyWorktree(unittest.TestCase):
         self.assertNotIn("REQ-001", last_json(checklist.stdout)["blocking"])
         closed = self.ok("close")
         self.assertIn("CLOSED", closed.stdout)
+
+    def test_two_waves_same_child_worktree_verify(self) -> None:
+        """Same child, two waves, verify in the recorded worktree.
+
+        Wave 2 keeps ``kernel-verify.receipt.json`` and writes
+        ``kernel-verify-2.receipt.json``. Force-remove withdraws both
+        stamps: the later ``kernel-verify*`` cite is this child's proof.
+        """
+        self.ok(
+            "spec",
+            "--add",
+            "REQ-002",
+            "--text",
+            "mod.py must define y equal to 3.",
+        )
+        self.pack()
+        wt = self.add_worktree()
+        (wt / "mod.py").write_text("x = 1\ny = 2\n", encoding="utf-8")
+        self.land_residual(wt / "mod.py")
+        first = self.ok("collect", "--wave", "1")
+        self.assertIn("verified_by_kernel c1: REQ-001", first.stdout)
+        self.assertIn("y= 2", self.kernel_out())
+        self.assertNotIn("y", (self.tmp / "mod.py").read_text(encoding="utf-8"))
+        logs = self.tmp / ".orderfield/work/scratch/c1/logs"
+        wave1 = logs / "kernel-verify.receipt.json"
+        wave1_bytes = wave1.read_bytes()
+        self.ok("integrate", "--wave", "1")
+        self.ok("next-wave")
+        self.ok(
+            "pack",
+            "--role",
+            "implementer",
+            "--child-id",
+            "c1",
+            "--owns-requirement",
+            "REQ-002",
+            "--owns-path",
+            "mod.py",
+            "--verify-cmd",
+            self.verify_cmd(),
+            "--verify-req",
+            "REQ-002",
+            "--slice",
+            "set y = 3 in mod.py",
+        )
+        (wt / "mod.py").write_text("x = 1\ny = 3\n", encoding="utf-8")
+        self.land_residual(wt / "mod.py", "002")
+        second = self.ok("collect", "--wave", "2")
+        self.assertIn("verified_by_kernel c1: REQ-002", second.stdout)
+        self.assertNotIn("not --verify-req", second.stdout)
+        self.assertEqual(wave1.read_bytes(), wave1_bytes)
+        self.assertTrue((logs / "kernel-verify-2.receipt.json").is_file())
+        self.assertIn(
+            "y= 3",
+            (logs / "kernel-verify-2.out").read_text(encoding="utf-8"),
+        )
+        self.assertNotIn("y", (self.tmp / "mod.py").read_text(encoding="utf-8"))
+        removed = self.ok("worktree", "remove", "--child-id", "c1", "--force")
+        for rid in ("REQ-001", "REQ-002"):
+            self.assertIn(
+                f"unstamped    {rid} (discarded unlanded worktree c1)",
+                removed.stdout,
+            )
+        after = self.contrast()
+        self.assertNotEqual(after["gate"], "RESOLVED", after["_text"])
+        for rid in ("REQ-001", "REQ-002"):
+            row = next(r for r in after["rows"] if r["id"] == rid)
+            self.assertTrue(row["blocking"], rid)
+            self.assertNotEqual(row["verdict"], "VERIFIED_CONTRACT")

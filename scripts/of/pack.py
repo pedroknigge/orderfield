@@ -32,6 +32,7 @@ from of.field import (
     order_path,
     physical_artifact_path,
     physical_field_rel,
+    proof_checkout,
     safe_relative_path,
     skill_root,
     SpawnRecord,
@@ -2286,72 +2287,11 @@ class ScopeWrite:
     def checkout(root: Path, packet: dict[str, Any]) -> Path:
         """Git checkout whose writes belong to this child.
 
-        A recorded path is that checkout only when git lists it as a
-        linked worktree of this repository (what ``of worktree add``
-        registers). Field-checkout writes in the same window are the
-        leader's. No record, or a path git does not list, stays ``root``
-        so a child without a worktree keeps today's tree.
+        The recorded linked worktree (``proof_checkout``), else the field.
+        A field-checkout write in the same window is the leader's. No
+        record, or a path git does not list, stays the field checkout.
         """
-        for base in OwnedWrite.bases(root, packet):
-            if base == root:
-                continue
-            if ScopeWrite._linked(root, base):
-                return base
-        return root
-
-    @staticmethod
-    def _common(root: Path) -> str | None:
-        """Absolute git common dir, or None when git cannot answer."""
-        raw = ScopeWrite._git(root, "rev-parse", "--git-common-dir")
-        if not raw:
-            return None
-        text = os.fsdecode(raw).strip()
-        if not text:
-            return None
-        path = Path(text)
-        if not path.is_absolute():
-            path = root / path
-        try:
-            return os.path.realpath(path)
-        except OSError:
-            return None
-
-    @staticmethod
-    def _same_repo(field: Path, other: Path) -> bool:
-        here = ScopeWrite._common(field)
-        return here is not None and here == ScopeWrite._common(other)
-
-    @staticmethod
-    def _linked(field: Path, other: Path) -> bool:
-        """True when ``other`` is a linked worktree of ``field``'s repository.
-
-        A path that merely sits in the repo (or in some other repo) is not
-        the child's checkout: judging it would miss writes. No such path
-        keeps the field checkout.
-        """
-        if not ScopeWrite._same_repo(field, other):
-            return False
-        raw = ScopeWrite._git(field, "worktree", "list", "--porcelain")
-        if not raw:
-            return False
-        try:
-            want = os.path.realpath(other)
-            here = os.path.realpath(field)
-        except OSError:
-            return False
-        if want == here:
-            return False
-        prefix = b"worktree "
-        for line in raw.splitlines():
-            if not line.startswith(prefix):
-                continue
-            path = os.fsdecode(line[len(prefix):]).strip()
-            try:
-                if os.path.realpath(path) == want:
-                    return True
-            except OSError:
-                continue
-        return False
+        return proof_checkout(root, str(packet.get("child_id") or ""))
 
     @staticmethod
     def snapshot(root: Path) -> dict[str, Any] | None:

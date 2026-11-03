@@ -923,20 +923,40 @@ class KernelVerify:
         return stamped
 
     @staticmethod
-    def kernel_receipt_rel(child_id: str) -> str:
+    def kernel_receipt_rel(child_id: str, cite: str | None = None) -> str:
+        """Relative path of this child's kernel receipt.
+
+        No ``cite``: the first file, ``logs/kernel-verify.receipt.json``.
+        A ``cite`` is returned when its name is that file or a later wave's
+        ``kernel-verify-<n>.receipt.json``. Anything else is empty, so a
+        stamp from ``of spec --run`` is not withdrawn with this child.
+        """
         from of.pack import canonical_scratch_rel
 
-        return f"{canonical_scratch_rel(child_id)}/logs/kernel-verify.receipt.json"
+        logs = f"{canonical_scratch_rel(child_id)}/logs/"
+        first = f"{logs}kernel-verify.receipt.json"
+        if cite is None:
+            return first
+        rel = str(cite)
+        name = rel[len(logs):] if rel.startswith(logs) else ""
+        if name == "kernel-verify.receipt.json":
+            return rel
+        stem = "kernel-verify-"
+        suffix = ".receipt.json"
+        if name.startswith(stem) and name.endswith(suffix):
+            n = name[len(stem):-len(suffix)]
+            if n.isdigit() and int(n) >= 2:
+                return rel
+        return ""
 
     @staticmethod
     def withdraw_discarded(root: Path, child_id: str) -> list[str]:
-        """Revert ``verified_contract`` stamps this child's kernel receipt proved."""
+        """Revert ``verified_contract`` stamps this child's kernel receipts proved."""
         from of.cli.spec_cmd import requirement_checks
         from of.field import field_lock
         from of.spec import load_requirements, save_requirements
         from of.wal import FieldWal
 
-        cite = KernelVerify.kernel_receipt_rel(child_id)
         with field_lock(root, "worktree"):
             FieldWal.refuse_live_spec_tamper(root)
             FieldWal.refuse_live_order_tamper(root)
@@ -948,7 +968,9 @@ class KernelVerify:
                     continue
                 if item.get("status") != "verified_contract":
                     continue
-                if str(item.get("proof_cite") or "") != cite:
+                if not KernelVerify.kernel_receipt_rel(
+                    child_id, str(item.get("proof_cite") or "")
+                ):
                     continue
                 owners = item.get("owned_by") or []
                 item["status"] = "owned" if owners else "unowned"

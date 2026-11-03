@@ -3220,8 +3220,8 @@ def proof_checkout(root: Path, child_id: str) -> Path:
     """Linked worktree recorded for this child, else the field checkout.
 
     A path git does not list as a worktree of this repository stays the
-    field, so a rewritten ``worktrees.json`` cannot move proof. #377's
-    ``ScopeWrite.checkout`` should call this.
+    field, so a rewritten ``worktrees.json`` cannot move proof.
+    ``ScopeWrite.checkout`` calls this.
     """
     field = Path(root).resolve()
     child = str(child_id or "").strip()
