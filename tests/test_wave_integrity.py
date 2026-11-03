@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -317,6 +318,85 @@ class HandoffClaim(unittest.TestCase):
         r = field.spawn("c1")
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("nonempty scratch", r.stderr)
+        self.assertFalse((field.tmp / WAVE / "spawns/c1.json").exists())
+
+    def _wave2_same_child(self) -> tuple[Field, Path]:
+        """Wave 1 c1 collected, then c1 packed again on wave 2. Scratch kept."""
+        field = Field(self)
+        field.ok("patch", "--evaluator-consent", "no")
+        field.pack("c1")
+        spawned = field.spawn("c1")
+        self.assertEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        field.ok("collect")
+        field.ok("integrate", "--wave", "1")
+        field.ok("next-wave")
+        field.ok(
+            "pack", "--slice", "tweak the slice again", "--role", "explorer",
+            "--child-id", "c1",
+        )
+        packet = field.tmp / ".orderfield/waves/002/packets/c1.json"
+        self.assertTrue(packet.is_file(), "wave 2 packet")
+        return field, packet
+
+    def test_same_child_next_wave_spawns_without_force(self) -> None:
+        field, _packet = self._wave2_same_child()
+        scratch = field.tmp / ".orderfield/work/scratch/c1"
+        now = time.time()
+        for path in scratch.rglob("*"):
+            os.utime(path, (now, now))
+        os.utime(scratch, (now, now))
+        plan = json.loads(field.ok("resume", "--json").stdout)
+        self.assertEqual(plan["action"], "spawn", plan)
+        argv = plan["targets"][0]["argv"]
+        self.assertIn("spawn", argv)
+        self.assertNotIn("--force-spawn", argv)
+        agent = field.aux / "wave_agent.py"
+        # Stock agent reads waves/001 only. Continue c1 on the latest packet.
+        agent.write_text(
+            AGENT.replace("{python}", sys.executable).replace(
+                'pkt = json.loads((root / ".orderfield/waves/001/packets" / (kid + ".json")).read_text())',
+                'pkt = json.loads(sorted((root / ".orderfield/waves").glob("*/packets/" + kid + ".json"))[-1].read_text())',
+            ),
+            encoding="utf-8",
+        )
+        agent.chmod(0o755)
+        spawned = field.of(
+            "spawn", "--adapter", "generic", "--packet",
+            ".orderfield/waves/002/packets/c1.json",
+            OF_AGENT=str(agent),
+        )
+        self.assertEqual(spawned.returncode, 0, spawned.stdout + spawned.stderr)
+        self.assertNotIn("refusing a second writer", spawned.stderr)
+        self.assertNotIn("--force-spawn", spawned.stderr)
+        record = json.loads(
+            (field.tmp / ".orderfield/waves/002/spawns/c1.json").read_text()
+        )
+        self.assertEqual(record.get("outcome"), "ok", record)
+        self.assertNotIn("force_reason", record)
+
+    def test_scratch_changed_on_this_packet_still_refuses(self) -> None:
+        field, packet = self._wave2_same_child()
+        pkt = json.loads(packet.read_text())
+        pulse = field.tmp / pkt["scratch_dir"] / "PULSE"
+        pulse.write_text("still working on wave 2\n", encoding="utf-8")
+        plan = json.loads(field.ok("resume", "--json").stdout)
+        self.assertEqual(
+            (plan["action"], plan["reason_code"]),
+            ("hold", "scratch_unclaimed"),
+            plan,
+        )
+        self.assertEqual(plan["targets"][0]["argv"], [])
+        refused = field.of(
+            "spawn", "--adapter", "generic", "--packet",
+            ".orderfield/waves/002/packets/c1.json",
+            OF_AGENT=str(field.agent),
+        )
+        self.assertNotEqual(refused.returncode, 0, refused.stdout + refused.stderr)
+        self.assertIn("nonempty scratch", refused.stderr)
+        self.assertIn("refusing a second writer", refused.stderr)
+        self.assertFalse(
+            (field.tmp / ".orderfield/waves/002/spawns/c1.json").exists()
+        )
 
 
 class ResidualTemplate(unittest.TestCase):

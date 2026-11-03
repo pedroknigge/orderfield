@@ -3367,6 +3367,84 @@ def scratch_nonempty(root: Path, packet: dict[str, Any]) -> bool:
     return True
 
 
+class ScratchBind:
+    """sha256 of scratch paths and file bytes at pack. Not mtimes.
+
+    Scratch is keyed by child_id across waves. A match is the prior writer.
+    A nonempty mismatch is unwatched work on this packet. ``NextPlan`` stays
+    bytes, never mtime.
+    """
+
+    KEY = "scratch_bind"
+
+    @staticmethod
+    def _of_entries(entries: list[list[str]]) -> str:
+        blob = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _file_sha(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _walk(root: Path, path: Path, entries: list[list[str]]) -> None:
+        for child in sorted(path.iterdir(), key=lambda item: item.name):
+            rel = child.relative_to(root).as_posix()
+            if child.is_symlink():
+                entries.append(["l", rel, os.readlink(child)])
+                continue
+            if child.is_dir():
+                entries.append(["d", rel, ""])
+                ScratchBind._walk(root, child, entries)
+                continue
+            if child.is_file():
+                entries.append(["f", rel, ScratchBind._file_sha(child)])
+                continue
+            entries.append(["o", rel, ""])
+
+    @staticmethod
+    def digest_tree(path: Path) -> str:
+        """Bind of one scratch directory. Missing or empty is one digest."""
+        entries: list[list[str]] = []
+        if path.is_dir() and not path.is_symlink():
+            ScratchBind._walk(path, path, entries)
+        return ScratchBind._of_entries(entries)
+
+    @staticmethod
+    def digest(root: Path, packet: dict[str, Any]) -> str:
+        rel = packet.get("scratch_dir")
+        if not rel:
+            return ScratchBind._of_entries([])
+        require_packet_artifact_paths(root, packet)
+        path = physical_artifact_path(root, str(rel), "packet scratch_dir")
+        return ScratchBind.digest_tree(path)
+
+    @staticmethod
+    def blocks(root: Path, packet: dict[str, Any]) -> bool:
+        """True when scratch is an unwatched writer on this packet.
+
+        No bind (pre-field packets): any nonempty scratch, as before.
+        A matching bind is leftover bytes from before this packet.
+        An empty tree is not a writer, even if files were removed.
+        Unreadable bytes fail closed.
+        """
+        recorded = packet.get(ScratchBind.KEY)
+        legacy = not (isinstance(recorded, str) and re.fullmatch(r"[0-9a-f]{64}", recorded))
+        if legacy:
+            return scratch_nonempty(root, packet)
+        if not scratch_nonempty(root, packet):
+            return False
+        try:
+            current = ScratchBind.digest(root, packet)
+        except OSError:
+            return True
+        return current != recorded
+
+
 def truncate_slice(text: str, limit: int = SLICE_BRIEF_CHARS) -> str:
     one = " ".join(str(text or "").split())
     if len(one) <= limit:
