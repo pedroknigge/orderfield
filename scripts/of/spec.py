@@ -963,6 +963,27 @@ def _cue_in(text: str, cue: str) -> bool:
     return re.search(r"(?<![a-z0-9])" + re.escape(needle), low) is not None
 
 
+def _rule_heading(title: str) -> bool:
+    """True when the heading's head word starts a rule key (#379).
+
+    ``key in title`` is a substring over the whole title, so one incidental
+    word switches the brief into rule-heading mode and the other lists are
+    dropped: ``lease`` in ``Release``, ``done`` in ``Abandoned``, ``scope``
+    in ``Out of scope``, ``feature`` in ``CLI features``. Only the head word
+    (first word, leading number skipped) is tested. ``_cue_in`` is a left
+    boundary, so a plural or stem still matches (``Requirements``, ``Rules``,
+    ``Idempotency``) and a key inside the word or later in the title does not.
+    """
+    head = ""
+    for word in re.findall(r"[a-z0-9]+", title.lower()):
+        if not word.isdigit():
+            head = word
+            break
+    if not head:
+        return False
+    return any(_cue_in(head, key) for key in EXTRACT_RULE_KEYS)
+
+
 def classify_requirement_prefix(body: str, default: str = "REQ") -> str:
     if body.lower().startswith("python -m") or body.lower().startswith("python3 -m"):
         return "CLI"
@@ -987,7 +1008,7 @@ def _starts_item(stripped: str) -> bool:
 
 
 class RequirementScan:
-    """One extract pass over SPEC / plan text (#357 / #362).
+    """One extract pass over SPEC / plan text (#357 / #362 / #379).
 
     IDs are assigned at the end: a free ``REQ-002`` the plan carries wins
     over a generated one.
@@ -1083,7 +1104,7 @@ class RequirementScan:
             if stripped.startswith("#"):
                 raw_title = stripped.lstrip("#").strip()
                 title = raw_title.lower().rstrip(":")
-                in_rules = any(key in title for key in EXTRACT_RULE_KEYS)
+                in_rules = _rule_heading(title)
                 headed_n += 0 if in_fence else self.add_heading(raw_title, start, end)
             elif in_rules and not in_fence and _starts_item(stripped):
                 self.add_item(k, rule=True)
@@ -1127,6 +1148,9 @@ def _scan_requirements(
 ) -> list[dict[str, Any]]:
     scan = RequirementScan(text, existing)
     scan.headings = headings
+    # No rule-section item and no CLI line: index every list. A descriptive
+    # heading must not count as a rule section (#379). A real one still leaves
+    # other lists to plan_cover uncovered (#357).
     if scan.headed() == len(scan.pending):
         scan.fallback()
     return scan.requirements()
@@ -1140,7 +1164,9 @@ def extract_requirements_from_spec(
     A list item owns its wrapped and lettered sub-lines (#357). A plan ID
     at the start of an item (``REQ-002``) becomes the requirement ID when
     free; other shapes (``W1-R1``) stay in the verbatim text and
-    ``source.plan_id`` (#362).
+    ``source.plan_id`` (#362). A heading selects that section only when its
+    head word is a rule key; a keyword later in the title does not drop the
+    other lists (#379).
     """
     return _scan_requirements(text, existing)
 
