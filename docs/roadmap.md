@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.4. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.5. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.4`
+**Status:** Shipped · **Current release line:** `0.9.5`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,14 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.5 — the child's checkout, and a later wave keeps the earlier proof
+
+- `of init` warns when `--source` is literal `\n` escapes and names `--chat-capture-file` (#370). A rule heading is the head word, so `## Release` / `## CLI features` / `## Out of scope` no longer drop the other lists (#379).
+- The same `child_id` in the next wave spawns when scratch still matches `scratch_bind` (#371). A later collect keeps `kernel-verify.receipt.json` and writes `kernel-verify-2` (#372). Contrast and `close --checklist` share the stale-cite sentence.
+- `proof_checkout` is the one resolver. ScopeWrite judges that worktree (#375) and `verify_cmd` runs there (#378). Force-remove of an unlanded worktree withdraws every `kernel-verify*` stamp. Land passes a one-shot identity when git has none (#380).
+- `requirements_failed` lands on every integrate. `--takeover` is the leader override and runs in the field checkout (#383).
+- Proof: `tests/test_literal_newline_source.py`, `tests/test_requirement_spans.py`, `tests/test_wave_integrity.py`, `tests/test_verify_binding.py`, `tests/test_verify_worktree.py`, `tests/test_kernel_cli.py::WorktreeLandNoIdentity`, `tests/test_child_failure.py`.
 
 ## 0.9.4 — harden the child→leader trust boundary (run-1 security audit)
 
