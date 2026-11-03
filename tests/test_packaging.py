@@ -237,8 +237,9 @@ class InstallScript(unittest.TestCase):
         # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
         # the appendix complete-flag-surface section. #383 lands a child
         # failure on every integrate and refuses a leader stamp of it.
-        # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_572_000, size)
+        # #372 keeps a prior kernel-verify receipt and shares close's
+        # proof check with contrast. Doc growth still needs cuts.
+        self.assertLessEqual(size, 1_580_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))

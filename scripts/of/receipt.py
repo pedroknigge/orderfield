@@ -578,6 +578,27 @@ class KernelVerify:
     DEFAULT_TIMEOUT_S = 120
 
     @staticmethod
+    def _free_command_id(scratch: Path, command_id: str) -> str:
+        """An id whose receipt file is not already in this scratch.
+
+        Scratch is keyed by child_id across waves. Replacing
+        ``kernel-verify.receipt.json`` would change bytes a stamp cites.
+        The next run takes ``<id>-2``, ``<id>-3``, … in the same ``logs/``.
+        """
+        from of.field import die
+
+        n = 1
+        cand = command_id
+        while True:
+            if not EvidenceReceipt.ID_RE.match(cand):
+                die(f"verification receipt name exhausted for {command_id}")
+            path = EvidenceReceipt.archive_paths(scratch, cand)["receipt"]
+            if not path.exists():
+                return cand
+            n += 1
+            cand = f"{command_id}-{n}"
+
+    @staticmethod
     def attest(
         scratch: Path,
         data: bytes,
@@ -589,6 +610,10 @@ class KernelVerify:
         timeout_s: int | None = None,
         inputs: list[dict[str, str]] | None = None,
     ) -> tuple[dict[str, Any], Path, str]:
+        # Packet verify shares one scratch across waves. A spec --run
+        # rewrites its own cite in the same command, so it may replace the file.
+        if command_id == "kernel-verify" or command_id.startswith("kernel-verify-"):
+            command_id = KernelVerify._free_command_id(scratch, "kernel-verify")
         written = EvidenceReceipt.write_archive(
             scratch,
             command_id,
@@ -843,10 +868,12 @@ class KernelVerify:
         """Promote only the IDs pack bound with ``--verify-req`` (#356).
 
         No binding: the receipt stays evidence and nothing is promoted. A
-        PAIR is never stamped here; ``pair_checked`` has one writer, ``of
-        spec --verified-contract ID --both-sides``. Each stamp also writes
-        ``checks/<id>.json`` (as ``of spec`` does), so integrate's printed
-        next agrees with contrast and ``close --checklist`` on one disk state.
+        bound id already ``verified_contract`` is stamped again from this
+        receipt (same writer, new cite). A PAIR is never stamped here;
+        ``pair_checked`` has one writer, ``of spec --verified-contract ID
+        --both-sides``. Each stamp also writes ``checks/<id>.json`` (as
+        ``of spec`` does), so integrate's printed next agrees with contrast
+        and ``close --checklist`` on one disk state.
         """
         from of.pack import try_load_packet_residual
         from of.spec import (
@@ -873,11 +900,18 @@ class KernelVerify:
         stamped: list[str] = []
         for rid in bound:
             item = find_requirement(data, rid)
-            if item is None or item.get("status") in ("verified_contract", "superseded"):
+            if item is None or item.get("status") == "superseded":
                 continue
             if rid in failed:
                 continue
             if requirement_is_pair(item):
+                continue
+            if (
+                item.get("status") == "verified_contract"
+                and str(item.get("proof_cite") or "") == receipt_rel
+                and str(item.get("proof_sha") or "") == proof_sha
+            ):
+                stamped.append(rid)
                 continue
             item["status"] = "verified_contract"
             item["proof_cite"] = receipt_rel
