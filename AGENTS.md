@@ -8,7 +8,7 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 
 0. **Open field auto-continues.** If `.orderfield/` exists and the field's `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. After collect+integrate, that is still next-wave/pack/spawn — a status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken. Cloning or checking out a tree with an open `.orderfield/` plus an installed skill still auto-continues — operator risk, not an escape.
 1. If `.orderfield/` exists, `of resume` first (continue in-flight; do not re-init). Then read ORDER. `next` `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` / a `wal-broken` refusal are leader acts, not stops. Flags are spelled in full (no abbreviations).
-2. If you are the leader, do not implement the slice. Pack and delegate.
+2. If you are the leader, do not implement the slice. Pack and delegate. On a large mission, write `docs/plans/<owner>/sources.md` and let the wave-0 explorer propose packs. Do not route tickets.
 3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
 4. Every child close-out is a valid residual JSON, not loose prose.
 5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
@@ -42,6 +42,7 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | [references/adapters.md](references/adapters.md) | Headless argv per harness |
 | [docs/architecture.md](docs/architecture.md) | Kernel shape |
 | [docs/design/evidence-receipt.md](docs/design/evidence-receipt.md) | #284 receipt schema + deterministic gate |
+| [docs/design/sources-list.md](docs/design/sources-list.md) | SourcesList (#391): one sources file; wave-0 explorer proposes packs |
 | [docs/glossary.md](docs/glossary.md) | Contract vocabulary |
 | [docs/context-control.md](docs/context-control.md) | Where brief / ORDER / packet / origin live |
 | [docs/events.md](docs/events.md) | `of --json` / `OF_JSON` events |

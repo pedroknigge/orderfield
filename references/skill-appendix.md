@@ -228,6 +228,10 @@ Sources: documentation-manager adversary feedback (field correction + when-pays)
 
 ### 3. Pack. Do not dump history
 
+**Sources list.** InitAskSkip Large (multi-slice / multi-role / will not fit one context): before any implementer, write `docs/plans/<owner>/sources.md` (**SourcesList**). `<owner>` is a short product slug, not a harness. One file. Each row is a tool plus the path or command behind it (`gh run list`, `gh run view <id> --log`, a repo-relative log path, a dogfood path, `gh issue list`). The adapter uses its own tools. Do not require Claude Desktop, Claude Projects, or Tag. Do not put this inventory in SPEC (`spec_hash` would churn). InitAskSkip Small skips the file and the explorer.
+
+The first pack is the wave-0 explorer. `of pack` stores it on the live wave (`waves/001` on a fresh field). The slice names the sources path. The explorer proposes packs (slice, role, owner) in `result_ref`. Leave `proposed_patch` null — an explorer patch is `ignored_patch` and does not land. The leader packs those proposals with exclusive owners. The leader does not pick tickets. No new verb. Design: [docs/design/sources-list.md](../docs/design/sources-list.md). Walk: [docs/demo/sources-triage.md](../docs/demo/sources-triage.md). Template: `evals/fixtures/sources-list.md`. Proof: `SourcesTriagePath`.
+
 **Before `of pack` (throughput checkpoint).** Name these four; a dimension that does not apply keeps `n/a: <reason>`:
 
 - **Blocking first steps** — gates that must finish before same-wave fan-out (DAG first; `domain → store` is not parallel).
