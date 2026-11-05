@@ -71,7 +71,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 - Query `of models --adapter HARNESS --json` before any model recommendation. Codex and Claude expose protocol metadata; Grok, Cursor and agy use CLI list commands. Missing/unsupported/error stays explicit. Consult the [model catalog](docs/model-catalog.md) for supplemental prices with `last_checked` (new prices unknown), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. Before fan-out on a big task, read `headroom` and `roster` on `of models --headroom --json` (opt-in: a probe may spend a turn; smallest-window margin, then earliest reset). `sin dato` never blocks. The leader reads it; the user does not run it.
 - Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
-- **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
+- **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset on Small. A ContractSurface field (Large) with missing consent HOLDs next-wave for the review pack. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.
 
 Code is a liability. Think DELETE, not add. Same capability with less code. No new verb.
@@ -190,6 +190,39 @@ json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=
 EOF
 of collect --wave 1
 of integrate --wave 1
+# CLI-001 is a public surface. The explorer cannot stamp it. A different
+# child_id verifier residual, citing an accepted receipt, is the close gate.
+of pack --slice "fresh-context review of the price table" --role verifier --child-id v1
+python3 - <<'EOF'
+import hashlib, json, os
+base = ".orderfield/work/scratch/v1/logs"
+os.makedirs(base, exist_ok=True)
+data = (
+    "python -m unittest discover -s tests\nCLI-001 ok\nOK\n"
+    + "pad tests/test_price.py line\n" * 200
+).encode()
+open(base + "/price.out", "wb").write(data)
+digest = hashlib.sha256(data).hexdigest()
+source = base + "/price.out"
+receipt = {
+    "v": 1, "kind": "evidence_receipt", "marker": "OF_EVIDENCE_RECEIPT",
+    "command_id": "price", "source_path": source, "source_hash": digest,
+    "exit": 0, "size": len(data), "command": "python -m unittest discover -s tests",
+    "quotes": ["CLI-001 ok"], "paths": ["tests/test_price.py"],
+}
+json.dump(receipt, open(base + "/price.receipt.json", "w"), indent=2, sort_keys=True)
+p = json.load(open(".orderfield/waves/001/packets/v1.json"))
+ref = ".orderfield/work/scratch/v1/result.md"
+open(ref, "w").write("reviewed CLI-001 price table\n")
+sha = hashlib.sha256(open(ref, "rb").read()).hexdigest()
+r = {k: p[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
+r.update(status="done", result_ref=ref, residual={
+    "wants_to_change": [],
+    "evidence": "checked CLI-001 price table\nevidence_receipt: " + base + "/price.receipt.json\nartifact_sha: " + sha + "\nrollback: git checkout -- " + ref,
+    "proposed_patch": None,
+}, metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False})
+json.dump(r, open(".orderfield/waves/001/residuals/v1.json", "w"), indent=2)
+EOF
 of spec --verified-contract CLI-001 --cite .orderfield/work/scratch/explorer/notes.md
 of contrast    # one-pager + JSON; CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
 of close --checklist  # contrast + residual empty; does not stamp

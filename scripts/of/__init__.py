@@ -121,6 +121,7 @@ from of.spec import (  # noqa: F401
     requirement_counts,
     requirement_coverage_errors,
     requirement_is_pair,
+    OutsideVerifier,
     requirement_surface,
     spec_bytes_hash,
     SpecDiff,

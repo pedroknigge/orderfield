@@ -236,9 +236,10 @@ class InstallScript(unittest.TestCase):
         # headroom) grew the kernel ~73 KB. 0.9.4 added the run-1 security
         # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
         # the appendix complete-flag-surface section. 0.9.5 adds the
-        # recorded-worktree checkout, per-wave kernel receipts, and
-        # child-failure stamps. Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_588_000, size)
+        # recorded-worktree checkout, per-wave kernel receipts,
+        # child-failure stamps, and the #388 outside-verifier close gate.
+        # Doc growth still needs cuts.
+        self.assertLessEqual(size, 1_602_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
