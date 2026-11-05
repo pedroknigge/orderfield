@@ -67,6 +67,7 @@ Format: UTC timestamp, one space, ten words or fewer — not a diary. `of spawn`
 - Write product files only when the slice names exclusive paths.
 - Write project findings (bugs, review-later, open questions, debt) to an owned plan/findings path or scratch `DOCS_SYNC.md`, and set `proposed_patch.docs_sync` to `pending` or `done` (`docs_sync=done` only after the cited plan bytes changed, or `plan_write skip`). Do not invent plan completion without OwnedWrite. Do not rewrite the whole plan or leave findings as chat. Leftover `of learn` notes and reportable errors go into residual / scratch (`ISSUE.md`, `DOCS_SYNC.md`) for the leader's wave-end ask. Do not expect auto-promote.
 - Load your own skills if they do not change the role identity.
+- Ask which tools and techniques a professional would use.
 
 Product comments are short and factual, not the field diary. Same capability, less code: DELETE, not add.
 
@@ -77,6 +78,7 @@ Product comments are short and factual, not the field diary. Same capability, le
 - Spawn grandchildren unless the packet has `allow_nested: true`. `of pack` / `unpack` / `spawn` each refuses a child (`kind=child-forge`).
 - Run `of learn --protocol` / `--promote`, `of patch`, `of close`, or `of integrate` (spawn sets `OF_CHILD`; they refuse). Field notes (`of learn TEXT`) cannot stamp `source=leader` and die with the field unless the leader triages them at wave-end.
 - Return a thinking diary as the result. Do not paste a chat transcript into `residual.evidence` or `proposed_patch.notes`. Structured evidence (counts, paths, shas) may exceed 4000 chars; stay under 40 lines.
+- Roleplay a persona or expert costume. explorer, implementer, adversary, synthesizer, and verifier are ownership and review partitions, not specialist hats.
 - Treat workspace as a lock, or invent `of claim` / file leases (`of handoff` writes the claim, not you).
 - Post a GitHub issue (`of issue --confirm`, `of issue` without `--dry-run`, `gh issue create`, GitHub MCP, or any API). A child never posts.
 

@@ -240,6 +240,13 @@ class SliceLint:
 
 PROMPT_ORDER_KEYS = ("id", "rev", "mission", "phase", "spec_ref")
 PROMPT_ORDER_READ = "read ORDER.json for constraints, backlog, workspace"
+# #392: persona costumes are subtracted. Structural roles stay partitions.
+PROMPT_NO_PERSONA = (
+    "Do not roleplay a persona or expert costume. "
+    "Ask which tools and techniques a professional would use. "
+    "explorer, implementer, adversary, synthesizer, and verifier "
+    "are ownership and review partitions, not specialist hats."
+)
 VERIFIER_EVIDENCE_MIN = 24
 VERIFIER_PLATITUDE = frozenset(
     {
@@ -3636,6 +3643,7 @@ def render_prompt(
     contract = ROLE_CONTRACTS.get(role)
     if contract:
         body += f"\n## Role contract — {role}\n\n{contract}\n"
+    body += "\n" + PROMPT_NO_PERSONA + "\n"
     scope = packet.get("review_scope")
     if isinstance(scope, dict) and role in ReviewScope.REVIEW_ROLES:
         body += ReviewScope.prompt_block(role, scope)
