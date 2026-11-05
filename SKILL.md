@@ -19,7 +19,7 @@ ORDER, packets, residuals, and regime live on disk. Use when work goes through `
 
 Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
-Kernel: public JSON schemas, causal WAL, field lock (`MUTATING_COMMANDS`), pack caps, residual binding, closed child lane, closed regime menu. Same-harness obedience and same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree bounds are honesty surfaces, not a jail.
+Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
 
 ## What to type next
 
@@ -30,6 +30,7 @@ Kernel: public JSON schemas, causal WAL, field lock (`MUTATING_COMMANDS`), pack 
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"`; chat `--chat-capture-file -` |
 | owners known | pack `--slice` `--verify-cmd` `--verify-timeout` `--verify-req ID` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator + outcome. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
+| Large init | Write `docs/plans/<owner>/sources.md` (SourcesList: tool + command or path; no host product). First pack `--role explorer`; proposals in `result_ref`. Do not pick tickets. Small skips. Appendix **Sources list**. |
 | multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Before fan-out: `of models --headroom --json` `roster` (`sin dato` never blocks). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
@@ -112,6 +113,6 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Anti-done-theater.** Unittest/CI green is not Ready. Non-trivial: design-twice before implement. Deep modules: simple interface, complexity hidden.
 
-**Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; measurable outcome; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
+**Auto-revival.** Every turn **`of resume` first**, then **execute printed `next` same turn** — after collect+integrate and when `in_flight=0`. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; measurable outcome; learnings after close). Forbidden: bare ok/dale as keepalive. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
 **Steer policy.** In-flight text is **steered**. Deictic `dale` / `do it` / `as discussed` is **execute `next`**.
