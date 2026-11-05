@@ -6,6 +6,13 @@ published skill. This class names the always-loaded core, the on-disk appendix,
 and the combined leader contract so tests do not invent a second source of truth.
 
 No new CLI verb. No new schema. Stdlib only.
+
+Half-life (#393): ``evals/fixtures/skill-half-life.md`` is the paired fixture.
+Appendix size must match ``bound_bytes``. The volatile section there is the
+subtracted appendix closer ``## It's working if``. Putting that paragraph
+back, or growing the appendix without updating the fixture, fails this gate.
+``of doctor`` warns on a size mismatch when this file sits beside the kernel.
+Installed dests omit this file, so the warn is repo-local.
 """
 from __future__ import annotations
 
@@ -84,6 +91,10 @@ class SkillSurface:
         "plan_cover orphan",
         "high effort on ORDER",
     )
+    # Paired coverage for appendix growth. Not installed (evals/ stays off dest).
+    HALF_LIFE = "evals/fixtures/skill-half-life.md"
+    VOLATILE = "half-life"
+    VOLATILE_CLOSE = "<!-- /of:volatile -->"
 
     @staticmethod
     def path(root: Path, rel: str) -> Path:
@@ -196,7 +207,135 @@ class SkillSurface:
             errors.append(
                 f"{SkillSurface.CORE} still says read the whole appendix before pack"
             )
+        errors.extend(SkillSurface.half_life_errors(path))
         return errors
+
+    @staticmethod
+    def volatile_open(name: str) -> str:
+        return f"<!-- of:volatile {name} -->"
+
+    @staticmethod
+    def labeled_int(text: str, key: str) -> int | None:
+        prefix = key + ":"
+        for line in text.splitlines():
+            if not line.startswith(prefix):
+                continue
+            raw = line[len(prefix) :].strip()
+            if raw.isdigit():
+                return int(raw)
+            return None
+        return None
+
+    @staticmethod
+    def volatile_body(text: str, name: str | None = None) -> str | None:
+        """Inner text of one volatile block. None when the mark is absent."""
+        label = SkillSurface.VOLATILE if name is None else name
+        open_tag = SkillSurface.volatile_open(label)
+        start = text.find(open_tag)
+        if start < 0:
+            return None
+        start += len(open_tag)
+        end = text.find(SkillSurface.VOLATILE_CLOSE, start)
+        if end < 0:
+            return None
+        return text[start:end].strip("\n")
+
+    @staticmethod
+    def marker_count(text: str) -> int:
+        return sum(1 for needle in SkillSurface.APPENDIX_MARKERS if needle in text)
+
+    @staticmethod
+    def fixture_text(root: Path) -> str | None:
+        path = SkillSurface.path(root, SkillSurface.HALF_LIFE)
+        if not path.is_file():
+            return None
+        return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def growth_warning(root: Path) -> str | None:
+        """Appendix grew, or the fixture allows growth, without a matched bound."""
+        path = Path(root)
+        appendix = SkillSurface.path(path, SkillSurface.APPENDIX)
+        if not appendix.is_file():
+            return f"missing {SkillSurface.APPENDIX}"
+        size = appendix.stat().st_size
+        fixture = SkillSurface.fixture_text(path)
+        if fixture is None:
+            return f"no paired fixture {SkillSurface.HALF_LIFE}"
+        bound = SkillSurface.labeled_int(fixture, "bound_bytes")
+        if bound is None:
+            return f"paired fixture {SkillSurface.HALF_LIFE} missing bound_bytes"
+        if size > bound:
+            return (
+                f"{SkillSurface.APPENDIX} {size}B > bound {bound}B "
+                f"without a fixture update ({SkillSurface.HALF_LIFE})"
+            )
+        if size < bound:
+            return (
+                f"{SkillSurface.HALF_LIFE} bound {bound}B > "
+                f"{SkillSurface.APPENDIX} {size}B (fixture allows growth)"
+            )
+        return None
+
+    @staticmethod
+    def subtract_errors(root: Path) -> list[str]:
+        """The recorded volatile paragraph must not hold a marker, and must stay off the appendix."""
+        path = Path(root)
+        if not SkillSurface.path(path, SkillSurface.APPENDIX).is_file():
+            return []
+        fixture = SkillSurface.fixture_text(path)
+        if fixture is None:
+            return []
+        body = SkillSurface.volatile_body(fixture)
+        if body is None:
+            return [
+                f"paired fixture {SkillSurface.HALF_LIFE} missing volatile "
+                f"{SkillSurface.VOLATILE}"
+            ]
+        errors: list[str] = []
+        lost = [
+            needle
+            for needle in SkillSurface.APPENDIX_MARKERS
+            if needle in body
+        ]
+        if lost:
+            errors.append(
+                f"volatile {SkillSurface.VOLATILE} holds appendix markers {lost}"
+            )
+        appendix = SkillSurface.appendix(path)
+        if body in appendix:
+            errors.append(
+                f"volatile {SkillSurface.VOLATILE} is still in "
+                f"{SkillSurface.APPENDIX}"
+            )
+        bed = SkillSurface.labeled_int(fixture, "bed_markers")
+        after = SkillSurface.marker_count(appendix)
+        if bed is None:
+            errors.append(
+                f"paired fixture {SkillSurface.HALF_LIFE} missing bed_markers"
+            )
+        elif after < bed:
+            errors.append(
+                f"appendix markers {after} < fixture bed_markers {bed}"
+            )
+        return errors
+
+    @staticmethod
+    def half_life_errors(root: Path) -> list[str]:
+        found: list[str] = []
+        growth = SkillSurface.growth_warning(root)
+        if growth:
+            found.append(growth)
+        found.extend(SkillSurface.subtract_errors(root))
+        return found
+
+    @staticmethod
+    def doctor_lines(root: Path) -> tuple[list[str], bool]:
+        """Advisory warn when the appendix and its fixture disagree. Not a field FAIL."""
+        message = SkillSurface.growth_warning(root)
+        if not message:
+            return [], False
+        return [f"  appendix     WARN  {message}"], True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -211,10 +350,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     size = SkillSurface.core_bytes(root)
     alias_size = SkillSurface.alias_bytes(root)
+    appendix_size = SkillSurface.path(root, SkillSurface.APPENDIX).stat().st_size
     print(
         f"OK skill surface core={size}B "
         f"alias={alias_size}B "
-        f"appendix={SkillSurface.path(root, SkillSurface.APPENDIX).stat().st_size}B "
+        f"appendix={appendix_size}B "
+        f"bound={appendix_size} "
         f"cap={SkillSurface.CORE_MAX_BYTES} "
         f"target={SkillSurface.CORE_TARGET_BYTES}"
     )
