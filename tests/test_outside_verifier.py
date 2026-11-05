@@ -219,8 +219,13 @@ class OutsideVerifierGate(unittest.TestCase):
         )
         self.assertNotEqual(refused.returncode, 0, refused.stdout)
         self.assertIn("ContractSurface", refused.stderr)
-        self.assertIn("verifier", refused.stderr)
+        self.assertIn("do not count", refused.stderr)
         self.assertFalse(marker.exists(), "self-judgment ran the command")
+        bare = run_of(
+            self.tmp, "spec", "--verified-contract", "HEALTH-001", "--run", "true"
+        )
+        self.assertNotEqual(bare.returncode, 0, bare.stdout)
+        self.assertIn("do not count", bare.stderr)
         unit = self.tmp / "unit.log"
         unit.write_text("pytest ok\n", encoding="utf-8")
         cited = run_of(
@@ -257,6 +262,9 @@ class OutsideVerifierGate(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
         (self.tmp / "app.py").write_text("def health():\n    return 404\n", encoding="utf-8")
         (self.tmp / "surface.log").write_text("GET /health\n200\n", encoding="utf-8")
+        (self.tmp / "health_probe.py").write_text(
+            "print('GET /health')\nprint('200')\n", encoding="utf-8"
+        )
         self.init_health()
         self.ok(
             "pack",
@@ -298,42 +306,38 @@ class OutsideVerifierGate(unittest.TestCase):
         self.assertNotEqual(closed.returncode, 0, closed.stdout)
         self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
 
-        self.ok(
-            "pack",
-            "--slice",
-            "fresh-context review of GET /health",
-            "--role",
-            "verifier",
-            "--child-id",
-            "v1",
+        # Health can be probed. A verifier residual does not stand in for that run.
+        # Hand-written, not of pack: the next of command must not revive it from the log.
+        wave = self.tmp / ".orderfield" / "waves" / "001"
+        (wave / "packets" / "v1.json").write_text(
+            json.dumps({"child_id": "v1", "role": "verifier", "wave": 1}) + "\n",
+            encoding="utf-8",
         )
-        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "v1"
-        receipt, outcome = of.EvidenceReceipt.reduce(
-            scratch,
-            sample_log(),
-            command_id="health",
-            exit_code=0,
-            command="python -m unittest discover -s tests",
-            quotes=["GET /health 200", "HEALTH-001 ok"],
-            paths=["tests/test_health.py"],
-            root=self.tmp,
+        (wave / "residuals" / "v1.json").write_text(
+            json.dumps(
+                {
+                    "status": "done",
+                    "child_id": "v1",
+                    "role": "verifier",
+                    "residual": {
+                        "evidence": "checked HEALTH-001\nevidence_receipt: surface.log\n"
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        self.assertEqual(outcome, of.EvidenceReceipt.ACCEPT, outcome)
-        assert receipt is not None
-        rel = str(receipt["source_path"]).rsplit("/", 1)[0] + "/health.receipt.json"
-        receipt_path = scratch / "logs" / "health.receipt.json"
-        self.assertTrue(receipt_path.is_file(), rel)
-        cite = receipt_path.relative_to(self.tmp).as_posix()
-        self.write_done(
-            "v1",
-            "exercised HEALTH-001 GET /health and got 200\n"
-            f"evidence_receipt: {cite}\n",
-        )
-        self.assertIsNone(
+        self.assertIsNotNone(
             of.OutsideVerifier.reason(self.tmp, self.statuses()["HEALTH-001"])
         )
+        (wave / "packets" / "v1.json").unlink()
+        (wave / "residuals" / "v1.json").unlink()
         stamped = self.ok(
-            "spec", "--verified-contract", "HEALTH-001", "--cite", "surface.log"
+            "spec",
+            "--verified-contract",
+            "HEALTH-001",
+            "--run",
+            f"{sys.executable} health_probe.py",
         )
         self.assertIn("verified_contract", stamped.stdout)
         self.assertEqual(self.statuses()["HEALTH-001"]["status"], "verified_contract")
@@ -345,6 +349,88 @@ class OutsideVerifierGate(unittest.TestCase):
         closed_ok = self.ok("close")
         self.assertIn("CLOSED", closed_ok.stdout)
         self.assertTrue((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
+    def test_no_hard_signal_falls_back_to_verifier(self) -> None:
+        """Timeout has no CLI/HTTP/health/version probe. Plan B is the verifier."""
+        self.ok("init", "--mission", "charge window", "--phase", "build")
+        self.ok(
+            "spec",
+            "--add",
+            "TIMEOUT-001",
+            "--text",
+            "a charge past 2s records nothing",
+        )
+        item = self.statuses()["TIMEOUT-001"]
+        self.assertTrue(of.ContractSurface.public(item))
+        self.assertFalse(of.OutsideVerifier.hard_signal(item))
+        self.assertTrue(
+            of.OutsideVerifier.hard_signal(
+                {"id": "HEALTH-001", "text": "GET /health must return 200"}
+            )
+        )
+        self.assertTrue(
+            of.OutsideVerifier.hard_signal({"id": "CLI-001", "text": "prints a price"})
+        )
+        self.ok(
+            "pack",
+            "--slice",
+            "bound the charge window",
+            "--role",
+            "implementer",
+            "--child-id",
+            "c1",
+            "--owns-requirement",
+            "TIMEOUT-001",
+            "--owns-path",
+            "charge.py",
+        )
+        self.write_done("c1", "unit-only TIMEOUT-001\n")
+        self.assertIn(
+            "verifier",
+            of.OutsideVerifier.reason(self.tmp, self.statuses()["TIMEOUT-001"]) or "",
+        )
+        proof = self.tmp / "charge.log"
+        proof.write_text("waited 2s\n", encoding="utf-8")
+        cited = run_of(
+            self.tmp, "spec", "--verified-contract", "TIMEOUT-001", "--cite", "charge.log"
+        )
+        self.assertNotEqual(cited.returncode, 0, cited.stdout)
+        self.assertIn("verifier", cited.stderr)
+        self.assertNotEqual(self.statuses()["TIMEOUT-001"]["status"], "verified_contract")
+        self.ok(
+            "pack",
+            "--slice",
+            "fresh-context review of the charge window",
+            "--role",
+            "verifier",
+            "--child-id",
+            "v1",
+        )
+        scratch = self.tmp / ".orderfield" / "work" / "scratch" / "v1"
+        _receipt, outcome = of.EvidenceReceipt.reduce(
+            scratch,
+            sample_log(),
+            command_id="charge",
+            exit_code=0,
+            command="python -m unittest discover -s tests",
+            quotes=["GET /health 200", "HEALTH-001 ok"],
+            paths=["tests/test_health.py"],
+            root=self.tmp,
+        )
+        self.assertEqual(outcome, of.EvidenceReceipt.ACCEPT, outcome)
+        cite = (scratch / "logs" / "charge.receipt.json").relative_to(self.tmp).as_posix()
+        self.write_done(
+            "v1",
+            "checked TIMEOUT-001 charge window\n" f"evidence_receipt: {cite}\n",
+        )
+        self.assertIsNone(
+            of.OutsideVerifier.reason(self.tmp, self.statuses()["TIMEOUT-001"])
+        )
+        stamped = self.ok(
+            "spec", "--verified-contract", "TIMEOUT-001", "--cite", "charge.log"
+        )
+        self.assertEqual(self.statuses()["TIMEOUT-001"]["status"], "verified_contract")
+        self.assertIn("verified_contract", stamped.stdout)
 
 
 class ConsentScale(unittest.TestCase):

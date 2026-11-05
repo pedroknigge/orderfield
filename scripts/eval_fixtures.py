@@ -439,47 +439,9 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
             "mission": "child stole the mission",
         },
     )
-    # #388: the leader cite is not the implementer's judgment. A different
-    # child_id verifier residual, citing an accepted receipt, is what lets
-    # the later --verified-contract step reach RESOLVED.
-    reviewed = eval_run_of(
-        root,
-        "pack",
-        "--slice",
-        "fresh-context review of evalcli status",
-        "--role",
-        "verifier",
-        "--child-id",
-        "v1",
-    )
-    EvalInvariantSetup.require_ok(reviewed, "pack verifier")
-    scratch = root / ".orderfield" / "work" / "scratch" / "v1"
-    log = (
-        "python -m unittest discover -s tests\n"
-        "CLI-001 ok\n"
-        "OK\n" + ("pad tests/test_evalcli.py line\n" * 200)
-    ).encode("utf-8")
-    receipt, outcome = EvidenceReceipt.reduce(
-        scratch,
-        log,
-        command_id="evalcli",
-        exit_code=0,
-        command="python -m unittest discover -s tests",
-        quotes=["CLI-001 ok"],
-        paths=["tests/test_evalcli.py"],
-        root=root,
-    )
-    if outcome != EvidenceReceipt.ACCEPT or receipt is None:
-        raise RuntimeError(f"fixture verifier receipt must ACCEPT; got {outcome}")
-    cite = (scratch / "logs" / "evalcli.receipt.json").relative_to(root).as_posix()
-    EvalInvariantSetup.write_bound_residual(
-        root,
-        "v1",
-        evidence=(
-            "checked CLI-001 python -m evalcli status exits 0\n"
-            f"evidence_receipt: {cite}\n"
-        ),
-    )
+    # CLI-001 is a hard signal. Eval steps --run this program; a unit cite
+    # or the implementer's residual does not stamp it.
+    (root / "evalcli.py").write_text("print('evalcli status')\n", encoding="utf-8")
     # The leader's surface run; eval steps cite it (free-text --cite is refused).
     (root / "surface-proof.log").write_text(
         "$ python -m evalcli status\nexit 0\n", encoding="utf-8"

@@ -1337,18 +1337,36 @@ def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
 class OutsideVerifier:
     """Close-gate predicate. Not a scheduler and not a new verb.
 
-    A public-surface id an implementer marked done cannot become
-    VERIFIED_CONTRACT until a different ``child_id`` with ``--role
-    verifier`` cites an accepted evidence receipt. Leader-only cites
-    (no implementer residual) stay the existing proof path.
-    ``EvaluatorPacket`` still only decides when to pack review.
+    Ordering for a public id an implementer marked done:
+
+    1. Hard evidence, when the id is CLI / HTTP / health / version: a
+       kernel ``--run`` in the proof checkout whose accepted receipt is
+       not ``true``, an exit-0 no-op, a slogan, or a unit cite.
+    2. A different ``child_id`` ``--role verifier`` residual citing an
+       accepted receipt, only when that hard signal is not possible.
+    3. Never the implementer's own judgment.
+
+    Leader-only cites (no implementer residual) stay the existing proof
+    path. ``EvaluatorPacket`` still only decides when to pack review.
     """
 
     REVIEW = frozenset({"adversary", "verifier"})
+    _TRIVIAL_PROGS = frozenset({"true", "false", ":", "exit", "yes", "echo", "printf"})
+    _SURFACE_STOP = frozenset({
+        "must", "should", "with", "from", "that", "this", "have", "return",
+        "returns", "exit", "exits", "print", "prints", "status", "command",
+        "public", "surface", "true", "false", "only", "when", "into",
+    })
     REFUSE = (
         "{id} is a public surface (ContractSurface); "
         "implementer {writers} cannot reach VERIFIED_CONTRACT without a "
         "--role verifier residual from a different child_id citing accepted evidence"
+    )
+    HARD_REFUSE = (
+        "{id} is a public surface (ContractSurface); "
+        "implementer {writers} cannot reach VERIFIED_CONTRACT on self-judgment. "
+        "Kernel-run the surface: of spec --verified-contract {id} --run <cmd> "
+        "(proof checkout). true, exit-0 no-ops, slogans, and unit cites do not count"
     )
     NEXT_WAVE_REFUSE = (
         "public-surface field missing evaluator_consent; "
@@ -1405,6 +1423,93 @@ class OutsideVerifier:
         return found
 
     @staticmethod
+    def hard_signal(item: dict[str, Any]) -> bool:
+        """CLI / HTTP / health / version can be probed. Anything else is plan B."""
+        if not isinstance(item, dict):
+            return False
+        rid = str(item.get("id") or "")
+        if rid.startswith(("CLI-", "HTTP-", "HEALTH-", "VERSION-")):
+            return True
+        text = str(item.get("text") or "")
+        return ContractSurface._has_any(
+            text, ContractSurface.HEALTH_CUES
+        ) or ContractSurface._has_any(text, ContractSurface.VERSION_CUES)
+
+    @staticmethod
+    def trivial(command: str) -> bool:
+        """``true``, inline ``python -c``, unit runners, and file reads are not a surface."""
+        import shlex
+
+        from of.receipt import EvidenceReceipt
+
+        raw = str(command or "").strip()
+        if not raw:
+            return True
+        try:
+            argv = shlex.split(raw)
+        except ValueError:
+            return True
+        if not argv:
+            return True
+        prog = Path(argv[0]).name
+        if prog in OutsideVerifier._TRIVIAL_PROGS:
+            return True
+        if prog.startswith("python") and "-c" in argv:
+            return True
+        if EvidenceReceipt.BYPASS_RE.search(raw) or EvidenceReceipt.TEST_RE.search(raw):
+            return True
+        return False
+
+    @staticmethod
+    def _surface_words(text: str) -> set[str]:
+        import re
+
+        return {
+            word
+            for word in re.findall(r"[a-z0-9]{4,}", str(text or "").lower())
+            if word not in OutsideVerifier._SURFACE_STOP
+        }
+
+    @staticmethod
+    def hard_receipt(root: Path, item: dict[str, Any], cite: str) -> bool:
+        """Kernel-attested receipt of a non-trivial command that touched this surface."""
+        from of.receipt import EvidenceReceipt, KernelVerify
+
+        rel = str(cite or "").strip()
+        if not rel or rel.startswith("/") or ".." in Path(rel).parts:
+            return False
+        path = (Path(root) / rel)
+        if not path.is_file():
+            return False
+        receipt = EvidenceReceipt.load_receipt(path)
+        if not isinstance(receipt, dict) or receipt.get("kernel_attested") is not True:
+            return False
+        if KernelVerify.signed_input_rows(root, receipt) is None:
+            return False
+        if receipt.get("exit") != 0:
+            return False
+        command = str(receipt.get("command") or "")
+        if OutsideVerifier.trivial(command):
+            return False
+        output = ""
+        source_rel = str(receipt.get("source_path") or "").strip()
+        if source_rel and ".." not in Path(source_rel).parts:
+            source = Path(root) / source_rel
+            try:
+                output = source.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                output = ""
+        blob = f"{command}\n{output}".lower()
+        rid = str(item.get("id") or "")
+        if rid and rid.lower() in blob:
+            return True
+        text = str(item.get("text") or "")
+        for cue in (*ContractSurface.HEALTH_CUES, *ContractSurface.VERSION_CUES):
+            if cue in text.lower() and cue in blob:
+                return True
+        return any(word in blob for word in OutsideVerifier._surface_words(text))
+
+    @staticmethod
     def accepted(root: Path, rid: str, writers: list[str]) -> bool:
         """Fresh-context verifier residual. Role and child_id, not the harness."""
         from of.pack import verifier_done_errors
@@ -1434,16 +1539,24 @@ class OutsideVerifier:
         return False
 
     @staticmethod
-    def reason(root: Path, item: dict[str, Any]) -> str | None:
+    def reason(
+        root: Path, item: dict[str, Any], *, proof: str | None = None
+    ) -> str | None:
         if not ContractSurface.public(item):
             return None
         writers = OutsideVerifier.writers(root, item)
         if not writers:
             return None
         rid = str(item.get("id") or "")
+        named = ", ".join(writers)
+        if OutsideVerifier.hard_signal(item):
+            cite = proof if proof is not None else str(item.get("proof_cite") or "")
+            if cite and OutsideVerifier.hard_receipt(root, item, cite):
+                return None
+            return OutsideVerifier.HARD_REFUSE.format(id=rid, writers=named)
         if OutsideVerifier.accepted(root, rid, writers):
             return None
-        return OutsideVerifier.REFUSE.format(id=rid, writers=", ".join(writers))
+        return OutsideVerifier.REFUSE.format(id=rid, writers=named)
 
     @staticmethod
     def coverage_errors(root: Path, items: list[dict[str, Any]]) -> list[str]:

@@ -190,40 +190,10 @@ json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=
 EOF
 of collect --wave 1
 of integrate --wave 1
-# CLI-001 is a public surface. The explorer cannot stamp it. A different
-# child_id verifier residual, citing an accepted receipt, is the close gate.
-of pack --slice "fresh-context review of the price table" --role verifier --child-id v1
-python3 - <<'EOF'
-import hashlib, json, os
-base = ".orderfield/work/scratch/v1/logs"
-os.makedirs(base, exist_ok=True)
-data = (
-    "python -m unittest discover -s tests\nCLI-001 ok\nOK\n"
-    + "pad tests/test_price.py line\n" * 200
-).encode()
-open(base + "/price.out", "wb").write(data)
-digest = hashlib.sha256(data).hexdigest()
-source = base + "/price.out"
-receipt = {
-    "v": 1, "kind": "evidence_receipt", "marker": "OF_EVIDENCE_RECEIPT",
-    "command_id": "price", "source_path": source, "source_hash": digest,
-    "exit": 0, "size": len(data), "command": "python -m unittest discover -s tests",
-    "quotes": ["CLI-001 ok"], "paths": ["tests/test_price.py"],
-}
-json.dump(receipt, open(base + "/price.receipt.json", "w"), indent=2, sort_keys=True)
-p = json.load(open(".orderfield/waves/001/packets/v1.json"))
-ref = ".orderfield/work/scratch/v1/result.md"
-open(ref, "w").write("reviewed CLI-001 price table\n")
-sha = hashlib.sha256(open(ref, "rb").read()).hexdigest()
-r = {k: p[k] for k in ("packet_id", "packet_hash", "order_id", "order_rev", "wave", "child_id", "role")}
-r.update(status="done", result_ref=ref, residual={
-    "wants_to_change": [],
-    "evidence": "checked CLI-001 price table\nevidence_receipt: " + base + "/price.receipt.json\nartifact_sha: " + sha + "\nrollback: git checkout -- " + ref,
-    "proposed_patch": None,
-}, metrics={"uncertainty": 0.1, "divergence": 0.0, "tool_failures": 0, "novelty": False})
-json.dump(r, open(".orderfield/waves/001/residuals/v1.json", "w"), indent=2)
-EOF
-of spec --verified-contract CLI-001 --cite .orderfield/work/scratch/explorer/notes.md
+# CLI-001 is a public surface. The explorer cannot stamp it. The kernel runs
+# the surface outside that child; true / a unit cite do not count.
+printf '%s\n' 'print("price table")' > price_cli.py
+of spec --verified-contract CLI-001 --run "python3 price_cli.py"
 of contrast    # one-pager + JSON; CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
 of close --checklist  # contrast + residual empty; does not stamp
 of close       # refused until contrast is RESOLVED and residual is empty

@@ -469,11 +469,17 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 die(" ".join(clean) + " is not failed; drop --takeover")
         elif holds:
             _refuse_failure_holds(holds)
-    if verified_ids:
+    # Trivial --run never reaches the surface. A real command is the proof.
+    if verified_ids and run_cmd and OutsideVerifier.trivial(run_cmd):
         denied: list[str] = []
         for raw in verified_ids:
             item = find_requirement(data, require_req_id(raw))
             if item is None:
+                continue
+            if not (
+                OutsideVerifier.writers(root, item)
+                and OutsideVerifier.hard_signal(item)
+            ):
                 continue
             why = OutsideVerifier.reason(root, item)
             if why:
@@ -515,6 +521,17 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             )
         cite = cited.relative_to(root.resolve()).as_posix()
         proof_sha = EvidenceStore.digest(cited.read_bytes())
+    if verified_ids:
+        denied = []
+        for raw in verified_ids:
+            item = find_requirement(data, require_req_id(raw))
+            if item is None:
+                continue
+            why = OutsideVerifier.reason(root, item, proof=cite)
+            if why:
+                denied.append(why)
+        if denied:
+            die("; ".join(denied))
     for rid in getattr(args, "verified_internal", None) or []:
         item = find_requirement(data, require_req_id(rid))
         if item is None:

@@ -239,7 +239,7 @@ class InstallScript(unittest.TestCase):
         # recorded-worktree checkout, per-wave kernel receipts,
         # child-failure stamps, and the #388 outside-verifier close gate.
         # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_602_000, size)
+        self.assertLessEqual(size, 1_606_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
