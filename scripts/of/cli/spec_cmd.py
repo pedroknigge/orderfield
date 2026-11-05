@@ -1036,6 +1036,166 @@ def cmd_contrast(args: argparse.Namespace) -> None:
         raise SystemExit(2)
 
 
+class ReviewAttackers:
+    """Adversary count plus the one judge bucket that escalates.
+
+    Not a close gate and not a verb. ``EvaluatorPacket`` still decides
+    when a settled wave packs ``--role adversary`` and ``--role verifier``.
+    Optional ``ORDER.review_attackers`` is how many adversary packets.
+    Absent uses the band default: 2 on ``1-4`` or unset N<=4, else 3.
+    The ceiling is 3 (a band of ``10-50`` cannot ask for 10). One
+    ``--role verifier`` classifies findings into the CHILD.md buckets.
+    Only that judge's ``act`` escalates. An adversary residual does not.
+    """
+
+    KEY = "review_attackers"
+    CEILING = 3
+    REVIEW = frozenset({"adversary", "verifier"})
+    ACT = frozenset({"threshold", "escalate_up"})
+    BUCKETS = ("act", "consider", "noted", "dismissed")
+    TIER = {"adversary": "cheap", "verifier": "frontier"}
+
+    @staticmethod
+    def cap(band: str | None) -> int:
+        if band == "1-4":
+            return 2
+        return ReviewAttackers.CEILING
+
+    @staticmethod
+    def default(band: str | None, non_review: int) -> int:
+        if band == "1-4":
+            return 2
+        if band in ("5-10", "10-50"):
+            return ReviewAttackers.CEILING
+        return 2 if int(non_review) <= 4 else ReviewAttackers.CEILING
+
+    @staticmethod
+    def parse(raw: Any) -> int | None:
+        if raw is None or isinstance(raw, bool):
+            return None
+        if isinstance(raw, int):
+            return raw
+        text = str(raw).strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def clamp(asked: int, band: str | None) -> tuple[int, str]:
+        limit = ReviewAttackers.cap(band)
+        if asked < 1:
+            die(f"--review-attackers must be an integer >= 1; got {asked}")
+        if asked > limit:
+            where = f", agent_band {band}" if band else ""
+            note = (
+                f"review_attackers {asked} above cap {limit} "
+                f"(ceiling {ReviewAttackers.CEILING}{where}); clamped to {limit}"
+            )
+            return limit, note
+        return asked, ""
+
+    @staticmethod
+    def count(
+        order: dict[str, Any] | None,
+        *,
+        band: str | None,
+        non_review: int,
+    ) -> int:
+        limit = ReviewAttackers.cap(band)
+        raw = None if not isinstance(order, dict) else order.get(ReviewAttackers.KEY)
+        asked = ReviewAttackers.parse(raw)
+        if asked is None:
+            return ReviewAttackers.default(band, non_review)
+        if asked < 1:
+            return 1
+        return min(asked, limit)
+
+    @staticmethod
+    def count_from(order: dict[str, Any] | None, facts: dict[str, Any]) -> int:
+        from of.pack import ReviewScope
+
+        band = ReviewScope.band_of(order if isinstance(order, dict) else None)
+        non_review = sum(
+            1
+            for child in (facts.get("children") or [])
+            if str(child.get("role") or "") not in ReviewAttackers.REVIEW
+        )
+        return ReviewAttackers.count(order, band=band, non_review=non_review)
+
+    @staticmethod
+    def tally(children: list[dict[str, Any]]) -> tuple[int, int]:
+        adv = 0
+        ver = 0
+        for child in children:
+            role = str(child.get("role") or "")
+            if role == "adversary":
+                adv += 1
+            elif role == "verifier":
+                ver += 1
+        return adv, ver
+
+    @staticmethod
+    def satisfied(order: dict[str, Any] | None, facts: dict[str, Any]) -> bool:
+        needed = ReviewAttackers.count_from(order, facts)
+        adv, ver = ReviewAttackers.tally(list(facts.get("children") or []))
+        return adv >= needed and ver >= 1
+
+    @staticmethod
+    def apply_patch(order: dict[str, Any], raw: Any) -> bool:
+        if raw is None:
+            return False
+        from of.pack import ReviewScope
+
+        asked = ReviewAttackers.parse(raw)
+        if asked is None:
+            die(f"--review-attackers must be an integer >= 1; got {raw!r}")
+        value, note = ReviewAttackers.clamp(int(asked), ReviewScope.band_of(order))
+        if note:
+            print(note, file=sys.stderr)
+        if order.get(ReviewAttackers.KEY) == value:
+            return False
+        order[ReviewAttackers.KEY] = value
+        return True
+
+    @staticmethod
+    def bucket(residual: dict[str, Any] | None) -> str:
+        body_in = residual if isinstance(residual, dict) else {}
+        status = str(body_in.get("status") or "")
+        if status in ReviewAttackers.ACT:
+            return "act"
+        nested = body_in.get("residual")
+        body = nested if isinstance(nested, dict) else {}
+        patch = body.get("proposed_patch")
+        notes = ""
+        if isinstance(patch, dict):
+            notes = str(patch.get("notes") or "").strip()
+        elif isinstance(patch, str):
+            notes = patch.strip()
+        if notes:
+            return "consider"
+        evidence = str(body.get("evidence") or "")
+        if "dismissed" in evidence.casefold():
+            return "dismissed"
+        return "noted"
+
+    @staticmethod
+    def escalates(
+        role: str,
+        residual: dict[str, Any] | None = None,
+        *,
+        status: str = "",
+    ) -> bool:
+        """Verifier ``act`` escalates. Adversary findings wait for that judge."""
+        if str(role or "") != "verifier":
+            return False
+        if isinstance(residual, dict) and residual:
+            return ReviewAttackers.bucket(residual) == "act"
+        return str(status or "") in ReviewAttackers.ACT
+
+
 class EvaluatorPacket:
     """Fresh-context review packet scheduler. Not the close gate.
 
@@ -1043,13 +1203,14 @@ class EvaluatorPacket:
     unset — not ask. After an implementer wave settles
     (in_flight=0, published residual, not yet integrated), stored
     yes packs both roles on that wave residual before next-wave.
-    Stored no skips. Review refuse is HOLD. A Large field (binding
-    ContractSurface) with missing consent HOLDs that same review
-    pack instead of skipping. Small stays unset. Checklist prints
-    whether those packets exist. Reuses WaveRoster roles. No new
-    role, no of merge, no supervisor. CloseChecklist.ok stays
-    contrast + residual. The close gate is OutsideVerifier.
-    #280 reads ORDER.evaluator_consent.
+    ``ReviewAttackers`` is how many adversary packets (default 2–3).
+    Stored no skips. Only the verifier judge's ``act`` is HOLD.
+    A Large field (binding ContractSurface) with missing consent
+    HOLDs that same review pack instead of skipping. Small stays
+    unset. Checklist prints whether those packets exist. Reuses
+    WaveRoster roles. No new role, no of merge, no supervisor.
+    CloseChecklist.ok stays contrast + residual. The close gate is
+    outside this scheduler. #280 reads ORDER.evaluator_consent.
     """
 
     KIND = "evaluator"
@@ -1189,16 +1350,22 @@ class EvaluatorPacket:
         if field_is_file(wave_dir(int(target), root) / "report.json"):
             return False
         facts = WaveRoster.facts(root, int(target), live)
-        if facts["in_flight"]:
+        if ReviewAttackers.satisfied(order, facts):
             return False
-        roles = {str(child.get("role") or "") for child in facts["children"]}
-        if all(role in roles for role in EvaluatorPacket.REVIEW_ROLES):
-            return False
-        return any(
+        review = set(EvaluatorPacket.REVIEW_ROLES)
+        implementer_landed = any(
             child.get("status") == "done"
-            and str(child.get("role") or "") not in EvaluatorPacket.REVIEW_ROLES
+            and str(child.get("role") or "") not in review
             for child in facts["children"]
         )
+        if not implementer_landed:
+            return False
+        flying_product = any(
+            child.get("status") == "in-flight"
+            and str(child.get("role") or "") not in review
+            for child in facts["children"]
+        )
+        return not flying_product
 
     @staticmethod
     def refused(
@@ -1212,7 +1379,10 @@ class EvaluatorPacket:
         if any(row.get("status") == "in-flight" for row in children):
             return False
         return any(
-            row.get("residual_status") in EvaluatorPacket.REFUSE_STATUSES
+            ReviewAttackers.escalates(
+                str(row.get("role") or ""),
+                status=str(row.get("residual_status") or ""),
+            )
             for row in children
         )
 
@@ -1250,7 +1420,10 @@ class EvaluatorPacket:
             (not flying)
             and children
             and any(
-                row.get("residual_status") in EvaluatorPacket.REFUSE_STATUSES
+                ReviewAttackers.escalates(
+                    str(row.get("role") or ""),
+                    status=str(row.get("residual_status") or ""),
+                )
                 for row in children
             )
         ):
@@ -1284,6 +1457,23 @@ class EvaluatorPacket:
         return EvaluatorPacket.SPEAK_ASK
 
     @staticmethod
+    def pack_line(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+        wave: int | None = None,
+    ) -> str:
+        """Printed PACK detail. Keeps the both-roles phrase and names K."""
+        live = WaveRoster.live_wave(state)
+        target = live if wave is None else int(wave)
+        facts = WaveRoster.facts(root, int(target), live)
+        needed = ReviewAttackers.count_from(order, facts)
+        return (
+            f"{EvaluatorPacket.ASK_NEXT} "
+            f"(review_attackers={needed}, adversary --model-tier cheap)"
+        )
+
+    @staticmethod
     def speak_line(status: str = "", *, key: str = "speak", key_width: int = 12) -> str:
         text = EvaluatorPacket.speak_for(status or EvaluatorPacket.STATUS_ASK)
         return f"{key.ljust(key_width)}{text}"
@@ -1307,9 +1497,9 @@ class EvaluatorPacket:
             status = EvaluatorPacket.STATUS_HOLD
         due = EvaluatorPacket.due(root, order, state)
         if status == EvaluatorPacket.STATUS_ASK:
-            nxt = EvaluatorPacket.ASK_NEXT
+            nxt = EvaluatorPacket.pack_line(root, order, state)
         elif status == EvaluatorPacket.STATUS_HOLD:
-            nxt = EvaluatorPacket.ASK_NEXT
+            nxt = EvaluatorPacket.pack_line(root, order, state)
         elif status == EvaluatorPacket.STATUS_UNSET:
             nxt = EvaluatorPacket.PATCH_NEXT
         elif status == EvaluatorPacket.STATUS_REFUSE:
@@ -1351,11 +1541,11 @@ class EvaluatorPacket:
     def named(doc: dict[str, Any]) -> str:
         status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         if status == EvaluatorPacket.STATUS_ASK:
-            return EvaluatorPacket.ASK_NEXT
+            return str(doc.get("next") or "") or EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.PATCH_NEXT
         if status == EvaluatorPacket.STATUS_HOLD:
-            return EvaluatorPacket.ASK_NEXT
+            return str(doc.get("next") or "") or EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_REFUSE:
             return EvaluatorPacket.HOLD_DETAIL
         if status == EvaluatorPacket.STATUS_SKIP:

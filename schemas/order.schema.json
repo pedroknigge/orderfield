@@ -86,6 +86,12 @@
       "enum": ["yes", "no"],
       "description": "Start consent for fresh-context adversary+verifier. Absent = not asked (evaluator unset). Pack review roles only when yes. of patch --evaluator-consent. Not a close gate. #280 reads this key. #282 scopes large-band review after settle."
     },
+    "review_attackers": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "How many cheap-tier --role adversary packets pack beside one --role verifier judge. Absent uses the band default (2 on 1-4 or unset N<=4, else 3). Ceiling 3. of patch --review-attackers. Not a close gate. #389."
+    },
     "agent_band": {
       "type": "object",
       "additionalProperties": false,

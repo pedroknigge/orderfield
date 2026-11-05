@@ -157,7 +157,7 @@ Closed table. Not a verb. Reuses `SkillLeaderInitiative` / `SkillHarnessAsk` / `
 
 #### Wave-end review scope
 
-Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
+Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. `ReviewAttackers` (optional `ORDER.review_attackers`, `of patch --review-attackers`) is how many cheap-tier adversary packets (`--model-tier cheap`) sit beside that one verifier judge. Default 2 on band `1-4` or unset N≤4, else 3. Ceiling 3 — a `10-50` band cannot ask for 10. The judge buckets findings `act` / `consider` / `noted` / `dismissed`; only the verifier's `act` escalates. Adversary findings do not. Attackers may use a cheaper harness: `of spawn --adapter` claude, codex, cursor, grok, or agy. Not a close gate. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
 
 | Band / N | Mode | Verifier | Adversary |
 |---|---|---|---|
