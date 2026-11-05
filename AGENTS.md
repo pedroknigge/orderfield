@@ -58,6 +58,7 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | [docs/model-catalog.md](docs/model-catalog.md) | Living intelligence×cost sheet per harness (advisory; not a budget) |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
+| [docs/prototype-wave.md](docs/prototype-wave.md) | N explorer fields → `of crown` → one implementer |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
 | [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B/C) |

@@ -72,6 +72,7 @@ Kernel: public JSON schemas, causal WAL, field lock for `MUTATING_COMMANDS`, pac
 | several unmatched open fields | `--field <id>`; `of fields --use <id>` moves `.orderfield/ACTIVE`; or `of new` |
 | several siblings, need flying packs | `of fields` / `--json` — open packs across homes |
 | long mission (epic → waves → amend → close) | [docs/long-mission.md](docs/long-mission.md) — do not invent a supervisor |
+| N prototypes, then one build | [docs/prototype-wave.md](docs/prototype-wave.md) — `of contend` → `of crown` → one implementer. Contest is the prototype interface |
 | production mission / Gate A / before features | appendix **Production mode** — Gate A before `--role implementer`; never invent supervisor / `RUNTIME_OWNERSHIP` / `of merge` |
 | production checklist (Prod§7/11/15) | checklist → of contrast (VERIFIED_CONTRACT) / residual CloseEvidence / of close --checklist. Prod§15: day-90 runbook path in `done_when` or close refuse. Not a second checklist |
 | session says CLOSED, or unpack a reporter | disk wins; collect/integrate a reporter |
