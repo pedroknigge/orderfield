@@ -627,11 +627,3 @@ You do not need headless spawn for every child. The current session can be the l
 The kernel stays the authority. The native primitive only transports the packet.
 
 Per-harness detail: `references/adapters.md`.
-
-## It's working if
-
-- ORDER moves slowly (few revisions per task). Four fast modes under one ORDER beat four slow ORDER revisions.
-- The leader talks little. Children write residuals, not essays.
-- A threshold produces a field patch, not a swarm.
-- Turning Orca off and installing the skill in Claude Code leaves an ORDER of the same shape.
-- The landing is better than a clean sprint at the public surface, even if it is not first.
