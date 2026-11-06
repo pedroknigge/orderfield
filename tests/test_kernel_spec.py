@@ -3226,5 +3226,204 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
         self.assertIn("recovery/adversarial-dual-truth", appendix)
 
 
+class PrimarySourceGate(unittest.TestCase):
+    """A named primary source closes from one cite. HEALTH/CLI do not. #404."""
+
+    SOURCE = "https://www.sec.gov/Archives/example-10k"
+    FACT = f"2024 revenue was 4.2B. primary source: {SOURCE}"
+
+    def _field(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-primary-source-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        started = run_of(
+            tmp, "init", "--mission", "check a filing", "--phase", "explore"
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        return tmp
+
+    def _add(self, tmp: Path, rid: str, text: str) -> None:
+        added = run_of(tmp, "spec", "--add", rid, "--text", text)
+        self.assertEqual(added.returncode, 0, added.stderr)
+
+    def _consent(self, tmp: Path) -> None:
+        patched = run_of(tmp, "patch", "--evaluator-consent", "yes")
+        self.assertEqual(patched.returncode, 0, patched.stderr)
+
+    def _pack(self, tmp: Path, *req_ids: str) -> None:
+        argv = [
+            "pack",
+            "--slice",
+            "cite the filing",
+            "--role",
+            "explorer",
+            "--child-id",
+            "ex1",
+        ]
+        for rid in req_ids:
+            argv.extend(["--owns-requirement", rid])
+        packed = run_of(tmp, *argv)
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+
+    def _cite(self, tmp: Path, evidence: str) -> None:
+        dest = write_bound_residual(tmp, "ex1")
+        residual = json.loads(dest.read_text(encoding="utf-8"))
+        residual["residual"]["evidence"] = evidence
+        dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+    def _item(self, tmp: Path, rid: str) -> dict:
+        data = json.loads(
+            (tmp / ".orderfield" / "REQUIREMENTS.json").read_text(encoding="utf-8")
+        )
+        found = [row for row in data["requirements"] if row["id"] == rid]
+        self.assertEqual(len(found), 1, data)
+        return found[0]
+
+    def test_named_source_is_url_or_repo_path(self) -> None:
+        self.assertEqual(of.PrimarySource.named(self.FACT), self.SOURCE)
+        self.assertEqual(
+            of.PrimarySource.named("memo says 4. primary source: docs/sec/10k.md"),
+            "docs/sec/10k.md",
+        )
+        self.assertEqual(of.PrimarySource.named("primary source: the filing"), "")
+        self.assertEqual(
+            of.PrimarySource.named("primary source: docs/../../etc/passwd"), ""
+        )
+        self.assertFalse(
+            of.PrimarySource.eligible(
+                {"id": "NOTE-001", "text": "revenue was 4.2B", "binding": True}
+            )
+        )
+
+    def test_health_and_cli_are_not_the_fact_lane(self) -> None:
+        health = {
+            "id": "HEALTH-001",
+            "text": "GET /health must return 200. primary source: https://example.com/health",
+            "status": "owned",
+            "binding": True,
+            "source_cite": "https://example.com/health",
+        }
+        cli = {
+            "id": "CLI-001",
+            "text": "doctor is documented. primary source: https://example.com/cli",
+            "status": "owned",
+            "binding": True,
+            "source_cite": "https://example.com/cli",
+        }
+        fact = {
+            "id": "FACT-001",
+            "text": self.FACT,
+            "status": "owned",
+            "binding": True,
+        }
+        self.assertFalse(of.PrimarySource.eligible(health))
+        self.assertFalse(of.PrimarySource.resolved(health))
+        self.assertFalse(of.spec.requirement_close_ok(health))
+        self.assertNotEqual(of.spec.requirement_verdict(health), "VERIFIED_SOURCE")
+        self.assertFalse(of.PrimarySource.eligible(cli))
+        self.assertFalse(of.spec.requirement_close_ok(cli))
+        self.assertTrue(of.PrimarySource.eligible(fact))
+        self.assertTrue(of.PrimarySource.skips_adversary([fact]))
+        self.assertFalse(of.PrimarySource.skips_adversary([fact, health]))
+        self.assertFalse(of.PrimarySource.skips_adversary([]))
+
+    def test_only_explorer_or_verifier_cite_stamps(self) -> None:
+        item = {
+            "id": "FACT-001",
+            "text": self.FACT,
+            "status": "owned",
+            "binding": True,
+        }
+        res = {"status": "done", "residual": {"evidence": self.SOURCE}}
+        owned = {"owns_requirements": ["FACT-001"]}
+        for role in ("implementer", "adversary"):
+            self.assertFalse(
+                of.PrimarySource.stamp(item, res, {**owned, "role": role})
+            )
+            self.assertNotIn("source_cite", item)
+        self.assertFalse(
+            of.PrimarySource.stamp(
+                item,
+                {"status": "done", "residual": {"evidence": "https://example.com/other"}},
+                {**owned, "role": "verifier"},
+            )
+        )
+        self.assertTrue(
+            of.PrimarySource.stamp(item, res, {**owned, "role": "verifier"})
+        )
+        self.assertEqual(item["source_cite"], self.SOURCE)
+        self.assertEqual(item["status"], "owned")
+        self.assertEqual(of.spec.requirement_verdict(item), "VERIFIED_SOURCE")
+        self.assertTrue(of.spec.requirement_close_ok(item))
+
+    def test_fact_cite_resolves_without_adversary(self) -> None:
+        tmp = self._field()
+        self._add(tmp, "FACT-001", self.FACT)
+        self._consent(tmp)
+        self._pack(tmp, "FACT-001")
+        self._cite(tmp, f"primary source checked at {self.SOURCE}")
+        doc = of.EvaluatorPacket.document(
+            tmp, of.load_state(tmp), of.load_order(tmp)
+        )
+        self.assertFalse(doc["due"], doc)
+        self.assertEqual(doc["evaluator"], of.EvaluatorPacket.STATUS_SOURCE)
+        self.assertNotIn("adversary", doc["next"])
+        self.assertEqual(doc["speak"], of.PrimarySource.SPEAK)
+        resumed = run_of(tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("COLLECT", resumed.stdout)
+        self.assertNotIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        contrast = run_of(tmp, "contrast")
+        self.assertEqual(contrast.returncode, 0, contrast.stdout + contrast.stderr)
+        self.assertIn("VERIFIED_SOURCE", contrast.stdout)
+        self.assertIn("RESOLVED", contrast.stdout)
+        item = self._item(tmp, "FACT-001")
+        self.assertEqual(item["source_cite"], self.SOURCE)
+        self.assertNotEqual(item["status"], "verified_contract")
+        packets = list((tmp / ".orderfield" / "waves").glob("*/packets/*.json"))
+        roles = [json.loads(path.read_text(encoding="utf-8"))["role"] for path in packets]
+        self.assertEqual(roles, ["explorer"])
+
+    def test_health_cite_still_blocks_and_stays_due(self) -> None:
+        tmp = self._field()
+        self._add(tmp, "FACT-001", self.FACT)
+        self._add(tmp, "HEALTH-001", "GET /health must return 200")
+        self._consent(tmp)
+        self._pack(tmp, "FACT-001", "HEALTH-001")
+        self._cite(tmp, f"filing at {self.SOURCE}; health was not exercised")
+        doc = of.EvaluatorPacket.document(
+            tmp, of.load_state(tmp), of.load_order(tmp)
+        )
+        self.assertTrue(doc["due"], doc)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, doc["next"])
+        resumed = run_of(tmp, "resume")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("PACK", resumed.stdout)
+        self.assertIn(of.EvaluatorPacket.ASK_NEXT, resumed.stdout)
+        collected = run_of(tmp, "collect", "--wave", "1")
+        self.assertEqual(collected.returncode, 0, collected.stderr)
+        integrated = run_of(tmp, "integrate", "--wave", "1")
+        self.assertEqual(integrated.returncode, 0, integrated.stderr)
+        contrast = run_of(tmp, "contrast")
+        self.assertEqual(contrast.returncode, 2, contrast.stdout)
+        self.assertIn("VERIFIED_SOURCE", contrast.stdout)
+        self.assertIn("HEALTH-001", contrast.stdout)
+        self.assertIn("CLOSE BLOCKED", contrast.stdout)
+        fact = self._item(tmp, "FACT-001")
+        health = self._item(tmp, "HEALTH-001")
+        self.assertEqual(fact["source_cite"], self.SOURCE)
+        self.assertNotIn("source_cite", health)
+        self.assertNotEqual(health["status"], "verified_contract")
+        roles = [
+            json.loads(path.read_text(encoding="utf-8"))["role"]
+            for path in (tmp / ".orderfield" / "waves").glob("*/packets/*.json")
+        ]
+        self.assertNotIn("adversary", roles)
+        self.assertNotIn("verifier", roles)
+
+
 if __name__ == "__main__":
     unittest.main()
