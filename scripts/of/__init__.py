@@ -111,6 +111,7 @@ from of.field import (  # noqa: F401
 
 from of.spec import (  # noqa: F401
     ContractSurface,
+    PrimarySource,
     WebhookPair,
     REQ_ID_RE,
     apply_requirement_patches,
