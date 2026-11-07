@@ -45,7 +45,7 @@ Stay on this session.
 - You mentioned a harness name. That is not a trigger.
 - Dual-harness or Agent Teams ceremony that moves work but does not own who may change the plan.
 
-**InitAskSkip Small** (1–2 exclusive slices; bump / obvious; owners known): skip catalog, cheap vs frontier, mix, and evaluator. Stay session. `of detect` present or HOLD. Contrast → `of close --checklist`. Never silent mix. No silent reviewers.
+**InitAskSkip Small** (1–2 exclusive slices; bump / obvious; owners known): skip catalog, cheap vs frontier, mix, evaluator, and the outcome ask. Stay session. `of detect` present or HOLD. Contrast → `of close --checklist`. Never silent mix. No silent reviewers.
 
 If `.orderfield/` already exists (nested fields too), `of resume` — do not re-init.
 
@@ -73,6 +73,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
 - **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset on Small. A ContractSurface field (Large) with missing consent HOLDs next-wave for the review pack. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.
+- **Must ask** once: "What measurable outcome closes this, beyond the ticket?" `outcome: main CI green and install.sh --from-release verifies` — not "merge the PR". Children never rewrite it. Not a close gate. Not a new ORDER key.
 
 Code is a liability. Think DELETE, not add. Same capability with less code. No new verb.
 
