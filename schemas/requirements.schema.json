@@ -48,6 +48,11 @@
             "minLength": 1,
             "description": "Path or command cited when stamping verified_contract"
           },
+          "source_cite": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Primary source URL or repo path cited by one explorer or verifier. Not a contract proof."
+          },
           "proof_sha": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$",

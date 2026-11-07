@@ -299,6 +299,164 @@ class ContractSurface:
         return "ContractSurface"
 
 
+class PrimarySource:
+    """Factual claim that names a primary source. Not a contract surface.
+
+    The close gate and ``EvaluatorPacket.due`` call this. One owning
+    explorer or verifier cite of that URL or repo path is enough
+    (``source_cite``). Adversary is not packed when every active ID is
+    this shape. HEALTH / CLI / HTTP / timeout / version / pair stay on
+    ``ContractSurface``. Not a role. Not a verb. Not a code close.
+    """
+
+    CITE_ROLES = frozenset({"explorer", "verifier"})
+    BLOCK_PREFIXES = (
+        "CLI-",
+        "HTTP-",
+        "LEASE-",
+        "AUDIT-",
+        *ContractSurface.PREFIXES,
+    )
+    SPEAK = "primary-source facts: one cite; do not pack adversary"
+    VERDICT = "VERIFIED_SOURCE"
+    _MARKER = re.compile(
+        r"primary[\s-]+source\s*[:=]?\s*(\S+)",
+        re.IGNORECASE,
+    )
+    # Implementation cues, minus the URL that *is* the source.
+    IMPLEMENTATION_CUES = (
+        "python -m",
+        "python3 -m",
+        "exit code",
+        "stdout",
+        "stderr",
+        " cli",
+        "cli ",
+        "--",
+        "curl ",
+        ".jsonl",
+        "/events",
+        "webhook",
+        "hmac",
+        "timeout",
+        "idempoten",
+        "/health",
+        "health check",
+        "healthz",
+        "readyz",
+        "livez",
+        "liveness",
+        "readiness",
+        "/version",
+        "release header",
+        "x-release",
+        "x-version",
+    )
+
+    @staticmethod
+    def named(text: str) -> str:
+        """URL or repo-relative path after ``primary source``. Else ``""``."""
+        match = PrimarySource._MARKER.search(str(text or ""))
+        if not match:
+            return ""
+        token = match.group(1).rstrip(".,);]>\"'")
+        if len(token) < 3:
+            return ""
+        lower = token.lower()
+        if lower.startswith(("https://", "http://")):
+            rest = token.split("://", 1)[1]
+            if rest and not rest.startswith(("/", "?", "#")):
+                return token
+            return ""
+        if ".." in token.split("/"):
+            return ""
+        if token.startswith("./") and "/" in token[2:]:
+            return token
+        if "/" in token and not token.startswith(("/", "\\", "-")):
+            return token
+        return ""
+
+    @staticmethod
+    def _prose(text: str) -> str:
+        source = PrimarySource.named(text)
+        body = text.replace(source, " ", 1) if source else text
+        return f" {body.lower()} "
+
+    @staticmethod
+    def blocked(item: dict[str, Any]) -> bool:
+        """True when this ID is a public implementation surface."""
+        text = str(item.get("text") or "")
+        rid = str(item.get("id") or "")
+        if any(rid.startswith(prefix) for prefix in PrimarySource.BLOCK_PREFIXES):
+            return True
+        if ContractSurface.matches(text) or requirement_is_pair(item):
+            return True
+        prose = PrimarySource._prose(text)
+        return any(cue in prose for cue in PrimarySource.IMPLEMENTATION_CUES)
+
+    @staticmethod
+    def eligible(item: dict[str, Any]) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if not PrimarySource.named(str(item.get("text") or "")):
+            return False
+        return not PrimarySource.blocked(item)
+
+    @staticmethod
+    def resolved(item: dict[str, Any]) -> bool:
+        """True when an eligible fact already carries its source cite."""
+        if str(item.get("status") or "") in {"failed", "superseded"}:
+            return False
+        if not PrimarySource.eligible(item):
+            return False
+        source = PrimarySource.named(str(item.get("text") or ""))
+        cite = str(item.get("source_cite") or "")
+        return bool(source) and source in cite
+
+    @staticmethod
+    def skips_adversary(items: list[Any]) -> bool:
+        """True when every active requirement is a primary-source fact.
+
+        Empty is false: a field with no IDs keeps the normal review pack.
+        """
+        active = [item for item in items if is_active_requirement(item)]
+        if not active:
+            return False
+        return all(PrimarySource.eligible(item) for item in active)
+
+    @staticmethod
+    def stamp(
+        item: dict[str, Any],
+        res: dict[str, Any],
+        packet: dict[str, Any] | None,
+    ) -> bool:
+        """Record ``source_cite`` from an owning explorer or verifier. No status change."""
+        if str(item.get("status") or "") == "failed":
+            return False
+        if not PrimarySource.eligible(item):
+            return False
+        pkt = packet or {}
+        if str(pkt.get("role") or "") not in PrimarySource.CITE_ROLES:
+            return False
+        if str(res.get("status") or "") != "done":
+            return False
+        rid = str(item.get("id") or "")
+        owns = {str(x) for x in (pkt.get("owns_requirements") or [])}
+        if rid not in owns:
+            return False
+        source = PrimarySource.named(str(item.get("text") or ""))
+        residual = res.get("residual")
+        evidence = ""
+        if isinstance(residual, dict):
+            evidence = str(residual.get("evidence") or "")
+        if not source or source not in evidence:
+            return False
+        if item.get("source_cite") == source:
+            return False
+        item["source_cite"] = source
+        return True
+
+
 AMEND_RE = re.compile(r"^## Amendment (\d+) — ", re.MULTILINE)
 # Whole-string go-ahead / pointer-to-prior-chat. Advisory only — still writes SPEC.
 DEICTIC_POINTER_MAX_CHARS = 280
@@ -799,6 +957,8 @@ def requirement_close_ok(item: dict[str, Any]) -> bool:
     status = str(item.get("status") or "unowned")
     if status == "failed":
         return False
+    if PrimarySource.resolved(item):
+        return True
     if status in REQ_CONTRACT_VERIFIED:
         if requirement_is_pair(item) and not item.get("pair_checked"):
             return False
@@ -1309,6 +1469,8 @@ def requirement_counts(data: dict[str, Any]) -> dict[str, int]:
         owners = item.get("owned_by") or []
         if status == "failed":
             failed += 1
+        elif PrimarySource.resolved(item):
+            verified += 1
         elif status in REQ_CONTRACT_VERIFIED:
             verified_contract += 1
             verified += 1
@@ -1668,6 +1830,8 @@ def requirement_verdict(item: dict[str, Any]) -> str:
     owners = item.get("owned_by") or []
     if status == "failed":
         return "FAILED"
+    if PrimarySource.resolved(item):
+        return PrimarySource.VERDICT
     if status in REQ_CONTRACT_VERIFIED:
         if requirement_is_pair(item) and not item.get("pair_checked"):
             return "PAIR"
@@ -1885,10 +2049,12 @@ def apply_requirement_patches(
     residuals: list[dict[str, Any]],
     packets: list[dict[str, Any] | None] | None = None,
 ) -> bool:
-    """Land residual ``requirements_failed`` per residual_failed_stamps.
+    """Land residual ``requirements_failed`` and primary-source cites.
 
     Every ``of integrate`` lands these. ``--apply`` is not required.
     Without packets no child has a role or owned ids, so nothing lands.
+    An owning explorer or verifier cite stamps ``source_cite`` only
+    (``PrimarySource``). It does not set ``verified_contract``.
     """
     if packets is None:
         packets = [None] * len(residuals)
@@ -1906,6 +2072,14 @@ def apply_requirement_patches(
                 continue
             if item.get("status") != "failed":
                 item["status"] = "failed"
+                changed = True
+        if not isinstance(pkt, dict) or not isinstance(res, dict):
+            continue
+        for rid in (pkt.get("owns_requirements") or []):
+            item = find_requirement(data, str(rid))
+            if item is None:
+                continue
+            if PrimarySource.stamp(item, res, pkt):
                 changed = True
     if changed:
         live = spec_bytes_hash(root)
