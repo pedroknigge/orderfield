@@ -1,8 +1,16 @@
+# Orderfield
+
+**How you use it:** `/of` (or `/orderfield`) + your goal in plain language. The skill leads; you never type kernel commands.
+
+**Three ideas:** (1) Plan on disk — `/of` resumes from `.orderfield/` after compaction or restart. (2) Leader decides; children report — `/of` may ask you. (3) Close needs proof — evidence or harness consent.
+
+**When you step in:** harness mix/change, `done_when`, contract patch, or when `/of` stops (plain why).
+
+---
+
+*Below: agent reference and kernel audit trail.*
+
 Anyone can persist a plan. Only the leader may change it.
-
-The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of handoff` continue from `.orderfield/` instead of chat memory. Close is proof (`of contrast` / `CLOSE.json`). A child residual cannot replace the mission, the phase, or the constraint list.
-
-Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
   <strong>v0.9.5</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
@@ -21,6 +29,10 @@ ORDERFIELD_REF=v0.9.5 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
+
+The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of handoff` continue from `.orderfield/` instead of chat memory. Close is proof (`of contrast` / `CLOSE.json`). A child residual cannot replace the mission, the phase, or the constraint list.
+
+Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 # Typical problems → what Orderfield does
 

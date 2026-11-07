@@ -15,11 +15,11 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack.
 
-ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, `of contrast` before close.
+ORDER, packets, residuals regime on disk. Use when work goes through `of` — exclusive owners, `of contrast` before close.
 
 Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
-Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree/process bounds are honesty surfaces, not a jail.
+Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree bounds: honesty surfaces, not a jail.
 
 ## What to type next
 
@@ -30,7 +30,7 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"`; chat `--chat-capture-file -` |
 | owners known | pack `--slice` `--verify-cmd` `--verify-timeout` `--verify-req ID` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Spawn |
 | InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator + outcome. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
-| Large init | Write `docs/plans/<owner>/sources.md` (SourcesList: tool + command or path; no host product). First pack `--role explorer`; proposals in `result_ref`. Do not pick tickets. Small skips. Appendix **Sources list**. |
+| Large init | Write `docs/plans/<owner>/sources.md` (SourcesList: tool + path or command; no host product). `--role explorer` first; proposals in `result_ref`. Do not pick tickets. Small skips. Appendix **Sources list**. |
 | multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Before fan-out: `of models --headroom --json` `roster` (`sin dato` never blocks). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
 | status/resume says `efficiency propose …` | ask the human; on yes run the printed `of patch --model-hints` / `--model-tier`. Never silent switch. Design: [docs/efficiency-signal.md](docs/efficiency-signal.md) |
@@ -57,7 +57,7 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: refuse `shared_worktree` (`of worktree add`, series). After collect/abandon: `worker-stop` then `worker-release`; `of worktree land` then `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
 | init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`. Missing key → unset on Small; Large HOLDs the review pack. Not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
 | init agent-band (once/field) | **must ask** once: 1-4 / 5-10 / 10-50 + multi-model. Store `of patch --agent-band` / `--multi-model`. Children medium. Do not re-ask. RAM suggest not a spawn cap / not cloud. |
-| init outcome (once) | **InitAskSkip** Large **must ask**: "What measurable outcome closes this, beyond the ticket?" `of spec --amend` / `of patch --constraints-add` `outcome: …`. `install.sh --from-release`, not "merge the PR". Children never rewrite it. Not a close gate. |
+| init outcome | **InitAskSkip** Large **must ask**: "What measurable outcome closes this, beyond the ticket?" `of spec --amend` / `of patch --constraints-add` `outcome: …`. `install.sh --from-release`, not "merge the PR". Children never rewrite it. Not a close gate. |
 | after close | leftover field `of learn` + reportable errors — **must ask** `--protocol`/`--promote` OR owned `docs/plans` OR keep/discard; defects → `of issue` HITL and/or PlanDocSync A/B. `of learn` / `--list` (protocol if no open field). Not auto-promote. Not a new close gate. Not between waves. |
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --run --timeout N` → `of contrast` → `of close --checklist` → `of close` |
@@ -113,6 +113,6 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 
 **Anti-done-theater.** Unittest/CI green is not Ready. Non-trivial: design-twice before implement. Deep modules: simple interface, complexity hidden.
 
-**Auto-revival.** Every turn **`of resume` first**, then **execute printed `next` same turn** — after collect+integrate and when `in_flight=0`. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; measurable outcome; learnings after close). Forbidden: bare ok/dale as keepalive. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
+**Auto-revival.** Every turn **`of resume` first**, then **execute printed `next` same turn** — after collect+integrate; `in_flight=0`. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; measurable outcome; learnings after close). Forbidden: bare ok/dale as keepalive — plain HOLD/wal-broken/headroom/contrast. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
 **Steer policy.** In-flight text is **steered**. Deictic `dale` / `do it` / `as discussed` is **execute `next`**.
