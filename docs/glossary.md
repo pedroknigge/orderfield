@@ -68,6 +68,10 @@ The child moves freely inside the packet. It does not redefine mission, phase, c
 
 Same identity plus a procedure already on the agent = invoke the skill, do not spawn. A harness name alone is not a trigger. One ordinary subagent, or work a single skill can close, is theater for a field.
 
+## review_attackers
+
+Optional count on `ORDER.review_attackers` (`of patch --review-attackers`). How many cheap-tier `--role adversary` packets the wave-end review packs beside one `--role verifier` judge. Absent uses the band default: 2 on `1-4` or unset N≤4, else 3. Ceiling 3, so a `10-50` band cannot ask for 10. The judge classifies findings `act` / `consider` / `noted` / `dismissed` (CHILD.md). Only the verifier's `act` escalates. Attackers may spawn on a cheaper adapter (`of spawn --adapter`). Class: `ReviewAttackers`. Not a close gate. Not a new verb.
+
 ## agent_band
 
 Once-per-field wave budget on `ORDER.agent_band` (`1-4` / `5-10` / `10-50`) plus optional `multi_model`. Asked at init / first wave and stored (`of init` / `of patch --agent-band` / `--multi-model`). Do not re-ask each wave. Skill biases wave size from the stored band. `of doctor` / init print `ram_total_gb` and a suggested band from stdlib host RAM (`HostRam`). The band is a **wave budget**, not a spawn hard-cap and not `caps.max_children`. Task + adapters are the ceiling, not OF. Leader host RAM is not a cloud/remote worker. Children default medium effort. Class: `AgentBand` / `HostRam`. Large-band scoped review is a later cut (`#282`).

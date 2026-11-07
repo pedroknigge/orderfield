@@ -2811,7 +2811,7 @@ def resume_next_lines(
         if action == "pack":
             order = load_order(root)
             if EvaluatorPacket.due(root, order, st, live):
-                return ["PACK", EvaluatorPacket.ASK_NEXT]
+                return ["PACK", EvaluatorPacket.pack_line(root, order, st, live)]
         if action in ("next-wave", "pack") and not (
             action == "next-wave"
             and str(st.get("last_regime") or "") == "escalate_up"

@@ -92,6 +92,7 @@ from of.cli.spec_cmd import (  # noqa: F401
     ContrastDiff,
     ContrastReport,
     EvaluatorPacket,
+    ReviewAttackers,
     print_contrast_report,
 )
 from of.cli.issue_cmd import (
@@ -901,6 +902,16 @@ def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None
         help=(
             "store ORDER.evaluator_consent for adversary+verifier "
             "(start consent; not a close gate)"
+        ),
+    )
+    s.add_argument(
+        "--review-attackers",
+        dest="review_attackers",
+        type=int,
+        help=(
+            "store ORDER.review_attackers: how many cheap-tier "
+            "--role adversary packets beside one verifier judge "
+            "(default 2-3, ceiling 3; not a close gate)"
         ),
     )
     s.add_argument(
