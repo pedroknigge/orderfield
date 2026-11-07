@@ -240,7 +240,8 @@ class InstallScript(unittest.TestCase):
         # child-failure stamps, the #388 outside-verifier close gate, and the
         # #389 review-attacker count on the existing scheduler.
         # #392 adds the persona-costume ban on CHILD.md and the shared
-        # prompt sentence. Doc growth still needs cuts.
+        # prompt sentence. #391 adds the SourcesList appendix recipe on
+        # that same surface. Doc growth still needs cuts.
         self.assertLessEqual(size, 1_616_000, size)
 
     def test_generic_only_flag(self) -> None:

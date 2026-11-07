@@ -111,6 +111,8 @@ Corpus honesty already covered (do not duplicate): RESOLVED deliver + atomic fla
 
 Defaults: [`evals.config.json`](evals.config.json). CI runs `of eval --strict --kernel` after unittest (`.github/workflows/test.yml`).
 
+SourcesList is not a recovery eval. The template is [`fixtures/sources-list.md`](fixtures/sources-list.md). The walk is [docs/demo/sources-triage.md](../docs/demo/sources-triage.md). Proof: `SourcesTriagePath` (unittest). No new kernel behavior.
+
 ## Unittest manifests (`evals/expected/`)
 
 | Manifest | Fixture | Must hold |

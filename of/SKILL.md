@@ -27,5 +27,7 @@ Product surface is the sibling [README.md](../README.md). Residual speak handles
 cite path+excerpt; the full file stays on disk ([#283](https://github.com/pedroknigge/orderfield/issues/283)).
 Incoming plan: classify **folder / chat / prompt**, materialize+fidelity before pack;
 invent = post-baseline new MD, not unpinned shared plans. Follow the sibling.
+Large init: write `docs/plans/<owner>/sources.md` (SourcesList), then one
+`--role explorer` pack. Follow the sibling.
 
 Do not trigger for a harness name alone.

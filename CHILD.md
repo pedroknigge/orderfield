@@ -158,7 +158,7 @@ Leave it `null` if the slice closed under the current ORDER. A residual cannot r
 
 - `done_when_closed: true` is the only key that can reach ORDER, and only from a `verifier` or `adversary` whose `done` residual cites an accepted `evidence_receipt:`. It does **not** change phase. Use it with empty `wants_to_change`.
 - `constraints+` / `done_when+` (nonempty) are a field residual: regime `escalate_up`, spawn blocked, nothing applied — even with empty `wants_to_change`. The leader decides with `of patch`.
-- `notes`, a refused close, and refused stamps go to `waves/<NNN>/integrations/observations.json` under your `child_id`, never `ORDER.notes`. An explorer's whole `proposed_patch` is recorded there and ignored.
+- `notes`, a refused close, and refused stamps go to `waves/<NNN>/integrations/observations.json` under your `child_id`, never `ORDER.notes`. An explorer's whole `proposed_patch` is recorded there and ignored. A wave-0 explorer reads `docs/plans/<owner>/sources.md` and writes proposed packs in `result_ref`. Leave `proposed_patch` null.
 - `requirements_failed` lands on ids your packet owns; a verifier or adversary may fail any id. Verified / contract / `pair_checked` stamps never land from a residual (leader `of spec`).
 - `docs_sync` (`pending|done`) lives here — not on `residual` next to `evidence`. Collect names that home if you misplace it.
 
