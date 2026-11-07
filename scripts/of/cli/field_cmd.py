@@ -527,6 +527,11 @@ def cmd_patch(args: argparse.Namespace) -> None:
         changed = True
     if AgentBand.apply_args(order, args):
         changed = True
+    if getattr(args, "review_attackers", None) is not None:
+        from of.cli.spec_cmd import ReviewAttackers
+
+        if ReviewAttackers.apply_patch(order, args.review_attackers):
+            changed = True
     if getattr(args, "origin", None) is not None or getattr(
         args, "session_id", None
     ) is not None:
@@ -629,6 +634,8 @@ def cmd_patch(args: argparse.Namespace) -> None:
             summary["harness"] = order["harness"]
         if order.get("evaluator_consent"):
             summary["evaluator_consent"] = order["evaluator_consent"]
+        if order.get("review_attackers") is not None:
+            summary["review_attackers"] = order["review_attackers"]
         if order.get("adapter_hints"):
             summary["adapter_hints"] = order["adapter_hints"]
         if order.get("agent_band"):

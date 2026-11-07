@@ -31,6 +31,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | [docs/events.md](events.md) | `of --json` / `OF_JSON` event vocabulary |
 | [docs/troubleshooting.md](troubleshooting.md) | Field failure recovery |
 | [docs/long-mission.md](long-mission.md) | Epic → waves → mid-flight amend → close is proof |
+| [docs/prototype-wave.md](prototype-wave.md) | N cheap explorers (`of contend`) → `of crown` → one implementer |
 | [docs/close-is-proof.md](close-is-proof.md) | RFC: close-is-proof + residual empty |
 | [docs/efficiency-signal.md](efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only). Mid-mission mix from honest signals; unpublished balance is unknown. |
 | [docs/model-catalog.md](model-catalog.md) | Living intelligence×cost sheet. Consult before cheap/frontier or mix. Not `budget.tokens`. |
@@ -49,4 +50,4 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 
 Current release line: [`VERSION`](../VERSION) · Changelog: [CHANGELOG.md](../CHANGELOG.md)
 
-Installed skill metadata should match this checkout (`of doctor` prints `SKEW` when an existing HOME dest disagrees; skill SKEW alone is WARN / exit 0). The same pass also names ACTIVE pointer/stub skew and stale packs (open-field still FAIL; closed-field historical is informational). Living map: checklist → of contrast / of close / residual (Prod§15 runbook path in `done_when`; not a second checklist). Close templates: [close-honesty.md](close-honesty.md). Close RFC: [close-is-proof.md](close-is-proof.md). Nested fields: [nested-fields.md](nested-fields.md). Long-mission walk: [long-mission.md](long-mission.md).
+Installed skill metadata should match this checkout (`of doctor` prints `SKEW` when an existing HOME dest disagrees; skill SKEW alone is WARN / exit 0). The same pass also names ACTIVE pointer/stub skew and stale packs (open-field still FAIL; closed-field historical is informational). Living map: checklist → of contrast / of close / residual (Prod§15 runbook path in `done_when`; not a second checklist). Close templates: [close-honesty.md](close-honesty.md). Close RFC: [close-is-proof.md](close-is-proof.md). Nested fields: [nested-fields.md](nested-fields.md). Long-mission walk: [long-mission.md](long-mission.md). Prototype wave: [prototype-wave.md](prototype-wave.md).

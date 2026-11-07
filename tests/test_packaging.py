@@ -237,9 +237,10 @@ class InstallScript(unittest.TestCase):
         # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
         # the appendix complete-flag-surface section. 0.9.5 adds the
         # recorded-worktree checkout, per-wave kernel receipts,
-        # child-failure stamps, and the #388 outside-verifier close gate.
+        # child-failure stamps, the #388 outside-verifier close gate, and the
+        # #389 review-attacker count on the existing scheduler.
         # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_606_000, size)
+        self.assertLessEqual(size, 1_616_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
