@@ -238,8 +238,9 @@ class InstallScript(unittest.TestCase):
         # the appendix complete-flag-surface section. 0.9.5 adds the
         # recorded-worktree checkout, per-wave kernel receipts,
         # child-failure stamps, the #388 outside-verifier close gate,
-        # #389 review-attacker count, #392 persona-costume ban, #391
-        # SourcesList, and #404 primary-source predicate (`PrimarySource`).
+        # #389 review-attacker count. 0.9.6 adds #392 persona-costume ban,
+        # #391 SourcesList, #404 PrimarySource, skill half-life fixture,
+        # and measurable-outcome / prototype-wave skill growth.
         # Doc growth still needs cuts.
         self.assertLessEqual(size, 1_625_000, size)
 

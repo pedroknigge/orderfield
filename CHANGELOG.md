@@ -8,6 +8,22 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.6
+
+Close needs hard evidence on public surfaces; the outside verifier is the fallback. The human surface leads with `/of` in plain language. The skill appendix carries a half-life gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.5 notes.
+
+- #401/#388: close on hard evidence, with the outside verifier only as a fallback
+- #405/#389: cheap attackers plus one verifier judge (review_attackers)
+- #396/#392: techniques, not personas
+- #397/#394: prototype-wave recipe via contend and crown
+- #398/#393: skill half-life gate
+- #399/#390: measurable outcome in SPEC
+- #400/#391: sources.md triage
+- #406/#404: single-agent fact-check against a primary source
+- #408/#407: README and skill lead with `/of` in natural language
+- **Proof:** `tests/test_outside_verifier.py`; `tests/test_review_attackers.py`; `tests/test_kernel_pack.py::PersonaCostumeBan`; `tests/test_contest.py`; `tests/test_skill_half_life.py::SkillHalfLife`; `tests/test_measurable_outcome.py::MeasurableOutcome`; `tests/test_sources_triage.py::SourcesTriagePath`; `tests/test_kernel_spec.py::PrimarySourceGate`; `tests/test_packaging.py::ReadmeProductSurface` / `SkillPrimarySource`. Full suite 1707 tests OK.
+- Packaging: VERSION 0.9.6; skill/alias previews, release installer pin and current docs in lockstep. Install-size budget 1,625,000 B (outside-evidence close, review attackers, SourcesList, PrimarySource, half-life fixture, measurable outcome, prototype-wave appendix).
+
 ## 0.9.5
 
 The child's checkout is the checkout the kernel judges, and a later wave of the same child keeps the earlier proof. A heading word no longer drops the rest of the brief. A child-reported failure stays failed. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.4 notes.
