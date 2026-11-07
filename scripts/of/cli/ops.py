@@ -580,6 +580,21 @@ def cmd_gc(args: argparse.Namespace) -> None:
     emit_event("gc", dumped=dumped, orphans=len(orphans), ok=True)
 
 
+def _skill_surface_doctor(root: Path) -> tuple[list[str], bool]:
+    # Absent script: silent. Not field FAIL.
+    path = root / "scripts" / "skill_surface.py"
+    if not path.is_file():
+        return [], False
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_of_skill_surface", path)
+    if spec is None or spec.loader is None:
+        return [], False
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SkillSurface.doctor_lines(root)
+
+
 def cmd_doctor(args: argparse.Namespace) -> None:
     """Local prereqs. PATH presence is not auth, credentials, session authority, or readiness."""
     failed = False
@@ -597,6 +612,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("skills")
     skill_lines, skill_skew = DoctorSkew.skills()
     for line in skill_lines:
+        print(line)
+    surface_lines, appendix_warn = _skill_surface_doctor(skill_root())
+    for line in surface_lines:
         print(line)
     if skill_skew:
         print("  note          skill SKEW is advisory (not field FAIL)")
@@ -778,6 +796,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise SystemExit(2)
     if (
         skill_skew
+        or appendix_warn
         or drift
         or wt_warn
         or open_warn
