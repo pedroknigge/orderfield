@@ -237,12 +237,11 @@ class InstallScript(unittest.TestCase):
         # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
         # the appendix complete-flag-surface section. 0.9.5 adds the
         # recorded-worktree checkout, per-wave kernel receipts,
-        # child-failure stamps, the #388 outside-verifier close gate, and the
-        # #389 review-attacker count on the existing scheduler.
-        # #392 adds the persona-costume ban on CHILD.md and the shared
-        # prompt sentence. #391 adds the SourcesList appendix recipe on
-        # that same surface. Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_616_000, size)
+        # child-failure stamps, the #388 outside-verifier close gate,
+        # #389 review-attacker count, #392 persona-costume ban, #391
+        # SourcesList, and #404 primary-source predicate (`PrimarySource`).
+        # Doc growth still needs cuts.
+        self.assertLessEqual(size, 1_625_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -2814,6 +2813,28 @@ class SkillContractSurface(unittest.TestCase):
         self.assertIn("release header", appendix_fold)
         self.assertIn("verified_contract", appendix_fold)
         self.assertIn("contractsurface", appendix_fold.replace(" ", ""))
+
+
+class SkillPrimarySource(unittest.TestCase):
+    """SKILL: a named primary source skips adversary. ContractSurface does not."""
+
+    @staticmethod
+    def table(skill: str) -> str:
+        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
+
+    def test_core_and_appendix_name_the_fact_lane(self) -> None:
+        table = self.table(SkillSurface.core(ROOT)).casefold()
+        appendix = SkillSurface.appendix(ROOT).casefold()
+        self.assertIn("primary source", table)
+        self.assertIn("primarysource", table.replace(" ", "").replace("`", ""))
+        self.assertIn("skip adversary", table)
+        self.assertIn("not code", table)
+        self.assertIn("health/cli", table)
+        self.assertIn("primary source", appendix)
+        self.assertIn("verified_source", appendix)
+        self.assertIn("skip adversary", appendix)
+        self.assertIn("outside verifier", appendix)
+        self.assertIn("not code", appendix)
 
 
 class SkillRequirementSurface(unittest.TestCase):

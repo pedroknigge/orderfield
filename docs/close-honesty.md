@@ -57,7 +57,7 @@ next: of spec --verified-contract REQ-035 --both-sides
 disk: spec_closed false; CLOSE.json absent
 ```
 
-Timeout / idempotency / health / version IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Unit tests are not enough. `--surface internal` cannot hide them. `/version` or a release header is the same shape as `/health`. A mis-declared default-contract ID that was never public is `of spec --surface internal ID`, not `--supersede`.
+Timeout / idempotency / health / version IDs are public-surface VERIFIED_CONTRACT (`ContractSurface`). Unit tests are not enough. `--surface internal` cannot hide them. `/version` or a release header is the same shape as `/health`. A mis-declared default-contract ID that was never public is `of spec --surface internal ID`, not `--supersede`. A factual claim that names a primary source (`primary source: <url-or-path>`) can resolve from one cite (`VERIFIED_SOURCE`). That sentence does not cover HEALTH / CLI.
 
 ```text
 CLOSE BLOCKED

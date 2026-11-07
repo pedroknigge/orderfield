@@ -72,6 +72,7 @@ from of.spec import (
     find_requirement,
     load_requirements,
     load_user_json,
+    PrimarySource,
     merge_extracted_requirements,
     read_brief_file,
     read_spec_text,
@@ -1204,10 +1205,11 @@ class EvaluatorPacket:
     (in_flight=0, published residual, not yet integrated), stored
     yes packs both roles on that wave residual before next-wave.
     ``ReviewAttackers`` is how many adversary packets (default 2–3).
-    Stored no skips. Only the verifier judge's ``act`` is HOLD.
-    A Large field (binding ContractSurface) with missing consent
-    HOLDs that same review pack instead of skipping. Small stays
-    unset. Checklist prints whether those packets exist. Reuses
+    Stored no skips. A wave whose every active ID is a primary-source
+    fact (``PrimarySource``) does not pack adversary. Only the verifier
+    judge's ``act`` is HOLD. A Large field (binding ContractSurface) with
+    missing consent HOLDs that same review pack instead of skipping. Small
+    stays unset. Checklist prints whether those packets exist. Reuses
     WaveRoster roles. No new role, no of merge, no supervisor.
     CloseChecklist.ok stays contrast + residual. The close gate is
     outside this scheduler. #280 reads ORDER.evaluator_consent.
@@ -1225,6 +1227,7 @@ class EvaluatorPacket:
     )
     STATUS_ASK = "ask"
     STATUS_SKIP = "skip"
+    STATUS_SOURCE = "source"
     STATUS_UNSET = "unset"
     STATUS_HOLD = "hold"
     STATUS_REFUSE = "refuse"
@@ -1345,6 +1348,10 @@ class EvaluatorPacket:
             return False
         if not EvaluatorPacket.wants_review(root, order):
             return False
+        if PrimarySource.skips_adversary(
+            load_requirements(root).get("requirements") or []
+        ):
+            return False
         live = WaveRoster.live_wave(state)
         target = live if wave is None else int(wave)
         if field_is_file(wave_dir(int(target), root) / "report.json"):
@@ -1452,8 +1459,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_HOLD
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.SPEAK_UNSET
-        if status == EvaluatorPacket.STATUS_REFUSE:
-            return EvaluatorPacket.SPEAK_REFUSE
+        if status == EvaluatorPacket.STATUS_SOURCE:
+            return PrimarySource.SPEAK
         return EvaluatorPacket.SPEAK_ASK
 
     @staticmethod
@@ -1496,10 +1503,16 @@ class EvaluatorPacket:
         if status == EvaluatorPacket.STATUS_UNSET and ContractSurface.mission_large(root):
             status = EvaluatorPacket.STATUS_HOLD
         due = EvaluatorPacket.due(root, order, state)
+        if status == EvaluatorPacket.STATUS_ASK and PrimarySource.skips_adversary(
+            load_requirements(root).get("requirements") or []
+        ):
+            status = EvaluatorPacket.STATUS_SOURCE
         if status == EvaluatorPacket.STATUS_ASK:
             nxt = EvaluatorPacket.pack_line(root, order, state)
         elif status == EvaluatorPacket.STATUS_HOLD:
             nxt = EvaluatorPacket.pack_line(root, order, state)
+        elif status == EvaluatorPacket.STATUS_SOURCE:
+            nxt = ""
         elif status == EvaluatorPacket.STATUS_UNSET:
             nxt = EvaluatorPacket.PATCH_NEXT
         elif status == EvaluatorPacket.STATUS_REFUSE:
@@ -1542,6 +1555,8 @@ class EvaluatorPacket:
         status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         if status == EvaluatorPacket.STATUS_ASK:
             return str(doc.get("next") or "") or EvaluatorPacket.ASK_NEXT
+        if status == EvaluatorPacket.STATUS_SOURCE:
+            return "one cite; no adversary"
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.PATCH_NEXT
         if status == EvaluatorPacket.STATUS_HOLD:

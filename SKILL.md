@@ -29,7 +29,7 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | next `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` | re-run child, same packet / `of patch --from-current` / re-prove. `wal-broken`: check `wal/orphans/`, `OF_WAL_ADOPT_LIVE=1` |
 | no ORDER, real multi-slice work | `of init --mission "…" --source "<verbatim brief>"`; chat `--chat-capture-file -` |
 | owners known | pack `--slice` `--verify-cmd` `--verify-timeout` `--verify-req ID` + `--owns-requirement`/`--owns-path` covering slice paths. Empty owns-path WARNs. Spawn |
-| InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator + outcome. Stay session. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
+| InitAskSkip small | 1-2 exclusive slices; bump / obvious feature; owners known. Skip catalog + cheap/frontier + mix + evaluator + outcome. detect or HOLD. contrast → close `--checklist`. Never silent mix. No silent reviewers. |
 | Large init | Write `docs/plans/<owner>/sources.md` (SourcesList: tool + path or command; no host product). `--role explorer` first; proposals in `result_ref`. Do not pick tickets. Small skips. Appendix **Sources list**. |
 | multi-role pack plan | Large: **consult** `of models --adapter HARNESS --json` (`status=ok`); [catalog](docs/model-catalog.md): `last_checked`. **Must propose in chat first** — explorer cheap, implementer frontier. Not smarter=costlier. Yes → `of patch --model-hints field|wave`; pack `--model-tier`/`--model`. Cursor tier-only **refuses** (no alias; pass `--model`). Never silent switch. |
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Before fan-out: `of models --headroom --json` `roster` (`sin dato` never blocks). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
@@ -62,7 +62,8 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | FACTIBLE / schedule+invariants | check **published** artifact (not memory, not D). `published_artifact: <path>` (not scratch). Collect fail-closed if missing. Fail ⇒ INFACTIBLE or ROMPE. F covers occupancy window. Not `of prove`. |
 | public surface exercised | `of spec --run --timeout N` → `of contrast` → `of close --checklist` → `of close` |
 | webhook HMAC + replay | pair: accept valid sig AND reject replay/bad sig, then `of spec --verified-contract ID --both-sides`. `WebhookPair` |
-| timeout / idempotency / health / version | public-surface VERIFIED_CONTRACT (not VERIFIED_INTERNAL). Idempotency PAIR (`--both-sides`). Exercise bound / `/health` / `/version` or a release header. `OutsideVerifier`. `ContractSurface`. Not a monitor |
+| timeout / idempotency / health / version | VERIFIED_CONTRACT. Idempotency PAIR (`--both-sides`). `/health` `/version` or release header. `OutsideVerifier` `ContractSurface` |
+| primary source | `PrimarySource` cite; skip adversary; HEALTH/CLI. Not code |
 | never public | `of spec --surface internal ID` — not `--supersede` |
 | binding gaps as prose | `of contrast --diff` — RESOLVED is not CLOSED; no theater |
 | kernel or published skill/docs claims changed | `python3 docs/audit/check-claims.py` — unique C-IDs; score ≤98%; no theater on SKILL / `/of` / README. In-repo lab proof: appendix. External dogfood stays Partial (C-153). Do not invent case studies. |
