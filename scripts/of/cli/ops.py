@@ -2527,6 +2527,7 @@ class NextPlan:
         (WaveBlock.DRIFT, "integrate --recompute"),
         (WaveBlock.REV_NOT_BUMPED, EscalateUnblock.ACTION),
         (WaveBlock.NO_BLOCKED_REV, EscalateUnblock.ACTION),
+        (WaveBlock.REVIEW, "hold"),
     )
 
     @staticmethod
@@ -2686,6 +2687,9 @@ class NextPlan:
                 reason, lines = ChildState.OVER, LiveQuietStuck.next_lines()
             elif EvaluatorPacket.refused(root, state, wave):
                 reason = "evaluator_refused"
+            elif EvaluatorPacket.review_due_hold(root, order, state):
+                reason = "review_pack"
+                lines = ["HOLD", EvaluatorPacket.SPEAK_HOLD]
             else:
                 reason = "in_flight"
                 for code, why in NextPlan.HOLD_WAIT:
@@ -2800,6 +2804,10 @@ def resume_next_lines(
         live = WaveRoster.live_wave(st)
         if action == "hold" and EvaluatorPacket.refused(root, st, live):
             return ["HOLD", EvaluatorPacket.HOLD_DETAIL]
+        if action == "hold" and EvaluatorPacket.review_due_hold(
+            root, load_order(root), st
+        ):
+            return ["HOLD", EvaluatorPacket.SPEAK_HOLD]
         if action == "pack":
             order = load_order(root)
             if EvaluatorPacket.due(root, order, st, live):

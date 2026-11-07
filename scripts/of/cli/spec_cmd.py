@@ -81,6 +81,7 @@ from of.spec import (
     requirement_counts,
     requirement_coverage_errors,
     requirement_is_pair,
+    OutsideVerifier,
     requirement_source_cite,
     requirement_surface,
     RequirementSurface,
@@ -468,6 +469,23 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 die(" ".join(clean) + " is not failed; drop --takeover")
         elif holds:
             _refuse_failure_holds(holds)
+    # Trivial --run never reaches the surface. A real command is the proof.
+    if verified_ids and run_cmd and OutsideVerifier.trivial(run_cmd):
+        denied: list[str] = []
+        for raw in verified_ids:
+            item = find_requirement(data, require_req_id(raw))
+            if item is None:
+                continue
+            if not (
+                OutsideVerifier.writers(root, item)
+                and OutsideVerifier.hard_signal(item)
+            ):
+                continue
+            why = OutsideVerifier.reason(root, item)
+            if why:
+                denied.append(why)
+        if denied:
+            die("; ".join(denied))
     if verified_ids and run_cmd:
         from of.receipt import KernelVerify
 
@@ -503,6 +521,17 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             )
         cite = cited.relative_to(root.resolve()).as_posix()
         proof_sha = EvidenceStore.digest(cited.read_bytes())
+    if verified_ids:
+        denied = []
+        for raw in verified_ids:
+            item = find_requirement(data, require_req_id(raw))
+            if item is None:
+                continue
+            why = OutsideVerifier.reason(root, item, proof=cite)
+            if why:
+                denied.append(why)
+        if denied:
+            die("; ".join(denied))
     for rid in getattr(args, "verified_internal", None) or []:
         item = find_requirement(data, require_req_id(rid))
         if item is None:
@@ -1008,16 +1037,19 @@ def cmd_contrast(args: argparse.Namespace) -> None:
 
 
 class EvaluatorPacket:
-    """Fresh-context review packet status. Not a close gate.
+    """Fresh-context review packet scheduler. Not the close gate.
 
     Consent lives on ORDER.evaluator_consent (yes|no). Absent is
     unset — not ask. After an implementer wave settles
     (in_flight=0, published residual, not yet integrated), stored
     yes packs both roles on that wave residual before next-wave.
-    Stored no skips. Review refuse is HOLD. Checklist prints
+    Stored no skips. Review refuse is HOLD. A Large field (binding
+    ContractSurface) with missing consent HOLDs that same review
+    pack instead of skipping. Small stays unset. Checklist prints
     whether those packets exist. Reuses WaveRoster roles. No new
     role, no of merge, no supervisor. CloseChecklist.ok stays
-    contrast + residual. #280 reads ORDER.evaluator_consent.
+    contrast + residual. The close gate is OutsideVerifier.
+    #280 reads ORDER.evaluator_consent.
     """
 
     KIND = "evaluator"
@@ -1033,6 +1065,7 @@ class EvaluatorPacket:
     STATUS_ASK = "ask"
     STATUS_SKIP = "skip"
     STATUS_UNSET = "unset"
+    STATUS_HOLD = "hold"
     STATUS_REFUSE = "refuse"
     STATUS_LANDED = "landed"
     STATUS_IN_FLIGHT = "in-flight"
@@ -1042,6 +1075,7 @@ class EvaluatorPacket:
     SPEAK_ASK = "stored yes: pack+spawn both on this wave residual before next-wave"
     SPEAK_SKIP = "stored no: contrast then close --checklist"
     SPEAK_UNSET = "missing evaluator_consent; of patch --evaluator-consent yes|no"
+    SPEAK_HOLD = OutsideVerifier.NEXT_WAVE_REFUSE
     SPEAK_REFUSE = "review refused; HOLD — do not next-wave"
     SPEAK_IN_FLIGHT = "review packet in flight; flying is not closed"
     SPEAK_LANDED = "review packet landed; self-praise is not review"
@@ -1084,6 +1118,32 @@ class EvaluatorPacket:
         return EvaluatorPacket.consent_of(order) == EvaluatorPacket.CONSENT_YES
 
     @staticmethod
+    def review_due_hold(
+        root: Path,
+        order: dict[str, Any],
+        state: dict[str, Any],
+    ) -> bool:
+        """Large + missing consent is a HOLD, not a silent collect or next-wave."""
+        if EvaluatorPacket.consent_of(order):
+            return False
+        live = WaveRoster.live_wave(state)
+        return EvaluatorPacket.due(
+            root, order, state, live
+        ) or OutsideVerifier.blocks_next_wave(root, order, state)
+
+    @staticmethod
+    def wants_review(root: Path, order: dict[str, Any] | None) -> bool:
+        """Stored yes, or Large with the key missing. Stored no and Small do not."""
+        from of.spec import ContractSurface
+
+        consent = EvaluatorPacket.consent_of(order)
+        if consent == EvaluatorPacket.CONSENT_YES:
+            return True
+        if consent == EvaluatorPacket.CONSENT_NO:
+            return False
+        return ContractSurface.mission_large(root)
+
+    @staticmethod
     def children(
         root: Path,
         state: dict[str, Any],
@@ -1122,7 +1182,7 @@ class EvaluatorPacket:
     ) -> bool:
         if order.get("spec_closed"):
             return False
-        if EvaluatorPacket.consent_of(order) != EvaluatorPacket.CONSENT_YES:
+        if not EvaluatorPacket.wants_review(root, order):
             return False
         live = WaveRoster.live_wave(state)
         target = live if wave is None else int(wave)
@@ -1171,7 +1231,13 @@ class EvaluatorPacket:
             EvaluatorPacket.due(root, order, state, int(wave))
             and action in EvaluatorPacket.SETTLE_ACTIONS
         ):
+            if EvaluatorPacket.consent_of(order) != EvaluatorPacket.CONSENT_YES:
+                return "hold"
             return "pack"
+        if action == "next-wave" and OutsideVerifier.blocks_next_wave(
+            root, order, state
+        ):
+            return "hold"
         return action
 
     @staticmethod
@@ -1209,6 +1275,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.SPEAK_SKIP
         if status == EvaluatorPacket.STATUS_REFUSE:
             return EvaluatorPacket.SPEAK_REFUSE
+        if status == EvaluatorPacket.STATUS_HOLD:
+            return EvaluatorPacket.SPEAK_HOLD
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.SPEAK_UNSET
         if status == EvaluatorPacket.STATUS_REFUSE:
@@ -1230,11 +1298,17 @@ class EvaluatorPacket:
             state = load_state(root)
         if order is None:
             order = load_order(root)
+        from of.spec import ContractSurface
+
         children = EvaluatorPacket.children(root, state)
         consent = EvaluatorPacket.consent_of(order)
         status = EvaluatorPacket.status_of(children, consent)
+        if status == EvaluatorPacket.STATUS_UNSET and ContractSurface.mission_large(root):
+            status = EvaluatorPacket.STATUS_HOLD
         due = EvaluatorPacket.due(root, order, state)
         if status == EvaluatorPacket.STATUS_ASK:
+            nxt = EvaluatorPacket.ASK_NEXT
+        elif status == EvaluatorPacket.STATUS_HOLD:
             nxt = EvaluatorPacket.ASK_NEXT
         elif status == EvaluatorPacket.STATUS_UNSET:
             nxt = EvaluatorPacket.PATCH_NEXT
@@ -1280,6 +1354,8 @@ class EvaluatorPacket:
             return EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_UNSET:
             return EvaluatorPacket.PATCH_NEXT
+        if status == EvaluatorPacket.STATUS_HOLD:
+            return EvaluatorPacket.ASK_NEXT
         if status == EvaluatorPacket.STATUS_REFUSE:
             return EvaluatorPacket.HOLD_DETAIL
         if status == EvaluatorPacket.STATUS_SKIP:

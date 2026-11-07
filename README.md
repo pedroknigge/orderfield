@@ -71,7 +71,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 - Query `of models --adapter HARNESS --json` before any model recommendation. Codex and Claude expose protocol metadata; Grok, Cursor and agy use CLI list commands. Missing/unsupported/error stays explicit. Consult the [model catalog](docs/model-catalog.md) for supplemental prices with `last_checked` (new prices unknown), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. Before fan-out on a big task, read `headroom` and `roster` on `of models --headroom --json` (opt-in: a probe may spend a turn; smallest-window margin, then earliest reset). `sin dato` never blocks. The leader reads it; the user does not run it.
 - Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
 - Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
-- **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
+- **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset on Small. A ContractSurface field (Large) with missing consent HOLDs next-wave for the review pack. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.
 
 Code is a liability. Think DELETE, not add. Same capability with less code. No new verb.
@@ -190,7 +190,10 @@ json.dump(r, open(".orderfield/waves/001/residuals/explorer.json", "w"), indent=
 EOF
 of collect --wave 1
 of integrate --wave 1
-of spec --verified-contract CLI-001 --cite .orderfield/work/scratch/explorer/notes.md
+# CLI-001 is a public surface. The explorer cannot stamp it. The kernel runs
+# the surface outside that child; true / a unit cite do not count.
+printf '%s\n' 'print("price table")' > price_cli.py
+of spec --verified-contract CLI-001 --run "python3 price_cli.py"
 of contrast    # one-pager + JSON; CLOSE BLOCKED while MISSING / VERIFIED_INTERNAL / PAIR; RESOLVED here
 of close --checklist  # contrast + residual empty; does not stamp
 of close       # refused until contrast is RESOLVED and residual is empty

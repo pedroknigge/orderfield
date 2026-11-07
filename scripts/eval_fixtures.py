@@ -439,6 +439,9 @@ def eval_setup_recovery_contrast_close_contract(root: Path) -> None:
             "mission": "child stole the mission",
         },
     )
+    # CLI-001 is a hard signal. Eval steps --run this program; a unit cite
+    # or the implementer's residual does not stamp it.
+    (root / "evalcli.py").write_text("print('evalcli status')\n", encoding="utf-8")
     # The leader's surface run; eval steps cite it (free-text --cite is refused).
     (root / "surface-proof.log").write_text(
         "$ python -m evalcli status\nexit 0\n", encoding="utf-8"
