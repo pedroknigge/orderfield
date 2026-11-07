@@ -36,6 +36,7 @@ from of.spec import (
     format_line_ranges,
     load_requirements,
     plan_item_id,
+    OutsideVerifier,
     requirement_coverage_errors,
     spec_bytes_hash,
     uncovered_list_lines,
@@ -3264,6 +3265,7 @@ class WaveBlock:
     DRIFT = "report_drift"
     NO_BLOCKED_REV = "no_blocked_rev"
     REV_NOT_BUMPED = "rev_not_bumped"
+    REVIEW = "review_pack"
 
 
 def wave_transition_blockers(
@@ -3306,6 +3308,8 @@ def wave_transition_blockers(
                 f"ORDER.rev must exceed blocked_at_order_rev {blocked_rev} "
                 "after escalate_up",
             ))
+    if OutsideVerifier.blocks_next_wave(root, order, state):
+        errors.append((WaveBlock.REVIEW, OutsideVerifier.NEXT_WAVE_REFUSE))
     return errors
 
 

@@ -877,6 +877,7 @@ class KernelVerify:
         """
         from of.pack import try_load_packet_residual
         from of.spec import (
+            ContractSurface,
             find_requirement,
             load_requirements,
             requirement_is_pair,
@@ -905,6 +906,10 @@ class KernelVerify:
             if rid in failed:
                 continue
             if requirement_is_pair(item):
+                continue
+            # Public surface is not the implementer's exit 0. OutsideVerifier
+            # is the close-gate stamp; this receipt stays evidence.
+            if ContractSurface.public(item):
                 continue
             if (
                 item.get("status") == "verified_contract"

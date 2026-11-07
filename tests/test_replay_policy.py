@@ -103,6 +103,9 @@ class ReplayPolicy(unittest.TestCase):
             "build",
         )
         self.assertEqual(init.returncode, 0, init.stderr)
+        # Replay, not the review pack. Stored no skips the Large HOLD.
+        skipped = run_of(self.tmp, "patch", "--evaluator-consent", "no")
+        self.assertEqual(skipped.returncode, 0, skipped.stderr)
 
     def _pack(
         self,
