@@ -1,8 +1,20 @@
+# Orderfield
+
+**How you use it:** Say `/of` (or `/orderfield`) with your goal in natural language — e.g. `/of ship the pricing CLI and prove the public surface before we call it done.` The skill is the leader and runs the kernel; you never type kernel commands.
+
+**Three ideas that are enough:**
+
+1. **Plan on disk, not in chat.** After compaction, a model swap, or a restart, `/of` resumes from the contract under `.orderfield/` instead of chat memory.
+2. **Leader decides; children report.** `/of` sometimes asks you for a decision instead of continuing on its own.
+3. **Close needs proof, not "done."** You may be asked for evidence on the public surface or to authorize a harness change.
+
+**When you step in:** harness mix or change (your consent), accepting a `done_when`, authorizing a contract patch, and whenever `/of` stops — it must say why in plain words.
+
+---
+
+*Everything below is reference for the agent and for anyone auditing or extending the kernel.*
+
 Anyone can persist a plan. Only the leader may change it.
-
-The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of handoff` continue from `.orderfield/` instead of chat memory. Close is proof (`of contrast` / `CLOSE.json`). A child residual cannot replace the mission, the phase, or the constraint list.
-
-Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 <p align="center">
   <strong>v0.9.5</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
@@ -21,6 +33,10 @@ ORDERFIELD_REF=v0.9.5 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
+
+The brief lives on disk as SPEC. Packets bind each step. `of resume` / `of handoff` continue from `.orderfield/` instead of chat memory. Close is proof (`of contrast` / `CLOSE.json`). A child residual cannot replace the mission, the phase, or the constraint list.
+
+Python 3.11+ stdlib. Public JSON schemas. A lock. Tests. No pip. Same ORDER if you switch harness.
 
 # Typical problems → what Orderfield does
 

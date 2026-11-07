@@ -15,11 +15,11 @@ You are the leader. Do not implement the slice. Disk is the session.
 
 **Hosts load this file only.** Procedure: [references/skill-appendix.md](references/skill-appendix.md). **Load by verb** (pack / spawn / contrast / close) — not the whole appendix before pack.
 
-ORDER, packets, residuals, and regime live on disk. Use when work goes through `of` — exclusive owners, `of contrast` before close.
+Use when work goes through `of` — exclusive owners, `of contrast` before close.
 
 Product: [README.md](README.md) — anyone can persist a plan; only the leader may change it. First close. Compared-to: planning-with-files.
 
-Kernel: public JSON schemas, causal WAL, field lock (`MUTATING_COMMANDS`), pack caps, residual binding, closed child lane, closed regime menu. Same-harness obedience and same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree bounds are honesty surfaces, not a jail.
+Kernel: public JSON schemas, causal WAL, field lock (`MUTATING_COMMANDS`), residual binding, closed child lane. Same-harness obedience and same-user hand edits of `.orderfield/` remain protocol. Detect/doctor PATH ≠ credentials or session authority. Worktree bounds are honesty surfaces, not a jail.
 
 ## What to type next
 
@@ -111,6 +111,8 @@ Run `of` on PATH (`~/.local/bin/of`) or `python3 <skill>/scripts/of.py`.
 **Tool-call discipline.** Claiming pack/spawn/contrast/close without those `of` commands same turn is a broken run. Never chain pack|spawn|next-wave (`&&`); one mutating verb per invocation. First pack line=`--packet`.
 
 **Anti-done-theater.** Unittest/CI green is not Ready. Non-trivial: design-twice before implement. Deep modules: simple interface, complexity hidden.
+
+**User-facing status.** HOLD/wal-broken/headroom/contrast: plain; not bare ok.
 
 **Auto-revival.** Open field (`spec_closed` false): every turn **`of resume` first**, then **execute printed `next` same turn** — including after collect+integrate and when `in_flight=0`. A status report is not a stop. HOLD = continue packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. HITL only on kernel refuse, stored consent no, or named init-time asks (adversary+verifier at end after each wave; agent-band; measurable outcome; learnings after close). Forbidden: bare ok/dale as keepalive when `next` is already named. Pause: `pause` / `stop` / `wait on the field` / `cancel the mission` / `of init --force`.
 
