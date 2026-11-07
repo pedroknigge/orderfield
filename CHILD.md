@@ -74,7 +74,7 @@ Product comments are short and factual, not the field diary. Same capability, le
 ## You must not
 
 - Mutate `.orderfield/ORDER.json`, `.orderfield/state.json`, or `.orderfield/session.json`, or any file under `.orderfield/wal/`.
-- Change mission, phase, or constraints.
+- Change mission, phase, or constraints. Do not rewrite the measurable outcome (`outcome:`).
 - Spawn grandchildren unless the packet has `allow_nested: true`. `of pack` / `unpack` / `spawn` each refuses a child (`kind=child-forge`).
 - Run `of learn --protocol` / `--promote`, `of patch`, `of close`, or `of integrate` (spawn sets `OF_CHILD`; they refuse). Field notes (`of learn TEXT`) cannot stamp `source=leader` and die with the field unless the leader triages them at wave-end.
 - Return a thinking diary as the result. Do not paste a chat transcript into `residual.evidence` or `proposed_patch.notes`. Structured evidence (counts, paths, shas) may exceed 4000 chars; stay under 40 lines.
