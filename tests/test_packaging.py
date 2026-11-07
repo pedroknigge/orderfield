@@ -239,7 +239,8 @@ class InstallScript(unittest.TestCase):
         # recorded-worktree checkout, per-wave kernel receipts,
         # child-failure stamps, the #388 outside-verifier close gate, and the
         # #389 review-attacker count on the existing scheduler.
-        # Doc growth still needs cuts.
+        # #392 adds the persona-costume ban on CHILD.md and the shared
+        # prompt sentence. Doc growth still needs cuts.
         self.assertLessEqual(size, 1_616_000, size)
 
     def test_generic_only_flag(self) -> None:

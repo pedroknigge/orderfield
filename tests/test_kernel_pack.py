@@ -1545,6 +1545,91 @@ class RefLoadHandoff(unittest.TestCase):
         self.assertIn("no design proposals", prompt)
 
 
+class PersonaCostumeBan(unittest.TestCase):
+    """#392: child contract and the shared prompt ban expert costumes.
+
+    The subtracted surface is persona roleplay. Structural roles stay
+    ownership and review partitions. One sentence in render_prompt covers
+    every adapter (inline or reference-load).
+    """
+
+    COSTUME = "you are an excellent"
+    BAN = "roleplay a persona or expert costume"
+    TECHNIQUES = "tools and techniques a professional would use"
+
+    def _packet(self, role: str) -> dict:
+        return {
+            "v": 1,
+            "wave": 1,
+            "child_id": "c1",
+            "order_rev": 1,
+            "slice": "map the slice",
+            "role": role,
+            "residual_path": ".orderfield/waves/001/residuals/c1.json",
+            "scratch_dir": ".orderfield/work/scratch/c1",
+            "allow_nested": False,
+            "budget": {"tokens": 0, "seconds": 60},
+        }
+
+    def test_child_and_every_role_prompt_ban_the_costume(self) -> None:
+        child = (ROOT / "CHILD.md").read_text(encoding="utf-8").casefold()
+        self.assertNotIn(self.COSTUME, child)
+        self.assertIn(self.BAN, child)
+        self.assertIn(self.TECHNIQUES, child)
+        self.assertIn("not specialist hats", child)
+        rule = of.pack.PROMPT_NO_PERSONA
+        self.assertNotIn(self.COSTUME, rule.casefold())
+        self.assertIn(self.BAN, rule.casefold())
+        self.assertIn(self.TECHNIQUES, rule.casefold())
+        for role, contract in of.ROLE_CONTRACTS.items():
+            self.assertNotIn(self.COSTUME, contract.casefold(), role)
+            prompt = of.render_prompt(self._packet(role))
+            inline = of.render_prompt(self._packet(role), inline=True)
+            for text in (prompt, inline):
+                self.assertIn(rule, text, role)
+                self.assertIn(f"Role contract — {role}", text, role)
+                self.assertNotIn(self.COSTUME, text.casefold(), role)
+
+    def test_every_adapter_prompt_carries_the_same_sentence(self) -> None:
+        packet = self._packet("explorer")
+        rule = of.pack.PROMPT_NO_PERSONA
+        for adapter in of.ADAPTER_ORDER:
+            prompt = of.render_prompt(
+                packet, inline=adapter in of.INLINE_CONTRACT_ADAPTERS
+            )
+            self.assertIn(rule, prompt, adapter)
+            self.assertNotIn(self.COSTUME, prompt.casefold(), adapter)
+
+    def test_render_and_handoff_files_carry_the_sentence(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-persona-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.assertEqual(
+            run_of(tmp, "init", "--mission", "m", "--phase", "explore").returncode,
+            0,
+        )
+        packed = run_of(
+            tmp, "pack", "--slice", "map", "--role", "explorer", "--child-id", "h1"
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        packet = ".orderfield/waves/001/packets/h1.json"
+        rule = of.pack.PROMPT_NO_PERSONA
+        rendered = run_of(tmp, "render", "--packet", packet)
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        inlined = run_of(tmp, "render", "--packet", packet, "--inline")
+        self.assertEqual(inlined.returncode, 0, inlined.stderr)
+        handed = run_of(tmp, "handoff", "--packet", packet)
+        self.assertEqual(handed.returncode, 0, handed.stderr)
+        prompt_path = tmp / ".orderfield" / "waves" / "001" / "prompts" / "h1.md"
+        texts = (
+            rendered.stdout,
+            inlined.stdout,
+            prompt_path.read_text(encoding="utf-8"),
+        )
+        for text in texts:
+            self.assertIn(rule, text)
+            self.assertNotIn(self.COSTUME, text.casefold())
+
+
 class RequiresTool(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-tool-"))
