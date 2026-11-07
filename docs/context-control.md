@@ -22,6 +22,7 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 | Always-loaded leader verbs | `SKILL.md` short core | Hosts inject this file; table names every `of` verb |
 | Full leader procedure | `references/skill-appendix.md` | Load by verb (pack / spawn / contrast / close); not a second skill |
 | Ac bounded slice | Packet (`of pack`) | Slaving function: fresh context, no parent history |
+| Tools and what sits behind them (CI, logs, dogfood, board) | `docs/plans/<owner>/sources.md` (SourcesList) | Wave-0 explorer reads the file; leader packs its `result_ref`. Not SPEC |
 | Exclusive product writes | `--owns-path` on packet | Same-wave overlap dies; cross-wave reuse is a note; pack WARNs when `--slice` names a path outside the write set (`owns_path_incomplete`) or an implementer omits `--owns-path` (`owns_path_empty`) |
 | Specialist with disjoint work | Child + residual JSON | Parent consumes residual; child never sees parent chat |
 | Session continuity after compaction | Disk | `of resume` + `auto_continue`; not chat memory |

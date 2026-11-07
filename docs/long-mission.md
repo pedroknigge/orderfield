@@ -27,6 +27,8 @@ Not `of merge`. Close of a `--parent` field returns ACTIVE to the epic (`recover
 
 One parallel pack. Live wave is `state.wave`.
 
+Large (multi-slice): before any implementer, write `docs/plans/<owner>/sources.md` and pack one explorer. It proposes packs. You pack those. Walk: [demo/sources-triage.md](demo/sources-triage.md).
+
 ```bash
 of pack --slice "…" --owns-requirement ID
 of pack --explain --slice "…" --role explorer   # dry-run; no write

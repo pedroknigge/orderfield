@@ -32,6 +32,7 @@ Short index for coding agents working in or with Orderfield (Eve-style `llms.txt
 | [docs/troubleshooting.md](troubleshooting.md) | Field failure recovery |
 | [docs/long-mission.md](long-mission.md) | Epic → waves → mid-flight amend → close is proof |
 | [docs/prototype-wave.md](prototype-wave.md) | N cheap explorers (`of contend`) → `of crown` → one implementer |
+| [docs/design/sources-list.md](design/sources-list.md) | SourcesList: large init writes one sources file; the first pack is one explorer |
 | [docs/close-is-proof.md](close-is-proof.md) | RFC: close-is-proof + residual empty |
 | [docs/efficiency-signal.md](efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only). Mid-mission mix from honest signals; unpublished balance is unknown. |
 | [docs/model-catalog.md](model-catalog.md) | Living intelligence×cost sheet. Consult before cheap/frontier or mix. Not `budget.tokens`. |
