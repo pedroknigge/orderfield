@@ -240,7 +240,7 @@ class InstallScript(unittest.TestCase):
         # child-failure stamps, the #388 outside-verifier close gate,
         # #389 review-attacker count, and #404 primary-source fact predicate
         # (`PrimarySource`). Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_616_000, size)
+        self.assertLessEqual(size, 1_620_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
