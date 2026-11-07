@@ -2,7 +2,7 @@
 
 Paired fixture for `references/skill-appendix.md` (#393). `bound_bytes` is the appendix size. `bed_markers` is the marker floor after this volatile section leaves the appendix. Growing the appendix without updating `bound_bytes` fails `SkillSurface` and `of doctor` warns.
 
-bound_bytes: 116188
+bound_bytes: 116165
 bed_markers: 33
 volatile: half-life
 
