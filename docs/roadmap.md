@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.5. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.6. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.5`
+**Status:** Shipped · **Current release line:** `0.9.6`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -23,12 +23,10 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
 
-## On main after the 0.9.5 tag — SourcesList (#391)
+## 0.9.6 — hard evidence close, human `/of`, skill half-life
 
-No VERSION bump. The leader stops routing tickets.
-
-- Large init writes one file, `docs/plans/<owner>/sources.md` (**SourcesList**): a tool plus the path or command behind it. The first pack is one `--role explorer`. Proposals sit in `result_ref`. InitAskSkip Small skips. No new verb. No host product. Design: [design/sources-list.md](design/sources-list.md). Proof: `SourcesTriagePath`.
-- The installed skill surface includes that appendix recipe. It fits inside the existing install-size ceiling of 1,616,000 B (`#388` outside-verifier gate, `#389` review attackers, plus this recipe).
+- Close needs hard surface evidence; a verifier residual is only the fallback when no hard signal is possible (`OutsideVerifier`, #401/#388). Cheap adversaries plus one verifier judge (`ReviewAttackers`, #405/#389). Techniques, not persona costumes (#396/#392). Prototype-wave recipe via `of contend` / `of crown` (#397/#394). Skill appendix half-life gate (#398/#393). Large measurable outcome ask (#399/#390). `sources.md` triage (`SourcesList`, #400/#391). One cite against a named primary source (`PrimarySource`, #406/#404). README and skill lead with `/of` in natural language (#408/#407).
+- Proof: `tests/test_outside_verifier.py` / `tests/test_review_attackers.py` / `PersonaCostumeBan` / `tests/test_contest.py` / `tests/test_skill_half_life.py` / `MeasurableOutcome` / `SourcesTriagePath` / `PrimarySourceGate` / `ReadmeProductSurface`.
 
 ## 0.9.5 — the child's checkout, and a later wave keeps the earlier proof
 
