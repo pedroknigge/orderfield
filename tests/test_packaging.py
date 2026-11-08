@@ -1064,7 +1064,8 @@ class SkillModelCatalogConsult(unittest.TestCase):
                 self.assertIn("of models --adapter HARNESS --json", text)
                 self.assertIn("last_checked", text)
         doc = (ROOT / "docs/model-catalog.md").read_text(encoding="utf-8")
-        self.assertIn('price_public: "unknown"', doc)
+        self.assertIn("tier_source", doc)
+        self.assertIn("price_source", doc)
         self.assertIn("Provider order is preserved", doc)
 
 

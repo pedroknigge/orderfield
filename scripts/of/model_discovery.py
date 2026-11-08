@@ -1,5 +1,6 @@
-"""Live harness model metadata; no inference, routing, or price lookup.
+"""Live harness model metadata; discovery only (no routing).
 
+Tier/price provenance is applied in ``model_enrich`` after a successful list.
 ``--headroom`` is the one opt-in exception: a native usage probe may spend
 a harness turn, so it runs only when the leader asks before fan-out.
 """
@@ -17,6 +18,8 @@ import threading
 import time
 from datetime import datetime, timezone
 
+from of.field import skill_root
+from of.model_enrich import enrich_models
 from of_adapters import (
     ADAPTER_BINS, ADAPTER_ORDER, SIN_DATO, USAGE, USAGE_ORDER,
     orca_rate_limits, usage_windows,
@@ -168,7 +171,6 @@ def _models(items, adapter: str) -> list[dict]:
             "recommendation": _string(item.get("upgrade")) if adapter == "codex" else None,
             "default_effort": _string(item.get("defaultReasoningEffort")),
             "efforts": normalized,
-            "price_public": "unknown",
         })
     return rows
 
@@ -436,6 +438,13 @@ def cmd_models(args) -> None:
     if not math.isfinite(args.timeout) or not 0 < args.timeout <= 120:
         raise ValueError("--timeout must be finite, > 0 and <= 120 seconds")
     reports = [discover(name, args.timeout) for name in ([args.adapter] if args.adapter else ADAPTER_ORDER)]
+    refresh_prices = bool(getattr(args, "refresh_prices", False))
+    root = skill_root()
+    for report in reports:
+        if report.get("status") == "ok" and report.get("models"):
+            report["models"] = enrich_models(
+                root, report["adapter"], report["models"], refresh_prices=refresh_prices,
+            )
     room = headroom(args.timeout, args.adapter) if getattr(args, "headroom", False) else None
     if args.json:
         print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports, **(room or {})},
@@ -446,7 +455,11 @@ def cmd_models(args) -> None:
             if report["error"]:
                 print(f"  error: {report['error']}")
             for row in report["models"]:
-                print(f"  {row['model_id']} resolved={row['resolved_model']} default={row['is_default']} price=unknown")
+                print(
+                    f"  {row['model_id']} resolved={row['resolved_model']} default={row['is_default']} "
+                    f"tier={row.get('tier_hint', 'unknown')}({row.get('tier_source', 'unknown')}) "
+                    f"price={row.get('price_public', 'unknown')}({row.get('price_source', 'unknown')})"
+                )
                 print(f"    {row['display_name']} — {row['description']}")
                 print(f"    efforts={row['efforts']} default_effort={row['default_effort']} recommendation={row['recommendation']}")
         for row in (room or {}).get("headroom", []):
