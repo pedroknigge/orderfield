@@ -105,7 +105,7 @@ Do not file secrets, tokens, private transcripts, or field-internal residuals (r
 
 ## Packet template
 
-The slice should name these. CONTEXT is pointers only. TIMEBOX is `budget.seconds` (never tokens).
+The slice should name these. CONTEXT is pointers only—raw paths, `spec_ref`, and documented tools (what data sits behind each), not a leader paste that replaces the source ([model-experience rule](docs/context-control.md#model-experience-context-per-packet); field inventory [#391](docs/design/sources-list.md)). TIMEBOX is `budget.seconds` (never tokens).
 
 GOAL / SCOPE / CONTEXT / ACCEPTANCE / VERIFY / TIMEBOX / FORBIDDEN / REPORT
 

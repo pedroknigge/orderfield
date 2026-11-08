@@ -87,6 +87,7 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.
 - **Must ask** once: "What measurable outcome closes this, beyond the ticket?" `outcome: main CI green and install.sh --from-release verifies` — not "merge the PR". Children never rewrite it. Not a close gate. Not a new ORDER key.
 - Write `docs/plans/<owner>/sources.md` (SourcesList: tool + path or command) and pack one explorer first. The explorer proposes packs. You do not route tickets. Small fields skip this. Walk: [docs/demo/sources-triage.md](docs/demo/sources-triage.md).
+- Prefer documenting tools (SourcesList, harness skills, CONTEXT paths) over new `--role` values; roles stay write/review partitions ([role audit](docs/audit/roles-and-tools-402.md)).
 
 Code is a liability. Think DELETE, not add. Same capability with less code. No new verb.
 

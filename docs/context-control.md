@@ -35,6 +35,15 @@ Orderfield is a contract kernel, not a model harness. Control context by putting
 
 Kernel: `of init --source` / `of spec --amend` / `--revise` print an advisory **note** when the text looks like a go-ahead; SPEC is still written. Expand and `--revise-file` if a deictic already landed.
 
+## Model-experience CONTEXT (per packet)
+
+Pretend you are the child harness: you want **raw artifacts**, **documented tools**, and enough context to choose what to read—not a leader-curated digest as your only world. Packet **CONTEXT** is pointers (`spec_ref`, repo paths, SourcesList rows, what sits behind each command). It is not pasted summaries that replace those sources. Field-level tool inventory is [SourcesList](design/sources-list.md) (`docs/plans/<owner>/sources.md`); wave-0 explorer triage is the recipe in that doc—this section is **per-packet** discipline only.
+
+| Good CONTEXT | Bad CONTEXT |
+| --- | --- |
+| `spec_ref`; `src/billing/rates.py`; `docs/plans/acme/sources.md` (read the `gh` row, then `gh run view …`) | Three paragraphs summarizing billing rules the child never opens |
+| `evals/fixtures/foo.md`; run `python3 -m unittest tests.test_foo` per VERIFY | Leader’s mental model of the test file copied into `--slice` |
+
 ## Compaction analog (low priority)
 
 Eve compacts model context inside the harness. Orderfield compacts **reasoning**, never the contract:
