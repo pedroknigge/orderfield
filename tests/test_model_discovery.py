@@ -154,7 +154,12 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertTrue(rows[0]['is_default'])
         self.assertEqual(rows[0]['recommendation'], 'future-upgrade')
         self.assertEqual(rows[0]['efforts'], [{'effort':'ultra','description':'Deep'}])
-        self.assertTrue(all(r['price_public']=='unknown' for r in rows))
+        self.assertEqual(rows[0]['tier_hint'], 'mid')
+        self.assertEqual(rows[0]['tier_source'], 'inferred')
+        self.assertEqual(rows[1]['tier_hint'], 'cheap')
+        self.assertEqual(rows[1]['tier_source'], 'inferred')
+        self.assertEqual(rows[0]['price_public'], 'unknown')
+        self.assertEqual(rows[0]['price_source'], 'unknown')
         self.assertIsNone(rows[1]['is_default'])
         methods = [r.get('method') for r in self.requests()]
         self.assertEqual(methods[:4], ['initialize','initialized','model/list','model/list'])
@@ -469,6 +474,74 @@ class UsageHeadroom(unittest.TestCase):
         self.assertTrue(all(row['source'] == 'none' for row in room['headroom']))
         self.assertEqual(room['roster'], [])
         self.assertFalse((self.root / 'pid').exists())
+
+
+class ModelEnrichProvenance(unittest.TestCase):
+    """Seed, inference, and fetched price overlays (no network)."""
+
+    def test_seed_row_has_sourced_price_and_tier(self):
+        from of.model_enrich import enrich_models
+
+        rows = enrich_models(ROOT, "codex", [{"model_id": "gpt-5.6-luna"}])
+        self.assertEqual(rows[0]["tier_hint"], "cheap")
+        self.assertEqual(rows[0]["tier_source"], "seed")
+        self.assertIn("per MTok", rows[0]["price_public"])
+        self.assertTrue(rows[0]["price_source"].startswith("seed:https://"))
+
+    def test_fetched_price_from_fixture_cache(self):
+        from of.model_enrich import enrich_models
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "prices.json"
+            cache.write_text(
+                json.dumps(
+                    {
+                        "v": 1,
+                        "source_url": "https://example.test/api/v1/models",
+                        "fetched_at": "2026-11-08T12:00:00Z",
+                        "models": {
+                            "openai/future-z": {"prompt": "0.000002", "completion": "0.000008"},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"OF_MODEL_PRICE_CACHE": str(cache)}):
+                rows = enrich_models(
+                    ROOT,
+                    "codex",
+                    [
+                        {
+                            "model_id": "future-z",
+                            "resolved_model": "resolved-z",
+                            "is_default": True,
+                            "recommendation": "future-upgrade",
+                        }
+                    ],
+                )
+        self.assertEqual(rows[0]["price_public"], "$2 / $8 per MTok in/out")
+        self.assertEqual(
+            rows[0]["price_source"],
+            "fetched:https://example.test/api/v1/models@2026-11-08T12:00:00Z",
+        )
+
+class ModelEnrichCli(unittest.TestCase):
+    """CLI enrich path: refresh failure must not fail of models."""
+
+    setUp = LiveModelDiscovery.setUp
+    tearDown = LiveModelDiscovery.tearDown
+
+    def test_refresh_prices_failure_does_not_fail_models_cli(self):
+        with patch("of.model_enrich.urllib.request.urlopen", side_effect=OSError("offline")):
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/of.py"), "models", "--json",
+                 "--adapter", "codex", "--timeout", "6", "--refresh-prices"],
+                cwd=self.root, env={**self.env, "FIXTURE_MODE": "ok"},
+                capture_output=True, text=True, timeout=12,
+            )
+        report = json.loads(result.stdout)["adapters"][0]
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["models"][0]["tier_source"], "inferred")
 
 
 if __name__ == '__main__':
