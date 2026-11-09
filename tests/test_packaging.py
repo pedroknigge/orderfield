@@ -241,8 +241,9 @@ class InstallScript(unittest.TestCase):
         # #389 review-attacker count. 0.9.6 adds #392 persona-costume ban,
         # #391 SourcesList, #404 PrimarySource, skill half-life fixture,
         # and measurable-outcome / prototype-wave skill growth.
+        # #411 model_enrich (tier/price overlay on of models) adds ~6.2 KB.
         # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_625_000, size)
+        self.assertLessEqual(size, 1_635_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
