@@ -1082,6 +1082,15 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
         help="with --verified-contract: pair-shaped requirement had both sides at the surface",
     )
     s.add_argument(
+        "--bind-all",
+        dest="bind_all",
+        action="store_true",
+        help=(
+            "with --verified-contract: one --run receipt stamps every listed ID "
+            "(each must still tie to the receipt)"
+        ),
+    )
+    s.add_argument(
         "--takeover",
         action="store_true",
         help=(

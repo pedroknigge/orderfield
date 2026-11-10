@@ -444,7 +444,7 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
             "--verified-contract",
             "REQ-001",
             "--run",
-            f'{sys.executable} -c "print(1)"',
+            f'{sys.executable} -c "print(\'surface command finishes\')"',
             "--timeout",
             "5",
         )
