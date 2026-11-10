@@ -908,7 +908,7 @@ class RequirementSurface:
 
     VALUES = frozenset({"contract", "internal"})
     NEED_ID = (
-        "--surface requires --add ID --text … or "
+        "--surface requires --add ID --text-file PATH or "
         "of spec --surface {contract,internal} ID"
     )
     IDS_ONLY = "requirement IDs are only valid with --surface {contract,internal}"
@@ -973,6 +973,51 @@ def decorate_requirement(item: dict[str, Any]) -> dict[str, Any]:
     item["pair"] = requirement_is_pair(item)
     item.setdefault("pair_checked", False)
     return item
+
+
+def contract_text_norm(text: str) -> str:
+    from of.regime import PlanItemCover
+
+    return PlanItemCover.norm(text)
+
+
+def refuse_add_text_not_in_contract(
+    root: Path,
+    order: dict[str, Any],
+    spec_text: str,
+    add_text: str,
+    *,
+    paraphrase_ok: bool,
+    why: str,
+) -> None:
+    """#415: argv --text goes through the shell; bound text must match contract."""
+    if paraphrase_ok:
+        if not str(why or "").strip():
+            die("--paraphrase-ok requires --why")
+        return
+    needle = contract_text_norm(add_text)
+    if len(needle) < 8:
+        return
+    from of.regime import PlanIngress
+
+    pins = PlanIngress.pinned(order)
+    if not pins:
+        return
+    haystacks = [contract_text_norm(spec_text)]
+    for rel, _sha in pins:
+        path = root / rel
+        if path.is_file():
+            try:
+                haystacks.append(contract_text_norm(path.read_text(encoding="utf-8")))
+            except OSError:
+                continue
+    if any(needle in hay for hay in haystacks):
+        return
+    die(
+        "requirement text is not a verbatim span of SPEC.md or a pinned "
+        "plan_source; of spec --text-file PATH (or '-') for backticks, "
+        "of spec --extract first, or --paraphrase-ok --why WHY"
+    )
 
 
 def merge_extracted_requirements(
@@ -2033,7 +2078,8 @@ def requirement_coverage_errors(root: Path) -> list[str]:
     if field_is_file(spec) and not items:
         errors.append(
             "SPEC-EMPTY: SPEC.md exists but no binding requirements; "
-            "of spec --add ID --text '…' (or of spec --extract under a Rules heading)"
+            "of spec --extract first (numbered lists need no Rules heading), "
+            "then of spec --add ID --text-file PATH if needed"
         )
         return errors
     unowned = [

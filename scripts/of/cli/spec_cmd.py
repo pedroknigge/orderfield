@@ -76,6 +76,7 @@ from of.spec import (
     merge_extracted_requirements,
     read_brief_file,
     read_spec_text,
+    refuse_add_text_not_in_contract,
     require_req_id,
     require_spec_intact,
     requirement_close_ok,
@@ -326,7 +327,13 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         )
         changed = True
         if creating:
+            extracted = extract_requirements_from_spec(source_text)
+            merge_extracted_requirements(data, extracted)
             print(f"spec created {FIELD_SPEC_MD}  hash={new_hash[:12]}…")
+            print(
+                f"requirements {len(extracted)} extracted from brief  "
+                "(of pack --owns-requirement ID; do not implement without a packet)"
+            )
         else:
             print(f"spec revised {old_hash[:12]}… -> {new_hash[:12]}…")
             print(
@@ -386,13 +393,28 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             changed = True
     add_id = getattr(args, "add", None)
     add_text = getattr(args, "text", None)
+    text_file = getattr(args, "text_file", None)
+    if text_file:
+        if add_text:
+            die("pass only one of --text and --text-file")
+        add_text = read_brief_file(str(text_file), flag="--text-file")
     if add_id or add_text:
         if not add_id or not add_text:
-            die("of spec --add ID requires --text")
+            die("of spec --add ID requires --text or --text-file")
         rid = require_req_id(add_id)
         if find_requirement(data, rid) is not None:
             die(f"requirement {rid} already exists")
         added_text = str(add_text).strip()
+        spec_file = spec_path(root)
+        current_spec = read_spec_text(root) if spec_file.is_file() else ""
+        refuse_add_text_not_in_contract(
+            root,
+            order,
+            current_spec,
+            added_text,
+            paraphrase_ok=bool(getattr(args, "paraphrase_ok", False)),
+            why=str(getattr(args, "why", "") or ""),
+        )
         added = decorate_requirement(
             {
                 "id": rid,
@@ -407,8 +429,6 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         if surface_arg in {"contract", "internal"}:
             added["surface"] = surface_arg
         added["surface"] = requirement_surface(added)
-        spec_file = spec_path(root)
-        current_spec = read_spec_text(root) if spec_file.is_file() else ""
         if not spec_mentions_req_id(current_spec, rid):
             merged = append_binding_line(current_spec, rid, added_text)
             new_hash = write_spec(root, merged, revise=True)

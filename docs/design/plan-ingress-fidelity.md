@@ -33,3 +33,9 @@ Fail-closed default **ON** once prompt/chat source is pinned; or cue `plan_fidel
 ## Skill first order
 
 Classify mode → enough? → gather/ask gaps (pstack cherry bias) → only then ORDER. Refuse pack while fidelity HOLD. Write-back stays on green collect.
+
+## Chat capture → SPEC (#415)
+
+**Chosen (B):** reuse `extract_requirements_from_spec` on `of spec --revise-file` when SPEC is first created (same pass as `init --source-file`), plus `--text-file` for `--add` and a verbatim refusal when `plan_source` is pinned. **Not (A):** a second chat-only parser or a structured hand-off file the leader must author.
+
+Chat ingress: `of init --chat-capture-file` → `of spec --revise-file` on the capture. Extraction runs in that second step; notes prefer `--extract` / `--text-file` over shell `--text`.
