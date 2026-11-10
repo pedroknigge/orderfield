@@ -148,7 +148,7 @@ class ChatIngressPlanFidelity(unittest.TestCase):
             env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
         )
         self.assertNotEqual(bash.returncode, 0)
-        self.assertIn("not a verbatim span", bash.stderr + bash.stdout)
+        self.assertIn("shell-mangled", bash.stderr + bash.stdout)
         data = json.loads(
             (self.tmp / ".orderfield" / "REQUIREMENTS.json").read_text(encoding="utf-8")
         )

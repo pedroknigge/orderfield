@@ -412,6 +412,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             order,
             current_spec,
             added_text,
+            via_text_file=bool(text_file),
             paraphrase_ok=bool(getattr(args, "paraphrase_ok", False)),
             why=str(getattr(args, "why", "") or ""),
         )
