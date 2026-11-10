@@ -1514,6 +1514,35 @@ class OutsideVerifier:
 
     REVIEW = frozenset({"adversary", "verifier"})
     _TRIVIAL_PROGS = frozenset({"true", "false", ":", "exit", "yes", "echo", "printf"})
+    _NEGATIVE_CUES = re.compile(
+        r"\bout of scope\b|\bdo not touch\b|\bdon't touch\b|\bdo not change\b"
+    )
+    _DOC_CUES = re.compile(r"\breadme\b|\bdocument\b|\bdocumentation\b|\bchangelog\b")
+    _PATH_TOKEN_RE = re.compile(
+        r"`([^`]+)`|(?:\b)([A-Za-z0-9][A-Za-z0-9._/-]*"
+        r"\.(?:md|toml|ya?ml|json|cfg|ini|py|rs|go|js|ts|tsx|java|c|cpp|h))\b"
+    )
+    BIND_ALL_REFUSE = (
+        "one --run receipt cannot stamp {n} requirements without "
+        "--bind-all (name each ID the command exercises, as with PAIR --both-sides)"
+    )
+    RUN_NOOP_REFUSE = (
+        "{id}: --run {cmd!r} is exit-0 theater (true, :, and other no-ops do not "
+        "exercise the requirement); use a command tied to the requirement, "
+        "--cite <file>, or --takeover on a failed id"
+    )
+    RUN_NEGATIVE_REFUSE = (
+        "{id}: out-of-scope / do-not-touch requirements are not provable by --run; "
+        "cite a diff or mark verified_internal"
+    )
+    RUN_DOCS_REFUSE = (
+        "{id}: documentation requirement needs {paths} touched or named in the "
+        "receipt (a test command alone does not prove docs)"
+    )
+    RUN_CODE_REFUSE = (
+        "{id}: kernel receipt does not exercise this requirement (no product "
+        "change and no surface tie to the receipt)"
+    )
     _SURFACE_STOP = frozenset({
         "must", "should", "with", "from", "that", "this", "have", "return",
         "returns", "exit", "exits", "print", "prints", "status", "command",
@@ -1598,11 +1627,9 @@ class OutsideVerifier:
         ) or ContractSurface._has_any(text, ContractSurface.VERSION_CUES)
 
     @staticmethod
-    def trivial(command: str) -> bool:
-        """``true``, inline ``python -c``, unit runners, and file reads are not a surface."""
+    def noop_command(command: str) -> bool:
+        """Shell no-ops that never exercise a requirement."""
         import shlex
-
-        from of.receipt import EvidenceReceipt
 
         raw = str(command or "").strip()
         if not raw:
@@ -1613,14 +1640,227 @@ class OutsideVerifier:
             return True
         if not argv:
             return True
-        prog = Path(argv[0]).name
-        if prog in OutsideVerifier._TRIVIAL_PROGS:
+        return Path(argv[0]).name in OutsideVerifier._TRIVIAL_PROGS
+
+    @staticmethod
+    def trivial(command: str) -> bool:
+        """``true``, inline ``python -c``, unit runners, and file reads are not a surface."""
+        import shlex
+
+        from of.receipt import EvidenceReceipt
+
+        raw = str(command or "").strip()
+        if not raw:
             return True
+        if OutsideVerifier.noop_command(raw):
+            return True
+        try:
+            argv = shlex.split(raw)
+        except ValueError:
+            return True
+        if not argv:
+            return True
+        prog = Path(argv[0]).name
         if prog.startswith("python") and "-c" in argv:
             return True
         if EvidenceReceipt.BYPASS_RE.search(raw) or EvidenceReceipt.TEST_RE.search(raw):
             return True
         return False
+
+    @staticmethod
+    def requirement_proof_kind(item: dict[str, Any]) -> str:
+        text = str(item.get("text") or "")
+        low = text.lower()
+        if OutsideVerifier._NEGATIVE_CUES.search(low):
+            return "negative"
+        if OutsideVerifier._DOC_CUES.search(low) or ".md" in low:
+            return "docs"
+        return "code"
+
+    @staticmethod
+    def mentioned_paths(text: str) -> list[str]:
+        out: list[str] = []
+        for match in OutsideVerifier._PATH_TOKEN_RE.finditer(str(text or "")):
+            token = (match.group(1) or match.group(2) or "").strip()
+            if not token or token.startswith(".orderfield/"):
+                continue
+            norm = token.replace("\\", "/").lstrip("./")
+            if norm and norm not in out:
+                out.append(norm)
+        return out
+
+    @staticmethod
+    def _product_paths(root: Path, checkout: Path | None = None) -> set[str]:
+        import subprocess
+
+        found: set[str] = set()
+        tree = Path(checkout) if checkout is not None else Path(root)
+        for extra in ([], ["--others", "--exclude-standard"]):
+            try:
+                proc = subprocess.run(
+                    ["git", "--no-optional-locks", "ls-files", *extra],
+                    cwd=str(tree),
+                    capture_output=True,
+                    text=True,
+                    stdin=subprocess.DEVNULL,
+                    timeout=30,
+                )
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if proc.returncode != 0:
+                continue
+            for line in proc.stdout.splitlines():
+                rel = line.strip().replace("\\", "/")
+                if rel and not rel.startswith(".orderfield/"):
+                    found.add(rel)
+        return found
+
+    @staticmethod
+    def _receipt_blob(root: Path, cite: str) -> tuple[str, str, dict[str, Any] | None]:
+        from of.receipt import EvidenceReceipt, KernelVerify
+
+        rel = str(cite or "").strip()
+        if not rel or rel.startswith("/") or ".." in Path(rel).parts:
+            return "", "", None
+        path = Path(root) / rel
+        if not path.is_file():
+            return "", "", None
+        receipt = EvidenceReceipt.load_receipt(path)
+        if not isinstance(receipt, dict) or receipt.get("kernel_attested") is not True:
+            return "", "", None
+        command = str(receipt.get("command") or "")
+        output = ""
+        source_rel = str(receipt.get("source_path") or "").strip()
+        if source_rel and ".." not in Path(source_rel).parts:
+            source = Path(root) / source_rel
+            try:
+                output = source.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                output = ""
+        return command, f"{command}\n{output}".lower(), receipt
+
+    @staticmethod
+    def run_covers(
+        root: Path,
+        item: dict[str, Any],
+        cite: str,
+        *,
+        takeover: bool = False,
+        checkout: Path | None = None,
+    ) -> tuple[bool, str]:
+        """Whether a kernel ``--run`` receipt may stamp this requirement (#414)."""
+        from of.receipt import EvidenceReceipt, KernelVerify
+
+        rid = str(item.get("id") or "")
+        command, blob, receipt = OutsideVerifier._receipt_blob(root, cite)
+        if receipt is None:
+            return True, ""
+        if takeover:
+            return True, ""
+        if OutsideVerifier.noop_command(command):
+            return False, OutsideVerifier.RUN_NOOP_REFUSE.format(id=rid, cmd=command)
+        kind = OutsideVerifier.requirement_proof_kind(item)
+        text = str(item.get("text") or "")
+        if kind == "negative":
+            return False, OutsideVerifier.RUN_NEGATIVE_REFUSE.format(id=rid)
+        mentioned = OutsideVerifier.mentioned_paths(text)
+        product = OutsideVerifier._product_paths(root, checkout)
+        argv_paths = {
+            p.lower()
+            for p in KernelVerify.argv_paths(
+                checkout if checkout is not None else root, command
+            )
+        }
+        if kind == "docs":
+            paths = mentioned or ["readme.md"]
+            touched = [
+                p
+                for p in paths
+                if p.lower() in product
+                or p.lower() in blob
+                or p.lower() in argv_paths
+                or any(p.lower() in prod.lower() for prod in product)
+            ]
+            if not touched:
+                joined = ", ".join(paths[:3])
+                return False, OutsideVerifier.RUN_DOCS_REFUSE.format(
+                    id=rid, paths=joined
+                )
+            return True, ""
+        if rid.lower() in blob:
+            return True, ""
+        for cue in (*ContractSurface.HEALTH_CUES, *ContractSurface.VERSION_CUES):
+            if cue in text.lower() and cue in blob:
+                return True, ""
+        if any(word in blob for word in OutsideVerifier._surface_words(text)):
+            return True, ""
+        for path in mentioned:
+            low = path.lower()
+            if low in product or low in blob or low in argv_paths:
+                return True, ""
+        code_product = {
+            p
+            for p in product
+            if p.endswith(
+                (".py", ".rs", ".go", ".js", ".ts", ".tsx", ".java", ".c", ".cpp", ".h")
+            )
+            or p.startswith("tests/")
+            or "/tests/" in p
+        }
+        if EvidenceReceipt.TEST_RE.search(command) and code_product:
+            return True, ""
+        if OutsideVerifier.hard_receipt(root, item, cite):
+            return True, ""
+        return False, OutsideVerifier.RUN_CODE_REFUSE.format(id=rid)
+
+    @staticmethod
+    def proof_checkout_for(
+        root: Path, item: dict[str, Any], fallback: Path | None
+    ) -> Path | None:
+        owners = [str(o) for o in (item.get("owned_by") or []) if str(o)]
+        if not owners or owners == ["leader"]:
+            return fallback
+        from of.pack import proof_checkout
+
+        return proof_checkout(root, owners[0])
+
+    @staticmethod
+    def refuse_run_binding(
+        root: Path,
+        data: dict[str, Any],
+        req_ids: list[str],
+        run_cmd: str,
+        cite: str,
+        *,
+        bind_all: bool,
+        takeover: bool,
+        checkout: Path | None = None,
+    ) -> None:
+        if len(req_ids) > 1 and run_cmd and not bind_all:
+            die(OutsideVerifier.BIND_ALL_REFUSE.format(n=len(req_ids)))
+        if run_cmd and OutsideVerifier.noop_command(run_cmd) and not takeover:
+            denied = [
+                OutsideVerifier.RUN_NOOP_REFUSE.format(id=require_req_id(raw), cmd=run_cmd)
+                for raw in req_ids
+            ]
+            die("; ".join(denied))
+        denied: list[str] = []
+        for raw in req_ids:
+            item = find_requirement(data, require_req_id(raw))
+            if item is None:
+                continue
+            tree = OutsideVerifier.proof_checkout_for(root, item, checkout)
+            ok, why = OutsideVerifier.run_covers(
+                root, item, cite, takeover=takeover, checkout=tree
+            )
+            if not ok:
+                denied.append(why)
+            elif run_cmd:
+                why = OutsideVerifier.reason(root, item, proof=cite)
+                if why:
+                    denied.append(why)
+        if denied:
+            die("; ".join(denied))
 
     @staticmethod
     def _surface_words(text: str) -> set[str]:
@@ -1727,6 +1967,17 @@ class OutsideVerifier:
         for item in items:
             if str(item.get("status") or "") not in REQ_CONTRACT_VERIFIED:
                 continue
+            if item.get("takeover"):
+                continue
+            cite = str(item.get("proof_cite") or "")
+            if "/_leader_verify/" in cite and cite.endswith(".receipt.json"):
+                tree = OutsideVerifier.proof_checkout_for(root, item, None)
+                ok, why = OutsideVerifier.run_covers(
+                    root, item, cite, checkout=tree
+                )
+                if not ok:
+                    errors.append(why)
+                    continue
             why = OutsideVerifier.reason(root, item)
             if why:
                 errors.append(why)

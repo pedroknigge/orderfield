@@ -242,8 +242,9 @@ class InstallScript(unittest.TestCase):
         # #391 SourcesList, #404 PrimarySource, skill half-life fixture,
         # and measurable-outcome / prototype-wave skill growth.
         # #411 model_enrich (tier/price overlay on of models) adds ~6.2 KB.
+        # #414 spec --run proof binding (--bind-all, run_covers) adds ~11 KB.
         # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_635_000, size)
+        self.assertLessEqual(size, 1_647_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))

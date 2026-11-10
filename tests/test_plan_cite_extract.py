@@ -106,7 +106,14 @@ class ExtractOnCite(unittest.TestCase):
             "--text=--lines flag processes each stdin line",
         )
         self.assertEqual(added.returncode, 0, added.stderr)
-        run_of(self.tmp, "spec", "--verified-contract", "LINES-001", "--run", "true")
+        run_of(
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            "LINES-001",
+            "--run",
+            f'{sys.executable} -c "print(\'--lines flag processes each stdin line\')"',
+        )
         contrast = run_of(self.tmp, "contrast")
         self.assertIn("REQ-002", contrast.stdout)
         self.assertIn(f"{PLAN_REL}:7", contrast.stdout)
@@ -186,7 +193,12 @@ class PartialSpecWithoutCite(unittest.TestCase):
 
     def test_close_never_prints_hold_next_to_closed(self) -> None:
         verified = run_of(
-            self.tmp, "spec", "--verified-contract", "LINES-001", "--run", "true"
+            self.tmp,
+            "spec",
+            "--verified-contract",
+            "LINES-001",
+            "--run",
+            f'{sys.executable} -c "print(\'--lines flag processes each stdin line\')"',
         )
         self.assertEqual(verified.returncode, 0, verified.stderr + verified.stdout)
         closed = run_of(self.tmp, "close")
