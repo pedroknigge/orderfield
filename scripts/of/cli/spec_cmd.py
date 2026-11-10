@@ -441,6 +441,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             else:
                 print(f"surface     {rid} {new} (unchanged)")
     both_sides = bool(getattr(args, "both_sides", False))
+    bind_all = bool(getattr(args, "bind_all", False))
     cite = str(getattr(args, "cite", "") or "").strip()
     run_cmd = str(getattr(args, "run_cmd", "") or "").strip()
     run_timeout = getattr(args, "run_timeout", None)
@@ -470,33 +471,35 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 die(" ".join(clean) + " is not failed; drop --takeover")
         elif holds:
             _refuse_failure_holds(holds)
-    # Trivial --run never reaches the surface. A real command is the proof.
-    if verified_ids and run_cmd and OutsideVerifier.trivial(run_cmd):
-        denied: list[str] = []
-        for raw in verified_ids:
-            item = find_requirement(data, require_req_id(raw))
-            if item is None:
-                continue
-            if not (
-                OutsideVerifier.writers(root, item)
-                and OutsideVerifier.hard_signal(item)
-            ):
-                continue
-            why = OutsideVerifier.reason(root, item)
-            if why:
-                denied.append(why)
-        if denied:
-            die("; ".join(denied))
+    stamp_checkout = (
+        _stamp_checkout(root, data, verified_ids, takeover) if verified_ids else None
+    )
+    if verified_ids and run_cmd and len(verified_ids) > 1 and not bind_all:
+        die(OutsideVerifier.BIND_ALL_REFUSE.format(n=len(verified_ids)))
     if verified_ids and run_cmd:
         from of.receipt import KernelVerify
 
+        if OutsideVerifier.trivial(run_cmd):
+            denied: list[str] = []
+            for raw in verified_ids:
+                item = find_requirement(data, require_req_id(raw))
+                if item is None:
+                    continue
+                if OutsideVerifier.writers(root, item) and OutsideVerifier.hard_signal(
+                    item
+                ):
+                    why = OutsideVerifier.reason(root, item)
+                    if why:
+                        denied.append(why)
+            if denied:
+                die("; ".join(denied))
         bound = run_timeout if isinstance(run_timeout, int) else KernelVerify.DEFAULT_TIMEOUT_S
         receipt_rel, exit_code = KernelVerify.run_for_spec(
             root,
             verified_ids,
             run_cmd,
             timeout_s=bound,
-            checkout=_stamp_checkout(root, data, verified_ids, takeover),
+            checkout=stamp_checkout,
         )
         if exit_code != 0:
             die(
@@ -505,6 +508,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             )
         cite = receipt_rel
         print(f"attested    {receipt_rel}  exit=0")
+    if verified_ids and run_cmd and not cite:
+        die("of spec --run did not emit a receipt")
     if verified_ids and not cite:
         die(
             "of spec --verified-contract requires --cite <file> "
@@ -522,7 +527,18 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             )
         cite = cited.relative_to(root.resolve()).as_posix()
         proof_sha = EvidenceStore.digest(cited.read_bytes())
-    if verified_ids:
+    if verified_ids and cite and run_cmd:
+        OutsideVerifier.refuse_run_binding(
+            root,
+            data,
+            verified_ids,
+            run_cmd,
+            cite,
+            bind_all=bind_all,
+            takeover=takeover,
+            checkout=stamp_checkout,
+        )
+    elif verified_ids and cite:
         denied = []
         for raw in verified_ids:
             item = find_requirement(data, require_req_id(raw))
