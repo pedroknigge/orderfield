@@ -29,6 +29,40 @@ One parallel pack. Live wave is `state.wave`.
 
 Large (multi-slice): before any implementer, write `docs/plans/<owner>/sources.md` and pack one explorer. It proposes packs. You pack those. Walk: [demo/sources-triage.md](demo/sources-triage.md).
 
+### Charting fog vs requirement
+
+Large missions start fuzzy. Matt Pocock's [/wayfinder](https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/wayfinder/SKILL.md) skill names a similar walk; Orderfield already keeps most of it on disk (resume, explorer-first, Gate A, `done_when`, proof at close). Two conventions belong on this page.
+
+**Fog vs requirement.** At Large init, bind only *sharp* questions as binding IDs in SPEC. Dim work stays in notes *outside* SPEC — under `docs/plans/<owner>/` (captures, headings not yet cited, `sources.md` prose) or explorer scratch — so `spec_hash` does not churn on every brainstorm. Promote when an explorer residual sharpens a slice:
+
+```bash
+of spec --add SHARP-001 --text "…"   # new binding ID
+of spec --amend "…"                    # dated block when the human moves the brief
+of patch --constraints-add "…"         # shared procedure on ORDER
+of patch --done-when "…"               # current phase criteria
+of patch --done-when-mission "…"       # stable mission checklist
+```
+
+REQUIREMENTS is an index; SPEC is truth. Do not compress foggy chat into faux requirements in `--source` alone (#415; [plan-ingress-fidelity.md](design/plan-ingress-fidelity.md)).
+
+**Decisions so far (digest convention).** After each resolved explorer or research slice, append one line to a leader-maintained index — default `docs/plans/<owner>/decisions-so-far.md`, or `.orderfield/work/scratch/leader/DECISIONS.md` when no plan tree exists:
+
+```text
+- W1 auth store: session cookies, not JWT — .orderfield/waves/001/residuals/explorer-abc.json · docs/plans/foo/auth-notes.md#session
+```
+
+One-line gist + pointer to residual path or plan section. The file is an **index**, not the store — reasoning stays in residuals and plan docs. A later session reads the digest, then follows pointers. Surfacing in `of status` / `of resume` waits until the convention earns it.
+
+**Charting phase before implementers.** Foggy Large work may close explore/charting `done_when` on a *buildable* SPEC — binding IDs owned, appendix **Production mode** Gate A honest — before any `--role implementer` pack. Wave-0 explorer proposes packs; integrate; close the charting slice on disk, then advance phase when regime allows:
+
+```bash
+of patch --done-when-closed
+of phase build                        # or other printed <next> after integrate
+of pack --explain --slice "…" --role explorer   # dry-run; no implementer until Gate A
+```
+
+That is explorer-first plus Gate A, not a second doctrine.
+
 ```bash
 of pack --slice "…" --owns-requirement ID
 of pack --explain --slice "…" --role explorer   # dry-run; no write

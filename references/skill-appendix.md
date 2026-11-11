@@ -174,7 +174,7 @@ Sensor roles (`explorer` / `adversary` / `verifier`) run read-only commands unde
 
 #### Production mode
 
-Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is the field-run table. Lab `eval` is appendix, not a production next-step. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md). Token budgets / `scale_up` / `scale_across` are **not implemented** (`scripts/of/regime.py`).
+Serious multi-agent work and long missions use the **full verb table** in the core — resume, pack, spawn/handoff, collect, integrate, contrast, close, patch, next-wave, `of spec --amend`. That is the field-run table. Lab `eval` is appendix, not a production next-step. Do not invent a process supervisor, bot org, `RUNTIME_OWNERSHIP` telemetry, fake token budgets (`of pack --tokens` N>0 dies), or `of merge` (parent close returns ACTIVE). Walk: [docs/long-mission.md](../docs/long-mission.md) (fog vs requirement, decisions digest — [/wayfinder](https://github.com/mattpocock/skills/blob/HEAD/skills/engineering/wayfinder/SKILL.md)). Token budgets / `scale_up` / `scale_across` are **not implemented** (`scripts/of/regime.py`).
 
 **Gate A before features.** Do not pack `--role implementer` (or a net-new feature slice) until Gate A is clear. No `of gate`. No second checklist.
 
