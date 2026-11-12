@@ -609,7 +609,7 @@ of eval recovery/multi-harness-residual
 
 Reference, not a second contract — the verbs above are the path. The remaining user-facing flags the kernel registers, so the appendix names every capability:
 
-- `of spec --add ID --text "<req>"` (text for the add); `--non-binding` (advisory, not binding); `--verified ID` / `--verified-internal ID` stamp `VERIFIED_INTERNAL` (repeatable; a public claim still needs `--verified-contract` + evidence); `--failed ID` marks it failed. `--verified-contract --takeover` re-owns a failed requirement as leader.
+- `of spec --add ID --text-file PATH` (or `-` stdin) for requirement text with backticks or `$`; shell `--text` is unsafe once `plan_source` is pinned. `--paraphrase-ok --why` only when the span is not verbatim in SPEC or a pin. `--non-binding` (advisory, not binding); `--verified ID` / `--verified-internal ID` stamp `VERIFIED_INTERNAL` (repeatable; a public claim still needs `--verified-contract` + evidence); `--failed ID` marks it failed. `--verified-contract --takeover` re-owns a failed requirement as leader.
 - `of collect --accept-unclaimed CHILD_ID` (repeatable): accept a residual from an unclaimed child — an explicit override of the collect gate.
 - `of spawn --force-tool`: acknowledge and bypass a `requires_tool` mismatch (otherwise refused).
 - `of patch --notes "<text>"`: attach operator notes to the ORDER patch.

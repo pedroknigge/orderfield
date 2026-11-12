@@ -908,7 +908,7 @@ class RequirementSurface:
 
     VALUES = frozenset({"contract", "internal"})
     NEED_ID = (
-        "--surface requires --add ID --text … or "
+        "--surface requires --add ID --text-file PATH or "
         "of spec --surface {contract,internal} ID"
     )
     IDS_ONLY = "requirement IDs are only valid with --surface {contract,internal}"
@@ -973,6 +973,92 @@ def decorate_requirement(item: dict[str, Any]) -> dict[str, Any]:
     item["pair"] = requirement_is_pair(item)
     item.setdefault("pair_checked", False)
     return item
+
+
+def contract_text_norm(text: str) -> str:
+    from of.regime import PlanItemCover
+
+    return PlanItemCover.norm(text)
+
+
+_SHELL_OUTPUT_RE = re.compile(
+    r"(\[\s*\d+%\]"
+    r"|\d+\s+passed"
+    r"|\d+\s+failed"
+    r"|\d+\s+warnings?\b"
+    r"|\bin\s+\d+(?:\.\d+)?s\b)",
+    re.I,
+)
+
+
+def _pinned_plan_texts(root: Path, order: dict[str, Any], spec_text: str) -> list[str]:
+    """SPEC plus pinned plan_source bodies (read_user_text ingress only)."""
+    from of.regime import PlanIngress
+
+    raw: list[str] = [spec_text]
+    for rel, _sha in PlanIngress.pinned(order):
+        path = root / rel
+        if path.is_file():
+            raw.append(read_brief_file(str(path), flag=f"plan_source {rel}"))
+    return raw
+
+
+def looks_like_shell_substitution_damage(add_text: str, raw_sources: list[str]) -> bool:
+    """True when --text plausibly lost backtick/`$()` payload to the shell (#415)."""
+    if _SHELL_OUTPUT_RE.search(add_text):
+        return True
+    norm_add = contract_text_norm(add_text)
+    if len(norm_add) < 8:
+        return False
+    add_words = set(norm_add.split())
+    for raw in raw_sources:
+        for line in raw.splitlines():
+            if "`" not in line and "$(" not in line:
+                continue
+            full_norm = contract_text_norm(line)
+            if norm_add in full_norm:
+                return False
+            tick_inners = re.findall(r"`([^`]*)`", line)
+            if not tick_inners:
+                continue
+            line_words = set(full_norm.split())
+            if len(add_words & line_words) < 3:
+                continue
+            for inner in tick_inners:
+                inner_norm = contract_text_norm(inner)
+                if inner_norm and inner_norm in norm_add:
+                    return False
+            if add_words - line_words:
+                return True
+    return False
+
+
+def refuse_add_text_not_in_contract(
+    root: Path,
+    order: dict[str, Any],
+    spec_text: str,
+    add_text: str,
+    *,
+    via_text_file: bool,
+    paraphrase_ok: bool,
+    why: str,
+) -> None:
+    """#415: refuse argv --text only when pins exist and it looks shell-mangled."""
+    if via_text_file or paraphrase_ok:
+        if paraphrase_ok and not str(why or "").strip():
+            die("--paraphrase-ok requires --why")
+        return
+    from of.regime import PlanIngress
+
+    if not PlanIngress.pinned(order):
+        return
+    raw_sources = _pinned_plan_texts(root, order, spec_text)
+    if looks_like_shell_substitution_damage(add_text, raw_sources):
+        die(
+            "requirement --text looks shell-mangled vs a pinned plan line "
+            "(backticks or $(…) ran in the shell); of spec --text-file PATH "
+            "(or '-') for verbatim text, or --paraphrase-ok --why WHY"
+        )
 
 
 def merge_extracted_requirements(
@@ -2033,7 +2119,8 @@ def requirement_coverage_errors(root: Path) -> list[str]:
     if field_is_file(spec) and not items:
         errors.append(
             "SPEC-EMPTY: SPEC.md exists but no binding requirements; "
-            "of spec --add ID --text '…' (or of spec --extract under a Rules heading)"
+            "of spec --extract first (numbered lists need no Rules heading), "
+            "then of spec --add ID --text-file PATH if needed"
         )
         return errors
     unowned = [

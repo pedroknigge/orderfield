@@ -621,7 +621,8 @@ class PlanItemCover:
     KIND = "plan_cover"
     NOTE = (
         "plan_cover uncovered — SPEC list-item lines in no requirement "
-        "span; of spec --add ID --text '…' (or indent them under their item)"
+        "span; of spec --extract first, then --add ID --text-file PATH "
+        "(or indent them under their item)"
     )
 
     @staticmethod

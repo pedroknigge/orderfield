@@ -1019,6 +1019,21 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
     s.add_argument("--add", help="new requirement id (PREFIX-001)")
     s.add_argument("--text", help="requirement text (with --add)")
     s.add_argument(
+        "--text-file",
+        dest="text_file",
+        help="requirement text from a file or '-' (stdin; with --add)",
+    )
+    s.add_argument(
+        "--paraphrase-ok",
+        action="store_true",
+        help="with --add: allow text not verbatim in SPEC or plan_source",
+    )
+    s.add_argument(
+        "--why",
+        default="",
+        help="with --paraphrase-ok: reason (required)",
+    )
+    s.add_argument(
         "--non-binding",
         action="store_true",
         help="mark --add as advisory, not binding",

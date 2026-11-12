@@ -321,8 +321,8 @@ def _stamp_and_write_new_field(
         else:
             print(
                 "of: note — --chat-capture-file is pinned; SPEC.md was not written. "
-                "Pass the verbatim brief with --source or --source-file if list items "
-                "should become requirements.",
+                "Next: of spec --revise-file on the capture (same extract as "
+                "--source-file). Prefer --text-file over shell-quoted --text.",
                 file=sys.stderr,
             )
         PlanCiteExtract.emit_unindexed(root, cites)
