@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.6. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.7. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.6`
+**Status:** Shipped · **Current release line:** `0.9.7`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,11 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.7 — per-requirement proof binding, chat ingress fidelity, model enrich
+
+- Per-requirement proof binding on `of spec --run` (`SpecRunBinding`, #414): refuses exit-0 no-ops, requires `--bind-all` to stamp multiple IDs from one receipt, and ties each stamp via `OutsideVerifier.run_covers`. Chat ingress plan fidelity (`ChatIngressPlanFidelity`, #415): `of spec --revise-file` reuses `extract_requirements_from_spec`, and `of spec --add --text-file` stores backticks verbatim while `--text` refuses shell-mangled input when `plan_source` is pinned. Advisory model enrichment (`ModelEnrichProvenance`, `ModelEnrichCli`, `scripts/of/model_enrich.py`, #411). Role audit (#402) and model-experience CONTEXT (#403); long-mission fog vs requirement notes (`docs/long-mission.md`, #418); legacy governance config/workflow/doc removal (#420).
+- Proof: `tests/test_spec_run_binding.py` (`SpecRunBinding`) / `tests/test_chat_ingress_415.py` (`ChatIngressPlanFidelity`) / `tests/test_model_discovery.py` (`ModelEnrichProvenance`, `ModelEnrichCli`).
 
 ## 0.9.6 — hard evidence close, human `/of`, skill half-life
 

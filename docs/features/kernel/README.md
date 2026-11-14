@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.9.6. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.9.7. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.9.6` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.9.7` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -18,6 +18,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 ## Notable behaviors (code-backed)
 
+- 0.9.7 binds proof per requirement on `of spec --run` (`SpecRunBinding`, `tests/test_spec_run_binding.py`, `#414`), aligns chat ingress plan fidelity across `of spec --revise-file` and `of spec --add --text-file` with shell-mangled `--text` refusal (`ChatIngressPlanFidelity`, `tests/test_chat_ingress_415.py`, `#415`), and adds advisory `enrich_models` provenance/tier/price overlays (`ModelEnrichProvenance`, `ModelEnrichCli`, `scripts/of/model_enrich.py`, `tests/test_model_discovery.py`, `#411`). Proof: `SpecRunBinding`, `ChatIngressPlanFidelity`, `ModelEnrichProvenance`, `ModelEnrichCli`; PackagingBump 0.9.7.
 - 0.9.6 closes public surfaces on hard evidence first (`ContractSurface` / kernel `--run`; `OutsideVerifier` only when no hard signal exists). Leader `of spec --run` refuses exit-0 no-ops, requires `--bind-all` to stamp multiple IDs from one receipt, and `OutsideVerifier.run_covers` ties each stamp to the requirement (docs / negative constraints cannot ride a test command). Proof: `tests/test_spec_run_binding.py` / `SpecRunBinding` (#414). `ReviewAttackers` packs cheap adversaries plus one verifier judge. Factual IDs naming a `primary source:` may close from one explorer or verifier cite (`PrimarySource`). Large init may ask a measurable `outcome:` once (`MeasurableOutcome`). Large missions write `docs/plans/<owner>/sources.md` and the first pack is one explorer (`SourcesList`). Persona costumes are banned in prompts (`PersonaCostumeBan`). The skill appendix has a half-life growth gate (`SkillHalfLife`). README and SKILL lead with `/of` in plain language (`ReadmeProductSurface`). Prototype wave: `docs/prototype-wave.md` via `of contend` / `of crown`. Proof: named unittest classes above; PackagingBump 0.9.6.
 - 0.6 form: public entry stays `scripts/of.py`; internals in `scripts/of/{field,wal,learn,retain,spec,pack,regime,doctor,receipt}.py` + `scripts/of/cli/` (`init_cmd`, `ops`, `wave`, `field_cmd`, `spec_cmd`, `eval_cmd`, `issue_cmd`). `of eval` fixture builders live in `scripts/eval_fixtures.py` (re-exported via `cli/eval_cmd.py`). HITL `of issue` lives in `cli/issue_cmd.py`. Schemas, lock, residual binding, closed regime menu, reserved runtime unchanged vs 0.5.7
 - 0.9.5 judges the child's recorded worktree from one resolver (`proof_checkout`): ScopeWrite diffs that checkout and `verify_cmd` runs there; a later wave keeps `kernel-verify.receipt.json` and writes `kernel-verify-<n>`; force-remove of an unlanded worktree withdraws every such stamp. The same `child_id` continues when scratch matches `scratch_bind`. A rule heading is its head word. `requirements_failed` lands on every integrate. `of init` warns on literal `\n` in `--source`. Land commits without a configured git identity. Proof: `ScopeWriteWorktree` / `VerifyWorktree` / `VerifyBinding` / `HandoffClaim` / `ChildFailureStamp` / `WorktreeLandNoIdentity` / `RequirementScan`.
