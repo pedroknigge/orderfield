@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.7
+
+Per-requirement proof binding closes `--run` false greens, chat ingress matches source-file requirement extraction, and model discovery carries advisory tier/price provenance. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.6 notes.
+
+- **Spec proof binding (#414):** `of spec --run` refuses exit-0 no-ops, requires `--bind-all` to stamp multiple IDs from one receipt, and enforces `OutsideVerifier.run_covers` per requirement (`SpecRunBinding`).
+- **Chat ingress fidelity (#415):** `of spec --revise-file` reuses `extract_requirements_from_spec` to match `init --source-file`; `of spec --add --text-file` stores backticks verbatim while `--text` refuses shell-mangled input when `plan_source` is pinned (`ChatIngressPlanFidelity`).
+- **Model enrich (#411):** `scripts/of/model_enrich.py` adds `enrich_models` with seed tiers/prices, inference tiers without invented prices, and opt-in `--refresh-prices` from OpenRouter that never fails `of models` (`ModelEnrichProvenance`, `ModelEnrichCli`).
+- **Docs & cleanup (#402, #403, #418, #420):** role inventory audit (`docs/audit/roles-and-tools-402.md`) and model-experience CONTEXT (`docs/context-control.md`); fog vs requirement notes on `docs/long-mission.md`; removed legacy TLTFIA config, workflow, and doc references.
+- **Proof:** `python3 -m unittest tests/test_packaging.py tests/test_claims_honesty.py tests/test_spec_run_binding.py tests/test_chat_ingress_415.py tests/test_model_discovery.py` and `python3 -m unittest tests/test_release_archive.py` (run locally on Python 3.11+ before release PR).
+- Packaging: VERSION `0.9.7`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.7"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`. Install-size budget 1,647,000 B (<= 80 files).
+
 ## 0.9.6
 
 Close needs hard evidence on public surfaces; the outside verifier is the fallback. The human surface leads with `/of` in plain language. The skill appendix carries a half-life gate. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.5 notes.

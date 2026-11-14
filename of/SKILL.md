@@ -1,9 +1,9 @@
 ---
 name: of
-description: "v0.9.6. Alias for /orderfield. Use when /of, a field must be resumed, or a multi-slice disk brief. Load sibling SKILL.md. Not a second contract. Do not trigger for a harness name alone."
+description: "v0.9.7. Alias for /orderfield. Use when /of, a field must be resumed, or a multi-slice disk brief. Load sibling SKILL.md. Not a second contract. Do not trigger for a harness name alone."
 license: MIT
 metadata:
-  version: "0.9.6"
+  version: "0.9.7"
   alias-of: orderfield
 ---
 
