@@ -79,11 +79,10 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - Deterministic `next` (`of resume --json`): REPAIR / RESTORE / CLOSE UNPROVEN; `of patch --from-current`; ACTIVE moved only by init/new/crown/`of fields --use`; liveness by start epoch + `host_id`; total read path; `allow_abbrev=False`.
 - Proof: claims-matrix C-154..C-180 (each row names its falsifying test); `python3 scripts/run_tests.py`; `tests/test_field_model.py` seeded fuzzer.
 
-## 0.8.34 — CLI parser domain decomposition, root stub migration skew resolution, and TLTFIA governance onboarding
+## 0.8.34 — CLI parser domain decomposition and root stub migration skew resolution
 
 - CLI parser domain decomposition: monolithic 975-line `build_parser` in `scripts/of/cli/__init__.py` decomposed into 6 cohesive domain subparsers, reducing `build_parser` to 21 lines while preserving 100% equivalence across all 35 CLI subcommands and options.
 - Root stub migration skew resolution: migrated legacy root stub `.orderfield/ORDER.json` to timestamped archive via `of migrate --field ord_0ba66127`, restoring `of doctor` diagnostic to clean `ok` status without silent deletion.
-- TLTFIA governance and project fitness: integrated TLTFIA governance with `no-new` ratchet, binding verified project assertions across host RAM detection, packaging discovery, README quickstart, schema traversal, adapter resume, close evidence, and runbook path gates.
 - Proof: `tests/test_kernel_cli.py` (129/129 tests passed), `tests/test_packaging.py` (`test_validate_skill_exits_zero`), `tests/test_host_ram.py`, `tests/test_quickstart.py`, `tests/test_schema_subset.py`, `tests/test_adapter_resume.py`, `tests.test_kernel_spec.CloseEvidenceGate`, `tests.test_kernel_regime.RunbookPathGate`, `of doctor` (`doctor ok`).
 
 ## 0.8.33 — kernel invariants preservation, worktree landing, and natural brief extraction
