@@ -110,4 +110,7 @@ ok "living map"
 python3 "$ROOT/scripts/check_packaging_bump.py" "$ROOT" || fail "packaging bump discipline"
 ok "packaging bump"
 
+python3 "$ROOT/scripts/check_release_assets.py" || fail "release asset assertion"
+ok "release assets"
+
 echo "OK validate-skill"

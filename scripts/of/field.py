@@ -21,6 +21,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -2165,6 +2166,65 @@ def write_field_bytes(base: Path, target: Path, payload: bytes) -> Path:
         except FileNotFoundError:
             pass
     return leaf
+
+
+def _symlink_component(base: Path, target: Path) -> Path | None:
+    """First symlink from base through target, else None. Ancestors of base are ignored."""
+    base = Path(base)
+    target = Path(target)
+    if base.is_symlink():
+        return base
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe private create: {target} is not under {base}")
+    current = base
+    for part in rel.parts:
+        if part in ("", "."):
+            continue
+        if part == "..":
+            die(f"unsafe private create: {target} is not canonical")
+        current = current / part
+        try:
+            info = os.lstat(current)
+        except FileNotFoundError:
+            return None
+        if stat.S_ISLNK(info.st_mode):
+            return current
+    return None
+
+
+def create_private_nofollow(
+    path: Path, payload: bytes, *, mode: int = 0o600, base: Path | None = None
+) -> None:
+    """Exclusive create under base (default: parent). O_EXCL|O_NOFOLLOW, mode 0600."""
+    path = Path(path)
+    root = Path(base) if base is not None else path.parent
+    link = _symlink_component(root, path)
+    if link is not None:
+        die(f"unsafe private create: symlink component {link}")
+    parent = path.parent
+    try:
+        parent_info = os.lstat(parent)
+    except FileNotFoundError:
+        die(f"unsafe private create: missing parent of {path.name}")
+    if stat.S_ISLNK(parent_info.st_mode) or not stat.S_ISDIR(parent_info.st_mode):
+        die(f"unsafe private create: symlink component {parent}")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(str(path), flags, mode)
+    except OSError as exc:
+        die(
+            f"unsafe private create: refusing {path.name}: "
+            f"{exc.strerror or exc.__class__.__name__}"
+        )
+    try:
+        os.fchmod(fd, mode)
+        if os.write(fd, payload) != len(payload):
+            die(f"unsafe private create: short write of {path.name}")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def append_field_text(base: Path, target: Path, text: str) -> None:

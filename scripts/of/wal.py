@@ -12,6 +12,7 @@ CURRENT or a missing head generation refuses (wal-broken) like writers.
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import hmac
 import json
@@ -30,7 +31,9 @@ from typing import Any
 from of.field import (
     FIELD_SPEC_MD,
     _read_json_object,
+    _symlink_component,
     bounded_warning_message,
+    create_private_nofollow,
     die,
     dump_bytes,
     emit_event,
@@ -503,35 +506,40 @@ class LeaderKey:
         if env_key:
             return env_key.encode("utf-8")
         key_path = LeaderKey.path(root)
+        link = _symlink_component(field_home(root), key_path)
+        if link is not None:
+            die(f"unsafe leader key: symlink component {link}")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
         try:
-            if key_path.is_file() and not key_path.is_symlink():
-                raw = key_path.read_text(encoding="utf-8").strip()
-                if raw:
-                    return raw.encode("utf-8")
-        except OSError:
+            fd = os.open(os.fspath(key_path), flags)
+        except FileNotFoundError:
             return None
-        return None
+        except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                die(f"unsafe leader key: symlink component {key_path}")
+            return None
+        try:
+            raw = os.read(fd, 4096).decode("utf-8", "replace").strip()
+        finally:
+            os.close(fd)
+        return raw.encode("utf-8") if raw else None
 
     @staticmethod
     def ensure(root: Path | None = None) -> bytes:
+        key_path = LeaderKey.path(root)
+        link = _symlink_component(field_home(root), key_path)
+        if link is not None:
+            die(f"unsafe leader key: symlink component {link}")
         existing = LeaderKey.read(root)
         if existing is not None:
             return existing
         token = secrets.token_hex(32)
-        key_path = LeaderKey.path(root)
-        try:
-            key_path.parent.mkdir(parents=True, exist_ok=True)
-            fd = os.open(
-                str(key_path),
-                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                0o600,
-            )
-            with os.fdopen(fd, "wb") as handle:
-                handle.write((token + "\n").encode("utf-8"))
-                handle.flush()
-                os.fsync(handle.fileno())
-        except OSError:
-            pass
+        parent = key_path.parent
+        if parent.is_symlink():
+            die(f"unsafe leader key: symlink component {parent}")
+        if not parent.is_dir():
+            parent.mkdir(parents=True, exist_ok=True)
+        create_private_nofollow(key_path, (token + "\n").encode("utf-8"), base=field_home(root))
         return token.encode("utf-8")
 
     @staticmethod

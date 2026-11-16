@@ -204,14 +204,20 @@ class SkillHalfLife(unittest.TestCase):
         self.assertNotIn("doctor        FAIL", text)
 
     def test_live_doctor_stays_ok(self) -> None:
+        # A real `of doctor` process. cwd is an empty temp root so an
+        # untracked checkout `.orderfield/` (plan_cover WARN) cannot turn
+        # the pre-publish gate red.
         home = Path(tempfile.mkdtemp(prefix="of-half-life-doc-"))
         self.addCleanup(shutil.rmtree, home, True)
+        root = Path(tempfile.mkdtemp(prefix="of-half-life-root-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        self.assertFalse(root.is_relative_to(ROOT))
         env = os.environ.copy()
         env["HOME"] = str(home)
         env["OF_NO_UPDATE_CHECK"] = "1"
         proc = subprocess.run(
             [sys.executable, str(SCRIPTS / "of.py"), "doctor"],
-            cwd=ROOT,
+            cwd=root,
             capture_output=True,
             text=True,
             env=env,

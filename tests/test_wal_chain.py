@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -27,7 +28,15 @@ OF_PY = SCRIPTS / "of.py"
 def run_of(cwd: Path, *args: str, env_extra: dict | None = None) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1"}
     env.setdefault("OF_LEARNINGS", str(Path(tempfile.gettempdir()) / "of-hermetic-learnings.json"))
-    for key in ("OF_WAL_CRASH", "OF_WAL_ADOPT_LIVE", "OF_CHILD", "OF_JSON", "OF_FIELD"):
+    for key in (
+        "OF_WAL_CRASH",
+        "OF_WAL_ADOPT_LIVE",
+        "OF_CHILD",
+        "OF_JSON",
+        "OF_FIELD",
+        "OF_LEADER_KEY",
+        "OF_LEADER_TOKEN",
+    ):
         env.pop(key, None)
     env.update(env_extra or {})
     return subprocess.run(
@@ -190,6 +199,82 @@ class WalChainCli(unittest.TestCase):
         self.assertEqual(len(orphans), 3, orphans)
         for p in walh.iterdir():
             self.assertNotIn("FORGED", (p / "ORDER.json").read_text() if (p / "ORDER.json").is_file() else "")
+
+    def _plant_single_generation(
+        self,
+        name: str,
+        *,
+        parent: str | None = None,
+        strip_hmac: bool = False,
+        corrupt_bytes: bool = False,
+    ) -> str:
+        """One seq+1 generation. The only fault is the flag that is set."""
+        cur = self.current()
+        gid = cur["generation"]
+        walh = self.home() / "wal"
+        dest = walh / f"{cur['seq'] + 1:08d}-{name}"
+        shutil.copytree(walh / gid, dest)
+        order = load(dest / "ORDER.json")
+        order["mission"] = f"FORGED {name}"
+        payload = (json.dumps(order, indent=2) + "\n").encode("utf-8")
+        (dest / "ORDER.json").write_bytes(payload)
+        man = load(dest / "MANIFEST.json")
+        man["generation"] = dest.name
+        man["seq"] = cur["seq"] + 1
+        man["parent"] = gid if parent is None else parent
+        man["parent_manifest_sha256"] = cur["manifest_sha256"]
+        if not corrupt_bytes:
+            digest = hashlib.sha256(payload).hexdigest()
+            man["files"]["ORDER.json"] = digest
+            man["order_sha256"] = digest
+        man.pop("hmac_sha256", None)
+        if not strip_hmac:
+            key = (walh / ".leader_key").read_text(encoding="utf-8").strip().encode("utf-8")
+            man["hmac_sha256"] = hmac.new(
+                key, wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256
+            ).hexdigest()
+        (dest / "MANIFEST.json").write_text(
+            json.dumps(man, indent=2) + "\n", encoding="utf-8"
+        )
+        return dest.name
+
+    def _assert_single_forge_quarantined(self, forged_name: str) -> None:
+        r = self.ok(self.tmp, "checkpoint", "--summary", "after single forge")
+        self.assertIn("quarantined", r.stderr)
+        self.assertIn("not published", r.stderr)
+        self.assertEqual(load(self.home() / "ORDER.json")["mission"], "m0")
+        walh = self.home() / "wal"
+        self.assertFalse((walh / forged_name).exists())
+        orphans = list((walh / "orphans").glob(f"*{forged_name}*"))
+        self.assertEqual(len(orphans), 1, [p.name for p in (walh / "orphans").iterdir()])
+        self.assertNotEqual(self.current()["generation"], forged_name)
+
+    def test_single_bad_parent_is_quarantined_not_published(self) -> None:
+        forged = self._plant_single_generation("badparent", parent="deadbeefdead")
+        self._assert_single_forge_quarantined(forged)
+
+    def test_single_stripped_hmac_is_quarantined_not_published(self) -> None:
+        forged = self._plant_single_generation("nohmac", strip_hmac=True)
+        self._assert_single_forge_quarantined(forged)
+
+    def test_single_nonintact_generation_is_quarantined_not_published(self) -> None:
+        forged = self._plant_single_generation("tornfile", corrupt_bytes=True)
+        self._assert_single_forge_quarantined(forged)
+
+    def test_checkpoint_refuses_symlinked_leader_key_and_keeps_canary(self) -> None:
+        canary = self.tmp / "canary.txt"
+        original = "user content stays\n"
+        canary.write_text(original, encoding="utf-8")
+        key = self.home() / "wal" / ".leader_key"
+        self.assertTrue(key.is_file())
+        self.assertFalse(key.is_symlink())
+        key.unlink()
+        key.symlink_to(canary)
+        r = run_of(self.tmp, "checkpoint", "--summary", "probe")
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("symlink", r.stderr)
+        self.assertEqual(canary.read_text(encoding="utf-8"), original)
+        self.assertNotIn("checkpoint saved", r.stdout)
 
     def test_crash_after_current_then_resume_repairs_live(self) -> None:
         crashed = run_of(

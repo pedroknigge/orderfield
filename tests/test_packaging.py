@@ -243,8 +243,13 @@ class InstallScript(unittest.TestCase):
         # and measurable-outcome / prototype-wave skill growth.
         # #411 model_enrich (tier/price overlay on of models) adds ~6.2 KB.
         # #414 spec --run proof binding (--bind-all, run_covers) adds ~11 KB.
-        # Doc growth still needs cuts.
-        self.assertLessEqual(size, 1_647_000, size)
+        # The symlink-safe leader-key create (`create_private_nofollow`:
+        # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
+        # Measured dest is 1,648,879. 1,649,000 leaves about a hundred bytes.
+        # The walk starts at the field home: macOS /var is a symlink, and
+        # lstat from / refused every temp field.
+        # The publish-asset script and tests stay outside this surface.
+        self.assertLessEqual(size, 1_649_000, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -655,6 +660,25 @@ class ValidateSkill(unittest.TestCase):
             script.chmod(mode | stat.S_IXUSR)
         proc = run(ROOT, "bash", str(script))
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+
+class RunnerModuleTimeout(unittest.TestCase):
+    """test_kernel_cli exceeded the 900s cap under the parallel runner."""
+
+    def _runner(self):
+        path = ROOT / "scripts" / "run_tests.py"
+        spec = importlib.util.spec_from_file_location("run_tests", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_kernel_cli_floor_has_headroom_over_the_900s_cap(self) -> None:
+        runner = self._runner()
+        # Standalone was ~302s (131 tests). Under load it passed 900s.
+        # 1800s is 2× that cap and ~6× standalone, inside the 30 min CI job.
+        self.assertEqual(runner.module_timeout("test_kernel_cli", 900), 1800)
+        self.assertEqual(runner.module_timeout("test_wal_chain", 900), 900)
+        self.assertEqual(runner.module_timeout("test_kernel_cli", 2400), 2400)
 
 
 class DeadDefsGate(unittest.TestCase):
