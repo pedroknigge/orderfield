@@ -109,6 +109,17 @@ class NoFollowWrites(TmpCase):
             field.create_private_nofollow(parent / ".leader_key", b"hmac-key\n")
         self.assertFalse((outside / ".leader_key").exists())
 
+    def test_private_create_allows_a_symlinked_prefix_outside_the_field(self) -> None:
+        # macOS /var -> /private/var. A symlink above the field is not the key.
+        real = self.tmp / "real"
+        (real / ".orderfield").mkdir(parents=True)
+        via = self.tmp / "via-link"
+        via.symlink_to(real)
+        path = via / ".orderfield" / ".leader_key"
+        field.create_private_nofollow(path, b"abc\n")
+        self.assertEqual((real / ".orderfield" / ".leader_key").read_bytes(), b"abc\n")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
     def test_private_create_is_exclusive_and_mode_0600(self) -> None:
         path = self.home / ".leader_key"
         field.create_private_nofollow(path, b"abc\n")

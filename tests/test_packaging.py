@@ -245,7 +245,9 @@ class InstallScript(unittest.TestCase):
         # #414 spec --run proof binding (--bind-all, run_covers) adds ~11 KB.
         # The symlink-safe leader-key create (`create_private_nofollow`:
         # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
-        # Measured dest is 1,648,648. 1,649,000 leaves a few hundred bytes.
+        # Measured dest is 1,648,879. 1,649,000 leaves about a hundred bytes.
+        # The walk starts at the field home: macOS /var is a symlink, and
+        # lstat from / refused every temp field.
         # The publish-asset script and tests stay outside this surface.
         self.assertLessEqual(size, 1_649_000, size)
 

@@ -2168,16 +2168,22 @@ def write_field_bytes(base: Path, target: Path, payload: bytes) -> Path:
     return leaf
 
 
-def _symlink_component(path: Path) -> Path | None:
-    """lstat each existing component. First symlink, or None if the leaf is missing."""
-    path = Path(path)
-    current = Path(path.anchor) if path.is_absolute() else Path()
-    parts = path.parts[1:] if path.is_absolute() else path.parts
-    for part in parts:
+def _symlink_component(base: Path, target: Path) -> Path | None:
+    """First symlink from base through target, else None. Ancestors of base are ignored."""
+    base = Path(base)
+    target = Path(target)
+    if base.is_symlink():
+        return base
+    try:
+        rel = target.relative_to(base)
+    except ValueError:
+        die(f"unsafe private create: {target} is not under {base}")
+    current = base
+    for part in rel.parts:
         if part in ("", "."):
             continue
         if part == "..":
-            die(f"unsafe private create: {path} is not canonical")
+            die(f"unsafe private create: {target} is not canonical")
         current = current / part
         try:
             info = os.lstat(current)
@@ -2188,10 +2194,13 @@ def _symlink_component(path: Path) -> Path | None:
     return None
 
 
-def create_private_nofollow(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
-    """Exclusive create. lstat refuses a symlink component; O_EXCL|O_NOFOLLOW; mode 0600."""
+def create_private_nofollow(
+    path: Path, payload: bytes, *, mode: int = 0o600, base: Path | None = None
+) -> None:
+    """Exclusive create under base (default: parent). O_EXCL|O_NOFOLLOW, mode 0600."""
     path = Path(path)
-    link = _symlink_component(path)
+    root = Path(base) if base is not None else path.parent
+    link = _symlink_component(root, path)
     if link is not None:
         die(f"unsafe private create: symlink component {link}")
     parent = path.parent

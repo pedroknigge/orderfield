@@ -506,7 +506,7 @@ class LeaderKey:
         if env_key:
             return env_key.encode("utf-8")
         key_path = LeaderKey.path(root)
-        link = _symlink_component(key_path)
+        link = _symlink_component(field_home(root), key_path)
         if link is not None:
             die(f"unsafe leader key: symlink component {link}")
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
@@ -527,7 +527,7 @@ class LeaderKey:
     @staticmethod
     def ensure(root: Path | None = None) -> bytes:
         key_path = LeaderKey.path(root)
-        link = _symlink_component(key_path)
+        link = _symlink_component(field_home(root), key_path)
         if link is not None:
             die(f"unsafe leader key: symlink component {link}")
         existing = LeaderKey.read(root)
@@ -535,11 +535,11 @@ class LeaderKey:
             return existing
         token = secrets.token_hex(32)
         parent = key_path.parent
-        if _symlink_component(parent) is not None or parent.is_symlink():
+        if parent.is_symlink():
             die(f"unsafe leader key: symlink component {parent}")
         if not parent.is_dir():
             parent.mkdir(parents=True, exist_ok=True)
-        create_private_nofollow(key_path, (token + "\n").encode("utf-8"))
+        create_private_nofollow(key_path, (token + "\n").encode("utf-8"), base=field_home(root))
         return token.encode("utf-8")
 
     @staticmethod
