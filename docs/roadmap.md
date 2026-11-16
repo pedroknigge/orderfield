@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.7. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.8. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.7`
+**Status:** Shipped · **Current release line:** `0.9.8`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,11 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.8 — symlinked leader key refused, one forged generation quarantined
+
+- `create_private_nofollow` (`scripts/of/field.py`, #422) is the exclusive secret create. The walk starts at the field home, refuses a symlink, opens with `O_CREAT|O_EXCL|O_NOFOLLOW`, mode `0600`, and never truncates. `LeaderKey.ensure` / `LeaderKey.read` use that walk, so a planted `.orderfield/wal/.leader_key` symlink is not a missing key and is not truncated. A symlink above the field (macOS `/var`) still creates the key. One seq+1 generation with a bad parent, a stripped HMAC, or non-intact bytes is quarantined, not published. `of_adapters.die` calls `of.field.die` (redaction and one `error` event, `kind=refused`). `scripts/check_release_assets.py` keeps the PUBLISH.md three-name assertion on `validate-skill`.
+- Proof: `tests/test_wal_chain.py::WalChainCli` (`test_checkpoint_refuses_symlinked_leader_key_and_keeps_canary`, `test_single_bad_parent_is_quarantined_not_published`, `test_single_stripped_hmac_is_quarantined_not_published`, `test_single_nonintact_generation_is_quarantined_not_published`); `tests/test_security_run1.py` (`NoFollowWrites`, `AdapterDieBoundary`).
 
 ## 0.9.7 — per-requirement proof binding, chat ingress fidelity, model enrich
 
