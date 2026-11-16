@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.8
+
+A planted symlink on the leader key is refused, and one forged WAL generation is quarantined instead of published. Adapter refusals share the kernel redaction boundary. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.7 notes.
+
+- **Symlinked leader key (#422):** `create_private_nofollow` is the exclusive secret create. The walk starts at the field home, refuses a symlink, opens with `O_CREAT|O_EXCL|O_NOFOLLOW`, mode `0600`, and never truncates. `LeaderKey.ensure` and `LeaderKey.read` use that walk, so a symlink is not treated as a missing key. `of checkpoint` on a planted `.leader_key` symlink exits non-zero and leaves the canary unchanged. A symlink above the field (macOS `/var`) still creates the key.
+- **Single forged generation (#422):** recovery publishes a generation only when its parent is CURRENT, `parent_manifest_sha256` matches, seq is CURRENT+1, files hash to the MANIFEST (`_generation_intact`), and `LeaderKey.verify_candidate` accepts the HMAC. One seq+1 generation with a bad parent, a stripped HMAC, or non-intact bytes is quarantined. The three-sibling forge test stays.
+- **Adapter die (#422):** `of_adapters.die` calls `of.field.die`. Plain stderr redacts an `sk-` token. `--json` emits one `error` event with `kind=refused`.
+- **Publish assets (#422):** `scripts/check_release_assets.py` fails `validate-skill` when PUBLISH.md drops the three-name assertion (`install.sh`, `orderfield-<ver>.tar.gz`, `SHA256SUMS`).
+- **Proof:** `tests/test_wal_chain.py::WalChainCli` (`test_checkpoint_refuses_symlinked_leader_key_and_keeps_canary`, `test_single_bad_parent_is_quarantined_not_published`, `test_single_stripped_hmac_is_quarantined_not_published`, `test_single_nonintact_generation_is_quarantined_not_published`); `tests/test_security_run1.py` (`NoFollowWrites`, `AdapterDieBoundary`); `tests/test_release_archive.py::ReleaseAssetAssertion`.
+- Packaging: VERSION `0.9.8`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.8"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`. Install-size budget stays 1,649,000 B (<= 80 files). `SKILL.md` core stays under 19,000 B. No cap moved: `0.9.7` and `0.9.8` are the same length on the installed surface.
+
 ## 0.9.7
 
 Per-requirement proof binding closes `--run` false greens, chat ingress matches source-file requirement extraction, and model discovery carries advisory tier/price provenance. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.6 notes.
