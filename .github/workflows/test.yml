@@ -30,8 +30,11 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
-      # One subprocess per tests/test_*.py, os.cpu_count() at a time, 900 s
-      # per module; prints the 20 slowest modules.
+      # One subprocess per tests/test_*.py, os.cpu_count() at a time.
+      # Default per-module timeout is 900s. test_kernel_cli is floored at
+      # 1800s: ~302s alone (131 tests), and it exceeded 900s under load
+      # (2026-11-16). 1800s is 2× that cap and ~6× standalone, inside this
+      # 30-minute job. Prints the 20 slowest modules.
       - name: Unit tests (parallel runner; kernel + packaging + README quickstart)
         run: python3 scripts/run_tests.py --top 20
       # Also proves every EVAL_UNITTEST_MODULES name still resolves in

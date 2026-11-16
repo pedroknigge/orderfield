@@ -9,15 +9,16 @@ import re
 import shlex
 import shutil
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 
 def die(msg: str, code: int = 1) -> None:
-    print(f"of: {msg}", file=sys.stderr)
-    raise SystemExit(code)
+    """Kernel refusal boundary. Redaction and the ``error`` event live in ``of.field.die``."""
+    from of.field import die as kernel_die
+
+    kernel_die(msg, code)
 
 
 def skill_root() -> Path:

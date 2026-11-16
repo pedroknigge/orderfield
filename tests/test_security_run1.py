@@ -7,8 +7,10 @@ or the network.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
+import io
 import json
 import os
 import shutil
@@ -88,6 +90,34 @@ class NoFollowWrites(TmpCase):
         target = self.tmp / "plain" / "note.json"
         field.dump_bytes(target, b"ok\n")
         self.assertEqual(target.read_bytes(), b"ok\n")
+
+    def test_private_create_refuses_symlink_leaf_and_keeps_canary(self) -> None:
+        outside = self.tmp / "canary.txt"
+        outside.write_text("ORIGINAL\n", encoding="utf-8")
+        link = self.home / ".leader_key"
+        link.symlink_to(outside)
+        with self.assertRaises(SystemExit):
+            field.create_private_nofollow(link, b"hmac-key\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "ORIGINAL\n")
+
+    def test_private_create_refuses_symlink_parent(self) -> None:
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        parent = self.home / "wal"
+        parent.symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(SystemExit):
+            field.create_private_nofollow(parent / ".leader_key", b"hmac-key\n")
+        self.assertFalse((outside / ".leader_key").exists())
+
+    def test_private_create_is_exclusive_and_mode_0600(self) -> None:
+        path = self.home / ".leader_key"
+        field.create_private_nofollow(path, b"abc\n")
+        self.assertEqual(path.read_bytes(), b"abc\n")
+        self.assertFalse(path.is_symlink())
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        with self.assertRaises(SystemExit):
+            field.create_private_nofollow(path, b"zzz\n")
+        self.assertEqual(path.read_bytes(), b"abc\n")
 
 
 class PhysicalAncestor(TmpCase):
@@ -179,6 +209,46 @@ class VerifyCmdEnv(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn(b"CLEAN", out)
         self.assertNotIn(b"LEAK", out)
+
+
+class AdapterDieBoundary(unittest.TestCase):
+    """Adapter refusals use the kernel die: redaction and the error event."""
+
+    def _secret(self) -> str:
+        return "sk-" + ("a" * 24)
+
+    def test_die_redacts_plain_stderr(self) -> None:
+        secret = self._secret()
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"OF_JSON": ""}):
+            os.environ.pop("OF_JSON", None)
+            with contextlib.redirect_stderr(err):
+                with self.assertRaises(SystemExit) as raised:
+                    of_adapters.die(f"bad token {secret}")
+        self.assertEqual(raised.exception.code, 1)
+        text = err.getvalue()
+        self.assertNotIn(secret, text)
+        self.assertIn("<redacted>", text)
+        self.assertIn("of:", text)
+        self.assertNotIn('"event"', text)
+
+    def test_die_emits_error_event_under_json(self) -> None:
+        secret = self._secret()
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"OF_JSON": "1"}):
+            with contextlib.redirect_stderr(err):
+                with self.assertRaises(SystemExit) as raised:
+                    of_adapters.die(f"bad token {secret}", code=2)
+        self.assertEqual(raised.exception.code, 2)
+        lines = [line for line in err.getvalue().splitlines() if line.strip()]
+        self.assertEqual(len(lines), 1, err.getvalue())
+        event = json.loads(lines[0])
+        self.assertEqual(event["event"], "error")
+        self.assertIs(event["ok"], False)
+        self.assertEqual(event["kind"], "refused")
+        self.assertNotIn(secret, event["message"])
+        self.assertIn("<redacted>", event["message"])
+        self.assertNotIn("of:", lines[0])
 
 
 class SessionIdArgv(unittest.TestCase):

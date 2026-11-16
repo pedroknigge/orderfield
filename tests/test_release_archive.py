@@ -7,6 +7,7 @@ import io
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALL = ROOT / "install.sh"
+sys.path.insert(0, str(ROOT / "scripts"))
+import check_release_assets  # noqa: E402
 
 
 def run(cwd: Path, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
@@ -117,6 +120,31 @@ class ReleaseArchivePin(unittest.TestCase):
         self.assertEqual(doctor.returncode, 0, doctor.stderr)
         self.assertIn(f"kernel        {ver}", doctor.stdout)
         self.assertIn("doctor        ok", doctor.stdout)
+
+
+class ReleaseAssetAssertion(unittest.TestCase):
+    """The publish asset check fails closed when a file is missing."""
+
+    def test_page_keeps_the_three_asset_assertion(self) -> None:
+        text = (ROOT / "PUBLISH.md").read_text(encoding="utf-8")
+        self.assertEqual(check_release_assets.ReleaseAssets.page_errors(text), [])
+
+    def test_dir_rejects_a_missing_tarball(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-assets-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "install.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+        (tmp / "SHA256SUMS").write_text("abc  install.sh\n", encoding="utf-8")
+        errors = check_release_assets.ReleaseAssets.dir_errors(tmp, "0.9.7")
+        self.assertTrue(any("orderfield-0.9.7.tar.gz" in error for error in errors), errors)
+
+    def test_dir_accepts_exactly_the_three_assets(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-assets-ok-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        for name in ("install.sh", "SHA256SUMS", "orderfield-0.9.7.tar.gz"):
+            (tmp / name).write_bytes(b"x")
+        self.assertEqual(
+            check_release_assets.ReleaseAssets.dir_errors(tmp, "0.9.7"), []
+        )
 
 
 if __name__ == "__main__":

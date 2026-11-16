@@ -418,7 +418,13 @@ class GrokAdapterSpawn(unittest.TestCase):
         self.assertIn("exit", meta)
 
     def test_timeout_finalizes_and_extracts_for_grok(self) -> None:
-        packet_rel = self.pack("gto", "--seconds", "1")
+        # A 1s budget raced the parallel runner: the fake could still be
+        # unscheduled when the deadline fired, or its 10s sleep could finish
+        # while the leader was unscheduled, so the outcome was not a timeout.
+        # 30s is enough for the child to print under an 18-way load. The
+        # sleep stays far past that deadline so a late timer still sees it.
+        deadline_s = 30
+        packet_rel = self.pack("gto", "--seconds", str(deadline_s))
         packet = json.loads((self.tmp / packet_rel).read_text(encoding="utf-8"))
         result = self.tmp / ".orderfield/work/scratch/gto/notes.md"
         result.parent.mkdir(parents=True, exist_ok=True)
@@ -453,7 +459,7 @@ class GrokAdapterSpawn(unittest.TestCase):
             f"Path({str(result)!r}).write_text({notes!r}, encoding='utf-8')\n"
             f"print(json.dumps({residual!r}))\n"
             "sys.stdout.flush()\n"
-            "time.sleep(10)\n"
+            "time.sleep(300)\n"
         )
         spawned = run_of(
             self.tmp,

@@ -24,6 +24,19 @@ ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
 _FAILED_RE = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
 _RAN_RE = re.compile(r"^Ran (\d+) tests? in", re.M)
+# test_kernel_cli is 131 tests and ~302s alone. Under the parallel runner
+# (os.cpu_count() jobs) it exceeded the 900s default (2026-11-16 audit).
+# 1800s is 2× that cap and ~6× the standalone time, and it still fits the
+# 30-minute CI job: the module is the long pole, not a serial add-on.
+MODULE_TIMEOUT_FLOOR = {"test_kernel_cli": 1800.0}
+
+
+def module_timeout(mod: str, default: float) -> float:
+    """Per-module seconds. A floor wins when the default is tighter."""
+    floor = MODULE_TIMEOUT_FLOOR.get(mod)
+    if floor is None:
+        return default
+    return max(default, floor)
 
 
 def discover(names: list[str]) -> list[str]:
@@ -85,11 +98,19 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     mods = discover(args.modules)
-    print(f"run_tests: {len(mods)} modules, jobs={args.jobs}, timeout={args.timeout:.0f}s", flush=True)
+    floors = ", ".join(
+        f"{name}={module_timeout(name, args.timeout):.0f}s"
+        for name in MODULE_TIMEOUT_FLOOR
+    )
+    print(
+        f"run_tests: {len(mods)} modules, jobs={args.jobs}, "
+        f"timeout={args.timeout:.0f}s; floors: {floors}",
+        flush=True,
+    )
     t0 = time.monotonic()
     results = []
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        futures = [pool.submit(run_module, m, args.timeout) for m in mods]
+        futures = [pool.submit(run_module, m, module_timeout(m, args.timeout)) for m in mods]
         for fut in as_completed(futures):
             r = fut.result()
             results.append(r)

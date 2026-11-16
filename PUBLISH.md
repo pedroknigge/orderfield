@@ -63,6 +63,7 @@ cp install.sh "${asset_dir}/install.sh"
     shasum -a 256 install.sh "orderfield-${release_version}.tar.gz" > SHA256SUMS
   fi
 )
+python3 scripts/check_release_assets.py --assets "$asset_dir" --version "$release_version"
 gh release upload "$release_tag" \
   "${asset_dir}/install.sh" \
   "${asset_dir}/orderfield-${release_version}.tar.gz" \
@@ -79,6 +80,8 @@ test -n "$(gh release view "$release_tag" --json publishedAt --jq .publishedAt)"
 gh release view "$release_tag" --json url,tagName,isDraft,isPrerelease,publishedAt
 test "$(gh release view "$release_tag" --json assets --jq '[.assets[].name] | sort | join(" ")')" = "SHA256SUMS install.sh orderfield-${release_version}.tar.gz"
 ```
+
+`scripts/check_release_assets.py` is that assertion as a command. `validate-skill.sh` runs it, so dropping the three names from this page fails the pre-publish gate. `--assets` checks the directory you are about to upload. The `gh release view` line above is the remote half; run it after upload. Call the release complete only after both succeed.
 
 ## Mortal install (after push)
 
