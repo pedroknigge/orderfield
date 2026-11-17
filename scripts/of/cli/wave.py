@@ -1229,6 +1229,9 @@ def cmd_unpack(args: argparse.Namespace) -> None:
         if leftover is not None and leftover.is_file():
             leftover.unlink()
     ResidualPin.drop(wdir, child_id)
+    from of.cli.spec_cmd import ReviewWitness
+
+    ReviewWitness.drop(wdir, child_id)
     scratch_rel = packet.get("scratch_dir")
     if scratch_rel:
         scratch = safe_relative_path(root, scratch_rel, "packet scratch_dir")
@@ -1975,7 +1978,9 @@ def cmd_collect(args: argparse.Namespace) -> None:
             for line in _kernel_verify_lines(root, pkt, data):
                 print(line)
             from of.cli.ops import ObservationPack
+            from of.cli.spec_cmd import ReviewWitness
 
+            ReviewWitness.stamp(root, pkt)
             ObservationPack.emit(root, pkt)
         if pin_held:
             # Re-pin after kernel writes (stamp / write-back) so the next

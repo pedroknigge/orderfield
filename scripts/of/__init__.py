@@ -194,6 +194,7 @@ from of.cli import (  # noqa: F401
     ContrastReport,
     EvaluatorPacket,
     ReviewAttackers,
+    ReviewWitness,
     EfficiencySignal,
     HandoffReport,
     DriveAfterIntegrate,

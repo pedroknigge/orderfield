@@ -93,6 +93,7 @@ from of.cli.spec_cmd import (  # noqa: F401
     ContrastReport,
     EvaluatorPacket,
     ReviewAttackers,
+    ReviewWitness,
     print_contrast_report,
 )
 from of.cli.issue_cmd import (

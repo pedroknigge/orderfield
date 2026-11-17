@@ -43,6 +43,7 @@ from of.field import (
     spec_path,
     utc_now,
     wave_dir,
+    wave_numbers,
     _read_json_object,
 )
 from of.regime import (
@@ -57,8 +58,10 @@ from of.receipt import EvidenceReceipt
 from of.retain import EvidenceStore, ReceiptInputs
 from of.pack import (
     PacketRevStale,
+    ReviewScope,
     in_flight_children,
     packed_children,
+    packet_residual_file,
     truncate_slice,
 )
 from of.spec import (
@@ -1236,6 +1239,235 @@ class ReviewAttackers:
         return str(status or "") in ReviewAttackers.ACT
 
 
+class ReviewWitness:
+    DIR = "review"
+    V = 1
+    NO_WITNESS = "no witness"
+    PHRASES = ("no open findings", "nothing left", "nothing remained")
+    OPEN = frozenset({"act", "consider"})
+
+    @staticmethod
+    def path(root: Path, packet: dict[str, Any]) -> Path:
+        wave = int(packet.get("wave") or 1)
+        child = str(packet.get("child_id") or "")
+        return wave_dir(wave, root) / ReviewWitness.DIR / f"{child}.json"
+
+    @staticmethod
+    def drop(wdir: Path, child: str) -> None:
+        try:
+            (wdir / ReviewWitness.DIR / f"{child}.json").unlink()
+        except FileNotFoundError:
+            pass
+
+    @staticmethod
+    def state(bucket: str) -> str:
+        if bucket in ReviewWitness.OPEN:
+            return "open"
+        return bucket
+
+    @staticmethod
+    def absence(residual: dict[str, Any] | None) -> str | None:
+        body = residual if isinstance(residual, dict) else {}
+        nested = body.get("residual")
+        rem = nested if isinstance(nested, dict) else {}
+        low = str(rem.get("evidence") or "").casefold()
+        for phrase in ReviewWitness.PHRASES:
+            if phrase in low:
+                return phrase
+        return None
+
+    @staticmethod
+    def _binding(root: Path) -> tuple[str, str]:
+        binding = CloseProof.git_binding(root)
+        if isinstance(binding, dict):
+            return str(binding.get("head") or ""), str(binding.get("tree") or "")
+        return CloseProof.NO_GIT, CloseProof.NO_GIT
+
+    @staticmethod
+    def _sha(root: Path, rel: str) -> str:
+        src = CloseProof.cite_file(root, rel)
+        if src is None:
+            return ""
+        try:
+            return EvidenceStore.digest(src.read_bytes())
+        except OSError:
+            return ""
+
+    @staticmethod
+    def cites(packet: dict[str, Any]) -> list[str]:
+        scope = packet.get("review_scope")
+        if not isinstance(scope, dict):
+            return []
+        return ReviewScope.allowed_paths(scope)
+
+    @staticmethod
+    def load(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+        doc = _read_json_object(ReviewWitness.path(root, packet))
+        return doc if isinstance(doc, dict) else None
+
+    @staticmethod
+    def stamp(root: Path, packet: dict[str, Any]) -> None:
+        role = str(packet.get("role") or "")
+        if role not in ReviewAttackers.REVIEW:
+            return
+        path = ReviewWitness.path(root, packet)
+        if path.is_file():
+            return
+        head, tree = ReviewWitness._binding(root)
+        rows = [
+            {"path": rel, "sha256": ReviewWitness._sha(root, rel)}
+            for rel in ReviewWitness.cites(packet)
+        ]
+        rec = {
+            "v": ReviewWitness.V,
+            "child_id": str(packet.get("child_id") or ""),
+            "role": role,
+            "wave": int(packet.get("wave") or 1),
+            "head": head,
+            "tree": tree,
+            "paths": rows,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        dump_json(path, rec, skip_dir_fsync=True)
+
+    @staticmethod
+    def drift(root: Path, rec: dict[str, Any]) -> list[str]:
+        out: list[str] = []
+        for row in rec.get("paths") or []:
+            if not isinstance(row, dict):
+                continue
+            rel = str(row.get("path") or "")
+            if not rel:
+                continue
+            if ReviewWitness._sha(root, rel) != str(row.get("sha256") or ""):
+                out.append(rel)
+        return out
+
+    @staticmethod
+    def document(root: Path) -> dict[str, Any]:
+        findings: list[dict[str, Any]] = []
+        claims: list[dict[str, Any]] = []
+        witness: list[dict[str, Any]] = []
+        for wave in wave_numbers(root):
+            try:
+                packets = packed_children(root, int(wave))
+            except SystemExit:
+                continue
+            for packet in packets:
+                role = str(packet.get("role") or "")
+                if role not in ReviewAttackers.REVIEW:
+                    continue
+                try:
+                    path = packet_residual_file(root, packet)
+                except SystemExit:
+                    continue
+                if path is None:
+                    continue
+                if path.with_suffix(path.suffix + ".invalid.txt").is_file():
+                    continue
+                data = _read_json_object(path)
+                if not isinstance(data, dict):
+                    continue
+                child = str(packet.get("child_id") or "")
+                bucket = ReviewAttackers.bucket(data)
+                findings.append(
+                    {
+                        "child_id": child,
+                        "role": role,
+                        "wave": int(wave),
+                        "bucket": bucket,
+                        "state": ReviewWitness.state(bucket),
+                    }
+                )
+                phrase = ReviewWitness.absence(data)
+                if phrase:
+                    claims.append(
+                        {
+                            "author": child,
+                            "role": role,
+                            "wave": int(wave),
+                            "claim": phrase,
+                        }
+                    )
+                rec = ReviewWitness.load(root, packet)
+                if rec is None:
+                    witness.append(
+                        {
+                            "child_id": child,
+                            "role": role,
+                            "wave": int(wave),
+                            "head": "",
+                            "tree": "",
+                            "stale": True,
+                            "reason": ReviewWitness.NO_WITNESS,
+                            "paths": [],
+                        }
+                    )
+                    continue
+                drifted = ReviewWitness.drift(root, rec)
+                row = {
+                    "child_id": child,
+                    "role": role,
+                    "wave": int(wave),
+                    "head": str(rec.get("head") or ""),
+                    "tree": str(rec.get("tree") or ""),
+                    "stale": bool(drifted),
+                    "paths": list(rec.get("paths") or []),
+                }
+                if drifted:
+                    row["stale_paths"] = drifted
+                witness.append(row)
+        return {
+            "findings": findings,
+            "open": [
+                str(row["child_id"]) for row in findings if row["state"] == "open"
+            ],
+            "claims": claims,
+            "witness": witness,
+        }
+
+    @staticmethod
+    def line(review: dict[str, Any]) -> str:
+        bits: list[str] = []
+        for row in review.get("findings") or []:
+            if not isinstance(row, dict):
+                continue
+            child = str(row.get("child_id") or "")
+            state = str(row.get("state") or "")
+            if state == "open":
+                bits.append(f"open {child}:{row.get('bucket')}")
+            elif child:
+                bits.append(f"{state} {child}")
+        for claim in review.get("claims") or []:
+            if isinstance(claim, dict) and claim.get("author"):
+                bits.append(f"claim {claim['author']} (not proof)")
+        for row in review.get("witness") or []:
+            if isinstance(row, dict) and row.get("stale") and row.get("child_id"):
+                bits.append(f"stale {row['child_id']}")
+        text = "; ".join(bits) if bits else "(no review record)"
+        return f"review       {text}"
+
+    @staticmethod
+    def lists(review: dict[str, Any]) -> dict[str, list[str]]:
+        return {
+            "review_open": [
+                f"{row.get('child_id')}:{row.get('bucket')}"
+                for row in review.get("findings") or []
+                if isinstance(row, dict) and row.get("state") == "open"
+            ],
+            "review_claims": [
+                str(row.get("author") or "")
+                for row in review.get("claims") or []
+                if isinstance(row, dict) and row.get("author")
+            ],
+            "review_stale": [
+                str(row.get("child_id") or "")
+                for row in review.get("witness") or []
+                if isinstance(row, dict) and row.get("stale") and row.get("child_id")
+            ],
+        }
+
+
 class EvaluatorPacket:
     """Fresh-context review packet scheduler. Not the close gate.
 
@@ -1724,6 +1956,7 @@ class CloseChecklist:
         gate = str(contrast.get("gate") or "")
         evaluator = EvaluatorPacket.document(root, state, order)
         named, blocked = CloseChecklist._lost_inputs(root)
+        review = ReviewWitness.document(root)
         return {
             "v": 1,
             "ok": contrast_ok and residual_empty and not blocked,
@@ -1752,6 +1985,7 @@ class CloseChecklist:
             "evaluator_roles": list(evaluator.get("evaluator_roles") or []),
             "evaluator_children": list(evaluator.get("evaluator_children") or []),
             "evaluator_speak": evaluator.get("speak"),
+            "review": review,
             "next": CloseChecklist.next_line(
                 contrast_ok=contrast_ok,
                 residual_empty=residual_empty,
@@ -1784,6 +2018,9 @@ class CloseChecklist:
             ],
             "wave": int(doc.get("wave") or 0),
             "waves": int(doc.get("waves") or 0),
+            **ReviewWitness.lists(
+                doc.get("review") if isinstance(doc.get("review"), dict) else {}
+            ),
         }
 
     @staticmethod
@@ -1825,6 +2062,8 @@ class CloseChecklist:
         if nxt:
             lines.append(f"next         {nxt}")
         lines.append(EvaluatorPacket.human_line(doc, key_width=12))
+        review = doc.get("review") if isinstance(doc.get("review"), dict) else {}
+        lines.append(ReviewWitness.line(review))
         lines.append(CloseChecklist.speak_line(key_width=12))
         status = str(doc.get("evaluator") or EvaluatorPacket.STATUS_UNSET)
         lines.append(EvaluatorPacket.speak_line(status, key_width=12))
@@ -2173,6 +2412,7 @@ class CloseProof:
             "residuals": residuals,
             "receipts": [receipts[k] for k in sorted(receipts)],
             "requirements": requirements,
+            "review": ReviewWitness.document(root),
         }
         return bundle, sources, problems
 
@@ -2290,6 +2530,21 @@ class CloseProof:
                 problems.append(f"git {head[:12]} tree differs")
         elif git != CloseProof.NO_GIT:
             problems.append("CLOSE.json git binding missing")
+        review = doc.get("review")
+        if isinstance(review, dict):
+            findings = [
+                row for row in (review.get("findings") or []) if isinstance(row, dict)
+            ]
+            listed = [str(item) for item in (review.get("open") or [])]
+            expected = [
+                str(row.get("child_id") or "")
+                for row in findings
+                if row.get("state") == "open"
+            ]
+            if listed != expected:
+                problems.append("CLOSE.json review open list disagrees with findings")
+        elif review is not None:
+            problems.append("CLOSE.json review is not an object")
         return problems
 
     @staticmethod
@@ -2473,6 +2728,8 @@ def cmd_close(args: argparse.Namespace) -> None:
         f"{label}      spec_hash={str(order.get('spec_hash') or '')[:12]}…  "
         f"rev={order['rev']}  proof={CloseProof.FILENAME}"
     )
+    review = bundle.get("review") if isinstance(bundle.get("review"), dict) else {}
+    print(ReviewWitness.line(review))
     if sources:
         print(f"evidence    n={len({sha for _, sha in sources})}  {EvidenceStore.DIR}/")
     ClosedScratch.emit(wiped)

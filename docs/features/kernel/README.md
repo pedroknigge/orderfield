@@ -1,6 +1,6 @@
 # Feature: kernel
 
-The kernel grew from 0.3.2 through 0.9.8. The physics stayed a method. No new regime.
+The kernel grew from 0.3.2 through 0.9.9. The physics stayed a method. No new regime.
 
 Entry: `scripts/of.py` + `scripts/of/` + schemas. Resume, pack, lock, SPEC, contrast.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — reserved accounting is still reserved. Th
 
 > Hub: [AGENTS.md](../../../AGENTS.md) · Architecture: [docs/architecture.md](../../architecture.md)
 
-**Status:** Introduced by `0.3.2`, current in `0.9.8` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
+**Status:** Introduced by `0.3.2`, current in `0.9.9` · **Code:** [`scripts/of.py`](../../../scripts/of.py), [`scripts/of/`](../../../scripts/of/), [`scripts/of_adapters.py`](../../../scripts/of_adapters.py), [`schemas/`](../../../schemas/)
 
 ## What
 
@@ -18,6 +18,7 @@ Order-parameter orchestration: resume / fields / new / checkpoint / learn / pack
 
 ## Notable behaviors (code-backed)
 
+- 0.9.9 projects review buckets onto `CLOSE.json` `review` (`ReviewWitness`, #426). `act` and `consider` stay `open` and are printed on `of close` and `of close --checklist`. `noted` and `dismissed` are the terminal states. Evidence that says `no open findings` is a claim with its author, not proof. Collect of a review role writes `waves/NNN/review/<child>.json` once (git head, tree, sha256 of the `review_scope` cites). A later change to those paths marks the witness stale. Unpack drops it. Not a close gate. No new verb. Proof: `tests/test_review_witness.py`.
 - #424: `KernelVerify.resolve_argv0` records `argv0`, `argv0_realpath`, `argv0_sha256`, and `env_delta` under the receipt HMAC. A resolver under `work/scratch`, a child worktree, or `owns_paths` (any symlink hop counts) is `rule=ChildWritableArgv0` and is not attested. Exit 127 tells the leader to set `verify_cmd` to a program this host has. A project `.venv` the child does not own still attests. Proof: `tests/test_kernel_verify_argv0.py`.
 - 0.9.8 refuses a symlinked leader key and quarantines one forged WAL generation (`#422`). `create_private_nofollow` is the exclusive secret create: lstat from the field home, `O_CREAT|O_EXCL|O_NOFOLLOW`, mode `0600`, never truncate. `LeaderKey.ensure` and `LeaderKey.read` use that walk, so a symlink is not a missing key. Recovery publishes a generation only when parent is CURRENT, `parent_manifest_sha256` matches, seq is CURRENT+1, files hash to the MANIFEST (`_generation_intact`), and `LeaderKey.verify_candidate` accepts the HMAC. `of_adapters.die` calls `of.field.die`. Proof: `WalChainCli` / `NoFollowWrites` / `AdapterDieBoundary`; PackagingBump 0.9.8.
 - 0.9.7 binds proof per requirement on `of spec --run` (`SpecRunBinding`, `tests/test_spec_run_binding.py`, `#414`), aligns chat ingress plan fidelity across `of spec --revise-file` and `of spec --add --text-file` with shell-mangled `--text` refusal (`ChatIngressPlanFidelity`, `tests/test_chat_ingress_415.py`, `#415`), and adds advisory `enrich_models` provenance/tier/price overlays (`ModelEnrichProvenance`, `ModelEnrichCli`, `scripts/of/model_enrich.py`, `tests/test_model_discovery.py`, `#411`). Proof: `SpecRunBinding`, `ChatIngressPlanFidelity`, `ModelEnrichProvenance`, `ModelEnrichCli`; PackagingBump 0.9.7.
