@@ -53,7 +53,8 @@ Usage: install.sh [--global|--project|--generic] [--from-release] [--uninstall] 
   It does not clone unsigned mutable main.
 
   Pin / verify (remote only):
-    ORDERFIELD_REF / ORDERFIELD_VERSION   release tag (default: v<VERSION>)
+    ORDERFIELD_VERSION   version (0.9.8, leading v accepted)
+    ORDERFIELD_REF       release tag (default: v<version>)
     ORDERFIELD_ARCHIVE / ORDERFIELD_SHA256  local archive + expected hash
     ORDERFIELD_SHA256SUMS                 local SHA256SUMS file
     ORDERFIELD_RELEASE_BASE               override release asset base URL
@@ -103,6 +104,7 @@ have_local() {
 
 resolve_pin() {
   PINNED_VERSION="${ORDERFIELD_VERSION:-$DEFAULT_VERSION}"
+  PINNED_VERSION="${PINNED_VERSION#v}"
   PINNED_REF="${ORDERFIELD_REF:-v${PINNED_VERSION}}"
   if [[ -n "${ORDERFIELD_REF:-}" && -z "${ORDERFIELD_VERSION:-}" ]]; then
     PINNED_VERSION="${PINNED_REF#v}"
