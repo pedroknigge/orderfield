@@ -245,11 +245,13 @@ class InstallScript(unittest.TestCase):
         # #414 spec --run proof binding (--bind-all, run_covers) adds ~11 KB.
         # The symlink-safe leader-key create (`create_private_nofollow`:
         # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
-        # Measured dest is 1,648,879. 1,649,000 leaves about a hundred bytes.
+        # #424 `resolve_argv0` (argv0 bind + child-writable refusal) is
+        # installed kernel. Measured dest is 1,662,509. 1,662,650 leaves
+        # about 140 bytes.
         # The walk starts at the field home: macOS /var is a symlink, and
         # lstat from / refused every temp field.
         # The publish-asset script and tests stay outside this surface.
-        self.assertLessEqual(size, 1_649_000, size)
+        self.assertLessEqual(size, 1_662_650, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))

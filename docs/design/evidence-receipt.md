@@ -43,6 +43,11 @@ On-disk JSON sidecar next to archived bytes. Validated in-kernel (`EvidenceRecei
 | `command` | string? | optional argv / command line |
 | `trigger` | string? | `build` \| `test` |
 | `extracted` | bool? | true when optional extract filled quotes |
+| `argv0` | string? | `shutil.which` result `KernelVerify` actually resolved (#424). HMAC-covered on a kernel receipt |
+| `argv0_realpath` | string? | realpath of `argv0`. HMAC-covered |
+| `argv0_sha256` | string? | sha256 of that realpath. HMAC-covered. A tampered value fails attestation |
+| `env_delta` | object? | in-project `PATH` entries plus `PYTHONPATH`, `VIRTUAL_ENV`, `NODE_PATH`, `GOFLAGS`, and the same kind of variable. HMAC-covered |
+| `rule` | string? | set on a refusal (`ChildWritableArgv0`). That receipt is not `kernel_attested` |
 
 Residual citation (same string home as `artifact_sha:` / `published_artifact:`):
 

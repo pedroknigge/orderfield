@@ -311,7 +311,7 @@ class KernelVerifyArgv0(unittest.TestCase):
         self.assertNotIn("verified_by_kernel", proc.stdout)
         self.assertFalse(marker.exists())
         reqs = json.loads(
-            (self.tmp / ".orderfield/requirements.json").read_text(encoding="utf-8")
+            (self.tmp / ".orderfield/REQUIREMENTS.json").read_text(encoding="utf-8")
         )
         self.assertNotEqual(reqs["requirements"][0]["status"], "verified_contract")
 

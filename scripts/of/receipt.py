@@ -239,6 +239,11 @@ class EvidenceReceipt:
                 "command",
                 "timeout_s",
                 "inputs",
+                "argv0",
+                "argv0_realpath",
+                "argv0_sha256",
+                "env_delta",
+                "rule",
             )
             if k in receipt
         }
@@ -355,6 +360,29 @@ class EvidenceReceipt:
             bound = receipt.get("timeout_s")
             if isinstance(bound, bool) or not isinstance(bound, int) or bound < 1:
                 errs.append("receipt schema: timeout_s")
+        errs.extend(EvidenceReceipt._exec_errors(receipt))
+        return errs
+
+    @staticmethod
+    def _exec_errors(receipt: dict[str, Any]) -> list[str]:
+        """Optional argv0 bind. Present fields are complete and hashed."""
+        errs: list[str] = []
+        keys = ("argv0", "argv0_realpath", "argv0_sha256")
+        if any(key in receipt for key in keys):
+            if any(
+                not isinstance(receipt.get(key), str) or not str(receipt.get(key) or "").strip()
+                for key in keys
+            ) or not EvidenceReceipt.SHA_RE.match(str(receipt.get("argv0_sha256") or "")):
+                errs.append("receipt schema: argv0")
+        if "env_delta" in receipt:
+            delta = receipt.get("env_delta")
+            if not isinstance(delta, dict) or any(
+                not isinstance(key, str) or not isinstance(value, str)
+                for key, value in delta.items()
+            ):
+                errs.append("receipt schema: env_delta")
+        if "rule" in receipt and not isinstance(receipt.get("rule"), str):
+            errs.append("receipt schema: rule")
         return errs
 
     @staticmethod
@@ -576,6 +604,30 @@ class KernelVerify:
     """Kernel-attested command execution for packet verify_cmd and of spec --run."""
 
     DEFAULT_TIMEOUT_S = 120
+    REFUSED_EXIT = 126
+    RULE = "ChildWritableArgv0"
+    # Env that changes which code a command runs. PATH is filtered to entries
+    # inside the project. The rest of the environment stays off the receipt.
+    MEANING_ENV = (
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PYTHONSAFEPATH",
+        "VIRTUAL_ENV",
+        "NODE_PATH",
+        "NODE_OPTIONS",
+        "GOFLAGS",
+        "GO111MODULE",
+        "GOPATH",
+        "RUBYLIB",
+        "PERL5LIB",
+        "CLASSPATH",
+    )
+    MISSING_HINT = (
+        "This host has no such program. Set verify_cmd to one that exists "
+        "(for example `python3 -m unittest`) with `of patch`, and record that "
+        "as a plan deviation the user can see. Do not put a child's scratch "
+        "directory on PATH."
+    )
 
     @staticmethod
     def _free_command_id(scratch: Path, command_id: str) -> str:
@@ -609,6 +661,8 @@ class KernelVerify:
         root: Path,
         timeout_s: int | None = None,
         inputs: list[dict[str, str]] | None = None,
+        bind: dict[str, Any] | None = None,
+        seal: bool = True,
     ) -> tuple[dict[str, Any], Path, str]:
         # Packet verify shares one scratch across waves. A spec --run
         # rewrites its own cite in the same command, so it may replace the file.
@@ -632,15 +686,35 @@ class KernelVerify:
             extract=True,
             timeout_s=timeout_s,
         )
-        KernelVerify._seal(receipt, inputs, root)
+        KernelVerify._apply_bind(receipt, bind)
+        KernelVerify._seal(receipt, inputs, root, sign=seal)
         from of.field import write_field_bytes
 
         write_field_bytes(scratch, written["receipt"], EvidenceReceipt.dump(receipt))
         return receipt, written["receipt"], EvidenceReceipt._rel(written["receipt"], root)
 
     @staticmethod
+    def _apply_bind(receipt: dict[str, Any], bind: dict[str, Any] | None) -> None:
+        if not bind:
+            return
+        for key in ("argv0", "argv0_realpath", "argv0_sha256"):
+            val = bind.get(key)
+            if isinstance(val, str) and val:
+                receipt[key] = val
+        delta = bind.get("env_delta")
+        if isinstance(delta, dict):
+            receipt["env_delta"] = {str(key): str(value) for key, value in delta.items()}
+        rule = bind.get("rule")
+        if isinstance(rule, str) and rule:
+            receipt["rule"] = rule
+
+    @staticmethod
     def _seal(
-        receipt: dict[str, Any], inputs: list[dict[str, str]] | None, root: Path
+        receipt: dict[str, Any],
+        inputs: list[dict[str, str]] | None,
+        root: Path,
+        *,
+        sign: bool = True,
     ) -> None:
         """Bind the hashed inputs (#363), then sign. ``paths`` stays list[str]:
         each input path is listed there too, ``inputs`` carries its sha256
@@ -653,6 +727,8 @@ class KernelVerify:
             receipt["paths"].extend(
                 row["path"] for row in inputs if row["path"] not in listed
             )
+        if not sign:
+            return
         receipt["kernel_attested"] = True
         receipt["attestation_hmac"] = LeaderKey.sign_bytes(
             root, EvidenceReceipt.attestation_payload(receipt)
@@ -742,6 +818,291 @@ class KernelVerify:
         return KernelVerify.input_rows(receipt)
 
     @staticmethod
+    def _child_env() -> dict[str, str]:
+        """Leader environment for verify_cmd, without the WAL signing secrets."""
+        import os
+
+        run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+        for secret in ("OF_LEADER_KEY", "OF_LEADER_TOKEN"):
+            run_env.pop(secret, None)
+        return run_env
+
+    @staticmethod
+    def _anchor(path: Path) -> str:
+        """Absolute path. Ancestor symlinks are resolved. The final name is not."""
+        import os
+
+        raw = os.path.abspath(str(path))
+        parent = os.path.dirname(raw)
+        try:
+            parent_real = os.path.realpath(parent) if parent else parent
+        except OSError:
+            parent_real = parent
+        return os.path.normpath(os.path.join(parent_real, os.path.basename(raw)))
+
+    @staticmethod
+    def _inside(candidate: str, root: Path) -> bool:
+        import os
+
+        cand = os.path.normpath(candidate)
+        bases = {KernelVerify._anchor(root)}
+        try:
+            if root.exists():
+                bases.add(os.path.normpath(os.path.realpath(root)))
+        except OSError:
+            pass
+        return any(cand == base or cand.startswith(base + os.sep) for base in bases)
+
+    @staticmethod
+    def _chain(path: str) -> list[str]:
+        """Each symlink hop, then the realpath. The hop path itself is kept."""
+        import os
+
+        hops: list[str] = []
+        cur = path
+        seen: set[str] = set()
+        for _ in range(32):
+            anchored = KernelVerify._anchor(Path(cur))
+            if anchored in seen:
+                break
+            seen.add(anchored)
+            hops.append(anchored)
+            if not os.path.islink(anchored):
+                break
+            try:
+                link = os.readlink(anchored)
+            except OSError:
+                break
+            cur = link if os.path.isabs(link) else os.path.join(
+                os.path.dirname(anchored), link
+            )
+        try:
+            final = os.path.normpath(os.path.realpath(path))
+        except OSError:
+            final = ""
+        if final and final not in hops:
+            hops.append(final)
+        return hops
+
+    @staticmethod
+    def _which(argv0: str, env: dict[str, str], checkout: Path) -> str | None:
+        import os
+        import shutil
+
+        if os.path.dirname(argv0):
+            cand = argv0 if os.path.isabs(argv0) else os.path.join(str(checkout), argv0)
+            found = shutil.which(cand)
+        else:
+            found = shutil.which(argv0, path=env.get("PATH", ""))
+        if not found:
+            return None
+        if not os.path.isabs(found):
+            found = os.path.join(str(checkout), found)
+        return os.path.normpath(os.path.abspath(found))
+
+    @staticmethod
+    def _scratch_roots(root: Path, scratch: Path | None) -> list[Path]:
+        from of.field import field_home
+
+        roots = [field_home(root) / "work" / "scratch"]
+        if scratch is None:
+            return roots
+        cur = Path(scratch)
+        roots.append(cur)
+        for parent in (cur, *cur.parents):
+            if parent.name == "scratch" and parent.parent.name == "work":
+                roots.append(parent)
+                break
+        return roots
+
+    @staticmethod
+    def _worktrees(root: Path) -> list[Path]:
+        from of.field import _linked_worktree, load_worktrees
+
+        field = Path(root).resolve()
+        trees = load_worktrees(root).get("trees") or {}
+        if not isinstance(trees, dict):
+            return []
+        out: list[Path] = []
+        for rec in trees.values():
+            if not isinstance(rec, dict) or not rec.get("path"):
+                continue
+            try:
+                dest = Path(str(rec["path"])).expanduser().resolve()
+            except OSError:
+                continue
+            if dest == field or not dest.is_dir():
+                continue
+            if _linked_worktree(field, dest):
+                out.append(dest)
+        return out
+
+    @staticmethod
+    def _zone(
+        hop: str,
+        *,
+        root: Path,
+        checkout: Path,
+        scratch_roots: list[Path],
+        worktrees: list[Path],
+        owns: list[str],
+    ) -> str | None:
+        import os
+
+        from of.pack import owns_paths_overlap
+
+        if any(KernelVerify._inside(hop, zone) for zone in scratch_roots):
+            return "scratch"
+        if any(KernelVerify._inside(hop, tree) for tree in worktrees):
+            return "worktree"
+        if not owns:
+            return None
+        for base in (checkout, root):
+            origins = {KernelVerify._anchor(base)}
+            try:
+                if base.exists():
+                    origins.add(os.path.normpath(os.path.realpath(base)))
+            except OSError:
+                pass
+            for origin in origins:
+                if not (hop == origin or hop.startswith(origin + os.sep)):
+                    continue
+                rel = "" if hop == origin else hop[len(origin) + 1:]
+                if rel and any(owns_paths_overlap(rel, owned) for owned in owns):
+                    return "owns_paths"
+        return None
+
+    @staticmethod
+    def _env_delta(env: dict[str, str], root: Path, checkout: Path) -> dict[str, str]:
+        import os
+
+        delta: dict[str, str] = {}
+        kept: list[str] = []
+        for entry in str(env.get("PATH") or "").split(os.pathsep):
+            if not entry:
+                continue
+            cand = entry if os.path.isabs(entry) else os.path.normpath(
+                os.path.join(str(checkout), entry)
+            )
+            anchored = KernelVerify._anchor(Path(cand))
+            if KernelVerify._inside(anchored, root) or KernelVerify._inside(anchored, checkout):
+                kept.append(entry)
+        if kept:
+            delta["PATH"] = os.pathsep.join(kept)
+        for key in KernelVerify.MEANING_ENV:
+            val = env.get(key)
+            if val:
+                delta[key] = val
+        return delta
+
+    @staticmethod
+    def resolve_argv0(
+        root: Path,
+        argv: list[str],
+        env: dict[str, str],
+        *,
+        checkout: Path | None = None,
+        scratch: Path | None = None,
+        owns: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Resolve ``argv[0]`` and the env that changes what the command runs.
+
+        One flat bind: ``argv0`` (``shutil.which``), ``argv0_realpath``,
+        ``argv0_sha256``, ``env_delta``. ``rule`` is set when that file, or
+        any symlink hop, is child-writable. The caller does not exec it and
+        does not attest.
+        """
+        import os
+
+        tree = Path(checkout) if checkout is not None else Path(root)
+        delta = KernelVerify._env_delta(env, root, tree)
+        if not argv:
+            return {
+                "argv0": None,
+                "argv0_realpath": None,
+                "argv0_sha256": None,
+                "env_delta": delta,
+                "rule": None,
+            }
+        found = KernelVerify._which(argv[0], env, tree)
+        if not found:
+            return {
+                "argv0": None,
+                "argv0_realpath": None,
+                "argv0_sha256": None,
+                "env_delta": delta,
+                "rule": None,
+            }
+        hops = KernelVerify._chain(found)
+        try:
+            realpath = os.path.normpath(os.path.realpath(found))
+        except OSError:
+            realpath = hops[-1] if hops else found
+        zone = ""
+        for hop in hops:
+            hit = KernelVerify._zone(
+                hop,
+                root=Path(root),
+                checkout=tree,
+                scratch_roots=KernelVerify._scratch_roots(root, scratch),
+                worktrees=KernelVerify._worktrees(root),
+                owns=[str(item) for item in (owns or []) if str(item).strip()],
+            )
+            if hit:
+                zone = hit
+                break
+        sha = KernelVerify._file_sha(Path(realpath)) if realpath else None
+        shown = found
+        if realpath and os.path.normpath(found) != os.path.normpath(realpath):
+            shown = f"{found} -> {realpath}"
+        rule = None
+        if zone:
+            rule = (
+                f"rule={KernelVerify.RULE}: {shown} is child-writable ({zone}). "
+                "Commit a project-level verify_cmd such as `python3 -m unittest` "
+                "with `of patch`, or a plan patch the human authorizes. "
+                "A scratch shim on PATH is not the verifier."
+            )
+        elif not sha:
+            rule = f"rule=KernelVerify: resolved executable {realpath} is unreadable"
+        return {
+            "argv0": found,
+            "argv0_realpath": realpath,
+            "argv0_sha256": sha,
+            "env_delta": delta,
+            "rule": rule,
+        }
+
+    @staticmethod
+    def failure_text(
+        command: str,
+        exit_code: int,
+        receipt: dict[str, Any] | None,
+        receipt_rel: str,
+        *,
+        packet: bool,
+    ) -> str:
+        """Collect / spec line for a verify_cmd that did not attest success."""
+        rule = str((receipt or {}).get("rule") or "").strip()
+        if rule:
+            if receipt_rel and receipt_rel not in rule:
+                return f"{rule} [{receipt_rel}]"
+            return rule
+        if packet:
+            line = (
+                f"rule=KernelVerify: packet verify_cmd {command!r} "
+                f"failed with exit={exit_code} [{receipt_rel}]"
+            )
+        else:
+            line = (
+                f"of spec --run {command!r} failed with exit={exit_code} "
+                f"(receipt: {receipt_rel})"
+            )
+        if exit_code == 127:
+            return f"{line} {KernelVerify.MISSING_HINT}"
+        return line
+
+    @staticmethod
     def execute(
         root: Path,
         scratch: Path,
@@ -750,6 +1111,7 @@ class KernelVerify:
         command_id: str = "kernel-verify",
         timeout_s: int = DEFAULT_TIMEOUT_S,
         checkout: Path | None = None,
+        owns: list[str] | None = None,
     ) -> tuple[dict[str, Any], str, int]:
         import shlex
 
@@ -764,8 +1126,27 @@ class KernelVerify:
             die("verification command must not be empty")
         # Hash and run in the child's checkout. The receipt and HMAC stay on root.
         tree = Path(checkout) if checkout is not None else Path(root)
+        env = KernelVerify._child_env()
+        resolved = KernelVerify.resolve_argv0(
+            root, argv, env, checkout=tree, scratch=scratch, owns=owns
+        )
         inputs = KernelVerify._hash_inputs(tree, raw_cmd)
-        exit_code, combined = KernelVerify._run(tree, argv, timeout_s)
+        if resolved.get("rule"):
+            text = (str(resolved["rule"]) + "\n").encode("utf-8")
+            receipt, _rpath, receipt_rel = KernelVerify.attest(
+                scratch,
+                text,
+                command_id=command_id,
+                exit_code=KernelVerify.REFUSED_EXIT,
+                command=raw_cmd,
+                timeout_s=timeout_s,
+                root=root,
+                inputs=inputs,
+                bind=resolved,
+                seal=False,
+            )
+            return receipt, receipt_rel, KernelVerify.REFUSED_EXIT
+        exit_code, combined = KernelVerify._run(tree, argv, timeout_s, env)
         if not combined:
             combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
         receipt, _rpath, receipt_rel = KernelVerify.attest(
@@ -777,20 +1158,23 @@ class KernelVerify:
             timeout_s=timeout_s,
             root=root,
             inputs=inputs,
+            bind=resolved,
         )
         return receipt, receipt_rel, exit_code
 
     @staticmethod
-    def _run(cwd: Path, argv: list[str], timeout_s: int) -> tuple[int, bytes]:
+    def _run(
+        cwd: Path,
+        argv: list[str],
+        timeout_s: int,
+        env: dict[str, str] | None = None,
+    ) -> tuple[int, bytes]:
         """``(exit, stdout + stderr)``. 127 = binary not found, 124 = timeout."""
-        import os
         import subprocess
 
         # verify_cmd runs project code; never expose the kernel's own WAL signing
         # key/token to it, even though the command itself is leader-committed.
-        run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-        for secret in ("OF_LEADER_KEY", "OF_LEADER_TOKEN"):
-            run_env.pop(secret, None)
+        run_env = env if env is not None else KernelVerify._child_env()
         try:
             proc = subprocess.run(
                 argv,
@@ -824,6 +1208,7 @@ class KernelVerify:
         residual: dict[str, Any],
     ) -> tuple[list[str], str | None, bool]:
         from of.field import physical_artifact_path, proof_checkout
+        from of.pack import packet_owns_paths
 
         cmd = str(packet.get("verify_cmd") or "").strip()
         if not cmd or not isinstance(residual, dict) or residual.get("status") != "done":
@@ -842,6 +1227,7 @@ class KernelVerify:
             command_id="kernel-verify",
             timeout_s=bound,
             checkout=proof_checkout(root, str(packet.get("child_id") or "")),
+            owns=packet_owns_paths(packet),
         )
         rem = residual.setdefault("residual", {})
         if isinstance(rem, dict):
@@ -851,8 +1237,9 @@ class KernelVerify:
         if exit_code != 0:
             return (
                 [
-                    f"rule=KernelVerify: packet verify_cmd {cmd!r} "
-                    f"failed with exit={exit_code} [{receipt_rel}]"
+                    KernelVerify.failure_text(
+                        cmd, exit_code, _receipt, receipt_rel, packet=True
+                    )
                 ],
                 receipt_rel,
                 True,
