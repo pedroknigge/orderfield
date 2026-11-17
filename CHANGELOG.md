@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.9
+
+Review findings keep the buckets the judge already writes. Close names the open ones, and a sentence that nothing remains is a claim. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.8 notes.
+
+- **Review residue (#426):** `ReviewWitness` projects `act` / `consider` / `noted` / `dismissed` onto `CLOSE.json` `review`. `act` and `consider` stay `open` and are printed on `of close` and `of close --checklist`. `noted` and `dismissed` are the terminal states. Evidence that says `no open findings` (also `nothing left` / `nothing remained`) is a claim with its author, not a proof flag. Collect of `--role adversary` or `--role verifier` writes `waves/NNN/review/<child>.json` once: git head, tree, and sha256 of the `review_scope` cites. A later change to those paths marks the witness stale. A missing witness is stale. Re-collect does not rewrite it. Unpack drops it. Not a close gate. No new verb.
+- **Proof:** `tests/test_review_witness.py` (`ReviewWitnessVocabulary`, `ReviewWitnessClose`).
+- Packaging: VERSION `0.9.9`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.9"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`. `SKILL.md` core stays under 19,000 B (version digits only). Install-size budget moves with the installed kernel and the appendix sentence. `evals/fixtures/skill-half-life.md` `bound_bytes` tracks the appendix size. It is the paired fixture, not a raised ceiling.
+
 ## 0.9.8
 
 A planted symlink on the leader key is refused, and one forged WAL generation is quarantined instead of published. Adapter refusals share the kernel redaction boundary. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.7 notes.

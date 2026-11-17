@@ -29,6 +29,8 @@ A published schedule that says FACTIBLE / D CUMPLE while labeled beds overlap is
 
 Trust the proof file. Do not trust a transcript that says CLOSED.
 
+`CLOSE.json` `review` lists each adversary and verifier finding by the bucket the judge already used. `open` (`act`, `consider`) is printed on `of close` and `of close --checklist`. A declared `no open findings` is a `claims` row with an author. It is not a proof flag. The witness names the git head and tree from collect and the sha256 of the `review_scope` cites. It is stale when those paths change. Open findings do not refuse close (`ReviewWitness`).
+
 ## Templates
 
 Copy the shape. Fill the IDs. Do not invent a fourth verdict.

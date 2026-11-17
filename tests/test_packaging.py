@@ -249,7 +249,10 @@ class InstallScript(unittest.TestCase):
         # The walk starts at the field home: macOS /var is a symlink, and
         # lstat from / refused every temp field.
         # The publish-asset script and tests stay outside this surface.
-        self.assertLessEqual(size, 1_649_000, size)
+        # #426 ReviewWitness (collect sidecar + CLOSE.json review projection)
+        # and the appendix/CHILD sentences that name it are installed kernel.
+        # Measured dest is 1,660,458. 1,660,600 leaves about 140 bytes.
+        self.assertLessEqual(size, 1_660_600, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
