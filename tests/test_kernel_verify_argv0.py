@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""#424: KernelVerify must not attest a child-writable argv0.
-
-A scratch shim named ``python`` on PATH used to exit 0 and produce
-``kernel_attested: true`` for ``python -m unittest`` on a repo with no
-tests. The receipt named the command string and hashed no executable.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -123,7 +117,6 @@ class KernelVerifyArgv0(unittest.TestCase):
         return KernelVerify.execute(self.tmp, kid, command, **kwargs)
 
     def test_scratch_script_shim_is_not_attested(self) -> None:
-        """The issue repro: a scratch ``python`` that exits 0 is not the verifier."""
         self.init_field()
         kid = self.tmp / ".orderfield" / "work" / "scratch" / "kid"
         kid.mkdir(parents=True)
@@ -145,7 +138,6 @@ class KernelVerifyArgv0(unittest.TestCase):
         self.assertIn(str(kid), str((receipt.get("env_delta") or {}).get("PATH") or ""))
 
     def test_scratch_symlink_to_real_python_is_not_attested(self) -> None:
-        """A scratch symlink whose target is the real interpreter is still child-writable."""
         self.init_field()
         kid = self.tmp / ".orderfield" / "work" / "scratch" / "kid"
         kid.mkdir(parents=True)
@@ -159,8 +151,7 @@ class KernelVerifyArgv0(unittest.TestCase):
         self.assertNotIn("424", source)
         self.assertTrue(rel)
 
-    def test_project_venv_symlink_records_argv0(self) -> None:
-        """``.venv/bin/python`` outside scratch and owns_paths still attests."""
+    def test_project_venv_symlink_attests_and_records_argv0(self) -> None:
         self.init_field()
         outside = Path(tempfile.mkdtemp(prefix="of-argv0-py-"))
         self.addCleanup(shutil.rmtree, outside, True)

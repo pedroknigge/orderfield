@@ -527,9 +527,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
 
             loaded = EvidenceReceipt.load_receipt(root / receipt_rel) or {}
             die(
-                KernelVerify.failure_text(
-                    run_cmd, exit_code, loaded, receipt_rel, packet=False
-                )
+                KernelVerify.spec_failure(run_cmd, exit_code, loaded, receipt_rel)
             )
         cite = receipt_rel
         print(f"attested    {receipt_rel}  exit=0")
