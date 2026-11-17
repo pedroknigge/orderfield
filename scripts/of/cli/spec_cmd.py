@@ -526,9 +526,11 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
             checkout=stamp_checkout,
         )
         if exit_code != 0:
+            from of.receipt import EvidenceReceipt
+
+            loaded = EvidenceReceipt.load_receipt(root / receipt_rel) or {}
             die(
-                f"of spec --run {run_cmd!r} failed with exit={exit_code} "
-                f"(receipt: {receipt_rel})"
+                KernelVerify.spec_failure(run_cmd, exit_code, loaded, receipt_rel)
             )
         cite = receipt_rel
         print(f"attested    {receipt_rel}  exit=0")
