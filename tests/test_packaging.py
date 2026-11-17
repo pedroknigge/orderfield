@@ -550,6 +550,93 @@ class InstallPin(unittest.TestCase):
         self.assertIn("ORDERFIELD_SHA256", proc.stderr)
         self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
 
+    def test_v_prefixed_version_installs_bare_archive(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-vprefix-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        dest = tmp / "dest"
+        version = "0.9.8"
+        archive = self._archive(tmp, version)
+        digest = self._sha256(archive)
+        sums = tmp / "SHA256SUMS"
+        sums.write_text(
+            f"{digest}  orderfield-{version}.tar.gz\n",
+            encoding="utf-8",
+        )
+        proc = run(
+            tmp,
+            "bash",
+            str(INSTALL),
+            "--root",
+            str(dest),
+            "--from-release",
+            env={
+                "HOME": str(tmp / "home"),
+                "ORDERFIELD_VERSION": f"v{version}",
+                "ORDERFIELD_REF": "",
+                "ORDERFIELD_SHA256": "",
+                "ORDERFIELD_ARCHIVE": str(archive),
+                "ORDERFIELD_SHA256SUMS": str(sums),
+            },
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn(f"orderfield-v{version}.tar.gz", proc.stderr)
+        skill = dest / ".agents" / "skills" / "orderfield"
+        body = (skill / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn(f'version: "{version}"', body)
+        kernel = (skill / "scripts" / "of.py").read_text(encoding="utf-8")
+        self.assertIn("print('ok')", kernel)
+
+    def test_v_prefixed_version_default_ref_is_one_v(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="of-install-vref-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        log = tmp / "curl.log"
+        stub = bindir / "curl"
+        stub.write_text(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$CURL_LOG\"\nexit 1\n",
+            encoding="utf-8",
+        )
+        stub.chmod(0o755)
+        dest = tmp / "dest"
+        proc = run(
+            tmp,
+            "bash",
+            str(self._detached_installer(tmp)),
+            "--root",
+            str(dest),
+            "--from-release",
+            env={
+                "HOME": str(tmp / "home"),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "CURL_LOG": str(log),
+                "ORDERFIELD_VERSION": "v0.9.8",
+                "ORDERFIELD_REF": "",
+                "ORDERFIELD_ARCHIVE": "",
+                "ORDERFIELD_ARCHIVE_URL": "",
+                "ORDERFIELD_RELEASE_BASE": "",
+                "ORDERFIELD_SHA256": "",
+                "ORDERFIELD_SHA256SUMS": "",
+            },
+        )
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        fetched = log.read_text(encoding="utf-8")
+        self.assertIn(
+            "releases/download/v0.9.8/orderfield-0.9.8.tar.gz",
+            fetched,
+        )
+        self.assertNotIn("vv0.9.8", fetched)
+        self.assertNotIn("orderfield-v0.9.8.tar.gz", fetched)
+        self.assertFalse((dest / ".agents" / "skills" / "orderfield").exists())
+
+    def test_help_splits_version_and_tag(self) -> None:
+        proc = run(ROOT, "bash", str(INSTALL), "--help")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        text = proc.stdout
+        self.assertIn("ORDERFIELD_VERSION   version (0.9.8, leading v accepted)", text)
+        self.assertIn("ORDERFIELD_REF       release tag (default: v<version>)", text)
+        self.assertNotIn("ORDERFIELD_REF / ORDERFIELD_VERSION", text)
+
     def test_from_release_ignores_local_checkout(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-from-rel-"))
         self.addCleanup(shutil.rmtree, tmp, True)
