@@ -17,7 +17,7 @@ permissions:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +34,8 @@ jobs:
       # Default per-module timeout is 900s. test_kernel_cli is floored at
       # 1800s: ~302s alone (131 tests), and it exceeded 900s under load
       # (2026-11-16). 1800s is 2× that cap and ~6× standalone, inside this
-      # 30-minute job. Prints the 20 slowest modules.
+      # 45-minute job. A slow macOS 3.13 runner spent 25 minutes on the
+      # suite and was cancelled during evals at 30. Prints the 20 slowest modules.
       - name: Unit tests (parallel runner; kernel + packaging + README quickstart)
         run: python3 scripts/run_tests.py --top 20
       # Also proves every EVAL_UNITTEST_MODULES name still resolves in
