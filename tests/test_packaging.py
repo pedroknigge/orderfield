@@ -246,8 +246,8 @@ class InstallScript(unittest.TestCase):
         # The symlink-safe leader-key create (`create_private_nofollow`:
         # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
         # #424 `resolve_argv0` (argv0 bind + child-writable refusal) is
-        # installed kernel. Measured dest is 1,662,509. 1,662,650 leaves
-        # about 140 bytes.
+        # installed kernel. After #427's install.sh help text, measured
+        # dest is 1,662,082. 1,662,650 leaves about 568 bytes.
         # The walk starts at the field home: macOS /var is a symlink, and
         # lstat from / refused every temp field.
         # The publish-asset script and tests stay outside this surface.
