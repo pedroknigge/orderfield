@@ -27,7 +27,7 @@ _RAN_RE = re.compile(r"^Ran (\d+) tests? in", re.M)
 # test_kernel_cli is 131 tests and ~302s alone. Under the parallel runner
 # (os.cpu_count() jobs) it exceeded the 900s default (2026-11-16 audit).
 # 1800s is 2× that cap and ~6× the standalone time, and it still fits the
-# 30-minute CI job: the module is the long pole, not a serial add-on.
+# 45-minute CI job: the module is the long pole, not a serial add-on.
 MODULE_TIMEOUT_FLOOR = {"test_kernel_cli": 1800.0}
 
 
