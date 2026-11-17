@@ -1238,20 +1238,6 @@ class ReviewAttackers:
 
 
 class ReviewWitness:
-    """Project review buckets onto close. Not a new verb and not a gate.
-
-    The bucket is the state. ``act`` and ``consider`` stay ``open`` and
-    are printed. ``noted`` and ``dismissed`` are already terminal.
-    Evidence that declares ``no open findings`` (or ``nothing left`` /
-    ``nothing remained``) is a claim named by the child, not a proof flag.
-    Collect of a review role writes ``waves/<n>/review/<child>.json`` once:
-    git head, tree, and sha256 of the ``review_scope`` cites
-    (``ReviewScope.allowed_paths``, the owns-path / published set
-    ``OwnsPathCoverage`` already cites). A later byte change on those
-    paths marks the witness stale. A missing witness is stale. Re-collect
-    does not rewrite it. Unpack drops it.
-    """
-
     DIR = "review"
     V = 1
     NO_WITNESS = "no witness"
@@ -1319,7 +1305,6 @@ class ReviewWitness:
 
     @staticmethod
     def stamp(root: Path, packet: dict[str, Any]) -> None:
-        """Write the witness once. A second collect keeps the first bytes."""
         role = str(packet.get("role") or "")
         if role not in ReviewAttackers.REVIEW:
             return
@@ -1358,7 +1343,6 @@ class ReviewWitness:
 
     @staticmethod
     def document(root: Path) -> dict[str, Any]:
-        """Findings, claims, and witnesses for CLOSE.json. Writes nothing."""
         findings: list[dict[str, Any]] = []
         claims: list[dict[str, Any]] = []
         witness: list[dict[str, Any]] = []
@@ -1442,7 +1426,6 @@ class ReviewWitness:
 
     @staticmethod
     def line(review: dict[str, Any]) -> str:
-        """One human line. Open findings and claims are named, not implied."""
         bits: list[str] = []
         for row in review.get("findings") or []:
             if not isinstance(row, dict):

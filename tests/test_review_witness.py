@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""#426 tracer: review buckets on CLOSE.json, absence is a claim, cite witness.
-
-``ReviewWitness`` projects ``act`` / ``consider`` / ``noted`` / ``dismissed``.
-It does not add a second state list and it does not refuse close.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -141,7 +136,6 @@ def write_bound_residual(
 
 
 class ReviewWitnessVocabulary(unittest.TestCase):
-    """The bucket is the state. Absence is a phrase, not a proof flag."""
 
     def test_open_is_act_and_consider(self) -> None:
         self.assertEqual(of.ReviewWitness.state("act"), "open")
@@ -175,7 +169,6 @@ class ReviewWitnessVocabulary(unittest.TestCase):
 
 
 class ReviewWitnessClose(unittest.TestCase):
-    """Collect stamps the cite set. Close prints open findings and claims."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-review-witness-"))
