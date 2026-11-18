@@ -13,7 +13,9 @@ No new CLI verb. No new schema. validate-skill.sh runs this.
 """
 from __future__ import annotations
 
+import argparse
 import ast
+import importlib.util
 import io
 import re
 import shutil
@@ -98,6 +100,16 @@ WAL_DOOR_FIX = (
     "Publish early with commit_open_generation(). "
     "Do not import underscore-private names from of.wal."
 )
+FEATURE_MAP = "docs/feature-map.md"
+_TICK_RE = re.compile(r"`([^`]+)`")
+_TEST_MOD_RE = re.compile(r"tests/test_[A-Za-z0-9_]+\.py\Z")
+FEATURE_MAP_FIX = (
+    "Put the proof back, or edit the token in docs/feature-map.md. "
+    "A proof token is `tests/test_*.py`, `of <subcommand>`, or `verify-of <id>`. "
+    "The test file must exist, the subcommand must be on `of` "
+    "(scripts/of/cli build_parser), and the id must be in "
+    "scripts/verify_of.py FEATURES."
+)
 
 
 class Rule(NamedTuple):
@@ -126,6 +138,12 @@ RULES = (
         "are written only through field_generation() outside scripts/of/wal.py, "
         "and other modules do not import of.wal underscore-private names",
         WAL_DOOR_FIX,
+    ),
+    Rule(
+        "feature-map",
+        "each docs/feature-map.md proof token is a test module, an of "
+        "subcommand, or a verify-of feature id that exists",
+        FEATURE_MAP_FIX,
     ),
 )
 
@@ -698,11 +716,202 @@ def wal_door_errors(root: Path) -> list[str]:
     return errors
 
 
+def _cells(line: str) -> list[str] | None:
+    text = line.strip()
+    if not text.startswith("|") or not text.endswith("|"):
+        return None
+    return [part.strip() for part in text.strip("|").split("|")]
+
+
+def _is_rule(cells: list[str]) -> bool:
+    return all(cells) and all(set(cell) <= set("-:") for cell in cells)
+
+
+def _table(text: str) -> tuple[list[tuple[str, str, str]], str | None]:
+    lines = text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if _cells(line) == ["Feature", "Reach", "Proof"]:
+            start = index
+            break
+    if start is None:
+        return [], f"{FEATURE_MAP} has no Feature | Reach | Proof table."
+    rows: list[tuple[str, str, str]] = []
+    for line in lines[start + 1 :]:
+        cells = _cells(line)
+        if cells is None:
+            break
+        if _is_rule(cells):
+            continue
+        if len(cells) != 3 or not all(cells):
+            return [], f"{FEATURE_MAP} row {line!r} does not have 3 cells."
+        rows.append((cells[0], cells[1], cells[2]))
+    if not rows:
+        return [], f"{FEATURE_MAP} table has no data rows."
+    return rows, None
+
+
+def _of_subcommands(root: Path) -> tuple[set[str] | None, str | None]:
+    scripts = Path(root) / "scripts"
+    if not (scripts / "of" / "cli" / "__init__.py").is_file():
+        return None, "scripts/of/cli is missing, so of subcommands cannot be listed."
+    inserted = str(scripts) not in sys.path
+    if inserted:
+        sys.path.insert(0, str(scripts))
+    try:
+        from of.cli import build_parser
+
+        parser = build_parser()
+    except Exception as exc:
+        return None, f"build_parser failed ({exc.__class__.__name__}: {exc})."
+    finally:
+        if inserted and sys.path and sys.path[0] == str(scripts):
+            sys.path.pop(0)
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return set(action.choices), None
+    return None, "build_parser registered no subcommands."
+
+
+def _verify_features(root: Path) -> tuple[set[str] | None, str | None]:
+    path = Path(root) / "scripts" / "verify_of.py"
+    if not path.is_file():
+        return None, "scripts/verify_of.py is missing."
+    spec = importlib.util.spec_from_file_location("verify_of_feature_map", path)
+    if spec is None or spec.loader is None:
+        return None, "scripts/verify_of.py could not be loaded."
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        return None, f"scripts/verify_of.py failed to load ({exc.__class__.__name__}: {exc})."
+    names = getattr(module, "FEATURES", None)
+    if not isinstance(names, tuple) or not all(isinstance(item, str) for item in names):
+        return None, "scripts/verify_of.py FEATURES is not a tuple of strings."
+    return set(names), None
+
+
+def _proof_kind(token: str) -> tuple[str, str] | None:
+    if _TEST_MOD_RE.fullmatch(token):
+        return "test", token
+    if token.startswith("verify-of "):
+        feature = token[len("verify-of ") :].strip()
+        if feature and " " not in feature:
+            return "verify-of", feature
+        return None
+    parts = token.split()
+    if len(parts) == 2 and parts[0] == "of" and parts[1]:
+        return "of", parts[1]
+    return None
+
+
+def feature_map_errors(
+    root: Path,
+    *,
+    commands: set[str] | None = None,
+    features: set[str] | None = None,
+) -> list[str]:
+    path = Path(root) / FEATURE_MAP
+    if not path.is_file():
+        return [_fail("feature-map", f"missing {FEATURE_MAP}.")]
+    rows, problem = _table(path.read_text(encoding="utf-8"))
+    if problem:
+        return [_fail("feature-map", problem)]
+    needs_of = False
+    needs_verify = False
+    parsed: list[tuple[str, str, list[tuple[str, str, str]]]] = []
+    errors: list[str] = []
+    for feature, reach, proof in rows:
+        reach_tokens = _TICK_RE.findall(reach)
+        reach_kind = _proof_kind(reach_tokens[0]) if len(reach_tokens) == 1 else None
+        if reach_kind is None or reach_kind[0] != "of":
+            errors.append(
+                _fail(
+                    "feature-map",
+                    f'{FEATURE_MAP} row "{feature}" reach must be one `of <subcommand>`.',
+                )
+            )
+            continue
+        proof_tokens = _TICK_RE.findall(proof)
+        if not proof_tokens:
+            errors.append(
+                _fail(
+                    "feature-map",
+                    f'{FEATURE_MAP} row "{feature}" proof names nothing.',
+                )
+            )
+            continue
+        kinds: list[tuple[str, str, str]] = []
+        for token in proof_tokens:
+            kind = _proof_kind(token)
+            if kind is None:
+                errors.append(
+                    _fail(
+                        "feature-map",
+                        f'{FEATURE_MAP} row "{feature}" proof token `{token}` '
+                        "is not a test module, of subcommand, or verify-of feature.",
+                    )
+                )
+                continue
+            kinds.append((token, kind[0], kind[1]))
+            needs_verify = needs_verify or kind[0] == "verify-of"
+        needs_of = True
+        parsed.append((feature, reach_kind[1], kinds))
+    if errors:
+        return errors
+    if commands is None and needs_of:
+        commands, problem = _of_subcommands(root)
+        if problem or commands is None:
+            return [_fail("feature-map", problem or "of subcommands unavailable.")]
+    if features is None and needs_verify:
+        features, problem = _verify_features(root)
+        if problem or features is None:
+            return [_fail("feature-map", problem or "verify-of features unavailable.")]
+    commands = commands or set()
+    features = features or set()
+    base = Path(root)
+    for feature, reach_cmd, kinds in parsed:
+        if reach_cmd not in commands:
+            errors.append(
+                _fail(
+                    "feature-map",
+                    f'{FEATURE_MAP} row "{feature}" reach `of {reach_cmd}` '
+                    "is not a registered subcommand.",
+                )
+            )
+        for token, kind, value in kinds:
+            if kind == "test" and not (base / value).is_file():
+                errors.append(
+                    _fail(
+                        "feature-map",
+                        f'{FEATURE_MAP} row "{feature}" proof `{token}` is not a file.',
+                    )
+                )
+            elif kind == "of" and value not in commands:
+                errors.append(
+                    _fail(
+                        "feature-map",
+                        f'{FEATURE_MAP} row "{feature}" proof `{token}` '
+                        "is not a registered subcommand.",
+                    )
+                )
+            elif kind == "verify-of" and value not in features:
+                errors.append(
+                    _fail(
+                        "feature-map",
+                        f'{FEATURE_MAP} row "{feature}" proof `{token}` '
+                        "is not in scripts/verify_of.py FEATURES.",
+                    )
+                )
+    return errors
+
+
 def collect(root: Path, *, measured: int | None = None) -> list[str]:
     return (
         install_cap_errors(root, measured=measured)
         + narration_errors(root)
         + wal_door_errors(root)
+        + feature_map_errors(root)
     )
 
 
