@@ -4,21 +4,6 @@ Nature already solved coordination: the slow constrains the fast. Different spee
 
 Orderfield takes that physics as inspiration — a method — not a second science.
 
-The short list is here. The contract is `references/principles.md`. Do not fork a parallel physics.
+The contract is [references/principles.md](references/principles.md) (`PrinciplesPointer`). Do not fork a parallel numbered list in this file.
 
 A cut, a resume, a different model — the invariants hold. The results do not have to change.
-
-Canonical invariants live in `references/principles.md`.
-
-Short form:
-
-1. One leader-owned ORDER write path; `.orderfield/field.lock` serializes kernel mutations, not product files.
-2. One phase per wave.
-3. Escalate-up before spawn.
-4. Closed regime menu.
-5. Enforced child/spawn caps; packet `budget.seconds` is the spawn wall-clock. Token budgets are not implemented.
-6. `scale_across` / `scale_up` are not implemented (legacy menu values; remapped to hold).
-7. Skill beats child.
-8. Residuals are the intended upward boundary; transcripts stay down by contract.
-9. The harness transports. The kernel chooses regimes for work routed through it.
-10. ORDER moves slowly.
