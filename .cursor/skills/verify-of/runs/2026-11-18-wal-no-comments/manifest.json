@@ -1,0 +1,15 @@
+{
+  "feature": "wal-crash-resume",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt"
+  ],
+  "live_mission_after_write": "written mission",
+  "live_mission_after_crash": "written mission",
+  "live_mission_after_resume": "crashed mission",
+  "current_generation": "00000003-0bb8bc335bd9",
+  "materialized_generation": "00000003-0bb8bc335bd9",
+  "evidence_survived_cleanup": true
+}
