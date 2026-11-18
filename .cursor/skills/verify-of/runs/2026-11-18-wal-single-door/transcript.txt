@@ -1,0 +1,309 @@
+$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-w21t2ma2
+# cwd /agent/repos/orderfield
+# exit 0
+installed /tmp/verify-of-home-w21t2ma2/.agents/skills/orderfield
+installed /tmp/verify-of-home-w21t2ma2/.agents/skills/of (alias /of)
+of: /tmp/verify-of-home-w21t2ma2/.local/bin/of -> /tmp/verify-of-home-w21t2ma2/.agents/skills/orderfield/scripts/of.py
+project of symlink at /tmp/verify-of-home-w21t2ma2/.local/bin/of (use --global for ~/.local/bin/of)
+copied to 1 skill dir(s)
+generic: /tmp/verify-of-home-w21t2ma2/.agents/skills/orderfield
+kernel: of status  # or: python3 /tmp/verify-of-home-w21t2ma2/.agents/skills/orderfield/scripts/of.py status
+
+$ of doctor
+# cwd /tmp/verify-of-home-w21t2ma2/doctor-cwd
+# exit 0
+prereqs
+  python        3.12.3  ok (>= 3.11)
+  kernel        0.9.9  ok
+skills
+  checkout     0.9.9
+  agents       0.9.9  ok  ~/.agents/skills/orderfield
+field
+  path          -  missing (of init --mission '...')
+  scratch       -  missing
+  active        -  (no fields)
+  stub          none
+  packs         none
+  schemas       9/9 ok
+  lock          /tmp/verify-of-home-w21t2ma2/doctor-cwd/.orderfield/field.lock  missing-field
+adapters  (PATH is not auth, credentials, or session authority; not readiness)
+    claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    cursor     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    opencode   missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    orca       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    grok       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    agy        missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    qwen       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+  * generic    missing  path=-  version=-  set OF_AGENT  auth=not-verified  ready=not-verified
+  next          HOLD
+  no adapter on PATH; of detect then install a CLI or OF_AGENT=... --adapter generic; of handoff --packet is same-session or native Agent — not a spawned child wave
+trust
+  default       auto-edit  (OF_TRUST override)
+  profiles      conservative, plan, auto-edit, auto, yolo
+  write-floor   auto-edit default for residual packs (claude,codex,agy,qwen)
+  opt-out       OF_TRUST=conservative
+  unsupported   cursor,opencode,orca,grok,generic speak WARN + named next
+  host          .claude/settings.local.json advisory only; never edit
+  operator      yolo + inherit are audited operator actions (not silent defaults)
+  host-mcp      agy/grok isolate host global MCP by default
+  opt-in        OF_SPAWN_MCP=inherit (ask; not a silent default)
+  kernel_verifies  binary_on_path, spawn_argv, residual_file, residual_schema
+  harness_promises approval_honored, sandbox, auth, model_ready
+  boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.8
+  note          leader host RAM is not a cloud/remote worker
+model_hints
+  pass        agy,claude,codex,cursor,grok (--model)
+  no-op       orca (task-create has no --model), opencode, qwen, generic
+  aliases     claude cheap=haiku frontier=opus
+  refuse      cursor tier-only (no alias; pass --model)
+  default     off (of patch --model-hints field|wave)
+catalog
+  docs/model-catalog.md (advisory; not budget.tokens)
+headroom
+  read of models --headroom --json before fan-out (smallest-window margin, earliest reset; sin dato never blocks)
+efficiency
+  score       residual quality × optional residual.usage
+  propose     ask only; of patch --model-hints / pack --model-tier
+  never       auto-switch, budget.tokens ceiling, invented spend
+balance
+  honesty     unknown unless published payload in hand
+  never       invent spend or budget.tokens; headroom is of models --json
+  claude     unknown  published=/usage  interactive; statusLine rate_limits if already in hand
+  codex      unknown  published=/usage  interactive
+  cursor     unknown  no published balance CLI
+  opencode   unknown  no published balance CLI
+  orca       unknown  no published balance CLI
+  grok       unknown  no published balance CLI
+  agy        unknown  no published balance CLI
+  qwen       unknown  no published balance CLI
+  generic    unknown  no published balance CLI
+doctor        ok
+
+$ git init -q
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+
+$ git config user.email verify-of@example.invalid
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+
+$ git config user.name verify-of
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+
+$ git commit --allow-empty -q -m init
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+
+$ of init --mission 'decidable architecture for a pricing tool' --phase explore --source 'the pricing tool must print a price table from the CLI'
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+spec         .orderfield/SPEC.md  hash=8bb86374ce41…
+requirements 0 extracted  unowned 0  (of pack --owns-requirement ID; do not implement without a packet)
+initialized /tmp/verify-of-repo-dboptb40/.orderfield/ORDER.json
+id=ord_adf2d66a rev=1 phase=explore
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.7
+  note          leader host RAM is not a cloud/remote worker
+  next          ask once, then of patch --agent-band / --multi-model (do not re-ask each wave)
+
+$ of spec --add CLI-001 --surface contract --text 'the CLI prints a price table'
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+spec        bound CLI-001 in .orderfield/SPEC.md
+rev=2
+requirements  1 total  owned 0  verified 0  contract 0  internal 0  failed 0  unowned 1  unverified 1  superseded 0
+  CLI-001      unowned              contract single binding  owners=-  the CLI prints a price table
+
+$ of pack --slice 'map pricing models, do not choose the phase' --role explorer --child-id explorer --owns-requirement CLI-001
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+.orderfield/waves/001/packets/explorer.json
+child_id=explorer wave=1 residual (awaiting)=.orderfield/waves/001/residuals/explorer.json
+
+$ of spawn --adapter generic --packet .orderfield/waves/001/packets/explorer.json
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+adapter=generic child_id=explorer
+residual=.orderfield/waves/001/residuals/explorer.json
+exit=0 outcome=ok log=/tmp/verify-of-repo-dboptb40/.orderfield/waves/001/logs/explorer.log
+# stderr
+of: note — write-floor unsupported for generic: OF_TRUST is OF_AGENT's job. residual-capable OF_AGENT must include write approvals
+of: note — sensor-trust unsupported for generic: OF_TRUST is OF_AGENT's job; include read-only command approvals
+of: cost: harness paid usage is not measured; this is not a budget
+
+$ of collect --wave 1
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+OK explorer.json status=done wants=[]
+handle  .orderfield/waves/001/residuals/explorer.json  721B
+wave=1 ok=1 invalid=0 missing=0 total=1
+owned-but-unverified CLI-001
+
+$ of integrate --wave 1
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+{
+  "wave": 1,
+  "order_rev": 2,
+  "regime": "hold",
+  "reason": "wave closed; done_when still open",
+  "residuals": [
+    {
+      "status": "done",
+      "wants": [],
+      "uncertainty": 0.1
+    }
+  ],
+  "caps_remaining": {
+    "children": 3,
+    "across_this_wave": 1
+  },
+  "applied_patch": null,
+  "integration": {
+    "input_hash": "f0aefb0032d1b450bb00b1ca93b3f2b5f60b59f37a9e2752b4e1e2bc0b15f836",
+    "integrated_at": "2026-11-18T19:11:48Z",
+    "partial": false,
+    "apply": false,
+    "recompute": false,
+    "decision_order_rev": 2,
+    "previous_input_hash": null,
+    "record_path": ".orderfield/waves/001/integrations/f0aefb0032d1b450bb00b1ca93b3f2b5f60b59f37a9e2752b4e1e2bc0b15f836.json"
+  }
+}
+# stderr
+owned-but-unverified CLI-001
+next        CONTINUE — CLI-001 unverified; same child. do not open another. of next-wave then of pack --role explorer --child-id explorer --owns-requirement CLI-001 --slice 'cover CLI-001'
+speak       report is not a stop; execute printed next this turn (do not wait for ok/pulse)
+
+$ write price_cli.py
+# print("price table")
+
+$ of spec --verified-contract CLI-001 --run 'python3 price_cli.py'
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+attested    .orderfield/work/scratch/_leader_verify/logs/spec-cli-001.receipt.json  exit=0
+requirements  1 total  owned 1  verified 1  contract 1  internal 0  failed 0  unowned 0  unverified 0  superseded 0
+  CLI-001      verified_contract    contract single binding  owners=explorer  the CLI prints a price table
+
+$ of contrast
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+Intent vs Delivered
+
+spec        .orderfield/SPEC.md  hash=c31921ef35d3…
+intent      decidable architecture for a pricing tool
+gate        RESOLVED
+blocking    none
+
+VERIFIED_CONTRACT    CLI-001      SPEC.md:7 owners=explorer the CLI prints a price table
+
+coverage: 1/1 assigned  verified_contract: 1/1  verified_internal: 0/1
+RESOLVED
+done belongs to the slice; closed belongs to the SPEC (of close)
+{"blocking": [], "coverage": {"failed": 0, "owned": 1, "superseded": 0, "total": 1, "unowned": 0, "unverified": 0, "verified": 1, "verified_contract": 1, "verified_internal": 0}, "errors": [], "gate": "RESOLVED", "intent": "decidable architecture for a pricing tool", "next": "done belongs to the slice; closed belongs to the SPEC (of close)", "ok": true, "rows": [{"blocking": false, "cite": "SPEC.md:7", "id": "CLI-001", "owners": "explorer", "text": "the CLI prints a price table", "verdict": "VERIFIED_CONTRACT"}], "spec": ".orderfield/SPEC.md", "spec_hash": "c31921ef35d300d04e9a27101ebcc0701d526830dc78152fdb8cf312d70b42b0", "v": 1, "verdict": "RESOLVED"}
+
+$ of close --checklist
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+close checklist
+contrast     RESOLVED
+residual     empty
+wave         1  waves 1  in_flight 0
+blocking     none
+next         of close
+evaluator   hold  of close
+review       (no review record)
+speak       do not claim shipped unless contrast RESOLVED and residual empty
+speak       public-surface field missing evaluator_consent; pack --role adversary and --role verifier before next-wave
+{"blocking": [], "consent": "", "contrast": "RESOLVED", "contrast_ok": true, "evaluator": "hold", "evaluator_ids": [], "evaluator_roles": [], "in_flight": 0, "in_flight_ids": [], "kind": "checklist", "lost_inputs": [], "next": "of close", "ok": true, "residual": "empty", "residual_empty": true, "review_claims": [], "review_open": [], "review_stale": [], "v": 1, "wave": 1, "waves": 1}
+
+$ of close
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+Intent vs Delivered
+
+spec        .orderfield/SPEC.md  hash=c31921ef35d3…
+intent      decidable architecture for a pricing tool
+gate        RESOLVED
+blocking    none
+
+VERIFIED_CONTRACT    CLI-001      SPEC.md:7 owners=explorer the CLI prints a price table
+
+coverage: 1/1 assigned  verified_contract: 1/1  verified_internal: 0/1
+RESOLVED
+done belongs to the slice; closed belongs to the SPEC (of close)
+CLOSED      spec_hash=c31921ef35d3…  rev=3  proof=CLOSE.json
+review       (no review record)
+evidence    n=3  deliverables/evidence/
+scratch     wiped work/scratch (closed-ephemeral)  n=6
+deliverable .orderfield/deliverables/explorer/notes.md
+
+$ of status
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+root        /tmp/verify-of-repo-dboptb40
+id          ord_adf2d66a
+rev         3
+phase       explore
+mission     decidable architecture for a pricing tool
+done_when   ['of contrast RESOLVED then of close']
+done_when_mission ['of contrast RESOLVED then of close']
+done_when_phase []
+done_when_all ['of contrast RESOLVED then of close']
+constraints ['slaves do not mutate ORDER', 'one phase at a time']
+wave        1
+spawned     0 / 4
+in_flight   0
+handle      .orderfield/waves/001/residuals/explorer.json  721B
+last_regime hold
+spawn_blocked False
+since_across 99
+mission_streak 0
+done_when_closed True
+closed_phases ['explore']
+regimes     ['escalate_up', 'scale_out', 'scale_up', 'human', 'hold', 'phase']
+runtime     reserved (no telemetry): scale_up, scale_across, budget.tokens, thresholds.local_budget_pct, inherited_depth
+spec        .orderfield/SPEC.md  hash=c31921ef35d3…
+requirements  1 total  owned 1  verified 1  contract 1  internal 0  failed 0  unowned 0  unverified 0
+audit        OK  102.7KB / 64.0MB  fields=1
+  size ord_adf2d66a     closed  102.7KB  scratch=0B
+
+$ of resume
+# cwd /tmp/verify-of-repo-dboptb40
+# exit 0
+id            ord_adf2d66a
+home          .orderfield
+rev           3
+phase         explore
+mission       decidable architecture for a pricing tool
+wave          1
+last_regime   hold
+spawn_blocked False
+last_cmd      close
+field         closed
+auto_continue no — field closed (spec_closed); do not pack or spawn
+status        idle
+in_flight     0
+completed
+  explorer
+    residual    present
+    handle      .orderfield/waves/001/residuals/explorer.json  721B
+    status      done
+    result_ref  .orderfield/work/scratch/explorer/notes.md
+    promoted    .orderfield/deliverables/explorer/notes.md
+    owns_requirements
+      CLI-001
+next
+  CLOSED
+  field closed; do not pack or spawn
+  reason      close_verified
+  hint        field is closed and cryptographically verified; do not pack or spawn
+  digest      6f794058ba9d940cdeec859d5fe57b58eda4ea1ca0aa1ce7329daf1ef8b4df05
+audit        OK  102.7KB / 64.0MB  fields=1
+  size ord_adf2d66a     closed  102.7KB  scratch=0B

@@ -22,6 +22,7 @@ from of.field import (
     _load_public_schema,
     _read_json_object,
     die,
+    dump_text,
     emit_event,
     field_home,
     field_is_file,
@@ -3538,10 +3539,9 @@ def ensure_field_slave_md(root: Path) -> Path | None:
     except OSError:
         current = None
     if current != body:
-        # SLAVE.md is shared at the top-level .orderfield/ (not the per-field home)
-        # and is child-writable; a child could plant it as a symlink. Write
-        # no-follow, based at of_dir, so the leader cannot be redirected outside.
-        write_field_bytes(of_dir(root), dst, body.encode("utf-8"))
+        # of init's field home is .orderfield/, so this file is a snapshot.
+        # dump_text stages it; dump_bytes still refuses a planted symlink.
+        dump_text(dst, body)
     return dst
 
 
@@ -3564,7 +3564,7 @@ def slave_contract(inline: bool = False, root: Path | None = None) -> str:
     if inline:
         return slave_md()
     field_copy = field_slave_md_path(root) if root is not None else None
-    if field_copy is not None and field_copy.is_file():
+    if field_copy is not None and field_is_file(field_copy):
         ref = FIELD_SLAVE_MD
         where = (
             " The path is relative to the repo root — "

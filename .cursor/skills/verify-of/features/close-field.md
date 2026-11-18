@@ -12,7 +12,7 @@ Close is the proof a reviewer can read. Contrast is RESOLVED, the checklist is e
 
 - Add the tiny CLI the requirement names (`print("price table")`).
 - Run `of spec --verified-contract CLI-001 --run "python3 price_cli.py"`.
-- Run `of contrast`, then `of close --checklist`, then `of close`, then `of status`.
+- Run `of contrast`, then `of close --checklist`, then `of close`, then `of status`, then `of resume`.
 
 ## Driving it with the of CLI
 
@@ -26,6 +26,7 @@ Preconditions:
 - **Checklist.** Run `of close --checklist`. Exit code `0`. Stdout contains `of close` as the next step and does not contain `CLOSED` as a stamp.
 - **Stamp.** Run `of close`. Exit code `0`. Stdout contains `CLOSED`. `.orderfield/CLOSE.json` exists and is a JSON object with `requirements`.
 - **Status.** Run `of status`. Exit code `0`.
+- **Resume.** Run `of resume`. Exit code `0`. The closed field is read from WAL CURRENT.
 - **Proof.** Copy `CLOSE.json` to the evidence directory before cleanup. The transcript alone is not the close.
 
 ## Gotchas

@@ -137,7 +137,7 @@ class Registry(unittest.TestCase):
     def test_ids_are_the_uncovered_lessons_only(self) -> None:
         self.assertEqual(
             [rule.id for rule in lessons.RULES],
-            ["install-cap", "narration-comment"],
+            ["install-cap", "narration-comment", "wal-single-door"],
         )
 
     def test_repo_passes(self) -> None:
@@ -148,7 +148,10 @@ class Registry(unittest.TestCase):
             text=True,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertIn("OK agent-lessons install-cap narration-comment", proc.stdout)
+        self.assertIn(
+            "OK agent-lessons install-cap narration-comment wal-single-door",
+            proc.stdout,
+        )
 
     def test_cli_fail_exits_nonzero(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-lesson-cli-"))
@@ -164,3 +167,149 @@ class Registry(unittest.TestCase):
         self.assertEqual(proc.returncode, 1)
         self.assertIn("FAIL install-cap:", proc.stderr)
         self.assertIn("Fix:", proc.stderr)
+
+
+class WalSingleDoor(unittest.TestCase):
+    def _root(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-lesson-wal-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(tmp, True))
+        return tmp
+
+    def test_clean_tree_passes(self) -> None:
+        self.assertEqual(lessons.wal_door_errors(ROOT), [])
+        bypasses = [
+            site
+            for site in lessons.wal_write_sites(ROOT)
+            if site.verdict == "bypass"
+        ]
+        allowed = {(row.path, row.function) for row in lessons.WAL_ALLOW}
+        for site in bypasses:
+            self.assertIn((site.path, site.function), allowed, site)
+        self.assertEqual(
+            sorted((site.path, site.function, site.kind) for site in bypasses),
+            [
+                (
+                    "scripts/eval_fixtures.py",
+                    "eval_setup_recovery_active_field_pointer",
+                    "dump_bytes",
+                ),
+                (
+                    "scripts/eval_fixtures.py",
+                    "eval_setup_recovery_doctor_one_pass",
+                    "dump_bytes",
+                ),
+                (
+                    "scripts/eval_fixtures.py",
+                    "eval_setup_recovery_live_tamper",
+                    "write_text",
+                ),
+                (
+                    "scripts/eval_fixtures.py",
+                    "eval_setup_recovery_root_stub_ambiguous",
+                    "dump_bytes",
+                ),
+                ("scripts/eval_fixtures.py", "plant_incomplete_wal", "write_text"),
+                ("scripts/eval_fixtures.py", "stamp_home", "dump_bytes"),
+                ("scripts/eval_fixtures.py", "stamp_home", "dump_bytes"),
+                ("scripts/eval_fixtures.py", "stamp_home", "dump_bytes"),
+            ],
+        )
+
+    def test_snapshot_membership_matches_wal(self) -> None:
+        from of.wal import _wal_snapshot_rel
+
+        samples = (
+            "ORDER.json",
+            "state.json",
+            "session.json",
+            "SPEC.md",
+            "REQUIREMENTS.json",
+            "PHASE.md",
+            "SLAVE.md",
+            "CLOSE.json",
+            "spec-log/001-abc.md",
+            "checks/CLI-001.json",
+            "waves/001/packets/explorer.json",
+            "waves/001/prompts/explorer.md",
+            "waves/001/prompts/explorer.RESIDUAL.template.json",
+            "waves/001/integrations/abc.json",
+            "waves/001/report.json",
+            "report.json",
+            "waves/001/residuals/explorer.json",
+            "waves/001/spawns/explorer.json",
+            "waves/001/logs/explorer.log",
+            "waves/001/scope/explorer.json",
+            "waves/001/claims/explorer.json",
+            "waves/001/pins/explorer.json",
+            "waves/001/review/explorer.json",
+            "work/worktrees.json",
+            "work/scratch/explorer/PULSE",
+            "deliverables/FINAL.md",
+            "ACTIVE",
+            "ingest.md",
+            "plan-baseline.json",
+        )
+        for rel in samples:
+            self.assertEqual(lessons.snapshot_rel(rel), _wal_snapshot_rel(rel), rel)
+
+    def test_planted_dump_bytes_names_the_door(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "evil.py",
+            """
+            def plant(root):
+                dump_bytes(root / ".orderfield" / "ORDER.json", b"{}\\n")
+            """,
+        )
+        errors = lessons.wal_door_errors(tmp)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("FAIL wal-single-door:", errors[0])
+        self.assertIn("scripts/of/evil.py:2", errors[0])
+        self.assertIn("Root cause:", errors[0])
+        self.assertIn("dump_bytes", errors[0])
+        self.assertIn("write Field state via field_generation(); see wal.py", errors[0])
+
+    def test_planted_private_import_names_the_door(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "evil.py",
+            """
+            def plant():
+                from of.wal import _WAL_CTX
+                return _WAL_CTX
+            """,
+        )
+        errors = lessons.wal_door_errors(tmp)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("FAIL wal-single-door:", errors[0])
+        self.assertIn("_WAL_CTX", errors[0])
+        self.assertIn("Root cause:", errors[0])
+        self.assertIn("write Field state via field_generation(); see wal.py", errors[0])
+
+    def test_dump_json_of_order_is_the_door(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "ok.py",
+            """
+            def save(root):
+                dump_json(order_path(root), {"rev": 1})
+            """,
+        )
+        self.assertEqual(lessons.wal_door_errors(tmp), [])
+
+    def test_product_write_is_not_field_state(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "ok.py",
+            """
+            def save(root):
+                (root / "README.md").write_text("hi\\n", encoding="utf-8")
+            """,
+        )
+        self.assertEqual(lessons.wal_door_errors(tmp), [])
+
+    def test_allowlist_reasons_are_explicit(self) -> None:
+        self.assertGreaterEqual(len(lessons.WAL_ALLOW), 1)
+        for row in lessons.WAL_ALLOW:
+            self.assertTrue(row.reason.strip(), row)
+            self.assertIn(row.path, "scripts/eval_fixtures.py")

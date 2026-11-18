@@ -541,8 +541,10 @@ def eval_setup_recovery_evidence_receipt(root: Path) -> None:
     EvalInvariantSetup.require_ok(verifier, "pack verifier")
     vpacket = load_json(wave_dir(1, root) / "packets" / "v1.json")
     prompt_path = wave_dir(1, root) / "prompts" / "v1.md"
-    prompt_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt_path.write_text(render_prompt(vpacket, root=root), encoding="utf-8")
+    from of.wal import dump_text, field_generation
+
+    with field_generation(root):
+        dump_text(prompt_path, render_prompt(vpacket, root=root))
     packet = load_json(wave_dir(1, root) / "packets" / "e1.json")
     notes = root / ".orderfield" / "work" / "scratch" / "e1" / "notes.md"
     notes.parent.mkdir(parents=True, exist_ok=True)

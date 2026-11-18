@@ -1799,17 +1799,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
 
 
 def _commit_open_generation() -> None:
-    """Commit the command's open WAL generation now (no-op without one).
+    """Commit the command's open WAL generation now (no-op without one)."""
+    from of.wal import commit_open_generation
 
-    The dispatcher's field_lock aborts on any exception; once committed
-    (MANIFEST written) that abort is a no-op, so SystemExit after this
-    reports the outcome without discarding the transaction.
-    """
-    from of import wal
-
-    gen = wal._WAL_CTX.get()
-    if gen is not None:
-        gen.commit()
+    commit_open_generation()
 
 
 def _emit_drive_after_spawn(
