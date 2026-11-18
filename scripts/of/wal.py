@@ -1481,6 +1481,8 @@ class _WalGeneration:
             self.inherited[rel] = live.read_bytes()
 
     def commit(self) -> None:
+        if self._manifest_written:
+            return
         prev = _load_wal_current(self.root)
         self._inherit_and_detect_deletions(prev)
         # No CURRENT yet (recover allowed it: genesis or a leader adopt):
@@ -1581,6 +1583,18 @@ def field_generation(root: Path) -> Any:
         _WAL_CTX.reset(token)
 
 
+def commit_open_generation() -> None:
+    """Publish the open generation now. No-op when none is open.
+
+    ``field_generation`` aborts on BaseException, including SystemExit.
+    Collect exits 2 after a partial wave; committing first keeps the
+    MANIFEST, so that abort does not drop the generation.
+    """
+    gen = _WAL_CTX.get()
+    if gen is not None:
+        gen.commit()
+
+
 class FieldWal:
     """Generation WAL. Methods are the moved field.py functions."""
 
@@ -1602,6 +1616,7 @@ class FieldWal:
     refuse_live_order_tamper = staticmethod(_refuse_live_order_tamper)
     materialize_current = staticmethod(_materialize_current_only)
     generation = staticmethod(field_generation)
+    commit_open = staticmethod(commit_open_generation)
     drift = staticmethod(wal_drift)
     restore_live = staticmethod(restore_live)
     durable_fsync = staticmethod(durable_fsync)

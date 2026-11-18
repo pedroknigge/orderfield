@@ -267,6 +267,7 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
     _of(["close", "--checklist"], work=work, env=env, log=log)
     _of(["close"], work=work, env=env, log=log)
     _of(["status"], work=work, env=env, log=log)
+    _of(["resume"], work=work, env=env, log=log)
 
 
 def _write_evidence(

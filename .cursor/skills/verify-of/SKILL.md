@@ -50,7 +50,7 @@ The harness is the installed `of` binary. External CLIs (claude, codex, cursor, 
 5. `of spawn --adapter generic` on `.orderfield/waves/001/packets/explorer.json`.
 6. `of collect --wave 1` and `of integrate --wave 1`.
 7. Write `price_cli.py` that prints `price table`, then `of spec --verified-contract CLI-001 --run "python3 price_cli.py"`.
-8. `of contrast`, `of close --checklist`, `of close`, `of status`.
+8. `of contrast`, `of close --checklist`, `of close`, `of status`, `of resume`.
 
 The feature files under `features/` are the map. Drive the feature you name. Do not skip a precondition to force a green run. If a step exits non-zero, the helper keeps the failure in the transcript, deletes only the scratch it created, and exits 1.
 

@@ -1,0 +1,56 @@
+{
+  "v": 2,
+  "verdict": "RESOLVED",
+  "spec_closed": true,
+  "done_when_closed": true,
+  "spec_hash": "c31921ef35d300d04e9a27101ebcc0701d526830dc78152fdb8cf312d70b42b0",
+  "order_id": "ord_adf2d66a",
+  "rev": 3,
+  "phase": "explore",
+  "closed_at": "2026-11-18T19:11:50Z",
+  "git": {
+    "head": "b84c46f0bf43d8613b883d3e9c4e6afd8a7b2dfc",
+    "tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+    "dirty": false
+  },
+  "residuals": [
+    {
+      "path": ".orderfield/waves/001/residuals/explorer.json",
+      "sha256": "6d24590677c9f66933841a746eacfb6d36d5a89d0792ac19a1771adf5e285d85",
+      "evidence": "deliverables/evidence/6d24590677c9f66933841a746eacfb6d36d5a89d0792ac19a1771adf5e285d85.json",
+      "status": "done",
+      "valid": true
+    }
+  ],
+  "receipts": [
+    {
+      "path": ".orderfield/work/scratch/_leader_verify/logs/spec-cli-001.receipt.json",
+      "sha256": "2f3a6fce68891425d7f2b834904ec087cb8fdcd384942c5e8e22f2c04b6a2cc2",
+      "evidence": "deliverables/evidence/2f3a6fce68891425d7f2b834904ec087cb8fdcd384942c5e8e22f2c04b6a2cc2.json",
+      "exit": 0,
+      "source": {
+        "path": ".orderfield/work/scratch/_leader_verify/logs/spec-cli-001.out",
+        "sha256": "ffa0e3ae5cd0e9fda69f2d1f523832d7af8e701545a9dbb7ea0758da30b79d0b",
+        "evidence": "deliverables/evidence/ffa0e3ae5cd0e9fda69f2d1f523832d7af8e701545a9dbb7ea0758da30b79d0b.out"
+      },
+      "gate": true
+    }
+  ],
+  "requirements": [
+    {
+      "id": "CLI-001",
+      "status": "verified_contract",
+      "kind": "receipt",
+      "proof_sha": "2f3a6fce68891425d7f2b834904ec087cb8fdcd384942c5e8e22f2c04b6a2cc2",
+      "path": ".orderfield/work/scratch/_leader_verify/logs/spec-cli-001.receipt.json",
+      "sha256": "2f3a6fce68891425d7f2b834904ec087cb8fdcd384942c5e8e22f2c04b6a2cc2",
+      "evidence": "deliverables/evidence/2f3a6fce68891425d7f2b834904ec087cb8fdcd384942c5e8e22f2c04b6a2cc2.json"
+    }
+  ],
+  "review": {
+    "findings": [],
+    "open": [],
+    "claims": [],
+    "witness": []
+  }
+}
