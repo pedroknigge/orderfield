@@ -143,16 +143,20 @@ class HitlIssueFileSurface(unittest.TestCase):
                 path.name,
             )
             self.assertIn("pedroknigge/orderfield", body, path.name)
-            for needle in CLASSIFIER_YES:
-                self.assertIn(needle, body, f"{path.name}: missing {needle}")
-            for needle in CLASSIFIER_NO:
-                self.assertIn(needle, body, f"{path.name}: missing {needle}")
             self.assertNotIn("Anyone with `of` on PATH", body, path.name)
             self.assertNotIn(
                 "product feedback from anyone with of on PATH",
                 body.lower(),
                 path.name,
             )
+        # The classifier stays on the procedure docs. AGENTS.md is the
+        # pointer (test_agents_pointer_is_not_a_second_contract).
+        for path in (SKILL, SLAVE, GLOSSARY, README):
+            body = path.read_text(encoding="utf-8")
+            for needle in CLASSIFIER_YES:
+                self.assertIn(needle, body, f"{path.name}: missing {needle}")
+            for needle in CLASSIFIER_NO:
+                self.assertIn(needle, body, f"{path.name}: missing {needle}")
 
 
 class Issue001Pair(unittest.TestCase):

@@ -1,30 +1,26 @@
 # Orderfield — rules for any harness
 
-This hub is resume-first. One leader. A child residual cannot rewrite the mission, and a spawned child (and its descendants, even after unsetting `OF_CHILD`) is refused leader verbs. A handoff child or an unrelated same-user process can still run leader verbs; naive hand edits of live files are detected (`LIVE!=CURRENT` → `RESTORE`), but a correctly chained forged WAL generation is not detected without the deferred leader key (W9). Coverage matches code.
+Resume-first. If `.orderfield/` exists (root `ORDER.json` or nested `fields/<id>/`), start with `of resume` and do the printed `next`. `of resume --json` is `{action, reason_code, label, detail, targets[].argv, inputs_digest}` (`tests/test_resume_next.py`). Run each non-empty `targets[].argv`. An empty argv on a child target means wait. No targets: the leader acts on the printed label/detail. Do not invent a parallel contract.
 
-If `.orderfield/` exists (root `ORDER.json` or nested `fields/<id>/`), run `of resume` and do the printed `next`. `of resume --json` gives `{action, reason_code, label, detail, targets[].argv, inputs_digest}`. Run each non-empty `targets[].argv`. An empty argv on a child target means wait. No targets means the leader acts on the printed label/detail. Do not invent a parallel contract.
+Kernel refusals: `MissionRewriteRefused`; `ChildForgeLeaderVerbs` (`OF_CHILD` ancestry and `OF_HANDOFF_CHILD`); `test_live_order_tamper_is_restore_and_from_current_fixes`; `test_5a_w9_leader_key_detects_forged_wal_and_handoff_child_refused`. A same-OS-user who can read `wal/.leader_key` is outside the kernel ([SECURITY.md](SECURITY.md)).
 
-If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, OpenCode, Grok, Orca, Antigravity/agy) obeys this:
+0. **Open field auto-continues.** If `.orderfield/` exists and `spec_closed` is false, every turn starts with `of resume` and executes the printed `next` in the same turn. After collect+integrate, that is still next-wave/pack/spawn — a status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Interleaved chats, compaction, and unrelated work in other threads do not pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken. Cloning or checking out a tree with an open `.orderfield/` plus an installed skill still auto-continues — operator risk, not an escape.
+1. `of resume` first (continue in-flight; do not re-init). `next` `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` / a `wal-broken` refusal are leader acts, not stops (`NextPlan`). Flags: `OfFlagsSpelledInFull`.
+2. Leader: do not implement the slice. Pack and delegate. A large mission writes `docs/plans/<owner>/sources.md` and lets the wave-0 explorer propose packs (`SourcesTriagePath`). Do not route tickets.
+3. Slave world: packet plus scratch ([CHILD.md](CHILD.md)). Do not mutate ORDER, state, or `session.json` except through `of`. Nonempty scratch with no residual stays in flight (`scratch_unclaimed`, `tests/test_resume_next.py`).
+4. Child close-out: `ResidualValidation`.
+5. Spawn, collect, and integrate go through `scripts/of.py` (or `of` on PATH).
+6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) blocks spawn until patch and guarded `next-wave` (`ThresholdStopSpawn`, `StateMachineGuards`).
+7. **Same harness only** by default. Ask same-harness categories vs a multi-harness mix before pack (`SkillHarnessAsk`). Pin with `of patch --harness <adapter>`. Mix only after an explicit yes; then `of detect` (PATH is not login).
+8. Mission vs phase `done_when`: `MissionVsPhaseDoneWhen`. Do not rewrite mission criteria just to change phase.
+9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for a mission that will not fit one context, colliding writers, and a false public claim. A bump plus an obvious feature is theater.
+10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. A child never posts. Procedure: [SKILL.md](SKILL.md), [CHILD.md](CHILD.md). Not a second contract (`HitlIssueFileSurface`).
 
-0. **Open field auto-continues.** If `.orderfield/` exists and the field's `spec_closed` is false, every turn starts with `of resume`, reads `auto_continue`, and **executes the printed `next` action in the same turn**. After collect+integrate, that is still next-wave/pack/spawn — a status report is not a stop; do not wait for ok/pulse. HOLD = continue existing packets, not invent a consent ask. Ordinary next-wave/pack is not the adversary/harness/model ask. Interleaved chats, compaction, and unrelated work in other threads do **not** pause the mission. Only explicit user pause/stop/cancel (`pause`, `stop`, `wait on the field`, `cancel the mission`, `of init --force`) or `spec_closed` ends auto-continue. Resume-only turns on an open field are broken. Cloning or checking out a tree with an open `.orderfield/` plus an installed skill still auto-continues — operator risk, not an escape.
-1. If `.orderfield/` exists, `of resume` first (continue in-flight; do not re-init). Then read ORDER. `next` `REPAIR` / `RESTORE` / `CLOSE UNPROVEN` / a `wal-broken` refusal are leader acts, not stops. Flags are spelled in full (no abbreviations).
-2. If you are the leader, do not implement the slice. Pack and delegate. On a large mission, write `docs/plans/<owner>/sources.md` and let the wave-0 explorer propose packs. Do not route tickets.
-3. If you are a slave, your world is the packet plus scratch. Do not mutate ORDER, state, or `session.json`. Nonempty scratch + missing residual = continue, do not restart.
-4. Every child close-out is a valid residual JSON, not loose prose.
-5. Spawn, collect, and integrate go through the orderfield skill `scripts/of.py` (or `of` on PATH).
-6. One phase at a time. Escalate-up before spawn. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) forbids spawn in that wave until the field is patched and guarded `next-wave` runs.
-7. **Same harness only** by default: **ask** same-harness categories vs multi-harness mix before pack. Pin same-harness with `of patch --harness <adapter>` (a field, not a prose constraint). Mix only after explicit yes; then `of detect` (present / missing / PATH≠auth; PATH is not login).
-8. Mission vs phase `done_when`: `of patch --done-when` scopes to the current phase; `of patch --done-when-mission` edits the stable untagged mission list. Do not rewrite mission criteria just to change phase.
-9. Cut is optional when exclusive owners are obvious (put them in constraints). Orderfield pays for a software mission that will not fit one context, colliding writers, and a false public claim (adversary catch); theater for bump+obvious feature (doc-manager + grok-build feedbacks).
-10. **HITL GitHub issues.** Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL confirm via `of issue`. Auto-report ONLY if Orderfield's: invalid schema / WAL incoherent / pack packet collect cannot accept / spawn metadata incoherent / contrast contradicts itself / docs claim vs code / install/update pin failure / child-forge or lock invariant broken. Do NOT auto-report: child did not finish, SPEC incomplete, product tests red, slice disliked, consumer build error, “user is stuck.” Those stay on disk (residual → integrate). If unsure, draft + HITL, default to not posting. Confirm creates (`of issue --confirm` or TTY yes); refuse / edit-later / silence does not. `--dry-run` is not HITL. A child never posts — draft `scratch/ISSUE.md` or `of issue --dry-run` and name it in the residual. Procedure: [SKILL.md](SKILL.md) (leader), [CHILD.md](CHILD.md) (child). Not a second contract.
-
-**Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
+**Code wins.** After a kernel or adapter change, update the docs the claims matrix names and run `python3 docs/audit/check-claims.py` (`ClaimsHonesty`).
 
 Repeated mistakes are a check: `python3 scripts/check_agent_lessons.py` (the FAIL line is the fix).
 
-Lockstep changelog (0.4.2 … 0.8.27 and later) lives in [CHANGELOG.md](CHANGELOG.md) and [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) — not here.
-
-Living map: checklist → of contrast / of close / residual. Not a second checklist.
+Living map: checklist → of contrast / of close / residual (`LivingMapGate`). Not a second checklist.
 
 ## Docs
 
@@ -70,4 +66,4 @@ Living map: checklist → of contrast / of close / residual. Not a second checkl
 | [docs/features/adapters/](docs/features/adapters/) | Adapters feature pack |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
-Skill: `/of` is an installed alias for `/orderfield`. Look for `orderfield/SKILL.md` in the harness skill directories, `~/.agents/skills/orderfield/` (generic), `~/.gemini/antigravity-cli/skills/orderfield/` (agy Global), `~/.gemini/skills/orderfield/` (agy Shared), `~/.gemini/config/skills/orderfield/` (optional legacy), or vendored in this repo. Unknown harnesses use `of spawn --adapter generic`. Native Antigravity adapter is `agy`.
+Skill: `/of` aliases `/orderfield`. Native adapter is `agy`. Destinations are the harness skill dirs plus `~/.agents/skills/orderfield/` (generic), `~/.gemini/antigravity-cli/skills/orderfield/` (agy Global), `~/.gemini/skills/orderfield/` (agy Shared), and `~/.gemini/config/skills/orderfield/` (optional legacy). Unknown harnesses use `of spawn --adapter generic`.
