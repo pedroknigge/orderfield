@@ -20,6 +20,8 @@ If this repo uses Orderfield, every incoming agent (Claude Code, Codex, Cursor, 
 
 **Code wins** over narrative docs. After significant kernel/adapter changes, update docs and re-run the claims audit.
 
+Repeated mistakes are a check: `python3 scripts/check_agent_lessons.py` (the FAIL line is the fix).
+
 Lockstep changelog (0.4.2 … 0.8.27 and later) lives in [CHANGELOG.md](CHANGELOG.md) and [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) — not here.
 
 Living map: checklist → of contrast / of close / residual. Not a second checklist.
