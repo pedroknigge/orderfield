@@ -18,6 +18,8 @@ Kernel refusals: `MissionRewriteRefused`; `ChildForgeLeaderVerbs` (`OF_CHILD` an
 
 **Code wins.** After a kernel or adapter change, update the docs the claims matrix names and run `python3 docs/audit/check-claims.py` (`ClaimsHonesty`).
 
+Repeated mistakes are a check: `python3 scripts/check_agent_lessons.py` (the FAIL line is the fix).
+
 Living map: checklist → of contrast / of close / residual (`LivingMapGate`). Not a second checklist.
 
 ## Docs

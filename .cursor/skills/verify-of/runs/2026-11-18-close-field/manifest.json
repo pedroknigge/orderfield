@@ -1,0 +1,11 @@
+{
+  "feature": "close-field",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt",
+    "CLOSE.json"
+  ],
+  "evidence_survived_cleanup": true
+}

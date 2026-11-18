@@ -225,32 +225,23 @@ class InstallScript(unittest.TestCase):
             self.assertTrue((dest / rel).is_file(), rel)
         self.assertTrue((dest / "CHILD.md").is_file(), "dest must copy CHILD.md")
         self.assertFalse((dest / "SLAVE.md").exists(), "do not copy SLAVE.md")
-        forbidden = ("tests", "evals", "docs", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
+        forbidden = (
+            "tests",
+            "evals",
+            "docs",
+            ".git",
+            ".cursor",
+            "CHANGELOG.md",
+            "CONTRIBUTING.md",
+        )
         for name in forbidden:
             self.assertFalse((dest / name).exists(), name)
+        # verify-of is a checkout skill. It is not on the install whitelist.
+        self.assertFalse((dest / "scripts" / "verify_of.py").exists())
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        # 1.5 MB until the post-0.9.2 batch (ScopeWrite allow-list + operator
-        # config, --verify-req, plan-folder extraction, residual channel,
-        # headroom) grew the kernel ~73 KB. 0.9.4 added the run-1 security
-        # hardening (no-follow writes, migrate drift refusal, WAL HMAC v2) and
-        # the appendix complete-flag-surface section. 0.9.5 adds the
-        # recorded-worktree checkout, per-wave kernel receipts,
-        # child-failure stamps, the #388 outside-verifier close gate,
-        # #389 review-attacker count. 0.9.6 adds #392 persona-costume ban,
-        # #391 SourcesList, #404 PrimarySource, skill half-life fixture,
-        # and measurable-outcome / prototype-wave skill growth.
-        # #411 model_enrich (tier/price overlay on of models) adds ~6.2 KB.
-        # #414 spec --run proof binding (--bind-all, run_covers) adds ~11 KB.
-        # The symlink-safe leader-key create (`create_private_nofollow`:
-        # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
-        # #424 `resolve_argv0` and #427's install.sh help text are installed
-        # kernel. #426 ReviewWitness is the rest of this dest. Measured
-        # dest is 1,672,669. 1,672,810 leaves about 140 bytes.
-        # The walk starts at the field home: macOS /var is a symlink, and
-        # lstat from / refused every temp field.
-        # The publish-asset script and tests stay outside this surface.
+        # measured_dest: 1672669
         self.assertLessEqual(size, 1_672_810, size)
 
     def test_generic_only_flag(self) -> None:

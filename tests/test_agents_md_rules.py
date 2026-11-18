@@ -2,10 +2,9 @@
 """Checks that replaced contributor prose in AGENTS.md / CONTRIBUTING.md / PRINCIPLES.md.
 
 Stdlib only. Each failure says the fix. These classes can later move into
-scripts/check_agent_lessons.py (another PR owns that file): OfFlagsSpelledInFull,
-AgentsHubNotChangelog, AgentsDocLinks, StdlibOnly, ShimStaysThin,
-SaveOrderOneWriter, NoGodSplitFiles, CiEntry, BranchProtectionJobs,
-PrinciplesPointer.
+scripts/check_agent_lessons.py: OfFlagsSpelledInFull, AgentsHubNotChangelog,
+AgentsDocLinks, StdlibOnly, ShimStaysThin, SaveOrderOneWriter, NoGodSplitFiles,
+CiEntry, BranchProtectionJobs, PrinciplesPointer.
 """
 from __future__ import annotations
 

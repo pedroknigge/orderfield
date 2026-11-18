@@ -113,4 +113,7 @@ ok "packaging bump"
 python3 "$ROOT/scripts/check_release_assets.py" || fail "release asset assertion"
 ok "release assets"
 
+python3 "$ROOT/scripts/check_agent_lessons.py" "$ROOT" || fail "agent lessons"
+ok "agent lessons"
+
 echo "OK validate-skill"
