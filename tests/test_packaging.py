@@ -225,9 +225,19 @@ class InstallScript(unittest.TestCase):
             self.assertTrue((dest / rel).is_file(), rel)
         self.assertTrue((dest / "CHILD.md").is_file(), "dest must copy CHILD.md")
         self.assertFalse((dest / "SLAVE.md").exists(), "do not copy SLAVE.md")
-        forbidden = ("tests", "evals", "docs", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
+        forbidden = (
+            "tests",
+            "evals",
+            "docs",
+            ".git",
+            ".cursor",
+            "CHANGELOG.md",
+            "CONTRIBUTING.md",
+        )
         for name in forbidden:
             self.assertFalse((dest / name).exists(), name)
+        # verify-of is a checkout skill. It is not on the install whitelist.
+        self.assertFalse((dest / "scripts" / "verify_of.py").exists())
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
@@ -246,8 +256,9 @@ class InstallScript(unittest.TestCase):
         # The symlink-safe leader-key create (`create_private_nofollow`:
         # lstat, O_EXCL|O_NOFOLLOW, 0600) is installed kernel, not docs.
         # #424 `resolve_argv0` and #427's install.sh help text are installed
-        # kernel. #426 ReviewWitness is the rest of this dest. Measured
-        # dest is 1,672,669. 1,672,810 leaves about 140 bytes.
+        # kernel. #426 ReviewWitness is the rest of this dest. verify-of
+        # (`.cursor/` and `scripts/verify_of.py`) stays off this whitelist.
+        # Re-measured dest is 1,672,669. 1,672,810 leaves 141 bytes.
         # The walk starts at the field home: macOS /var is a symlink, and
         # lstat from / refused every temp field.
         # The publish-asset script and tests stay outside this surface.
