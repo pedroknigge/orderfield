@@ -207,6 +207,7 @@ class WalChainCli(unittest.TestCase):
         parent: str | None = None,
         strip_hmac: bool = False,
         corrupt_bytes: bool = False,
+        legacy_close: str | None = None,
     ) -> str:
         """One seq+1 generation. The only fault is the flag that is set."""
         cur = self.current()
@@ -228,6 +229,8 @@ class WalChainCli(unittest.TestCase):
             man["files"]["ORDER.json"] = digest
             man["order_sha256"] = digest
         man.pop("hmac_sha256", None)
+        if legacy_close is not None:
+            man[wal.LEGACY_CLOSE_KEY] = legacy_close
         if not strip_hmac:
             key = (walh / ".leader_key").read_text(encoding="utf-8").strip().encode("utf-8")
             man["hmac_sha256"] = hmac.new(
@@ -260,6 +263,22 @@ class WalChainCli(unittest.TestCase):
     def test_single_nonintact_generation_is_quarantined_not_published(self) -> None:
         forged = self._plant_single_generation("tornfile", corrupt_bytes=True)
         self._assert_single_forge_quarantined(forged)
+
+    def test_child_that_changes_legacy_close_sha256_is_quarantined(self) -> None:
+        forged = self._plant_single_generation("legacy", legacy_close="b" * 64)
+        self._assert_single_forge_quarantined(forged)
+
+    def test_later_generation_carries_legacy_close_sha256(self) -> None:
+        digest = "a" * 64
+        current_path = self.home() / "wal" / "CURRENT.json"
+        current = load(current_path)
+        current[wal.LEGACY_CLOSE_KEY] = digest
+        current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+        self.ok(self.tmp, "checkpoint", "--summary", "carry legacy close")
+        after = self.current()
+        self.assertEqual(after[wal.LEGACY_CLOSE_KEY], digest)
+        man = load(self.home() / "wal" / after["generation"] / "MANIFEST.json")
+        self.assertEqual(man[wal.LEGACY_CLOSE_KEY], digest)
 
     def test_checkpoint_refuses_symlinked_leader_key_and_keeps_canary(self) -> None:
         canary = self.tmp / "canary.txt"
@@ -502,6 +521,32 @@ class WalChainInProcess(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             wal.recover_field_wal(self.tmp)
         self.assertEqual((self.home / "PHASE.md").read_text(encoding="utf-8"), "phase two\n")
+
+    def test_whitespace_only_order_is_not_a_silent_rewrite(self) -> None:
+        live = self.home / "ORDER.json"
+        obj = json.loads(live.read_text(encoding="utf-8"))
+        live.write_text(json.dumps(obj, indent=4) + "\n", encoding="utf-8")
+        wal._refuse_live_order_tamper(self.tmp)
+        obj["mission"] = "HIJACKED"
+        live.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            wal._refuse_live_order_tamper(self.tmp)
+
+    def test_blocked_field_lock_does_not_rewrite_live(self) -> None:
+        phase = self.home / "PHASE.md"
+        phase.write_text("tampered\n", encoding="utf-8")
+        with mock.patch.object(wal, "flock_acquire", side_effect=BlockingIOError) as acquire:
+            wal.ensure_committed_field_view(self.tmp)
+        self.assertTrue(acquire.called)
+        self.assertEqual(phase.read_text(encoding="utf-8"), "tampered\n")
+
+    def test_quarantine_leaves_a_directory_outside_wal(self) -> None:
+        outside = self.tmp / "outside-wal"
+        outside.mkdir()
+        (outside / "keep.txt").write_text("stay\n", encoding="utf-8")
+        dest = wal._quarantine(self.tmp, outside, "escape")
+        self.assertIsNone(dest)
+        self.assertEqual((outside / "keep.txt").read_text(encoding="utf-8"), "stay\n")
 
     def test_durable_fsync_accepts_a_file_descriptor(self) -> None:
         path = self.tmp / "probe"

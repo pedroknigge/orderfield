@@ -1,15 +1,4 @@
-"""Field WAL: stage + MANIFEST + CURRENT publish / CURRENT-only read view.
-
-Causal chain (no filesystem metadata): every MANIFEST names its `parent`
-generation and `seq` (parent seq + 1); CURRENT.json names the head
-`{generation, seq, manifest_sha256, order_sha256}`. Recovery rolls forward
-only the single complete child of CURRENT. Anything else is history or is
-quarantined to wal/orphans/ and never republished. MATERIALIZED.json says
-which generation live files were last copied from; a mismatch is a crash
-after the CURRENT flip and any process holding the lock finishes the copy.
-Readers never fall back to live past an existing CURRENT: an unreadable
-CURRENT or a missing head generation refuses (wal-broken) like writers.
-"""
+"""Field WAL: one generation publish, CURRENT-only reads."""
 from __future__ import annotations
 
 import errno
@@ -52,17 +41,12 @@ from of.field import (
 )
 
 OF_WAL_CRASH_ENV = "OF_WAL_CRASH"
-# Leader-only escape after a refusal: adopt live files as the new chain head.
 OF_WAL_ADOPT_LIVE_ENV = "OF_WAL_ADOPT_LIVE"
 OF_LEADER_KEY_ENV = "OF_LEADER_KEY"
 OF_LEADER_TOKEN_ENV = "OF_LEADER_TOKEN"
 OF_HANDOFF_CHILD_ENV = "OF_HANDOFF_CHILD"
 WAL_DIRNAME = "wal"
 WAL_ORPHANS = "orphans"
-# A generation id read from a child-writable CURRENT/MANIFEST is joined onto
-# wal/ as a path component, so it must be a single safe filename: no separators,
-# no "..", no leading dot. Authenticity of the named generation is the leader
-# HMAC's job (W9); this check only stops the id itself escaping wal/.
 GEN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
 
@@ -70,12 +54,9 @@ def valid_generation_id(gid: Any) -> bool:
     return isinstance(gid, str) and ".." not in gid and bool(GEN_ID_RE.match(gid))
 WAL_MATERIALIZED = "MATERIALIZED.json"
 WAL_LEADER_KEY = ".leader_key"
-# sha256 of the CLOSE.json a pre-chain (v0.8.34) head held when adopted.
-# Carried by every later MANIFEST / CURRENT; a child may never change it.
 LEGACY_CLOSE_KEY = "legacy_close_sha256"
 LEGACY_CLOSE_PRE_JSON = "pre-close-json"
 LEGACY_CLOSE_FILE = "CLOSE.json"
-# Read-only commands that must see CURRENT, not a mixed live generation.
 _WAL_VIEW_COMMANDS = frozenset(
     {
         "resume",
@@ -405,8 +386,6 @@ def _field_view_bytes(path: Path) -> tuple[bool, bytes | None]:
             pass
     view = _committed_generation()
     if view is None:
-        # View commands never serve live past a CURRENT that exists but
-        # cannot be read (the reader guard refused first; this is a race).
         if _wal_read_current.get() and wal_current_path().is_file():
             return True, None
         return False, None
@@ -422,7 +401,6 @@ def _field_view_bytes(path: Path) -> tuple[bool, bytes | None]:
             return True, staged.read_bytes()
     except OSError:
         pass
-    # Listed by CURRENT but unreadable in its generation: absent, never live.
     return True, None
 
 
@@ -488,6 +466,12 @@ def _manifest_mismatch(root: Path | None, current: dict[str, Any]) -> bool:
     return _sha_file(wal_home(root) / gid / "MANIFEST.json") != str(want)
 
 
+def _prechain_unsigned_ok(
+    meta: dict[str, Any], *, strict: bool, head_signed: bool = False
+) -> bool:
+    return _seq(meta) is None and not strict and not head_signed
+
+
 class LeaderKey:
     """W9 cryptographic WAL authority: HMAC-SHA256 over causal chain & receipts."""
 
@@ -546,9 +530,6 @@ class LeaderKey:
     def _manifest_chain_bytes(man: dict[str, Any]) -> bytes:
         files = man.get("files") if isinstance(man.get("files"), dict) else {}
         body = {
-            # v2 binds the per-file digest map and deletions, so a generation's
-            # contents (packets, ORDER, SPEC, CLOSE.json) cannot be rewritten while
-            # the HMAC still verifies. Existing heads re-sign on the next write.
             "v": 2,
             "generation": str(man.get("generation") or ""),
             "seq": _seq(man) or 1,
@@ -573,16 +554,8 @@ class LeaderKey:
         strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
         man_sig = str(man.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
-        # Both unsigned. A chained (seq-bearing) generation is from the signing era:
-        # every writer signs it, so a missing signature with a key present is a
-        # stripped signature -> fail closed in any mode. A pre-chain legacy
-        # generation (no seq, e.g. adopted v0.8.34) has no signature by design and
-        # stays lenient unless strict. A present signature is always checked over the
-        # v2 body that binds the files map, so content cannot be rewritten in place.
         if not man_sig and not cur_sig:
-            if _seq(man) is not None:
-                return False
-            return not strict
+            return _prechain_unsigned_ok(man, strict=strict)
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
         if man_sig and not hmac.compare_digest(man_sig, expected):
             return False
@@ -601,11 +574,7 @@ class LeaderKey:
         c_sig = str(cman.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
-            # A chained candidate must carry a signature; only a pre-chain legacy
-            # one may be unsigned (and not in strict mode / after a signed head).
-            if _seq(cman) is not None:
-                return False
-            return not (strict or bool(cur_sig))
+            return _prechain_unsigned_ok(cman, strict=strict, head_signed=bool(cur_sig))
         if (
             not strict
             and c_sig == cur_sig
@@ -649,9 +618,6 @@ def _load_wal_current(root: Path | None) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     data = _read_json_object(path)
-    # A child can write CURRENT; the generation becomes a path component (home / gid).
-    # Require the minted format so an absolute or "../" value is treated as no CURRENT
-    # (callers then refuse wal-broken) rather than resolving outside wal/.
     if not isinstance(data, dict) or not valid_generation_id(data.get("generation")):
         return None
     return data
@@ -711,7 +677,6 @@ def _committed_generation(root: Path | None = None) -> tuple[Path, dict[str, Any
 
 
 def _write_current(root: Path, current: dict[str, Any]) -> None:
-    # F_FULLFSYNC here is also the barrier for MANIFEST + staged files.
     _write_synced(wal_current_path(root), json_payload_bytes(current), full=True)
 
 
@@ -810,8 +775,6 @@ def _materialize_generation(
 def _quarantine(root: Path, src: Path, label: str) -> Path | None:
     """Move src under wal/orphans/ (never delete evidence). Returns the dest."""
     orphans = wal_home(root) / WAL_ORPHANS
-    # Defense in depth: only ever relocate a direct child of wal/. A caller that
-    # built src from a child-controlled id must not move a dir from outside wal/.
     if src.is_symlink() or src.parent.resolve() != wal_home(root).resolve():
         warn_oserror("wal_quarantine", OSError(f"refusing to quarantine {src} outside wal/"))
         return None
@@ -853,9 +816,6 @@ def wal_drift(root: Path) -> list[str]:
     out.update(_wal_live_snapshot_rels(root) - set(files))
     return sorted(out)
 
-
-# Live paths this process restored from CURRENT after a crash post-flip:
-# the one write a read verb makes (resume reports it).
 _REPAIRED: list[str] = []
 
 
@@ -897,7 +857,6 @@ def ensure_committed_field_view(root: Path) -> None:
         try:
             flock_acquire(handle)
         except BlockingIOError:
-            # A writer holds the lock: check CURRENT, never touch live.
             _reader_guard(root)
             return
         try:
@@ -935,7 +894,6 @@ def _reader_guard(root: Path) -> bool:
     elif _manifest_mismatch(root, current):
         problem = f"CURRENT generation {gid} MANIFEST is not the one CURRENT names"
     elif _generation_intact(wal_home(root) / gid, gid) is None:
-        # Reads stay on the generation's own bytes (never live).
         _warn(
             "wal_current",
             f"WAL CURRENT {gid} does not hash to its MANIFEST; showing its "
@@ -949,7 +907,7 @@ def _reader_guard(root: Path) -> bool:
     else:
         return True
     _refuse_broken_wal(root, problem, reader=True)
-    _wal_read_current.set(False)  # leader adopt: show live, said so above
+    _wal_read_current.set(False)
     return False
 
 
@@ -990,9 +948,6 @@ def _materialize_current_only(root: Path, *, overwrite: bool = False) -> None:
 
 
 def _quarantine_live_extras(root: Path, gid: str, man: dict[str, Any]) -> None:
-    # SPEC.md is the leader-editable brief (spec --revise-file reads it);
-    # ORDER.spec_hash guards its bytes. Every other snapshot path is
-    # kernel-written only, so an unlisted live copy is a plant.
     files = set(str(rel) for rel in (man.get("files") or {})) | {"SPEC.md"}
     extras = sorted(_wal_live_snapshot_rels(root) - files)
     if not extras:
@@ -1088,7 +1043,6 @@ def _refuse_live_order_tamper(root: Path) -> None:
             "ORDER.json disagrees with WAL CURRENT (silent rewrite); "
             "restore from wal/ or of patch with an explicit leader change"
         )
-    # Ignore whitespace-only diffs that normalize equal.
     if json.dumps(live_obj, sort_keys=True) == json.dumps(staged_obj, sort_keys=True):
         return
     die(
@@ -1207,8 +1161,6 @@ def _adopt_misplaced_wal(root: Path) -> None:
         for home in homes:
             cur = _read_json_object(home / WAL_DIRNAME / "CURRENT.json") or {}
             gid = str(cur.get("generation") or "")
-            # gid is child-writable and becomes a path component on both sides of
-            # the move; an absolute or "../" value would move a dir outside wal/.
             if not valid_generation_id(gid):
                 continue
             src = legacy_wal / gid
@@ -1261,7 +1213,6 @@ def _adopt_pre_chain(root: Path, current: dict[str, Any], gen_dir: Path) -> dict
         }
     )
     if files.get(LEGACY_CLOSE_FILE):
-        # The only v1 CLOSE.json a chained field accepts (CloseProof.verify).
         adopted[LEGACY_CLOSE_KEY] = str(files[LEGACY_CLOSE_FILE])
     elif order.get("spec_closed"):
         adopted[LEGACY_CLOSE_KEY] = LEGACY_CLOSE_PRE_JSON
@@ -1323,9 +1274,6 @@ def _recover_without_current(root: Path) -> str | None:
             return child.name
     if rev > 1:
         what = "wal/" if not wal.is_dir() else "wal/CURRENT.json"
-        # A genuinely pre-WAL field (no wal/ ever) is adopted by the leader's own
-        # `of migrate`; when wal/CURRENT is merely missing, _refuse_migrate_drift
-        # has already refused any ORDER/SPEC/packet tamper before we reach here.
         _refuse_broken_wal(
             root, f"ORDER rev {rev} but {what} is missing", migrate=not wal.is_dir()
         )
@@ -1386,7 +1334,7 @@ def recover_field_wal(root: Path) -> str | None:
             continue
         cseq = _seq(cman)
         if cseq is None or cseq <= head_seq:
-            continue  # history: never republished, pruned by the next commit
+            continue
         if (
             cseq == head_seq + 1
             and cman.get("parent") == gid
@@ -1485,8 +1433,6 @@ class _WalGeneration:
             return
         prev = _load_wal_current(self.root)
         self._inherit_and_detect_deletions(prev)
-        # No CURRENT yet (recover allowed it: genesis or a leader adopt):
-        # commit live as the head even when the command staged nothing.
         if not self.blobs and not self.deleted and prev is not None:
             return
         payload = dict(self.inherited)
@@ -1532,15 +1478,13 @@ class _WalGeneration:
         _wal_crash("after-manifest")
         current = _publish_pointer(self.root, self.stage_dir, manifest)
         _wal_crash("after-current")
-        # Committed. A later failure is a stale live cache, not a failed
-        # command: exit 0 so the caller does not retry a non-idempotent op.
         try:
             _materialize_generation(
                 self.root, self.stage_dir, manifest, crash_after_first=True
             )
             _write_materialized(self.root, current)
             self._prune(current)
-        except Exception as exc:  # noqa: BLE001 — post-commit, warn only
+        except Exception as exc:  # noqa: BLE001
             _warn(
                 "wal_materialize",
                 f"committed generation {self.generation}; live materialize failed "

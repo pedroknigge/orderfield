@@ -191,6 +191,13 @@ class WalHmac(unittest.TestCase):
             forged = dict(man, files={"ORDER.json": "aaa", "waves/001/packets/c1.json": "bbb"})
             self.assertFalse(wal.LeaderKey.verify_head(None, forged, forged))
 
+    def test_f11_tampered_deletions_fail_verification(self) -> None:
+        with mock.patch.dict(os.environ, {wal.LeaderKey.KEY_ENV: self.KEY}):
+            man = self._man(seq=5, files={"ORDER.json": "aaa"}, signed=True)
+            self.assertTrue(wal.LeaderKey.verify_head(None, man, man))
+            forged = dict(man, deletions=["ORDER.json"])
+            self.assertFalse(wal.LeaderKey.verify_head(None, forged, forged))
+
     def test_f11_chained_unsigned_head_is_rejected(self) -> None:
         # Legacy (no-seq) lenience is covered by tests.test_wal_chain's v0.8.34
         # adoption tests; here we pin that a chained head must be signed.
