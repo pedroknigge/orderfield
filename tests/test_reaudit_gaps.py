@@ -10,6 +10,7 @@ check. Children are the generic fake adapter (OF_AGENT).
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import shutil
@@ -660,6 +661,15 @@ class ForgedState(unittest.TestCase):
                    parent_manifest_sha256=cur["manifest_sha256"],
                    files={r: hashlib.sha256((wal / gid / r).read_bytes()).hexdigest() for r in files})
         man["order_sha256"] = man["files"]["ORDER.json"]
+        scripts = Path(__file__).resolve().parents[1] / "scripts"
+        if str(scripts) not in sys.path:
+            sys.path.insert(0, str(scripts))
+        import of.wal as of_wal
+
+        key = (wal / ".leader_key").read_text(encoding="utf-8").strip().encode("utf-8")
+        man["hmac_sha256"] = hmac.new(
+            key, of_wal.LeaderKey._manifest_chain_bytes(man), hashlib.sha256
+        ).hexdigest()
         (wal / gid / "MANIFEST.json").write_text(json.dumps(man))
 
     def test_chained_v1_close_does_not_close(self) -> None:

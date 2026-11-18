@@ -575,13 +575,6 @@ class LeaderKey:
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
             return _prechain_unsigned_ok(cman, strict=strict, head_signed=bool(cur_sig))
-        if (
-            not strict
-            and c_sig == cur_sig
-            and cman.get("generation") != current.get("generation")
-        ):
-            # Test fixture copytree of CURRENT without re-signing.
-            return True
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(cman), hashlib.sha256).hexdigest()
         return hmac.compare_digest(c_sig, expected)
 
