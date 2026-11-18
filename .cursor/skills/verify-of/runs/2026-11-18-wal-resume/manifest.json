@@ -1,0 +1,14 @@
+{
+  "feature": "wal-resume",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt"
+  ],
+  "live_mission_after_crash": "written mission",
+  "live_mission_after_resume": "crashed mission",
+  "current_generation": "00000003-f7cdc8c43e2f",
+  "materialized_generation": "00000003-f7cdc8c43e2f",
+  "evidence_survived_cleanup": true
+}

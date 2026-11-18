@@ -1,0 +1,186 @@
+$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-b0wmfj85
+# cwd /agent/repos/orderfield
+# exit 0
+installed /tmp/verify-of-home-b0wmfj85/.agents/skills/orderfield
+installed /tmp/verify-of-home-b0wmfj85/.agents/skills/of (alias /of)
+of: /tmp/verify-of-home-b0wmfj85/.local/bin/of -> /tmp/verify-of-home-b0wmfj85/.agents/skills/orderfield/scripts/of.py
+project of symlink at /tmp/verify-of-home-b0wmfj85/.local/bin/of (use --global for ~/.local/bin/of)
+copied to 1 skill dir(s)
+generic: /tmp/verify-of-home-b0wmfj85/.agents/skills/orderfield
+kernel: of status  # or: python3 /tmp/verify-of-home-b0wmfj85/.agents/skills/orderfield/scripts/of.py status
+
+$ of doctor
+# cwd /tmp/verify-of-home-b0wmfj85/doctor-cwd
+# exit 0
+prereqs
+  python        3.12.3  ok (>= 3.11)
+  kernel        0.9.9  ok
+skills
+  checkout     0.9.9
+  agents       0.9.9  ok  ~/.agents/skills/orderfield
+field
+  path          -  missing (of init --mission '...')
+  scratch       -  missing
+  active        -  (no fields)
+  stub          none
+  packs         none
+  schemas       9/9 ok
+  lock          /tmp/verify-of-home-b0wmfj85/doctor-cwd/.orderfield/field.lock  missing-field
+adapters  (PATH is not auth, credentials, or session authority; not readiness)
+    claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    cursor     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    opencode   missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    orca       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    grok       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    agy        missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    qwen       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+  * generic    missing  path=-  version=-  set OF_AGENT  auth=not-verified  ready=not-verified
+  next          HOLD
+  no adapter on PATH; of detect then install a CLI or OF_AGENT=... --adapter generic; of handoff --packet is same-session or native Agent — not a spawned child wave
+trust
+  default       auto-edit  (OF_TRUST override)
+  profiles      conservative, plan, auto-edit, auto, yolo
+  write-floor   auto-edit default for residual packs (claude,codex,agy,qwen)
+  opt-out       OF_TRUST=conservative
+  unsupported   cursor,opencode,orca,grok,generic speak WARN + named next
+  host          .claude/settings.local.json advisory only; never edit
+  operator      yolo + inherit are audited operator actions (not silent defaults)
+  host-mcp      agy/grok isolate host global MCP by default
+  opt-in        OF_SPAWN_MCP=inherit (ask; not a silent default)
+  kernel_verifies  binary_on_path, spawn_argv, residual_file, residual_schema
+  harness_promises approval_honored, sandbox, auth, model_ready
+  boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.9
+  note          leader host RAM is not a cloud/remote worker
+model_hints
+  pass        agy,claude,codex,cursor,grok (--model)
+  no-op       orca (task-create has no --model), opencode, qwen, generic
+  aliases     claude cheap=haiku frontier=opus
+  refuse      cursor tier-only (no alias; pass --model)
+  default     off (of patch --model-hints field|wave)
+catalog
+  docs/model-catalog.md (advisory; not budget.tokens)
+headroom
+  read of models --headroom --json before fan-out (smallest-window margin, earliest reset; sin dato never blocks)
+efficiency
+  score       residual quality × optional residual.usage
+  propose     ask only; of patch --model-hints / pack --model-tier
+  never       auto-switch, budget.tokens ceiling, invented spend
+balance
+  honesty     unknown unless published payload in hand
+  never       invent spend or budget.tokens; headroom is of models --json
+  claude     unknown  published=/usage  interactive; statusLine rate_limits if already in hand
+  codex      unknown  published=/usage  interactive
+  cursor     unknown  no published balance CLI
+  opencode   unknown  no published balance CLI
+  orca       unknown  no published balance CLI
+  grok       unknown  no published balance CLI
+  agy        unknown  no published balance CLI
+  qwen       unknown  no published balance CLI
+  generic    unknown  no published balance CLI
+doctor        ok
+
+$ git init -q
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+
+$ git config user.email verify-of@example.invalid
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+
+$ git config user.name verify-of
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+
+$ git commit --allow-empty -q -m init
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+
+$ of init --mission 'committed mission' --phase explore
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+initialized /tmp/verify-of-repo-sdj3v2s7/.orderfield/ORDER.json
+id=ord_e3b5f0a3 rev=1 phase=explore
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.8
+  note          leader host RAM is not a cloud/remote worker
+  next          ask once, then of patch --agent-band / --multi-model (do not re-ask each wave)
+# stderr
+of: note — no --source/--source-file; ORDER may compress the contract. Pass the verbatim user brief with --source or --source-file (.orderfield/ingest.md). Do not write PROMPT.md at the project root.
+
+$ of patch --mission 'written mission'
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+{
+  "mission": "written mission",
+  "phase": "explore",
+  "constraints": [
+    "slaves do not mutate ORDER",
+    "one phase at a time"
+  ],
+  "done_when": [
+    "of contrast RESOLVED then of close"
+  ],
+  "done_when_mission": [
+    "of contrast RESOLVED then of close"
+  ],
+  "done_when_phase": [],
+  "done_when_closed": false
+}
+rev=2
+
+$ of patch --mission 'crashed mission'
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 1
+{
+  "mission": "crashed mission",
+  "phase": "explore",
+  "constraints": [
+    "slaves do not mutate ORDER",
+    "one phase at a time"
+  ],
+  "done_when": [
+    "of contrast RESOLVED then of close"
+  ],
+  "done_when_mission": [
+    "of contrast RESOLVED then of close"
+  ],
+  "done_when_phase": [],
+  "done_when_closed": false
+}
+rev=3
+# stderr
+of: error: wal-crash: OF_WAL_CRASH=after-current
+
+$ of resume
+# cwd /tmp/verify-of-repo-sdj3v2s7
+# exit 0
+repaired live from CURRENT (crash after commit): ORDER.json, PHASE.md
+id            ord_e3b5f0a3
+home          .orderfield
+rev           3
+phase         explore
+mission       crashed mission
+wave          1
+last_regime   None
+spawn_blocked False
+last_cmd      patch
+field         open
+auto_continue yes — execute printed next this turn; interleaved chats/compaction are not pause
+status        idle
+in_flight     0
+next
+  PACK
+  no packets on this wave; pack slices
+  reason      no_packets
+  hint        1 phase at a time; exclusive --owns-paths + --owns-requirements per child; optional --verify-cmd '<cmd>' --verify-timeout N for kernel-attested receipt (--verify-req ID names the owned IDs it proves); pin shared interfaces with of patch --pin-contract <path>
+  digest      c71c9f7f8f5a6c732af4e63dec52131a3cd69597dd30c2a85b08fde6a014ed65
+speak         report is not a stop; execute printed next this turn (do not wait for ok/pulse)
+audit        OK  9.0KB / 64.0MB  fields=1
+  size ord_e3b5f0a3     open      9.0KB  scratch=0B
+# stderr
+of: warning: live restored from WAL CURRENT 00000003-f7cdc8c43e2f (crash after commit): ORDER.json, PHASE.md

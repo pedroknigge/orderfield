@@ -101,6 +101,40 @@ class VerifyOfSkill(unittest.TestCase):
             self.assertTrue(manifest["evidence_survived_cleanup"])
             self.assertEqual(manifest["feature"], "close-field")
 
+    def test_wal_resume_repairs_live_from_current(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="verify-of-evidence-") as tmp:
+            dest = Path(tmp) / "run"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(HELPER),
+                    "--feature",
+                    "wal-resume",
+                    "--evidence-dir",
+                    str(dest),
+                ],
+                cwd=str(ROOT),
+                text=True,
+                capture_output=True,
+                timeout=180,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(
+                proc.returncode,
+                0,
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}",
+            )
+            transcript = (dest / "transcript.txt").read_text(encoding="utf-8")
+            self.assertIn("OF_WAL_CRASH=after-current", transcript)
+            self.assertIn("repaired live from CURRENT", transcript)
+            manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["feature"], "wal-resume")
+            self.assertTrue(manifest["evidence_survived_cleanup"])
+            self.assertEqual(manifest["current_generation"], manifest["materialized_generation"])
+            self.assertEqual(manifest["live_mission_after_crash"], "written mission")
+            self.assertEqual(manifest["live_mission_after_resume"], "crashed mission")
+            self.assertFalse((dest / "CLOSE.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
