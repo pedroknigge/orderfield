@@ -225,9 +225,19 @@ class InstallScript(unittest.TestCase):
             self.assertTrue((dest / rel).is_file(), rel)
         self.assertTrue((dest / "CHILD.md").is_file(), "dest must copy CHILD.md")
         self.assertFalse((dest / "SLAVE.md").exists(), "do not copy SLAVE.md")
-        forbidden = ("tests", "evals", "docs", ".git", "CHANGELOG.md", "CONTRIBUTING.md")
+        forbidden = (
+            "tests",
+            "evals",
+            "docs",
+            ".git",
+            ".cursor",
+            "CHANGELOG.md",
+            "CONTRIBUTING.md",
+        )
         for name in forbidden:
             self.assertFalse((dest / name).exists(), name)
+        # verify-of is a checkout skill. It is not on the install whitelist.
+        self.assertFalse((dest / "scripts" / "verify_of.py").exists())
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
