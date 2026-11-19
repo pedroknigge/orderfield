@@ -1,0 +1,14 @@
+{
+  "feature": "plan-feature-map",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt",
+    "feature-map.md",
+    "ORDER.json"
+  ],
+  "derived_command": "python3 price_cli.py",
+  "missing": "gone.js",
+  "evidence_survived_cleanup": true
+}

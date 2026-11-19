@@ -27,7 +27,7 @@ INSTALL = ROOT / "install.sh"
 VERSION_FILE = ROOT / "VERSION"
 DEFAULT_EVIDENCE_ROOT = ROOT / ".cursor" / "skills" / "verify-of" / "runs"
 PIPE = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
-FEATURES = PIPE + ("wal-resume", "evidence-close")
+FEATURES = PIPE + ("wal-resume", "evidence-close", "plan-feature-map")
 
 CHILD = r"""
 import hashlib, json, os
@@ -326,6 +326,8 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
         return _drive_wal_resume(work, env, log)
     if feature == "evidence-close":
         return _drive_evidence_close(work, env, log)
+    if feature == "plan-feature-map":
+        return _drive_plan_feature_map(work, env, log)
     want = _through(feature)
     if "init-plan" not in want:
         return {}
@@ -415,6 +417,68 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
     return {}
 
 
+def _drive_plan_feature_map(work: Path, env: dict[str, str], log: list[str]) -> dict[str, str]:
+    """Init writes the map. One row is a real command. One row names what is missing."""
+    _prepare_repo(work, env, log)
+    price = work / "price_cli.py"
+    price.write_text('print("price table")\n', encoding="utf-8")
+    log.append("$ write price_cli.py")
+    log.append('# print("price table")')
+    log.append("")
+    _of(
+        [
+            "init",
+            "--mission",
+            "prices `python3 price_cli.py` and `node gone.js`",
+            "--phase",
+            "explore",
+        ],
+        work=work,
+        env=env,
+        log=log,
+    )
+    home = work / ".orderfield"
+    feature_map = (home / "feature-map.md").read_text(encoding="utf-8")
+    log.append("$ read .orderfield/feature-map.md")
+    log.append(feature_map.rstrip("\n"))
+    log.append("")
+    if "| price_cli.py | `python3 price_cli.py` | `python3 price_cli.py` |" not in feature_map:
+        raise VerifyFailed("verify-of: feature map did not keep the runnable command")
+    if "| gone.js | `node gone.js` | cannot run: gone.js is missing |" not in feature_map:
+        raise VerifyFailed("verify-of: feature map invented evidence for a missing file")
+    if "`cannot run:" in feature_map:
+        raise VerifyFailed("verify-of: cannot-run row was given a command")
+    order = _json_object(home / "ORDER.json")
+    done = order.get("done_when")
+    if done != ["`python3 price_cli.py`", "cannot run: gone.js is missing"]:
+        raise VerifyFailed(f"verify-of: done_when was not derived from the map: {done!r}")
+    _of(
+        ["spec", "--add", "CLI-001", "--text", "the CLI prints a price table"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    proof = work / "surface.log"
+    proof.write_text("$ price\nprice table\n", encoding="utf-8")
+    log.append("$ write surface.log")
+    log.append("")
+    _of(
+        ["spec", "--verified-contract", "CLI-001", "--cite", "surface.log"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    refused = _run(["of", "close"], cwd=work, env=env, timeout=90, log=log)
+    if refused.returncode == 0 or "gone.js" not in refused.stderr:
+        raise VerifyFailed("verify-of: close invented a receipt for a missing file")
+    if (home / "CLOSE.json").exists():
+        raise VerifyFailed("verify-of: refused close wrote CLOSE.json")
+    return {
+        "derived_command": "python3 price_cli.py",
+        "missing": "gone.js",
+    }
+
+
 def _write_evidence(
     dest: Path,
     *,
@@ -424,11 +488,18 @@ def _write_evidence(
     doctor_text: str,
     close_path: Path | None,
     extra: dict[str, str] | None = None,
+    copies: list[tuple[str, Path]] | None = None,
 ) -> None:
     dest.mkdir(parents=True, exist_ok=False)
     transcript = "\n".join(log).rstrip() + "\n"
     (dest / "transcript.txt").write_text(transcript, encoding="utf-8")
     (dest / "doctor.txt").write_text(doctor_text, encoding="utf-8")
+    copied: list[str] = []
+    for name, src in copies or []:
+        if not src.is_file():
+            raise VerifyFailed(f"verify-of: missing evidence file {src}")
+        shutil.copyfile(src, dest / name)
+        copied.append(name)
     if close_path is not None:
         shutil.copyfile(close_path, dest / "CLOSE.json")
     manifest = {
@@ -436,6 +507,7 @@ def _write_evidence(
         "version": version,
         "doctor": "ok",
         "files": ["transcript.txt", "doctor.txt"]
+        + copied
         + (["CLOSE.json"] if close_path is not None else []),
     }
     if extra:
@@ -501,6 +573,7 @@ def main(argv: list[str] | None = None) -> int:
         child.chmod(0o755)
         close_path: Path | None = None
         extra: dict[str, str] = {}
+        copies: list[tuple[str, Path]] = []
         if args.feature != "doctor":
             work = Path(tempfile.mkdtemp(prefix="verify-of-repo-"))
             extra = _drive(args.feature, work, env, child, log)
@@ -524,6 +597,11 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     if "price table" not in str(row.get("output") or ""):
                         raise VerifyFailed("verify-of: done_when output lacks the command output")
+            if args.feature == "plan-feature-map" and work is not None:
+                copies = [
+                    ("feature-map.md", work / ".orderfield" / "feature-map.md"),
+                    ("ORDER.json", work / ".orderfield" / "ORDER.json"),
+                ]
         _write_evidence(
             evidence,
             feature=args.feature,
@@ -532,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
             doctor_text=doctor.stdout,
             close_path=close_path,
             extra=extra,
+            copies=copies,
         )
     except Exception as exc:
         failed = exc
@@ -549,6 +628,10 @@ def main(argv: list[str] | None = None) -> int:
     missing = [name for name in ("transcript.txt", "doctor.txt", "manifest.json") if not (evidence / name).is_file()]
     if args.feature in {"close-field", "evidence-close"} and not (evidence / "CLOSE.json").is_file():
         missing.append("CLOSE.json")
+    if args.feature == "plan-feature-map":
+        for name in ("feature-map.md", "ORDER.json"):
+            if not (evidence / name).is_file():
+                missing.append(name)
     if missing or scratch.exists() or (work is not None and work.exists()):
         raise VerifyFailed(
             "verify-of: evidence did not survive cleanup "

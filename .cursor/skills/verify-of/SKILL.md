@@ -64,6 +64,16 @@ python3 scripts/verify_of.py --feature wal-resume
 
 The helper installs `of` into a scratch HOME and inits a throwaway repo. It patches a mission, then patches again with `OF_WAL_CRASH=after-current`. That command exits non-zero. `of resume` must exit 0, every live file named by `wal/CURRENT.json` must match that generation, and `wal/MATERIALIZED.json` must name the same generation.
 
+## Plan feature map
+
+`plan-feature-map` checks an installed `of`. `of init` writes `.orderfield/feature-map.md`. One row's proof is `` `python3 price_cli.py` `` and that command is the derived `done_when`. Another row says `cannot run: gone.js is missing` and has no command. `of close` is refused and does not write `CLOSE.json`.
+
+```bash
+python3 scripts/verify_of.py --feature plan-feature-map
+```
+
+The refusal is the proof. The helper exits 0 only when the map, the derived criterion, and the missing-file row are in the evidence and no close receipt was written.
+
 ## Evidence close
 
 `evidence-close` checks an installed `of`. The first `of close` is refused because `done_when` names no command, and the refusal names `of patch --done-when-mission`. The second `of close` follows a criterion whose backticks name `python3 price_cli.py`. `CLOSE.json` `done_when` stores that command and the output `price table`.
