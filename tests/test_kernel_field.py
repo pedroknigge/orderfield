@@ -2550,6 +2550,22 @@ class WindowsFieldLockShim(unittest.TestCase):
             with self.assertRaises(BlockingIOError):
                 of.field.flock_acquire(handle)
 
+    def test_wait_with_zero_timeout_raises_without_sleeping(self) -> None:
+        fake = _FakeMsvcrt(OSError(errno.EACCES, "lock violation"))
+        with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+            with mock.patch.object(of.field.time, "sleep") as sleep:
+                with self.assertRaises(BlockingIOError):
+                    of.field.flock_wait(handle, 0.0, 0.05)
+        sleep.assert_not_called()
+
+    def test_wait_on_a_free_lock_returns_without_sleeping(self) -> None:
+        fake = _FakeMsvcrt()
+        with self.path.open("a+", encoding="utf-8") as handle, self._windows(fake):
+            with mock.patch.object(of.field.time, "sleep") as sleep:
+                of.field.flock_wait(handle, 1.0, 0.05)
+        sleep.assert_not_called()
+        self.assertEqual([call[0] for call in fake.calls], [fake.LK_NBLCK])
+
     def test_real_errors_are_not_disguised_as_contention(self) -> None:
         # field_lock() catches BlockingIOError and retries until the wait
         # timeout, so mapping EBADF here would report a held lock that is not.

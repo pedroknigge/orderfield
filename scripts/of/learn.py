@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,8 +19,8 @@ from of.field import (
     die,
     emit_event,
     field_home,
-    flock_acquire,
     flock_release,
+    flock_wait,
     installed_version,
     json_events_enabled,
     order_path,
@@ -301,19 +300,14 @@ def protocol_store_lock() -> Any:
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_name(path.name + ".lock")
     handle = lock_path.open("a+", encoding="utf-8")
-    started = time.monotonic()
     try:
-        while True:
-            try:
-                flock_acquire(handle)
-                break
-            except BlockingIOError:
-                if time.monotonic() - started >= PROTOCOL_STORE_LOCK_WAIT_SECONDS:
-                    die(
-                        f"learnings store lock wait exceeded "
-                        f"{PROTOCOL_STORE_LOCK_WAIT_SECONDS:g}s ({lock_path})"
-                    )
-                time.sleep(0.05)
+        try:
+            flock_wait(handle, PROTOCOL_STORE_LOCK_WAIT_SECONDS, 0.05)
+        except BlockingIOError:
+            die(
+                f"learnings store lock wait exceeded "
+                f"{PROTOCOL_STORE_LOCK_WAIT_SECONDS:g}s ({lock_path})"
+            )
         try:
             yield
         finally:
