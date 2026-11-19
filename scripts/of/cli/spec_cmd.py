@@ -47,11 +47,13 @@ from of.field import (
     _read_json_object,
 )
 from of.regime import (
+    DoneWhenEvidence,
     DoneWhenLint,
     PlanCoverage,
     PlanDocSync,
     PlanIngress,
     done_when_closed,
+    done_when_for,
     mark_done_when_closed,
 )
 from of.receipt import EvidenceReceipt
@@ -1912,6 +1914,7 @@ class CloseChecklist:
         live: int,
         contrast_next: str,
         lost: list[str] | None = None,
+        gaps: list[str] | None = None,
     ) -> str:
         parts: list[str] = []
         if not residual_empty:
@@ -1926,6 +1929,8 @@ class CloseChecklist:
                 f"inputs LOST {' '.join(lost)} — re-run "
                 "of spec --verified-contract ID --run '<cmd>'"
             )
+        if gaps:
+            parts.extend(gaps)
         if not parts:
             return CloseChecklist.NEXT_READY
         return "; ".join(parts)
@@ -1957,9 +1962,10 @@ class CloseChecklist:
         evaluator = EvaluatorPacket.document(root, state, order)
         named, blocked = CloseChecklist._lost_inputs(root)
         review = ReviewWitness.document(root)
+        gaps = DoneWhenEvidence.gaps(order)
         return {
             "v": 1,
-            "ok": contrast_ok and residual_empty and not blocked,
+            "ok": contrast_ok and residual_empty and not blocked and not gaps,
             "lost_inputs": named,
             "kind": CloseChecklist.KIND,
             "contrast": gate,
@@ -1992,6 +1998,7 @@ class CloseChecklist:
                 live=live,
                 contrast_next=str(contrast.get("next") or ""),
                 lost=blocked,
+                gaps=gaps,
             ),
         }
 
@@ -2407,12 +2414,25 @@ class CloseProof:
                 receipt(row["path"], True)
             else:
                 row["kind"] = "file"
+        order = load_order(root)
+        done_rows: list[dict[str, Any]] = []
+        if problems:
+            problems.extend(DoneWhenEvidence.gaps(order))
+        else:
+            contrast = ContrastReport.human(ContrastReport.document(root, order))
+            done_rows, gaps = DoneWhenEvidence.bind(
+                root, order, contrast_output=contrast
+            )
+            problems.extend(gaps)
+            if gaps:
+                done_rows = []
         bundle = {
             "git": CloseProof.git_binding(root),
             "residuals": residuals,
             "receipts": [receipts[k] for k in sorted(receipts)],
             "requirements": requirements,
             "review": ReviewWitness.document(root),
+            "done_when": done_rows,
         }
         return bundle, sources, problems
 
@@ -2545,6 +2565,44 @@ class CloseProof:
                 problems.append("CLOSE.json review open list disagrees with findings")
         elif review is not None:
             problems.append("CLOSE.json review is not an object")
+        if resolved:
+            problems.extend(CloseProof._done_when_problems(order, doc))
+        return problems
+
+    @staticmethod
+    def _done_when_problems(order: dict[str, Any], doc: dict[str, Any]) -> list[str]:
+        if "done_when" not in doc:
+            return []
+        want = [str(item) for item in done_when_for(order)]
+        rows = doc.get("done_when")
+        if not isinstance(rows, list) or not rows:
+            return [
+                "CLOSE.json done_when has no real-run evidence "
+                "(of patch --done-when-mission '`<cmd>`', then of close)"
+            ]
+        got = [str(row.get("text") or "") if isinstance(row, dict) else "" for row in rows]
+        if got != want:
+            return ["CLOSE.json done_when differs from ORDER"]
+        problems: list[str] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                problems.append("CLOSE.json done_when row is not an object")
+                continue
+            command = row.get("command")
+            output = row.get("output")
+            exit_code = row.get("exit")
+            digest = row.get("source_sha256")
+            label = command if isinstance(command, str) and command else "done_when"
+            if not isinstance(command, str) or not command:
+                problems.append("CLOSE.json done_when command missing")
+                continue
+            if type(exit_code) is not int or exit_code != 0:
+                problems.append(f"CLOSE.json done_when {label!r} exit={exit_code}")
+            if not isinstance(output, str) or output == "":
+                problems.append(f"CLOSE.json done_when {label!r} has no output")
+                continue
+            if not isinstance(digest, str) or sha256_text(output) != digest:
+                problems.append(f"CLOSE.json done_when {label!r} output hash mismatch")
         return problems
 
     @staticmethod

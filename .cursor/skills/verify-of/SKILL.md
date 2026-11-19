@@ -64,13 +64,23 @@ python3 scripts/verify_of.py --feature wal-resume
 
 The helper installs `of` into a scratch HOME and inits a throwaway repo. It patches a mission, then patches again with `OF_WAL_CRASH=after-current`. That command exits non-zero. `of resume` must exit 0, every live file named by `wal/CURRENT.json` must match that generation, and `wal/MATERIALIZED.json` must name the same generation.
 
+## Evidence close
+
+`evidence-close` checks an installed `of`. The first `of close` is refused because `done_when` names no command, and the refusal names `of patch --done-when-mission`. The second `of close` follows a criterion whose backticks name `python3 price_cli.py`. `CLOSE.json` `done_when` stores that command and the output `price table`.
+
+```bash
+python3 scripts/verify_of.py --feature evidence-close
+```
+
+The expected refusal is part of the proof. The helper exits 0 only when that refusal is in the transcript and the accepted receipt contains the command output.
+
 ## Evidence
 
 The helper writes `<checkout>/.cursor/skills/verify-of/runs/<run-id>/` before cleanup:
 
 - `transcript.txt` — every command, cwd, exit code, stdout, stderr
 - `doctor.txt` — the read-only doctor output
-- `CLOSE.json` — byte copy from the throwaway field, only for `close-field`
+- `CLOSE.json` — byte copy from the throwaway field, for `close-field` and `evidence-close`
 - `manifest.json` — feature, version, file list, `evidence_survived_cleanup`
 
 `--run-id` picks the directory name. `--evidence-dir` picks a different directory (tests use a temp dir). The last stdout line is `evidence <path>`.

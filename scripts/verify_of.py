@@ -27,7 +27,7 @@ INSTALL = ROOT / "install.sh"
 VERSION_FILE = ROOT / "VERSION"
 DEFAULT_EVIDENCE_ROOT = ROOT / ".cursor" / "skills" / "verify-of" / "runs"
 PIPE = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
-FEATURES = PIPE + ("wal-resume",)
+FEATURES = PIPE + ("wal-resume", "evidence-close")
 
 CHILD = r"""
 import hashlib, json, os
@@ -262,9 +262,70 @@ def _drive_wal_resume(work: Path, env: dict[str, str], log: list[str]) -> dict[s
     }
 
 
+def _drive_evidence_close(work: Path, env: dict[str, str], log: list[str]) -> dict[str, str]:
+    """One close refused for a command-less done_when, then one close that binds the run."""
+    _prepare_repo(work, env, log)
+    _of(
+        ["init", "--mission", "m", "--phase", "explore"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    _of(
+        ["spec", "--add", "CLI-001", "--text", "the CLI prints a price table"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    proof = work / "surface.log"
+    proof.write_text("$ price\nprice table\n", encoding="utf-8")
+    log.append("$ write surface.log")
+    log.append("")
+    _of(
+        ["spec", "--verified-contract", "CLI-001", "--cite", "surface.log"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    _of(
+        ["patch", "--done-when-mission", "the price table is done"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    refused = _run(["of", "close"], cwd=work, env=env, timeout=90, log=log)
+    if refused.returncode == 0 or "names no command" not in refused.stderr:
+        raise VerifyFailed(
+            "verify-of: close accepted a done_when that names no command"
+        )
+    if (work / ".orderfield" / "CLOSE.json").exists():
+        raise VerifyFailed("verify-of: refused close wrote CLOSE.json")
+    price = work / "price_cli.py"
+    price.write_text('print("price table")\n', encoding="utf-8")
+    log.append("$ write price_cli.py")
+    log.append("")
+    _of(
+        [
+            "patch",
+            "--done-when-mission",
+            "`python3 price_cli.py` prints a price table",
+        ],
+        work=work,
+        env=env,
+        log=log,
+    )
+    _of(["close"], work=work, env=env, log=log)
+    return {
+        "refused_done_when": "names no command",
+        "accepted_command": "python3 price_cli.py",
+    }
+
+
 def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list[str]) -> dict[str, str]:
     if feature == "wal-resume":
         return _drive_wal_resume(work, env, log)
+    if feature == "evidence-close":
+        return _drive_evidence_close(work, env, log)
     want = _through(feature)
     if "init-plan" not in want:
         return {}
@@ -443,13 +504,26 @@ def main(argv: list[str] | None = None) -> int:
         if args.feature != "doctor":
             work = Path(tempfile.mkdtemp(prefix="verify-of-repo-"))
             extra = _drive(args.feature, work, env, child, log)
-            if args.feature == "close-field":
+            if args.feature in {"close-field", "evidence-close"}:
                 close_path = work / ".orderfield" / "CLOSE.json"
                 if not close_path.is_file():
                     raise VerifyFailed("verify-of: close did not write CLOSE.json")
                 proof = json.loads(close_path.read_text(encoding="utf-8"))
                 if not isinstance(proof, dict) or "requirements" not in proof:
                     raise VerifyFailed("verify-of: CLOSE.json is not a close proof")
+                if args.feature == "evidence-close":
+                    rows = proof.get("done_when")
+                    if not isinstance(rows, list) or not rows:
+                        raise VerifyFailed("verify-of: CLOSE.json done_when is empty")
+                    row = rows[0]
+                    if not isinstance(row, dict):
+                        raise VerifyFailed("verify-of: CLOSE.json done_when row is not an object")
+                    if row.get("command") != "python3 price_cli.py":
+                        raise VerifyFailed(
+                            f"verify-of: done_when command is {row.get('command')!r}"
+                        )
+                    if "price table" not in str(row.get("output") or ""):
+                        raise VerifyFailed("verify-of: done_when output lacks the command output")
         _write_evidence(
             evidence,
             feature=args.feature,
@@ -473,7 +547,7 @@ def main(argv: list[str] | None = None) -> int:
         raise failed
 
     missing = [name for name in ("transcript.txt", "doctor.txt", "manifest.json") if not (evidence / name).is_file()]
-    if args.feature == "close-field" and not (evidence / "CLOSE.json").is_file():
+    if args.feature in {"close-field", "evidence-close"} and not (evidence / "CLOSE.json").is_file():
         missing.append("CLOSE.json")
     if missing or scratch.exists() or (work is not None and work.exists()):
         raise VerifyFailed(
