@@ -110,6 +110,16 @@ FEATURE_MAP_FIX = (
     "(scripts/of/cli build_parser), and the id must be in "
     "scripts/verify_of.py FEATURES."
 )
+BARE_RETRY_FIX = (
+    "Wait on the condition or event that makes the next step legal "
+    "(the lock, the file, or the process exit). "
+    "If the step races, remove the race. "
+    "If repeating the step is safe, make the operation idempotent and run it once. "
+    "A delay or a counted retry stays only as one allowlist row on the function "
+    "that owns that contract, with the reason and the exact sleep and retry counts."
+)
+_SURFACE_TREES = re.compile(r"^SKILL_SURFACE_TREES=\(([^)]*)\)", re.M)
+_SURFACE_SCRIPTS = re.compile(r"^SKILL_SURFACE_SCRIPTS=\(([^)]*)\)", re.M)
 
 
 class Rule(NamedTuple):
@@ -144,6 +154,13 @@ RULES = (
         "each docs/feature-map.md proof token is a test module, an of "
         "subcommand, or a verify-of feature id that exists",
         FEATURE_MAP_FIX,
+    ),
+    Rule(
+        "bare-retry",
+        "shipped Python has no new time.sleep and no loop that catches an "
+        "exception and tries again on a fixed range() or a while, unless that "
+        "function's allowlist row names the reason and the exact sleep and retry counts",
+        BARE_RETRY_FIX,
     ),
 )
 
@@ -906,12 +923,280 @@ def feature_map_errors(
     return errors
 
 
+class WaitAllow(NamedTuple):
+    path: str
+    function: str
+    sleeps: int
+    retries: int
+    reason: str
+
+
+class WaitSite(NamedTuple):
+    path: str
+    line: int
+    function: str
+    kind: str
+
+
+WAIT_ALLOW = (
+    WaitAllow(
+        "scripts/of/field.py",
+        "flock_wait",
+        1,
+        1,
+        "POSIX flock and Windows LockFile have no timed acquire. "
+        "flock_wait polls LOCK_NB until the other process drops the lock "
+        "or the caller's timeout elapses, then re-raises BlockingIOError. "
+        "The tick is that poll, not a retry of a failed field write.",
+    ),
+    WaitAllow(
+        "scripts/of/cli/ops.py",
+        "cmd_pulse",
+        1,
+        0,
+        "of pulse --watch sleeps for the operator --interval (at least 5 seconds) "
+        "between disk reads while a child is in flight. Idle returns without sleeping. "
+        "The interval is the watch contract.",
+    ),
+)
+
+
+def _int_constant(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant) and type(node.value) is int:
+        return True
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        return _int_constant(node.operand)
+    return False
+
+
+def _fixed_range(node: ast.For) -> bool:
+    call = node.iter
+    if not isinstance(call, ast.Call):
+        return False
+    if not isinstance(call.func, ast.Name) or call.func.id != "range":
+        return False
+    if not call.args or call.keywords:
+        return False
+    return all(_int_constant(arg) for arg in call.args)
+
+
+def _always_exits(stmts: list[ast.stmt]) -> bool:
+    for stmt in stmts:
+        if isinstance(stmt, (ast.Raise, ast.Return, ast.Break)):
+            return True
+        if (
+            isinstance(stmt, ast.If)
+            and stmt.orelse
+            and _always_exits(stmt.body)
+            and _always_exits(stmt.orelse)
+        ):
+            return True
+    return False
+
+
+class _AttemptHandlers(ast.NodeVisitor):
+    """Except handlers of this loop, not of a nested loop or function."""
+
+    def __init__(self) -> None:
+        self.resumes = False
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        return
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    visit_Lambda = visit_FunctionDef
+
+    def visit_For(self, node: ast.For) -> None:
+        return
+
+    def visit_While(self, node: ast.While) -> None:
+        return
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if not _always_exits(node.body):
+            self.resumes = True
+        self.generic_visit(node)
+
+
+def _handler_resumes(loop: ast.For | ast.While) -> bool:
+    found = _AttemptHandlers()
+    for stmt in loop.body:
+        found.visit(stmt)
+    return found.resumes
+
+
+class _WaitScan(ast.NodeVisitor):
+    def __init__(self, rel: str) -> None:
+        self.rel = rel
+        self.function = "<module>"
+        self.time_modules: set[str] = set()
+        self.sleep_names: set[str] = set()
+        self.sites: list[WaitSite] = []
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            if alias.name == "time":
+                self.time_modules.add(alias.asname or alias.name)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module == "time":
+            for alias in node.names:
+                if alias.name in {"sleep", "*"}:
+                    bound = "sleep" if alias.name == "*" else (alias.asname or alias.name)
+                    self.sleep_names.add(bound)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        previous = self.function
+        self.function = node.name
+        self.generic_visit(node)
+        self.function = previous
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if self._is_sleep(node):
+            self.sites.append(WaitSite(self.rel, node.lineno, self.function, "sleep"))
+        self.generic_visit(node)
+
+    def visit_While(self, node: ast.While) -> None:
+        if _handler_resumes(node):
+            self.sites.append(WaitSite(self.rel, node.lineno, self.function, "retry"))
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        if _fixed_range(node) and _handler_resumes(node):
+            self.sites.append(WaitSite(self.rel, node.lineno, self.function, "retry"))
+        self.generic_visit(node)
+
+    def _is_sleep(self, node: ast.Call) -> bool:
+        func = node.func
+        if isinstance(func, ast.Attribute) and func.attr == "sleep":
+            return isinstance(func.value, ast.Name) and func.value.id in self.time_modules
+        return isinstance(func, ast.Name) and func.id in self.sleep_names
+
+
+def shipped_python(root: Path) -> list[Path]:
+    """Python files install.sh copies. Tests and the lesson checker are not in that set."""
+    base = Path(root)
+    trees: list[str] = []
+    scripts: list[str] = []
+    install = base / "install.sh"
+    if install.is_file():
+        text = install.read_text(encoding="utf-8")
+        found_trees = _SURFACE_TREES.search(text)
+        found_scripts = _SURFACE_SCRIPTS.search(text)
+        if found_trees:
+            trees = found_trees.group(1).split()
+        if found_scripts:
+            scripts = found_scripts.group(1).split()
+    if not trees and (base / "scripts" / "of").is_dir():
+        trees = ["scripts/of"]
+    paths: list[Path] = []
+    for rel in trees:
+        directory = base / rel
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            paths.append(path)
+    seen = set(paths)
+    for rel in scripts:
+        path = base / rel
+        if path.suffix == ".py" and path.is_file() and path not in seen:
+            paths.append(path)
+            seen.add(path)
+    return paths
+
+
+def _site_detail(site: WaitSite) -> str:
+    if site.kind == "sleep":
+        return (
+            f"{site.path}:{site.line} time.sleep in {site.function}. "
+            "Root cause: a sleep waits on the clock, so the next step runs "
+            "whether or not the condition it needs is true."
+        )
+    return (
+        f"{site.path}:{site.line} retry loop in {site.function}. "
+        "Root cause: catching a failure and trying again on a fixed count "
+        "hides a failure that will happen again."
+    )
+
+
+def bare_retry_errors(root: Path) -> list[str]:
+    errors: list[str] = []
+    for row in WAIT_ALLOW:
+        if not row.reason.strip():
+            errors.append(
+                _fail(
+                    "bare-retry",
+                    f"allowlist {row.path}:{row.function} has an empty reason. "
+                    "Root cause: an exception with no reason is a hidden quick fix.",
+                )
+            )
+    base = Path(root)
+    grouped: dict[tuple[str, str], list[WaitSite]] = {}
+    for path in shipped_python(base):
+        rel = path.relative_to(base).as_posix()
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError as exc:
+            errors.append(
+                _fail(
+                    "bare-retry",
+                    f"{rel}:{exc.lineno or 1} does not parse ({exc.msg}). "
+                    "Root cause: the bare-retry check cannot see a file that does not parse.",
+                )
+            )
+            continue
+        scan = _WaitScan(rel)
+        scan.visit(tree)
+        for site in scan.sites:
+            grouped.setdefault((site.path, site.function), []).append(site)
+    allowed = {(row.path, row.function): row for row in WAIT_ALLOW}
+    for key in sorted(grouped):
+        group = grouped[key]
+        row = allowed.get(key)
+        sleeps = sum(site.kind == "sleep" for site in group)
+        retries = sum(site.kind == "retry" for site in group)
+        if row is None:
+            for site in group:
+                errors.append(_fail("bare-retry", _site_detail(site)))
+            continue
+        if sleeps != row.sleeps or retries != row.retries:
+            errors.append(
+                _fail(
+                    "bare-retry",
+                    f"{key[0]} {key[1]} has {sleeps} sleeps and {retries} retries; "
+                    f"allowlist says {row.sleeps} and {row.retries}. "
+                    "Root cause: a new sleep or retry landed in an allowlisted function.",
+                )
+            )
+    for row in WAIT_ALLOW:
+        if not row.reason.strip():
+            continue
+        if not (base / row.path).is_file():
+            continue
+        if (row.path, row.function) not in grouped:
+            errors.append(
+                _fail(
+                    "bare-retry",
+                    f"allowlist {row.path}:{row.function} matched no sleep or retry. "
+                    "Root cause: the call moved or the wait is gone; delete the allowlist row.",
+                )
+            )
+    return errors
+
+
 def collect(root: Path, *, measured: int | None = None) -> list[str]:
     return (
         install_cap_errors(root, measured=measured)
         + narration_errors(root)
         + wal_door_errors(root)
         + feature_map_errors(root)
+        + bare_retry_errors(root)
     )
 
 

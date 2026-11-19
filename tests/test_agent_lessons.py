@@ -137,7 +137,7 @@ class Registry(unittest.TestCase):
     def test_ids_are_the_uncovered_lessons_only(self) -> None:
         self.assertEqual(
             [rule.id for rule in lessons.RULES],
-            ["install-cap", "narration-comment", "wal-single-door", "feature-map"],
+            ["install-cap", "narration-comment", "wal-single-door", "feature-map", "bare-retry"],
         )
 
     def test_repo_passes(self) -> None:
@@ -149,7 +149,7 @@ class Registry(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn(
-            "OK agent-lessons install-cap narration-comment wal-single-door feature-map",
+            "OK agent-lessons install-cap narration-comment wal-single-door feature-map bare-retry",
             proc.stdout,
         )
 
@@ -380,3 +380,96 @@ class FeatureMap(unittest.TestCase):
 
     def test_checkout_map_matches_code(self) -> None:
         self.assertEqual(lessons.feature_map_errors(ROOT), [])
+
+
+class BareRetry(unittest.TestCase):
+    def _root(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-lesson-retry-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(tmp, True))
+        return tmp
+
+    def test_plant_sleep_and_counted_retries_fail(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "bad.py",
+            """
+            from time import sleep
+
+            def bad():
+                sleep(1)
+                for _ in range(3):
+                    try:
+                        risky()
+                    except OSError:
+                        pass
+                n = 0
+                while n < 3:
+                    try:
+                        risky()
+                        return
+                    except OSError:
+                        n += 1
+            """,
+        )
+        errors = lessons.bare_retry_errors(tmp)
+        self.assertEqual(len(errors), 3)
+        self.assertTrue(all(line.startswith("FAIL bare-retry:") for line in errors))
+        self.assertTrue(all("Root cause:" in line for line in errors))
+        joined = "\n".join(errors)
+        self.assertIn("time.sleep in bad", joined)
+        self.assertIn("retry loop in bad", joined)
+        self.assertIn("Wait on the condition or event", joined)
+        self.assertIn("make the operation idempotent and run it once", joined)
+        self.assertNotIn("no sleep", joined)
+
+    def test_item_loop_is_not_a_retry(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "walk.py",
+            """
+            def walk(items, xs, lines):
+                for item in items:
+                    try:
+                        item()
+                    except OSError:
+                        continue
+                for _ in range(len(xs)):
+                    try:
+                        xs.pop()
+                    except OSError:
+                        continue
+                while True:
+                    try:
+                        return lines.pop()
+                    except ValueError:
+                        raise
+            """,
+        )
+        self.assertEqual(lessons.bare_retry_errors(tmp), [])
+
+    def test_allowlisted_flock_wait_passes(self) -> None:
+        tmp = self._root()
+        _write(
+            tmp / "scripts" / "of" / "field.py",
+            """
+            import time
+
+            def flock_wait(handle, timeout, tick):
+                while True:
+                    try:
+                        handle()
+                    except BlockingIOError:
+                        if False:
+                            raise
+                        time.sleep(tick)
+            """,
+        )
+        self.assertEqual(lessons.bare_retry_errors(tmp), [])
+
+    def test_rows_name_a_function_and_a_reason(self) -> None:
+        self.assertGreaterEqual(len(lessons.WAIT_ALLOW), 1)
+        for row in lessons.WAIT_ALLOW:
+            self.assertTrue(row.path.endswith(".py"), row)
+            self.assertNotIn("/", row.function)
+            self.assertNotIn("*", row.function)
+            self.assertTrue(row.reason.strip(), row)

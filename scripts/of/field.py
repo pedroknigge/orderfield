@@ -1747,19 +1747,12 @@ def _spawn_registry_lock(path: Path) -> Any:
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_name(path.name + ".lock")
     handle = lock_path.open("a+", encoding="utf-8")
-    started = time.monotonic()
-    while True:
-        try:
-            if fcntl is not None:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            else:
-                flock_acquire(handle)
-            return handle
-        except BlockingIOError:
-            if time.monotonic() - started >= 1.0:
-                handle.close()
-                raise
-            time.sleep(0.01)
+    try:
+        flock_wait(handle, 1.0, 0.01)
+    except BlockingIOError:
+        handle.close()
+        raise
+    return handle
 
 
 def register_spawned_child(
@@ -2302,6 +2295,19 @@ def flock_release(handle: Any) -> None:
     _windows_locking(handle, msvcrt.LK_UNLCK)
 
 
+def flock_wait(handle: Any, timeout: float, tick: float) -> None:
+    """Poll LOCK_NB until this process holds it, or re-raise BlockingIOError."""
+    started = time.monotonic()
+    while True:
+        try:
+            flock_acquire(handle)
+            return
+        except BlockingIOError:
+            if time.monotonic() - started >= timeout:
+                raise
+            time.sleep(tick)
+
+
 def _lock_owner_text(path: Path) -> str:
     try:
         owner = json.loads(path.read_text(encoding="utf-8") or "{}")
@@ -2350,22 +2356,17 @@ def field_lock(
             die("OF_FIELD_LOCK_WAIT_SECONDS must be a nonnegative number")
     else:
         timeout = max(0.0, wait_seconds)
-    started = time.monotonic()
     handle = path.open("a+", encoding="utf-8")
     try:
-        while True:
-            try:
-                flock_acquire(handle)
-                break
-            except BlockingIOError:
-                if time.monotonic() - started >= timeout:
-                    if timeout <= 0:
-                        raise FieldLockBusy(str(path))
-                    die(
-                        f"field lock wait exceeded {timeout:g}s ({_lock_owner_text(path)}); "
-                        "a dead owner is recovered automatically by the OS"
-                    )
-                time.sleep(0.05)
+        try:
+            flock_wait(handle, timeout, 0.05)
+        except BlockingIOError:
+            if timeout <= 0:
+                raise FieldLockBusy(str(path))
+            die(
+                f"field lock wait exceeded {timeout:g}s ({_lock_owner_text(path)}); "
+                "a dead owner is recovered automatically by the OS"
+            )
         owner = {
             "pid": os.getpid(),
             "command": command,
