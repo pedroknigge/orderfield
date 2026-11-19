@@ -1,0 +1,44 @@
+{
+  "v": 2,
+  "verdict": "RESOLVED",
+  "spec_closed": true,
+  "done_when_closed": true,
+  "spec_hash": "0604c7c05c6b90330536e242e5b44ec3ab83ee9b362c34b4909fb8eafa5f7bf6",
+  "order_id": "ord_05a8f65a",
+  "rev": 5,
+  "phase": "explore",
+  "closed_at": "2026-11-19T20:52:35Z",
+  "git": {
+    "head": "2a53df29705e2b7a910eba32426376735c4c43c6",
+    "tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+    "dirty": false
+  },
+  "residuals": [],
+  "receipts": [],
+  "requirements": [
+    {
+      "id": "CLI-001",
+      "status": "verified_contract",
+      "kind": "file",
+      "proof_sha": "a71dabfd36717b1d6a87b9e958384cb3722dbdb823d932ef5deac5f551b6446d",
+      "path": "surface.log",
+      "sha256": "a71dabfd36717b1d6a87b9e958384cb3722dbdb823d932ef5deac5f551b6446d",
+      "evidence": "deliverables/evidence/a71dabfd36717b1d6a87b9e958384cb3722dbdb823d932ef5deac5f551b6446d.log"
+    }
+  ],
+  "review": {
+    "findings": [],
+    "open": [],
+    "claims": [],
+    "witness": []
+  },
+  "done_when": [
+    {
+      "text": "`python3 price_cli.py` prints a price table",
+      "command": "python3 price_cli.py",
+      "exit": 0,
+      "output": "price table\n",
+      "source_sha256": "ffa0e3ae5cd0e9fda69f2d1f523832d7af8e701545a9dbb7ea0758da30b79d0b"
+    }
+  ]
+}

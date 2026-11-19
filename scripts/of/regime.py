@@ -5,7 +5,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from of.field import (
     PHASES,
@@ -256,6 +256,131 @@ class RunbookPath:
         if RunbookPath.present(list(order.get("done_when") or [])):
             return
         die(RunbookPath.REFUSE)
+
+
+class DoneWhenRun(TypedDict):
+    text: str
+    command: str
+    exit: int
+    output: str
+    source_sha256: str
+
+
+class DoneWhenEvidence:
+    """Active done_when rows on CLOSE.json: one command and its output."""
+
+    CONTRAST = "of contrast"
+    _TICK = re.compile(r"`([^`\n]*)`")
+
+    @staticmethod
+    def _flag(criterion: str) -> str:
+        return "--done-when" if done_when_tag(criterion) else "--done-when-mission"
+
+    @staticmethod
+    def classify(criterion: str) -> tuple[str | None, str]:
+        raw = str(criterion or "").strip()
+        body = raw
+        if done_when_tag(raw):
+            body = raw.partition(":")[2].strip()
+        if DoneWhenLint.body(raw) == DoneWhenLint.body(DoneWhenLint.DEFAULT):
+            return DoneWhenEvidence.CONTRAST, ""
+        spans = [part.strip() for part in DoneWhenEvidence._TICK.findall(body)]
+        spans = [part for part in spans if part]
+        flag = DoneWhenEvidence._flag(raw)
+        if len(spans) > 1:
+            return None, (
+                f"done_when {raw!r} names more than one command; "
+                f"of patch {flag} '`<cmd>`' with one command, then of close"
+            )
+        if len(spans) == 1:
+            command = spans[0]
+            if command == DoneWhenEvidence.CONTRAST:
+                return command, ""
+            if command.startswith("of "):
+                return None, (
+                    f"done_when command {command!r} is an of verb; "
+                    f"of patch {flag} '`<cmd>`' with the product command it ran, "
+                    "then of close"
+                )
+            return command, ""
+        return None, (
+            f"done_when {raw!r} names no command; "
+            f"of patch {flag} '`<cmd>`' with the command it ran, then of close"
+        )
+
+    @staticmethod
+    def gaps(order: dict[str, Any]) -> list[str]:
+        found: list[str] = []
+        for criterion in done_when_for(order):
+            _command, problem = DoneWhenEvidence.classify(str(criterion))
+            if problem:
+                found.append(problem)
+        return found
+
+    @staticmethod
+    def _row(text: str, command: str, exit_code: int, raw: bytes) -> DoneWhenRun:
+        output = raw.decode("utf-8", "replace")
+        return {
+            "text": text,
+            "command": command,
+            "exit": exit_code,
+            "output": output,
+            "source_sha256": hashlib.sha256(output.encode("utf-8")).hexdigest(),
+        }
+
+    @staticmethod
+    def _run(root: Path, command: str) -> tuple[int, bytes]:
+        from of.field import verify_no_symlink_under
+        from of.receipt import KernelVerify
+
+        home = field_home(root)
+        scratch = home / "work" / "scratch" / "_leader_verify"
+        verify_no_symlink_under(home, scratch / ".keep")
+        command_id = "done-when-" + hashlib.sha256(command.encode("utf-8")).hexdigest()[:12]
+        receipt, _rel, exit_code = KernelVerify.execute(
+            root,
+            scratch,
+            command,
+            command_id=command_id,
+        )
+        source = Path(root) / str(receipt.get("source_path") or "")
+        try:
+            data = source.read_bytes()
+        except OSError:
+            data = b""
+        return exit_code, data
+
+    @staticmethod
+    def bind(
+        root: Path,
+        order: dict[str, Any],
+        *,
+        contrast_output: str,
+    ) -> tuple[list[DoneWhenRun], list[str]]:
+        rows: list[DoneWhenRun] = []
+        problems: list[str] = []
+        for criterion in done_when_for(order):
+            text = str(criterion)
+            command, problem = DoneWhenEvidence.classify(text)
+            if problem or not command:
+                if problem:
+                    problems.append(problem)
+                continue
+            if command == DoneWhenEvidence.CONTRAST:
+                exit_code, raw = 0, contrast_output.encode("utf-8")
+            else:
+                exit_code, raw = DoneWhenEvidence._run(root, command)
+            if exit_code != 0 or not raw:
+                detail = raw.decode("utf-8", "replace").strip().splitlines()
+                extra = f" {detail[0]}" if detail else ""
+                why = "produced no output" if exit_code == 0 else f"exited {exit_code}"
+                problems.append(
+                    f"done_when {command!r} {why};{extra} "
+                    "fix the command so it exits 0 and prints output, then of close"
+                )
+                continue
+            rows.append(DoneWhenEvidence._row(text, command, exit_code, raw))
+        return rows, problems
 
 
 class PlanDocSync:

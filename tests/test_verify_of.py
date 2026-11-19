@@ -135,6 +135,41 @@ class VerifyOfSkill(unittest.TestCase):
             self.assertEqual(manifest["live_mission_after_resume"], "crashed mission")
             self.assertFalse((dest / "CLOSE.json").exists())
 
+    def test_evidence_close_refuses_then_binds_the_run(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="verify-of-evidence-") as tmp:
+            dest = Path(tmp) / "run"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(HELPER),
+                    "--feature",
+                    "evidence-close",
+                    "--evidence-dir",
+                    str(dest),
+                ],
+                cwd=str(ROOT),
+                text=True,
+                capture_output=True,
+                timeout=180,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(
+                proc.returncode,
+                0,
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}",
+            )
+            transcript = (dest / "transcript.txt").read_text(encoding="utf-8")
+            self.assertIn("names no command", transcript)
+            self.assertIn("of patch --done-when-mission", transcript)
+            self.assertIn("CLOSED", transcript)
+            proof = json.loads((dest / "CLOSE.json").read_text(encoding="utf-8"))
+            row = proof["done_when"][0]
+            self.assertEqual(row["command"], "python3 price_cli.py")
+            self.assertIn("price table", row["output"])
+            manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["feature"], "evidence-close")
+            self.assertTrue(manifest["evidence_survived_cleanup"])
+
 
 if __name__ == "__main__":
     unittest.main()

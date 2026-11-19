@@ -1,0 +1,13 @@
+{
+  "feature": "evidence-close",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt",
+    "CLOSE.json"
+  ],
+  "refused_done_when": "names no command",
+  "accepted_command": "python3 price_cli.py",
+  "evidence_survived_cleanup": true
+}

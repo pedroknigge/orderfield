@@ -1785,7 +1785,7 @@ class RunbookPathGate(unittest.TestCase):
             self.tmp,
             "patch",
             "--done-when-mission",
-            "docs/ops/runbook.md names the 5 most probable failures",
+            "`python3 -c 'print(1)'` docs/ops/runbook.md names the 5 most probable failures",
         )
         self.assertEqual(named.returncode, 0, named.stderr)
         closed = run_of(self.tmp, "patch", "--done-when-closed")

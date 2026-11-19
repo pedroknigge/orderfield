@@ -17,6 +17,7 @@ One row per user-facing feature. The rows are the README command table, plus Fie
 | Integrate | `of integrate` | `tests/test_kernel_regime.py` |
 | Contrast | `of contrast` | `tests/test_kernel_spec.py` |
 | Close | `of close` | `tests/test_close_proof.py`; `verify-of close-field` |
+| Evidence close | `of close` | `tests/test_done_when_evidence.py`; `verify-of evidence-close` |
 | Sibling fields | `of new` | `tests/test_kernel_fields.py` |
 | Patch | `of patch` | `tests/test_kernel_field.py` |
 | Spec | `of spec` | `tests/test_kernel_spec.py` |
