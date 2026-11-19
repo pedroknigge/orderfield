@@ -137,7 +137,7 @@ class Registry(unittest.TestCase):
     def test_ids_are_the_uncovered_lessons_only(self) -> None:
         self.assertEqual(
             [rule.id for rule in lessons.RULES],
-            ["install-cap", "narration-comment", "wal-single-door"],
+            ["install-cap", "narration-comment", "wal-single-door", "feature-map"],
         )
 
     def test_repo_passes(self) -> None:
@@ -149,7 +149,7 @@ class Registry(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn(
-            "OK agent-lessons install-cap narration-comment wal-single-door",
+            "OK agent-lessons install-cap narration-comment wal-single-door feature-map",
             proc.stdout,
         )
 
@@ -313,3 +313,70 @@ class WalSingleDoor(unittest.TestCase):
         for row in lessons.WAL_ALLOW:
             self.assertTrue(row.reason.strip(), row)
             self.assertIn(row.path, "scripts/eval_fixtures.py")
+
+
+def _feature_map(root: Path, reach: str, proof: str) -> None:
+    _write(
+        root / "docs" / "feature-map.md",
+        f"""
+        # Orderfield feature map
+
+        | Feature | Reach | Proof |
+        |---|---|---|
+        | Resume | {reach} | {proof} |
+        """,
+    )
+
+
+class FeatureMap(unittest.TestCase):
+    def _root(self) -> Path:
+        tmp = Path(tempfile.mkdtemp(prefix="of-lesson-map-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(tmp, True))
+        return tmp
+
+    def test_pass_when_tokens_exist(self) -> None:
+        tmp = self._root()
+        _feature_map(tmp, "`of resume`", "`tests/test_resume_next.py`; `verify-of doctor`")
+        _write(tmp / "tests" / "test_resume_next.py", "x = 1\n")
+        self.assertEqual(
+            lessons.feature_map_errors(tmp, commands={"resume"}, features={"doctor"}),
+            [],
+        )
+
+    def test_fail_when_test_module_is_gone(self) -> None:
+        tmp = self._root()
+        _feature_map(tmp, "`of resume`", "`tests/test_gone.py`")
+        errors = lessons.feature_map_errors(tmp, commands={"resume"}, features=set())
+        self.assertEqual(len(errors), 1)
+        self.assertIn("FAIL feature-map:", errors[0])
+        self.assertIn("tests/test_gone.py", errors[0])
+        self.assertIn("docs/feature-map.md", errors[0])
+        self.assertIn("Fix:", errors[0])
+        self.assertIn("scripts/verify_of.py FEATURES", errors[0])
+
+    def test_fail_when_verify_of_feature_is_gone(self) -> None:
+        tmp = self._root()
+        _feature_map(tmp, "`of resume`", "`verify-of wal-resume`")
+        errors = lessons.feature_map_errors(tmp, commands={"resume"}, features={"doctor"})
+        self.assertEqual(len(errors), 1)
+        self.assertIn("verify-of wal-resume", errors[0])
+        self.assertIn("not in scripts/verify_of.py FEATURES", errors[0])
+
+    def test_fail_when_subcommand_is_gone(self) -> None:
+        tmp = self._root()
+        _feature_map(tmp, "`of resume`", "`of pack`")
+        errors = lessons.feature_map_errors(tmp, commands={"resume"}, features=set())
+        self.assertEqual(len(errors), 1)
+        self.assertIn("`of pack`", errors[0])
+        self.assertIn("not a registered subcommand", errors[0])
+
+    def test_fail_when_proof_token_is_prose(self) -> None:
+        tmp = self._root()
+        _feature_map(tmp, "`of resume`", "`the suite`")
+        errors = lessons.feature_map_errors(tmp, commands={"resume"}, features=set())
+        self.assertEqual(len(errors), 1)
+        self.assertIn("`the suite`", errors[0])
+        self.assertIn("is not a test module", errors[0])
+
+    def test_checkout_map_matches_code(self) -> None:
+        self.assertEqual(lessons.feature_map_errors(ROOT), [])

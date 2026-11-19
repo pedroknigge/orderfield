@@ -27,6 +27,7 @@ Living map: checklist → of contrast / of close / residual (`LivingMapGate`). N
 | Doc | Role |
 |-----|------|
 | [README.md](README.md) | Product surface / install |
+| [docs/feature-map.md](docs/feature-map.md) | One row per user-facing feature, the `of` command, and the proof |
 | [SKILL.md](SKILL.md) | Leader procedure — always-loaded short core |
 | [of/SKILL.md](of/SKILL.md) | `/of` alias skill (not a second contract) |
 | [references/skill-appendix.md](references/skill-appendix.md) | Leader appendix (hosts do not auto-load; load by verb) |

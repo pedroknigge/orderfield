@@ -21,7 +21,7 @@ That command is the launch. It runs `bash install.sh --root <scratch>` with `HOM
 
 Ready means `of doctor` printed `doctor        ok` and its `kernel` line matches the checkout `VERSION` file. The helper exits non-zero until that is true.
 
-Other features stop earlier: `doctor`, `init-plan`, `pack-wave`, `collect-wave`. One feature is enough for a proof. `close-field` is the one that writes `CLOSE.json`.
+Other features stop earlier: `doctor`, `init-plan`, `pack-wave`, `collect-wave`. `wal-resume` checks Field WAL crash repair. One feature is enough for a proof. `close-field` is the one that writes `CLOSE.json`.
 
 ## Doctor
 
@@ -52,7 +52,17 @@ The harness is the installed `of` binary. External CLIs (claude, codex, cursor, 
 7. Write `price_cli.py` that prints `price table`, then `of spec --verified-contract CLI-001 --run "python3 price_cli.py"`.
 8. `of contrast`, `of close --checklist`, `of close`, `of status`, `of resume`.
 
-The feature files under `features/` are the map. Drive the feature you name. Do not skip a precondition to force a green run. If a step exits non-zero, the helper keeps the failure in the transcript, deletes only the scratch it created, and exits 1.
+The feature files under `features/` are the driving recipes. Drive the feature you name. Do not skip a precondition to force a green run. If a step exits non-zero, the helper keeps the failure in the transcript, deletes only the scratch it created, and exits 1.
+
+## WAL resume
+
+`wal-resume` checks crash repair on an installed `of`. It leaves no `CLOSE.json`.
+
+```bash
+python3 scripts/verify_of.py --feature wal-resume
+```
+
+The helper installs `of` into a scratch HOME and inits a throwaway repo. It patches a mission, then patches again with `OF_WAL_CRASH=after-current`. That command exits non-zero. `of resume` must exit 0, every live file named by `wal/CURRENT.json` must match that generation, and `wal/MATERIALIZED.json` must name the same generation.
 
 ## Evidence
 

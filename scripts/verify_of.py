@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTALL = ROOT / "install.sh"
 VERSION_FILE = ROOT / "VERSION"
 DEFAULT_EVIDENCE_ROOT = ROOT / ".cursor" / "skills" / "verify-of" / "runs"
-FEATURES = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
+PIPE = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
+FEATURES = PIPE + ("wal-resume",)
 
 CHILD = r"""
 import hashlib, json, os
@@ -141,10 +142,10 @@ def _doctor_ok(doctor_text: str) -> None:
 
 
 def _through(feature: str) -> set[str]:
-    if feature not in FEATURES:
+    if feature not in PIPE:
         raise VerifyFailed(f"verify-of: unknown feature {feature}")
-    index = FEATURES.index(feature)
-    return set(FEATURES[: index + 1])
+    index = PIPE.index(feature)
+    return set(PIPE[: index + 1])
 
 
 def _prepare_repo(work: Path, env: dict[str, str], log: list[str]) -> None:
@@ -181,10 +182,92 @@ def _of(
     _require(_run(argv, cwd=work, env=env, timeout=90, log=log), argv)
 
 
-def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list[str]) -> None:
+def _json_object(path: Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise VerifyFailed(f"verify-of: {path.name} is not a JSON object")
+    return data
+
+
+def _mission(path: Path) -> str:
+    mission = _json_object(path).get("mission")
+    if not isinstance(mission, str):
+        raise VerifyFailed(f"verify-of: {path} has no mission string")
+    return mission
+
+
+def _drive_wal_resume(work: Path, env: dict[str, str], log: list[str]) -> dict[str, str]:
+    """Crash after the CURRENT flip, then resume until live matches CURRENT."""
+    _prepare_repo(work, env, log)
+    _of(
+        ["init", "--mission", "committed mission", "--phase", "explore"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    _of(["patch", "--mission", "written mission"], work=work, env=env, log=log)
+    home = work / ".orderfield"
+    crash_env = dict(env)
+    crash_env["OF_WAL_CRASH"] = "after-current"
+    crashed = _run(
+        ["of", "patch", "--mission", "crashed mission"],
+        cwd=work,
+        env=crash_env,
+        timeout=90,
+        log=log,
+    )
+    if crashed.returncode == 0 or "wal-crash" not in crashed.stderr:
+        raise VerifyFailed(
+            "verify-of: OF_WAL_CRASH=after-current did not crash the patch"
+        )
+    before = _mission(home / "ORDER.json")
+    if before != "written mission":
+        raise VerifyFailed(
+            f"verify-of: live mission before resume is {before!r}, want 'written mission'"
+        )
+    resumed = _run(["of", "resume"], cwd=work, env=env, timeout=90, log=log)
+    _require(resumed, ["of", "resume"])
+    if "repaired live from CURRENT" not in resumed.stdout:
+        raise VerifyFailed("verify-of: resume did not report repaired live from CURRENT")
+    current = _json_object(home / "wal" / "CURRENT.json")
+    materialized = _json_object(home / "wal" / "MATERIALIZED.json")
+    generation = current.get("generation")
+    if not isinstance(generation, str) or generation != materialized.get("generation"):
+        raise VerifyFailed(
+            "verify-of: MATERIALIZED generation "
+            f"{materialized.get('generation')!r} != CURRENT {generation!r}"
+        )
+    files = current.get("files")
+    if not isinstance(files, dict) or not files:
+        raise VerifyFailed("verify-of: CURRENT has no files map")
+    for rel in sorted(files):
+        if not isinstance(rel, str) or Path(rel).is_absolute() or ".." in Path(rel).parts:
+            raise VerifyFailed(f"verify-of: CURRENT file path is not a field relative: {rel!r}")
+        committed = home / "wal" / generation / rel
+        live = home / rel
+        if not committed.is_file() or not live.is_file():
+            raise VerifyFailed(f"verify-of: missing live or CURRENT copy of {rel}")
+        if live.read_bytes() != committed.read_bytes():
+            raise VerifyFailed(f"verify-of: live {rel} != CURRENT generation")
+    after = _mission(home / "ORDER.json")
+    if after != "crashed mission":
+        raise VerifyFailed(
+            f"verify-of: live mission after resume is {after!r}, want 'crashed mission'"
+        )
+    return {
+        "live_mission_after_crash": before,
+        "live_mission_after_resume": after,
+        "current_generation": generation,
+        "materialized_generation": generation,
+    }
+
+
+def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list[str]) -> dict[str, str]:
+    if feature == "wal-resume":
+        return _drive_wal_resume(work, env, log)
     want = _through(feature)
     if "init-plan" not in want:
-        return
+        return {}
     _prepare_repo(work, env, log)
     _of(
         [
@@ -215,7 +298,7 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
         log=log,
     )
     if "pack-wave" not in want:
-        return
+        return {}
     _of(
         [
             "pack",
@@ -233,7 +316,7 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
         log=log,
     )
     if "collect-wave" not in want:
-        return
+        return {}
     spawn_env = dict(env)
     spawn_env["OF_AGENT"] = f"{sys.executable} {shlex.quote(str(child))}"
     _of(
@@ -251,7 +334,7 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
     _of(["collect", "--wave", "1"], work=work, env=env, log=log)
     _of(["integrate", "--wave", "1"], work=work, env=env, log=log)
     if "close-field" not in want:
-        return
+        return {}
     price = work / "price_cli.py"
     price.write_text('print("price table")\n', encoding="utf-8")
     log.append("$ write price_cli.py")
@@ -268,6 +351,7 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
     _of(["close"], work=work, env=env, log=log)
     _of(["status"], work=work, env=env, log=log)
     _of(["resume"], work=work, env=env, log=log)
+    return {}
 
 
 def _write_evidence(
@@ -278,6 +362,7 @@ def _write_evidence(
     log: list[str],
     doctor_text: str,
     close_path: Path | None,
+    extra: dict[str, str] | None = None,
 ) -> None:
     dest.mkdir(parents=True, exist_ok=False)
     transcript = "\n".join(log).rstrip() + "\n"
@@ -292,6 +377,8 @@ def _write_evidence(
         "files": ["transcript.txt", "doctor.txt"]
         + (["CLOSE.json"] if close_path is not None else []),
     }
+    if extra:
+        manifest.update(extra)
     (dest / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
     )
@@ -352,9 +439,10 @@ def main(argv: list[str] | None = None) -> int:
         child.write_text(CHILD, encoding="utf-8")
         child.chmod(0o755)
         close_path: Path | None = None
+        extra: dict[str, str] = {}
         if args.feature != "doctor":
             work = Path(tempfile.mkdtemp(prefix="verify-of-repo-"))
-            _drive(args.feature, work, env, child, log)
+            extra = _drive(args.feature, work, env, child, log)
             if args.feature == "close-field":
                 close_path = work / ".orderfield" / "CLOSE.json"
                 if not close_path.is_file():
@@ -369,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
             log=log,
             doctor_text=doctor.stdout,
             close_path=close_path,
+            extra=extra,
         )
     except Exception as exc:
         failed = exc
