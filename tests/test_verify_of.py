@@ -170,6 +170,45 @@ class VerifyOfSkill(unittest.TestCase):
             self.assertEqual(manifest["feature"], "evidence-close")
             self.assertTrue(manifest["evidence_survived_cleanup"])
 
+    def test_plan_feature_map_names_the_gap(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="verify-of-evidence-") as tmp:
+            dest = Path(tmp) / "run"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(HELPER),
+                    "--feature",
+                    "plan-feature-map",
+                    "--evidence-dir",
+                    str(dest),
+                ],
+                cwd=str(ROOT),
+                text=True,
+                capture_output=True,
+                timeout=180,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(
+                proc.returncode,
+                0,
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}",
+            )
+            transcript = (dest / "transcript.txt").read_text(encoding="utf-8")
+            self.assertIn("feature-map  .orderfield/feature-map.md", transcript)
+            self.assertIn("cannot run: gone.js is missing", transcript)
+            mapped = (dest / "feature-map.md").read_text(encoding="utf-8")
+            self.assertIn("`python3 price_cli.py`", mapped)
+            self.assertIn("cannot run: gone.js is missing", mapped)
+            order = json.loads((dest / "ORDER.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                order["done_when"],
+                ["`python3 price_cli.py`", "cannot run: gone.js is missing"],
+            )
+            self.assertFalse((dest / "CLOSE.json").exists())
+            manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["feature"], "plan-feature-map")
+            self.assertTrue(manifest["evidence_survived_cleanup"])
+
 
 if __name__ == "__main__":
     unittest.main()

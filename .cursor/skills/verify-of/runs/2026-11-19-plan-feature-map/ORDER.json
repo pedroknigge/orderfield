@@ -1,0 +1,58 @@
+{
+  "v": 1,
+  "id": "ord_e980ef5c",
+  "rev": 2,
+  "mission": "prices `python3 price_cli.py` and `node gone.js`",
+  "phase": "explore",
+  "done_when": [
+    "`python3 price_cli.py`",
+    "cannot run: gone.js is missing"
+  ],
+  "constraints": [
+    "slaves do not mutate ORDER",
+    "one phase at a time"
+  ],
+  "workspace": {
+    "readable": [
+      ".orderfield/ORDER.json",
+      ".orderfield/SPEC.md",
+      ".orderfield/REQUIREMENTS.json",
+      "."
+    ],
+    "writable_by_slaves": [
+      ".orderfield/work/scratch/"
+    ],
+    "forbidden": [
+      ".orderfield/ORDER.json",
+      ".orderfield/state.json",
+      ".orderfield/session.json"
+    ]
+  },
+  "thresholds": {
+    "tool_failures": 2,
+    "divergence": 0.4,
+    "local_budget_pct": 80,
+    "novelty": true
+  },
+  "caps": {
+    "max_children": 4,
+    "max_depth": 2,
+    "max_across_per_wave": 1,
+    "cooldown_waves_after_across": 1
+  },
+  "enabled_regimes": [
+    "escalate_up",
+    "scale_out",
+    "scale_up",
+    "human",
+    "hold",
+    "phase"
+  ],
+  "done_when_closed": false,
+  "notes": "",
+  "spec_ref": ".orderfield/SPEC.md",
+  "spec_hash": "8b8d41cb0d7b5d7645e20c67a91eb2167207cd5d5e4cb1492ab6ae9ff20157d6",
+  "spec_closed": false,
+  "requirements_ref": ".orderfield/REQUIREMENTS.json",
+  "requirements_hash": "0d3babde7416f734a3b2422a641a50da7e82cb6a0fa2285a6a5cd5c27e79db84"
+}

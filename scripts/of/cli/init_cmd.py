@@ -18,6 +18,7 @@ from of.field import (
     die,
     emit_event,
     field_home,
+    field_rel,
     find_root,
     of_dir,
     order_path,
@@ -28,7 +29,7 @@ from of.field import (
     session_path,
     write_phase_md,
 )
-from of.regime import DoneWhenLint, PlanCoverage, PlanIngress
+from of.regime import DoneWhenLint, PlanCoverage, PlanFeatureMap, PlanIngress
 from of.pack import ensure_field_slave_md
 from of.host_ram import AgentBand
 from of.spec import (
@@ -258,8 +259,8 @@ def _stamp_and_write_new_field(
         order = default_order(args.mission, phase)
     if args.done_when:
         order["done_when"] = args.done_when
+        DoneWhenLint.refuse(list(order.get("done_when") or []))
     AgentBand.apply_args(order, args)
-    DoneWhenLint.refuse(list(order.get("done_when") or []))
     origin_harness, origin_session = resolve_init_origin(
         getattr(args, "origin", None),
         getattr(args, "session_id", None),
@@ -273,6 +274,12 @@ def _stamp_and_write_new_field(
         archive_previous_field(root, target)
     (target / "work" / "scratch").mkdir(parents=True, exist_ok=True)
     (target / "waves").mkdir(parents=True, exist_ok=True)
+    rows = PlanFeatureMap.observe(root, str(args.mission), source_text)
+    PlanFeatureMap.save(root, rows)
+    print(f"feature-map  {field_rel(root, PlanFeatureMap.path(root))}")
+    if not args.done_when:
+        order["done_when"] = PlanFeatureMap.criteria(rows)
+        DoneWhenLint.refuse(list(order.get("done_when") or []))
     # Compile the mother context before PlanIngress.apply runs: explicit
     # --cite docs are pinned (folder mode + baseline see them) and the chat
     # capture is written so the chat branch pins it via capture_rels.

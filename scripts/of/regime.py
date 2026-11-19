@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shlex
+import shutil
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -27,7 +29,7 @@ from of.field import (
     wave_dir,
 )
 
-from of.wal import dump_json, field_read_bytes, try_load_json
+from of.wal import dump_json, dump_text, field_read_bytes, try_load_json
 
 from of.spec import (
     AMEND_RE,
@@ -284,9 +286,16 @@ class DoneWhenEvidence:
             body = raw.partition(":")[2].strip()
         if DoneWhenLint.body(raw) == DoneWhenLint.body(DoneWhenLint.DEFAULT):
             return DoneWhenEvidence.CONTRAST, ""
+        flag = DoneWhenEvidence._flag(raw)
+        if body.startswith(PlanFeatureMap.CANNOT):
+            missing = body[len(PlanFeatureMap.CANNOT) :].strip() or "the product"
+            return None, (
+                f"done_when {raw!r} cannot run: {missing}; "
+                f"of patch {flag} '`<cmd>`' with a command the repo can run, "
+                "then of close"
+            )
         spans = [part.strip() for part in DoneWhenEvidence._TICK.findall(body)]
         spans = [part for part in spans if part]
-        flag = DoneWhenEvidence._flag(raw)
         if len(spans) > 1:
             return None, (
                 f"done_when {raw!r} names more than one command; "
@@ -381,6 +390,185 @@ class DoneWhenEvidence:
                 continue
             rows.append(DoneWhenEvidence._row(text, command, exit_code, raw))
         return rows, problems
+
+
+class FeatureRow(TypedDict):
+    feature: str
+    reach: str
+    proof: str
+
+
+class PlanFeatureMap:
+    """The user's plan: one Feature | Reach | Proof table on the field."""
+
+    NAME = "feature-map.md"
+    CANNOT = "cannot run:"
+    NO_COMMAND = "cannot run: no command"
+    _SUFFIXES = (".py", ".js", ".sh", ".ts", ".mjs", ".rb", ".go")
+
+    @staticmethod
+    def path(root: Path) -> Path:
+        return field_home(root) / PlanFeatureMap.NAME
+
+    @staticmethod
+    def _cells(line: str) -> list[str] | None:
+        text = line.strip()
+        if not text.startswith("|") or not text.endswith("|"):
+            return None
+        return [part.strip() for part in text.strip("|").split("|")]
+
+    @staticmethod
+    def parse(text: str) -> list[FeatureRow]:
+        lines = text.splitlines()
+        start = None
+        for index, line in enumerate(lines):
+            if PlanFeatureMap._cells(line) == ["Feature", "Reach", "Proof"]:
+                start = index
+                break
+        if start is None:
+            return []
+        rows: list[FeatureRow] = []
+        for line in lines[start + 1 :]:
+            cells = PlanFeatureMap._cells(line)
+            if cells is None:
+                break
+            if cells and all(set(cell) <= set("-:") for cell in cells):
+                continue
+            if len(cells) != 3 or not all(cells):
+                break
+            rows.append({"feature": cells[0], "reach": cells[1], "proof": cells[2]})
+        return rows
+
+    @staticmethod
+    def render(rows: list[FeatureRow]) -> str:
+        body = ["# Feature map", "", "| Feature | Reach | Proof |", "|---|---|---|"]
+        for row in rows:
+            body.append(f"| {row['feature']} | {row['reach']} | {row['proof']} |")
+        body.append("")
+        return "\n".join(body)
+
+    @staticmethod
+    def load(root: Path) -> list[FeatureRow]:
+        try:
+            text = PlanFeatureMap.path(root).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return []
+        return PlanFeatureMap.parse(text)
+
+    @staticmethod
+    def save(root: Path, rows: list[FeatureRow]) -> None:
+        dump_text(PlanFeatureMap.path(root), PlanFeatureMap.render(rows))
+
+    @staticmethod
+    def _commands(mission: str, source: str | None) -> list[str]:
+        blob = str(mission or "")
+        if source:
+            blob += "\n" + str(source)
+        seen: set[str] = set()
+        found: list[str] = []
+        for raw in DoneWhenEvidence._TICK.findall(blob):
+            command = raw.strip()
+            if not command or command in seen or command.startswith("of "):
+                continue
+            seen.add(command)
+            found.append(command)
+        return found
+
+    @staticmethod
+    def _script(argv: list[str]) -> str | None:
+        for token in argv:
+            if token.startswith("-"):
+                continue
+            if "/" in token or token.endswith(PlanFeatureMap._SUFFIXES):
+                return token
+        return None
+
+    @staticmethod
+    def _present(root: Path, token: str) -> bool:
+        rel = token[2:] if token.startswith("./") else token
+        if not rel or rel.startswith("/") or rel.startswith("..") or "/../" in rel:
+            return False
+        cand = (Path(root) / rel).resolve()
+        try:
+            cand.relative_to(Path(root).resolve())
+        except ValueError:
+            return False
+        return cand.is_file() and not cand.is_symlink()
+
+    @staticmethod
+    def missing(root: Path, command: str) -> str | None:
+        try:
+            argv = shlex.split(command)
+        except ValueError:
+            return "command"
+        if not argv:
+            return "command"
+        script = PlanFeatureMap._script(argv)
+        if script is not None:
+            shown = script[2:] if script.startswith("./") else script
+            if not PlanFeatureMap._present(root, script):
+                return shown
+        program = argv[0]
+        if "/" not in program and not program.endswith(PlanFeatureMap._SUFFIXES):
+            if shutil.which(program) is None:
+                return program
+        return None
+
+    @staticmethod
+    def observe(root: Path, mission: str, source: str | None) -> list[FeatureRow]:
+        commands = PlanFeatureMap._commands(mission, source)
+        if not commands:
+            feature = " ".join(str(mission or "").split()) or "mission"
+            return [
+                {
+                    "feature": feature,
+                    "reach": "none",
+                    "proof": PlanFeatureMap.NO_COMMAND,
+                }
+            ]
+        rows: list[FeatureRow] = []
+        for command in commands:
+            reach = f"`{command}`"
+            gap = PlanFeatureMap.missing(root, command)
+            if gap:
+                rows.append(
+                    {
+                        "feature": gap,
+                        "reach": reach,
+                        "proof": f"{PlanFeatureMap.CANNOT} {gap} is missing",
+                    }
+                )
+                continue
+            try:
+                argv = shlex.split(command)
+            except ValueError:
+                argv = [command]
+            script = PlanFeatureMap._script(argv)
+            if script:
+                shown = script[2:] if script.startswith("./") else script
+                name = Path(shown).name
+            else:
+                name = argv[0] if argv else command
+            rows.append({"feature": name, "reach": reach, "proof": reach})
+        return rows
+
+    @staticmethod
+    def criteria(rows: list[FeatureRow]) -> list[str]:
+        if rows and all(row["proof"] == PlanFeatureMap.NO_COMMAND for row in rows):
+            return [DoneWhenLint.DEFAULT]
+        out: list[str] = []
+        for row in rows:
+            proof = row["proof"]
+            if proof.startswith(PlanFeatureMap.CANNOT):
+                out.append(proof)
+                continue
+            spans = [
+                part.strip()
+                for part in DoneWhenEvidence._TICK.findall(proof)
+                if part.strip()
+            ]
+            out.append(f"`{spans[0]}`" if len(spans) == 1 else proof)
+        return out
 
 
 class PlanDocSync:
