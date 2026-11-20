@@ -1,0 +1,15 @@
+{
+  "feature": "learn-checks",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt",
+    "check.py"
+  ],
+  "proposal_order": "redesign check run prose",
+  "check_message": "FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'",
+  "repo_unchanged_until_accept": "true",
+  "single_residual": "none",
+  "evidence_survived_cleanup": true
+}

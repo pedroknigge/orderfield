@@ -96,9 +96,13 @@ of learn --protocol "of init --force must unlink session.json"    # cross-projec
 of learn --promote lrn_ab12cd34ef56                               # field -> protocol, after reading it
 of learn --list
 of learn --forget lrn_ab12cd34ef56
+of learn --checks
+of learn --accept chk_<key>_check
 ```
 
 `of learn --list` reads the protocol store when no ACTIVE/open field is bound (2+ closed fields do not require `--field`). Pass `--field` only when 2+ open fields make field notes ambiguous, or to inspect one closed ORDER.
+
+`of learn --checks` proposes when the same residual claim is in two fields. The claim is a canonical key of status, wants_to_change, requirements_failed, constraints+, and done_when+. Evidence text is not the key. One field, or two files in one field, prints `none`. The lines are redesign, then a check, then a feature-map row and a done_when command (`python3 scripts/checks/<key>.py`), then AGENTS.md. `--checks` writes nothing. `of learn --accept ID` writes that one artifact. A child (`OF_CHILD`) cannot propose or accept.
 
 An oversized learning (> 400 chars) prints an advisory **note** — the learning is still stored. Do not refuse. The note names the fix: put the long record in `work/scratch/leader/<file>.md` and keep a short pointer learning. Over 4 lines still refuse dumps (`learning.lines`) — that is the chat-dump bound, the same shape-vs-length split collect already makes. Length is a hint; lines are the wall.
 

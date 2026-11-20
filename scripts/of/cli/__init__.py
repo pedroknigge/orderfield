@@ -583,6 +583,20 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
         dest="forget",
         help="delete by id or unique substring",
     )
+    s.add_argument(
+        "--checks",
+        action="store_true",
+        help=(
+            "propose an ordered check when the same residual claim is in two fields; "
+            "writes nothing"
+        ),
+    )
+    s.add_argument(
+        "--accept",
+        dest="accept",
+        metavar="ID",
+        help="write the check from of learn --checks; the repo stays unchanged until this",
+    )
     s.set_defaults(func=cmd_learn)
 
     s = sub.add_parser(

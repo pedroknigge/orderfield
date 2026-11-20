@@ -456,10 +456,57 @@ def _learn_session(root: Path, has_order: bool = True) -> Any:
         snapshot_session(root, "learn")
 
 
+def _print_check_rows(rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        print(f"{'checks':12} none")
+        return
+    for row in rows:
+        fields = ",".join(row["fields"])
+        command = str(row.get("command") or "")
+        extra = f"  `{command}`" if command else ""
+        print(f"{row['kind']:12} {row['id']}  {fields}  {row['message']}{extra}")
+
+
 def cmd_learn(args: argparse.Namespace) -> None:
     root = find_root()
     has_order = order_path(root).is_file()
     order = load_order(root) if has_order else None
+    checks = bool(getattr(args, "checks", False))
+    accept = str(getattr(args, "accept", None) or "").strip()
+    if checks or accept:
+        if checks and accept:
+            die("use --checks or --accept, not both")
+        if any(
+            (
+                str(getattr(args, "text", None) or "").strip(),
+                str(getattr(args, "forget", None) or "").strip(),
+                str(getattr(args, "promote", None) or "").strip(),
+                bool(getattr(args, "list", False)),
+                bool(getattr(args, "protocol", False)),
+                bool(getattr(args, "field", False)),
+            )
+        ):
+            die("of learn --checks does not take a lesson, --list, --forget, or --promote")
+        from of.learn_checks import LearnChecks
+
+        refuse_child_forge("--checks" if checks else "--accept")
+        if checks:
+            rows = LearnChecks.proposals(root)
+            _print_check_rows(rows)
+            emit_event("learn", action="checks", ok=True, count=len(rows))
+            return
+        with _learn_session(root, has_order):
+            row = LearnChecks.accept(root, accept)
+        _print_check_rows([row])
+        emit_event(
+            "learn",
+            action="accept",
+            ok=True,
+            id=str(row["id"]),
+            kind=str(row["kind"]),
+            path=str(row["path"]),
+        )
+        return
     if getattr(args, "list", False):
         meta = print_learnings(
             list_learnings(root if has_order else None),
