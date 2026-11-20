@@ -84,6 +84,14 @@ python3 scripts/verify_of.py --feature evidence-close
 
 The expected refusal is part of the proof. The helper exits 0 only when that refusal is in the transcript and the accepted receipt contains the command output.
 
+## Learn checks
+
+`learn-checks` installs `of` and opens two fields. One residual prints `checks` / `none`. The same claim in the second field carries `constraints+`, so the lines are redesign, check, run, then prose. Those four messages differ: redesign names the constraint to fold into the plan, check names the script and its assertion, run names the feature-map row and the done_when command, and prose names the AGENTS.md line. The product tree outside `.orderfield/` is unchanged by `--checks`. `--accept` writes `scripts/checks/<key>.py`. That script exits 1 and its stderr is `FAIL <key>: add constraint '...'`. The evidence copy is `check.py`.
+
+```bash
+python3 scripts/verify_of.py --feature learn-checks
+```
+
 ## Evidence
 
 The helper writes `<checkout>/.cursor/skills/verify-of/runs/<run-id>/` before cleanup:

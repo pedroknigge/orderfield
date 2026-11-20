@@ -12,6 +12,7 @@ removed when the scratch HOME and the throwaway repo are deleted.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -27,7 +28,7 @@ INSTALL = ROOT / "install.sh"
 VERSION_FILE = ROOT / "VERSION"
 DEFAULT_EVIDENCE_ROOT = ROOT / ".cursor" / "skills" / "verify-of" / "runs"
 PIPE = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
-FEATURES = PIPE + ("wal-resume", "evidence-close", "plan-feature-map")
+FEATURES = PIPE + ("wal-resume", "evidence-close", "plan-feature-map", "learn-checks")
 
 CHILD = r"""
 import hashlib, json, os
@@ -321,6 +322,133 @@ def _drive_evidence_close(work: Path, env: dict[str, str], log: list[str]) -> di
     }
 
 
+def _product_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        if ".orderfield" in path.parts or ".git" in path.parts:
+            continue
+        if path.is_symlink() or not path.is_file():
+            continue
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _drive_learn_checks(work: Path, env: dict[str, str], log: list[str]) -> dict[str, str]:
+    """Two fields, one claim. Propose writes nothing. Accept writes the check."""
+    _prepare_repo(work, env, log)
+    _of(
+        ["init", "--mission", "show a price table", "--phase", "explore"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    _of(
+        ["new", "--mission", "show the price table again"],
+        work=work,
+        env=env,
+        log=log,
+    )
+    homes = sorted((work / ".orderfield" / "fields").glob("ord_*"))
+    if len(homes) != 2:
+        raise VerifyFailed(f"verify-of: expected two fields, found {len(homes)}")
+    body = {
+        "status": "threshold",
+        "result_ref": "notes.md",
+        "residual": {
+            "wants_to_change": ["constraints"],
+            "evidence": "the price table is not in the contract",
+            "proposed_patch": {"constraints+": ["price_cli.py prints price table"]},
+        },
+        "metrics": {
+            "uncertainty": 0.2,
+            "divergence": 0.2,
+            "tool_failures": 0,
+            "novelty": False,
+        },
+    }
+    first = homes[0] / "waves" / "001" / "residuals" / "child.json"
+    first.parent.mkdir(parents=True, exist_ok=True)
+    first.write_text(json.dumps(body) + "\n", encoding="utf-8")
+    log.append("$ write one residual")
+    log.append(str(first.relative_to(work)))
+    log.append("")
+    alone = _run(["of", "learn", "--checks"], cwd=work, env=env, timeout=90, log=log)
+    if alone.returncode != 0 or "none" not in alone.stdout:
+        raise VerifyFailed("verify-of: one residual proposed a check")
+    second_body = json.loads(json.dumps(body))
+    second_body["residual"]["evidence"] = "different words, same missing constraint"
+    second = homes[1] / "waves" / "001" / "residuals" / "child.json"
+    second.parent.mkdir(parents=True, exist_ok=True)
+    second.write_text(json.dumps(second_body) + "\n", encoding="utf-8")
+    log.append("$ write the same claim in the other field")
+    log.append(str(second.relative_to(work)))
+    log.append("")
+    before = _product_digest(work)
+    proposed = _run(["of", "learn", "--checks"], cwd=work, env=env, timeout=90, log=log)
+    if proposed.returncode != 0:
+        raise VerifyFailed("verify-of: of learn --checks failed")
+    if _product_digest(work) != before:
+        raise VerifyFailed("verify-of: of learn --checks changed the repo")
+    kinds = [line.split()[0] for line in proposed.stdout.splitlines() if line.strip()]
+    if kinds != ["redesign", "check", "run", "prose"]:
+        raise VerifyFailed(f"verify-of: proposal order is {kinds}")
+    planted = json.loads(second.read_text(encoding="utf-8"))
+    patch = planted["residual"]["proposed_patch"]
+    if not patch.get("constraints+") and not patch.get("done_when+"):
+        raise VerifyFailed("verify-of: redesign printed without constraints+ or done_when+")
+    messages: dict[str, str] = {}
+    for line in proposed.stdout.splitlines():
+        if not line.strip():
+            continue
+        kind = line[:12].strip()
+        _ident, rest = line[12:].lstrip().split("  ", 1)
+        _fields, message = rest.split("  ", 1)
+        messages[kind] = message
+    if len(set(messages.values())) != 4:
+        raise VerifyFailed(f"verify-of: proposal messages are not distinct: {messages}")
+    if not messages["redesign"].startswith("fold into the plan: constraint "):
+        raise VerifyFailed(f"verify-of: redesign does not name the contract: {messages['redesign']}")
+    if "scripts/checks/" not in messages["check"] or " asserts FAIL " not in messages["check"]:
+        raise VerifyFailed(f"verify-of: check does not name the script: {messages['check']}")
+    if not messages["run"].startswith("feature-map row ") or "; done_when `" not in messages["run"]:
+        raise VerifyFailed(f"verify-of: run does not name the row and command: {messages['run']}")
+    if not messages["prose"].startswith("AGENTS.md: - "):
+        raise VerifyFailed(f"verify-of: prose does not name the AGENTS.md line: {messages['prose']}")
+    check_id = next(line.split()[1] for line in proposed.stdout.splitlines() if line.startswith("check"))
+    key = check_id.split("_")[1]
+    _of(["learn", "--accept", check_id], work=work, env=env, log=log)
+    script = work / "scripts" / "checks" / f"{key}.py"
+    if not script.is_file():
+        raise VerifyFailed("verify-of: accept did not write the check")
+    ran = _run([sys.executable, str(script)], cwd=work, env=env, timeout=30, log=log)
+    if ran.returncode != 1:
+        raise VerifyFailed("verify-of: the check passed before the fix")
+    message = f"FAIL {key}: add constraint 'price_cli.py prints price table'"
+    if message not in ran.stderr:
+        raise VerifyFailed("verify-of: the check failure does not name the fix")
+    status = _run(
+        ["git", "status", "--porcelain", "--untracked-files=all", "--", "scripts", "AGENTS.md"],
+        cwd=work,
+        env=env,
+        timeout=30,
+        log=log,
+    )
+    if status.returncode != 0 or f"scripts/checks/{key}.py" not in status.stdout:
+        raise VerifyFailed("verify-of: git status did not show the accepted check")
+    return {
+        "proposal_order": "redesign check run prose",
+        "redesign_gate": "constraints+",
+        "redesign_message": messages["redesign"],
+        "check_message": messages["check"],
+        "run_message": messages["run"],
+        "prose_message": messages["prose"],
+        "script_failure": message,
+        "repo_unchanged_until_accept": "true",
+        "single_residual": "none",
+    }
+
+
 def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list[str]) -> dict[str, str]:
     if feature == "wal-resume":
         return _drive_wal_resume(work, env, log)
@@ -328,6 +456,8 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
         return _drive_evidence_close(work, env, log)
     if feature == "plan-feature-map":
         return _drive_plan_feature_map(work, env, log)
+    if feature == "learn-checks":
+        return _drive_learn_checks(work, env, log)
     want = _through(feature)
     if "init-plan" not in want:
         return {}
@@ -602,6 +732,11 @@ def main(argv: list[str] | None = None) -> int:
                     ("feature-map.md", work / ".orderfield" / "feature-map.md"),
                     ("ORDER.json", work / ".orderfield" / "ORDER.json"),
                 ]
+            if args.feature == "learn-checks" and work is not None:
+                scripts = sorted((work / "scripts" / "checks").glob("*.py"))
+                if len(scripts) != 1:
+                    raise VerifyFailed(f"verify-of: expected one check script, found {len(scripts)}")
+                copies = [("check.py", scripts[0])]
         _write_evidence(
             evidence,
             feature=args.feature,
@@ -632,6 +767,8 @@ def main(argv: list[str] | None = None) -> int:
         for name in ("feature-map.md", "ORDER.json"):
             if not (evidence / name).is_file():
                 missing.append(name)
+    if args.feature == "learn-checks" and not (evidence / "check.py").is_file():
+        missing.append("check.py")
     if missing or scratch.exists() or (work is not None and work.exists()):
         raise VerifyFailed(
             "verify-of: evidence did not survive cleanup "
