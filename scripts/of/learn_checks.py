@@ -100,6 +100,26 @@ class LearnChecks:
         return f"python3 {LearnChecks.script_rel(key)}"
 
     @staticmethod
+    def prose_line(payload: dict[str, Any]) -> str:
+        return f"- {LearnChecks.fix(payload)}"
+
+    @staticmethod
+    def action(kind: str, key: str, payload: dict[str, Any]) -> str:
+        if kind == "redesign":
+            parts = [f"constraint {text!r}" for text in payload["constraints"]]
+            parts += [f"done_when {text!r}" for text in payload["done_when"]]
+            return "fold into the plan: " + "; ".join(parts)
+        if kind == "check":
+            return f"{LearnChecks.script_rel(key)} asserts {LearnChecks.message(key, payload)}"
+        if kind == "run":
+            command = f"`{LearnChecks.command(key)}`"
+            return f"feature-map row {key} reach {command}; done_when {command}"
+        if kind == "prose":
+            return f"AGENTS.md: {LearnChecks.prose_line(payload)}"
+        die(f"unknown check kind {kind}")
+        raise AssertionError("die")
+
+    @staticmethod
     def repeated(root: Path) -> list[dict[str, Any]]:
         grouped: dict[str, set[str]] = {}
         payloads: dict[str, dict[str, Any]] = {}
@@ -167,7 +187,7 @@ class LearnChecks:
                         "id": f"chk_{key}_{kind}",
                         "key": key,
                         "kind": kind,
-                        "message": claim["message"],
+                        "message": LearnChecks.action(kind, key, payload),
                         "path": path,
                         "fields": claim["fields"],
                         "command": LearnChecks.command(key) if kind == "run" else "",
@@ -412,9 +432,10 @@ class LearnChecks:
             PlanFeatureMap.save(root, rows)
 
     @staticmethod
-    def _land_prose(root: Path, message: str) -> None:
+    def _land_prose(root: Path, line: str) -> None:
         dest = LearnChecks._dest(root, "AGENTS.md")
-        line = f"- {message}"
+        if not line.startswith("- "):
+            line = f"- {line}"
         try:
             current = dest.read_text(encoding="utf-8") if dest.is_file() else ""
         except (OSError, UnicodeDecodeError):
@@ -431,18 +452,17 @@ class LearnChecks:
         row = LearnChecks._proposal(root, proposal_id)
         claim = LearnChecks._claim(root, str(row["key"]))
         payload = claim["payload"]
-        message = str(claim["message"])
         kind = str(row["kind"])
         if kind in {"redesign", "check", "run"}:
             LearnChecks._write(
                 root,
                 LearnChecks.script_rel(str(row["key"])),
-                LearnChecks._script(message, payload),
+                LearnChecks._script(LearnChecks.message(str(row["key"]), payload), payload),
             )
         if kind == "redesign":
             LearnChecks._land_contract(root, payload)
         elif kind == "run":
             LearnChecks._land_run(root, str(row["key"]))
         elif kind == "prose":
-            LearnChecks._land_prose(root, message)
+            LearnChecks._land_prose(root, LearnChecks.prose_line(payload))
         return row

@@ -462,9 +462,7 @@ def _print_check_rows(rows: list[dict[str, Any]]) -> None:
         return
     for row in rows:
         fields = ",".join(row["fields"])
-        command = str(row.get("command") or "")
-        extra = f"  `{command}`" if command else ""
-        print(f"{row['kind']:12} {row['id']}  {fields}  {row['message']}{extra}")
+        print(f"{row['kind']:12} {row['id']}  {fields}  {row['message']}")
 
 
 def cmd_learn(args: argparse.Namespace) -> None:

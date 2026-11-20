@@ -11,7 +11,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-home-15yscgjk/doctor-cwd/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-home-2b2acoek/doctor-cwd/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
@@ -39,7 +39,7 @@ trust
   boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
 host
   ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
-  ram_avail_gb 4.7
+  ram_avail_gb 4.8
   note          leader host RAM is not a cloud/remote worker
 model_hints
   pass        agy,claude,codex,cursor,grok (--model)

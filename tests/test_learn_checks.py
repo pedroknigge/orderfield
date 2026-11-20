@@ -103,6 +103,17 @@ class LearnChecksCli(unittest.TestCase):
     def _kinds(self, stdout: str) -> list[str]:
         return [line.split()[0] for line in stdout.splitlines() if line.strip()]
 
+    def _messages(self, stdout: str) -> dict[str, str]:
+        found: dict[str, str] = {}
+        for line in stdout.splitlines():
+            if not line.strip():
+                continue
+            kind = line[:12].strip()
+            _ident, rest = line[12:].lstrip().split("  ", 1)
+            _fields, message = rest.split("  ", 1)
+            found[kind] = message
+        return found
+
     def test_one_field_proposes_nothing_and_two_fields_are_ordered(self) -> None:
         homes = self._fields()
         self._plant(homes[0], "a.json", residual("missing from the first field"))
@@ -125,6 +136,31 @@ class LearnChecksCli(unittest.TestCase):
             self.assertIn(home.name, proposed.stdout)
         self.assertFalse((self.tmp / "scripts").exists())
         self.assertFalse((self.tmp / "AGENTS.md").exists())
+
+    def test_each_kind_names_its_own_action(self) -> None:
+        homes = self._fields()
+        self._plant(homes[0], "a.json", residual("one"))
+        self._plant(homes[1], "b.json", residual("two"))
+        proposed = self._ok("learn", "--checks")
+        messages = self._messages(proposed.stdout)
+        self.assertEqual(list(messages), ["redesign", "check", "run", "prose"])
+        self.assertEqual(len(set(messages.values())), 4)
+        key = next(
+            line.split()[1]
+            for line in proposed.stdout.splitlines()
+            if line.startswith("check")
+        ).split("_")[1]
+        assertion = f"FAIL {key}: add constraint {CONSTRAINT!r}"
+        command = f"`python3 scripts/checks/{key}.py`"
+        self.assertEqual(messages["redesign"], f"fold into the plan: constraint {CONSTRAINT!r}")
+        self.assertEqual(messages["check"], f"scripts/checks/{key}.py asserts {assertion}")
+        self.assertEqual(
+            messages["run"],
+            f"feature-map row {key} reach {command}; done_when {command}",
+        )
+        self.assertEqual(messages["prose"], f"AGENTS.md: - add constraint {CONSTRAINT!r}")
+        planted = json.loads((homes[0] / "waves" / "001" / "residuals" / "a.json").read_text(encoding="utf-8"))
+        self.assertEqual(planted["residual"]["proposed_patch"]["constraints+"], [CONSTRAINT])
 
     def test_accept_check_names_the_fix_and_leaves_the_field(self) -> None:
         homes = self._fields()

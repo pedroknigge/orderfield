@@ -393,8 +393,28 @@ def _drive_learn_checks(work: Path, env: dict[str, str], log: list[str]) -> dict
     kinds = [line.split()[0] for line in proposed.stdout.splitlines() if line.strip()]
     if kinds != ["redesign", "check", "run", "prose"]:
         raise VerifyFailed(f"verify-of: proposal order is {kinds}")
-    if "add constraint 'price_cli.py prints price table'" not in proposed.stdout:
-        raise VerifyFailed("verify-of: proposal message does not name the fix")
+    planted = json.loads(second.read_text(encoding="utf-8"))
+    patch = planted["residual"]["proposed_patch"]
+    if not patch.get("constraints+") and not patch.get("done_when+"):
+        raise VerifyFailed("verify-of: redesign printed without constraints+ or done_when+")
+    messages: dict[str, str] = {}
+    for line in proposed.stdout.splitlines():
+        if not line.strip():
+            continue
+        kind = line[:12].strip()
+        _ident, rest = line[12:].lstrip().split("  ", 1)
+        _fields, message = rest.split("  ", 1)
+        messages[kind] = message
+    if len(set(messages.values())) != 4:
+        raise VerifyFailed(f"verify-of: proposal messages are not distinct: {messages}")
+    if not messages["redesign"].startswith("fold into the plan: constraint "):
+        raise VerifyFailed(f"verify-of: redesign does not name the contract: {messages['redesign']}")
+    if "scripts/checks/" not in messages["check"] or " asserts FAIL " not in messages["check"]:
+        raise VerifyFailed(f"verify-of: check does not name the script: {messages['check']}")
+    if not messages["run"].startswith("feature-map row ") or "; done_when `" not in messages["run"]:
+        raise VerifyFailed(f"verify-of: run does not name the row and command: {messages['run']}")
+    if not messages["prose"].startswith("AGENTS.md: - "):
+        raise VerifyFailed(f"verify-of: prose does not name the AGENTS.md line: {messages['prose']}")
     check_id = next(line.split()[1] for line in proposed.stdout.splitlines() if line.startswith("check"))
     key = check_id.split("_")[1]
     _of(["learn", "--accept", check_id], work=work, env=env, log=log)
@@ -418,7 +438,12 @@ def _drive_learn_checks(work: Path, env: dict[str, str], log: list[str]) -> dict
         raise VerifyFailed("verify-of: git status did not show the accepted check")
     return {
         "proposal_order": "redesign check run prose",
-        "check_message": message,
+        "redesign_gate": "constraints+",
+        "redesign_message": messages["redesign"],
+        "check_message": messages["check"],
+        "run_message": messages["run"],
+        "prose_message": messages["prose"],
+        "script_failure": message,
         "repo_unchanged_until_accept": "true",
         "single_residual": "none",
     }

@@ -1,16 +1,16 @@
-$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-15yscgjk
+$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-2b2acoek
 # cwd /agent/repos/orderfield
 # exit 0
-installed /tmp/verify-of-home-15yscgjk/.agents/skills/orderfield
-installed /tmp/verify-of-home-15yscgjk/.agents/skills/of (alias /of)
-of: /tmp/verify-of-home-15yscgjk/.local/bin/of -> /tmp/verify-of-home-15yscgjk/.agents/skills/orderfield/scripts/of.py
-project of symlink at /tmp/verify-of-home-15yscgjk/.local/bin/of (use --global for ~/.local/bin/of)
+installed /tmp/verify-of-home-2b2acoek/.agents/skills/orderfield
+installed /tmp/verify-of-home-2b2acoek/.agents/skills/of (alias /of)
+of: /tmp/verify-of-home-2b2acoek/.local/bin/of -> /tmp/verify-of-home-2b2acoek/.agents/skills/orderfield/scripts/of.py
+project of symlink at /tmp/verify-of-home-2b2acoek/.local/bin/of (use --global for ~/.local/bin/of)
 copied to 1 skill dir(s)
-generic: /tmp/verify-of-home-15yscgjk/.agents/skills/orderfield
-kernel: of status  # or: python3 /tmp/verify-of-home-15yscgjk/.agents/skills/orderfield/scripts/of.py status
+generic: /tmp/verify-of-home-2b2acoek/.agents/skills/orderfield
+kernel: of status  # or: python3 /tmp/verify-of-home-2b2acoek/.agents/skills/orderfield/scripts/of.py status
 
 $ of doctor
-# cwd /tmp/verify-of-home-15yscgjk/doctor-cwd
+# cwd /tmp/verify-of-home-2b2acoek/doctor-cwd
 # exit 0
 prereqs
   python        3.12.3  ok (>= 3.11)
@@ -25,7 +25,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-home-15yscgjk/doctor-cwd/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-home-2b2acoek/doctor-cwd/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
@@ -53,7 +53,7 @@ trust
   boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
 host
   ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
-  ram_avail_gb 4.7
+  ram_avail_gb 4.8
   note          leader host RAM is not a cloud/remote worker
 model_hints
   pass        agy,claude,codex,cursor,grok (--model)
@@ -84,46 +84,46 @@ balance
 doctor        ok
 
 $ git init -q
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 
 $ git config user.email verify-of@example.invalid
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 
 $ git config user.name verify-of
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 
 $ git commit --allow-empty -q -m init
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 
 $ of init --mission 'show a price table' --phase explore
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 feature-map  .orderfield/feature-map.md
-initialized /tmp/verify-of-repo-kynsd77_/.orderfield/ORDER.json
-id=ord_b71a0e77 rev=1 phase=explore
+initialized /tmp/verify-of-repo-qx98dqbc/.orderfield/ORDER.json
+id=ord_9af1c0ce rev=1 phase=explore
 host
   ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
-  ram_avail_gb 4.7
+  ram_avail_gb 4.8
   note          leader host RAM is not a cloud/remote worker
   next          ask once, then of patch --agent-band / --multi-model (do not re-ask each wave)
 # stderr
 of: note — no --source/--source-file; ORDER may compress the contract. Pass the verbatim user brief with --source or --source-file (.orderfield/ingest.md). Do not write PROMPT.md at the project root.
 
 $ of new --mission 'show the price table again'
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
-promoted     .orderfield/fields/ord_b71a0e77
-feature-map  .orderfield/fields/ord_dcd8bbb2/feature-map.md
-field         ord_dcd8bbb2
-initialized /tmp/verify-of-repo-kynsd77_/.orderfield/fields/ord_dcd8bbb2/ORDER.json
-id=ord_dcd8bbb2 rev=1 phase=explore
+promoted     .orderfield/fields/ord_9af1c0ce
+feature-map  .orderfield/fields/ord_ba038711/feature-map.md
+field         ord_ba038711
+initialized /tmp/verify-of-repo-qx98dqbc/.orderfield/fields/ord_ba038711/ORDER.json
+id=ord_ba038711 rev=1 phase=explore
 host
   ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
-  ram_avail_gb 4.7
+  ram_avail_gb 4.8
   note          leader host RAM is not a cloud/remote worker
   next          ask once, then of patch --agent-band / --multi-model (do not re-ask each wave)
 note          sibling field (unrelated epic). same product = of patch | of spec --amend
@@ -131,36 +131,36 @@ note          sibling field (unrelated epic). same product = of patch | of spec 
 of: note — no --source/--source-file; ORDER may compress the contract. Pass the verbatim user brief with --source or --source-file (.orderfield/ingest.md). Do not write PROMPT.md at the project root.
 
 $ write one residual
-.orderfield/fields/ord_b71a0e77/waves/001/residuals/child.json
+.orderfield/fields/ord_9af1c0ce/waves/001/residuals/child.json
 
 $ of learn --checks
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 checks       none
 
 $ write the same claim in the other field
-.orderfield/fields/ord_dcd8bbb2/waves/001/residuals/child.json
+.orderfield/fields/ord_ba038711/waves/001/residuals/child.json
 
 $ of learn --checks
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
-redesign     chk_0b7548c7da207f64_redesign  ord_b71a0e77,ord_dcd8bbb2  FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
-check        chk_0b7548c7da207f64_check  ord_b71a0e77,ord_dcd8bbb2  FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
-run          chk_0b7548c7da207f64_run  ord_b71a0e77,ord_dcd8bbb2  FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'  `python3 scripts/checks/0b7548c7da207f64.py`
-prose        chk_0b7548c7da207f64_prose  ord_b71a0e77,ord_dcd8bbb2  FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
+redesign     chk_0b7548c7da207f64_redesign  ord_9af1c0ce,ord_ba038711  fold into the plan: constraint 'price_cli.py prints price table'
+check        chk_0b7548c7da207f64_check  ord_9af1c0ce,ord_ba038711  scripts/checks/0b7548c7da207f64.py asserts FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
+run          chk_0b7548c7da207f64_run  ord_9af1c0ce,ord_ba038711  feature-map row 0b7548c7da207f64 reach `python3 scripts/checks/0b7548c7da207f64.py`; done_when `python3 scripts/checks/0b7548c7da207f64.py`
+prose        chk_0b7548c7da207f64_prose  ord_9af1c0ce,ord_ba038711  AGENTS.md: - add constraint 'price_cli.py prints price table'
 
 $ of learn --accept chk_0b7548c7da207f64_check
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
-check        chk_0b7548c7da207f64_check  ord_b71a0e77,ord_dcd8bbb2  FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
+check        chk_0b7548c7da207f64_check  ord_9af1c0ce,ord_ba038711  scripts/checks/0b7548c7da207f64.py asserts FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
 
-$ /usr/bin/python3 /tmp/verify-of-repo-kynsd77_/scripts/checks/0b7548c7da207f64.py
-# cwd /tmp/verify-of-repo-kynsd77_
+$ /usr/bin/python3 /tmp/verify-of-repo-qx98dqbc/scripts/checks/0b7548c7da207f64.py
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 1
 # stderr
 FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'
 
 $ git status --porcelain --untracked-files=all -- scripts AGENTS.md
-# cwd /tmp/verify-of-repo-kynsd77_
+# cwd /tmp/verify-of-repo-qx98dqbc
 # exit 0
 ?? scripts/checks/0b7548c7da207f64.py
