@@ -352,7 +352,7 @@ The loop you type: `init` → `pack` → `spawn` → `collect` → `integrate` �
 | `handoff` | write the prompt file; without `--packet` is the mid-epic field packet |
 | `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm (`--dry-run` is not HITL) |
 
-Other verbs (`unpack`, `render`, `phase`, `next-wave`, `pulse`, `checkpoint`, `learn`, `wave`, `validate`, `retain`, `gc`, `migrate`, `worktree`, `spec-diff`, `eval`) stay in `of --help` and [SKILL.md](SKILL.md).
+Other verbs (`unpack`, `render`, `phase`, `next-wave`, `pulse`, `checkpoint`, `learn`, `wave`, `validate`, `retain`, `gc`, `migrate`, `worktree`, `spec-diff`, `eval`) stay in `of --help` and [SKILL.md](SKILL.md). `of learn --checks` proposes a check when the same residual is in two fields; `of learn --accept ID` writes it.
 
 CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `contend`, `crown`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) hold `.orderfield/field.lock`. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is forbidden until you patch and `of next-wave`.
 

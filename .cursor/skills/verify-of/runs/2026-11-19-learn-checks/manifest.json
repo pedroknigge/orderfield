@@ -1,0 +1,20 @@
+{
+  "feature": "learn-checks",
+  "version": "0.9.9",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt",
+    "check.py"
+  ],
+  "proposal_order": "redesign check run prose",
+  "redesign_gate": "constraints+",
+  "redesign_message": "fold into the plan: constraint 'price_cli.py prints price table'",
+  "check_message": "scripts/checks/0b7548c7da207f64.py asserts FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'",
+  "run_message": "feature-map row 0b7548c7da207f64 reach `python3 scripts/checks/0b7548c7da207f64.py`; done_when `python3 scripts/checks/0b7548c7da207f64.py`",
+  "prose_message": "AGENTS.md: - add constraint 'price_cli.py prints price table'",
+  "script_failure": "FAIL 0b7548c7da207f64: add constraint 'price_cli.py prints price table'",
+  "repo_unchanged_until_accept": "true",
+  "single_residual": "none",
+  "evidence_survived_cleanup": true
+}
