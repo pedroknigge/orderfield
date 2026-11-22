@@ -84,6 +84,16 @@ python3 scripts/verify_of.py --feature evidence-close
 
 The expected refusal is part of the proof. The helper exits 0 only when that refusal is in the transcript and the accepted receipt contains the command output.
 
+## Local metrics
+
+`local-metrics` checks an installed `of`. It builds a throwaway repo with a real `git revert`, runs `of doctor`, and checks the revert and rewrite counts. A second `of doctor` uses a PATH that still has `git` and `python3` and does not have `gh`. That run must say PR data was skipped.
+
+```bash
+python3 scripts/verify_of.py --feature local-metrics
+```
+
+The counts are the proof. The helper exits 0 only when both doctors print `doctor        ok`, the revert line is `1/3`, the rewrite line is `1/2`, and the second run skips PR data.
+
 ## Evidence
 
 The helper writes `<checkout>/.cursor/skills/verify-of/runs/<run-id>/` before cleanup:

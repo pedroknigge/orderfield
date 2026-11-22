@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.9. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.10. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.9`
+**Status:** Shipped · **Current release line:** `0.9.10`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,11 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** `AdapterBalance`, `EfficiencySignal`, `UpdateAsk` and DoctorSkew noise; `contest.py` / `contend_cmd.py` (or route `contend` through a WAL generation — today it holds the flock without one); move `Plan*` (~2.1k LOC) out of `regime.py` into an optional ingest module; remove `scale_across` / `scale_up`, the across caps and counters, and `budget.tokens` from the schemas with an `of migrate` step; move `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`; decide whether `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.10 — local revert and rewrite counts on of doctor
+
+- `of doctor` prints a read-only `repo` block. Revert rate is commits reachable from HEAD whose subject starts with `Revert "` or whose body contains `This reverts commit <sha>`, over the last 90 committer-date days, as count/total and a percentage. Rewrite rate is one function, `rewrite_rate`: lines a first-parent commit adds that a later first-parent commit deletes or modifies in the same file within 14 days, divided by lines added. The definition is printed beside the number. When `gh` is installed and authenticated, merged PRs later reverted are counted; otherwise the line says PR data was skipped. Not a quality score. Not a doctor gate. No new verb.
+- Proof: `tests/test_repo_metrics.py`; `verify-of local-metrics`.
 
 ## 0.9.9 — review buckets on CLOSE.json
 

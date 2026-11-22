@@ -12,6 +12,7 @@ removed when the scratch HOME and the throwaway repo are deleted.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import shlex
@@ -27,7 +28,12 @@ INSTALL = ROOT / "install.sh"
 VERSION_FILE = ROOT / "VERSION"
 DEFAULT_EVIDENCE_ROOT = ROOT / ".cursor" / "skills" / "verify-of" / "runs"
 PIPE = ("doctor", "init-plan", "pack-wave", "collect-wave", "close-field")
-FEATURES = PIPE + ("wal-resume", "evidence-close", "plan-feature-map")
+FEATURES = PIPE + (
+    "wal-resume",
+    "evidence-close",
+    "plan-feature-map",
+    "local-metrics",
+)
 
 CHILD = r"""
 import hashlib, json, os
@@ -328,6 +334,8 @@ def _drive(feature: str, work: Path, env: dict[str, str], child: Path, log: list
         return _drive_evidence_close(work, env, log)
     if feature == "plan-feature-map":
         return _drive_plan_feature_map(work, env, log)
+    if feature == "local-metrics":
+        return _drive_local_metrics(work, env, log)
     want = _through(feature)
     if "init-plan" not in want:
         return {}
@@ -477,6 +485,100 @@ def _drive_plan_feature_map(work: Path, env: dict[str, str], log: list[str]) -> 
         "derived_command": "python3 price_cli.py",
         "missing": "gone.js",
     }
+
+
+def _git_stamp(ts: int) -> str:
+    return datetime.datetime.fromtimestamp(
+        ts, datetime.timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%S+0000")
+
+
+def _drive_local_metrics(work: Path, env: dict[str, str], log: list[str]) -> dict[str, str]:
+    """Doctor on a repo with a real revert, then again with gh off PATH."""
+    work.mkdir(parents=True, exist_ok=True)
+    _require(
+        _run(["git", "init", "-q"], cwd=work, env=env, timeout=30, log=log),
+        ["git", "init", "-q"],
+    )
+    for argv in (
+        ["git", "config", "user.email", "verify-of@example.invalid"],
+        ["git", "config", "user.name", "verify-of"],
+    ):
+        _require(_run(argv, cwd=work, env=env, timeout=30, log=log), argv)
+    recent = int(time.time())
+    (work / "hello.txt").write_text("one\n", encoding="utf-8")
+    log.append("$ write hello.txt")
+    log.append("")
+    _require(
+        _run(["git", "add", "--", "hello.txt"], cwd=work, env=env, timeout=30, log=log),
+        ["git", "add", "--", "hello.txt"],
+    )
+    _commit_at(work, env, log, "add", recent - 2 * 86400)
+    (work / "more.txt").write_text("two\n", encoding="utf-8")
+    log.append("$ write more.txt")
+    log.append("")
+    _require(
+        _run(["git", "add", "--", "more.txt"], cwd=work, env=env, timeout=30, log=log),
+        ["git", "add", "--", "more.txt"],
+    )
+    _commit_at(work, env, log, "more", recent - 86400)
+    _commit_at(work, env, log, None, recent - 3600, revert=True)
+    measured = _run(["of", "doctor"], cwd=work, env=env, timeout=90, log=log)
+    _require(measured, ["of", "doctor"])
+    _doctor_ok(measured.stdout)
+    for needle in (
+        "revert        1/3  33.3%",
+        "rewrite       1/2  50.0%",
+        "within 14 days",
+    ):
+        if needle not in measured.stdout:
+            raise VerifyFailed(f"verify-of: doctor repo block missing {needle!r}")
+    private = work / "nogh-bin"
+    private.mkdir()
+    for name in ("git", "python3"):
+        src = shutil.which(name)
+        if not src:
+            raise VerifyFailed(f"verify-of: {name} is not on PATH")
+        os.symlink(src, private / name)
+    absent = dict(env)
+    bindir = env["PATH"].split(os.pathsep, 1)[0]
+    absent["PATH"] = bindir + os.pathsep + str(private)
+    for key in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GH_HOST"):
+        absent.pop(key, None)
+    skipped = _run(["of", "doctor"], cwd=work, env=absent, timeout=90, log=log)
+    _require(skipped, ["of", "doctor"])
+    _doctor_ok(skipped.stdout)
+    sentence = "PR data was skipped (gh is not installed)"
+    if sentence not in skipped.stdout:
+        raise VerifyFailed("verify-of: gh-absent doctor did not skip PR data")
+    if "revert        1/3  33.3%" not in skipped.stdout:
+        raise VerifyFailed("verify-of: gh-absent doctor lost the revert count")
+    return {
+        "revert": "1/3",
+        "rewrite": "1/2",
+        "pr_absent": sentence,
+    }
+
+
+def _commit_at(
+    work: Path,
+    env: dict[str, str],
+    log: list[str],
+    message: str | None,
+    ts: int,
+    *,
+    revert: bool = False,
+) -> None:
+    dated = dict(env)
+    stamp = _git_stamp(ts)
+    dated["GIT_AUTHOR_DATE"] = stamp
+    dated["GIT_COMMITTER_DATE"] = stamp
+    dated["GIT_EDITOR"] = "true"
+    if revert:
+        argv = ["git", "revert", "--no-edit", "HEAD"]
+    else:
+        argv = ["git", "commit", "-q", "-m", message or "commit"]
+    _require(_run(argv, cwd=work, env=dated, timeout=30, log=log), argv)
 
 
 def _write_evidence(

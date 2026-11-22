@@ -474,11 +474,16 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
 
     s = sub.add_parser(
         "doctor",
-        help="local prereqs, ACTIVE/version/pack skew, adapter PATH, schemas, lock",
+        help=(
+            "local prereqs, ACTIVE/version/pack skew, adapter PATH, "
+            "schemas, lock, repo revert/rewrite counts"
+        ),
         description=(
             "Kernel-verifiable local checks in one pass: skill VERSION skew, "
             "ACTIVE pointer/stub, stale packs (closed-field historical "
-            "is informational), PATH (not auth, credentials, or session authority)."
+            "is informational), PATH (not auth, credentials, or session authority). "
+            "A repo block prints revert and rewrite counts for this git checkout. "
+            "Those counts do not change ok, WARN, or FAIL."
         ),
     )
     s.set_defaults(func=cmd_doctor)

@@ -1,0 +1,285 @@
+$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-f_5sck1c
+# cwd /agent/repos/orderfield
+# exit 0
+installed /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield
+installed /tmp/verify-of-home-f_5sck1c/.agents/skills/of (alias /of)
+of: /tmp/verify-of-home-f_5sck1c/.local/bin/of -> /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield/scripts/of.py
+project of symlink at /tmp/verify-of-home-f_5sck1c/.local/bin/of (use --global for ~/.local/bin/of)
+copied to 1 skill dir(s)
+generic: /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield
+kernel: of status  # or: python3 /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield/scripts/of.py status
+
+$ of doctor
+# cwd /tmp/verify-of-home-f_5sck1c/doctor-cwd
+# exit 0
+prereqs
+  python        3.12.3  ok (>= 3.11)
+  kernel        0.9.10  ok
+skills
+  checkout     0.9.10
+  agents       0.9.10  ok  ~/.agents/skills/orderfield
+field
+  path          -  missing (of init --mission '...')
+  scratch       -  missing
+  active        -  (no fields)
+  stub          none
+  packs         none
+  schemas       9/9 ok
+  lock          /tmp/verify-of-home-f_5sck1c/doctor-cwd/.orderfield/field.lock  missing-field
+adapters  (PATH is not auth, credentials, or session authority; not readiness)
+    claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    cursor     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    opencode   missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    orca       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    grok       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    agy        missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    qwen       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+  * generic    missing  path=-  version=-  set OF_AGENT  auth=not-verified  ready=not-verified
+  next          HOLD
+  no adapter on PATH; of detect then install a CLI or OF_AGENT=... --adapter generic; of handoff --packet is same-session or native Agent — not a spawned child wave
+trust
+  default       auto-edit  (OF_TRUST override)
+  profiles      conservative, plan, auto-edit, auto, yolo
+  write-floor   auto-edit default for residual packs (claude,codex,agy,qwen)
+  opt-out       OF_TRUST=conservative
+  unsupported   cursor,opencode,orca,grok,generic speak WARN + named next
+  host          .claude/settings.local.json advisory only; never edit
+  operator      yolo + inherit are audited operator actions (not silent defaults)
+  host-mcp      agy/grok isolate host global MCP by default
+  opt-in        OF_SPAWN_MCP=inherit (ask; not a silent default)
+  kernel_verifies  binary_on_path, spawn_argv, residual_file, residual_schema
+  harness_promises approval_honored, sandbox, auth, model_ready
+  boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.7
+  note          leader host RAM is not a cloud/remote worker
+model_hints
+  pass        agy,claude,codex,cursor,grok (--model)
+  no-op       orca (task-create has no --model), opencode, qwen, generic
+  aliases     claude cheap=haiku frontier=opus
+  refuse      cursor tier-only (no alias; pass --model)
+  default     off (of patch --model-hints field|wave)
+catalog
+  docs/model-catalog.md (advisory; not budget.tokens)
+headroom
+  read of models --headroom --json before fan-out (smallest-window margin, earliest reset; sin dato never blocks)
+efficiency
+  score       residual quality × optional residual.usage
+  propose     ask only; of patch --model-hints / pack --model-tier
+  never       auto-switch, budget.tokens ceiling, invented spend
+balance
+  honesty     unknown unless published payload in hand
+  never       invent spend or budget.tokens; headroom is of models --json
+  claude     unknown  published=/usage  interactive; statusLine rate_limits if already in hand
+  codex      unknown  published=/usage  interactive
+  cursor     unknown  no published balance CLI
+  opencode   unknown  no published balance CLI
+  orca       unknown  no published balance CLI
+  grok       unknown  no published balance CLI
+  agy        unknown  no published balance CLI
+  qwen       unknown  no published balance CLI
+  generic    unknown  no published balance CLI
+repo
+  git           skipped  (not a git repository)
+  pr            PR data was skipped (not a git repository)
+doctor        ok
+
+$ git init -q
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ git config user.email verify-of@example.invalid
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ git config user.name verify-of
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ write hello.txt
+
+$ git add -- hello.txt
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ git commit -q -m add
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ write more.txt
+
+$ git add -- more.txt
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ git commit -q -m more
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+
+$ git revert --no-edit HEAD
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+[master 2aea0ad] Revert "more"
+ Date: Sun Nov 22 15:21:17 2026 +0000
+ 1 file changed, 1 deletion(-)
+ delete mode 100644 more.txt
+
+$ of doctor
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+prereqs
+  python        3.12.3  ok (>= 3.11)
+  kernel        0.9.10  ok
+skills
+  checkout     0.9.10
+  agents       0.9.10  ok  ~/.agents/skills/orderfield
+field
+  path          -  missing (of init --mission '...')
+  scratch       -  missing
+  active        -  (no fields)
+  stub          none
+  packs         none
+  schemas       9/9 ok
+  lock          /tmp/verify-of-repo-i91g0vxw/.orderfield/field.lock  missing-field
+adapters  (PATH is not auth, credentials, or session authority; not readiness)
+    claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    cursor     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    opencode   missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    orca       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    grok       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    agy        missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    qwen       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+  * generic    missing  path=-  version=-  set OF_AGENT  auth=not-verified  ready=not-verified
+  next          HOLD
+  no adapter on PATH; of detect then install a CLI or OF_AGENT=... --adapter generic; of handoff --packet is same-session or native Agent — not a spawned child wave
+trust
+  default       auto-edit  (OF_TRUST override)
+  profiles      conservative, plan, auto-edit, auto, yolo
+  write-floor   auto-edit default for residual packs (claude,codex,agy,qwen)
+  opt-out       OF_TRUST=conservative
+  unsupported   cursor,opencode,orca,grok,generic speak WARN + named next
+  host          .claude/settings.local.json advisory only; never edit
+  operator      yolo + inherit are audited operator actions (not silent defaults)
+  host-mcp      agy/grok isolate host global MCP by default
+  opt-in        OF_SPAWN_MCP=inherit (ask; not a silent default)
+  kernel_verifies  binary_on_path, spawn_argv, residual_file, residual_schema
+  harness_promises approval_honored, sandbox, auth, model_ready
+  boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.7
+  note          leader host RAM is not a cloud/remote worker
+model_hints
+  pass        agy,claude,codex,cursor,grok (--model)
+  no-op       orca (task-create has no --model), opencode, qwen, generic
+  aliases     claude cheap=haiku frontier=opus
+  refuse      cursor tier-only (no alias; pass --model)
+  default     off (of patch --model-hints field|wave)
+catalog
+  docs/model-catalog.md (advisory; not budget.tokens)
+headroom
+  read of models --headroom --json before fan-out (smallest-window margin, earliest reset; sin dato never blocks)
+efficiency
+  score       residual quality × optional residual.usage
+  propose     ask only; of patch --model-hints / pack --model-tier
+  never       auto-switch, budget.tokens ceiling, invented spend
+balance
+  honesty     unknown unless published payload in hand
+  never       invent spend or budget.tokens; headroom is of models --json
+  claude     unknown  published=/usage  interactive; statusLine rate_limits if already in hand
+  codex      unknown  published=/usage  interactive
+  cursor     unknown  no published balance CLI
+  opencode   unknown  no published balance CLI
+  orca       unknown  no published balance CLI
+  grok       unknown  no published balance CLI
+  agy        unknown  no published balance CLI
+  qwen       unknown  no published balance CLI
+  generic    unknown  no published balance CLI
+repo
+  window        last 90 days (committer date)
+  revert        1/3  33.3%  commits reachable from HEAD whose subject starts with Revert " or whose body contains This reverts commit <sha>
+  rewrite       1/2  50.0%  lines a first-parent commit adds that a later first-parent commit deletes or modifies in the same file within 14 days (committer date)
+  pr            PR data was skipped (gh is not authenticated)
+doctor        ok
+
+$ of doctor
+# cwd /tmp/verify-of-repo-i91g0vxw
+# exit 0
+prereqs
+  python        3.12.3  ok (>= 3.11)
+  kernel        0.9.10  ok
+skills
+  checkout     0.9.10
+  agents       0.9.10  ok  ~/.agents/skills/orderfield
+field
+  path          -  missing (of init --mission '...')
+  scratch       -  missing
+  active        -  (no fields)
+  stub          none
+  packs         none
+  schemas       9/9 ok
+  lock          /tmp/verify-of-repo-i91g0vxw/.orderfield/field.lock  missing-field
+adapters  (PATH is not auth, credentials, or session authority; not readiness)
+    claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    cursor     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    opencode   missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    orca       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    grok       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    agy        missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+    qwen       missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
+  * generic    missing  path=-  version=-  set OF_AGENT  auth=not-verified  ready=not-verified
+  next          HOLD
+  no adapter on PATH; of detect then install a CLI or OF_AGENT=... --adapter generic; of handoff --packet is same-session or native Agent — not a spawned child wave
+trust
+  default       auto-edit  (OF_TRUST override)
+  profiles      conservative, plan, auto-edit, auto, yolo
+  write-floor   auto-edit default for residual packs (claude,codex,agy,qwen)
+  opt-out       OF_TRUST=conservative
+  unsupported   cursor,opencode,orca,grok,generic speak WARN + named next
+  host          .claude/settings.local.json advisory only; never edit
+  operator      yolo + inherit are audited operator actions (not silent defaults)
+  host-mcp      agy/grok isolate host global MCP by default
+  opt-in        OF_SPAWN_MCP=inherit (ask; not a silent default)
+  kernel_verifies  binary_on_path, spawn_argv, residual_file, residual_schema
+  harness_promises approval_honored, sandbox, auth, model_ready
+  boundary      kernel verifies PATH/argv/residual; harness promises approval/auth/ready
+host
+  ram_total_gb 15.6  suggested=5-10  (wave budget, not a spawn cap)
+  ram_avail_gb 4.6
+  note          leader host RAM is not a cloud/remote worker
+model_hints
+  pass        agy,claude,codex,cursor,grok (--model)
+  no-op       orca (task-create has no --model), opencode, qwen, generic
+  aliases     claude cheap=haiku frontier=opus
+  refuse      cursor tier-only (no alias; pass --model)
+  default     off (of patch --model-hints field|wave)
+catalog
+  docs/model-catalog.md (advisory; not budget.tokens)
+headroom
+  read of models --headroom --json before fan-out (smallest-window margin, earliest reset; sin dato never blocks)
+efficiency
+  score       residual quality × optional residual.usage
+  propose     ask only; of patch --model-hints / pack --model-tier
+  never       auto-switch, budget.tokens ceiling, invented spend
+balance
+  honesty     unknown unless published payload in hand
+  never       invent spend or budget.tokens; headroom is of models --json
+  claude     unknown  published=/usage  interactive; statusLine rate_limits if already in hand
+  codex      unknown  published=/usage  interactive
+  cursor     unknown  no published balance CLI
+  opencode   unknown  no published balance CLI
+  orca       unknown  no published balance CLI
+  grok       unknown  no published balance CLI
+  agy        unknown  no published balance CLI
+  qwen       unknown  no published balance CLI
+  generic    unknown  no published balance CLI
+repo
+  window        last 90 days (committer date)
+  revert        1/3  33.3%  commits reachable from HEAD whose subject starts with Revert " or whose body contains This reverts commit <sha>
+  rewrite       1/2  50.0%  lines a first-parent commit adds that a later first-parent commit deletes or modifies in the same file within 14 days (committer date)
+  pr            PR data was skipped (gh is not installed)
+doctor        ok

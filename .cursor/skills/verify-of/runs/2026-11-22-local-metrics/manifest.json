@@ -1,0 +1,13 @@
+{
+  "feature": "local-metrics",
+  "version": "0.9.10",
+  "doctor": "ok",
+  "files": [
+    "transcript.txt",
+    "doctor.txt"
+  ],
+  "revert": "1/3",
+  "rewrite": "1/2",
+  "pr_absent": "PR data was skipped (gh is not installed)",
+  "evidence_survived_cleanup": true
+}
