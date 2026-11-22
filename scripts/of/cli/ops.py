@@ -33,6 +33,7 @@ from of_adapters import (
 
 from of.model_catalog import ModelCatalog
 from of.host_ram import AgentBand, HostRam
+from of.repo_metrics import repo_report
 
 from of.field import (
     CHECKPOINT_MAX_CHARS,
@@ -817,6 +818,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("balance")
     for line in AdapterBalance.doctor_lines():
         print(f"  {line}")
+    repo_lines, repo_fields = repo_report(root)
+    for line in repo_lines:
+        print(line)
     if order_path(root).exists():
         state = load_state(root)
         packets = packed_children(root, int(state.get("wave") or 1))
@@ -835,6 +839,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         else 0,
         audit_over=audit_warn,
         **HostRam.event_fields(host_doc),
+        **repo_fields,
     )
     if failed:
         print("doctor        FAIL")

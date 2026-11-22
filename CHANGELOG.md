@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.10
+
+`of doctor` prints revert and rewrite counts for this checkout. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.9 notes.
+
+- **Repo rates:** No new verb. `repo_report` adds one read-only `repo` block to `of doctor`. Revert rate is commits reachable from HEAD whose subject starts with `Revert "` or whose body contains `This reverts commit <sha>`, over the last 90 committer-date days, as count/total and a percentage. Rewrite rate is one function, `rewrite_rate`: lines a first-parent commit adds that a later first-parent commit deletes or modifies in the same file within 14 days, divided by lines added. The definition is printed beside the number. When `gh` is installed and authenticated, merged PRs later reverted are counted; otherwise the line says PR data was skipped and doctor still exits as before. Not a quality score. Not a doctor gate. The block writes nothing.
+- **Proof:** `tests/test_repo_metrics.py`; `verify-of local-metrics`.
+- Packaging: VERSION `0.9.10`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.10"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`. `SKILL.md` core stays under 19,000 B (version digits only; 18,991 B). Install-size budget is 1,724,648 B (measured dest 1,724,648 B, 50 files, cap 80) after merging learn checks.
+
 ## 0.9.9
 
 Review findings keep the buckets the judge already writes. Close names the open ones, and a sentence that nothing remains is a claim. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.8 notes.

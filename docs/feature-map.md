@@ -26,3 +26,4 @@ One row per user-facing feature. The rows are the README command table, plus Fie
 | Handoff | `of handoff` | `tests/test_spawn_trust.py` |
 | Issue | `of issue` | `tests/test_issue_cli.py` |
 | Field WAL | `of resume` | `tests/test_wal_chain.py`; `verify-of wal-resume` |
+| Repo rates | `of doctor` | `tests/test_repo_metrics.py`; `verify-of local-metrics` |
