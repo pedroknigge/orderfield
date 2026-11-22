@@ -1,16 +1,16 @@
-$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-f_5sck1c
+$ bash /agent/repos/orderfield/install.sh --root /tmp/verify-of-home-zlvz7qdz
 # cwd /agent/repos/orderfield
 # exit 0
-installed /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield
-installed /tmp/verify-of-home-f_5sck1c/.agents/skills/of (alias /of)
-of: /tmp/verify-of-home-f_5sck1c/.local/bin/of -> /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield/scripts/of.py
-project of symlink at /tmp/verify-of-home-f_5sck1c/.local/bin/of (use --global for ~/.local/bin/of)
+installed /tmp/verify-of-home-zlvz7qdz/.agents/skills/orderfield
+installed /tmp/verify-of-home-zlvz7qdz/.agents/skills/of (alias /of)
+of: /tmp/verify-of-home-zlvz7qdz/.local/bin/of -> /tmp/verify-of-home-zlvz7qdz/.agents/skills/orderfield/scripts/of.py
+project of symlink at /tmp/verify-of-home-zlvz7qdz/.local/bin/of (use --global for ~/.local/bin/of)
 copied to 1 skill dir(s)
-generic: /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield
-kernel: of status  # or: python3 /tmp/verify-of-home-f_5sck1c/.agents/skills/orderfield/scripts/of.py status
+generic: /tmp/verify-of-home-zlvz7qdz/.agents/skills/orderfield
+kernel: of status  # or: python3 /tmp/verify-of-home-zlvz7qdz/.agents/skills/orderfield/scripts/of.py status
 
 $ of doctor
-# cwd /tmp/verify-of-home-f_5sck1c/doctor-cwd
+# cwd /tmp/verify-of-home-zlvz7qdz/doctor-cwd
 # exit 0
 prereqs
   python        3.12.3  ok (>= 3.11)
@@ -25,7 +25,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-home-f_5sck1c/doctor-cwd/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-home-zlvz7qdz/doctor-cwd/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
@@ -87,47 +87,47 @@ repo
 doctor        ok
 
 $ git init -q
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ git config user.email verify-of@example.invalid
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ git config user.name verify-of
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ write hello.txt
 
 $ git add -- hello.txt
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ git commit -q -m add
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ write more.txt
 
 $ git add -- more.txt
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ git commit -q -m more
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 
 $ git revert --no-edit HEAD
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
-[master 2aea0ad] Revert "more"
- Date: Sun Nov 22 15:21:17 2026 +0000
+[master d3ece9d] Revert "more"
+ Date: Sun Nov 22 15:41:59 2026 +0000
  1 file changed, 1 deletion(-)
  delete mode 100644 more.txt
 
 $ of doctor
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 prereqs
   python        3.12.3  ok (>= 3.11)
@@ -142,7 +142,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-repo-i91g0vxw/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-repo-wonykmdm/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
@@ -206,7 +206,7 @@ repo
 doctor        ok
 
 $ of doctor
-# cwd /tmp/verify-of-repo-i91g0vxw
+# cwd /tmp/verify-of-repo-wonykmdm
 # exit 0
 prereqs
   python        3.12.3  ok (>= 3.11)
@@ -221,7 +221,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-repo-i91g0vxw/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-repo-wonykmdm/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified

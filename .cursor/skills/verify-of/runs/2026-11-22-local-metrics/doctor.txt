@@ -11,7 +11,7 @@ field
   stub          none
   packs         none
   schemas       9/9 ok
-  lock          /tmp/verify-of-home-f_5sck1c/doctor-cwd/.orderfield/field.lock  missing-field
+  lock          /tmp/verify-of-home-zlvz7qdz/doctor-cwd/.orderfield/field.lock  missing-field
 adapters  (PATH is not auth, credentials, or session authority; not readiness)
     claude     missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified
     codex      missing  path=-  version=-  not on PATH  auth=not-verified  ready=not-verified

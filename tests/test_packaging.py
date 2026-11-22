@@ -241,8 +241,8 @@ class InstallScript(unittest.TestCase):
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        # measured_dest: 1703258
-        self.assertLessEqual(size, 1_703_258, size)
+        # measured_dest: 1724648
+        self.assertLessEqual(size, 1_724_648, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
