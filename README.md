@@ -345,7 +345,7 @@ The loop you type: `init` → `pack` → `spawn` → `collect` → `integrate` �
 | `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2 |
 | `integrate` | reduce residuals and choose a regime |
 | `contrast` | review gate: one-pager + JSON. CLOSE BLOCKED while open |
-| `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Exit 2 when that checklist is blocked. Exit 3 when a review witness is missing or stale |
 | `new` / `fields` | sibling fields in this working tree; `--json` dashboard |
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--evaluator-consent yes\|no`; `--harness`) |
 | `spec` | list/add/extract/verify/amend; `--verified-contract` closes a public surface |

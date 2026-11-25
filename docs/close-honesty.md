@@ -29,7 +29,7 @@ A published schedule that says FACTIBLE / D CUMPLE while labeled beds overlap is
 
 Trust the proof file. Do not trust a transcript that says CLOSED.
 
-`CLOSE.json` `review` lists each adversary and verifier finding by the bucket the judge already used. `open` (`act`, `consider`, unrecognized evidence, and `dismissed` that cites no path, test, or SHA) is printed on `of close` and `of close --checklist`. `noted` is terminal. A review child with no open finding is a `claims` row with an author. It is not a proof flag. The witness names the git head and tree from collect and the sha256 of the `review_scope` cites. It is stale when those paths change. Open findings do not refuse close (`ReviewWitness`).
+`CLOSE.json` `review` lists each adversary and verifier finding by the bucket the judge already used. `open` (`act`, `consider`, unrecognized evidence, and `dismissed` that cites no path, test, or SHA) is printed on `of close` and `of close --checklist`. `noted` is terminal. A review child with no open finding is a `claims` row with an author. It is not a proof flag. The witness names the git head and tree from collect and the sha256 of the `review_scope` cites. It is stale when those paths change. Open findings do not refuse close. A missing or stale witness on a review child refuses `of close` with exit 3 (`ReviewWitness`, `review-undecided`). A `CLOSE.json` with no `review` key still verifies.
 
 ## Templates
 

@@ -1274,6 +1274,7 @@ class ReviewWitness:
     V = 1
     NO_WITNESS = "no witness"
     CLAIM = "no open findings"
+    UNDECIDED_EXIT = 3
     _SHA = re.compile(
         r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{64}|[0-9A-Fa-f]{40})(?![0-9A-Fa-f])"
     )
@@ -1390,6 +1391,35 @@ class ReviewWitness:
             "wave": int(wave),
             "claim": ReviewWitness.CLAIM,
         }
+
+    @staticmethod
+    def undecided(review: dict[str, Any] | None) -> list[str]:
+        """Review children whose witness is missing or stale.
+
+        No review children → empty. Open findings are not this list.
+        """
+        body = review if isinstance(review, dict) else {}
+        names: list[str] = []
+        for row in body.get("witness") or []:
+            if not isinstance(row, dict) or not row.get("stale"):
+                continue
+            child = str(row.get("child_id") or "")
+            if child:
+                names.append(child)
+        return names
+
+    @staticmethod
+    def refuse(review: dict[str, Any] | None) -> None:
+        names = ReviewWitness.undecided(review)
+        if not names:
+            return
+        die(
+            "of close refused: review witness undecided "
+            + " ".join(names)
+            + " (missing or stale)",
+            code=ReviewWitness.UNDECIDED_EXIT,
+            kind="review-undecided",
+        )
 
     @staticmethod
     def _binding(root: Path) -> tuple[str, str]:
@@ -2805,6 +2835,9 @@ def cmd_close(args: argparse.Namespace) -> None:
         )
         if blocked:
             raise SystemExit(2)
+        ReviewWitness.refuse(
+            checklist.get("review") if isinstance(checklist.get("review"), dict) else {}
+        )
         return
     if print_contrast_report(root, order):
         doc = ContrastReport.document(root, order)
@@ -2846,6 +2879,9 @@ def cmd_close(args: argparse.Namespace) -> None:
         )
     if not checklist["residual_empty"]:
         CloseChecklist.refuse_residual(checklist)
+    ReviewWitness.refuse(
+        checklist.get("review") if isinstance(checklist.get("review"), dict) else {}
+    )
     if not spec_path(root).is_file():
         print("close       skipped (no SPEC)")
         return
