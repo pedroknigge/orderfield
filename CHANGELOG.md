@@ -8,6 +8,14 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+### Unreleased
+
+A child that stops on a documented quota or rate-limit signal is `quota_exhausted` and HOLD. The same packet stays packed. Nothing retries it.
+
+- **Quota hold:** `SpawnRecord.outcome_for` is the one exit door. A documented Claude Code or Antigravity stop phrase, and no schema-valid residual, stamps `quota_exhausted` instead of `nonzero_exit` or `timeout`. Exit 0 stays the residual outcome. `ChildState` reads that stamp. `next` is HOLD with an empty target argv. `of status` prints `outcome=quota_exhausted`. Codex, Cursor, Grok, OpenCode, Orca, Qwen, and generic stay on the old outcome: no published CLI stop string. A live QUIET child is not killed and is not reclassified until it exits or the packet budget times it out. `integrate --partial` still skips the flying child. No new verb.
+- **Proof:** `tests/test_spawn_trust.py` (`QuotaExhaustedHold`).
+- Install-size budget is 1,732,759 B (measured dest 1,732,759 B, cap 80 files). No VERSION bump.
+
 ## 0.9.10
 
 Close binds each done_when to a real run, init writes a feature map, learn proposes a check when the same residual is in two fields, and `of doctor` prints revert and rewrite counts for this checkout. Same 0.6 line. Not a new regime. `RUNTIME_OWNERSHIP` stays reserved. Do not rewrite v0.9.9 notes.

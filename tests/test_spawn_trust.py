@@ -1553,3 +1553,209 @@ class SensorTrustProfile(unittest.TestCase):
         proc = run_of(tmp, "spawn", "--adapter", "claude", "--packet", packet, "--dry-run")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("dontAsk", dry_run_preview(proc))
+
+
+class QuotaExhaustedHold(unittest.TestCase):
+    """Documented quota stop → quota_exhausted + HOLD, packet intact, no retry."""
+
+    PHRASE = "You've hit your session limit · resets 3:45pm"
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-quota-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        init = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
+        self.assertEqual(init.returncode, 0, init.stderr)
+        self.bindir = self.tmp / "bin"
+        self.bindir.mkdir()
+
+    def pack(self, cid: str, *extra: str) -> tuple[str, Path]:
+        pack = run_of(
+            self.tmp,
+            "pack",
+            "--slice",
+            "s",
+            "--role",
+            "explorer",
+            "--child-id",
+            cid,
+            *extra,
+        )
+        self.assertEqual(pack.returncode, 0, pack.stderr)
+        printed = pack.stdout.splitlines()[0].strip()
+        path = Path(printed)
+        if not path.is_absolute():
+            path = self.tmp / printed
+        return printed, path
+
+    def stub(self, name: str, body: str) -> None:
+        path = self.bindir / name
+        path.write_text(
+            "#!/usr/bin/env python3\n" + textwrap.dedent(body), encoding="utf-8"
+        )
+        path.chmod(0o755)
+
+    def spawn(
+        self, packet: str, adapter: str
+    ) -> subprocess.CompletedProcess[str]:
+        return run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            adapter,
+            "--packet",
+            packet,
+            extra_env={
+                "PATH": str(self.bindir) + os.pathsep + os.environ.get("PATH", "")
+            },
+        )
+
+    def test_phrases_are_adapter_scoped(self) -> None:
+        from of_adapters import QuotaSignal
+
+        self.assertTrue(QuotaSignal.hit("claude", self.PHRASE))
+        self.assertTrue(
+            QuotaSignal.hit("agy", "Your AI credits balance is too low to continue.")
+        )
+        self.assertTrue(
+            QuotaSignal.hit(
+                "agy",
+                "Your organization's prepaid balance is insufficient. Contact your administrator to add funds.",
+            )
+        )
+        self.assertFalse(
+            QuotaSignal.hit(
+                "claude", "You've used 85% of your session limit · resets 3:45pm"
+            )
+        )
+        for name in ("codex", "cursor", "grok", "opencode", "orca", "qwen", "generic"):
+            self.assertNotIn(name, QuotaSignal.PHRASES)
+            self.assertFalse(QuotaSignal.hit(name, self.PHRASE))
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(1, False, adapter="claude", output=self.PHRASE),
+            (of.SpawnRecord.QUOTA_EXHAUSTED, False),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(1, False, adapter="generic", output=self.PHRASE),
+            ("nonzero_exit", False),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(0, False, adapter="claude", output=self.PHRASE),
+            (of.SpawnRecord.ENDED_WITHOUT_RESIDUAL, False),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(0, True, adapter="claude", output=self.PHRASE),
+            (of.SpawnRecord.OK, True),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(
+                None, False, adapter="claude", output=self.PHRASE, timed_out=True
+            ),
+            (of.SpawnRecord.QUOTA_EXHAUSTED, False),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(
+                None, False, adapter="claude", output="still working", timed_out=True
+            ),
+            ("timeout", False),
+        )
+        self.assertEqual(
+            of.SpawnRecord.outcome_for(
+                1, True, adapter="claude", output=self.PHRASE
+            ),
+            ("nonzero_exit", False),
+        )
+
+    def test_fake_claude_quota_is_hold_without_retry(self) -> None:
+        counter = self.tmp / "runs"
+        self.stub(
+            "claude",
+            f"""\
+            import pathlib, sys
+            p = pathlib.Path({str(counter)!r})
+            n = int(p.read_text()) if p.exists() else 0
+            p.write_text(str(n + 1))
+            print({self.PHRASE!r})
+            sys.exit(1)
+            """,
+        )
+        printed, packet = self.pack("q1")
+        before = packet.read_bytes()
+        proc = self.spawn(printed, "claude")
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/q1.json")
+        self.assertEqual(meta["outcome"], "quota_exhausted")
+        self.assertFalse(meta["ok"])
+        self.assertEqual(meta["exit"], 1)
+        self.assertEqual(counter.read_text(encoding="utf-8"), "1")
+        self.assertEqual(packet.read_bytes(), before)
+        status = run_of(self.tmp, "status")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("outcome=quota_exhausted", status.stdout)
+        self.assertIn("HOLD", status.stdout)
+        self.assertIn("no automatic retry", status.stdout)
+        resume = run_of(self.tmp, "resume", "--json")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        doc = json.loads(resume.stdout)
+        self.assertEqual(doc["action"], "hold")
+        self.assertEqual(doc["reason_code"], "quota_exhausted")
+        self.assertEqual(doc["targets"][0]["argv"], [])
+        self.assertTrue(doc["targets"][0]["packet"])
+        self.assertEqual(counter.read_text(encoding="utf-8"), "1")
+        self.assertEqual(packet.read_bytes(), before)
+
+    def test_generic_quoting_the_phrase_stays_nonzero_exit(self) -> None:
+        script = self.tmp / "fail.py"
+        script.write_text(
+            f"import sys\nprint({self.PHRASE!r})\nsys.exit(1)\n", encoding="utf-8"
+        )
+        printed, _packet = self.pack("g1")
+        proc = run_of(
+            self.tmp,
+            "spawn",
+            "--adapter",
+            "generic",
+            "--packet",
+            printed,
+            extra_env={"OF_AGENT": f"{sys.executable} {script}"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/g1.json")
+        self.assertEqual(meta["outcome"], "nonzero_exit")
+
+    def test_unrelated_claude_failure_stays_spawn_next(self) -> None:
+        self.stub(
+            "claude",
+            """\
+            import sys
+            print("boom")
+            sys.exit(3)
+            """,
+        )
+        printed, _packet = self.pack("b1")
+        proc = self.spawn(printed, "claude")
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/b1.json")
+        self.assertEqual(meta["outcome"], "nonzero_exit")
+        resume = run_of(self.tmp, "resume", "--json")
+        self.assertEqual(resume.returncode, 0, resume.stderr)
+        doc = json.loads(resume.stdout)
+        self.assertEqual(doc["action"], "spawn")
+        self.assertTrue(any("spawn" in (t.get("argv") or []) for t in doc["targets"]))
+
+    def test_timeout_with_documented_phrase_is_quota(self) -> None:
+        self.stub(
+            "claude",
+            f"""\
+            import time
+            print({self.PHRASE!r}, flush=True)
+            time.sleep(30)
+            """,
+        )
+        printed, _packet = self.pack("t1", "--seconds", "1")
+        proc = self.spawn(printed, "claude")
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        meta = load_json(self.tmp / ".orderfield/waves/001/spawns/t1.json")
+        self.assertEqual(meta["outcome"], "quota_exhausted")
+        status = run_of(self.tmp, "status")
+        self.assertIn("outcome=quota_exhausted", status.stdout)
+        self.assertIn("HOLD", status.stdout)
