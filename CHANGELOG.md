@@ -2,19 +2,17 @@
 
 History is slow. The product is not allowed to invent a past.
 
-This log matches `VERSION`. The first `##` heading is the current line. Bullets stay code-backed.
+This log matches `VERSION`. The first `## X.Y.Z` heading is the current line. `## Unreleased` above it is not a cut. Bullets stay code-backed.
 
 Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
-### Unreleased
+## Unreleased
 
-A child that stops on a documented quota or rate-limit signal is `quota_exhausted` and HOLD. The same packet stays packed. Nothing retries it.
+A documented quota or rate-limit stop is `quota_exhausted` and HOLD on the same packet. No automatic retry. Not a VERSION cut. Do not rewrite v0.9.10 notes.
 
-- **Quota hold:** `SpawnRecord.outcome_for` is the one exit door. A documented Claude Code or Antigravity stop phrase, and no schema-valid residual, stamps `quota_exhausted` instead of `nonzero_exit` or `timeout`. Exit 0 stays the residual outcome. `ChildState` reads that stamp. `next` is HOLD with an empty target argv. `of status` prints `outcome=quota_exhausted`. Codex, Cursor, Grok, OpenCode, Orca, Qwen, and generic stay on the old outcome: no published CLI stop string. A live QUIET child is not killed and is not reclassified until it exits or the packet budget times it out. `integrate --partial` still skips the flying child. No new verb.
-- **Proof:** `tests/test_spawn_trust.py` (`QuotaExhaustedHold`).
-- Install-size budget is 1,732,759 B (measured dest 1,732,759 B, cap 80 files). No VERSION bump.
+- **Quota hold:** `SpawnRecord.outcome_for` stamps `quota_exhausted` for a cited Claude or agy stop phrase when no schema-valid residual landed. `next` is HOLD with an empty target argv. Codex, Cursor, Grok, OpenCode, Orca, Qwen, and generic stay on the old outcome. Proof: `QuotaExhaustedHold`.
 
 ## 0.9.10
 
