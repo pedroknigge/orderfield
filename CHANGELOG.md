@@ -10,8 +10,9 @@ A cut, a resume, a different model — the line you tagged is still the line. Th
 
 ## Unreleased
 
-agy spawn emits one effort. The catalog's agy rows are the Gemini 4 CLI identifiers. Not a VERSION cut. Do not rewrite v0.9.10 notes.
+Not a VERSION cut. Do not rewrite v0.9.10 notes.
 
+- **Quota hold:** `SpawnRecord.outcome_for` stamps `quota_exhausted` for a cited Claude or agy stop phrase when no schema-valid residual landed. `next` is HOLD with an empty target argv. Codex, Cursor, Grok, OpenCode, Orca, Qwen, and generic stay on the old outcome. Proof: `QuotaExhaustedHold`.
 - **One effort channel:** `low|medium|high|xhigh|max`. A model id whose last segment is one of those owns effort, and spawn emits `--model` with no `--effort`. A bare id still emits `--effort` (hint, or `medium`). A hint that disagrees with the suffix dies before pack and before spawn. Pack does not stamp `medium` onto a slug that already names an effort.
 - **Catalog:** agy rows are `gemini-4-neon`, `gemini-4-carbon`, `gemini-4-argon`, `gemini-4-hydrogen` from the Antigravity docs (2026-11-25). Public $/MTok on those pages is unknown. The `gemini-2.5-flash`, `gemini-3.8-flash`, and `gemini-3.1-pro` rows are gone.
 - **Proof:** `AgyEffortArgv`; `ModelCatalogHonesty`.
