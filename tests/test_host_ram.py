@@ -165,6 +165,18 @@ class AgentBandUnit(unittest.TestCase):
             {"tier": "cheap", "effort": "low"},
         )
         self.assertIsNone(of.AgentBand.stamp_effort(None))
+        self.assertEqual(
+            of.AgentBand.stamp_effort({"model": "gemini-4-neon", "effort": "xhigh"}),
+            {"model": "gemini-4-neon", "effort": "xhigh"},
+        )
+        self.assertEqual(
+            of.AgentBand.stamp_effort({"model": "gemini-4-neon-high"}),
+            {"model": "gemini-4-neon-high"},
+        )
+        with self.assertRaises(SystemExit):
+            of.AgentBand.stamp_effort(
+                {"model": "gemini-4-neon-high", "effort": "medium"}
+            )
 
 
 class AgentBandCli(unittest.TestCase):

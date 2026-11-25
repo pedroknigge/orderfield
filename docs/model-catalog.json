@@ -33,6 +33,12 @@
       "title": "Google Gemini API pricing (re-check; not fetched this cut)",
       "url": "https://ai.google.dev/gemini-api/docs/pricing",
       "checked": "2026-09-07"
+    },
+    {
+      "id": "agy-models",
+      "title": "Antigravity models, headless slugs, and enterprise CLI identifiers",
+      "url": "https://antigravity.google/docs/models/",
+      "checked": "2026-11-25"
     }
   ],
   "models": [
@@ -198,33 +204,43 @@
     },
     {
       "harness": "agy",
-      "model_id": "gemini-2.5-flash",
-      "tier_hint": "cheap",
-      "price_public": "$0.30 / $2.50 per MTok in/out",
-      "price_known": true,
-      "source_id": "cursor-models",
-      "notes": "Named --model only; no cheap alias. Price taken from Cursor's published Google row (2026-09-07). Re-check https://ai.google.dev/gemini-api/docs/pricing — that page was not fetched this cut. agy unknown slugs fail loudly.",
-      "last_checked": "2026-09-07"
-    },
-    {
-      "harness": "agy",
-      "model_id": "gemini-3.8-flash",
-      "tier_hint": "mid",
-      "price_public": "$0.75 / $3.50 per MTok in/out",
-      "price_known": true,
-      "source_id": "cursor-models",
-      "notes": "Named --model only. Cursor-listed Google rate this cut. Re-check the Gemini sheet before proposing. Not an IQ rank.",
-      "last_checked": "2026-09-07"
-    },
-    {
-      "harness": "agy",
-      "model_id": "gemini-3.1-pro",
+      "model_id": "gemini-4-neon",
       "tier_hint": "frontier",
-      "price_public": "$2 / $12 per MTok in/out",
-      "price_known": true,
-      "source_id": "cursor-models",
-      "notes": "Named --model only. Cursor-listed Google rate this cut. Some Gemini Pro rows add a long-context surcharge on the Google sheet — treat as unknown here.",
-      "last_checked": "2026-09-07"
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "agy-models",
+      "notes": "CLI identifier on the enterprise table. Headless agy models also lists gemini-4-neon-xhigh, -high, -medium, -low. Efforts low, medium (default), high, xhigh. Named --model only; no frontier alias. Those pages do not publish $/MTok. Not an IQ rank.",
+      "last_checked": "2026-11-25"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-4-carbon",
+      "tier_hint": "frontier",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "agy-models",
+      "notes": "CLI identifier gemini-4-carbon. Headless sample lists gemini-4-carbon-high, -medium, -low. Planner-class with Neon. That sample has no -xhigh. Named --model only. Public $/MTok unknown.",
+      "last_checked": "2026-11-25"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-4-argon",
+      "tier_hint": "frontier",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "agy-models",
+      "notes": "CLI identifier gemini-4-argon. Headless sample lists gemini-4-argon-high and -medium only. Docs: removed 2026-11-30. Named --model only. Public $/MTok unknown.",
+      "last_checked": "2026-11-25"
+    },
+    {
+      "harness": "agy",
+      "model_id": "gemini-4-hydrogen",
+      "tier_hint": "cheap",
+      "price_public": "unknown",
+      "price_known": false,
+      "source_id": "agy-models",
+      "notes": "CLI identifier gemini-4-hydrogen. Headless sample lists gemini-4-hydrogen-xhigh, -high, -medium, -low. Docs call it the fast executor and the default on Free, Plus, and standard Pro trials. The cheap hint is that split, not a price. No cheap alias. Public $/MTok unknown.",
+      "last_checked": "2026-11-25"
     },
     {
       "harness": "orca",

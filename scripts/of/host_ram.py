@@ -313,13 +313,16 @@ class AgentBand:
         if not isinstance(hints, dict) or not hints:
             return hints
         out = dict(hints)
-        raw = str(out.get("effort") or "").strip()
-        if raw and raw not in AdapterHints.EFFORTS:
-            die(
-                f"pack --effort must be low|medium|high (got {raw!r}); "
-                "children default medium"
-            )
-        if not raw:
+        effort = AdapterHints.normalize_effort(
+            str(out.get("effort") or ""), where="pack --effort"
+        )
+        model = str(out.get("model") or "")
+        suffix = AdapterHints.refuse_effort_conflict(model, effort, where="pack")
+        if effort:
+            out["effort"] = effort
+        elif suffix:
+            out.pop("effort", None)
+        else:
             out["effort"] = AdapterHints.DEFAULT_EFFORT
         return out
 

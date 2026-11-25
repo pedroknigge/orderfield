@@ -352,6 +352,26 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("adapter_hints", load_json(packet_path(self.tmp, "after")))
 
+    def test_agy_slug_dry_run_emits_one_effort(self) -> None:
+        packed = self._pack(
+            "neon", "explorer", "--model", "gemini-4-neon-high"
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertIn("adapter_hints=gemini-4-neon-high", packed.stdout)
+        self.assertNotIn("adapter_hints=gemini-4-neon-high medium", packed.stdout)
+        out = self._spawn_argv("neon", "agy")
+        line = next(row for row in out.splitlines() if row.startswith("agy "))
+        self.assertIn("--model gemini-4-neon-high", line)
+        self.assertNotIn("--effort", line)
+        packed_x = self._pack(
+            "xhigh", "explorer", "--model", "gemini-4-neon-xhigh"
+        )
+        self.assertEqual(packed_x.returncode, 0, packed_x.stderr)
+        out_x = self._spawn_argv("xhigh", "agy")
+        line_x = next(row for row in out_x.splitlines() if row.startswith("agy "))
+        self.assertIn("--model gemini-4-neon-xhigh", line_x)
+        self.assertNotIn("--effort", line_x)
+
     def test_invalid_model_dies(self) -> None:
         r = self._pack("bad", "explorer", "--model", "has space")
         self.assertNotEqual(r.returncode, 0)
@@ -427,9 +447,8 @@ class AdapterHintsArgv(unittest.TestCase):
         }
         agy = self.argv("agy", agy_pkt)
         self.assertEqual(agy[agy.index("--model") + 1], "gemini-3.5-flash-medium")
-        self.assertEqual(agy[agy.index("--effort") + 1], "medium")
+        self.assertNotIn("--effort", agy)
         self.assertLess(agy.index("--model"), agy.index("-p"))
-        self.assertLess(agy.index("--effort"), agy.index("-p"))
 
     def test_grok_agy_without_consent_stay_unchanged(self) -> None:
         packet = {"child_id": "c1", "budget": {"seconds": 60}}
@@ -460,7 +479,7 @@ class AdapterHintsArgv(unittest.TestCase):
         self.assertEqual(argv[argv.index("--model") + 1], "grok-4.6")
 
 class AgyEffortArgv(unittest.TestCase):
-    """#249: agy --model requires --effort; --print-timeout follows budget.seconds."""
+    """agy emits one effort channel. A suffix on the model id owns it."""
 
     def argv(self, packet: dict) -> list:
         return of.build_spawn_argv(
@@ -509,6 +528,61 @@ class AgyEffortArgv(unittest.TestCase):
         self.assertIsNotNone(hint)
         assert hint is not None
         self.assertIn("requires --effort", hint)
+
+    def test_xhigh_and_max_on_a_bare_model_pass(self) -> None:
+        for effort in ("xhigh", "max"):
+            packet = {
+                "child_id": "c1",
+                "budget": {"seconds": 60},
+                "adapter_hints": {"model": "gemini-4-neon", "effort": effort},
+            }
+            argv = self.argv(packet)
+            self.assertEqual(argv[argv.index("--model") + 1], "gemini-4-neon")
+            self.assertEqual(argv[argv.index("--effort") + 1], effort)
+
+    def test_slug_effort_omits_the_flag(self) -> None:
+        conflict = {
+            "child_id": "c1",
+            "budget": {"seconds": 600},
+            "adapter_hints": {"model": "gemini-4-neon-high", "effort": "medium"},
+        }
+        with self.assertRaises(SystemExit):
+            self.argv(conflict)
+        owned = {
+            "child_id": "c1",
+            "budget": {"seconds": 600},
+            "adapter_hints": {"model": "gemini-4-neon-xhigh"},
+        }
+        argv = self.argv(owned)
+        self.assertEqual(argv[argv.index("--model") + 1], "gemini-4-neon-xhigh")
+        self.assertNotIn("--effort", argv)
+        self.assertEqual(argv[argv.index("--print-timeout") + 1], "10m")
+        agreed = {
+            "child_id": "c1",
+            "budget": {"seconds": 60},
+            "adapter_hints": {"model": "gemini-4-neon-high", "effort": "high"},
+        }
+        argv = self.argv(agreed)
+        self.assertEqual(argv[argv.index("--model") + 1], "gemini-4-neon-high")
+        self.assertNotIn("--effort", argv)
+
+    def test_xhigh_hint_validates_on_the_packet_schema(self) -> None:
+        schema = json.loads(
+            (ROOT / "schemas" / "packet.schema.json").read_text(encoding="utf-8")
+        )["properties"]["adapter_hints"]
+        self.assertEqual(
+            of.validate_schema(
+                {"model": "gemini-4-neon", "effort": "xhigh"}, schema, "hints"
+            ),
+            [],
+        )
+        self.assertEqual(
+            of.validate_schema(
+                {"model": "gemini-4-hydrogen", "effort": "max"}, schema, "hints"
+            ),
+            [],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

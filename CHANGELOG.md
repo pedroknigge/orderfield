@@ -2,11 +2,19 @@
 
 History is slow. The product is not allowed to invent a past.
 
-This log matches `VERSION`. The first `##` heading is the current line. Bullets stay code-backed.
+This log matches `VERSION`. The first `## X.Y.Z` heading is the current line. `## Unreleased` above it is not a cut. Bullets stay code-backed.
 
 Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
+
+## Unreleased
+
+agy spawn emits one effort. The catalog's agy rows are the Gemini 4 CLI identifiers. Not a VERSION cut. Do not rewrite v0.9.10 notes.
+
+- **One effort channel:** `low|medium|high|xhigh|max`. A model id whose last segment is one of those owns effort, and spawn emits `--model` with no `--effort`. A bare id still emits `--effort` (hint, or `medium`). A hint that disagrees with the suffix dies before pack and before spawn. Pack does not stamp `medium` onto a slug that already names an effort.
+- **Catalog:** agy rows are `gemini-4-neon`, `gemini-4-carbon`, `gemini-4-argon`, `gemini-4-hydrogen` from the Antigravity docs (2026-11-25). Public $/MTok on those pages is unknown. The `gemini-2.5-flash`, `gemini-3.8-flash`, and `gemini-3.1-pro` rows are gone.
+- **Proof:** `AgyEffortArgv`; `ModelCatalogHonesty`.
 
 ## 0.9.10
 

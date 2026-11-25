@@ -40,7 +40,8 @@ grep -q '^name: of$' "$ALIAS_FILE" || fail "of/SKILL.md name is not of"
 grep -q '^  alias-of: orderfield$' "$ALIAS_FILE" || fail "of/SKILL.md missing alias-of"
 ok "alias /of $VER_ALIAS"
 
-HEADING=$(awk '/^## /{print $2; exit}' "$ROOT/CHANGELOG.md")
+# ## Unreleased / ## next above the current line is not a cut.
+HEADING=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+$' "$ROOT/CHANGELOG.md" | head -1 | awk '{print $2}')
 [[ "$HEADING" == "$VER_FILE" ]] || fail "CHANGELOG heading $HEADING != $VER_FILE"
 ok "changelog $HEADING"
 

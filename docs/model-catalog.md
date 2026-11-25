@@ -52,8 +52,9 @@ Sources: [Codex app-server protocol](https://github.com/openai/codex/blob/main/c
 | `xai-api` | https://docs.x.ai/developers/pricing |
 | `cursor-models` | https://cursor.com/docs/models-and-pricing |
 | `gemini-api` | https://ai.google.dev/gemini-api/docs/pricing (re-check; **not fetched** this cut) |
+| `agy-models` | https://antigravity.google/docs/models/ (headless slugs: https://antigravity.google/docs/cli/headless/ ; CLI identifiers: https://antigravity.google/docs/enterprise/ ; fetched 2026-11-25) |
 
-agy Gemini rows use Cursor's published Google rates and tell the leader to re-check the Gemini sheet.
+agy Gemini 4 rows cite those Antigravity pages. They publish CLI identifiers and effort slugs, not $/MTok, so the price stays unknown.
 
 ## Living table
 
@@ -75,9 +76,10 @@ agy Gemini rows use Cursor's published Google rates and tell the leader to re-ch
 | grok | grok-build-0.1 | cheap | $1 / $2 per MTok in/out (<200k prompt) | Named `--model` only; no cheap alias. ≥200k prompt doubles. Tool calls are extra on the xAI sheet. | 2026-09-07 |
 | grok | grok-4.3 | mid | $1.25 / $2.50 per MTok in/out (<200k prompt) | Named `--model` only. 1M context. ≥200k prompt doubles. | 2026-09-07 |
 | grok | grok-4.6 | frontier | $2 / $6 per MTok in/out (<200k prompt) | Named `--model` only. Cheaper list than Claude Opus 5. ≥200k prompt doubles. Do not invent a cheap/frontier alias. | 2026-09-07 |
-| agy | gemini-2.5-flash | cheap | $0.30 / $2.50 per MTok in/out | Named `--model` only; no cheap alias. Price taken from Cursor's published Google row (2026-09-07). Re-check https://ai.google.dev/gemini-api/docs/pricing — that page was not fetched this cut. agy unknown slugs fail loudly. | 2026-09-07 |
-| agy | gemini-3.8-flash | mid | $0.75 / $3.50 per MTok in/out | Named `--model` only. Cursor-listed Google rate this cut. Re-check the Gemini sheet before proposing. Not an IQ rank. | 2026-09-07 |
-| agy | gemini-3.1-pro | frontier | $2 / $12 per MTok in/out | Named `--model` only. Cursor-listed Google rate this cut. Some Gemini Pro rows add a long-context surcharge on the Google sheet — treat as unknown here. | 2026-09-07 |
+| agy | gemini-4-neon | frontier | unknown | CLI identifier on the [enterprise table](https://antigravity.google/docs/enterprise/). Headless [`agy models`](https://antigravity.google/docs/cli/headless/) also lists `gemini-4-neon-xhigh`, `-high`, `-medium`, `-low`. Efforts low, medium (default), high, xhigh ([models](https://antigravity.google/docs/models/)). Named `--model` only; no frontier alias. Those pages do not publish $/MTok. Not an IQ rank. | 2026-11-25 |
+| agy | gemini-4-carbon | frontier | unknown | CLI identifier `gemini-4-carbon`. Headless sample lists `gemini-4-carbon-high`, `-medium`, `-low`. Planner-class with Neon. That sample has no `-xhigh`. Named `--model` only. Public $/MTok unknown. | 2026-11-25 |
+| agy | gemini-4-argon | frontier | unknown | CLI identifier `gemini-4-argon`. Headless sample lists `gemini-4-argon-high` and `-medium` only. Docs: removed 2026-11-30. Named `--model` only. Public $/MTok unknown. | 2026-11-25 |
+| agy | gemini-4-hydrogen | cheap | unknown | CLI identifier `gemini-4-hydrogen`. Headless sample lists `gemini-4-hydrogen-xhigh`, `-high`, `-medium`, `-low`. Docs call it the fast executor and the default on Free, Plus, and standard Pro trials. The cheap hint is that split, not a price. No cheap alias. Public $/MTok unknown. | 2026-11-25 |
 | orca | (user-config) | unknown | unknown | Spawn no-op: `task-create` has no `--model`. Hint may sit on disk. Do not invent a price or alias. | 2026-09-07 |
 | qwen | (user-config) | unknown | unknown | Spawn no-op. Model stays in the user's Qwen config. Do not invent `-m` / `--model`. | 2026-09-07 |
 | opencode | (user-config) | unknown | unknown | Spawn no-op for `--model`. Provider price is whatever the user's OpenCode config already uses. | 2026-09-07 |
