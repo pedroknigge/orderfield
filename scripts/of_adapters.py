@@ -1514,23 +1514,68 @@ class AdapterHints:
             f"refusing {verb} that would omit --model"
         )
 
-    EFFORTS = frozenset({"low", "medium", "high"})
+    # Documented agy levels, lightest to heaviest. `max` is model-dependent;
+    # the CLI still refuses a level that model does not publish.
+    EFFORT_ORDER = ("low", "medium", "high", "xhigh", "max")
+    EFFORTS = frozenset(EFFORT_ORDER)
     DEFAULT_EFFORT = "medium"
 
     @staticmethod
-    def agy_effort(packet: dict[str, Any]) -> str:
-        """agy requires --effort with --model. Default medium; unknown dies."""
+    def effort_suffix(model: str) -> str | None:
+        """Last hyphen segment when it is a documented effort. Else None."""
+        text = str(model or "").strip()
+        head, sep, tail = text.rpartition("-")
+        if not sep or not head:
+            return None
+        folded = tail.casefold()
+        if folded in AdapterHints.EFFORTS:
+            return folded
+        return None
+
+    @staticmethod
+    def normalize_effort(raw: str, *, where: str) -> str:
+        """Blank stays blank. An unknown name dies before argv is built."""
+        effort = str(raw or "").strip()
+        if not effort:
+            return ""
+        if effort not in AdapterHints.EFFORTS:
+            names = "|".join(AdapterHints.EFFORT_ORDER)
+            if where.startswith("pack"):
+                tail = "children default medium"
+            else:
+                tail = "refusing spawn that would omit a valid --effort"
+            die(f"{where} must be {names} (got {effort!r}); {tail}")
+        return effort
+
+    @staticmethod
+    def refuse_effort_conflict(model: str, effort: str, *, where: str) -> str | None:
+        """Suffix and hint are one fact. Disagreement dies before argv."""
+        suffix = AdapterHints.effort_suffix(model)
+        if suffix and effort and effort != suffix:
+            die(
+                f"agy effort conflict: model {model!r} carries {suffix} "
+                f"but adapter_hints.effort is {effort!r}; "
+                f"refusing {where} that would emit both"
+            )
+        return suffix
+
+    @staticmethod
+    def agy_model_flags(model: str, packet: dict[str, Any]) -> list[str]:
+        """One effort channel. A suffix owns it; a bare id gets --effort."""
         hints = packet.get("adapter_hints")
         raw = ""
         if isinstance(hints, dict):
-            raw = str(hints.get("effort") or "").strip()
-        effort = raw or AdapterHints.DEFAULT_EFFORT
-        if effort not in AdapterHints.EFFORTS:
-            die(
-                f"agy --effort must be low|medium|high (got {effort!r}); "
-                f"refusing spawn that would omit a valid --effort"
-            )
-        return effort
+            raw = str(hints.get("effort") or "")
+        effort = AdapterHints.normalize_effort(raw, where="agy --effort")
+        suffix = AdapterHints.refuse_effort_conflict(model, effort, where="spawn")
+        if suffix:
+            return ["--model", model]
+        return [
+            "--model",
+            model,
+            "--effort",
+            effort or AdapterHints.DEFAULT_EFFORT,
+        ]
 
     @staticmethod
     def agy_print_timeout(packet: dict[str, Any]) -> str | None:
@@ -1556,10 +1601,9 @@ class AdapterHints:
     def spawn_flags(adapter: str, packet: dict[str, Any]) -> list[str]:
         name = AdapterHints.spawn_model(adapter, packet)
         if name:
-            flags = ["--model", name]
             if adapter == "agy":
-                flags.extend(["--effort", AdapterHints.agy_effort(packet)])
-            return flags
+                return AdapterHints.agy_model_flags(name, packet)
+            return ["--model", name]
         AdapterHints.require_named_model(adapter, packet, verb="spawn")
         return []
 
@@ -2252,7 +2296,7 @@ def build_spawn_argv(
         return [bin_, *trust, *model, *stream, "-p", prompt]
     if adapter == "agy":
         # agy -p consumes the next argv token as the prompt. Flags MUST precede -p.
-        # --model requires --effort; --print-timeout follows budget.seconds (#249).
+        # One effort channel; --print-timeout follows budget.seconds (#249).
         bin_ = which_bin(["agy"]) or "agy"
         print_timeout: list[str] = []
         timeout = AdapterHints.agy_print_timeout(packet)

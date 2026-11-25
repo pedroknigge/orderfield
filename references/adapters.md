@@ -122,7 +122,7 @@ packet even without a field write. No write → spawn argv is unchanged.
 | codex | `--model NAME` when the packet names one; tier-only is no-op |
 | cursor | `--model NAME` when the packet names one; no cheap/frontier alias (catalog: no frontier row); tier-only **refuses** |
 | grok | `--model NAME` when the packet names one; before `-p`; tier-only is no-op |
-| agy | `--model NAME` + `--effort` (default medium) when named; `--print-timeout` from `budget.seconds`; flags before `-p`; tier-only is no-op |
+| agy | `--model NAME` when named; one effort channel — a trailing `low\|medium\|high\|xhigh\|max` owns it and `--effort` is omitted, otherwise `--effort` (hint or medium); a mismatch dies; `--print-timeout` from `budget.seconds`; flags before `-p`; tier-only is no-op |
 | orca | no-op (`task-create` has no `--model`; hint stays on disk) |
 | qwen, opencode, generic | no-op |
 
@@ -376,16 +376,20 @@ that envelope when the child did not write the residual file. Invalid
 extract names `$.path` + constraint (`SpawnResidual.refuse_line`).
 Codex-null optional fields are omit (`CodexNullOmit`).
 
-Consented `adapter_hints` with a named model insert `--model NAME` and
-`--effort` (default `medium`; packet `adapter_hints.effort` may set
-`low|medium|high`; unknown dies before spawn) before `-p` (agy CLI requires
-both together). `--print-timeout` follows `budget.seconds` so the packet stays
-the clock. Unknown slugs fail loudly — do not invent a cheap/frontier id;
-tier-only is no-op. `OF_TRUST=plan` prepends `--mode plan`;
+Consented `adapter_hints` with a named model insert `--model NAME` before
+`-p`. Effort has one argv channel. When the model id's last segment is
+`low`, `medium`, `high`, `xhigh`, or `max`, that segment is the effort and
+spawn omits `--effort`. Otherwise spawn adds `--effort` (packet
+`adapter_hints.effort`, or `medium`). A hint that names a different level
+than the suffix dies before spawn, and pack dies the same way. Unknown
+effort names die too. agy does not document which channel wins, so
+spawn emits exactly one of them. `--print-timeout` follows `budget.seconds` so
+the packet stays the clock. Unknown slugs fail loudly — do not invent a
+cheap/frontier id; tier-only is no-op. `OF_TRUST=plan` prepends `--mode plan`;
 `OF_TRUST=auto-edit` prepends `--mode accept-edits`;
 `OF_TRUST=yolo` prepends `--dangerously-skip-permissions --mode accept-edits`.
 `of spawn --adapter agy` keeps that flag order (trust flags, optional
-`--model`+`--effort`, `--json-schema`, optional `--print-timeout`, then
+`--model` and at most one `--effort`, `--json-schema`, optional `--print-timeout`, then
 `--output-format json`, then `-p`). Host global MCP is isolated by default
 (`HostMcp`) because print mode blocks on `~/.gemini` MCP and agy has no
 `--no-mcp`. `OF_SPAWN_MCP=inherit` opts in. Under `OF_TRUST=conservative`, spawn

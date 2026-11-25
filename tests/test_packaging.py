@@ -241,8 +241,8 @@ class InstallScript(unittest.TestCase):
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        # measured_dest: 1732759
-        self.assertLessEqual(size, 1_732_759, size)
+        # measured_dest: 1735174
+        self.assertLessEqual(size, 1_735_174, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -1201,6 +1201,32 @@ class ModelCatalogHonesty(unittest.TestCase):
         self.assertTrue(any("model-catalog.md" in line for line in lines))
         self.assertTrue(any("budget.tokens" in line for line in lines))
         self.assertFalse(any("of catalog" in line for line in lines))
+
+    def test_agy_rows_are_the_gemini_4_cli_identifiers(self) -> None:
+        from of.model_catalog import ModelCatalog
+
+        doc = ModelCatalog.load(ROOT)
+        agy = [row for row in ModelCatalog.models(doc) if row.get("harness") == "agy"]
+        self.assertEqual(
+            [row["model_id"] for row in agy],
+            [
+                "gemini-4-neon",
+                "gemini-4-carbon",
+                "gemini-4-argon",
+                "gemini-4-hydrogen",
+            ],
+        )
+        for row in agy:
+            self.assertEqual(row["last_checked"], "2026-11-25")
+            self.assertFalse(row["price_known"])
+            self.assertEqual(row["price_public"], "unknown")
+            self.assertEqual(row["source_id"], "agy-models")
+        text = (ROOT / "docs" / "model-catalog.md").read_text(encoding="utf-8")
+        for stale in ("gemini-2.5-flash", "gemini-3.8-flash", "gemini-3.1-pro"):
+            self.assertNotIn(stale, text)
+        self.assertIn("https://antigravity.google/docs/models/", text)
+        self.assertIn("https://antigravity.google/docs/cli/headless/", text)
+        self.assertIn("https://antigravity.google/docs/enterprise/", text)
 
 
 class AdapterDetectHonesty(unittest.TestCase):

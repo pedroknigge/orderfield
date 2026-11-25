@@ -191,8 +191,8 @@
         },
         "effort": {
           "type": "string",
-          "enum": ["low", "medium", "high"],
-          "description": "Child slice default medium. agy requires --effort with --model; high is ORDER authoring, not implementer slices."
+          "enum": ["low", "medium", "high", "xhigh", "max"],
+          "description": "One effort channel with the model id. A trailing effort segment owns it; otherwise this hint (default medium) is --effort. A mismatch refuses. high stays ORDER authoring, not implementer slices."
         }
       }
     },
