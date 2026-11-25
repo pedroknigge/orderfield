@@ -188,16 +188,40 @@ class ReviewAttackersProof(unittest.TestCase):
                 "proposed_patch": None,
             },
         }
+        unrecognized = {
+            "status": "done",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "the cache key in app.py looks wrong",
+                "proposed_patch": None,
+            },
+        }
+        lgtm = {
+            "status": "done",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "LGTM",
+                "proposed_patch": None,
+            },
+        }
         self.assertEqual(
-            [of.ReviewAttackers.bucket(row) for row in (act, consider, dismissed, noted)],
-            ["act", "consider", "dismissed", "noted"],
+            [
+                of.ReviewAttackers.bucket(row)
+                for row in (act, consider, dismissed, noted, unrecognized, lgtm)
+            ],
+            ["act", "consider", "dismissed", "noted", "open", "open"],
         )
-        self.assertEqual(list(of.ReviewAttackers.BUCKETS), ["act", "consider", "noted", "dismissed"])
+        self.assertEqual(
+            list(of.ReviewAttackers.BUCKETS),
+            ["act", "consider", "noted", "dismissed", "open"],
+        )
         self.assertTrue(of.ReviewAttackers.escalates("verifier", act))
         self.assertFalse(of.ReviewAttackers.escalates("adversary", act))
         self.assertFalse(of.ReviewAttackers.escalates("verifier", consider))
         self.assertFalse(of.ReviewAttackers.escalates("verifier", dismissed))
         self.assertFalse(of.ReviewAttackers.escalates("verifier", noted))
+        self.assertFalse(of.ReviewAttackers.escalates("verifier", unrecognized))
+        self.assertFalse(of.ReviewAttackers.escalates("verifier", lgtm))
         self.assertFalse(
             of.ReviewAttackers.escalates("adversary", status="threshold")
         )

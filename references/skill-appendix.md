@@ -163,7 +163,7 @@ Closed table. Not a verb. Reuses `SkillLeaderInitiative` / `SkillHarnessAsk` / `
 
 #### Wave-end review scope
 
-Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. `ReviewAttackers` (optional `ORDER.review_attackers`, `of patch --review-attackers`) is how many cheap-tier adversary packets (`--model-tier cheap`) sit beside that one verifier judge. Default 2 on band `1-4` or unset N≤4, else 3. Ceiling 3 — a `10-50` band cannot ask for 10. The judge buckets findings `act` / `consider` / `noted` / `dismissed`; only the verifier's `act` escalates. Adversary findings do not. Attackers may use a cheaper harness: `of spawn --adapter` claude, codex, cursor, grok, or agy. Not a close gate. Close copies those buckets onto `CLOSE.json` `review` (`ReviewWitness`): `act` and `consider` stay `open` and are printed; `noted` and `dismissed` are the terminal states. Evidence that says `no open findings` is a claim with its author, not proof. Collect of a review role writes `waves/NNN/review/<child>.json` once (git head, tree, sha256 of the `review_scope` cites). A later change to those paths marks that witness stale. Still not a close gate. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
+Stored yes after an implementer wave settles: pack+spawn both `--role adversary` and `--role verifier` before next-wave (`EvaluatorPacket.due` / `gate_action`). Consent no skips both (printed next stays collect/integrate). Review refuse is HOLD. Do not drop either role at large N. No new verb. Not a supervisor. `ReviewAttackers` (optional `ORDER.review_attackers`, `of patch --review-attackers`) is how many cheap-tier adversary packets (`--model-tier cheap`) sit beside that one verifier judge. Default 2 on band `1-4` or unset N≤4, else 3. Ceiling 3 — a `10-50` band cannot ask for 10. The judge buckets findings `act` / `consider` / `noted` / `dismissed`; only the verifier's `act` escalates. Adversary findings do not. Attackers may use a cheaper harness: `of spawn --adapter` claude, codex, cursor, grok, or agy. Not a close gate. Close copies those buckets onto `CLOSE.json` `review` (`ReviewWitness`): `act`, `consider`, and unrecognized evidence stay `open` and are printed; `noted` is terminal; `dismissed` is terminal only when evidence cites a path, a test, or a SHA, and otherwise is printed as `open`. A review child with no open finding is a claim with its author, not proof. Collect of a review role writes `waves/NNN/review/<child>.json` once (git head, tree, sha256 of the `review_scope` cites). A later change to those paths marks that witness stale. Still not a close gate. Packet `review_scope` is a cite set, not `owns_paths` (write-set). Reuses `OwnsPathCoverage`. Design: [wave-review-scope.md](../docs/features/kernel/wave-review-scope.md).
 
 | Band / N | Mode | Verifier | Adversary |
 |---|---|---|---|
@@ -561,8 +561,9 @@ Use the minimum. Explorer + adversary already prove the principle. A fresh-conte
 |---|---|
 | act | `status=threshold` + `wants_to_change` (`escalate_up`) when the field is wrong; a `constraints+` proposal also escalates (never auto-applied); `proposed_patch.docs_sync` for plan sync |
 | consider | `proposed_patch.notes` |
-| noted | `residual.evidence` |
-| dismissed | `residual.evidence` plus the reason |
+| noted | `residual.evidence` that says noted |
+| dismissed | `residual.evidence` that says dismissed, plus a path, a test, or a SHA |
+| open | unrecognized `residual.evidence` |
 
 ## Lab / eval
 
