@@ -13,6 +13,7 @@ One row per user-facing feature. The rows are the README command table, plus Fie
 | Doctor | `of doctor` | `tests/test_kernel_cli.py`; `verify-of doctor` |
 | Pack | `of pack` | `tests/test_kernel_pack.py`; `verify-of pack-wave` |
 | Spawn | `of spawn` | `tests/test_spawn_trust.py` |
+| Quota hold | `of status` | `tests/test_spawn_trust.py` |
 | Collect | `of collect` | `tests/test_kernel_pack.py`; `verify-of collect-wave` |
 | Integrate | `of integrate` | `tests/test_kernel_regime.py` |
 | Contrast | `of contrast` | `tests/test_kernel_spec.py` |

@@ -3840,6 +3840,8 @@ class SpawnRecord:
     ENDED_WITHOUT_RESIDUAL = "done_without_residual"
     # Exit 0, a residual file is on disk, and it fails the gate (#361).
     RESIDUAL_INVALID = "residual_invalid"
+    # Documented quota / rate-limit stop, no schema-valid residual.
+    QUOTA_EXHAUSTED = "quota_exhausted"
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path:
@@ -3967,12 +3969,32 @@ class SpawnRecord:
         returncode: int | None,
         residual_valid: bool,
         residual_present: bool = False,
+        *,
+        adapter: str | None = None,
+        output: str | None = None,
+        timed_out: bool = False,
     ) -> tuple[str, bool]:
         """Harness exit 0 without a valid residual is not a healthy ok flight.
 
         A present file that fails the gate is ``residual_invalid`` (next
         REPAIR), not ``done_without_residual`` (nothing landed).
+
+        The one quota door: a failed run (nonzero exit or packet-budget
+        timeout) with a documented stop phrase and no schema-valid residual
+        is ``quota_exhausted`` instead of ``nonzero_exit`` or ``timeout``.
+        Exit 0 stays the residual outcome even if the transcript quotes a
+        limit. A valid residual stays the exit it already was. Callers do
+        not re-read the log.
         """
+        failed = timed_out or (returncode is not None and returncode != 0)
+        if (
+            failed
+            and not residual_valid
+            and SpawnRecord._quota_hit(adapter, output)
+        ):
+            return SpawnRecord.QUOTA_EXHAUSTED, False
+        if timed_out:
+            return "timeout", False
         if returncode == 0 and residual_valid:
             return SpawnRecord.OK, True
         if returncode == 0 and residual_present:
@@ -3980,6 +4002,12 @@ class SpawnRecord:
         if returncode == 0:
             return SpawnRecord.ENDED_WITHOUT_RESIDUAL, False
         return "nonzero_exit", False
+
+    @staticmethod
+    def _quota_hit(adapter: str | None, output: str | None) -> bool:
+        from of_adapters import QuotaSignal
+
+        return QuotaSignal.hit(adapter, output)
 
     @staticmethod
     def flying(root: Path, packet: dict[str, Any]) -> bool:
@@ -4346,6 +4374,27 @@ class LiveQuietStuck:
         return [LiveQuietStuck.LABEL, LiveQuietStuck.DETAIL]
 
 
+class QuotaExhausted:
+    """Settled ``quota_exhausted``. HOLD, same packet, no automatic retry.
+
+    Read-path guidance. Does not re-read the harness log and does not stamp
+    outcome. The stamp is ``SpawnRecord.outcome_for``. Not a supervisor.
+    Machine next stays HOLD (empty target argv; do not invent SPAWN).
+    """
+
+    ACTION = "hold"
+    LABEL = "HOLD"
+    DETAIL = (
+        "quota or rate limit stopped the child; same packet stays packed; "
+        "leader relaunches later with of spawn --packet or switches harness "
+        "with of patch --harness; no automatic retry"
+    )
+
+    @staticmethod
+    def next_lines() -> list[str]:
+        return [QuotaExhausted.LABEL, QuotaExhausted.DETAIL]
+
+
 class ResidualClass:
     """valid | invalid(reason) | missing, by the collect gate. Read-only.
 
@@ -4479,6 +4528,7 @@ class ChildState:
     EXPIRED = "lease_expired"
     DEAD = "dead_started_only"
     ENDED = "ended_without_residual"
+    QUOTA = SpawnRecord.QUOTA_EXHAUSTED
     UNCLAIMED = "scratch_unclaimed"
     PACKED = "packed"
     SETTLED_OK = frozenset({LANDED, ORPHAN})
@@ -4561,6 +4611,11 @@ class ChildState:
             state = ChildState.RUNNING  # it will rewrite the prior residual
         elif residual == ResidualClass.VALID:
             state = ChildState.ORPHAN if spawn == "started" else ChildState.LANDED
+        elif (
+            isinstance(meta, dict)
+            and str(meta.get("outcome") or "") == SpawnRecord.QUOTA_EXHAUSTED
+        ):
+            state = ChildState.QUOTA
         elif residual == ResidualClass.INVALID:
             state = ChildState.INVALID
         elif spawn == "started":

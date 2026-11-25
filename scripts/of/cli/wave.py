@@ -1707,6 +1707,43 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if residual_abs.is_file():
             # residual_present=True below requires a pin (collect fails closed).
             ResidualPin.pin(wdir, str(child_id), residual_abs, by="spawn")
+        captured = (
+            f"{exc.output or getattr(exc, 'stdout', None) or ''}\n{exc.stderr or ''}"
+        )
+        stopped, _ok = SpawnRecord.outcome_for(
+            getattr(exc, "returncode", None),
+            SpawnRecord.residual_valid(root, packet, residual_abs),
+            residual_present=residual_abs.exists(),
+            adapter=adapter,
+            output=captured,
+            timed_out=True,
+        )
+        if stopped == SpawnRecord.QUOTA_EXHAUSTED:
+            finalize(
+                stopped,
+                ok=False,
+                exit=getattr(exc, "returncode", None),
+                log=str(log_path),
+                residual_present=residual_abs.exists(),
+                timeout_s=timeout_s,
+            )
+            settle_session()
+            emit_event(
+                "spawn",
+                adapter=adapter,
+                child_id=child_id,
+                exit=getattr(exc, "returncode", None),
+                outcome=stopped,
+                ok=False,
+                timeout_s=timeout_s,
+                **OperatorAction.event_fields(operator_actions),
+                **WriteFloor.event_fields(adapter, profile),
+            )
+            print(
+                f"exit={getattr(exc, 'returncode', None)} "
+                f"outcome={stopped} log={log_path}"
+            )
+            return
         fail(
             "timeout",
             BudgetSeconds.timeout_fail_message(child_id, int(timeout_s), log_path),
@@ -1784,6 +1821,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         proc.returncode,
         SpawnRecord.residual_valid(root, packet, residual_abs),
         residual_present=residual_abs.exists(),
+        adapter=adapter,
+        output=f"{proc.stdout or ''}\n{proc.stderr or ''}",
     )
     finalize(
         outcome,

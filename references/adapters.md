@@ -28,6 +28,8 @@ and spawn metadata to
 Spawn metadata is finalized on **every** outcome — `ok`, `nonzero_exit`,
 `done_without_residual` (exit 0, no residual file), `residual_invalid` (exit
 0, a residual file that fails the gate; next is REPAIR),
+`quota_exhausted` (a documented quota or rate-limit stop and no schema-valid
+residual; next is HOLD on that same packet; no automatic retry),
 `timeout` (the child's whole process group is killed, so no grandchild can
 write a residual afterwards), `missing_binary`, `error`, `interrupted`,
 `dry_run` — with `outcome`, `ok`, `ended_at`, the
@@ -129,6 +131,27 @@ This is argv translation like `OF_TRUST`, not a silent router and not
 a token budget. The living intelligence×cost sheet is
 [docs/model-catalog.md](../docs/model-catalog.md) (`ModelCatalog`).
 Class: `AdapterHints` in `scripts/of_adapters.py`.
+
+## Quota stop (`quota_exhausted`)
+
+`SpawnRecord.outcome_for` is the only classifier. On a nonzero exit or a
+packet-budget timeout, a documented stop phrase and no schema-valid residual
+stamps `quota_exhausted` instead of `nonzero_exit` or `timeout`. Exit 0
+stays the residual outcome. `of status` prints `outcome=quota_exhausted`.
+`next` is HOLD with an empty target argv. The packet file stays. The leader
+relaunches later (`of spawn --packet`) or switches harness
+(`of patch --harness`). Nothing retries.
+
+Cited stop text (`QuotaSignal`): Claude Code usage-limit and 429 messages
+([error reference](https://code.claude.com/docs/en/errors),
+[headless](https://code.claude.com/docs/en/headless)); Antigravity prepaid
+balance and AI-credits sentences
+([headless](https://antigravity.google/docs/cli/headless),
+[changelog](https://github.com/google-antigravity/antigravity-cli/blob/main/CHANGELOG.md)).
+Codex, Cursor, Grok, OpenCode, Orca, Qwen, and generic have no documented
+CLI stop string and keep the old outcome. A live QUIET child is not
+finalized and is not killed; the same door runs when that child exits or
+the packet budget times it out.
 
 ## Session / balance (`AdapterBalance`)
 
