@@ -394,6 +394,114 @@ class ScopeWriteBlindSpots(unittest.TestCase):
                           "src/.DS_Store=x,htmlcov/index.html=x")
         self.assertIn("ok=1", field.ok("collect").stdout)
 
+    def test_untracked_heavy_dir_is_still_a_product_write(self) -> None:
+        # HEAVY names that are tool caches stay watched when git does not
+        # ignore them. Only OS_JUNK is skipped in every status.
+        field = Field(self)
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),build/out.txt=payload")
+        self.assertIn("build/out.txt", self.collect_line(field))
+
+
+class ScopeWriteOsJunk(unittest.TestCase):
+    """#413: Finder metadata is not a product write, and REPAIR drops its blob."""
+
+    def test_untracked_ds_store_modified_during_the_run_does_not_invalidate(self) -> None:
+        field = Field(self)
+        (field.tmp / ".DS_Store").write_bytes(b"finder-before")
+        plans = field.tmp / "docs" / "plans"
+        plans.mkdir(parents=True)
+        (plans / ".DS_Store").write_bytes(b"finder-before")
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn(
+            "i1",
+            "src/app.py=print(2),.DS_Store=finder-after,docs/plans/.DS_Store=finder-after",
+        )
+        collected = field.ok("collect")
+        self.assertIn("ok=1", collected.stdout)
+        self.assertNotIn("rule=ScopeWrite", collected.stdout)
+        scope = json.loads((field.tmp / WAVE / "scope/i1.json").read_text(encoding="utf-8"))
+        dirty = scope["before"]["dirty"]
+        self.assertNotIn(".DS_Store", dirty)
+        self.assertNotIn("docs/plans/.DS_Store", dirty)
+        self.assertNotIn(".DS_Store", scope.get("changed") or [])
+
+    def test_tracked_ds_store_edit_is_not_a_write(self) -> None:
+        field = Field(self)
+        (field.tmp / ".DS_Store").write_bytes(b"committed\n")
+        field.git("add", "-A")
+        field.git("commit", "-q", "-m", "finder")
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2),.DS_Store=finder-edit")
+        collected = field.ok("collect")
+        self.assertIn("ok=1", collected.stdout)
+        self.assertNotIn("rule=ScopeWrite", collected.stdout)
+
+    def test_repair_clears_a_stale_ds_store_prior(self) -> None:
+        field = Field(self)
+        (field.tmp / ".DS_Store").write_bytes(b"finder-now")
+        plans = field.tmp / "docs" / "plans"
+        plans.mkdir(parents=True)
+        (plans / ".DS_Store").write_bytes(b"finder-now")
+        field.pack("i1", "implementer", "src/app.py")
+        field.spawn("i1", "src/app.py=print(2)")
+        scope_path = field.tmp / WAVE / "scope/i1.json"
+        doc = json.loads(scope_path.read_text(encoding="utf-8"))
+        stale = "0" * 40
+        doc["before"]["dirty"][".DS_Store"] = stale
+        doc["before"]["dirty"]["docs/plans/.DS_Store"] = stale
+        doc["changed"] = [".DS_Store", "docs/plans/.DS_Store"]
+        scope_path.write_text(json.dumps(doc), encoding="utf-8")
+        self.assertEqual(field.validate("i1").returncode, 2)
+        self.assertIn(".DS_Store", field.validate("i1").stdout)
+        field.spawn("i1", "src/app.py=print(3)")
+        self.assertEqual(field.validate("i1").returncode, 0)
+        after = json.loads(scope_path.read_text(encoding="utf-8"))
+        dirty = after["before"]["dirty"]
+        self.assertNotIn(".DS_Store", dirty)
+        self.assertNotIn("docs/plans/.DS_Store", dirty)
+        self.assertNotIn(stale, json.dumps(dirty))
+        changed = after.get("changed") or []
+        self.assertFalse(any(part == ".DS_Store" or part.endswith("/.DS_Store") for part in changed))
+        plan = field.plan()
+        self.assertNotEqual(plan["action"], "repair")
+
+
+class VerifierPairHint(unittest.TestCase):
+    """#413: pack --role verifier names --verify-cmd when a ContractSurface pair is active."""
+
+    def test_verifier_hint_prints_for_a_pair_only(self) -> None:
+        field = Field(self)
+        quiet = field.ok(
+            "pack", "--slice", "look", "--role", "verifier", "--child-id", "v0", "--force",
+        )
+        self.assertNotIn("OutsideVerifier.accepted", quiet.stderr)
+        field.ok("unpack", "--child-id", "v0")
+        field.ok(
+            "spec", "--add", "IDEMP-001", "--text",
+            "the charge call is idempotent when the same key is repeated",
+        )
+        hinted = field.ok(
+            "pack", "--slice", "review the pair", "--role", "verifier",
+            "--child-id", "v1", "--owns-requirement", "IDEMP-001", "--force",
+        )
+        note = hinted.stderr
+        self.assertIn("--verify-cmd", note)
+        self.assertIn("of collect", note)
+        self.assertIn("kernel-attested", note)
+        self.assertIn("evidence_receipt:", note)
+        self.assertIn("OutsideVerifier.accepted", note)
+        bound = field.ok(
+            "pack", "--slice", "review with a command", "--role", "verifier",
+            "--child-id", "v2", "--verify-cmd", "python3 -c pass", "--force",
+        )
+        self.assertNotIn("OutsideVerifier.accepted", bound.stderr)
+        impl = field.ok(
+            "pack", "--slice", "build", "--role", "implementer",
+            "--child-id", "i1", "--owns-path", "src/app.py", "--force",
+        )
+        self.assertNotIn("OutsideVerifier.accepted", impl.stderr)
+
 
 class ScopeWriteBaseline(unittest.TestCase):
     """Snapshot internals the CLI cannot reach: caps, old baselines, a

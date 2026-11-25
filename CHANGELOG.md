@@ -14,6 +14,7 @@ agy spawn emits one effort. The catalog's agy rows are the Gemini 4 CLI identifi
 
 - **One effort channel:** `low|medium|high|xhigh|max`. A model id whose last segment is one of those owns effort, and spawn emits `--model` with no `--effort`. A bare id still emits `--effort` (hint, or `medium`). A hint that disagrees with the suffix dies before pack and before spawn. Pack does not stamp `medium` onto a slug that already names an effort.
 - **Catalog:** agy rows are `gemini-4-neon`, `gemini-4-carbon`, `gemini-4-argon`, `gemini-4-hydrogen` from the Antigravity docs (2026-11-25). Public $/MTok on those pages is unknown. The `gemini-2.5-flash`, `gemini-3.8-flash`, and `gemini-3.1-pro` rows are gone.
+- **ScopeWrite OS junk (#413):** `.DS_Store` is OS metadata, classified once (`ScopeWrite.OS_JUNK`), whether git reports it ignored or untracked. A Finder rewrite during a child run is not a product write. REPAIR drops that path's prior blob, so a re-spawn does not keep a SHA the work tree no longer has. Other `HEAVY` names stay ignored-only; they are tool caches, not OS metadata. `of pack --role verifier` notes `--verify-cmd` when an active requirement is a ContractSurface pair and the packet has no verify command: `of collect` attaches the kernel-attested `evidence_receipt:` that `OutsideVerifier.accepted` requires. Proof: `tests/test_reaudit_gaps.py` (`ScopeWriteOsJunk`, `VerifierPairHint`).
 - **Proof:** `AgyEffortArgv`; `ModelCatalogHonesty`.
 
 ## 0.9.10

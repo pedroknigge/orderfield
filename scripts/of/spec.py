@@ -1649,6 +1649,30 @@ class OutsideVerifier:
         "public-surface field missing evaluator_consent; "
         "pack --role adversary and --role verifier before next-wave"
     )
+    VERIFY_CMD_HINT = (
+        "ContractSurface PAIR: pass --verify-cmd so of collect attaches the "
+        "kernel-attested evidence_receipt: OutsideVerifier.accepted requires"
+    )
+
+    @staticmethod
+    def verifier_verify_cmd_hint(reqs: dict[str, Any]) -> str | None:
+        """Note for ``of pack --role verifier`` when an active pair is in play.
+
+        ``--verify-cmd`` is what lets collect attach the receipt
+        ``accepted`` reads. None when no active ContractSurface pair.
+        """
+        items = reqs.get("requirements") if isinstance(reqs, dict) else None
+        if not isinstance(items, list):
+            return None
+        for item in items:
+            if (
+                isinstance(item, dict)
+                and is_active_requirement(item)
+                and ContractSurface.public(item)
+                and requirement_is_pair(item)
+            ):
+                return OutsideVerifier.VERIFY_CMD_HINT
+        return None
 
     @staticmethod
     def _children(root: Path) -> list[dict[str, Any]]:
