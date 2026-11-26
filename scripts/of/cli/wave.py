@@ -82,6 +82,7 @@ from of.field import (
 )
 
 from of.spec import (
+    OutsideVerifier,
     is_active_requirement,
     load_requirements,
     mark_requirements_owned,
@@ -1173,6 +1174,14 @@ def cmd_pack(args: argparse.Namespace) -> None:
     )
     if packet.get("adapter_hints"):
         print(f"adapter_hints={AdapterHints.format_line(packet['adapter_hints'])}")
+    if str(args.role) == "verifier" and not str(packet.get("verify_cmd") or "").strip():
+        pair_hint = OutsideVerifier.verifier_verify_cmd_hint(reqs)
+        if pair_hint:
+            emit_wave_warning(
+                "verifier_verify_cmd",
+                pair_hint,
+                plain=f"of: note — {pair_hint}",
+            )
     band_note = AgentBand.pack_note(
         order, int(state.get("children_spawned") or 0)
     )

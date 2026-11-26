@@ -2012,7 +2012,8 @@ class ScopeWrite:
     """A child's world is its packet: product writes outside it are INVALID.
 
     Baseline at pack (refreshed by the first spawn / handoff): HEAD plus a
-    git blob id per dirty, untracked or ignored path (heavy dirs skipped),
+    git blob id per dirty, untracked or ignored path (heavy dirs skipped;
+    OS metadata in ``OS_JUNK`` is skipped in every git status),
     a fingerprint of the repository's own git config (stored as
     ``.git/config``) and ``.git/hooks/**``; ``.orderfield/`` (scratch,
     residual, control plane) is excluded. Every config key counts but
@@ -2024,7 +2025,8 @@ class ScopeWrite:
     set by every reader (collect, resume, validate --packet): nothing
     stale is stored. Each later spawn / handoff is a new attempt: a fresh
     baseline, except the prior attempt's changed paths keep their old
-    baseline, so a re-run clears only what was reverted. A git tree that
+    baseline, so a re-run clears only what was reverted. OS junk is not a
+    prior: rebase does not carry its blob. A git tree that
     stops answering fails closed. A changed path must sit under the child's
     ``owns_paths``. A path a sibling packet owns stays the sibling's when
     that sibling ran in this window, evidence text included; an unowned
@@ -2050,14 +2052,16 @@ class ScopeWrite:
     UNJUDGED = frozenset({UNREADABLE, BASELINE_UNREADABLE})
     CHUNK = 256
     # Ignored files are watched outside these (rebuilt / tool caches).
+    # OS metadata is OS_JUNK, not this set. Reviewed: only .DS_Store.
     HEAVY = frozenset(
         {
             ".orderfield", "node_modules", ".venv", "venv", "dist", "build",
             "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
             ".tox", ".nox", ".cache", ".coverage", "target", ".gradle", ".next",
-            "htmlcov", "coverage", ".turbo", ".parcel-cache", ".svelte-kit", ".DS_Store",
+            "htmlcov", "coverage", ".turbo", ".parcel-cache", ".svelte-kit",
         }
     )
+    OS_JUNK = frozenset({".DS_Store"})
     MAX_BYTES = 5 * 1024 * 1024
     MAX_IGNORED = 5000
     # Config keys that run nothing and that tools and sibling worktrees
@@ -2328,6 +2332,8 @@ class ScopeWrite:
             if not full or not full.startswith(prefix):
                 continue
             rel = full[len(prefix) :]
+            if ScopeWrite._os_junk(rel):
+                continue
             dirty[rel] = ScopeWrite._blob_id(root / rel)
         capped = ScopeWrite._unseen(root, dirty)
         ids = ScopeWrite._config_ids(root)  # None: git cannot answer
@@ -2350,6 +2356,18 @@ class ScopeWrite:
         return any(x in ScopeWrite.HEAVY or x.endswith(".egg-info") for x in parts)
 
     @staticmethod
+    def _os_junk(rel: str) -> bool:
+        """True when any path component is OS metadata (``OS_JUNK``).
+
+        One classifier for the status snapshot, the ignored walk,
+        ``changed``, and a REPAIR prior. Git's ``??`` / ``!!`` is not
+        the decision.
+        """
+        return any(
+            part in ScopeWrite.OS_JUNK for part in PurePosixPath(rel.rstrip("/")).parts
+        )
+
+    @staticmethod
     def _unseen(root: Path, dirty: dict[str, str]) -> int:
         """Add what ``git status`` hides: ignored files outside HEAVY dirs
         and ``.git/hooks/**``. Returns how many were capped."""
@@ -2360,19 +2378,23 @@ class ScopeWrite:
         listed = [os.fsdecode(x) for x in (raw or b"").split(b"\0") if x]
         files: list[tuple[str, Path]] = []
         for rel in listed:
-            if ScopeWrite._heavy(rel.rstrip("/").split("/")):
+            if ScopeWrite._heavy(rel.rstrip("/").split("/")) or ScopeWrite._os_junk(rel):
                 continue
             if not rel.endswith("/"):
                 files.append((rel, root / rel))
             elif rel != "./" and not any(o != rel and o.startswith(rel) for o in listed):
                 # A wholly ignored dir: git collapsed it, walk it here.
                 for dirpath, dirnames, names in os.walk(root / rel):
-                    dirnames[:] = sorted(n for n in dirnames if not ScopeWrite._heavy([n]))
+                    dirnames[:] = sorted(
+                        n
+                        for n in dirnames
+                        if not ScopeWrite._heavy([n]) and not ScopeWrite._os_junk(n)
+                    )
                     base = Path(dirpath)
                     files.extend(
                         ((base / n).relative_to(root).as_posix(), base / n)
                         for n in sorted(names)
-                        if not ScopeWrite._heavy([n])
+                        if not ScopeWrite._heavy([n]) and not ScopeWrite._os_junk(n)
                     )
         capped = max(0, len(files) - ScopeWrite.MAX_IGNORED)
         for key, path in files[: ScopeWrite.MAX_IGNORED]:
@@ -2477,6 +2499,7 @@ class ScopeWrite:
                 ScopeWrite.EXCLUDE,
             )
             cand |= {os.fsdecode(x) for x in (raw or b"").split(b"\0") if x}
+        cand = {p for p in cand if not ScopeWrite._os_junk(p)}
         tracked = {p for p in cand if not p.startswith(".git/")}
         b_tree = ScopeWrite._tree_ids(root, b_head, sorted(tracked - set(b_dirty)))
         a_tree = ScopeWrite._tree_ids(root, a_head, sorted(tracked - set(a_dirty)))
@@ -2494,8 +2517,10 @@ class ScopeWrite:
         The prior attempt's paths (``changed`` / ``seen``, else diffed now
         when it ran unjudged: a handoff, a killed host) keep the old
         baseline values: a re-run clears a violation only once the leader
-        reverted it. The window start and OwnedWrite digest carry. An
-        unreadable re-spawn keeps the prior baseline and attempt record and
+        reverted it. An OS-junk path is dropped here: its prior blob is not
+        reproducible once Finder rewrites the file. The window start and
+        OwnedWrite digest carry. An unreadable re-spawn keeps the prior
+        baseline and attempt record and
         only marks the doc ``unreadable``: the next readable rebase still
         carries the earlier violations, plus whatever the kept baseline
         diffs to now (the unreadable attempt's own writes).
@@ -2524,7 +2549,11 @@ class ScopeWrite:
             assert isinstance(doc, dict)
             for key in ("t0", OwnedWrite.DIGEST_KEY):
                 new[key] = doc.get(key)
-            prior = [p for p in prior if p not in ScopeWrite.UNJUDGED]
+            prior = [
+                p
+                for p in prior
+                if p not in ScopeWrite.UNJUDGED and not ScopeWrite._os_junk(p)
+            ]
             if snap is not None and prior:
                 was = old.get("dirty") if isinstance(old.get("dirty"), dict) else {}
                 cfg = ScopeWrite.CONFIG
@@ -2586,6 +2615,7 @@ class ScopeWrite:
             # An unjudged attempt on a kept baseline adds to the prior
             # attempt's record, never replaces it.
             changed = sorted(set(ScopeWrite._attempt(doc) or []) | set(changed))
+        changed = [p for p in changed if not ScopeWrite._os_junk(p)]
         doc["changed"] = changed
         doc[ScopeWrite.OPERATOR_KEY] = ScopeWrite._operator_changed(doc["before"], now)
         doc["t1"] = time.time()
