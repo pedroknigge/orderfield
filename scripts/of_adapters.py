@@ -1639,6 +1639,61 @@ class AdapterHints:
         ]
 
 
+class QuotaSignal:
+    """Documented harness stop text. Read only from ``SpawnRecord.outcome_for``.
+
+    A phrase counts when that vendor's docs say the CLI shows it because a
+    quota or a rate limit stopped the turn. Adapters with no such citation
+    are absent and keep ``nonzero_exit`` / ``timeout`` / QUIET.
+
+    Claude Code shows these after its own retries. Headless prints the
+    failure on stdout and exits non-zero:
+    https://code.claude.com/docs/en/errors
+    https://code.claude.com/docs/en/headless
+
+    Antigravity print mode writes the failure to stderr and, for json
+    output, to ``status`` / ``error``. The changelog names the stop sentences:
+    https://antigravity.google/docs/cli/headless
+    https://github.com/google-antigravity/antigravity-cli/blob/main/CHANGELOG.md
+
+    Not encoded (no documented CLI stop string): codex, cursor, grok,
+    opencode, orca, qwen, generic.
+    """
+
+    PHRASES: dict[str, tuple[str, ...]] = {
+        "claude": (
+            "You've hit your session limit",
+            "You've hit your weekly limit",
+            "You've hit your Opus limit",
+            "You've hit your Sonnet limit",
+            "You've hit your monthly spend limit",
+            "You've hit your individual spend limit",
+            "You've hit your org's monthly spend limit",
+            "You've hit your channel's monthly spend limit",
+            "You've hit your team's shared budget",
+            "You've hit your individual usage limit",
+            "spend limit reached",
+            "This request exceeds your group's budget",
+            "Request rejected (429)",
+            "Server is temporarily limiting requests",
+            "Credit balance is too low",
+            "Credit balance too low",
+            "Usage credits ran out before the response was finished.",
+        ),
+        "agy": (
+            "Your organization's prepaid balance is insufficient",
+            "Your AI credits balance is too low to continue.",
+        ),
+    }
+
+    @staticmethod
+    def hit(adapter: str | None, text: str | None) -> bool:
+        phrases = QuotaSignal.PHRASES.get(str(adapter or "").strip())
+        if not phrases or not text:
+            return False
+        return any(phrase in text for phrase in phrases)
+
+
 class StreamJson:
     """Harness JSON / NDJSON streams → milestone + residual. Not a supervisor.
 

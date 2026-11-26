@@ -51,6 +51,7 @@ from of.field import (
     CollectReady,
     DeadStartedOnly,
     LiveQuietStuck,
+    QuotaExhausted,
     SpawnRecord,
     PYTHON_FLOOR,
     _read_json_object,
@@ -1379,14 +1380,20 @@ class InFlightSignal:
             "progress": PulseProgress.lines(root, pkt),
         }
         now = time.time()
+        meta = SpawnRecord.load(root, pkt)
         over = SpawnRecord.over_budget(
-            SpawnRecord.load(root, pkt),
+            meta,
             pkt,
             now=now,
             age_s=child_pulse_age(root, pkt, now),
         )
         if over is not None:
             row["over_budget"] = over["kind"]
+        if (
+            isinstance(meta, dict)
+            and str(meta.get("outcome") or "") == SpawnRecord.QUOTA_EXHAUSTED
+        ):
+            row["outcome"] = SpawnRecord.QUOTA_EXHAUSTED
         return row
 
     @staticmethod
@@ -1398,6 +1405,9 @@ class InFlightSignal:
         kind = str(row.get("over_budget") or "").strip()
         if kind:
             extra = f"  over_budget={kind}"
+        outcome = str(row.get("outcome") or "").strip()
+        if outcome:
+            extra += f"  outcome={outcome}"
         return f"  {cid}  pulse={pulse}  residual=MISSING  parked={parked}{extra}"
 
     @staticmethod
@@ -1826,6 +1836,11 @@ class StatusReport:
                 **(
                     {"over_budget": str(row.get("over_budget"))}
                     if str(row.get("over_budget") or "").strip()
+                    else {}
+                ),
+                **(
+                    {"outcome": str(row.get("outcome"))}
+                    if str(row.get("outcome") or "").strip()
                     else {}
                 ),
             }
@@ -2520,6 +2535,12 @@ class ProtocolCompiler:
         state: dict[str, Any] | None = None,
     ) -> str:
         base = ProtocolCompiler.HINTS.get(action, f"execute {action} ({reason_code})")
+        if action == "hold" and reason_code == ChildState.QUOTA:
+            return (
+                "quota or rate limit stopped the child; packet unchanged; "
+                "do not relaunch until the leader runs of spawn --packet "
+                "or switches harness"
+            )
         if action == "hold" and reason_code == ChildState.DEAD:
             return (
                 "started-only child pid died without residual: re-spawn via targets[*].argv "
@@ -2575,6 +2596,8 @@ class NextPlan:
     def child_argv(row: dict[str, Any], fa: list[str]) -> list[str]:
         state = row["state"]
         pkt = row["packet"]
+        if state == ChildState.QUOTA:
+            return []
         if state in (ChildState.PACKED, ChildState.ENDED):
             return ["of", *fa, "spawn", "--packet", pkt]
         if state == ChildState.DEAD:
@@ -2766,6 +2789,9 @@ class NextPlan:
                         reason = code
                         lines = ["HOLD", f"{NextPlan.HOLD_GENERIC}; {why}"]
                         break
+                if lines is None and ChildState.QUOTA in states:
+                    reason = ChildState.QUOTA
+                    lines = QuotaExhausted.next_lines()
         if lines is None:
             lines = resume_next_lines(action, root=root, flying=flying, state=state)
         if action == PacketRevStale.ACTION:
