@@ -140,24 +140,70 @@ class ReviewWitnessVocabulary(unittest.TestCase):
     def test_open_is_act_and_consider(self) -> None:
         self.assertEqual(of.ReviewWitness.state("act"), "open")
         self.assertEqual(of.ReviewWitness.state("consider"), "open")
+        self.assertEqual(of.ReviewWitness.state("open"), "open")
         self.assertEqual(of.ReviewWitness.state("noted"), "noted")
-        self.assertEqual(of.ReviewWitness.state("dismissed"), "dismissed")
+        self.assertEqual(of.ReviewWitness.state("dismissed"), "open")
         self.assertEqual(
-            of.ReviewWitness.absence(
-                {"residual": {"evidence": "No open findings in app.py."}}
-            ),
-            "no open findings",
+            of.ReviewWitness.state("dismissed", "dismissed: style nit on app.py"),
+            "dismissed",
         )
         self.assertEqual(
-            of.ReviewWitness.absence(
-                {"residual": {"evidence": "nothing left to change in app.py"}}
-            ),
-            "nothing left",
+            of.ReviewWitness.state("dismissed", "dismissed: style nit"),
+            "open",
         )
-        self.assertIsNone(
-            of.ReviewWitness.absence(
-                {"residual": {"evidence": "dismissed: style nit on app.py"}}
+        self.assertEqual(
+            of.ReviewWitness.state("dismissed", "dismissed: test_ok passed"),
+            "dismissed",
+        )
+        self.assertEqual(
+            of.ReviewWitness.state("dismissed", "dismissed at " + ("ab" * 20)),
+            "dismissed",
+        )
+        stamped = (
+            "dismissed: style nit\n"
+            "artifact_sha: " + ("ab" * 32) + " (kernel)\n"
+            "rollback: git checkout -- .orderfield/work/scratch/adv1/result.md"
+        )
+        self.assertEqual(of.ReviewWitness.state("dismissed", stamped), "open")
+        lgtm = {
+            "status": "done",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "LGTM",
+                "proposed_patch": None,
+            },
+        }
+        located = {
+            "status": "done",
+            "residual": {
+                "wants_to_change": [],
+                "evidence": "the cache key in app.py looks wrong",
+                "proposed_patch": None,
+            },
+        }
+        self.assertEqual(of.ReviewAttackers.bucket(lgtm), "open")
+        self.assertEqual(of.ReviewAttackers.bucket(located), "open")
+        self.assertTrue(of.ReviewWitness.bare(lgtm, "open"))
+        self.assertFalse(of.ReviewWitness.bare(located, "open"))
+        self.assertFalse(
+            of.ReviewWitness.bare(
+                {"status": "blocked", "residual": lgtm["residual"]},
+                "open",
             )
+        )
+        self.assertEqual(of.ReviewWitness.UNDECIDED_EXIT, 3)
+        self.assertEqual(of.ReviewWitness.undecided({}), [])
+        self.assertEqual(of.ReviewWitness.undecided({"witness": []}), [])
+        self.assertEqual(
+            of.ReviewWitness.undecided(
+                {
+                    "witness": [
+                        {"child_id": "ver1", "stale": True, "reason": "no witness"},
+                        {"child_id": "adv1", "stale": False},
+                    ]
+                }
+            ),
+            ["ver1"],
         )
         empty_dir = Path(tempfile.mkdtemp(prefix="of-rw-empty-"))
         self.addCleanup(shutil.rmtree, empty_dir, True)
@@ -302,27 +348,50 @@ class ReviewWitnessClose(unittest.TestCase):
         ver = next(row for row in restored["witness"] if row["child_id"] == "ver1")
         self.assertFalse(ver["stale"], ver)
 
+    def test_stale_or_missing_witness_exits_undecided(self) -> None:
+        self._stamp()
+        self.ok("spec", "--verified-contract", RID, "--cite", self.receipt)
+        self.app.write_text("changed\n", encoding="utf-8")
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(listed.returncode, of.ReviewWitness.UNDECIDED_EXIT)
+        self.assertIn("stale ver1", listed.stdout)
+        self.assertIn("open ver1:act", listed.stdout)
+        self.assertIn("review-undecided", listed.stderr)
+        self.assertIn("ver1", listed.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        refused = run_of(self.tmp, "close")
+        self.assertEqual(refused.returncode, of.ReviewWitness.UNDECIDED_EXIT)
+        self.assertNotEqual(refused.returncode, 2)
+        self.assertIn("review-undecided", refused.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+        self.app.write_bytes(self.reviewed)
+        witness_path(self.tmp, "ver1").unlink()
+        missing = run_of(self.tmp, "close")
+        self.assertEqual(missing.returncode, of.ReviewWitness.UNDECIDED_EXIT)
+        self.assertIn("ver1", missing.stderr)
+        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
+
     def test_close_surfaces_open_and_records_the_claim(self) -> None:
         self._stamp()
-        self.app.write_text("changed\n", encoding="utf-8")
         self.ok("spec", "--verified-contract", RID, "--cite", self.receipt)
         listed = self.ok("close", "--checklist")
         self.assertIn("open ver1:act", listed.stdout)
-        self.assertIn("claim ver1 (not proof)", listed.stdout)
-        self.assertIn("stale ver1", listed.stdout)
+        self.assertIn("claim adv1 (not proof)", listed.stdout)
+        self.assertNotIn("claim ver1", listed.stdout)
+        self.assertNotIn("stale ver1", listed.stdout)
         self.assertIn("dismissed adv1", listed.stdout)
         machine = json.loads(
             [ln for ln in listed.stdout.splitlines() if ln.strip()][-1]
         )
         self.assertTrue(machine["ok"], machine)
         self.assertEqual(machine["review_open"], ["ver1:act"])
-        self.assertEqual(machine["review_claims"], ["ver1"])
-        self.assertIn("ver1", machine["review_stale"])
+        self.assertEqual(machine["review_claims"], ["adv1"])
+        self.assertEqual(machine["review_stale"], [])
         self.assertNotIn("adv1", machine["review_open"])
         closed = self.ok("close")
         self.assertIn("CLOSED", closed.stdout)
         self.assertIn("open ver1:act", closed.stdout)
-        self.assertIn("claim ver1 (not proof)", closed.stdout)
+        self.assertIn("claim adv1 (not proof)", closed.stdout)
         doc = load_json(self.tmp / ".orderfield" / "CLOSE.json")
         review = doc["review"]
         self.assertNotIn("proven", review)
@@ -337,8 +406,8 @@ class ReviewWitnessClose(unittest.TestCase):
             review["claims"],
             [
                 {
-                    "author": "ver1",
-                    "role": "verifier",
+                    "author": "adv1",
+                    "role": "adversary",
                     "wave": 1,
                     "claim": "no open findings",
                 }
@@ -347,8 +416,68 @@ class ReviewWitnessClose(unittest.TestCase):
         ver = next(row for row in review["witness"] if row["child_id"] == "ver1")
         self.assertEqual(ver["head"], self.head)
         self.assertEqual(ver["tree"], self.tree)
-        self.assertTrue(ver["stale"])
-        self.assertEqual(ver["stale_paths"], ["app.py"])
+        self.assertFalse(ver["stale"])
+        self.assertEqual(of.CloseProof.verify(self.tmp), [])
+        proof = self.tmp / ".orderfield" / "CLOSE.json"
+        stored = load_json(proof)
+        del stored["review"]
+        proof.write_text(json.dumps(stored) + "\n", encoding="utf-8")
+        self.assertEqual(of.CloseProof.verify(self.tmp), [])
+
+    def test_unrecognized_and_uncited_dismiss_surface_and_lgtm_claims(self) -> None:
+        write_bound_residual(self.tmp, "adv1", evidence="dismissed: style nit")
+        write_bound_residual(
+            self.tmp,
+            "ver1",
+            evidence="the cache key in app.py looks wrong",
+        )
+        self.ok(
+            "pack",
+            "--slice",
+            "fresh-context review of the wave residual",
+            "--role",
+            "adversary",
+            "--child-id",
+            "adv2",
+        )
+        write_bound_residual(self.tmp, "adv2", evidence="LGTM")
+        self._stamp()
+        self.ok("spec", "--verified-contract", RID, "--cite", self.receipt)
+        listed = self.ok("close", "--checklist")
+        self.assertIn("open ver1:open", listed.stdout)
+        self.assertIn("open adv1:dismissed", listed.stdout)
+        self.assertIn("claim adv2 (not proof)", listed.stdout)
+        self.assertNotIn("open adv2", listed.stdout)
+        machine = json.loads(
+            [ln for ln in listed.stdout.splitlines() if ln.strip()][-1]
+        )
+        self.assertCountEqual(machine["review_open"], ["ver1:open", "adv1:dismissed"])
+        self.assertEqual(machine["review_claims"], ["adv2"])
+        closed = self.ok("close")
+        self.assertIn("CLOSED", closed.stdout)
+        self.assertIn("open ver1:open", closed.stdout)
+        self.assertIn("open adv1:dismissed", closed.stdout)
+        self.assertIn("claim adv2 (not proof)", closed.stdout)
+        doc = load_json(self.tmp / ".orderfield" / "CLOSE.json")
+        review = doc["review"]
+        by_id = {row["child_id"]: row for row in review["findings"]}
+        self.assertEqual(by_id["ver1"]["bucket"], "open")
+        self.assertEqual(by_id["ver1"]["state"], "open")
+        self.assertEqual(by_id["adv1"]["bucket"], "dismissed")
+        self.assertEqual(by_id["adv1"]["state"], "open")
+        self.assertNotIn("adv2", by_id)
+        self.assertCountEqual(review["open"], ["adv1", "ver1"])
+        self.assertEqual(
+            review["claims"],
+            [
+                {
+                    "author": "adv2",
+                    "role": "adversary",
+                    "wave": 1,
+                    "claim": "no open findings",
+                }
+            ],
+        )
         self.assertEqual(of.CloseProof.verify(self.tmp), [])
 
     def test_unpack_drops_the_witness(self) -> None:

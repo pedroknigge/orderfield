@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1097,8 +1098,9 @@ class ReviewAttackers:
     CEILING = 3
     REVIEW = frozenset({"adversary", "verifier"})
     ACT = frozenset({"threshold", "escalate_up"})
-    BUCKETS = ("act", "consider", "noted", "dismissed")
+    BUCKETS = ("act", "consider", "noted", "dismissed", "open")
     TIER = {"adversary": "cheap", "verifier": "frontier"}
+    _NOTED = re.compile(r"\bnoted\b")
 
     @staticmethod
     def cap(band: str | None) -> int:
@@ -1206,25 +1208,44 @@ class ReviewAttackers:
         return True
 
     @staticmethod
+    def nested(residual: dict[str, Any] | None) -> dict[str, Any]:
+        body_in = residual if isinstance(residual, dict) else {}
+        nested = body_in.get("residual")
+        return nested if isinstance(nested, dict) else {}
+
+    @staticmethod
+    def evidence_text(residual: dict[str, Any] | None) -> str:
+        return str(ReviewAttackers.nested(residual).get("evidence") or "")
+
+    @staticmethod
+    def patch_notes(residual: dict[str, Any] | None) -> str:
+        patch = ReviewAttackers.nested(residual).get("proposed_patch")
+        if isinstance(patch, dict):
+            return str(patch.get("notes") or "").strip()
+        if isinstance(patch, str):
+            return patch.strip()
+        return ""
+
+    @staticmethod
     def bucket(residual: dict[str, Any] | None) -> str:
+        """``act`` / ``consider`` / ``noted`` / ``dismissed``, else ``open``.
+
+        Unrecognized evidence is ``open``. It is not ``noted``. The word
+        ``noted`` or ``dismissed`` is that bucket. Whether ``dismissed``
+        is terminal is ``ReviewWitness.state``.
+        """
         body_in = residual if isinstance(residual, dict) else {}
         status = str(body_in.get("status") or "")
         if status in ReviewAttackers.ACT:
             return "act"
-        nested = body_in.get("residual")
-        body = nested if isinstance(nested, dict) else {}
-        patch = body.get("proposed_patch")
-        notes = ""
-        if isinstance(patch, dict):
-            notes = str(patch.get("notes") or "").strip()
-        elif isinstance(patch, str):
-            notes = patch.strip()
-        if notes:
+        if ReviewAttackers.patch_notes(residual):
             return "consider"
-        evidence = str(body.get("evidence") or "")
-        if "dismissed" in evidence.casefold():
+        folded = ReviewAttackers.evidence_text(residual).casefold()
+        if "dismissed" in folded:
             return "dismissed"
-        return "noted"
+        if ReviewAttackers._NOTED.search(folded):
+            return "noted"
+        return "open"
 
     @staticmethod
     def escalates(
@@ -1242,11 +1263,54 @@ class ReviewAttackers:
 
 
 class ReviewWitness:
+    """Project review buckets onto ``CLOSE.json`` ``review``.
+
+    Callers read ``state == "open"`` and ``claims``. A cited dismissal
+    and an explicit ``noted`` are the only terminal states. Anything
+    else is open. A child with no open finding is a claim by its author.
+    """
+
     DIR = "review"
     V = 1
     NO_WITNESS = "no witness"
-    PHRASES = ("no open findings", "nothing left", "nothing remained")
-    OPEN = frozenset({"act", "consider"})
+    CLAIM = "no open findings"
+    UNDECIDED_EXIT = 3
+    _SHA = re.compile(
+        r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{64}|[0-9A-Fa-f]{40})(?![0-9A-Fa-f])"
+    )
+    _STAMP_LINE = re.compile(
+        r"(?i)^(?:artifact_sha\s*[:=]\s*[0-9a-f]{64}\b.*|rollback\s*:.*)$"
+    )
+    _TEST = re.compile(r"(?<![A-Za-z0-9_])test_[A-Za-z0-9_]+")
+    _TOKEN = re.compile(
+        r"[A-Za-z0-9_.+-]+(?:[/\\][A-Za-z0-9_.+-]+)+"
+        r"|[A-Za-z0-9_.+-]+\.[A-Za-z0-9]{1,8}"
+    )
+    _EXT = frozenset(
+        {
+            "py",
+            "json",
+            "md",
+            "txt",
+            "sh",
+            "toml",
+            "yml",
+            "yaml",
+            "ts",
+            "tsx",
+            "js",
+            "jsx",
+            "go",
+            "rs",
+            "ini",
+            "cfg",
+            "html",
+            "css",
+            "xml",
+            "csv",
+            "lock",
+        }
+    )
 
     @staticmethod
     def path(root: Path, packet: dict[str, Any]) -> Path:
@@ -1262,21 +1326,100 @@ class ReviewWitness:
             pass
 
     @staticmethod
-    def state(bucket: str) -> str:
-        if bucket in ReviewWitness.OPEN:
-            return "open"
-        return bucket
+    def child_text(evidence: str) -> str:
+        """Drop kernel ``artifact_sha`` / ``rollback`` lines. Those are not the child's cite."""
+        kept = [
+            line
+            for line in str(evidence or "").splitlines()
+            if not ReviewWitness._STAMP_LINE.match(line.strip())
+        ]
+        return "\n".join(kept)
 
     @staticmethod
-    def absence(residual: dict[str, Any] | None) -> str | None:
-        body = residual if isinstance(residual, dict) else {}
-        nested = body.get("residual")
-        rem = nested if isinstance(nested, dict) else {}
-        low = str(rem.get("evidence") or "").casefold()
-        for phrase in ReviewWitness.PHRASES:
-            if phrase in low:
-                return phrase
-        return None
+    def cited(evidence: str) -> bool:
+        """A path, a test id, or a 40/64 hex SHA. Free prose is not a cite."""
+        text = ReviewWitness.child_text(evidence)
+        if (
+            ReviewWitness._SHA.search(text)
+            or "::" in text
+            or ReviewWitness._TEST.search(text)
+        ):
+            return True
+        for token in ReviewWitness._TOKEN.findall(text):
+            if "/" in token or "\\" in token:
+                return True
+            ext = token.rsplit(".", 1)[-1].lower()
+            if ext in ReviewWitness._EXT:
+                return True
+        return False
+
+    @staticmethod
+    def state(bucket: str, evidence: str = "") -> str:
+        """Terminal only for ``noted`` and a ``dismissed`` that cites something.
+
+        Unrecognized buckets, ``act``, ``consider``, and an uncited
+        dismissal are ``open``.
+        """
+        if bucket == "noted":
+            return "noted"
+        if bucket == "dismissed" and ReviewWitness.cited(evidence):
+            return "dismissed"
+        return "open"
+
+    @staticmethod
+    def bare(residual: dict[str, Any] | None, bucket: str) -> bool:
+        """No finding: ``open`` only because nothing was classified or cited.
+
+        ``LGTM`` and ``no issues found`` land here. A path, test, SHA,
+        non-done status, or ``wants_to_change`` is a finding and stays open.
+        """
+        if bucket != "open":
+            return False
+        body_in = residual if isinstance(residual, dict) else {}
+        if str(body_in.get("status") or "") not in ("", "done"):
+            return False
+        wants = ReviewAttackers.nested(residual).get("wants_to_change") or []
+        if isinstance(wants, list) and any(str(item).strip() for item in wants):
+            return False
+        return not ReviewWitness.cited(ReviewAttackers.evidence_text(residual))
+
+    @staticmethod
+    def claim(child: str, role: str, wave: int) -> dict[str, Any]:
+        return {
+            "author": child,
+            "role": role,
+            "wave": int(wave),
+            "claim": ReviewWitness.CLAIM,
+        }
+
+    @staticmethod
+    def undecided(review: dict[str, Any] | None) -> list[str]:
+        """Review children whose witness is missing or stale.
+
+        No review children → empty. Open findings are not this list.
+        """
+        body = review if isinstance(review, dict) else {}
+        names: list[str] = []
+        for row in body.get("witness") or []:
+            if not isinstance(row, dict) or not row.get("stale"):
+                continue
+            child = str(row.get("child_id") or "")
+            if child:
+                names.append(child)
+        return names
+
+    @staticmethod
+    def refuse(review: dict[str, Any] | None) -> None:
+        names = ReviewWitness.undecided(review)
+        if not names:
+            return
+        die(
+            "of close refused: review witness undecided "
+            + " ".join(names)
+            + " (missing or stale)",
+            code=ReviewWitness.UNDECIDED_EXIT,
+            kind="review-undecided",
+        )
 
     @staticmethod
     def _binding(root: Path) -> tuple[str, str]:
@@ -1372,25 +1515,22 @@ class ReviewWitness:
                     continue
                 child = str(packet.get("child_id") or "")
                 bucket = ReviewAttackers.bucket(data)
-                findings.append(
-                    {
-                        "child_id": child,
-                        "role": role,
-                        "wave": int(wave),
-                        "bucket": bucket,
-                        "state": ReviewWitness.state(bucket),
-                    }
-                )
-                phrase = ReviewWitness.absence(data)
-                if phrase:
-                    claims.append(
+                evidence = ReviewAttackers.evidence_text(data)
+                if ReviewWitness.bare(data, bucket):
+                    claims.append(ReviewWitness.claim(child, role, int(wave)))
+                else:
+                    finding_state = ReviewWitness.state(bucket, evidence)
+                    findings.append(
                         {
-                            "author": child,
+                            "child_id": child,
                             "role": role,
                             "wave": int(wave),
-                            "claim": phrase,
+                            "bucket": bucket,
+                            "state": finding_state,
                         }
                     )
+                    if finding_state != "open":
+                        claims.append(ReviewWitness.claim(child, role, int(wave)))
                 rec = ReviewWitness.load(root, packet)
                 if rec is None:
                     witness.append(
@@ -2695,6 +2835,9 @@ def cmd_close(args: argparse.Namespace) -> None:
         )
         if blocked:
             raise SystemExit(2)
+        ReviewWitness.refuse(
+            checklist.get("review") if isinstance(checklist.get("review"), dict) else {}
+        )
         return
     if print_contrast_report(root, order):
         doc = ContrastReport.document(root, order)
@@ -2736,6 +2879,9 @@ def cmd_close(args: argparse.Namespace) -> None:
         )
     if not checklist["residual_empty"]:
         CloseChecklist.refuse_residual(checklist)
+    ReviewWitness.refuse(
+        checklist.get("review") if isinstance(checklist.get("review"), dict) else {}
+    )
     if not spec_path(root).is_file():
         print("close       skipped (no SPEC)")
         return

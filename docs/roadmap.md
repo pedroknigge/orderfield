@@ -30,7 +30,7 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 
 ## 0.9.9 — review buckets on CLOSE.json
 
-- `ReviewWitness` projects the existing `act` / `consider` / `noted` / `dismissed` buckets onto `CLOSE.json` `review` (#426). `act` and `consider` are `open` and printed. `noted` and `dismissed` are terminal. A `no open findings` sentence is a claim with its author, not proof. Collect writes `waves/NNN/review/<child>.json` once (git head, tree, sha256 of the `review_scope` cites). A later change to those paths marks the witness stale. Not a close gate. No new verb. Append-only finding logs and a dedicated undecidable exit stay deferred.
+- `ReviewWitness` projects the existing `act` / `consider` / `noted` / `dismissed` buckets onto `CLOSE.json` `review` (#426). `act`, `consider`, and unrecognized evidence are `open` and printed. `noted` is terminal. `dismissed` is terminal only when evidence cites a path, a test, or a SHA; otherwise it is printed as `open`. A review child with no open finding is a claim with its author, not proof. Collect writes `waves/NNN/review/<child>.json` once (git head, tree, sha256 of the `review_scope` cites). A later change to those paths marks the witness stale. Open findings are not a close gate. A missing or stale witness refuses `of close` with exit 3 (`review-undecided`). No new verb. The witness file stays write-once. An append-only finding journal stays deferred.
 - Proof: `tests/test_review_witness.py`.
 
 ## 0.9.8 — symlinked leader key refused, one forged generation quarantined
