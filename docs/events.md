@@ -1,18 +1,12 @@
 # Kernel events (`of --json` / `OF_JSON=1`)
 
-The field is slow. The log must not become another chat.
-
-`of --json` / `OF_JSON=1` is observe-only. `emit_event` lives in `scripts/of/field.py`, not the shim.
-
-One JSON object per stderr line, key `event`. Product writes and transcripts are not events.
-
-A cut, a resume, a different model — the trail is still on disk. The results do not have to change.
-
 > Hub: [architecture.md](architecture.md) · Code: [`emit_event`](../scripts/of/field.py)
 
 When `--json` is passed or `OF_JSON=1` is set, the kernel prints one JSON object per line on **stderr**. These are observe-only hooks for audit, CI, or leader tooling — not instructions to execute.
 
 Every nonempty stderr line is exactly one JSON event object with an `event` key. Consumers and tests must `json.loads` each nonempty line. Filtering lines that merely start with `{` hides prose (`of: note — …`, `spawn exit=…`, `{not json`) and is not the contract. Wave notes that are prose in plain mode (`of: cost:`, `of: note —`, `spawn exit=`) become `warning` events under `--json` / `OF_JSON=1`.
+
+`of models --json` selects the discovery report on stdout and leaves errors in plain text by default. `of --json models` also prints the JSON report and enables JSON events on stderr. `OF_JSON=1` enables stderr events independently.
 
 ## Vocabulary
 
@@ -104,7 +98,7 @@ and under `--json` / `OF_JSON=1` the same failure is the `error` event instead:
 {"event": "error", "kind": "UnicodeDecodeError", "message": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte", "ok": false}
 ```
 
-Under `--json` a deliberate refusal (`die`) is the `error` event with `kind: refused` and prints no prose line, so stderr stays one JSON object per line; in plain mode it is the redacted `of: <message>` line. argparse usage errors are unchanged. `KeyboardInterrupt` exits `130`. `of close` exits `3` with `kind: review-undecided` when a review child has a missing or stale witness. Open findings do not. A field with no review child does not. `--checklist` prints, then uses that same exit. Exit `2` stays a blocked checklist (contrast or residual). Exit `1` stays other refusals. `OF_DEBUG=1` re-raises
+Under `--json` a deliberate refusal (`die`) is the `error` event with `kind: refused` and prints no prose line, so stderr stays one JSON object per line; in plain mode it is the redacted `of: <message>` line. argparse usage errors are unchanged. `KeyboardInterrupt` exits `130`. `of close` exits `3` with `kind: review-undecided` when a review witness is missing or a stale path lacks valid later coverage by the same role. Open findings do not. A field with no review child does not. `--checklist` prints, then uses that same exit. Exit `2` stays a blocked checklist (contrast or residual). Exit `1` stays other refusals. `OF_DEBUG=1` re-raises
 with the full traceback for debugging.
 
 Process-kill and scratch-cleanup `OSError` in `scripts/of/cli/wave.py` are `warning` events (`kind: process_kill` / `cleanup`) instead of a silent swallow. The message is bounded, redacted, and does not include home paths. `ProcessLookupError` (already gone) and expected empty-scratch `ENOTEMPTY`/`ENOENT` stay silent.

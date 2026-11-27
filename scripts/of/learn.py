@@ -11,8 +11,6 @@ from typing import Any
 
 from of.field import (
     LEARNING_SOURCE_CHILD,
-    LEARNING_SOURCE_LEADER,
-    LEARNING_SOURCE_UNAUTHENTICATED,
     LIST_DEFAULT_LIMIT,
     PHASES,
     _read_json_object,
@@ -28,7 +26,6 @@ from of.field import (
     refuse_child_forge,
     require_public_schema,
     sha256_text,
-    spawned_child_id,
     utc_now,
     validate_public_schema,
 )
@@ -129,29 +126,13 @@ def learning_provenance(
     Spawned children stamp child. Otherwise unauthenticated, never leader.
     Provenance is an audit trail, not OS-user authentication.
     """
-    project = Path(root) if root is not None else Path.cwd()
-    try:
-        resolved = str(project.resolve())
-    except OSError:
-        resolved = str(project)
     origin = (order or {}).get("origin") if isinstance(order, dict) else None
     return {
         "source": persist_learning_source(),
-        "repo": sha256_text(resolved)[:12],
+        "repo": repo_digest(root),
         "origin": origin if isinstance(origin, dict) else None,
         "of_version": installed_version() or "unknown",
     }
-
-
-def _learning_schema_item(item: dict[str, Any]) -> dict[str, Any]:
-    """Public schema enum is leader|child; unauthenticated is never-leader."""
-    probe = dict(item)
-    if probe.get("source") == LEARNING_SOURCE_UNAUTHENTICATED:
-        probe["source"] = LEARNING_SOURCE_CHILD
-    prov = probe.get("provenance")
-    if isinstance(prov, dict) and prov.get("source") == LEARNING_SOURCE_UNAUTHENTICATED:
-        probe["provenance"] = {**prov, "source": LEARNING_SOURCE_CHILD}
-    return probe
 
 
 _LEARNING_SKIP_WARNED = False
@@ -214,18 +195,12 @@ def learning_accepted(item: Any, *, for_prompt: bool = True) -> bool:
     if not isinstance(prov, dict):
         return False
     src = prov.get("source")
-    if src == LEARNING_SOURCE_LEADER or src == LEARNING_SOURCE_UNAUTHENTICATED:
-        pass
-    elif src == LEARNING_SOURCE_CHILD and not for_prompt:
-        pass
-    else:
+    if item.get("source", src) != src or (for_prompt and src == LEARNING_SOURCE_CHILD):
         return False
     text = _normalize_learning_text(str(item.get("text") or ""))
     if not text:
         return False
-    return not validate_public_schema(
-        _learning_schema_item(item), "learning.schema.json", "learning"
-    )
+    return not validate_public_schema(item, "learning.schema.json", "learning")
 
 
 def _filter_learnings(
@@ -389,8 +364,11 @@ def list_learnings(root: Path | None) -> dict[str, list[dict[str, Any]]]:
                     seen.add(lid)
             else:
                 field.append(item)
-    protocol.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
-    field.sort(key=lambda i: str(i.get("created_at") or ""), reverse=True)
+    def confirmed_at(item: dict[str, Any]) -> str:
+        return item.get("last_confirmed_at") or item["created_at"]
+
+    protocol.sort(key=confirmed_at, reverse=True)
+    field.sort(key=confirmed_at, reverse=True)
     return {"protocol": protocol, "field": field}
 
 
@@ -447,31 +425,18 @@ def save_learning(
         die("learning text is empty")
     LearningLint.refuse_dump_lines(raw)
     LearningLint.advise(cleaned)
+    provenance = learning_provenance(root, order)
     # Dedupe protocol saves against the user cache only: field-dir items are
     # child-writable and must never be re-persisted into cross-repo memory.
     bucket = load_protocol_store() if kind == "protocol" else list_learnings(root)["field"]
     for item in bucket:
         if _normalize_learning_text(str(item.get("text") or "")).lower() == cleaned.lower():
-            if spawned_child_id() and (
-                item.get("source") in (
-                    LEARNING_SOURCE_LEADER,
-                    LEARNING_SOURCE_UNAUTHENTICATED,
-                )
-                or (
-                    isinstance(item.get("provenance"), dict)
-                    and item["provenance"].get("source")
-                    in (
-                        LEARNING_SOURCE_LEADER,
-                        LEARNING_SOURCE_UNAUTHENTICATED,
-                    )
-                )
-            ):
+            if (provenance["source"] == LEARNING_SOURCE_CHILD
+                    and item["provenance"]["source"] != LEARNING_SOURCE_CHILD):
                 # Do not rewrite a non-child stamp from a child process.
                 return item
             item["last_confirmed_at"] = utc_now()
-            require_public_schema(
-                _learning_schema_item(item), "learning.schema.json", "learning"
-            )
+            require_public_schema(item, "learning.schema.json", "learning")
             if kind == "protocol":
                 with protocol_store_lock():
                     items = _load_protocol_store_raw()
@@ -490,7 +455,7 @@ def save_learning(
         "kind": kind,
         "text": cleaned,
         "created_at": utc_now(),
-        "source": persist_learning_source(),
+        "provenance": provenance,
     }
     if kind == "field":
         if not order:
@@ -499,10 +464,8 @@ def save_learning(
         phase = str(order.get("phase") or "")
         if phase in PHASES:
             item["phase"] = phase
-    item["provenance"] = learning_provenance(root, order)
-    require_public_schema(
-        _learning_schema_item(item), "learning.schema.json", "learning"
-    )
+    item["source"] = item["provenance"]["source"]
+    require_public_schema(item, "learning.schema.json", "learning")
     if kind == "protocol":
         with protocol_store_lock():
             items = _load_protocol_store_raw()
@@ -550,13 +513,11 @@ def promote_learning(
         "kind": "protocol",
         "text": text,
         "created_at": utc_now(),
-        "source": persist_learning_source(),
         "promoted_from": key,
         "provenance": learning_provenance(root, order),
     }
-    require_public_schema(
-        _learning_schema_item(item), "learning.schema.json", "learning"
-    )
+    item["source"] = item["provenance"]["source"]
+    require_public_schema(item, "learning.schema.json", "learning")
     with protocol_store_lock():
         items = _load_protocol_store_raw()
         items.insert(0, item)

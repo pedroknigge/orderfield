@@ -886,14 +886,7 @@ def requirement_surface(item: dict[str, Any]) -> str:
     if ContractSurface.matches(text) or rid.startswith(ContractSurface.PREFIXES):
         return "contract"
     explicit = str(item.get("surface") or "").strip().lower()
-    if explicit in {"contract", "internal"}:
-        return explicit
-    if rid.startswith(("CLI-", "LEASE-", "AUDIT-", "HTTP-")):
-        return "contract"
-    padded = f" {text.lower()} "
-    if any(cue in padded for cue in CONTRACT_SURFACE_CUES):
-        return "contract"
-    return "contract"
+    return "internal" if explicit == "internal" else "contract"
 
 
 class RequirementSurface:
@@ -943,13 +936,10 @@ class RequirementSurface:
                     id=rid, cause=ContractSurface.hide_cause(item)
                 )
             )
-        if old == new and str(item.get("surface") or "") == wanted:
-            return old, new, False
         if old == new:
             return old, new, False
-        item["surface"] = wanted
-        item["surface"] = requirement_surface(item)
-        return old, requirement_surface(item), True
+        item["surface"] = new
+        return old, new, True
 
 
 def requirement_close_ok(item: dict[str, Any]) -> bool:
@@ -1077,15 +1067,56 @@ def merge_extracted_requirements(
     return changed
 
 
+LIST_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?= |$)( *)")
+FENCE_OPEN_RE = re.compile(
+    r"^[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)*(?P<marker>`{3,}(?=[^`]*$)|~{3,})"
+)
+
+
+def _list_content_column(line: str, item_indents: list[int]) -> int:
+    """Track the content columns of empty, nested and continued list items."""
+    indent = _indent(line)
+    while line and item_indents and indent < item_indents[-1]:
+        item_indents.pop()
+    column = item_indents[-1] if item_indents else 0
+    while marker := LIST_MARKER_RE.match(line, column):
+        padding = len(marker[1])
+        column = marker.start(1) + (padding if 1 <= padding <= 4 else 1)
+        item_indents.append(column)
+    return column
+
+
 def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
-    """1-based line spans after joining shell-style backslash continuations."""
+    """Keep one boundary row per fenced block and join continuations in prose."""
     rows = text.splitlines()
     out: list[tuple[int, int, str]] = []
+    item_indents: list[int] = []
     i = 0
     while i < len(rows):
         start = i + 1
         buf = rows[i].rstrip()
+        line = buf.expandtabs(4)
+        list_indent = _list_content_column(line, item_indents)
+        content = line[list_indent:]
+        if not content:
+            buf = ""
+        fence = FENCE_OPEN_RE.match(content)
+        if fence and fence.start("marker") <= 3:
+            marker = fence["marker"]
+            closer = re.compile(rf"[ \t]*{marker[0]}{{{len(marker)},}}[ \t]*")
+            i += 1
+            while i < len(rows):
+                row = rows[i]
+                if list_indent and row.strip() and _indent(row) < list_indent:
+                    break
+                i += 1
+                if _indent(row) - list_indent <= 3 and closer.fullmatch(row):
+                    break
+            out.append((start, i, " " * _indent(buf) + marker))
+            continue
         while buf.endswith("\\") and i + 1 < len(rows):
+            if FENCE_OPEN_RE.match(rows[i + 1]):
+                break
             buf = buf[:-1].rstrip() + " " + rows[i + 1].strip()
             i += 1
         if buf.endswith("\\"):
@@ -1161,7 +1192,7 @@ def list_item_block(
             continue
         if _indent(row) <= col:
             break
-        if stripped.startswith(("#", "```")) or LIST_ITEM_RE.match(stripped):
+        if stripped.startswith("#") or FENCE_OPEN_RE.match(row) or LIST_ITEM_RE.match(stripped):
             break
         parts.append(stripped)
         owned.append(j)
@@ -1369,23 +1400,20 @@ class RequirementScan:
     def headed(self) -> int:
         """Rule-heading items plus ``python -m`` lines; returns heading-req count."""
         headed_n = 0
-        in_fence = False
         in_rules = False
         for k, (start, end, raw) in enumerate(self.spans):
+            if k in self.absorbed:
+                continue
             stripped = raw.strip()
             cli = _cli_line(stripped)
-            if stripped.startswith("```"):
-                in_fence, in_rules = not in_fence, False
-            if cli and k not in self.absorbed:
+            if cli:
                 self.add("CLI", cli, start, end)
-            if stripped.startswith("```") or k in self.absorbed:
-                continue
-            if stripped.startswith("#"):
+            elif stripped.startswith("#"):
                 raw_title = stripped.lstrip("#").strip()
                 title = raw_title.lower().rstrip(":")
                 in_rules = _rule_heading(title)
-                headed_n += 0 if in_fence else self.add_heading(raw_title, start, end)
-            elif in_rules and not in_fence and _starts_item(stripped):
+                headed_n += self.add_heading(raw_title, start, end)
+            elif in_rules and _starts_item(stripped):
                 self.add_item(k, rule=True)
             # Free-prose cue lists are gone. Binding IDs come from headed
             # rule bullets, python -m lines, or of spec --add. A keyword in
@@ -1395,15 +1423,9 @@ class RequirementScan:
     def fallback(self) -> None:
         """Every list item outside fences and headings (no rule heading hit)."""
         self.absorbed = set()
-        in_fence = False
         for k, (_start, _end, raw) in enumerate(self.spans):
             stripped = raw.strip()
-            if stripped.startswith("```"):
-                in_fence = not in_fence
-                continue
-            if in_fence or stripped.startswith("#") or k in self.absorbed:
-                continue
-            if _starts_item(stripped):
+            if k not in self.absorbed and _starts_item(stripped):
                 self.add_item(k, rule=False)
 
     def requirements(self) -> list[dict[str, Any]]:
@@ -1481,12 +1503,8 @@ def uncovered_list_lines(
     for item in requirements or []:
         covered.update(_spec_span_lines(item))
     region: set[int] = set()
-    in_fence = False
     for k, (_s, _e, raw) in enumerate(spans):
-        stripped = raw.strip()
-        if stripped.startswith("```"):
-            in_fence = not in_fence
-        elif not in_fence and LIST_ITEM_RE.match(stripped):
+        if LIST_ITEM_RE.match(raw.strip()):
             region.update(_item_region(spans, k))
     lines = sorted(n for n in region if n not in covered)
     out: list[tuple[int, int]] = []
@@ -1519,19 +1537,17 @@ def _item_region(spans: list[tuple[int, int, str]], k: int) -> set[int]:
     col = _indent(spans[k][2])
     region = set(range(spans[k][0], spans[k][1] + 1))
     lazy = True
-    in_fence = False
     for s, e, row in spans[k + 1:]:
         stripped = row.strip()
-        if stripped.startswith("```") and _indent(row) > col:
-            in_fence = not in_fence
-            continue
-        if in_fence:
+        if FENCE_OPEN_RE.match(row):
+            if _indent(row) <= col:
+                break
             continue
         if not stripped:
             lazy = False
             continue
         dedent = _indent(row) <= col and (not lazy or LIST_ITEM_RE.match(stripped))
-        if dedent or stripped.startswith(("#", "```")):
+        if dedent or stripped.startswith("#"):
             break
         region.update(range(s, e + 1))
     return region
@@ -2410,6 +2426,7 @@ def apply_requirement_patches(
     root: Path,
     residuals: list[dict[str, Any]],
     packets: list[dict[str, Any] | None] | None = None,
+    previously_failed: dict[str, tuple[str, ...]] | None = None,
 ) -> bool:
     """Land residual ``requirements_failed`` and primary-source cites.
 
@@ -2428,9 +2445,12 @@ def apply_requirement_patches(
         return False
     changed = False
     for res, pkt in zip(residuals, packets):
+        prior_ids = (previously_failed or {}).get((pkt or {}).get("child_id", ""), ())
         for rid in residual_failed_stamps(res, pkt)[0]:
             item = find_requirement(data, rid)
             if item is None:
+                continue
+            if rid in prior_ids and item.get("status") in REQ_INTERNAL_VERIFIED | REQ_CONTRACT_VERIFIED:
                 continue
             if item.get("status") != "failed":
                 item["status"] = "failed"

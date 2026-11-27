@@ -192,11 +192,12 @@ allowlist:
   `GOOGLE_* GEMINI_* AGY_* ANTIGRAVITY_*`; `qwen` `DASHSCOPE_* QWEN_* OPENAI_*
   GEMINI_* ANTHROPIC_* OLLAMA_*`; `generic` nothing extra.
 
-`OF_SPAWN_ENV=NAME1,NAME2` adds names. `OF_SPAWN_ENV=inherit` opts out and
-passes the whole parent environment (recorded as `env_mode: inherit`). That
-opt-out is an audited operator action (`OperatorAction`), not a silent
-default — spawn prints `operator action: inherit`. The
-child always receives `OF_FIELD=<ORDER id>` so its own `of` calls bind the
+`OF_SPAWN_ENV=NAME1,NAME2` adds names. Spawn always removes `OF_LEADER_KEY` and
+`OF_LEADER_TOKEN`, including case variants, before applying named extras or
+`OF_SPAWN_ENV=inherit`. Inherit passes the remaining environment and records
+`env_mode: inherit`. Spawn prints `operator action: inherit`. Kernel verification
+uses a separate allowlist that drops inherited runtime code-loading settings.
+The child always receives `OF_FIELD=<ORDER id>` so its own `of` calls bind the
 same field in a multi-field tree, and `OF_CHILD=<child_id>` so `of learn --protocol` / `--promote` refuse (leader-only). `generic` forwards no credential prefixes:
 an `OF_AGENT` harness needs `OF_SPAWN_ENV` for its API keys.
 Table: `SPAWN_ENV_*` in `scripts/of_adapters.py`.
@@ -269,10 +270,10 @@ sandbox flag. `OF_TRUST=yolo` is
 
 If `of worktree add --child-id CHILD` recorded a worktree for this packet,
 spawn also passes `-C <recorded-worktree>`, `--add-dir
-<canonical-field-home>` for residual/PULSE writes, and `--add-dir
-<git-common-dir>` for linked-worktree `FETCH_HEAD` / lock updates. The Git
-common directory is resolved with `git rev-parse --git-common-dir`; it is not
-guessed. A missing, malformed, or non-Git record refuses before launch and
+<canonical-field-home>` for residual/PULSE writes, and `--add-dir` for the
+worktree’s private Git directory and existing shared `objects`, `refs`, and
+`logs` directories. Git supplies the private and Git common paths through
+`rev-parse`. A missing, malformed, or non-Git record refuses before launch and
 tells the leader to remove/re-add it. Without a record, Codex argv is
 unchanged. Class: `CodexWorktree`.
 

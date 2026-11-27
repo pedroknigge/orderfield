@@ -4,12 +4,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -116,6 +118,25 @@ class KernelVerifyArgv0(unittest.TestCase):
             kwargs["owns"] = owns
         return KernelVerify.execute(self.tmp, kid, command, **kwargs)
 
+    def test_verifier_receipt_binds_selected_executable_and_explicit_inputs(self) -> None:
+        flags = ("PYTHONPATH", "PYTHONHOME", "NODE_OPTIONS", "GOFLAGS", "RUBYOPT",
+                 "PERL5OPT", "LD_PRELOAD", "DYLD_LIBRARY_PATH", "BASH_ENV",
+                 "JAVA_TOOL_OPTIONS", "OF_LEADER_KEY", "OF_LEADER_TOKEN")
+        probe = self.tmp / "probe.py"
+        probe.write_text("import os, sys\nprint(any(k in os.environ for k in sys.argv[1:]))\n")
+        tool = self.tmp / "trusted" / Path(sys.executable).name
+        tool.parent.mkdir()
+        tool.symlink_to(sys.executable)
+        with patch.dict(os.environ, dict.fromkeys(flags, "fixture") | {"PATH": "trusted"}):
+            receipt, _, code = self.execute(shlex.join([tool.name, probe.name, *flags]))
+        self.assertEqual(code, 0)
+        self.assertEqual((self.tmp / receipt["source_path"]).read_text().strip(), "False")
+        self.assertEqual(Path(receipt["argv0"]), tool)
+        self.assertEqual(receipt["argv0_sha256"], _sha(Path(sys.executable)))
+        self.assertEqual(receipt["inputs"], [{"path": probe.name, "sha256": _sha(probe)}])
+        self.assertEqual(receipt["env_delta"], {"PATH": "trusted"})
+        self.assertIs(receipt["kernel_attested"], True)
+
     def test_scratch_script_shim_is_not_attested(self) -> None:
         self.init_field()
         kid = self.tmp / ".orderfield" / "work" / "scratch" / "kid"
@@ -134,7 +155,7 @@ class KernelVerifyArgv0(unittest.TestCase):
         self.assertIn("ChildWritableArgv0", str(receipt.get("rule") or ""))
         self.assertIn(str(kid / "python"), str(receipt.get("rule") or ""))
         self.assertFalse(marker.exists(), "the shim ran")
-        self.assertIn("src", str((receipt.get("env_delta") or {}).get("PYTHONPATH") or ""))
+        self.assertNotIn("PYTHONPATH", receipt["env_delta"])
         self.assertIn(str(kid), str((receipt.get("env_delta") or {}).get("PATH") or ""))
 
     def test_scratch_symlink_to_real_python_is_not_attested(self) -> None:
@@ -318,15 +339,19 @@ class KernelVerifyArgv0(unittest.TestCase):
 
     def test_closed_receipt_keeps_argv0_and_env_delta(self) -> None:
         self.init_field()
-        (self.tmp / "src").mkdir()
-        (self.tmp / "src" / "thing.py").write_text("VALUE = 5\n", encoding="utf-8")
+        probe = self.tmp / "check.py"
+        probe.write_text(
+            "import os\nassert 'PYTHONPATH' not in os.environ\n"
+            "assert 'VIRTUAL_ENV' not in os.environ\nprint('helper five')\n",
+            encoding="utf-8",
+        )
         self.ok(
             "spec", "--add", "HEL-001", "--surface", "contract",
             "--text", "the helper returns five",
         )
         self.ok(
             "spec", "--verified-contract", "HEL-001", "--run",
-            f"{sys.executable} -c \"import thing; print('helper five')\"",
+            shlex.join([sys.executable, probe.name]),
             env={"PYTHONPATH": "src", "VIRTUAL_ENV": str(self.tmp / ".venv")},
         )
         receipt_path = (
@@ -336,8 +361,9 @@ class KernelVerifyArgv0(unittest.TestCase):
         self.assertIs(receipt.get("kernel_attested"), True)
         self.assertTrue(receipt.get("argv0"))
         self.assertEqual(receipt.get("argv0_sha256"), _sha(Path(receipt["argv0_realpath"])))
-        self.assertEqual(receipt["env_delta"]["PYTHONPATH"], "src")
-        self.assertEqual(receipt["env_delta"]["VIRTUAL_ENV"], str(self.tmp / ".venv"))
+        self.assertNotIn("PYTHONPATH", receipt["env_delta"])
+        self.assertNotIn("VIRTUAL_ENV", receipt["env_delta"])
+        self.assertIn({"path": probe.name, "sha256": _sha(probe)}, receipt["inputs"])
         closed = self.ok("close")
         self.assertIn("CLOSED", closed.stdout)
         self.assertFalse(receipt_path.exists(), "scratch was not wiped")

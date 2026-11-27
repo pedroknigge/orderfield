@@ -44,6 +44,20 @@ def parse_rc(argv: list[str]) -> tuple[int, str]:
 
 
 class NoAbbrev(unittest.TestCase):
+    def test_import_preserves_argparse_and_build_registers_list_options(self) -> None:
+        code = (
+            "import argparse\noriginal = argparse.ArgumentParser.parse_args\n"
+            "import of.cli\nassert argparse.ArgumentParser.parse_args is original"
+        )
+        proc = subprocess.run([sys.executable, "-c", code], cwd=SCRIPTS,
+                              capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        parser = build_parser()
+        for command in (["learn", "--list"], ["worktree", "list"]):
+            self.assertTrue(parser.parse_args([*command, "--all"]).list_all)
+            self.assertEqual(parser.parse_args([*command, "--cursor", "next"]).list_cursor, "next")
+            self.assertEqual(parse_rc([*command, "--all", "--cursor", "next"])[0], 2)
+
     def test_every_parser_refuses_abbreviation(self) -> None:
         tree = parsers(build_parser())
         self.assertGreater(len(tree), 30)

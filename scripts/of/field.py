@@ -35,6 +35,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from of.process_origin import (
+    _proc_exec_environ, _proc_ppid, _proc_sid, _proc_starttime,
+    host_id, parse_lstart, proc_start_epoch,
+)
+from of.process_origin import proc_pcpu as proc_pcpu  # noqa: F401
+
 
 PHASES = ["explore", "cut", "build", "verify", "deliver"]
 ROLES = ["explorer", "implementer", "adversary", "synthesizer", "verifier"]
@@ -581,9 +587,14 @@ class RootStub:
             if child.is_symlink() or not child.is_dir():
                 continue
             order_file = child / "ORDER.json"
-            if not order_file.is_file():
-                continue
-            data = _read_json_object(order_file) or {}
+            if order_file.is_file():
+                data = _read_json_object(order_file) or {}
+            else:
+                # A committed field can outlive its materialized ORDER cache.
+                with using_field_home(child):
+                    data = FieldWal.committed_order(root)
+                if not data:
+                    continue
             # ORDER.json is child-writable and its id flows into archive/drop
             # paths (crown, gc). Trust it only when canonical; else use the
             # leader-created directory name, which is the real field id.
@@ -703,6 +714,15 @@ def field_home(root: Path | None = None) -> Path:
 
 def set_field_home(path: Path) -> None:
     _active_field_home.set(path)
+
+
+@contextmanager
+def using_field_home(path: Path) -> Any:
+    token = _active_field_home.set(path)
+    try:
+        yield
+    finally:
+        _active_field_home.reset(token)
 
 
 def _activate_field_home(
@@ -1463,257 +1483,6 @@ _MAX_SPAWN_ANCESTORS = 4096
 # as spawned (fail closed) rather than as the leader. Not a CHILD_ID_RE id, so the
 # leader-only guards still refuse.
 _ANCESTRY_UNBOUNDED = "<ancestry-unbounded>"
-_DARWIN_CTL_KERN = 1
-_DARWIN_KERN_PROCARGS2 = 49
-_POPEN_ORIG = subprocess.Popen
-
-
-def _nul_env_map(data: bytes) -> dict[str, str]:
-    env: dict[str, str] = {}
-    for entry in data.split(b"\0"):
-        if not entry or b"=" not in entry:
-            continue
-        key, _, value = entry.partition(b"=")
-        try:
-            env[key.decode("utf-8")] = value.decode("utf-8", "replace")
-        except UnicodeDecodeError:
-            continue
-    return env
-
-
-def _linux_exec_environ(pid: int) -> dict[str, str] | None:
-    path = Path(f"/proc/{int(pid)}/environ")
-    if not path.is_file():
-        return None
-    try:
-        return _nul_env_map(path.read_bytes())
-    except OSError:
-        return None
-
-
-def _darwin_exec_environ(pid: int) -> dict[str, str] | None:
-    """KERN_PROCARGS2 env block at exec (not ps -E command-line text)."""
-    try:
-        import ctypes
-        import ctypes.util
-    except ImportError:
-        return None
-    libname = ctypes.util.find_library("c")
-    if not libname:
-        return None
-    try:
-        libc = ctypes.CDLL(libname, use_errno=True)
-    except OSError:
-        return None
-    libc.sysctl.argtypes = [
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.c_uint,
-        ctypes.c_void_p,
-        ctypes.POINTER(ctypes.c_size_t),
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-    ]
-    libc.sysctl.restype = ctypes.c_int
-    mib = (ctypes.c_int * 3)(_DARWIN_CTL_KERN, _DARWIN_KERN_PROCARGS2, int(pid))
-    size = ctypes.c_size_t(0)
-    if libc.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0 or size.value < 4:
-        return None
-    raw = b""
-    for _ in range(3):
-        buf = ctypes.create_string_buffer(size.value + 256)
-        got = ctypes.c_size_t(len(buf))
-        if libc.sysctl(mib, 3, buf, ctypes.byref(got), None, 0) == 0:
-            raw = buf.raw[: got.value]
-            break
-        if ctypes.get_errno() != errno.ENOMEM:
-            return None
-        size = ctypes.c_size_t(max(size.value * 2, len(buf) * 2))
-    else:
-        return None
-    if len(raw) < 4:
-        return None
-    argc = int.from_bytes(raw[:4], sys.byteorder, signed=True)
-    if argc < 0 or argc > 4096:
-        return None
-    rest = raw[4:]
-    path_end = rest.find(b"\0")
-    if path_end < 0:
-        return None
-    i = path_end + 1
-    while i < len(rest) and rest[i] == 0:
-        i += 1
-    parts = rest[i:].split(b"\0")
-    if len(parts) < argc:
-        return None
-    env_blob = b"\0".join(parts[argc:])
-    return _nul_env_map(env_blob)
-
-
-def _proc_exec_environ(pid: int) -> dict[str, str] | None:
-    """Environment at exec. Live os.environ can drop OF_CHILD (env -u)."""
-    if pid <= 1:
-        return None
-    linux = _linux_exec_environ(pid)
-    if linux is not None:
-        return linux
-    if sys.platform == "darwin":
-        return _darwin_exec_environ(pid)
-    return None
-
-
-def _proc_stat_fields(pid: int) -> list[str] | None:
-    stat = Path(f"/proc/{int(pid)}/stat")
-    if not stat.is_file():
-        return None
-    try:
-        text = stat.read_text(encoding="utf-8", errors="replace")
-        return text[text.rfind(")") + 1 :].split()
-    except OSError:
-        return None
-
-
-def _proc_ppid(pid: int) -> int:
-    fields = _proc_stat_fields(pid)
-    if fields is not None:
-        try:
-            return int(fields[1])
-        except (IndexError, ValueError):
-            return 0
-    try:
-        proc = subprocess.run(
-            ["ps", "-p", str(int(pid)), "-o", "ppid="],
-            capture_output=True,
-            text=True,
-            timeout=1,
-        )
-        return int(proc.stdout.strip().split()[-1])
-    except (OSError, IndexError, ValueError, subprocess.TimeoutExpired):
-        return 0
-
-
-def _proc_lstart(pid: int) -> str | None:
-    """``ps -o lstart=`` under LC_ALL=C TZ=UTC: the same text in any harness."""
-    env = dict(os.environ)
-    env.update({"LC_ALL": "C", "LANG": "C", "TZ": "UTC"})
-    try:
-        proc = subprocess.run(
-            ["ps", "-p", str(int(pid)), "-o", "lstart="],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            env=env,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return " ".join(proc.stdout.split()) or None
-
-
-def _proc_starttime(pid: int) -> str | None:
-    """Process starttime token. Survives exec; pid reuse without it is not a match.
-
-    Linux: /proc stat ticks. Elsewhere: lstart in C locale and UTC, so two
-    harnesses with a different TZ or LANG read the same string.
-    """
-    fields = _proc_stat_fields(pid)
-    if fields is not None:
-        try:
-            return str(fields[19])
-        except IndexError:
-            return None
-    return _proc_lstart(pid)
-
-
-_LSTART_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-
-def parse_lstart(text: Any, *, utc: bool) -> int | None:
-    """Epoch of a C-locale ``Thu Oct  8 11:28:27 2026``; None for other locales.
-
-    utc=False reads a v0.8.34 record (local time of whoever wrote it).
-    """
-    parts = str(text or "").split()
-    if len(parts) != 5 or parts[1] not in _LSTART_MONTHS:
-        return None
-    try:
-        hh, mm, ss = (int(x) for x in parts[3].split(":"))
-        fields = (int(parts[4]), _LSTART_MONTHS.index(parts[1]) + 1, int(parts[2]), hh, mm, ss)
-        if utc:
-            return int(datetime(*fields, tzinfo=timezone.utc).timestamp())
-        return int(time.mktime((*fields, 0, 0, -1)))
-    except (ValueError, OverflowError):
-        return None
-
-
-@lru_cache(maxsize=1)
-def _boot_epoch() -> int | None:
-    try:
-        for line in Path("/proc/stat").read_text(encoding="utf-8").splitlines():
-            if line.startswith("btime "):
-                return int(line.split()[1])
-    except (OSError, ValueError):
-        pass
-    return None
-
-
-def proc_start_epoch(pid: int) -> int | None:
-    """Process start as a UTC epoch second. TZ/locale-free on every host."""
-    fields = _proc_stat_fields(pid)
-    boot = _boot_epoch()
-    if fields is not None and boot is not None:
-        try:
-            return boot + int(fields[19]) // int(os.sysconf("SC_CLK_TCK"))
-        except (IndexError, ValueError, OSError):
-            return None
-    return parse_lstart(_proc_lstart(pid), utc=True)
-
-
-@lru_cache(maxsize=1)
-def host_id() -> str:
-    """Stable id of this machine's pid namespace. A pid means nothing elsewhere."""
-    import socket
-
-    seed = socket.gethostname()
-    try:
-        seed += "|" + Path("/etc/machine-id").read_text(encoding="utf-8").strip()
-    except OSError:
-        pass
-    return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
-
-
-def proc_pcpu(pid: int) -> str | None:
-    """One ``ps`` %CPU sample. Not a supervisor; not a load average."""
-    try:
-        pid_n = int(pid)
-    except (TypeError, ValueError):
-        return None
-    if pid_n <= 1:
-        return None
-    try:
-        proc = subprocess.run(
-            ["ps", "-p", str(pid_n), "-o", "pcpu="],
-            capture_output=True,
-            text=True,
-            timeout=1,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    raw = (proc.stdout or "").strip()
-    if not raw:
-        return None
-    try:
-        return f"{float(raw)}%"
-    except ValueError:
-        return None
-
-
-def _proc_sid(pid: int) -> int:
-    if not hasattr(os, "getsid"):
-        return 0
-    try:
-        return int(os.getsid(int(pid)))
-    except OSError:
-        return 0
 
 
 def _marker_from_env_map(env: dict[str, str] | None) -> str | None:
@@ -1743,16 +1512,13 @@ def _load_spawn_registry_unlocked(path: Path) -> list[dict[str, Any]]:
     return [item for item in items if isinstance(item, dict)]
 
 
+@contextmanager
 def _spawn_registry_lock(path: Path) -> Any:
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_name(path.name + ".lock")
-    handle = lock_path.open("a+", encoding="utf-8")
-    try:
-        flock_wait(handle, 1.0, 0.01)
-    except BlockingIOError:
-        handle.close()
-        raise
-    return handle
+    with _open_lock(lock_path) as handle:
+        flock_wait(handle, FIELD_LOCK_WAIT_SECONDS, 0.01)
+        yield  # Closing the handle releases the OS lock.
 
 
 def register_spawned_child(
@@ -1773,9 +1539,9 @@ def register_spawned_child(
         "recorded_at": now,
     }
     path = spawn_registry_path()
-    handle = None
-    try:
-        handle = _spawn_registry_lock(path)
+    with _spawn_registry_lock(path):
+        if path.is_symlink():
+            raise OSError(f"unsafe spawn registry: {path}")
         items = _load_spawn_registry_unlocked(path)
         items = [
             existing
@@ -1795,21 +1561,8 @@ def register_spawned_child(
                 continue
             if recorded >= cutoff:
                 kept.append(existing)
-        # write_text, not dump_bytes: Popen already started the child.
-        # File+dir fsync races LEARN-002 exec (same pid, OF_CHILD stripped).
-        path.write_text(
-            json.dumps({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]}),
-            encoding="utf-8",
-        )
-    except OSError:
-        return
-    finally:
-        if handle is not None:
-            try:
-                flock_release(handle)
-            except OSError:
-                pass
-            handle.close()
+        payload = json.dumps({"v": 1, "items": kept[-_SPAWN_REGISTRY_MAX:]})
+        dump_bytes(path, payload.encode("utf-8"), skip_dir_fsync=True)
 
 
 def _registry_match_pid(
@@ -1938,35 +1691,6 @@ def refuse_child_forge(action: str) -> None:
             f"{label} refused while OF_HANDOFF_CHILD={handoff} (leader-only)",
             kind="child-forge",
         )
-
-
-def _maybe_register_popen(proc: Any, kwargs: dict[str, Any]) -> None:
-    env = kwargs.get("env")
-    if env is None:
-        return
-    try:
-        if OF_CHILD_ENV not in env:
-            return
-    except TypeError:
-        return
-    cid = str(env.get(OF_CHILD_ENV) or "").strip() or "<empty>"
-    session = bool(kwargs.get("start_new_session"))
-    pid = int(getattr(proc, "pid", 0) or 0)
-    register_spawned_child(pid, cid, session=session)
-
-
-if not getattr(subprocess.Popen, "_of_spawn_registry", False):
-    class _SpawnRegistryPopen(_POPEN_ORIG):  # type: ignore[type-arg,valid-type]
-        _of_spawn_registry = True
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            super().__init__(*args, **kwargs)
-            try:
-                _maybe_register_popen(self, kwargs)
-            except Exception:
-                return
-
-    subprocess.Popen = _SpawnRegistryPopen  # type: ignore[misc,assignment]
 
 
 _JSON_EVENTS = False
@@ -2308,10 +2032,43 @@ def flock_wait(handle: Any, timeout: float, tick: float) -> None:
             time.sleep(tick)
 
 
-def _lock_owner_text(path: Path) -> str:
+def _open_lock(path: Path) -> Any:
+    """Open a single regular file. Inspect its descriptor before any write."""
+    flags = os.O_RDWR | getattr(os, "O_NONBLOCK", 0)
+    if os.open in os.supports_dir_fd and hasattr(os, "O_NOFOLLOW"):
+        parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            flags |= os.O_NOFOLLOW
+            try:
+                fd = os.open(path.name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=parent)
+            except FileExistsError:
+                fd = os.open(path.name, flags, dir_fd=parent)
+        finally:
+            os.close(parent)
+    else:
+        # Exclusive create cannot create the target of a dangling link.
+        try:
+            fd = os.open(path, flags | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            if not stat.S_ISREG(path.lstat().st_mode):
+                raise OSError(f"unsafe lock file: {path}")
+            fd = os.open(path, flags)
     try:
-        owner = json.loads(path.read_text(encoding="utf-8") or "{}")
-    except (OSError, json.JSONDecodeError):
+        opened = os.fstat(fd)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or not os.path.samestat(opened, path.lstat())):
+            raise OSError(f"unsafe lock file: {path}")
+        return os.fdopen(fd, "r+", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _lock_owner_text(handle: Any) -> str:
+    try:
+        handle.seek(0)
+        owner = json.loads(handle.read() or "{}")
+    except (OSError, ValueError):
         return "owner metadata unavailable"
     return ", ".join(
         f"{key}={owner[key]}" for key in ("pid", "command", "acquired_at") if key in owner
@@ -2339,7 +2096,7 @@ def field_lock(
     """
     global _HELD_FIELD_LOCK, _HELD_FIELD_LOCK_THREAD
     require_nonsymlink_kernel_root(root)
-    path = field_lock_path(root).resolve()
+    path = field_lock_path(root.resolve())
     if _HELD_FIELD_LOCK == path and _HELD_FIELD_LOCK_THREAD == threading.get_ident():
         yield
         return
@@ -2356,7 +2113,10 @@ def field_lock(
             die("OF_FIELD_LOCK_WAIT_SECONDS must be a nonnegative number")
     else:
         timeout = max(0.0, wait_seconds)
-    handle = path.open("a+", encoding="utf-8")
+    try:
+        handle = _open_lock(path)
+    except OSError as exc:
+        die(f"cannot open field lock {path}: {exc}")
     try:
         try:
             flock_wait(handle, timeout, 0.05)
@@ -2364,7 +2124,7 @@ def field_lock(
             if timeout <= 0:
                 raise FieldLockBusy(str(path))
             die(
-                f"field lock wait exceeded {timeout:g}s ({_lock_owner_text(path)}); "
+                f"field lock wait exceeded {timeout:g}s ({_lock_owner_text(handle)}); "
                 "a dead owner is recovered automatically by the OS"
             )
         owner = {
@@ -2381,6 +2141,13 @@ def field_lock(
         _HELD_FIELD_LOCK = path
         _HELD_FIELD_LOCK_THREAD = threading.get_ident()
         try:
+            if command == "init --force":
+                command = "init"
+            if command == "worktree":
+                # The registry is outside the snapshot. Only serialize its Git
+                # operation and read/modify/write against other tree writers.
+                yield
+                return
             FieldWal.recover(root)
             # Mutating lock holders rematerialize CURRENT onto live before
             # inherit. migrate plans from live bytes; CURRENT overwrite
@@ -3890,6 +3657,21 @@ class SpawnRecord:
         return bool(str(meta.get("ended_at") or "").strip())
 
     @staticmethod
+    def review_pending(meta: dict[str, Any] | None) -> bool:
+        return (meta is not None and "review_start" in meta
+                and not meta.get("dry_run") and not SpawnRecord.settled(meta))
+
+    @staticmethod
+    def review_snapshot(meta: dict[str, Any]) -> dict[str, Any] | None:
+        snapshot = meta.get("review_start")
+        if isinstance(snapshot, dict) and (
+            "completed" in snapshot or meta.get("review_result_reused") or meta.get("residual_present")
+            or meta.get("outcome") == SpawnRecord.ORPHAN_SETTLED
+        ):
+            return snapshot
+        return None
+
+    @staticmethod
     def unsettled_at(path: Path) -> bool:
         """Started-only spawn meta: no outcome/ended_at yet. Not a process poll."""
         if not path.is_file():
@@ -4219,9 +4001,15 @@ class SpawnRecord:
         """
         overridden: dict[str, Any] | None = None
         with field_lock(root, "spawn"):
-            if path.is_file() and not dry_run:
+            if path.is_file():
                 prior = load_json(path)
-                if (
+                if dry_run and isinstance(prior, dict):
+                    if not prior.get("dry_run") and not SpawnRecord.settled(prior):
+                        return None
+                    snapshot = SpawnRecord.review_snapshot(prior)
+                    if snapshot is not None:
+                        meta.update(review_start=snapshot, review_result_reused=True)
+                elif (
                     isinstance(prior, dict)
                     and "outcome" not in prior
                     and not prior.get("dry_run")
@@ -5534,18 +5322,21 @@ def probe_adapter_version(bin_path: str) -> str:
 def probe_lock_capability(root: Path) -> dict[str, str]:
     path = field_lock_path(root)
     parent = path.parent
-    rel = field_rel(root, path) if parent.exists() else str(path)
+    rel = path.relative_to(root).as_posix() if parent.exists() else str(path)
     info = {"path": rel, "status": "missing-field"}
+    if parent.is_symlink():
+        info["status"] = "not-writable"
+        return info
     if not parent.is_dir():
         return info
     if not os.access(parent, os.W_OK):
         info["status"] = "not-writable"
         return info
-    if not path.exists():
+    if not path.is_symlink() and not path.exists():
         info["status"] = "acquirable"
         return info
     try:
-        handle = path.open("a+", encoding="utf-8")
+        handle = _open_lock(path)
     except OSError:
         info["status"] = "not-writable"
         return info
@@ -5555,7 +5346,7 @@ def probe_lock_capability(root: Path) -> dict[str, str]:
         info["status"] = "acquirable"
     except BlockingIOError:
         info["status"] = "held"
-        info["owner"] = _lock_owner_text(path)
+        info["owner"] = _lock_owner_text(handle)
     finally:
         handle.close()
     return info

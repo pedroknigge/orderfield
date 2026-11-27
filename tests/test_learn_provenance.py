@@ -12,12 +12,15 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
 import of.field  # noqa: E402
+from of.cli.wave import run_child  # noqa: E402
+from of.learn import PROTOCOL_PROMPT_CAP, repo_digest, resume_learnings  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 
@@ -138,7 +141,7 @@ def run_of_from_spawned_parent(
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
     policy = "UNSET" if child_marker is None else child_marker
-    return subprocess.run(
+    return run_child(
         [
             sys.executable,
             str(helper),
@@ -148,9 +151,7 @@ def run_of_from_spawned_parent(
             str(OF_PY),
             *args,
         ],
-        capture_output=True,
-        text=True,
-        env=env,
+        cwd, env, 30,
     )
 
 
@@ -167,7 +168,7 @@ def run_of_via_exec(
     env.pop("OF_DEBUG", None)
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
-    return subprocess.run(
+    return run_child(
         [
             sys.executable,
             str(helper),
@@ -175,10 +176,7 @@ def run_of_via_exec(
             str(OF_PY),
             *args,
         ],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env=env,
+        cwd, env, 30,
     )
 
 
@@ -201,7 +199,7 @@ def run_of_via_reparent(
     env.pop("OF_DEBUG", None)
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
-    subprocess.run(
+    run_child(
         [
             sys.executable,
             str(helper),
@@ -210,11 +208,7 @@ def run_of_via_reparent(
             str(OF_PY),
             *args,
         ],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env=env,
-        start_new_session=True,
+        cwd, env, 30,
     )
     rc_path = out_dir / "reparent.rc"
     deadline = time.monotonic() + 20.0
@@ -271,6 +265,7 @@ class LearnProvenance(unittest.TestCase):
         self.assertTrue(proto.stdout.startswith("protocol"), proto.stdout)
         items = self._cache_items()
         self.assertEqual(len(items), 1)
+        self.assertEqual(of.field.validate_public_schema(items[0], "learning.schema.json", "learning"), [])
         prov = items[0]["provenance"]
         self.assertEqual(prov["source"], "unauthenticated")
         self.assertNotEqual(prov["source"], "leader")
@@ -371,6 +366,49 @@ class LearnProvenance(unittest.TestCase):
                   "provenance": {**good["provenance"], "source": "unauthenticated"}}
         self.assertTrue(of.field.learning_accepted(unauth))
         self.assertTrue(of.field.learning_accepted(unauth, for_prompt=False))
+
+
+class LearningConfirmation(unittest.TestCase):
+    def test_field_cli_persists_and_reconfirms_one_schema_valid_child_note(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            order = of.field.default_order("learning fixture", "build")
+            home = root / ".orderfield" / "fields" / order["id"]
+            home.mkdir(parents=True)
+            (home / "ORDER.json").write_text(json.dumps(order), encoding="utf-8")
+            (home / "state.json").write_text(json.dumps(of.field.default_state()), encoding="utf-8")
+            env = {**os.environ, "OF_FIELD": order["id"], "OF_CHILD": "fixture",
+                   "OF_NO_UPDATE_CHECK": "1", "OF_LEARNINGS": str(root / "protocol.json")}
+            for command in (["learn", "local note"], ["learn", "local note"], ["learn", "--list"]):
+                result = subprocess.run([sys.executable, str(OF_PY), *command], cwd=root, env=env,
+                                        text=True, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("local note", result.stdout)
+            path, = (home / "learnings").glob("*.json")
+            item = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual((item["source"], item["provenance"]["source"]), ("child", "child"))
+            self.assertTrue(item["last_confirmed_at"])
+            self.assertEqual(of.field.validate_public_schema(item, "learning.schema.json", "learning"), [])
+
+    def test_reconfirmed_legacy_note_reaches_capped_resume_with_original_source(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            cache = root / "protocol.json"
+            items = [
+                {"id": f"lrn_{i:012x}", "kind": "protocol", "text": f"note {i}",
+                 "created_at": f"2026-01-{i+1:02d}T00:00:00Z", "source": "unauthenticated",
+                 "provenance": {"source": "unauthenticated", "repo": repo_digest(root),
+                                "of_version": "0"}}
+                for i in range(PROTOCOL_PROMPT_CAP + 1)
+            ]
+            with patch.dict(os.environ, {"OF_LEARNINGS": str(cache)}):
+                cache.write_text(json.dumps({"v": 1, "items": items}), encoding="utf-8")
+                self.assertNotIn(items[0], resume_learnings(root)["protocol"])
+                items[0]["last_confirmed_at"] = "2026-02-01T00:00:00Z"
+                cache.write_text(json.dumps({"v": 1, "items": items}), encoding="utf-8")
+                first = resume_learnings(root)["protocol"][0]
+                self.assertEqual(first, items[0])
+                self.assertEqual(of.field.validate_public_schema(first, "learning.schema.json", "learning"), [])
 
 
 class LearnChildForge(unittest.TestCase):

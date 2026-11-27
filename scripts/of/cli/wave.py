@@ -44,6 +44,7 @@ from of.host_ram import AgentBand
 from of.field import (
     OF_CHILD_ENV,
     OF_FIELD_ENV,
+    OF_SPAWN_REGISTRY_ENV,
     ROLES,
     argv_preview,
     die,
@@ -59,6 +60,8 @@ from of.field import (
     load_json,
     parse_utc,
     refuse_child_forge,
+    register_spawned_child,
+    spawn_registry_path,
     spawned_child_id,
     try_load_json,
     load_order,
@@ -744,8 +747,17 @@ def run_child(
     if os.name == "posix":
         kwargs["start_new_session"] = True
     proc = subprocess.Popen(argv, **kwargs)
-    if on_start is not None:
-        on_start(proc)
+    try:
+        if OF_CHILD_ENV in env:
+            register_spawned_child(proc.pid, env[OF_CHILD_ENV], session=os.name == "posix")
+        if on_start is not None:
+            on_start(proc)
+    except BaseException:
+        kill_child_tree(proc)
+        proc.stdout.close()
+        proc.stderr.close()
+        proc.wait()
+        raise
     out_chunks: list[str] = []
     err_chunks: list[str] = []
 
@@ -1522,10 +1534,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     meta_path = wdir / "spawns" / f"{child_id}.json"
     owned_baseline = OwnedWrite.snapshot(root, packet)
     initial_started = utc_now()
+    prior_review = None
     if meta_path.is_file():
         try:
             prior_data = load_json(meta_path)
             if isinstance(prior_data, dict):
+                prior_review = SpawnRecord.review_snapshot(prior_data)
                 if isinstance(prior_data.get(OwnedWrite.DIGEST_KEY), dict):
                     owned_baseline = prior_data[OwnedWrite.DIGEST_KEY]
                 if prior_data.get("started_at"):
@@ -1557,6 +1571,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if model_name:
         meta["model_hint"] = model_name
     log_path = wdir / "logs" / f"{child_id}.log"
+    if args.dry_run:
+        meta.update(outcome="dry_run", ok=True, ended_at=utc_now(), exit=None)
+    elif packet.get("role") in ReviewScope.REVIEW_ROLES:
+        meta["review_start"] = prior_review  # claim precedes launch preparation
     prior = SpawnRecord.claim_started(
         root,
         meta_path,
@@ -1575,8 +1593,22 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             ),
         )
 
-    def finalize(outcome: str, **extra: Any) -> None:
+    previous_residual_sha = None
+
+    def review_result_unchanged() -> bool:
+        return (previous_residual_sha is not None and residual_abs.is_file()
+                and ResidualPin.digest(residual_abs) == previous_residual_sha)
+
+    def finalize(outcome: str, *, reused_result: bool | None = None, **extra: Any) -> None:
         """Every spawn outcome lands here: never leave started-only metadata."""
+        if reused_result is None:
+            reused_result = review_result_unchanged()
+        if reused_result:
+            if prior_review is None:
+                meta.pop("review_start", None)
+            else:
+                meta["review_start"] = prior_review
+                meta["review_result_reused"] = True
         meta.update(extra)
         meta["outcome"] = outcome
         meta["ended_at"] = utc_now()
@@ -1597,7 +1629,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={physical_field_rel(root, residual_rel)}")
     if args.dry_run:
-        finalize("dry_run", ok=True)
         settle_session()
         emit_event(
             "spawn",
@@ -1649,6 +1680,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_env.update(SensorTrust.env(adapter, profile, packet, sensor_writes))
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
+    # A harness with an isolated HOME still shares its launcher's registry.
+    child_env[OF_SPAWN_REGISTRY_ENV] = str(spawn_registry_path().absolute())
     scratch_rel = packet.get("scratch_dir")
     scratch_abs = (
         field_artifact_path(root, str(scratch_rel), "packet scratch_dir")
@@ -1680,6 +1713,17 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if note:
             PulseProgress.append(root, packet, note)
 
+    review_start = None
+    if "review_start" in meta:
+        from of.cli.spec_cmd import ReviewWitness
+
+        checkout = (codex_worktree or root).expanduser().resolve()
+        review_start = ReviewWitness.snapshot(root, packet, checkout)
+        review_start["checkout"] = str(checkout)
+        meta["review_start"] = review_start
+        if residual_abs.is_file():
+            previous_residual_sha = ResidualPin.digest(residual_abs)
+        dump_json(meta_path, meta)
     try:
         proc = run_child(
             argv,
@@ -1755,6 +1799,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         finalize("interrupted", ok=False)
         raise
     except SystemExit:
+        finalize("error", ok=False)
         raise
     except Exception as exc:  # PermissionError, ENOEXEC, E2BIG, OSError ...
         write_log("", f"{exc.__class__.__name__}: {exc}")
@@ -1772,6 +1817,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         packet, root, residual_abs, residual_rel,
         SpawnResidual.payload(last_residual, proc.stdout),
     )
+    # Compare the child's bytes before session, denial or SHA stamps change them.
+    reused_result = review_result_unchanged()
     if not residual_abs.exists():
         hint = SpawnResidual.harness_refuse_hint(
             f"{proc.stdout or ''}\n{proc.stderr or ''}"
@@ -1780,37 +1827,33 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             print(hint)
         print(f"no residual yet. log={log_path}")
     ScopeWrite.record_exit(root, packet)
+    data, _ = try_load_json(residual_abs)
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
-    if reported_sid and residual_abs.is_file():
-        data = load_json(residual_abs)
-        if isinstance(data, dict):
-            # session_adapter lands only where the residual schema has it.
-            for merged in (
-                AdapterResume.merge(data, reported_sid, adapter),
-                AdapterResume.merge(data, reported_sid),
-            ):
-                if merged is not data and not validate_residual_for_packet(
-                    merged, packet, root
-                ):
-                    dump_json(residual_abs, merged, skip_dir_fsync=True)
-                    break
+    if reported_sid and isinstance(data, dict):
+        # session_adapter lands only where the residual schema has it.
+        for merged in (
+            AdapterResume.merge(data, reported_sid, adapter),
+            AdapterResume.merge(data, reported_sid),
+        ):
+            if merged is not data and not validate_residual_for_packet(merged, packet, root):
+                data = merged
+                dump_json(residual_abs, data, skip_dir_fsync=True)
+                break
     denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
     if denied:
-        if residual_abs.is_file():
-            data = load_json(residual_abs)
-            if isinstance(data, dict):
-                merged = AgyDeniedActions.merge(data, denied)
-                if merged is not data and not validate_residual_for_packet(
-                    merged, packet, root
-                ):
-                    dump_json(residual_abs, merged, skip_dir_fsync=True)
+        if isinstance(data, dict):
+            merged = AgyDeniedActions.merge(data, denied)
+            if merged is not data and not validate_residual_for_packet(merged, packet, root):
+                data = merged
+                dump_json(residual_abs, data, skip_dir_fsync=True)
         print(f"denied_actions={','.join(denied)}")
         meta["denied_actions"] = denied
+    valid = False
     if residual_abs.is_file():
-        data = load_json(residual_abs)
-        _errs, stamped = KernelSha.validate(
+        errs, stamped = KernelSha.validate(
             data, packet, root, validate_residual_for_packet
         )
+        valid = not errs
         if stamped:
             dump_json(residual_abs, data, skip_dir_fsync=True)
         ResidualPin.pin(
@@ -1819,13 +1862,16 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
     outcome, ok = SpawnRecord.outcome_for(
         proc.returncode,
-        SpawnRecord.residual_valid(root, packet, residual_abs),
+        valid,
         residual_present=residual_abs.exists(),
         adapter=adapter,
         output=f"{proc.stdout or ''}\n{proc.stderr or ''}",
     )
+    if review_start is not None and residual_abs.is_file():
+        review_start["completed"] = ok and data.get("status") == "done"
     finalize(
         outcome,
+        reused_result=reused_result,
         ok=ok,
         exit=proc.returncode,
         log=str(log_path),
@@ -1920,6 +1966,7 @@ def _kernel_verify_lines(
 
 
 def cmd_collect(args: argparse.Namespace) -> None:
+    refuse_child_forge("of collect")
     root = find_root()
     order = load_order(root)
     state = load_state(root)
@@ -1944,6 +1991,10 @@ def cmd_collect(args: argparse.Namespace) -> None:
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
+        if SpawnRecord.review_pending(SpawnRecord.load(root, pkt)):
+            lost += 1
+            print(f"PENDING {child}: review spawn has not settled")
+            continue
         try:
             path = packet_residual_file(root, pkt) if rel else None
             present = path is not None
@@ -1954,7 +2005,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
             trust_note = ""
-            meta_path = wave_dir(int(pkt.get("wave") or args.wave), root) / "spawns" / f"{child}.json"
+            meta_path = wave_dir(int(wave), root) / "spawns" / f"{child}.json"
             if meta_path.is_file():
                 trust_note = CollectDiagnostic.spawn_note(load_json(meta_path))
             looked = (

@@ -1,6 +1,7 @@
 """Revert and rewrite counts from a throwaway git repo. No network."""
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import os
@@ -12,6 +13,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -19,6 +21,9 @@ sys.path.insert(0, str(SCRIPTS))
 
 from of.repo_metrics import (  # noqa: E402
     REVERT_DETAIL,
+    _CapturedOutput,
+    _bounded_run,
+    _OutputLimit,
     repo_report,
     rewrite_rate,
 )
@@ -84,6 +89,43 @@ def _commit(
 def _report(repo: Path, **kwargs: object) -> str:
     lines, _fields = repo_report(repo, gh_bin="", now=NOW, **kwargs)  # type: ignore[arg-type]
     return "\n".join(lines)
+
+
+class BoundedCapture(unittest.TestCase):
+    def capture(self, code: str, timeout: float = 5):
+        return _bounded_run([sys.executable, "-c", code], cwd=ROOT,
+                            env=os.environ.copy(), timeout=timeout)
+
+    def test_sync_capture_from_running_event_loop(self) -> None:
+        async def read():
+            return self.capture("print('embedded')")
+
+        self.assertEqual(asyncio.run(read()).stdout.splitlines(), ["embedded"])
+
+    def test_pipe_drains_through_eof_at_exact_limit(self) -> None:
+        with patch("of.repo_metrics._MAX_LOG_BYTES", 131072):
+            proc = self.capture("import sys; sys.stdout.buffer.write(b'x' * 131072); sys.exit(3)")
+        self.assertEqual(proc.stdout, "x" * 131072)
+        self.assertEqual(proc.returncode, 3)
+
+    def test_overflow_and_silent_timeout_close_pipe_and_reap_process(self) -> None:
+        transports = []
+
+        class ObservedOutput(_CapturedOutput):
+            def connection_made(self, transport):
+                super().connection_made(transport)
+                transports.append(transport)
+
+        with patch("of.repo_metrics._CapturedOutput", ObservedOutput), \
+             patch("of.repo_metrics._MAX_LOG_BYTES", 8):
+            with self.assertRaises(_OutputLimit):
+                self.capture("import time; print('123456789', flush=True); time.sleep(10)")
+            with self.assertRaises(subprocess.TimeoutExpired):
+                self.capture("import time; time.sleep(10)", timeout=0.15)
+        self.assertEqual(len(transports), 2)
+        for transport in transports:
+            self.assertIsNotNone(transport.get_returncode())
+            self.assertTrue(transport.is_closing())
 
 
 class RevertRate(unittest.TestCase):

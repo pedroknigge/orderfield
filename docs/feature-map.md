@@ -14,7 +14,7 @@ One row per user-facing feature. The rows are the README command table, plus Fie
 | Pack | `of pack` | `tests/test_kernel_pack.py`; `verify-of pack-wave` |
 | Spawn | `of spawn` | `tests/test_spawn_trust.py` |
 | Quota hold | `of status` | `tests/test_spawn_trust.py` |
-| Collect | `of collect` | `tests/test_kernel_pack.py`; `verify-of collect-wave` |
+| Collect | `of collect` | `tests/test_kernel_pack.py`; `tests/test_wave_integrity.py`; `verify-of collect-wave` |
 | Integrate | `of integrate` | `tests/test_kernel_regime.py` |
 | Contrast | `of contrast` | `tests/test_kernel_spec.py` |
 | Close | `of close` | `tests/test_close_proof.py`; `verify-of close-field` |
@@ -23,7 +23,7 @@ One row per user-facing feature. The rows are the README command table, plus Fie
 | Learn checks | `of learn` | `tests/test_learn_checks.py`; `verify-of learn-checks` |
 | Sibling fields | `of new` | `tests/test_kernel_fields.py` |
 | Patch | `of patch` | `tests/test_kernel_field.py` |
-| Spec | `of spec` | `tests/test_kernel_spec.py` |
+| Spec | `of spec` | `tests/test_kernel_spec.py`; `tests/test_kernel_verify_argv0.py` |
 | Handoff | `of handoff` | `tests/test_spawn_trust.py` |
 | Issue | `of issue` | `tests/test_issue_cli.py` |
 | Field WAL | `of resume` | `tests/test_wal_chain.py`; `verify-of wal-resume` |

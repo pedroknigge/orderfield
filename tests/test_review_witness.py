@@ -4,12 +4,16 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -39,7 +43,7 @@ CLEAN_ENV = (
 )
 
 
-def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def run_of(cwd: Path, *args: str, **extra: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "OF_NO_GC_AUTO": "1"}
     env.setdefault(
         "OF_LEARNINGS",
@@ -55,7 +59,7 @@ def run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
         cwd=str(cwd),
         capture_output=True,
         text=True,
-        env=env,
+        env={**env, **extra},
         timeout=60,
     )
 
@@ -84,6 +88,15 @@ def witness_path(root: Path, child_id: str, wave: int = 1) -> Path:
     return (
         root / ".orderfield" / "waves" / f"{wave:03d}" / "review" / f"{child_id}.json"
     )
+
+
+def record_launch(root, packet, *, checkout=None, completed=True):
+    checkout = checkout or root
+    snapshot = of.ReviewWitness.snapshot(root, packet, checkout)
+    snapshot.update(checkout=str(checkout.resolve()), completed=completed)
+    dest = of.SpawnRecord.path(root, packet)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps({"outcome": "ok", "review_start": snapshot}))
 
 
 def write_receipt(root: Path, scratch: Path) -> str:
@@ -136,6 +149,160 @@ def write_bound_residual(
 
 
 class ReviewWitnessVocabulary(unittest.TestCase):
+
+    def test_collect_keeps_launch_checkout_and_missing_input(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            checkout = root / "reviewer"
+            checkout.mkdir()
+            product = checkout / "widget.txt"
+            product.write_text("review copy")
+            self.assertEqual(git(checkout, "init").returncode, 0)
+            self.assertEqual(git(checkout, "add", "widget.txt").returncode, 0)
+            self.assertEqual(git(checkout, "-c", "user.name=Test", "-c", "user.email=a@localhost",
+                                 "commit", "-m", "review input").returncode, 0)
+            rel = ".orderfield/waves/001/residuals/reader.json"
+            packet = {"wave": 1, "child_id": "reader", "role": "verifier", "residual_path": rel,
+                      "review_scope": {"paths": ["widget.txt", "later.txt"]}}
+            (root / "widget.txt").write_text("field copy")
+            record_launch(root, packet, checkout=checkout)
+            (root / "later.txt").write_text("added after launch")
+            product.write_text("edited after launch")
+            residual = root / rel
+            residual.parent.mkdir(parents=True)
+            residual.write_text(json.dumps({"status": "done", "residual": {"evidence": "noted: widget.txt"}}))
+            of.ReviewWitness.stamp(root, packet)
+            rec = of.ReviewWitness.load(root, packet)
+            self.assertEqual(rec["checkout"], str(checkout.resolve()))
+            self.assertEqual(rec["head"], git(checkout, "rev-parse", "HEAD").stdout.strip())
+            self.assertEqual(rec["tree"], git(checkout, "rev-parse", "HEAD^{tree}").stdout.strip())
+            self.assertEqual(rec["paths"], [
+                {"path": "widget.txt", "sha256": hashlib.sha256(b"review copy").hexdigest()},
+                {"path": "later.txt", "sha256": ""},
+            ])
+            with patch("of.cli.spec_cmd.packed_children", return_value=[packet]):
+                row, = of.ReviewWitness.document(root)["witness"]
+                self.assertEqual(row["stale_paths"], ["widget.txt", "later.txt"])
+
+    def test_nested_publication_with_a_legacy_blank_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home = root / ".orderfield/fields/ord_aaaaaaaa"
+            published = ".orderfield/waves/001/residuals/worker.json"
+            physical = home / "waves/001/residuals/worker.json"
+            physical.parent.mkdir(parents=True)
+            physical.write_text("reviewed worker output")
+            product = root / "app.py"
+            product.write_text("old")
+            packets = {}
+
+            def review(wave, child, *, spawned=False):
+                packet = {"wave": wave, "child_id": child, "role": "verifier",
+                          "review_scope": {"paths": ["app.py"], "published": [published]},
+                          "residual_path": f".orderfield/waves/{wave:03d}/residuals/{child}.json"}
+                packets[wave] = [packet]
+                path = home / f"waves/{wave:03d}/residuals/{child}.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"status": "done", "residual": {"evidence": "noted: app.py"}}))
+                if spawned:
+                    record_launch(root, packet)
+                of.ReviewWitness.stamp(root, packet)
+                return of.ReviewWitness.path(root, packet)
+
+            with of.field.using_field_home(home), patch(
+                "of.cli.spec_cmd.packed_children", side_effect=lambda _, w: packets[w]
+            ):
+                first = review(1, "first")
+                legacy = load_json(first)
+                legacy["paths"][1]["sha256"] = ""
+                first.write_text(json.dumps(legacy))
+                product.write_text("new")
+                old, = of.ReviewWitness.document(root)["witness"]
+                self.assertEqual(old["stale_paths"], ["app.py"])
+                leftover = root / published
+                leftover.parent.mkdir(parents=True)
+                leftover.write_text("older root output")
+                second = review(2, "second", spawned=True)
+                old, new = of.ReviewWitness.document(root)["witness"]
+                self.assertFalse(old["stale"])
+                self.assertEqual(set(old["covered_by"]), {"app.py"})
+                self.assertEqual(new["paths"][1]["sha256"], hashlib.sha256(physical.read_bytes()).hexdigest())
+                self.assertIn(physical.relative_to(root).as_posix(), of.render_prompt(packets[2][0], root=root))
+                leftover.write_text("changed root output")
+                self.assertFalse(of.ReviewWitness.document(root)["witness"][1]["stale"])
+                physical.unlink()
+                fallback = review(3, "fallback", spawned=True)
+                self.assertEqual(load_json(fallback)["paths"][1]["sha256"], hashlib.sha256(leftover.read_bytes()).hexdigest())
+                leftover.unlink()
+                self.assertTrue(all(row["stale"] for row in of.ReviewWitness.document(root)["witness"]))
+                second.unlink()
+                self.assertIn("second", of.ReviewWitness.undecided(of.ReviewWitness.document(root)))
+                review(4, "missing", spawned=True)
+                physical.write_text("arrived after launch")
+                old, _, _, missing = of.ReviewWitness.document(root)["witness"]
+                self.assertNotIn(published, old.get("stale_paths", []))
+                self.assertEqual(missing["stale_paths"], [published])
+
+    def test_later_witness_covers_only_its_role_wave_and_current_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            packets = {}
+
+            def review(wave, child, role, paths, *, notes=None, spawned=True, status="done",
+                       completed=True, owns=()):
+                rel = f".orderfield/waves/{wave:03d}/residuals/{child}.json"
+                packet = {"wave": wave, "child_id": child, "role": role,
+                          "residual_path": rel, "review_scope": {"paths": paths}, "owns_paths": list(owns)}
+                packets.setdefault(wave, []).append(packet)
+                residual = root / rel
+                residual.parent.mkdir(parents=True, exist_ok=True)
+                residual.write_text(json.dumps({"status": status, "residual": {
+                    "evidence": "noted: app.py", "proposed_patch": {"notes": notes} if notes else None,
+                }}))
+                if spawned:
+                    record_launch(root, packet, completed=completed)
+                of.ReviewWitness.stamp(root, packet)
+                return of.ReviewWitness.path(root, packet)
+
+            def original():
+                doc = of.ReviewWitness.document(root)
+                self.assertIn("v1", doc["open"])
+                return next(row for row in doc["witness"] if row["child_id"] == "v1")
+
+            with patch("of.cli.spec_cmd.packed_children", side_effect=lambda _, w: packets[w]):
+                for name in ("app.py", "other.py"):
+                    (root / name).write_text("old")
+                first = review(1, "v1", "verifier", ["app.py", "other.py"], notes="Follow up on app.py", spawned=False)
+                history = first.read_bytes()
+                for name in ("app.py", "other.py"):
+                    (root / name).write_text("new")
+                review(1, "v2", "verifier", ["app.py", "other.py"])
+                review(2, "a2", "adversary", ["app.py", "other.py"])
+                review(2, "handoff", "verifier", ["app.py"], spawned=False)
+                review(2, "threshold", "verifier", ["app.py"], status="threshold")
+                review(2, "incomplete", "verifier", ["app.py"], completed=False)
+                review(2, "writer", "verifier", ["app.py"], owns=["app.py"])
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                second = review(2, "v3", "verifier", ["app.py"])
+                self.assertEqual(original()["stale_paths"], ["other.py"])
+                self.assertEqual(original()["covered_by"], {"app.py": {"wave": 2, "child_id": "v3"}})
+                invalid = root / ".orderfield/waves/002/residuals/v3.json.invalid.txt"
+                invalid.write_text("invalid")
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                invalid.unlink()
+                review(3, "v4", "verifier", ["other.py"])
+                self.assertFalse(original()["stale"])
+                self.assertEqual(first.read_bytes(), history)
+                (root / "app.py").write_text("changed again")
+                self.assertEqual(original()["stale_paths"], ["app.py"])
+                (root / "app.py").write_text("new")
+                second.unlink()
+                self.assertEqual(original()["stale_paths"], ["app.py"])
+                (root / "other.py").unlink()
+                review(4, "v5", "verifier", ["other.py"])
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                first.unlink()
+                self.assertEqual(original()["reason"], of.ReviewWitness.NO_WITNESS)
 
     def test_open_is_act_and_consider(self) -> None:
         self.assertEqual(of.ReviewWitness.state("act"), "open")
@@ -288,6 +455,8 @@ class ReviewWitnessClose(unittest.TestCase):
             "verifier",
             "--child-id",
             "ver1",
+            "--seconds",
+            "2",
         )
         scope = load_json(packet_path(self.tmp, "ver1")).get("review_scope") or {}
         self.assertIn("app.py", scope.get("paths") or [])
@@ -347,6 +516,174 @@ class ReviewWitnessClose(unittest.TestCase):
         restored = of.ReviewWitness.document(self.tmp)
         ver = next(row for row in restored["witness"] if row["child_id"] == "ver1")
         self.assertFalse(ver["stale"], ver)
+
+    def _prepare_review(self, child: str) -> tuple[Path, str]:
+        residual = self.tmp / load_json(packet_path(self.tmp, child))["residual_path"]
+        prepared = self.tmp / ".orderfield" / "prepared.json"
+        residual.rename(prepared)
+        (self.tmp / load_json(prepared)["result_ref"]).unlink()
+        return residual, (
+            "import json, pathlib\n"
+            "prepared = pathlib.Path('.orderfield/prepared.json')\n"
+            "pathlib.Path(json.loads(prepared.read_text())['result_ref']).write_text('done\\n')\n"
+            f"prepared.rename({str(residual)!r})\n"
+        )
+
+    def _spawn_review(self, child: str, code: str, *args: str) -> subprocess.CompletedProcess[str]:
+        packet = packet_path(self.tmp, child).relative_to(self.tmp)
+        return run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", str(packet), *args,
+                      OF_AGENT=shlex.join([sys.executable, "-c", code]))
+
+    def test_invalid_review_settles_and_collect_reports_parse_error(self) -> None:
+        packet = load_json(packet_path(self.tmp, "adv1"))
+        residual = self.tmp / packet["residual_path"]
+        for content, diagnostic in [(b"{", "invalid JSON"), (b"\xff", "invalid UTF-8")]:
+            with self.subTest(diagnostic=diagnostic):
+                worker = f"from pathlib import Path\nPath({str(residual)!r}).write_bytes({content!r})"
+                launched = self._spawn_review("adv1", worker)
+                self.assertEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+                self.assertIn("outcome=residual_invalid", launched.stdout)
+                meta = load_json(of.SpawnRecord.path(self.tmp, packet))
+                self.assertEqual(meta["outcome"], "residual_invalid")
+                self.assertEqual(meta["exit"], 0)
+                self.assertTrue(meta["ended_at"])
+                self.assertFalse(meta["review_start"]["completed"])
+                collected = run_of(self.tmp, "collect", "--wave", "1",
+                                   "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
+                self.assertEqual(collected.returncode, 2, collected.stdout + collected.stderr)
+                self.assertIn(f"INVALID adv1.json: {diagnostic}", collected.stdout)
+                self.assertIn("ok=2 invalid=1 missing=0 total=3", collected.stdout)
+                self.assertIn(diagnostic, residual.with_suffix(".json.invalid.txt").read_text())
+                self.assertEqual(residual.read_bytes(), content)
+                self.assertFalse(witness_path(self.tmp, "adv1").exists())
+
+    def test_preview_preserves_started_claim_before_pid(self) -> None:
+        packet = load_json(packet_path(self.tmp, "adv1"))
+        record = of.SpawnRecord.path(self.tmp, packet)
+        preview = self._spawn_review("adv1", "pass", "--dry-run")
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertEqual(load_json(record)["outcome"], "dry_run")
+        of.SpawnRecord.claim_started(self.tmp, record, {
+            "child_id": "adv1", "started_at": of.utc_now(), "review_start": None,
+        })
+        claimed = record.read_bytes()
+        preview = self._spawn_review("adv1", "pass", "--dry-run")
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertIn("dry-run argv:", preview.stdout)
+        self.assertEqual(record.read_bytes(), claimed)
+
+    def test_collect_and_integrate_wait_for_review_to_settle(self) -> None:
+        residual, publish = self._prepare_review("adv1")
+        record = of.SpawnRecord.path(self.tmp, load_json(packet_path(self.tmp, "adv1")))
+        release = self.tmp / ".orderfield" / "release-review"
+        worker = publish + ("import time\n"
+                            f"while not pathlib.Path({str(release)!r}).exists():\n"
+                            "    time.sleep(0.05)\n")
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            flight = pool.submit(self._spawn_review, "adv1", worker)
+            try:
+                deadline = time.monotonic() + 20
+                claimed = None
+                while time.monotonic() < deadline and not flight.done():
+                    if residual.exists():
+                        snapshot = record.read_bytes()
+                        if of.SpawnRecord.pid_of(json.loads(snapshot)) is not None:
+                            claimed = snapshot
+                            break
+                    time.sleep(0.05)
+                if flight.done():
+                    ended = flight.result()
+                    self.fail(f"review exited before release: {ended.stdout}{ended.stderr}")
+                self.assertTrue(residual.exists())
+                self.assertIsNotNone(claimed, "review launch PID was not recorded")
+                preview = self._spawn_review("adv1", worker, "--dry-run")
+                self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+                self.assertIn("dry-run argv:", preview.stdout)
+                self.assertEqual(record.read_bytes(), claimed)
+                pending = run_of(self.tmp, "collect", "--wave", "1",
+                                 "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
+                self.assertEqual(pending.returncode, 2, pending.stdout + pending.stderr)
+                self.assertIn("PENDING adv1", pending.stdout)
+                self.assertIn("ok=2 invalid=0 missing=1 total=3", pending.stdout)
+                self.assertFalse(witness_path(self.tmp, "adv1").exists())
+                refused = run_of(self.tmp, "integrate", "--wave", "1")
+                self.assertNotEqual(refused.returncode, 0, refused.stdout)
+                self.assertIn("review pending for adv1", refused.stderr)
+                self.assertFalse((residual.parent.parent / "report.json").exists())
+            finally:
+                release.touch()
+            launched = flight.result()
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.ok("collect", "--wave", "1")
+        witness = load_json(witness_path(self.tmp, "adv1"))
+        self.assertTrue(witness["completed"])
+        self.assertEqual(witness["paths"], json.loads(claimed)["review_start"]["paths"])
+
+    def test_spawn_collect_and_checklist_use_prelaunch_bytes(self) -> None:
+        _, publish = self._prepare_review("adv1")
+        self.app.write_bytes(b"review input\n")
+        launched = self._spawn_review("adv1", publish)
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.assertIn("outcome=ok", launched.stdout)
+        self.app.write_bytes(self.reviewed)
+        self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
+        rec = load_json(witness_path(self.tmp, "adv1"))
+        self.assertEqual(rec["checkout"], str(self.tmp.resolve()))
+        self.assertTrue(rec["completed"])
+        self.assertEqual(rec["paths"][0]["sha256"], hashlib.sha256(b"review input\n").hexdigest())
+        self.ok("spec", "--verified-contract", RID, "--cite", self.receipt)
+        listed = run_of(self.tmp, "close", "--checklist")
+        self.assertEqual(listed.returncode, of.ReviewWitness.UNDECIDED_EXIT, listed.stdout + listed.stderr)
+        self.assertIn("stale adv1", listed.stdout)
+
+    def test_retry_without_new_residual_preserves_review_inputs(self) -> None:
+        write_bound_residual(self.tmp, "ver1", evidence="noted: reviewed the input bytes of app.py")
+        residual, publish = self._prepare_review("ver1")
+        first = self._spawn_review("ver1", publish)
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        packet = load_json(packet_path(self.tmp, "ver1"))
+        record = of.SpawnRecord.path(self.tmp, packet)
+        snapshot = load_json(record)["review_start"]
+        original = residual.read_bytes()
+        self.assertTrue(snapshot["completed"])
+        self.app.write_text("input for retry\n")
+        timeout = self._spawn_review("ver1", "import time\ntime.sleep(30)")
+        self.assertNotEqual(timeout.returncode, 0)
+        self.assertEqual(load_json(record)["outcome"], "timeout", timeout.stdout + timeout.stderr)
+        self.assertEqual(residual.read_bytes(), original)
+        self.assertEqual(load_json(record)["review_start"], snapshot)
+        self.app.write_bytes(self.reviewed)
+        self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "adv1")
+        witness = load_json(witness_path(self.tmp, "ver1"))
+        self.assertEqual(witness["paths"], snapshot["paths"])
+        self.assertTrue(witness["completed"])
+
+    def test_launch_error_keeps_input_of_previous_incomplete_review(self) -> None:
+        write_bound_residual(self.tmp, "ver1", evidence="noted: reviewed the input bytes of app.py")
+        residual, publish = self._prepare_review("ver1")
+        timeout = self._spawn_review("ver1", publish + "import time\ntime.sleep(30)")
+        self.assertNotEqual(timeout.returncode, 0)
+        packet = packet_path(self.tmp, "ver1")
+        record = of.SpawnRecord.path(self.tmp, load_json(packet))
+        self.assertEqual(load_json(record)["outcome"], "timeout", timeout.stderr)
+        original = residual.read_bytes()
+        snapshot = load_json(record)["review_start"]
+        moved = git(self.tmp, "-c", "user.name=Test", "-c", "user.email=a@localhost",
+                    "commit", "--allow-empty", "-m", "retry checkout")
+        self.assertEqual(moved.returncode, 0, moved.stderr)
+        self.assertNotEqual(git(self.tmp, "rev-parse", "HEAD").stdout.strip(), snapshot["head"])
+        failed = run_of(self.tmp, "spawn", "--packet", str(packet.relative_to(self.tmp)), "--adapter", "generic",
+                        OF_AGENT=shlex.quote(str(self.tmp / "absent-reviewer")))
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertEqual(load_json(record)["outcome"], "missing_binary", failed.stderr)
+        self.assertEqual(residual.read_bytes(), original)
+        self.assertEqual(load_json(record)["review_start"], snapshot)
+        self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "adv1")
+        witness = load_json(witness_path(self.tmp, "ver1"))
+        self.assertEqual(witness["checkout"], snapshot["checkout"])
+        self.assertEqual(witness["head"], snapshot["head"])
+        self.assertEqual(witness["paths"], snapshot["paths"])
+        self.assertFalse(witness.get("completed"))
 
     def test_stale_or_missing_witness_exits_undecided(self) -> None:
         self._stamp()

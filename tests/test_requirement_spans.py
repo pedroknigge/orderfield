@@ -22,6 +22,7 @@ sys.path.insert(0, str(HERE.parent / "scripts"))
 from _harness import run_of  # noqa: E402
 from of.spec import (  # noqa: E402
     _rule_heading,
+    extract_requirements_from_plan,
     extract_requirements_from_spec,
     plan_item_id,
     uncovered_list_lines,
@@ -118,11 +119,84 @@ class ItemBlockSpans(unittest.TestCase):
     def test_items_next_to_a_cli_line_are_reported(self) -> None:
         text = (
             "1. Run the command as:\n   ```\n   python -m foo --bar\n   ```\n"
-            "   then check the output.\n2. Next item text here\n"
+            "   then check the output.\n2. Next item text here\n\npython -m foo status\n"
         )
         reqs = extract_requirements_from_spec(text)
         self.assertEqual([r["id"] for r in reqs], ["CLI-001"])
+        self.assertEqual(spans(reqs), [(8, 8)])
         self.assertEqual(uncovered_list_lines(text, reqs), [(1, 1), (5, 6)])
+
+    def test_fenced_examples_do_not_change_section_or_command_spans(self) -> None:
+        for fence in ("````", "~~~~"):
+            with self.subTest(fence=fence):
+                text = "\n".join((
+                    "## Requirements",
+                    "- Keep the first rule",
+                    fence + "markdown",
+                    "## EXAMPLE-001 Illustrative heading",
+                    "- EXAMPLE-002: illustrative list item",
+                    fence[:3],
+                    "python -m sample ignored \\",
+                    fence + fence[0],
+                    "- Keep the second rule",
+                    "$ python3 -m sample \\",
+                    "  status",
+                    "## Notes",
+                    "- Unbound context item",
+                ))
+                for reqs in (extract_requirements_from_spec(text),
+                             extract_requirements_from_plan(text, "plan.md")):
+                    self.assertEqual([r["text"] for r in reqs], [
+                        "Keep the first rule", "Keep the second rule", "python3 -m sample status",
+                    ])
+                    self.assertEqual(spans(reqs), [(2, 2), (9, 9), (10, 11)])
+                self.assertEqual(uncovered_list_lines(text, extract_requirements_from_spec(text)),
+                                 [(13, 13)])
+
+    def test_unclosed_fence_stops_an_outside_continuation(self) -> None:
+        text = "python -m demo status \\\n~~~sh\n- Ignore this example\npython -m demo hidden\n"
+        reqs = extract_requirements_from_spec(text)
+        self.assertEqual([r["text"] for r in reqs], ["python -m demo status"])
+        self.assertEqual(spans(reqs), [(1, 1)])
+        self.assertEqual(uncovered_list_lines(text, reqs), [])
+
+    def test_fenced_list_example_preserves_the_next_item(self) -> None:
+        for closing in ("  ```\n", ""):
+            text = "- ```sh\n  python -m sample demo\n" + closing + "- Keep this requirement\n"
+            reqs = extract_requirements_from_spec(text)
+            self.assertEqual([r["text"] for r in reqs], ["Keep this requirement"])
+            last = len(text.splitlines())
+            self.assertEqual(spans(reqs), [(last, last)])
+            self.assertEqual(uncovered_list_lines(text, reqs), [])
+
+    def test_continuation_fence_ends_with_its_list_item(self) -> None:
+        for opener, close in (("~~~", ""), ("```", "  ```\n")):
+            text = ("## Requirements\n- First rule here\n\n  " + opener + "sh\n"
+                    "  python -m hidden command\n" + close + "- Second rule here\n")
+            for reqs in (extract_requirements_from_spec(text),
+                         extract_requirements_from_plan(text, "plan.md")):
+                self.assertEqual([r["text"] for r in reqs], ["First rule here", "Second rule here"])
+                last = len(text.splitlines())
+                self.assertEqual(spans(reqs), [(2, 2), (last, last)])
+            self.assertEqual(uncovered_list_lines(text, extract_requirements_from_spec(text)), [])
+
+    def test_indented_literal_marker_does_not_open_a_fence(self) -> None:
+        text = "## Requirements\n\n    ~~~\n\n- Keep this requirement\n"
+        for reqs in (extract_requirements_from_spec(text),
+                     extract_requirements_from_plan(text, "plan.md")):
+            self.assertEqual([r["text"] for r in reqs], ["Keep this requirement"])
+            self.assertEqual(spans(reqs), [(5, 5)])
+
+    def test_empty_and_nested_list_fences_keep_only_outside_rules(self) -> None:
+        for block in ("-\n  ~~~text\n  - Ignore the example.", "- - ~~~text\n    - Ignore the example.\n    ~~~",
+                      "1. -\n     ```sh\n     python -m example"):
+            with self.subTest(block=block):
+                text = f"## Requirements\n- Keep the first rule.\n{block}\n- Keep the next rule."
+                for reqs in (extract_requirements_from_spec(text),
+                             extract_requirements_from_plan(text, "plan.md")):
+                    self.assertEqual([r["text"] for r in reqs], ["Keep the first rule.", "Keep the next rule."])
+                    self.assertEqual(spans(reqs), [(2, 2), (6, 6)])
+                self.assertEqual(uncovered_list_lines(text, extract_requirements_from_spec(text)), [])
 
     def test_numbered_items_under_a_rule_heading_are_indexed(self) -> None:
         text = (

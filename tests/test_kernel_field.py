@@ -1389,9 +1389,9 @@ class InvalidOrderAndSession(unittest.TestCase):
     def test_invalid_order_json_dies(self) -> None:
         r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
-        committed_artifact(self.tmp / ".orderfield", "ORDER.json").write_text(
-            "{not-json", encoding="utf-8"
-        )
+        home = self.tmp / ".orderfield"
+        with of.field.using_field_home(home), of.field.field_generation(self.tmp):
+            of.field.dump_text(home / "ORDER.json", "{not-json")
         status = run_of(self.tmp, "status")
         self.assertNotEqual(status.returncode, 0)
         self.assertIn("invalid JSON", status.stderr)
@@ -1493,15 +1493,6 @@ class PulseActivity(unittest.TestCase):
     def test_shared_repo_activity_cannot_refresh_a_stale_child(self) -> None:
         self._pack()
         self._mark_spawned()
-        pkt_path = committed_artifact(
-            self.tmp / ".orderfield", "waves/001/packets/c1.json"
-        )
-        pkt = load_json(pkt_path)
-        pkt["packed_at"] = "2020-01-01T00:00:00Z"
-        pkt["packet_hash"] = of.packet_digest(pkt)
-        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
-        old = 1577836800
-        os.utime(pkt_path, (old, old))
         (self.tmp / "product.txt").write_text("fresh shared write", encoding="utf-8")
 
         r = run_of(self.tmp, "pulse")
@@ -1531,15 +1522,6 @@ class PulseActivity(unittest.TestCase):
     def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
         self._pack()
         self._mark_spawned()
-        pkt_path = committed_artifact(
-            self.tmp / ".orderfield", "waves/001/packets/c1.json"
-        )
-        pkt = load_json(pkt_path)
-        pkt["packed_at"] = "2020-01-01T00:00:00Z"
-        pkt["packet_hash"] = of.packet_digest(pkt)
-        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
-        old = 1577836800  # 2020-01-01, matches packed_at
-        os.utime(pkt_path, (old, old))
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("STALE", r.stdout)
@@ -1964,6 +1946,83 @@ class StaleWaveRecovery(unittest.TestCase):
         nxt = run_of(self.tmp, "next-wave")
         self.assertNotEqual(nxt.returncode, 0)
         self.assertIn("in flight", nxt.stderr)
+
+
+class RetentionAcrossHomes(unittest.TestCase):
+    def test_apply_rechecks_link_components_in_a_saved_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".orderfield"
+            target = home / "samples"
+            target.mkdir(parents=True)
+            note = target / "note"
+            note.write_text("keep")
+            alias = home / "alias"
+            alias.symlink_to(target, target_is_directory=True)
+            actions = [
+                {"action": "dump", "path": ".orderfield/alias", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/alias/note", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/samples/note", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/samples", "reason": "old"},
+            ]
+            of.field.set_field_home(home)
+            self.addCleanup(of.field.clear_field_home)
+            of.apply_field_retention(root, {}, {}, actions)
+            self.assertTrue(alias.is_symlink())
+            self.assertEqual(note.read_text(), "keep")
+
+    def test_gc_preserves_links_and_commits_each_homes_deletions(self) -> None:
+        import of.wal as wal
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            homes = []
+            self.addCleanup(of.field.clear_field_home)
+            for label in ("one", "two"):
+                order = of.default_order(label, "build")
+                home = root / ".orderfield" / "fields" / order["id"]
+                of.field.set_field_home(home)
+                state = of.default_state()
+                state["phase_overrides"] = [{
+                    "at": "2001-01-01T00:00:00Z", "wave": 1,
+                    "from_phase": "explore", "to_phase": "build", "reason": "fixture",
+                    "order_rev_before": 1, "order_rev_after": 2,
+                }]
+                with wal.field_generation(root):
+                    of.save_order(order, root)
+                    of.save_state(state, root)
+                    wal.dump_text(home / "spec-log" / "old.md", "old\n")
+                    wal.dump_text(home / "spec-log" / "new.md", label)
+                os.utime(home / "spec-log" / "old.md", (1, 1))
+                homes.append(home)
+            active = homes[-1]
+            link = active / "work" / "scratch" / "retired" / "notes"
+            link.parent.mkdir(parents=True)
+            target = homes[0] / "spec-log" / "new.md"
+            os.utime(target, (1, 1))
+            (homes[0] / "ORDER.json").unlink()
+            link.symlink_to(target)
+            os.utime(link.parent, (1, 1))
+            for args in (("gc", "--dry-run"), ("gc",)):
+                result = run_of(root, "--field", active.name, *args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("symlink", result.stdout)
+                self.assertTrue(link.is_symlink())
+                self.assertEqual(target.read_text(), "one")
+                self.assertRegex(result.stdout, rf"keep\s+.*{homes[0].name}/spec-log/new.md\s+symlink")
+                if "--dry-run" in args:
+                    self.assertTrue(all((h / "spec-log" / "old.md").exists() for h in homes))
+            for home in homes:
+                of.field.set_field_home(home)
+                self.assertIsNone(wal.committed_bytes(root, "spec-log/old.md"))
+                current_state = json.loads(wal.committed_bytes(root, "state.json"))
+                self.assertEqual(current_state["phase_overrides"], [])
+                (home / "wal" / "MATERIALIZED.json").unlink()
+                wal.recover_field_wal(root)
+                self.assertFalse((home / "spec-log" / "old.md").exists())
+                self.assertEqual(load_json(home / "state.json")["phase_overrides"], [])
+                self.assertEqual((home / "spec-log" / "new.md").read_text(),
+                                 load_json(home / "ORDER.json")["mission"])
 
 
 class EpisodicRetention(unittest.TestCase):
@@ -2401,6 +2460,21 @@ class WorktreeHelper(unittest.TestCase):
         (self.tmp / "README").write_text("x\n", encoding="utf-8")
         git("add", "README")
         git("commit", "-m", "init")
+
+    def test_only_mutating_worktree_commands_wait_for_the_tree_lock(self) -> None:
+        self._git_init()
+        with of.field_lock(self.tmp, "test", generation=False):
+            for action in ("add", "land", "remove"):
+                with self.subTest(action=action):
+                    result = run_of(
+                        self.tmp, "worktree", action, "--child-id", "one",
+                        extra_env={"OF_FIELD_LOCK_WAIT_SECONDS": "0.05"},
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("field lock wait exceeded", result.stderr)
+            listed = run_of(self.tmp, "worktree", "list")
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertFalse(of.default_worktree_path(self.tmp, "one").exists())
 
     @unittest.skipUnless(shutil.which("git"), "git not on PATH")
     def test_worktree_add_remove_is_opt_in_not_a_process_manager(self) -> None:

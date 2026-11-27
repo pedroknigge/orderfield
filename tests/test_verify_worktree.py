@@ -27,6 +27,7 @@ if str(SCRIPTS) not in sys.path:
 
 import of  # noqa: E402
 from of.replay import DiscoveryReplay  # noqa: E402
+from of.wal import committed_bytes  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 CLEAN_ENV = (
@@ -228,6 +229,8 @@ class VerifyWorktree(unittest.TestCase):
             removed.stdout,
         )
         self.assertNotIn("y", (self.tmp / "mod.py").read_text(encoding="utf-8"))
+        # Force the next reader to restore live state from committed bytes.
+        (self.tmp / ".orderfield/wal/MATERIALIZED.json").unlink()
         after = self.contrast()
         self.assertEqual(after["_code"], 2, after["_text"])
         self.assertNotEqual(after["gate"], "RESOLVED")
@@ -235,6 +238,7 @@ class VerifyWorktree(unittest.TestCase):
         self.assertTrue(row["blocking"])
         self.assertNotEqual(row["verdict"], "VERIFIED_CONTRACT")
         # The check file is what integrate's printed next treats as green.
+        self.assertIsNone(committed_bytes(self.tmp, DiscoveryReplay.check_rel("REQ-001")))
         self.assertFalse(DiscoveryReplay.externally_green(self.tmp, "REQ-001"))
         checklist = run_of(self.tmp, "close", "--checklist")
         self.assertEqual(checklist.returncode, 2, checklist.stdout + checklist.stderr)

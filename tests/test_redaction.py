@@ -316,10 +316,10 @@ class WalEnumSwallow(unittest.TestCase):
         self.addCleanup(lambda: shutil.rmtree(tmp, True))
         home = tmp / ".orderfield"
         wal = home / "wal"
-        wal.mkdir(parents=True)
-        (home / "ORDER.json").write_text("{}", encoding="utf-8")
         field.set_field_home(home)
         self.addCleanup(field.clear_field_home)
+        with field.field_generation(tmp):
+            field.save_order(field.default_order("enum warning", "build"), tmp)
         home_path = str(Path.home())
         boom = OSError(errno.EACCES, "Permission denied", f"{home_path}/.cache/secret-wal")
         orig = Path.iterdir

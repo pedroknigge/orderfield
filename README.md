@@ -13,19 +13,19 @@
 Anyone can persist a plan. Only the leader may change it.
 
 <p align="center">
-  <strong>v0.9.10</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
+  <strong>v0.9.11</strong> · contract kernel · MIT · Python 3.11+ stdlib · <a href="https://agentskills.io">Agent Skill</a> interface
 </p>
 
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/install-SHA--256%20pin-111827?style=for-the-badge" alt="Install SHA-256 pin" /></a>
-  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.9.10-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
+  <a href="./SKILL.md"><img src="https://img.shields.io/badge/skill-0.9.11-0ea5e9?style=for-the-badge" alt="Skill version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="License" /></a>
 </p>
 
-Trusted path is tag-pinned **v0.9.10**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
+Trusted path is tag-pinned **v0.9.11**, SHA-256 verified. Do not pipe unsigned `main`. From a checkout or a verified `install.sh`:
 
 ```bash
-ORDERFIELD_REF=v0.9.10 bash install.sh --global --from-release
+ORDERFIELD_REF=v0.9.11 bash install.sh --global --from-release
 # ensure ~/.local/bin is on PATH
 of doctor    # must print ok
 ```
@@ -111,7 +111,7 @@ Two unrelated missions in the same working tree are sibling fields. `of new` ope
 
 ## Install
 
-The glance above is the trusted pin (`ORDERFIELD_REF=v0.9.10` + `--from-release`). Tag-pinned GitHub release assets, SHA-256 verified. Do not pipe unsigned `main`. Unpinned `npx skills add` is **not the trusted** path. The full checksum-verify recipe (curl `releases/download` + `SHA256SUMS` + archive, then `ORDERFIELD_ARCHIVE` / `ORDERFIELD_SHA256SUMS`) lives in [PUBLISH.md](PUBLISH.md). Do not delete that ritual.
+For manual SHA-256 verification, fetch the archive and `SHA256SUMS` from `releases/download`, then set `ORDERFIELD_ARCHIVE` and `ORDERFIELD_SHA256SUMS` as shown in [PUBLISH.md](PUBLISH.md). Unpinned `npx skills add` is outside the trusted install path.
 
 That lands `~/.local/bin/of` and the skill copies. First close is [below](#first-close): `init` → pack → residual → `of contrast` → `of close --checklist` → `of close`. One sitting wrapper: [docs/demo/mortal-install.md](docs/demo/mortal-install.md).
 
@@ -130,7 +130,7 @@ of doctor    # must print ok
 
 ```bash
 # generic path only — Windsurf, Cline, Aider, a custom TUI, tomorrow's CLI
-ORDERFIELD_REF=v0.9.10 bash install.sh --global --from-release --generic
+ORDERFIELD_REF=v0.9.11 bash install.sh --global --from-release --generic
 
 # this repo only
 ./install.sh --project
@@ -345,14 +345,14 @@ The loop you type: `init` → `pack` → `spawn` → `collect` → `integrate` �
 | `collect` | validate residuals for a wave; `MISSING` per absent child, exit 2 |
 | `integrate` | reduce residuals and choose a regime |
 | `contrast` | review gate: one-pager + JSON. CLOSE BLOCKED while open |
-| `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Exit 2 when that checklist is blocked. Exit 3 when a review witness is missing or stale |
+| `close` | stamp SPEC closed; refused until contrast is RESOLVED and residual is empty. `--checklist` prints that proof and does not stamp. Exit 2 when that checklist is blocked. Exit 3 when a review witness is missing or a changed path lacks later review coverage |
 | `new` / `fields` | sibling fields in this working tree; `--json` dashboard |
 | `patch` | explicit ORDER patch (`--done-when` = current phase; `--done-when-mission` = stable mission list; `--evaluator-consent yes\|no`; `--harness`) |
 | `spec` | list/add/extract/verify/amend; `--verified-contract` closes a public surface |
 | `handoff` | write the prompt file; without `--packet` is the mid-epic field packet |
 | `issue` | auto-report of kernel defects to `pedroknigge/orderfield` after HITL confirm (`--dry-run` is not HITL) |
 
-Other verbs (`unpack`, `render`, `phase`, `next-wave`, `pulse`, `checkpoint`, `learn`, `wave`, `validate`, `retain`, `gc`, `migrate`, `worktree`, `spec-diff`, `eval`) stay in `of --help` and [SKILL.md](SKILL.md). `of learn --checks` proposes a check when the same residual is in two fields; `of learn --accept ID` writes it.
+Other verbs (`unpack`, `render`, `phase`, `next-wave`, `pulse`, `checkpoint`, `learn`, `wave`, `validate`, `retain`, `gc`, `migrate`, `worktree`, `spec-diff`, `eval`) stay in `of --help` and [SKILL.md](SKILL.md). `of learn --checks` proposes actions when a claim recurs in two fields. Claims with a measurable repair can generate a check. `of learn --accept ID` writes the selected proposal.
 
 CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `contend`, `crown`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) hold `.orderfield/field.lock`. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is forbidden until you patch and `of next-wave`.
 

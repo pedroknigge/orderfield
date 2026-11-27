@@ -2,7 +2,6 @@
 """Kernel tests — pack invariants (packets, caps, collect, unpack, owns-path)."""
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -65,37 +64,9 @@ def committed_artifact(home: Path, rel: str) -> Path:
 
 
 def publish_committed(home: Path, rel: str, text: str) -> None:
-    """Keep a tamper across the next mutator (WAL-002 rematerializes CURRENT)."""
-    payload = text.encode("utf-8")
-    digest = hashlib.sha256(payload).hexdigest()
-    current_path = home / "wal" / "CURRENT.json"
-    current = json.loads(current_path.read_text(encoding="utf-8"))
-    gen = home / "wal" / str(current["generation"])
-    dest = gen / rel
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(payload)
-    live = home / rel
-    live.parent.mkdir(parents=True, exist_ok=True)
-    live.write_bytes(payload)
-    man_path = gen / "MANIFEST.json"
-    man = json.loads(man_path.read_text(encoding="utf-8"))
-    files = man.setdefault("files", {})
-    files[rel] = digest
-    # Re-sign like the real writer: the leader HMAC binds the files map.
-    key_file = home / "wal" / ".leader_key"
-    if key_file.is_file() and (man.get("hmac_sha256") or current.get("hmac_sha256")):
-        import hmac as _hmac
-
-        from of.wal import LeaderKey
-
-        key = key_file.read_text(encoding="utf-8").strip().encode("utf-8")
-        sig = _hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
-        man["hmac_sha256"] = sig
-        current["hmac_sha256"] = sig
-    man_path.write_text(json.dumps(man, indent=2) + "\n", encoding="utf-8")
-    current.setdefault("files", {})[rel] = digest
-    current["manifest_sha256"] = hashlib.sha256(man_path.read_bytes()).hexdigest()
-    current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+    """Publish fixture bytes through the field's normal snapshot writer."""
+    with of.field.using_field_home(home), of.field.field_generation(home.parent):
+        of.field.dump_text(home / rel, text)
 
 
 def packet_path(root: Path, child_id: str, wave: int = 1) -> Path:
@@ -317,7 +288,8 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
             self.tmp, "render", "--packet", ".orderfield/waves/001/packets/c1.json"
         )
         self.assertNotEqual(rendered.returncode, 0)
-        self.assertIn("packet_hash", rendered.stderr)
+        self.assertIn("does not hash to its MANIFEST", rendered.stderr)
+        self.assertTrue(any("packet_hash" in e for e in of.validate_packet(packet)))
 
     def test_noncanonical_absolute_and_copied_packets_are_rejected(self) -> None:
         path = self._pack()
@@ -354,9 +326,9 @@ class CanonicalPacketIdentityAndPaths(unittest.TestCase):
         packet = load_json(path)
         for key in ("packet_id", "packet_hash", "order_id"):
             packet.pop(key)
-        committed_artifact(
-            self.tmp / ".orderfield", "waves/001/packets/c1.json"
-        ).write_text(json.dumps(packet), encoding="utf-8")
+        publish_committed(
+            self.tmp / ".orderfield", "waves/001/packets/c1.json", json.dumps(packet)
+        )
 
         packet_arg = ".orderfield/waves/001/packets/c1.json"
         commands = (

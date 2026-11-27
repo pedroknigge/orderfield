@@ -58,6 +58,7 @@ from of.regime import (
     mark_done_when_closed,
 )
 from of.receipt import EvidenceReceipt
+from of.replay import DiscoveryReplay
 from of.retain import EvidenceStore, ReceiptInputs
 from of.pack import (
     PacketRevStale,
@@ -139,25 +140,6 @@ def cmd_spec(args: argparse.Namespace) -> None:
         load_order(root)  # dies "no ORDER" without creating a stray field.lock
     with field_lock(root, "spec"):
         _cmd_spec_locked(args, root)
-
-
-def requirement_checks(root: Path, data: dict[str, Any]) -> None:
-    """checks/<id>.json (DiscoveryReplay green) follows REQUIREMENTS in the
-    same generation: a verified_contract proof writes it, binding the cite's
-    sha256; any other status drops it. Never a child's or a hand-written file."""
-    from of.replay import DiscoveryReplay
-
-    for item in data.get("requirements") or []:
-        rid = str(item.get("id") or "") if isinstance(item, dict) else ""
-        rel = DiscoveryReplay.check_rel(rid)
-        if not rel:
-            continue
-        path = field_home(root) / rel
-        cite, sha = str(item.get("proof_cite") or ""), str(item.get("proof_sha") or "")
-        if item.get("status") == "verified_contract" and cite and sha:
-            dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
-        elif path.is_file():
-            path.unlink()
 
 
 def _failure_holds(
@@ -637,7 +619,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         changed = True
         print(f"superseded  {rid}")
     if changed:
-        requirement_checks(root, data)
+        DiscoveryReplay.sync_checks(root, data.get("requirements") or [])
         spec = spec_path(root)
         if spec.is_file():
             data["spec_hash"] = sha256_text(read_spec_text(root))
@@ -1005,6 +987,15 @@ class ContrastDiff:
     def human(doc: dict[str, Any]) -> str:
         gate = str(doc.get("gate") or "")
         gate_label = ContrastDiff.GATE_LABEL.get(gate, gate)
+        vocabulary = (
+            ContrastDiff.HEADER, ContrastDiff.NONE, ContrastDiff.SKIP,
+            ContrastDiff.GATE_RESOLVED_GAPS, *ContrastDiff.GATE_LABEL.values(),
+            *ContrastDiff.VERDICT_LINE.values(), *ContrastDiff.FLAG_LINE.values(),
+            ContrastReport.NEXT_BLOCKED, ContrastReport.NEXT_RESOLVED,
+        )
+        hits = ContrastDiff.theater("\n".join(vocabulary))
+        if hits:
+            die(f"contrast --diff theater: {', '.join(hits)}")
         blocking = [str(x) for x in (doc.get("blocking") or []) if str(x)]
         lines = [
             ContrastDiff.HEADER,
@@ -1051,11 +1042,7 @@ class ContrastDiff:
         nxt = str(doc.get("next") or "")
         if nxt:
             lines.append(f"next: {nxt}")
-        text = "\n".join(lines) + "\n"
-        hits = ContrastDiff.theater(text)
-        if hits:
-            die(f"contrast --diff theater: {', '.join(hits)}")
-        return text
+        return "\n".join(lines) + "\n"
 
 
 def print_contrast_report(
@@ -1446,6 +1433,17 @@ class ReviewWitness:
         return ReviewScope.allowed_paths(scope)
 
     @staticmethod
+    def snapshot(root: Path, packet: dict, checkout: Path) -> dict[str, Any]:
+        head, tree = ReviewWitness._binding(checkout)
+        published = ReviewScope.publication_paths(root, packet.get("review_scope") or {})
+        paths = []
+        for rel in ReviewWitness.cites(packet):
+            base = root if rel in published else checkout
+            digest = ReviewWitness._sha(base, published.get(rel, rel))
+            paths.append({"path": rel, "sha256": digest})
+        return {"head": head, "tree": tree, "paths": paths}
+
+    @staticmethod
     def load(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
         doc = _read_json_object(ReviewWitness.path(root, packet))
         return doc if isinstance(doc, dict) else None
@@ -1458,41 +1456,77 @@ class ReviewWitness:
         path = ReviewWitness.path(root, packet)
         if path.is_file():
             return
-        head, tree = ReviewWitness._binding(root)
-        rows = [
-            {"path": rel, "sha256": ReviewWitness._sha(root, rel)}
-            for rel in ReviewWitness.cites(packet)
-        ]
+        spawn = SpawnRecord.load(root, packet) or {}
+        if SpawnRecord.review_pending(spawn):
+            # Collect can race the launcher's exit. Stamp on the settled collect.
+            return
+        snapshot = SpawnRecord.review_snapshot(spawn)
+        if snapshot is None:
+            # Handoffs, including one after a spawn without output, report as before.
+            snapshot = ReviewWitness.snapshot(root, packet, root)
         rec = {
             "v": ReviewWitness.V,
             "child_id": str(packet.get("child_id") or ""),
             "role": role,
             "wave": int(packet.get("wave") or 1),
-            "head": head,
-            "tree": tree,
-            "paths": rows,
+            **snapshot,
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         dump_json(path, rec, skip_dir_fsync=True)
 
     @staticmethod
-    def drift(root: Path, rec: dict[str, Any]) -> list[str]:
-        out: list[str] = []
-        for row in rec.get("paths") or []:
-            if not isinstance(row, dict):
+    def _bound_record(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+        rec = ReviewWitness.load(root, packet)
+        if rec is None or any(rec.get(k) != packet.get(k) for k in ("role", "wave", "child_id")):
+            return None
+        paths = rec.get("paths")
+        if not isinstance(paths, list) or not all(isinstance(p, dict) for p in paths):
+            return None
+        if [p.get("path") for p in paths] != ReviewWitness.cites(packet):
+            return None
+        return rec
+
+    @staticmethod
+    def _resolve_paths(root: Path, witnesses: list[dict],
+                       sources: dict[tuple[int, str], tuple[bool, dict[str, str]]]) -> None:
+        current: dict[str, str] = {}
+        latest: dict[tuple[str, str], dict] = {}
+        for row in reversed(witnesses):
+            if row.get("reason"):
                 continue
-            rel = str(row.get("path") or "")
-            if not rel:
-                continue
-            if ReviewWitness._sha(root, rel) != str(row.get("sha256") or ""):
-                out.append(rel)
-        return out
+            wave, child = row["wave"], row["child_id"]
+            independent, published = sources[wave, child]
+            pending, covered = [], {}
+            for cite in row["paths"]:
+                rel = cite["path"]
+                source = published.get(rel, rel)
+                if source not in current:
+                    current[source] = ReviewWitness._sha(root, source)
+                key = (row["role"], source)
+                if current[source] and cite.get("sha256") == current[source]:
+                    if independent:
+                        latest.setdefault(key, {"wave": wave, "child_id": child})
+                elif ("checkout" not in row and cite.get("sha256") == ""
+                      and source != rel and current[source]):
+                    # Older nested witnesses read the absent logical path. They
+                    # cannot provide a digest for another witness's review.
+                    continue
+                elif key in latest and latest[key]["wave"] > wave:
+                    covered[rel] = latest[key]
+                else:
+                    pending.append(rel)
+            row["stale"] = bool(pending)
+            if pending or covered:
+                row["stale_paths"] = pending
+            if covered:
+                row["covered_by"] = covered
 
     @staticmethod
     def document(root: Path) -> dict[str, Any]:
         findings: list[dict[str, Any]] = []
         claims: list[dict[str, Any]] = []
         witness: list[dict[str, Any]] = []
+        sources = {}
         for wave in wave_numbers(root):
             try:
                 packets = packed_children(root, int(wave))
@@ -1502,18 +1536,21 @@ class ReviewWitness:
                 role = str(packet.get("role") or "")
                 if role not in ReviewAttackers.REVIEW:
                     continue
+                child = str(packet.get("child_id") or "")
+                row = {"child_id": child, "role": role, "wave": int(wave),
+                       "head": "", "tree": "", "stale": True, "paths": []}
+                witness.append(row)
                 try:
                     path = packet_residual_file(root, packet)
                 except SystemExit:
-                    continue
-                if path is None:
-                    continue
-                if path.with_suffix(path.suffix + ".invalid.txt").is_file():
+                    path = None
+                if path is None or path.with_suffix(path.suffix + ".invalid.txt").is_file():
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
                 data = _read_json_object(path)
                 if not isinstance(data, dict):
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                child = str(packet.get("child_id") or "")
                 bucket = ReviewAttackers.bucket(data)
                 evidence = ReviewAttackers.evidence_text(data)
                 if ReviewWitness.bare(data, bucket):
@@ -1531,34 +1568,20 @@ class ReviewWitness:
                     )
                     if finding_state != "open":
                         claims.append(ReviewWitness.claim(child, role, int(wave)))
-                rec = ReviewWitness.load(root, packet)
+                rec = ReviewWitness._bound_record(root, packet)
                 if rec is None:
-                    witness.append(
-                        {
-                            "child_id": child,
-                            "role": role,
-                            "wave": int(wave),
-                            "head": "",
-                            "tree": "",
-                            "stale": True,
-                            "reason": ReviewWitness.NO_WITNESS,
-                            "paths": [],
-                        }
-                    )
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                drifted = ReviewWitness.drift(root, rec)
-                row = {
-                    "child_id": child,
-                    "role": role,
-                    "wave": int(wave),
-                    "head": str(rec.get("head") or ""),
-                    "tree": str(rec.get("tree") or ""),
-                    "stale": bool(drifted),
-                    "paths": list(rec.get("paths") or []),
-                }
-                if drifted:
-                    row["stale_paths"] = drifted
-                witness.append(row)
+                if rec.get("checkout"):
+                    row["checkout"] = rec["checkout"]
+                independent = (bool(rec.get("checkout")) and rec.get("completed") is True
+                               and data.get("status") == "done" and not packet.get("owns_paths"))
+                sources[int(wave), child] = independent, ReviewScope.publication_paths(
+                    root, packet.get("review_scope") or {}
+                )
+                row.update(head=str(rec.get("head") or ""), tree=str(rec.get("tree") or ""),
+                           paths=rec["paths"])
+        ReviewWitness._resolve_paths(root, witness, sources)
         return {
             "findings": findings,
             "open": [
@@ -1941,7 +1964,6 @@ class EvaluatorPacket:
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
             "evaluator_children": children,
-            "due": due,
             "next": nxt,
             "speak": EvaluatorPacket.speak_for(status),
         }
@@ -1957,7 +1979,6 @@ class EvaluatorPacket:
             "evaluator_roles": [
                 str(role) for role in (doc.get("evaluator_roles") or [])
             ],
-            "due": bool(doc.get("due")),
             "kind": EvaluatorPacket.KIND,
             "next": str(doc.get("next") or ""),
             "speak": str(doc.get("speak") or EvaluatorPacket.SPEAK_UNSET),

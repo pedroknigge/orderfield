@@ -17,26 +17,31 @@ from of.field import (
     dump_json,
     emit_event,
     field_generation,
+    field_home,
     field_rel,
     find_root,
     json_events_enabled,
     load_order,
     load_state,
+    order_path,
     patch_origin,
     SpawnRecord,
     physical_field_rel,
     print_owned_unverified,
     refuse_child_forge,
     remove_constraint,
+    restore_live_from_current,
     require_public_schema,
     save_order,
     save_state,
     snapshot_session,
+    try_load_json,
     utc_now,
     wave_dir,
     write_phase_md,
 )
 from of.integrate import update_path_owners_index
+from of.learn_checks import LearnChecks, matching_observations
 from of.pack import (
     complete_stale_wave_recoverable,
     die_on_stale_packets,
@@ -91,6 +96,14 @@ def _emit_owned_unverified(root: Path) -> None:
     if json_events_enabled():
         return
     print_owned_unverified(root, file=sys.stderr)
+
+
+def _report_observations(wave_path: Path, report: dict | None) -> dict:
+    if not report or report["wave"] != int(wave_path.name):
+        return {}
+    observations, _ = try_load_json(wave_path / "integrations" / ChildLane.OBSERVATIONS)
+    digest = (report.get("integration") or {}).get("input_hash")
+    return matching_observations(observations, report["wave"], digest)
 
 
 def _emit_drive_after_integrate(
@@ -196,6 +209,11 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     observed = ChildLane.observations(
         residuals, landed, root, escalated=regime == "escalate_up"
     )
+    wave_path = wave_dir(int(wave), root)
+    failures = LearnChecks.landed_failures(order, residuals, landed)
+    previously_failed = LearnChecks.carry_failures(
+        failures, _report_observations(wave_path, previous_report)
+    )
     before = order["rev"]
     if args.apply:
         order = apply_patches(
@@ -207,7 +225,7 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         )
     # A child-reported failure is not an ORDER proposal. It lands with or
     # without --apply, so integrate cannot drop it.
-    req_changed = apply_requirement_patches(root, residuals, landed)
+    req_changed = apply_requirement_patches(root, residuals, landed, previously_failed)
     if req_changed:
         sync_order_spec_fields(order, root)
     if order["rev"] != before or req_changed:
@@ -323,14 +341,15 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         root / physical_field_rel(root, report["integration"]["record_path"]), report
     )
     dump_json(wave_dir(int(wave), root) / "report.json", report)
-    obs_path = wave_dir(int(wave), root) / "integrations" / ChildLane.OBSERVATIONS
-    if not observed:
+    obs_path = wave_path / "integrations" / ChildLane.OBSERVATIONS
+    if not (observed or failures):
         obs_path.unlink(missing_ok=True)
     else:
-        dump_json(
-            obs_path,
-            {"wave": int(wave), "input_hash": input_hash, "children": observed},
-        )
+        observations = {"wave": int(wave), "input_hash": input_hash, "children": observed}
+        if failures:
+            observations["learning_failures"] = failures
+        dump_json(obs_path, observations)
+    if observed:
         note = (
             "child proposals not applied to ORDER (leader applies with of patch): "
             + field_rel(root, obs_path)
@@ -408,6 +427,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
         }
         state.setdefault("phase_overrides", []).append(override)
     with field_generation(root):
+        LearnChecks.preserve_phase_completions(field_home(root), from_phase, args.phase)
         save_order(order, root)
         write_phase_md(root, order)
         if refreshed is not None:
@@ -415,12 +435,18 @@ def cmd_phase(args: argparse.Namespace) -> None:
                 refreshed, "wave-report.schema.json", "wave report"
             )
             integration = refreshed["integration"]
+            wave_path = wave_dir(refreshed["wave"], root)
+            previous = existing_integration_report(root, refreshed["wave"])
+            observations = _report_observations(wave_path, previous)
+            if observations and observations["input_hash"] != integration["input_hash"]:
+                observations["input_hash"] = integration["input_hash"]
+                dump_json(wave_path / "integrations" / ChildLane.OBSERVATIONS, observations)
             dump_json(
                 root / physical_field_rel(root, integration["record_path"]),
                 refreshed,
             )
             dump_json(
-                wave_dir(int(state.get("wave") or 1), root) / "report.json",
+                wave_path / "report.json",
                 refreshed,
             )
             reconcile_integration_state(state, refreshed)
@@ -439,6 +465,17 @@ def cmd_phase(args: argparse.Namespace) -> None:
             )
     snapshot_session(root, "phase")
     print(f"phase={order['phase']} rev={order['rev']}")
+
+
+def patch_from_current(root: Path) -> None:
+    if not order_path(root).exists():
+        die("no ORDER. of init --mission '...'")
+    restored = restore_live_from_current(root)
+    for rel in restored:
+        print(f"restored      {rel}  (live copy kept under wal/orphans/)")
+    if not restored:
+        print("restored      0  (live already matches WAL CURRENT)")
+    emit_event("patch", from_current=True, restored=restored, ok=True)
 
 
 def cmd_patch(args: argparse.Namespace) -> None:

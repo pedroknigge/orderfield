@@ -446,7 +446,7 @@ def cmd_models(args) -> None:
                 root, report["adapter"], report["models"], refresh_prices=refresh_prices,
             )
     room = headroom(args.timeout, args.adapter) if getattr(args, "headroom", False) else None
-    if args.json:
+    if getattr(args, "models_json", False) or getattr(args, "json", False):
         print(json.dumps({"v": 1, "kind": "model_discovery", "adapters": reports, **(room or {})},
                          ensure_ascii=False))
     else:

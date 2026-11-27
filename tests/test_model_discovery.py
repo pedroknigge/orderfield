@@ -252,6 +252,18 @@ class LiveModelDiscovery(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(report['status'], 'unsupported')
 
+    def test_model_output_flag_does_not_enable_error_events(self):
+        for flags, events in ((['models', '--json'], False), (['--json', 'models'], True),
+                              (['--json', 'models', '--json'], True)):
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), *flags,
+                                     '--timeout', '0'], env={**self.env, 'OF_JSON': '0'},
+                                    cwd=self.root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            if events:
+                self.assertEqual(json.loads(result.stderr)['event'], 'error')
+            else:
+                self.assertIn('of: error: ValueError:', result.stderr)
+
     def test_all_inventory_and_live_every_call(self):
         with patch.dict(os.environ,self.env):
             a = discover('claude')

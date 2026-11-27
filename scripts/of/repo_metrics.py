@@ -6,11 +6,11 @@ status` plus `pr list`. Missing git or gh prints a skip line.
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import os
 import re
-import select
 import shutil
 import subprocess
 import time
@@ -134,14 +134,71 @@ def _diff_paths(line: str) -> tuple[str, str] | None:
     return _strip_ab(_unquote(raw_a)), _strip_ab(_unquote(raw_b))
 
 
-def _git_capture(repo: Path, args: list[str], *, timeout: float) -> tuple[str, str]:
-    """Return (text, problem). problem is empty on a finished git command.
+class _OutputLimit(Exception):
+    pass
 
-    A non-zero exit still returns the text; the caller decides. problem is
-    set when git is missing, the read exceeds the byte cap, or the clock
-    expires. The process is killed in those cases. stderr is discarded so
-    a filled pipe cannot stall the read and so tokens never reach the report.
-    """
+
+class _CapturedOutput(asyncio.SubprocessProtocol):
+    def __init__(self) -> None:
+        self.data = bytearray()
+        self.exceeded = False
+        self.closed = asyncio.get_running_loop().create_future()
+
+    def connection_made(self, transport) -> None:
+        self.transport = transport
+
+    def pipe_data_received(self, fd: int, data: bytes) -> None:
+        if len(self.data) + len(data) > _MAX_LOG_BYTES:
+            self.exceeded = True
+            self.transport.close()
+        elif not self.exceeded:
+            self.data.extend(data)
+
+    def connection_lost(self, exc: Exception | None) -> None:
+        if exc is None:
+            self.closed.set_result(None)
+        else:
+            self.closed.set_exception(exc)
+
+
+async def _capture_output(
+    argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float
+) -> subprocess.CompletedProcess[str]:
+    """The subprocess transport owns both the pipe and the process on every OS."""
+    transport, output = await asyncio.get_running_loop().subprocess_exec(
+        _CapturedOutput, *argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    )
+    try:
+        await asyncio.wait_for(asyncio.shield(output.closed), timeout)
+    except TimeoutError:
+        raise subprocess.TimeoutExpired(argv, timeout) from None
+    finally:
+        transport.close()
+        await output.closed
+    if output.exceeded:
+        raise _OutputLimit
+    return subprocess.CompletedProcess(
+        argv, transport.get_returncode(), output.data.decode("utf-8", "replace")
+    )
+
+
+def _bounded_run(
+    argv: list[str], *, cwd: Path, env: dict[str, str], timeout: float
+) -> subprocess.CompletedProcess[str]:
+    capture = _capture_output(argv, cwd=cwd, env=env, timeout=timeout)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(capture)
+    # Synchronous callers can also be embedded in a running asyncio loop.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        return worker.submit(asyncio.run, capture).result()
+
+
+def _git_capture(repo: Path, args: list[str], *, timeout: float) -> tuple[str, str]:
+    """Return stdout or the reason the metric was skipped."""
     git = shutil.which("git")
     if not git:
         return "", "skipped  (git is not installed)"
@@ -164,67 +221,14 @@ def _git_capture(repo: Path, args: list[str], *, timeout: float) -> tuple[str, s
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_OPTIONAL_LOCKS"] = "0"
-    proc = subprocess.Popen(
-        argv,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        stdin=subprocess.DEVNULL,
-        env=env,
-    )
-    chunks: list[bytes] = []
-    total = 0
-    problem = ""
-    assert proc.stdout is not None
-    fd = proc.stdout.fileno()
-    deadline = time.monotonic() + timeout
     try:
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                problem = "skipped  (git log timed out)"
-                break
-            ready, _, _ = select.select([fd], [], [], remaining)
-            if not ready:
-                if proc.poll() is None:
-                    continue
-                # The process can exit in the same tick select reported
-                # not-ready, leaving the last bytes in the pipe.
-                while True:
-                    try:
-                        block = os.read(fd, 65536)
-                    except OSError:
-                        break
-                    if not block:
-                        break
-                    total += len(block)
-                    if total > _MAX_LOG_BYTES:
-                        problem = "skipped  (git log exceeded 32MB)"
-                        break
-                    chunks.append(block)
-                break
-            try:
-                block = os.read(fd, 65536)
-            except OSError:
-                break
-            if not block:
-                break
-            total += len(block)
-            if total > _MAX_LOG_BYTES:
-                problem = "skipped  (git log exceeded 32MB)"
-                break
-            chunks.append(block)
-    finally:
-        proc.stdout.close()
-        if proc.poll() is None:
-            proc.kill()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
-    if problem:
-        return "", problem
-    return b"".join(chunks).decode("utf-8", "replace"), ""
+        return _bounded_run(argv, cwd=repo, env=env, timeout=timeout).stdout, ""
+    except _OutputLimit:
+        return "", "skipped  (git log exceeded 32MB)"
+    except subprocess.TimeoutExpired:
+        return "", "skipped  (git log timed out)"
+    except OSError:
+        return "", "skipped  (git command failed)"
 
 
 def _toplevel(root: Path) -> tuple[Path | None, str]:
@@ -459,22 +463,16 @@ def _gh_bin(explicit: str | None | object) -> str:
     return str(explicit or "")
 
 
-def _gh_run(argv: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str] | None:
-    env = os.environ.copy()
-    env["GH_PROMPT_DISABLED"] = "1"
-    env["GIT_TERMINAL_PROMPT"] = "0"
+def _gh_run(argv: list[str], *, cwd: Path) -> tuple[subprocess.CompletedProcess[str] | None, str]:
+    env = {**os.environ, "GH_PROMPT_DISABLED": "1", "GIT_TERMINAL_PROMPT": "0"}
     try:
-        return subprocess.run(
-            argv,
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            stdin=subprocess.DEVNULL,
-            env=env,
-            timeout=_GH_TIMEOUT_S,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
+        return _bounded_run(argv, cwd=cwd, env=env, timeout=_GH_TIMEOUT_S), ""
+    except _OutputLimit:
+        return None, "PR data was skipped (gh output exceeded 32MB)"
+    except subprocess.TimeoutExpired:
+        return None, "PR data was skipped (gh timed out)"
+    except OSError:
+        return None, "PR data was skipped (gh command failed)"
 
 
 def _prs_later_reverted(rows: list[Any]) -> tuple[int, int]:
@@ -530,15 +528,15 @@ def pull_request_rate(
     binary = _gh_bin(gh_bin)
     if not binary:
         return None, None, "PR data was skipped (gh is not installed)"
-    auth = _gh_run([binary, "auth", "status"], cwd=repo)
+    auth, problem = _gh_run([binary, "auth", "status"], cwd=repo)
     if auth is None:
-        return None, None, "PR data was skipped (gh timed out)"
+        return None, None, problem
     if auth.returncode != 0:
         return None, None, "PR data was skipped (gh is not authenticated)"
     day = datetime.datetime.fromtimestamp(
         since_unix, datetime.timezone.utc
     ).strftime("%Y-%m-%d")
-    listed = _gh_run(
+    listed, problem = _gh_run(
         [
             binary,
             "pr",
@@ -555,7 +553,7 @@ def pull_request_rate(
         cwd=repo,
     )
     if listed is None:
-        return None, None, "PR data was skipped (gh timed out)"
+        return None, None, problem
     if listed.returncode != 0:
         return None, None, "PR data was skipped (gh pr list failed)"
     try:

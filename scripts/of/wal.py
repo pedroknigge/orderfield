@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import shutil
+import stat
 import sys
 import tempfile
 import uuid
@@ -37,6 +38,7 @@ from of.field import (
     sha256_text,
     spawned_child_id,
     utc_now,
+    using_field_home,
     warn_oserror,
 )
 
@@ -395,13 +397,7 @@ def _field_view_bytes(path: Path) -> tuple[bool, bytes | None]:
     files = man.get("files") if isinstance(man.get("files"), dict) else {}
     if rel not in files:
         return False, None
-    staged = gen_dir / rel
-    try:
-        if staged.is_file() and not staged.is_symlink():
-            return True, staged.read_bytes()
-    except OSError:
-        pass
-    return True, None
+    return True, _verified_bytes(gen_dir, rel, files[rel])
 
 
 def _wal_crash(point: str) -> None:
@@ -428,48 +424,32 @@ def _seq(meta: Any) -> int | None:
     return value
 
 
-def _manifest_complete(gen_dir: Path, man: Any) -> bool:
-    if not isinstance(man, dict) or man.get("complete") is not True:
-        return False
-    files = man.get("files")
-    if not isinstance(files, dict) or not files:
-        return False
-    for rel, digest in files.items():
-        staged = gen_dir / str(rel)
-        if not staged.is_file() or staged.is_symlink():
-            return False
-        if _sha_file(staged) != str(digest):
-            return False
-    return True
-
-
-def _generation_intact(gen_dir: Path, gid: str) -> dict[str, Any] | None:
-    """MANIFEST of a complete generation whose files hash to it, else None."""
-    if not gid or gen_dir.is_symlink() or not gen_dir.is_dir():
+def _verified_bytes(gen_dir: Path, rel: str, digest: str) -> bytes | None:
+    path = gen_dir / rel
+    try:
+        if _symlink_component(gen_dir, path) or not path.is_file():
+            return None
+        raw = path.read_bytes()
+    except OSError:
         return None
-    man = _read_json_object(gen_dir / "MANIFEST.json")
-    if not _manifest_complete(gen_dir, man):
-        return None
-    assert isinstance(man, dict)
-    if str(man.get("generation") or gid) != gid:
-        return None
-    return man
+    return raw if hashlib.sha256(raw).hexdigest() == digest else None
 
 
-def _manifest_mismatch(root: Path | None, current: dict[str, Any]) -> bool:
-    """CURRENT names its head MANIFEST's bytes and they differ. A v0.8.34
-    CURRENT carries no manifest_sha256 (adoption adds it): not checked."""
-    want = current.get("manifest_sha256")
-    if not want:
-        return False
-    gid = str(current.get("generation") or "")
-    return _sha_file(wal_home(root) / gid / "MANIFEST.json") != str(want)
+def _manifest_complete(gen_dir: Path, man: dict[str, Any]) -> bool:
+    return all(
+        _verified_bytes(gen_dir, rel, digest) is not None
+        for rel, digest in man["files"].items()
+    )
 
 
 def _prechain_unsigned_ok(
     meta: dict[str, Any], *, strict: bool, head_signed: bool = False
 ) -> bool:
-    return _seq(meta) is None and not strict and not head_signed
+    return (
+        meta.get("v") == 1 and "seq" not in meta
+        and bool(re.fullmatch(r"[0-9a-f]{12}", str(meta.get("generation") or "")))
+        and not strict and not head_signed
+    )
 
 
 class LeaderKey:
@@ -493,7 +473,7 @@ class LeaderKey:
         link = _symlink_component(field_home(root), key_path)
         if link is not None:
             die(f"unsafe leader key: symlink component {link}")
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
         try:
             fd = os.open(os.fspath(key_path), flags)
         except FileNotFoundError:
@@ -501,12 +481,18 @@ class LeaderKey:
         except OSError as exc:
             if exc.errno == errno.ELOOP:
                 die(f"unsafe leader key: symlink component {key_path}")
-            return None
+            die(f"cannot read WAL leader key {key_path}: {exc.strerror}", kind="wal-broken")
         try:
-            raw = os.read(fd, 4096).decode("utf-8", "replace").strip()
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                die(f"WAL leader key {key_path} must be a regular file", kind="wal-broken")
+            raw = os.read(fd, 4096).decode("utf-8").strip()
+        except (OSError, UnicodeError):
+            die(f"cannot read WAL leader key {key_path}; restore the key", kind="wal-broken")
         finally:
             os.close(fd)
-        return raw.encode("utf-8") if raw else None
+        if not raw:
+            die(f"empty WAL leader key {key_path}; restore the key", kind="wal-broken")
+        return raw.encode("utf-8")
 
     @staticmethod
     def ensure(root: Path | None = None) -> bytes:
@@ -548,33 +534,24 @@ class LeaderKey:
 
     @staticmethod
     def verify_head(root: Path | None, current: dict[str, Any], man: dict[str, Any]) -> bool:
-        key = LeaderKey.read(root)
-        if key is None:
-            return True
-        strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
-        man_sig = str(man.get("hmac_sha256") or "")
-        cur_sig = str(current.get("hmac_sha256") or "")
-        if not man_sig and not cur_sig:
-            return _prechain_unsigned_ok(man, strict=strict)
-        expected = hmac.new(key, LeaderKey._manifest_chain_bytes(man), hashlib.sha256).hexdigest()
-        if man_sig and not hmac.compare_digest(man_sig, expected):
+        if current.get("hmac_sha256") != man.get("hmac_sha256"):
             return False
-        if cur_sig and not hmac.compare_digest(cur_sig, expected):
-            return False
-        return True
+        return LeaderKey.verify_candidate(root, man, current)
 
     @staticmethod
     def verify_candidate(
         root: Path | None, cman: dict[str, Any], current: dict[str, Any]
     ) -> bool:
-        key = LeaderKey.read(root)
-        if key is None:
-            return True
         strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
         c_sig = str(cman.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
             return _prechain_unsigned_ok(cman, strict=strict, head_signed=bool(cur_sig))
+        if cman.get("v") != 2 or _seq(cman) is None:
+            return False
+        key = LeaderKey.read(root)
+        if key is None or not re.fullmatch(r"[0-9a-f]{64}", c_sig):
+            return False
         expected = hmac.new(key, LeaderKey._manifest_chain_bytes(cman), hashlib.sha256).hexdigest()
         return hmac.compare_digest(c_sig, expected)
 
@@ -595,20 +572,75 @@ class LeaderKey:
         return hmac.compare_digest(sig, expected)
 
 
-def _head_manifest(root: Path | None, current: dict[str, Any]) -> dict[str, Any] | None:
-    """MANIFEST of CURRENT's generation when intact and the one CURRENT names."""
-    gid = str(current.get("generation") or "")
-    man = _generation_intact(wal_home(root) / gid, gid)
-    if man is None or _manifest_mismatch(root, current):
+def _read_manifest(gen_dir: Path, digest: str | None = None) -> dict[str, Any] | None:
+    path = gen_dir / "MANIFEST.json"
+    try:
+        if not valid_generation_id(gen_dir.name) or _symlink_component(gen_dir.parent, path):
+            return None
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        with os.fdopen(os.open(path, flags), "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                return None
+            raw = handle.read()
+        if digest is not None and hashlib.sha256(raw).hexdigest() != digest:
+            return None
+        man = json.loads(raw.decode("utf-8"))
+    except (OSError, ValueError, RecursionError):
         return None
-    if not LeaderKey.verify_head(root, current, man):
+    if not isinstance(man, dict):
+        return None
+    if man.get("generation") != gen_dir.name:
+        return None
+    files, deletions = man.get("files"), man.get("deletions", [])
+    if not isinstance(files, dict) or not files or not isinstance(deletions, list):
+        return None
+    if any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
+           for value in files.values()):
+        return None
+    for rel in (*files, *deletions):
+        if (not isinstance(rel, str) or not rel or "\\" in rel or "\0" in rel
+                or Path(rel).is_absolute() or ".." in Path(rel).parts
+                or Path(rel).as_posix() != rel or not _wal_snapshot_rel(rel)):
+            return None
+    return man
+
+
+def _authenticated_manifest(root: Path | None, current: dict[str, Any]) -> dict[str, Any] | None:
+    gen_dir = wal_home(root) / current["generation"]
+    man = _read_manifest(gen_dir, current.get("manifest_sha256"))
+    if man is None or not LeaderKey.verify_head(root, current, man):
+        return None
+    if (current.get("files") != man["files"]
+            or current.get("deletions", []) != man.get("deletions", [])):
+        return None
+    if man.get("v") == 1 and "hmac_sha256" not in man and "hmac_sha256" not in current:
+        # Some published v1 heads omit the completion flag. Only CURRENT can
+        # establish that such a generation was published.
+        if man.get("complete", True) is not True:
+            return None
+        if current.get("v") == 1 and "seq" not in current:
+            return man
+        if (current.get("v") == 2 and _seq(current) is not None
+                and current.get("adopted") == "pre-chain" and current.get("manifest_sha256")):
+            return man
+        return None
+    if (current.get("v") != 2 or man.get("complete") is not True
+            or not current.get("manifest_sha256") or _seq(man) is None
+            or _seq(man) != _seq(current)):
         return None
     return man
 
 
+def _head_manifest(root: Path | None, current: dict[str, Any]) -> dict[str, Any] | None:
+    man = _authenticated_manifest(root, current)
+    if man and _manifest_complete(wal_home(root) / current["generation"], man):
+        return man
+    return None
+
+
 def _load_wal_current(root: Path | None) -> dict[str, Any] | None:
     path = wal_current_path(root)
-    if not path.is_file():
+    if path.is_symlink() or not path.is_file():
         return None
     data = _read_json_object(path)
     if not isinstance(data, dict) or not valid_generation_id(data.get("generation")):
@@ -623,14 +655,9 @@ def committed_bytes(root: Path, rel: str) -> bytes | None:
     if view is None:
         return None
     gen_dir, man = view
-    files = man.get("files") if isinstance(man.get("files"), dict) else {}
-    if rel not in files:
+    if rel not in man["files"]:
         return None
-    try:
-        raw = (gen_dir / rel).read_bytes()
-    except OSError:
-        return None
-    return raw if hashlib.sha256(raw).hexdigest() == str(files[rel]) else None
+    return _verified_bytes(gen_dir, rel, man["files"][rel])
 
 
 def legacy_close_adopted(root: Path, data: bytes | None = None) -> bool:
@@ -639,12 +666,10 @@ def legacy_close_adopted(root: Path, data: bytes | None = None) -> bool:
     CURRENT is still pre-chain. A v1 close that first appears in a chained
     generation is not legacy: it is unproven."""
     current = _load_wal_current(root)
-    if current is None:
+    if current is None or _head_manifest(root, current) is None:
         return False
     if data is None:
-        gid = str(current.get("generation") or "")
-        order = _read_json_object(wal_home(root) / gid / "ORDER.json") if gid else None
-        if not isinstance(order, dict) or not order.get("spec_closed"):
+        if not _committed_order(root).get("spec_closed"):
             return False
         if _seq(current) is None:
             return True
@@ -654,17 +679,24 @@ def legacy_close_adopted(root: Path, data: bytes | None = None) -> bool:
     return current.get(LEGACY_CLOSE_KEY) == hashlib.sha256(data).hexdigest()
 
 
+def _committed_order(root: Path) -> dict[str, Any]:
+    raw = committed_bytes(root, "ORDER.json")
+    try:
+        order = json.loads(raw) if raw else None
+    except (ValueError, RecursionError):
+        return {}
+    return order if isinstance(order, dict) else {}
+
+
 def _committed_generation(root: Path | None = None) -> tuple[Path, dict[str, Any]] | None:
     """CURRENT generation dir + MANIFEST, or None when no committed pointer."""
     current = _load_wal_current(root)
     if not current:
         return None
     gid = str(current.get("generation") or "")
-    if not gid:
-        return None
     gen_dir = wal_home(root) / gid
-    man = _read_json_object(gen_dir / "MANIFEST.json")
-    if not isinstance(man, dict):
+    man = _authenticated_manifest(root, current)
+    if man is None:
         return None
     return gen_dir, man
 
@@ -727,35 +759,34 @@ def _materialize_generation(
     home = field_home(root)
     files = man.get("files") if isinstance(man.get("files"), dict) else {}
     changed: list[str] = []
+    retaining = _lock_command(root) == "gc"
     first_write = True
     for rel in files:
-        staged = gen_dir / str(rel)
         live = home / str(rel)
-        if staged.is_file() and not staged.is_symlink():
-            blob = staged.read_bytes()
-            live_exists = False
-            same = False
-            try:
-                live_exists = live.is_file() and not live.is_symlink()
-                same = live_exists and live.read_bytes() == blob
-            except OSError:
-                live_exists = False
-                same = False
-            if keep_live_spec and live_exists and not same and str(rel) == "SPEC.md":
-                continue
-            if not same and not (live_exists and not overwrite):
-                skip = "/packets/" in str(rel).replace("\\", "/")
-                dump_bytes(live, blob, skip_dir_fsync=skip)
-                changed.append(str(rel))
-                if crash_after_first and first_write:
-                    first_write = False
-                    _wal_crash("after-first-live")
-            if crash_after_first:
-                _wal_crash(f"after-live:{rel}")
+        if retaining and rel not in _WAL_SNAPSHOT_NAMES and _symlink_component(home, live):
+            continue
+        blob = _verified_bytes(gen_dir, rel, files[rel])
+        if blob is None:
+            die(f"cannot materialize unverified {rel} from {gen_dir.name}", kind="wal-broken")
+        try:
+            live_exists = live.is_file() and not live.is_symlink()
+            same = live_exists and live.read_bytes() == blob
+        except OSError:
+            live_exists = same = False
+        if keep_live_spec and live_exists and not same and rel == "SPEC.md":
+            continue
+        if not same and not (live_exists and not overwrite):
+            dump_bytes(live, blob, skip_dir_fsync="/packets/" in rel)
+            changed.append(rel)
+            if crash_after_first and first_write:
+                first_write = False
+                _wal_crash("after-first-live")
+        if crash_after_first:
+            _wal_crash(f"after-live:{rel}")
     for rel in man.get("deletions") or []:
         live = home / str(rel)
         try:
-            if live.is_symlink() or live.is_file():
+            if not _symlink_component(home, live) and live.is_file():
                 live.unlink()
                 changed.append(str(rel))
         except OSError:
@@ -882,21 +913,15 @@ def _reader_guard(root: Path) -> bool:
     gid = str((current or {}).get("generation") or "")
     if current is None:
         problem = "wal/CURRENT.json is unreadable"
-    elif _committed_generation(root) is None:
-        problem = f"CURRENT generation {gid} or its MANIFEST is missing"
-    elif _manifest_mismatch(root, current):
-        problem = f"CURRENT generation {gid} MANIFEST is not the one CURRENT names"
-    elif _generation_intact(wal_home(root) / gid, gid) is None:
+    elif (man := _authenticated_manifest(root, current)) is None:
+        problem = f"CURRENT generation {gid} MANIFEST or leader HMAC is invalid; check the leader key"
+    elif not _manifest_complete(wal_home(root) / gid, man):
         _warn(
             "wal_current",
             f"WAL CURRENT {gid} does not hash to its MANIFEST; showing its "
-            "bytes (untrusted). Mutating commands refuse until the leader acts",
+            "individually verified files. Mutating commands refuse until the leader acts",
         )
         return False
-    elif not LeaderKey.verify_head(
-        root, current, _read_json_object(wal_home(root) / gid / "MANIFEST.json") or {}
-    ):
-        problem = f"CURRENT generation {gid} failed leader HMAC verification"
     else:
         return True
     _refuse_broken_wal(root, problem, reader=True)
@@ -1007,23 +1032,12 @@ def _refuse_live_order_tamper(root: Path) -> None:
     Hash against CURRENT only. A crash-stale live ORDER was already restored
     by recover (MATERIALIZED != CURRENT), so any difference left is a rewrite.
     """
-    home = field_home(root)
-    live = home / "ORDER.json"
-    current = _load_wal_current(root)
-    if not current:
-        return
-    gid = str(current.get("generation") or "")
-    if not gid:
-        return
-    gen_dir = wal_home(root) / gid
-    staged = gen_dir / "ORDER.json"
-    if not staged.is_file() or staged.is_symlink():
-        return
-    if not live.is_file() or live.is_symlink():
+    live = field_home(root) / "ORDER.json"
+    staged_raw = committed_bytes(root, "ORDER.json")
+    if staged_raw is None or not live.is_file() or live.is_symlink():
         return
     try:
         live_raw = live.read_bytes()
-        staged_raw = staged.read_bytes()
     except OSError:
         return
     if live_raw == staged_raw:
@@ -1050,21 +1064,8 @@ def _refuse_live_spec_tamper(root: Path) -> None:
     Hash against CURRENT ORDER.spec_hash only (crash-stale SPEC was already
     restored by recover). A rewrite or non-UTF-8 SPEC is a field error.
     """
-    home = field_home(root)
-    spec = home / "SPEC.md"
-    current = _load_wal_current(root)
-    if not current:
-        return
-    gid = str(current.get("generation") or "")
-    if not gid:
-        return
-    staged_order = wal_home(root) / gid / "ORDER.json"
-    stored = ""
-    try:
-        order = json.loads(staged_order.read_text(encoding="utf-8"))
-        stored = str((order or {}).get("spec_hash") or "")
-    except (OSError, json.JSONDecodeError, TypeError):
-        return
+    spec = field_home(root) / "SPEC.md"
+    stored = str(_committed_order(root).get("spec_hash") or "")
     if not stored:
         return
     if not spec.is_file() or spec.is_symlink():
@@ -1111,7 +1112,7 @@ def _refuse_broken_wal(
     command = _lock_command(root)
     if migrate and command == "migrate":
         adopt = True
-    if (adopt and not spawned_child_id()) or command == "init":
+    if (adopt or command == "init --force") and not spawned_child_id():
         if reader:
             _warn("wal_adopt", f"{problem}; showing live files (untrusted)")
         else:
@@ -1160,12 +1161,8 @@ def _adopt_misplaced_wal(root: Path) -> None:
             dest = home / WAL_DIRNAME / gid
             if src.is_dir() and not src.is_symlink() and not dest.exists():
                 shutil.move(str(src), str(dest))
-        legacy_current = _read_json_object(legacy_wal / "CURRENT.json") or {}
-        lgid = str(legacy_current.get("generation") or "")
-        owner = ""
-        if valid_generation_id(lgid):
-            order = _read_json_object(legacy_wal / lgid / "ORDER.json") or {}
-            owner = str(order.get("id") or "")
+        with using_field_home(of_dir(root)):
+            owner = str(_committed_order(root).get("id") or "")
         from of.field import FIELD_ID_RE
 
         target = fields_dir(root) / owner if owner and FIELD_ID_RE.match(owner) else None
@@ -1191,7 +1188,7 @@ def _adopt_pre_chain(root: Path, current: dict[str, Any], gen_dir: Path) -> dict
     the leader's edit (SPEC.md) or a tamper the writer checks refuse, never
     a crash to restore over.
     """
-    order = _read_json_object(gen_dir / "ORDER.json") or {}
+    order = _committed_order(root)
     rev = order.get("rev")
     seq = rev if isinstance(rev, int) and not isinstance(rev, bool) and rev > 0 else 1
     files = current.get("files") or {}
@@ -1225,8 +1222,8 @@ def _uncommitted_or_manifest(root: Path, child: Path) -> dict[str, Any] | None:
     if not path.exists() and not path.is_symlink():
         shutil.rmtree(child, ignore_errors=True)
         return None
-    man = _read_json_object(path)
-    if isinstance(man, dict) and man.get("complete") is True:
+    man = _read_manifest(child)
+    if man is not None and man.get("complete") is True:
         return man
     _quarantine(root, child, "corrupt")
     _warn(
@@ -1241,26 +1238,29 @@ def _recover_without_current(root: Path) -> str | None:
     """No CURRENT: only a lone genesis generation (crash in the very first
     commit) may publish. With ORDER.rev > 1 or any chain history, refuse."""
     wal = wal_home(root)
-    chained: list[tuple[Path, dict[str, Any]]] = []
+    generations: list[tuple[Path, dict[str, Any]]] = []
     if wal.is_dir():
         try:
             children = list(wal.iterdir())
         except OSError as exc:
-            warn_oserror("wal_enum", exc)
+            _refuse_broken_wal(root, f"cannot inspect WAL for genesis: {exc.strerror}")
             return None
         for child in children:
             if not child.is_dir() or child.is_symlink() or child.name == WAL_ORPHANS:
                 continue
             man = _uncommitted_or_manifest(root, child)
-            if man is not None and _seq(man) is not None:
-                chained.append((child, man))
+            if man is not None:
+                generations.append((child, man))
     rev = _live_order_rev(root)
-    if rev <= 1 and len(chained) == 1:
-        child, man = chained[0]
+    has_history = (wal / WAL_ORPHANS).exists() or (wal / WAL_MATERIALIZED).exists()
+    if rev <= 1 and len(generations) == 1 and not has_history:
+        child, man = generations[0]
         if (
             _seq(man) == 1
             and not man.get("parent")
-            and _generation_intact(child, child.name) is not None
+            and not man.get("parent_manifest_sha256")
+            and LeaderKey.verify_candidate(root, man, {})
+            and _manifest_complete(child, man)
         ):
             current = _publish_pointer(root, child, man)
             _finish_materialize(root, current, child, man)
@@ -1270,8 +1270,8 @@ def _recover_without_current(root: Path) -> str | None:
         _refuse_broken_wal(
             root, f"ORDER rev {rev} but {what} is missing", migrate=not wal.is_dir()
         )
-    elif chained:
-        _refuse_broken_wal(root, "wal/CURRENT.json is missing but chained generations exist")
+    elif generations or has_history:
+        _refuse_broken_wal(root, "no authenticated genesis for missing wal/CURRENT.json; check the leader key")
     return None
 
 
@@ -1295,8 +1295,13 @@ def recover_field_wal(root: Path) -> str | None:
         return None
     gid = str(current.get("generation") or "")
     gen_dir = home / gid
-    man = _head_manifest(root, current)
+    man = _authenticated_manifest(root, current)
     if man is None:
+        _refuse_broken_wal(root, f"CURRENT generation {gid} MANIFEST or leader HMAC is invalid; check the leader key")
+        if gen_dir.is_dir():
+            _quarantine(root, gen_dir, "unverified")
+        return gid
+    if not _manifest_complete(gen_dir, man):
         where = ""
         if gen_dir.exists() and not gen_dir.is_symlink():
             dest = _quarantine(root, gen_dir, "corrupt")
@@ -1304,8 +1309,7 @@ def recover_field_wal(root: Path) -> str | None:
                 where = f" (quarantined to wal/{WAL_ORPHANS}/{dest.name})"
         _refuse_broken_wal(
             root,
-            f"CURRENT generation {gid} is missing, does not hash to its MANIFEST "
-            f"or its MANIFEST is not the one CURRENT names{where}",
+            f"CURRENT generation {gid} has missing, unreadable, or incorrectly hashed files{where}",
         )
         return gid
     if _seq(current) is None:
@@ -1333,8 +1337,8 @@ def recover_field_wal(root: Path) -> str | None:
             and cman.get("parent") == gid
             and cman.get("parent_manifest_sha256") == current.get("manifest_sha256")
             and cman.get(LEGACY_CLOSE_KEY) == current.get(LEGACY_CLOSE_KEY)
-            and _generation_intact(child, child.name) is not None
             and LeaderKey.verify_candidate(root, cman, current)
+            and _manifest_complete(child, cman)
         ):
             candidates.append((child, cman))
             continue
@@ -1393,25 +1397,27 @@ class _WalGeneration:
             return
         shutil.rmtree(self.stage_dir, ignore_errors=True)
 
-    def _inherit_and_detect_deletions(self, prev: dict[str, Any] | None) -> None:
+    def _inherit_and_detect_deletions(
+        self, prev: dict[str, Any] | None, man: dict[str, Any] | None
+    ) -> None:
         """Carry live snapshot files the command did not stage.
 
         Writers quarantined pre-existing extras and restored CURRENT before
         the command ran, so live differences here are this command's own.
         """
         home = field_home(self.root)
-        prev_files: dict[str, str] = {}
-        if prev:
-            gid = str(prev.get("generation") or "")
-            prev_files = {str(rel): str(d) for rel, d in (prev.get("files") or {}).items()}
-            man = _read_json_object(wal_home(self.root) / gid / "MANIFEST.json") if gid else None
-            if isinstance(man, dict) and isinstance(man.get("files"), dict):
-                prev_files = {str(rel): str(d) for rel, d in man["files"].items()}
         live_rels = _wal_live_snapshot_rels(self.root)
-        for rel in prev_files:
+        for rel, digest in (man["files"] if man else {}).items():
             if rel in self.blobs:
                 continue
             if rel not in live_rels:
+                if prev and _symlink_component(home, home / rel):
+                    gen_dir = wal_home(self.root) / prev["generation"]
+                    blob = _verified_bytes(gen_dir, rel, digest)
+                    if blob is None:
+                        die(f"cannot retain committed bytes for {rel}", kind="wal-broken")
+                    self.inherited[rel] = blob
+                    continue
                 self.deleted.add(rel)
         for rel in live_rels:
             if rel in self.blobs or rel in self.deleted:
@@ -1425,7 +1431,11 @@ class _WalGeneration:
         if self._manifest_written:
             return
         prev = _load_wal_current(self.root)
-        self._inherit_and_detect_deletions(prev)
+        man = _authenticated_manifest(self.root, prev) if prev else None
+        if prev and man is None:
+            _refuse_broken_wal(self.root, "cannot inherit an unverified WAL head")
+            prev = None
+        self._inherit_and_detect_deletions(prev, man)
         if not self.blobs and not self.deleted and prev is not None:
             return
         payload = dict(self.inherited)
@@ -1502,9 +1512,9 @@ class _WalGeneration:
 
 
 @contextmanager
-def field_generation(root: Path) -> Any:
+def field_generation(root: Path, *, independent: bool = False) -> Any:
     """Batch dump_json/dump_text into one generation while the field lock is held."""
-    if _WAL_CTX.get() is not None:
+    if not independent and _WAL_CTX.get() is not None:
         yield
         return
     gen = _WalGeneration(root)
@@ -1542,6 +1552,7 @@ class FieldWal:
     read_current = _wal_read_current
     home = staticmethod(wal_home)
     current_path = staticmethod(wal_current_path)
+    committed_order = staticmethod(_committed_order)
     staged_items = staticmethod(wal_staged_items)
     is_file = staticmethod(field_is_file)
     read_bytes = staticmethod(field_read_bytes)

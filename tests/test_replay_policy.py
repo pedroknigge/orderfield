@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -88,6 +89,37 @@ def land(
     dest = root / str(packet["residual_path"])
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(residual, indent=2) + "\n", encoding="utf-8")
+
+
+class ReplayChecks(unittest.TestCase):
+    def test_check_file_follows_requirement_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            item = {"id": "APP-001", "status": "verified_contract",
+                    "proof_cite": "proof.txt", "proof_sha": "a" * 64}
+            with mock.patch("of.field.field_home", return_value=home):
+                of.replay.DiscoveryReplay.sync_checks(home, [item])
+                check = home / "checks" / "APP-001.json"
+                self.assertEqual(json.loads(check.read_bytes()), {
+                    "v": 1, "id": "APP-001", "pass": True,
+                    "cite": "proof.txt", "sha256": "a" * 64,
+                })
+                item["status"] = "owned"
+                of.replay.DiscoveryReplay.sync_checks(home, [item])
+                self.assertFalse(check.exists())
+
+    def test_only_complete_ids_count_as_escalated(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wave = of.wave_dir(1, root)
+            wave.mkdir(parents=True)
+            (wave / "report.json").write_text(json.dumps({
+                "regime": "escalate_up",
+                "reason": "XAPP-001, APP-0020, APP-003extra, and (APP-004).",
+            }), encoding="utf-8")
+            for rid in ("APP-001", "APP-002", "APP-003"):
+                self.assertFalse(of.replay.DiscoveryReplay._escalated(root, rid, 1), rid)
+            self.assertTrue(of.replay.DiscoveryReplay._escalated(root, "APP-004", 1))
 
 
 class ReplayPolicy(unittest.TestCase):

@@ -967,6 +967,14 @@ class CodexRecordedWorktree(unittest.TestCase):
 class SpawnEnvAllowlist(unittest.TestCase):
     """Children receive an allowlisted environment, not the parent's (SEC-002)."""
 
+    def test_leader_credentials_are_excluded_in_every_mode(self) -> None:
+        secrets = {"OF_LEADER_KEY": "fixture", "OF_LEADER_TOKEN": "fixture"}
+        for adapter in of_adapters.ADAPTER_ORDER:
+            for mode in ("", ",".join(secrets), "inherit"):
+                with self.subTest(adapter=adapter, mode=mode):
+                    env = of_adapters.spawn_env(adapter, {**secrets, "OF_SPAWN_ENV": mode})
+                    self.assertTrue(secrets.keys().isdisjoint(env))
+
     def test_spawn_env_unit(self) -> None:
         parent = {
             "PATH": "/bin",
@@ -1006,9 +1014,11 @@ class SpawnEnvAllowlist(unittest.TestCase):
     def _spawn_dump(self, extra_env: dict[str, str]) -> tuple[subprocess.CompletedProcess[str], dict]:
         tmp = Path(tempfile.mkdtemp(prefix="of-env-"))
         self.addCleanup(shutil.rmtree, tmp, True)
-        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
+        credentials = {"OF_LEADER_KEY": "fixture-key", "OF_LEADER_TOKEN": "fixture-token"}
+        init = run_of(tmp, "init", "--mission", "m", "--phase", "explore", extra_env=credentials)
         self.assertEqual(init.returncode, 0, init.stderr)
-        pack = run_of(tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "e1")
+        pack = run_of(tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "e1",
+                      extra_env=credentials)
         self.assertEqual(pack.returncode, 0, pack.stderr)
         dump = tmp / "dump_env.py"
         out = tmp / "child_env.json"
@@ -1016,13 +1026,20 @@ class SpawnEnvAllowlist(unittest.TestCase):
             dump,
             """
             import json, os, sys
-            json.dump(dict(os.environ), open(sys.argv[1], "w"))
+            names = ("PATH", "HOME", "OF_KEEP_ME", "OF_FIELD", "OF_CHILD", "CANARY_SECRET")
+            info = {key: os.environ[key] for key in names if key in os.environ}
+            info["has_leader_credentials"] = any(
+                key in os.environ for key in ("OF_LEADER_KEY", "OF_LEADER_TOKEN")
+            )
+            with open(sys.argv[1], "w") as out:
+                json.dump(info, out)
             """,
         )
         env = {
             "OF_AGENT": f"{sys.executable} {dump} {out}",
             "CANARY_SECRET": "leak-me",
             "OF_KEEP_ME": "yes",
+            **credentials,
             **extra_env,
         }
         proc = run_of(
@@ -1030,7 +1047,9 @@ class SpawnEnvAllowlist(unittest.TestCase):
             pack.stdout.splitlines()[0].strip(), extra_env=env,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
-        return proc, load_json(out)
+        child = load_json(out)
+        self.assertFalse(child["has_leader_credentials"])
+        return proc, child
 
     def test_generic_child_sees_allowlist_only(self) -> None:
         _, child = self._spawn_dump({})
@@ -1042,7 +1061,7 @@ class SpawnEnvAllowlist(unittest.TestCase):
         self.assertNotIn("CANARY_SECRET", child)
 
     def test_of_spawn_env_adds_names(self) -> None:
-        _, child = self._spawn_dump({"OF_SPAWN_ENV": "CANARY_SECRET"})
+        _, child = self._spawn_dump({"OF_SPAWN_ENV": "CANARY_SECRET,OF_LEADER_KEY,OF_LEADER_TOKEN"})
         self.assertEqual(child.get("CANARY_SECRET"), "leak-me")
 
     def test_of_spawn_env_inherit_opts_out(self) -> None:

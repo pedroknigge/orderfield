@@ -2,6 +2,7 @@
 """ERR-001 — of main() is a sanitized exception boundary; no tracebacks leak."""
 from __future__ import annotations
 
+import argparse
 import contextlib
 import io
 import json
@@ -100,6 +101,22 @@ class MainBoundaryInProcess(unittest.TestCase):
         code, err = self._run(KeyboardInterrupt())
         self.assertEqual(code, 130)
         self.assertEqual(err, "")
+
+    def test_maintenance_requires_leader_before_dispatch_and_direct_access(self) -> None:
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {
+            "OF_CHILD": "fixture", "OF_SPAWN_REGISTRY": str(Path(folder) / "registry.json"),
+        }), contextlib.redirect_stderr(io.StringIO()):
+            for command in ("collect", "gc", "migrate"):
+                with self.subTest(command=command), mock.patch.object(sys, "argv", ["of", command]), \
+                        mock.patch.object(cli, "find_root") as root:
+                    with self.assertRaises(SystemExit):
+                        cli._dispatch()
+                    root.assert_not_called()
+            for handler in (cli.cmd_gc, cli.cmd_migrate):
+                with self.subTest(handler=handler), mock.patch("of.cli.ops.find_root") as root:
+                    with self.assertRaises(SystemExit):
+                        handler(argparse.Namespace(list=True))
+                    root.assert_not_called()
 
     def test_system_exit_passes_through_untouched(self) -> None:
         code, err = self._run(SystemExit(3))

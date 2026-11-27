@@ -581,6 +581,7 @@ def cmd_retain(args: argparse.Namespace) -> None:
 
 
 def cmd_gc(args: argparse.Namespace) -> None:
+    refuse_child_forge("of gc")
     root = find_root()
     keep_id = getattr(args, "keep_field", None)
     archive_id = getattr(args, "archive_field", None)
@@ -611,9 +612,10 @@ def cmd_gc(args: argparse.Namespace) -> None:
         emit_event("gc", action="drop-field", field=drop_id, ok=True)
         return
     order, state = _load_order_state_or_empty(root)
-    actions = plan_field_retention(root, order, state)
+    preview = getattr(args, "audit", False) or getattr(args, "dry_run", False)
+    actions = plan_field_retention(root, order, state, prepare_siblings=not preview)
     print_audit_block(root)
-    if getattr(args, "audit", False) or getattr(args, "dry_run", False):
+    if preview:
         print_retention_plan(actions, applied=False)
         emit_event("gc", dumped=0, ok=True, audit=True)
         return
@@ -895,6 +897,7 @@ def _refuse_unmigrated_drift(root: Path, actions: list[dict]) -> None:
 
 def cmd_migrate(args: argparse.Namespace) -> None:
     """Versioned artifact rewrite. Does not invent telemetry or rename SLAVE.md."""
+    refuse_child_forge("of migrate")
     if getattr(args, "list", False):
         print_migration_catalog()
         return
@@ -947,16 +950,14 @@ def cmd_worktree(args: argparse.Namespace) -> None:
     """Opt-in git worktree helper. Does not spawn, kill, or supervise children."""
     refuse_child_forge("of worktree")
     action = getattr(args, "worktree_cmd", None)
-    if action == "add":
-        cmd_worktree_add(args)
-    elif action == "land":
-        cmd_worktree_land(args)
-    elif action == "remove":
-        cmd_worktree_remove(args)
-    elif action == "list":
+    if action == "list":
         cmd_worktree_list(args)
-    else:
+        return
+    mutate = {"add": cmd_worktree_add, "land": cmd_worktree_land, "remove": cmd_worktree_remove}.get(action)
+    if mutate is None:
         die("of worktree requires add|land|remove|list")
+    with field_lock(find_root(), "worktree", generation=False):
+        mutate(args)
 
 
 def cmd_worktree_add(args: argparse.Namespace) -> None:
@@ -1165,8 +1166,12 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
         )
     if force and unlanded:
         from of.receipt import KernelVerify
+        from of.wal import FieldWal
 
-        for rid in KernelVerify.withdraw_discarded(root, child_id):
+        FieldWal.recover(root)
+        with FieldWal.generation(root):
+            withdrawn = KernelVerify.withdraw_discarded(root, child_id)
+        for rid in withdrawn:
             print(
                 f"unstamped    {rid} "
                 f"(discarded unlanded worktree {child_id})"
@@ -3223,31 +3228,6 @@ def cmd_fields(args: argparse.Namespace) -> None:
     emit_event("fields", **PackRoster.event_fields(doc))
 
 
-def cmd_patch_from_current(args: argparse.Namespace) -> None:
-    """``of patch --from-current``: the RESTORE next. Live ← WAL CURRENT."""
-    from of.field import restore_live_from_current
-
-    from of.cli import build_parser
-
-    # Restore is its own act: silently dropping --mission etc. is a lie.
-    base, plain = (vars(build_parser().parse_args(argv)) for argv in (["patch"], ["resume"]))
-    mixed = sorted(
-        k for k, v in vars(args).items()
-        if k in base and k not in plain and k != "from_current" and v != base[k]
-    )
-    if mixed:
-        die(f"of patch --from-current takes no other patch flags (got {', '.join(mixed)})")
-    root = find_root()
-    if not order_path(root).exists():
-        die("no ORDER. of init --mission '...'")
-    restored = restore_live_from_current(root)
-    for rel in restored:
-        print(f"restored      {rel}  (live copy kept under wal/orphans/)")
-    if not restored:
-        print("restored      0  (live already matches WAL CURRENT)")
-    emit_event("patch", from_current=True, restored=restored, ok=True)
-
-
 def cmd_resume(args: argparse.Namespace) -> None:
     maybe_notify_update()
     root = find_root()
@@ -3604,73 +3584,3 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
     if verdicts:
         for cid, v in verdicts.items():
             print(f"  {cid} pulse={v}")
-
-
-def _subparser_choices(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentParser]:
-    for action in parser._actions:
-        if isinstance(action, argparse._SubParsersAction):
-            return dict(action.choices)
-    return {}
-
-
-def _parser_has_dest(parser: argparse.ArgumentParser, dest: str) -> bool:
-    return any(getattr(action, "dest", None) == dest for action in parser._actions)
-
-
-def attach_list_cli_flags(parser: argparse.ArgumentParser) -> None:
-    """LIST-001 flags live next to cmd_learn / cmd_worktree_list (not the barrel)."""
-    choices = _subparser_choices(parser)
-    learn = choices.get("learn")
-    if learn is not None and not _parser_has_dest(learn, "list_all"):
-        exclusive = learn.add_mutually_exclusive_group()
-        exclusive.add_argument(
-            "--all",
-            dest="list_all",
-            action="store_true",
-            help="print every learning (default of learn --list is capped)",
-        )
-        exclusive.add_argument(
-            "--cursor",
-            dest="list_cursor",
-            default="",
-            help="continue a capped of learn --list from this id",
-        )
-    worktree = choices.get("worktree")
-    if worktree is None:
-        return
-    wlist = _subparser_choices(worktree).get("list")
-    if wlist is not None and not _parser_has_dest(wlist, "list_all"):
-        exclusive = wlist.add_mutually_exclusive_group()
-        exclusive.add_argument(
-            "--all",
-            dest="list_all",
-            action="store_true",
-            help="print every recorded worktree (default list is capped)",
-        )
-        exclusive.add_argument(
-            "--cursor",
-            dest="list_cursor",
-            default="",
-            help="continue a capped of worktree list from this child id",
-        )
-
-
-def install_list_cli_flag_hook() -> None:
-    orig = argparse.ArgumentParser.parse_args
-    if getattr(orig, "_of_list_flags", False):
-        return
-
-    def parse_args(
-        self: argparse.ArgumentParser,
-        args: Any = None,
-        namespace: Any = None,
-    ) -> argparse.Namespace:
-        attach_list_cli_flags(self)
-        return orig(self, args=args, namespace=namespace)
-
-    parse_args._of_list_flags = True  # type: ignore[attr-defined]
-    argparse.ArgumentParser.parse_args = parse_args  # type: ignore[method-assign]
-
-
-install_list_cli_flag_hook()
-

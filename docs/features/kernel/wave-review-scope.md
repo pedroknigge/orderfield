@@ -28,6 +28,16 @@ When `of pack --role verifier|adversary` runs, `ReviewScope.inherit` reads this 
 
 `apply_slice` cites those paths in `packet.slice` (`scope: …` / `full wave residual`) so `OwnsPathCoverage.slice_paths` can assert coverage. `render_prompt` injects the same set. Prior-wave paths are not inherited. Leader `--owns-path` on a reviewer stays a write-set (existing); inherit does not copy write ownership.
 
+## Later review of changed paths
+
+If a reviewer writes its residual while its process is still running, `of collect` prints `PENDING <child>`, counts that review as missing and exits 2. Integration also waits for the review. Run `of collect` again after the spawn ends. If a retry times out or fails before it writes a new residual, the existing result keeps its original launch snapshot.
+
+A spawn preview prints the command and preserves an active launch record, including the interval before PID assignment. If the reviewer exits successfully but its residual contains invalid JSON or invalid UTF-8, spawn records `residual_invalid`. Collection reports `INVALID` with the parse error and exits 2. The failed review has no completed witness.
+
+`of spawn` records the review checkout, Git HEAD and tree, and SHA-256 of each cited input before launch. `of collect` copies that snapshot into the witness. A change between launch and collection leaves the original review stale. A later wave can cover that path when a spawned reviewer with the same role and no write ownership completes with `done` and its starting digest matches the current file. Close keeps the original witness and findings. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). [Review witness tests](../../../tests/test_review_witness.py)
+
+For published residuals, the witness reader and collect first use the file in the selected field home. Both fall back to the legacy root path when the field copy is absent. Handoff, collection-only and threshold witnesses retain their historical reporting. An old empty digest for a nested publication can remain in the record when the physical file resolves. Only a completed review with a matching launch digest can cover an earlier change.
+
 ## Eval fixture shape (N>4)
 
 1. Raise `caps.max_children` (kernel default 4 is not the band).

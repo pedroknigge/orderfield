@@ -15,6 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
+from of.learn_checks import LearnChecks  # noqa: E402
+from of.cli.field_cmd import _report_observations  # noqa: E402
+import of  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 CONSTRAINT = "price_cli.py prints price table"
@@ -73,6 +76,185 @@ def residual(evidence: str, *, constraint: str = CONSTRAINT, status: str = "thre
             "novelty": False,
         },
     }
+
+
+class GraduatedCheck(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.homes = [self.root / ".orderfield/fields" / fid for fid in ("ord_aaaaaaaa", "ord_bbbbbbbb")]
+        self.home = self.homes[0]
+
+    def plant(self, home, wave, body):
+        path = home / f"waves/{wave:03d}/residuals/worker.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(body))
+        return path
+
+    def graduate(self, body):
+        history = {}
+        for home in self.homes:
+            path = self.plant(home, 1, body)
+            history[path] = path.read_bytes()
+            order = of.default_order("check prices", "build")
+            order["id"] = home.name
+            (home / "ORDER.json").write_text(json.dumps(order))
+        claim, = LearnChecks.repeated(self.root)
+        self.key = claim["key"]
+        self.message = claim["message"]
+        self.script = self.root / LearnChecks.script_rel(self.key)
+        LearnChecks.accept(self.root, f"chk_{self.key}_check")
+        self.assertIn(self.message, self.script.read_text())
+        return history
+
+    def check(self, expected):
+        ran = subprocess.run([sys.executable, "-S", str(self.script)], cwd=self.root,
+                             text=True, capture_output=True, timeout=10)
+        self.assertEqual(ran.returncode, expected, ran.stderr)
+        self.assertEqual(ran.stderr, self.message + "\n" if expected else "")
+
+    def land(self, path, recompute=False):
+        wave = path.parents[1]
+        order = json.loads((self.home / "ORDER.json").read_text())
+        residuals = [json.loads(path.read_text())]
+        packets = [{"child_id": path.stem, "role": "verifier"}]
+        failures = LearnChecks.landed_failures(order, residuals, packets)
+        report = json.loads((wave / "report.json").read_text()) if recompute else None
+        previously_failed = LearnChecks.carry_failures(failures, _report_observations(wave, report))
+        with of.field.using_field_home(self.home):
+            of.apply_requirement_patches(self.root, residuals, packets, previously_failed)
+        key = ("b" if recompute else "a") * 64
+        (wave / "integrations").mkdir(exist_ok=True)
+        (wave / "integrations/observations.json").write_text(json.dumps({
+            "wave": int(wave.name), "input_hash": key, "children": [], "learning_failures": failures,
+        }))
+        (wave / "report.json").write_text(json.dumps({"wave": int(wave.name), "integration": {"input_hash": key}}))
+
+    def test_current_failure_fix_and_new_packet_with_history_intact(self):
+        body = residual("same claim", constraint="", failed=["CLI-001"])
+        history = self.graduate(body)
+        ledger = self.home / "REQUIREMENTS.json"
+        (self.home / "wal").mkdir()
+        (self.home / "wal/CURRENT.json").write_text("{}")
+        stamp = self.home / "checks/CLI-001.json"
+        stamp.parent.mkdir()
+        stamp.write_text(json.dumps({"id": "CLI-001", "pass": True}))
+
+        def status(value):
+            ledger.write_text(json.dumps({"v": 1, "spec_hash": "", "requirements": [{
+                "id": "CLI-001", "text": "show the price table", "binding": True,
+                "owned_by": [], "status": value,
+            }]}))
+
+        status("failed")
+        self.check(1)
+        status("verified_contract")
+        self.check(0)
+        for wave in (2, 3):
+            path = self.plant(self.home, wave, {**body, "packet_id": f"pkt_{wave:032x}"})
+            history[path] = path.read_bytes()
+            self.check(1)
+            newer = path.stat().st_mtime_ns + 2_000_000_000
+            os.utime(ledger, ns=(newer, newer))
+            os.utime(stamp, ns=(newer, newer))
+            self.check(1)
+            self.land(path)
+            self.assertEqual(json.loads(ledger.read_text())["requirements"][0]["status"], "failed")
+            self.check(1)
+            status("verified_contract")
+            self.check(0)
+            self.land(path, recompute=True)
+            self.assertEqual(json.loads(ledger.read_text())["requirements"][0]["status"], "verified_contract")
+            self.check(0)
+            os.utime(path, ns=(newer, newer))
+            self.check(0)
+        report = path.parents[1] / "report.json"
+        integrated = json.loads(report.read_text())
+        report.write_text(json.dumps({**integrated, "skipped_in_flight": ["worker"]}))
+        self.check(1)
+        report.write_text(json.dumps({**integrated, "integration": {"input_hash": "c" * 64}}))
+        self.check(1)
+        report.write_text(json.dumps(integrated))
+        self.check(0)
+        self.assertEqual(history, {p: p.read_bytes() for p in history})
+
+    def test_constraints_recur_in_the_same_field_even_when_already_present(self):
+        body = residual("constraint missing")
+        history = self.graduate(body)
+        self.check(1)
+        order_path = self.home / "ORDER.json"
+        order = json.loads(order_path.read_text())
+        order["constraints"] = [CONSTRAINT]
+        order_path.write_text(json.dumps(order))
+        self.check(0)
+        path = self.plant(self.home, 2, body)
+        history[path] = path.read_bytes()
+        self.land(path)
+        self.check(1)
+        LearnChecks.accept(self.root, f"chk_{self.key}_check")
+        self.check(1)
+        with of.field.using_field_home(self.home):
+            LearnChecks.accept(self.root, f"chk_{self.key}_redesign")
+            self.check(1)
+            order["constraints"] = []
+            order_path.write_text(json.dumps(order))
+            LearnChecks.accept(self.root, f"chk_{self.key}_redesign")
+        self.check(0)
+        order["constraints"] = []
+        order_path.write_text(json.dumps(order))
+        path = self.plant(self.home, 3, body)
+        history[path] = path.read_bytes()
+        self.land(path)
+        self.check(1)
+        order["constraints"] = [CONSTRAINT]
+        order_path.write_text(json.dumps(order))
+        self.check(0)
+        self.land(path, recompute=True)
+        self.check(0)
+        self.assertEqual(history, {p: p.read_bytes() for p in history})
+
+    def test_phase_claim_can_recur_after_advance_with_history_intact(self):
+        body = residual("cut is complete, advance to build", constraint="")
+        body["residual"]["wants_to_change"] = ["phase"]
+        history = self.graduate(body)
+        self.check(0)
+        for wave, home in enumerate(self.homes, 2):
+            order_path = home / "ORDER.json"
+            order = json.loads(order_path.read_text())
+            order.update(phase="cut", rev=order["rev"] + 1)
+            order_path.write_text(json.dumps(order))
+            self.check(0)
+            path = self.plant(home, wave, body)
+            history[path] = path.read_bytes()
+            self.check(1)
+            LearnChecks.accept(self.root, f"chk_{self.key}_check")
+            self.check(1)
+            order.update(phase="build", rev=order["rev"] + 1)
+            order_path.write_text(json.dumps(order))
+            self.check(0)
+            order["phase"] = "verify"
+            order_path.write_text(json.dumps(order))
+            self.check(0)
+            LearnChecks.preserve_phase_completions(home, "verify", "cut")
+            order["phase"] = "cut"
+            order_path.write_text(json.dumps(order))
+            self.check(0)
+            # Reusing the slot with a different packet is a new occurrence.
+            replacement = self.plant(home, wave, {**body, "packet_id": f"pkt_{wave:032x}"})
+            self.check(1)
+            replacement.write_bytes(history[path])
+            self.check(0)
+        self.assertEqual(history, {p: p.read_bytes() for p in history})
+
+    def test_phase_suggestion_without_one_destination_is_prose(self):
+        body = residual("advance to build, advance to verify", constraint="")
+        body["residual"]["wants_to_change"] = ["phase"]
+        for home in self.homes:
+            self.plant(home, 1, body)
+            (home / "ORDER.json").write_text(json.dumps(of.default_order("check prices", "cut")
+                                                       | {"id": home.name}))
+        self.assertEqual([row["kind"] for row in LearnChecks.proposals(self.root)], ["prose"])
 
 
 class LearnChecksCli(unittest.TestCase):
@@ -271,6 +453,53 @@ class LearnChecksCli(unittest.TestCase):
         done = self._ok("learn", "--checks")
         self.assertEqual(done.stdout.strip(), f"{'checks':12} none")
 
+    def test_phase_proposal_and_generated_check_follow_the_local_phase(self) -> None:
+        homes = self._fields()
+        body = residual("change the phase", constraint="")
+        body["residual"]["wants_to_change"] = ["phase"]
+        for home in homes:
+            self._plant(home, "phase.json", body)
+        self.assertEqual(self._kinds(self._ok("learn", "--checks").stdout), ["prose"])
+
+        body["residual"]["evidence"] = "cut is complete, advance to build"
+        for home in homes:
+            self._plant(home, "advance.json", body)
+        proposals = self._ok("learn", "--checks").stdout
+        self.assertEqual(self._kinds(proposals), ["check", "run", "prose"])
+        check_id = proposals.splitlines()[0].split()[1]
+        self._ok("learn", "--accept", check_id)
+        script = self.tmp / LearnChecks.script_rel(check_id.split("_")[1])
+        history = {p: p.read_bytes() for home in homes for p in home.glob("waves/*/residuals/*.json")}
+        home = homes[0]
+        selected = ("--field", home.name)
+
+        def phase(name):
+            self._ok(*selected, "phase", name, "--force", "--reason", "exercise the price fixture cycle")
+
+        def check(expected):
+            ran = subprocess.run([sys.executable, "-S", script], capture_output=True, text=True, timeout=10)
+            self.assertEqual(ran.returncode, expected, ran.stderr)
+
+        phase("cut")
+        requests = (("first", "verify"), ("second", "build"), ("third", "verify"))
+        for child, _ in requests:
+            self._ok(*selected, "pack", "--child-id", child, "--role", "explorer",
+                     "--slice", "check price fixture phase")
+        for child, target in requests:
+            packet = json.loads((home / f"waves/001/packets/{child}.json").read_bytes())
+            request = {key: packet[key] for key in of.PACKET_IDENTITY_FIELDS}
+            self._plant(home, child + ".json", {
+                **body, **request, "residual": {**body["residual"], "evidence": f"advance to {target}"},
+            })
+            path = home / f"waves/001/residuals/{child}.json"
+            history[path] = path.read_bytes()
+            check(1)
+            phase(target)
+            check(0)
+            phase("cut")
+            check(0)
+        self.assertEqual(history, {path: path.read_bytes() for path in history})
+
     def test_failed_requirement_starts_at_the_check(self) -> None:
         homes = self._fields()
         body = residual("wrong", status="done", constraint="", failed=["CLI-001"])
@@ -283,13 +512,46 @@ class LearnChecksCli(unittest.TestCase):
         self._ok("learn", "--accept", check_id)
         key = check_id.split("_")[1]
         script = self.tmp / "scripts" / "checks" / f"{key}.py"
+        history = {path: path.read_bytes() for home in homes for path in home.glob("waves/*/residuals/*.json")}
+        green = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=30)
+        self.assertEqual(green.returncode, 0, green.stderr)
+        selected = ("--field", homes[0].name)
+        self._ok(*selected, "spec", "--add", "CLI-001", "--text", "show a price table")
+        self._ok(*selected, "pack", "--child-id", "recurrence", "--role", "verifier",
+                 "--owns-requirement", "CLI-001", "--slice", "verify price table")
+        packet = json.loads((homes[0] / "waves/001/packets/recurrence.json").read_text())
+        recurrence = {**body, **{k: packet[k] for k in of.PACKET_IDENTITY_FIELDS}}
+        notes = self.tmp / body["result_ref"]
+        notes.write_text("CLI-001 price fixture failed")
+        digest = hashlib.sha256(notes.read_bytes()).hexdigest()
+        recurrence["residual"] = {
+            **body["residual"], "evidence": f"CLI-001 failed in notes.md\nartifact_sha: {digest}",
+        }
+        self._plant(homes[0], "recurrence.json", recurrence)
+        self._ok("learn", "--accept", check_id)
         red = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(red.returncode, 1)
         self.assertIn("CLI-001", red.stderr)
-        for home in homes:
-            shutil.rmtree(home / "waves")
+        path = homes[0] / "waves/001/residuals/recurrence.json"
+        history[path] = path.read_bytes()
+        self._ok(*selected, "integrate", "--wave", "1")
+        (self.tmp / "repair.log").write_text("fixture: price table displayed")
+        self._ok(*selected, "spec", "--verified-contract", "CLI-001", "--takeover", "--cite", "repair.log")
         green = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(green.returncode, 0, green.stderr)
+        self._ok(*selected, "patch", "--done-when-closed")
+        self._ok(*selected, "integrate", "--wave", "1", "--apply", "--recompute")
+        ledger = json.loads((homes[0] / "REQUIREMENTS.json").read_bytes())
+        self.assertEqual(ledger["requirements"][0]["status"], "verified_contract")
+        self._ok(*selected, "phase", "cut", "--force", "--reason", "test the repaired price fixture")
+        wave = path.parents[1]
+        report = json.loads((wave / "report.json").read_bytes())
+        self.assertNotEqual(report["integration"]["input_hash"], report["integration"]["previous_input_hash"])
+        observations = json.loads((wave / "integrations/observations.json").read_bytes())
+        self.assertEqual(observations["input_hash"], report["integration"]["input_hash"])
+        green = subprocess.run([sys.executable, str(script)], cwd=self.tmp, capture_output=True, text=True)
+        self.assertEqual(green.returncode, 0, green.stderr)
+        self.assertEqual(history, {path: path.read_bytes() for path in history})
 
     def test_a_child_cannot_propose_or_accept(self) -> None:
         homes = self._fields()
