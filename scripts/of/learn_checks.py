@@ -11,7 +11,9 @@ from typing import Any
 from of.field import (
     PHASES,
     _read_json_object,
+    _symlink_component,
     die,
+    dump_json,
     list_field_homes,
     load_order,
     load_state,
@@ -138,6 +140,10 @@ def _previous_failure(observations: dict, child: str, identity: str, claim_key: 
     return {}
 
 
+def _phase_completions_path(home: Path) -> Path:
+    return home / "checks" / "learning" / "phase-completions.json"
+
+
 def _check_failed(root: Path, claim: dict, history: dict) -> bool:
     terms = set()
     failed_ids = claim["failed"]
@@ -153,13 +159,16 @@ def _check_failed(root: Path, claim: dict, history: dict) -> bool:
                 if isinstance(row, dict) and isinstance(row.get("id"), str)}
         if known and any(rows.get(rid, {}).get("status") == "failed" for rid in failed_ids):
             return True
+        completed = (_read_json_object(_phase_completions_path(home)) or {}
+                     if claim["wants"] == ["phase"] else {})
         for occurrence, payload, target in _residual_claims(home):
             if payload != claim or tuple(occurrence) in known:
                 continue
             if not (required_terms or failed_ids):
                 phase = order.get("phase")
                 if target and (phase not in PHASES or PHASES.index(phase) < PHASES.index(target)):
-                    return True
+                    if completed.get(occurrence[0], {}).get(occurrence[1]) != target:
+                        return True
                 continue
             landed = _landed_failure(home, occurrence, claim)
             if required_terms:
@@ -185,6 +194,27 @@ def _key(payload: dict[str, Any]) -> str:
 
 class LearnChecks:
     """One residual claim, counted by field, proposed until accept."""
+
+    @staticmethod
+    def preserve_phase_completions(home: Path, from_phase: str, to_phase: str) -> None:
+        # Before a backward transition, bind targets already reached to the
+        # residuals present now. A packet that reports later gets no credit.
+        passed = PHASES[PHASES.index(to_phase) + 1:PHASES.index(from_phase) + 1]
+        if not passed:
+            return
+        path = _phase_completions_path(home)
+        if _symlink_component(home, path):
+            die(f"unsafe phase completion path: {path}")
+        completed = _read_json_object(path) if path.exists() else {}
+        if completed is None:
+            die(f"invalid phase completion record: {path}")
+        changed = False
+        for (source, identity), _, target in _residual_claims(home):
+            if target in passed and completed.get(source, {}).get(identity) != target:
+                completed.setdefault(source, {})[identity] = target
+                changed = True
+        if changed:
+            dump_json(path, completed)
 
     @staticmethod
     def landed_failures(order: dict, residuals: list[dict], packets: list[dict]) -> dict:
@@ -338,7 +368,8 @@ class LearnChecks:
         # These functions also run in a consumer repo without Orderfield installed.
         readers = "\n".join(inspect.getsource(fn) for fn in (
             _read_json_object, _texts, _payload, _phase_target, _occurrence_identity, _residual_claims,
-            _check_homes, _canonical, _key, matching_observations, _previous_failure, _landed_failure, _check_failed,
+            _check_homes, _canonical, _key, matching_observations, _previous_failure, _landed_failure,
+            _phase_completions_path, _check_failed,
         ))
         return (
             "#!/usr/bin/env python3\n"

@@ -236,6 +236,15 @@ class GraduatedCheck(unittest.TestCase):
             order["phase"] = "verify"
             order_path.write_text(json.dumps(order))
             self.check(0)
+            LearnChecks.preserve_phase_completions(home, "verify", "cut")
+            order["phase"] = "cut"
+            order_path.write_text(json.dumps(order))
+            self.check(0)
+            # Reusing the slot with a different packet is a new occurrence.
+            replacement = self.plant(home, wave, {**body, "packet_id": f"pkt_{wave:032x}"})
+            self.check(1)
+            replacement.write_bytes(history[path])
+            self.check(0)
         self.assertEqual(history, {p: p.read_bytes() for p in history})
 
     def test_phase_suggestion_without_one_destination_is_prose(self):
@@ -461,17 +470,34 @@ class LearnChecksCli(unittest.TestCase):
         self._ok("learn", "--accept", check_id)
         script = self.tmp / LearnChecks.script_rel(check_id.split("_")[1])
         history = {p: p.read_bytes() for home in homes for p in home.glob("waves/*/residuals/*.json")}
-        for home in homes:
-            selected = ("--field", home.name)
-            self._ok(*selected, "phase", "cut", "--force", "--reason", "price fixture needs a build")
-            self._plant(home, "recurrence.json", body)
-            path = home / "waves/001/residuals/recurrence.json"
+        home = homes[0]
+        selected = ("--field", home.name)
+
+        def phase(name):
+            self._ok(*selected, "phase", name, "--force", "--reason", "exercise the price fixture cycle")
+
+        def check(expected):
+            ran = subprocess.run([sys.executable, "-S", script], capture_output=True, text=True, timeout=10)
+            self.assertEqual(ran.returncode, expected, ran.stderr)
+
+        phase("cut")
+        requests = (("first", "verify"), ("second", "build"), ("third", "verify"))
+        for child, _ in requests:
+            self._ok(*selected, "pack", "--child-id", child, "--role", "explorer",
+                     "--slice", "check price fixture phase")
+        for child, target in requests:
+            packet = json.loads((home / f"waves/001/packets/{child}.json").read_bytes())
+            request = {key: packet[key] for key in of.PACKET_IDENTITY_FIELDS}
+            self._plant(home, child + ".json", {
+                **body, **request, "residual": {**body["residual"], "evidence": f"advance to {target}"},
+            })
+            path = home / f"waves/001/residuals/{child}.json"
             history[path] = path.read_bytes()
-            red = subprocess.run([sys.executable, "-S", script], capture_output=True, text=True, timeout=10)
-            self.assertEqual(red.returncode, 1, red.stderr)
-            self._ok(*selected, "phase", "build", "--force", "--reason", "price fixture entered build")
-            green = subprocess.run([sys.executable, "-S", script], capture_output=True, text=True, timeout=10)
-            self.assertEqual(green.returncode, 0, green.stderr)
+            check(1)
+            phase(target)
+            check(0)
+            phase("cut")
+            check(0)
         self.assertEqual(history, {path: path.read_bytes() for path in history})
 
     def test_failed_requirement_starts_at_the_check(self) -> None:

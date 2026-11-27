@@ -30,9 +30,9 @@ When `of pack --role verifier|adversary` runs, `ReviewScope.inherit` reads this 
 
 ## Later review of changed paths
 
-`of collect` records the field checkout and the digest of each cited path at collection time. The bytes present when the review started remain unverified. Close keeps the original witness and findings. A later reviewer of the same role can cover a changed path if its witness matches the current digest, its packet has no write ownership, and its residual has status `done` or `threshold`. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). [Review witness tests](../../../tests/test_review_witness.py)
+`of spawn` records the review checkout, Git HEAD and tree, and SHA-256 of each cited input before launch. `of collect` copies that snapshot into the witness. A change between launch and collection leaves the original review stale. A later wave can cover that path when a spawned reviewer with the same role and no write ownership completes with `done` and its starting digest matches the current file. Close keeps the original witness and findings. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). [Review witness tests](../../../tests/test_review_witness.py)
 
-For a published residual in a nested field, the witness reader uses the field home when the logical path is absent at the repository root. If both paths exist, it uses the root path. An old witness with an empty digest can stay in the historical record when the reader resolves the physical file. Covering another witness requires a matching current digest.
+For published residuals, the witness reader and collect first use the file in the selected field home. Both fall back to the legacy root path when the field copy is absent. Handoff, collection-only and threshold witnesses retain their historical reporting. An old empty digest for a nested publication can remain in the record when the physical file resolves. Only a completed review with a matching launch digest can cover an earlier change.
 
 ## Eval fixture shape (N>4)
 

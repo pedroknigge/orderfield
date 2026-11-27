@@ -17,6 +17,7 @@ from of.field import (
     dump_json,
     emit_event,
     field_generation,
+    field_home,
     field_rel,
     find_root,
     json_events_enabled,
@@ -426,6 +427,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
         }
         state.setdefault("phase_overrides", []).append(override)
     with field_generation(root):
+        LearnChecks.preserve_phase_completions(field_home(root), from_phase, args.phase)
         save_order(order, root)
         write_phase_md(root, order)
         if refreshed is not None:
