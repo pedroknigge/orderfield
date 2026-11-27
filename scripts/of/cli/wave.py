@@ -1539,7 +1539,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         try:
             prior_data = load_json(meta_path)
             if isinstance(prior_data, dict):
-                prior_review = prior_data.get("review_start")
+                prior_review = SpawnRecord.review_snapshot(prior_data)
                 if isinstance(prior_data.get(OwnedWrite.DIGEST_KEY), dict):
                     owned_baseline = prior_data[OwnedWrite.DIGEST_KEY]
                 if prior_data.get("started_at"):
@@ -1573,6 +1573,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     log_path = wdir / "logs" / f"{child_id}.log"
     if args.dry_run and prior_review:
         meta["review_start"] = prior_review
+        meta["review_result_reused"] = True
     elif not args.dry_run and packet.get("role") in ReviewScope.REVIEW_ROLES:
         meta["review_start"] = prior_review  # claim precedes launch preparation
     prior = SpawnRecord.claim_started(
@@ -1608,6 +1609,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
                 meta.pop("review_start", None)
             else:
                 meta["review_start"] = prior_review
+                meta["review_result_reused"] = True
         meta.update(extra)
         meta["outcome"] = outcome
         meta["ended_at"] = utc_now()

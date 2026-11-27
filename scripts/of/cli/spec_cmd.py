@@ -1457,14 +1457,11 @@ class ReviewWitness:
         if path.is_file():
             return
         spawn = SpawnRecord.load(root, packet) or {}
-        snapshot = spawn.get("review_start")
         if SpawnRecord.review_pending(spawn):
             # Collect can race the launcher's exit. Stamp on the settled collect.
             return
-        if not isinstance(snapshot, dict) or (
-            "completed" not in snapshot and not spawn.get("residual_present")
-            and spawn.get("outcome") != SpawnRecord.ORPHAN_SETTLED
-        ):
+        snapshot = SpawnRecord.review_snapshot(spawn)
+        if snapshot is None:
             # Handoffs, including one after a spawn without output, report as before.
             snapshot = ReviewWitness.snapshot(root, packet, root)
         rec = {

@@ -3662,6 +3662,16 @@ class SpawnRecord:
                 and not meta.get("dry_run") and not SpawnRecord.settled(meta))
 
     @staticmethod
+    def review_snapshot(meta: dict[str, Any]) -> dict[str, Any] | None:
+        snapshot = meta.get("review_start")
+        if isinstance(snapshot, dict) and (
+            "completed" in snapshot or meta.get("review_result_reused") or meta.get("residual_present")
+            or meta.get("outcome") == SpawnRecord.ORPHAN_SETTLED
+        ):
+            return snapshot
+        return None
+
+    @staticmethod
     def unsettled_at(path: Path) -> bool:
         """Started-only spawn meta: no outcome/ended_at yet. Not a process poll."""
         if not path.is_file():

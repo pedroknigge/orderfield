@@ -606,6 +606,30 @@ class ReviewWitnessClose(unittest.TestCase):
         self.assertEqual(witness["paths"], snapshot["paths"])
         self.assertTrue(witness["completed"])
 
+    def test_launch_error_keeps_input_of_previous_incomplete_review(self) -> None:
+        write_bound_residual(self.tmp, "ver1", evidence="noted: reviewed the input bytes of app.py")
+        residual, publish = self._prepare_review("ver1")
+        timeout = self._spawn_review("ver1", publish + "import time\ntime.sleep(30)")
+        self.assertNotEqual(timeout.returncode, 0)
+        packet = packet_path(self.tmp, "ver1")
+        record = of.SpawnRecord.path(self.tmp, load_json(packet))
+        self.assertEqual(load_json(record)["outcome"], "timeout", timeout.stderr)
+        original = residual.read_bytes()
+        snapshot = load_json(record)["review_start"]
+        self.app.write_text("input for failed launch\n")
+        failed = run_of(self.tmp, "spawn", "--packet", str(packet), "--adapter", "generic",
+                        OF_AGENT=shlex.quote(str(self.tmp / "absent-reviewer")))
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertEqual(load_json(record)["outcome"], "missing_binary", failed.stderr)
+        self.assertEqual(residual.read_bytes(), original)
+        self.assertEqual(load_json(record)["review_start"], snapshot)
+        self.app.write_bytes(self.reviewed)
+        self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "adv1")
+        witness = load_json(witness_path(self.tmp, "ver1"))
+        self.assertEqual(witness["checkout"], snapshot["checkout"])
+        self.assertEqual(witness["paths"], snapshot["paths"])
+        self.assertFalse(witness.get("completed"))
+
     def test_stale_or_missing_witness_exits_undecided(self) -> None:
         self._stamp()
         self.ok("spec", "--verified-contract", RID, "--cite", self.receipt)
