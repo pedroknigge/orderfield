@@ -30,6 +30,8 @@ When `of pack --role verifier|adversary` runs, `ReviewScope.inherit` reads this 
 
 ## Later review of changed paths
 
+If a reviewer writes its residual while its process is still running, `of collect` prints `PENDING <child>`, counts that review as missing and exits 2. Integration also waits for the review. Run `of collect` again after the spawn ends. If a retry times out or fails before it writes a new residual, the existing result keeps its original launch snapshot.
+
 `of spawn` records the review checkout, Git HEAD and tree, and SHA-256 of each cited input before launch. `of collect` copies that snapshot into the witness. A change between launch and collection leaves the original review stale. A later wave can cover that path when a spawned reviewer with the same role and no write ownership completes with `done` and its starting digest matches the current file. Close keeps the original witness and findings. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). [Review witness tests](../../../tests/test_review_witness.py)
 
 For published residuals, the witness reader and collect first use the file in the selected field home. Both fall back to the legacy root path when the field copy is absent. Handoff, collection-only and threshold witnesses retain their historical reporting. An old empty digest for a nested publication can remain in the record when the physical file resolves. Only a completed review with a matching launch digest can cover an earlier change.
