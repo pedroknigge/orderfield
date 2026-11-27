@@ -168,6 +168,24 @@ class DiscoveryReplay:
         return {"v": 1, "id": rid, "pass": True, "cite": cite, "sha256": sha256}
 
     @staticmethod
+    def sync_checks(root: Path, requirements: list[dict[str, Any]]) -> None:
+        """Keep the supplied requirements' replay checks in the same generation."""
+        from of.field import dump_json, field_home
+
+        for item in requirements:
+            rid = str(item.get("id") or "") if isinstance(item, dict) else ""
+            rel = DiscoveryReplay.check_rel(rid)
+            if not rel:
+                continue
+            path = field_home(root) / rel
+            cite = str(item.get("proof_cite") or "")
+            sha = str(item.get("proof_sha") or "")
+            if item.get("status") == "verified_contract" and cite and sha:
+                dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
+            elif path.is_file():
+                path.unlink()
+
+    @staticmethod
     def externally_green(root: Path, rid: str) -> bool:
         """Green = a check WAL CURRENT holds (leader-written: a live-only file
         is a plant) whose cited file still hashes to the bound sha256."""
@@ -252,8 +270,9 @@ class DiscoveryReplay:
             return False
         if not isinstance(report, dict):
             return False
-        return report.get("regime") == "escalate_up" and rid in str(
-            report.get("reason") or ""
+        reason = str(report.get("reason") or "")
+        return report.get("regime") == "escalate_up" and bool(
+            re.search(rf"(?<![\w-]){re.escape(rid)}(?![\w-])", reason)
         )
 
     @staticmethod

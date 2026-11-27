@@ -58,6 +58,7 @@ from of.regime import (
     mark_done_when_closed,
 )
 from of.receipt import EvidenceReceipt
+from of.replay import DiscoveryReplay
 from of.retain import EvidenceStore, ReceiptInputs
 from of.pack import (
     PacketRevStale,
@@ -139,25 +140,6 @@ def cmd_spec(args: argparse.Namespace) -> None:
         load_order(root)  # dies "no ORDER" without creating a stray field.lock
     with field_lock(root, "spec"):
         _cmd_spec_locked(args, root)
-
-
-def requirement_checks(root: Path, data: dict[str, Any]) -> None:
-    """checks/<id>.json (DiscoveryReplay green) follows REQUIREMENTS in the
-    same generation: a verified_contract proof writes it, binding the cite's
-    sha256; any other status drops it. Never a child's or a hand-written file."""
-    from of.replay import DiscoveryReplay
-
-    for item in data.get("requirements") or []:
-        rid = str(item.get("id") or "") if isinstance(item, dict) else ""
-        rel = DiscoveryReplay.check_rel(rid)
-        if not rel:
-            continue
-        path = field_home(root) / rel
-        cite, sha = str(item.get("proof_cite") or ""), str(item.get("proof_sha") or "")
-        if item.get("status") == "verified_contract" and cite and sha:
-            dump_json(path, DiscoveryReplay.check_doc(rid, cite, sha))
-        elif path.is_file():
-            path.unlink()
 
 
 def _failure_holds(
@@ -637,7 +619,7 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         changed = True
         print(f"superseded  {rid}")
     if changed:
-        requirement_checks(root, data)
+        DiscoveryReplay.sync_checks(root, data.get("requirements") or [])
         spec = spec_path(root)
         if spec.is_file():
             data["spec_hash"] = sha256_text(read_spec_text(root))
@@ -1005,6 +987,15 @@ class ContrastDiff:
     def human(doc: dict[str, Any]) -> str:
         gate = str(doc.get("gate") or "")
         gate_label = ContrastDiff.GATE_LABEL.get(gate, gate)
+        vocabulary = (
+            ContrastDiff.HEADER, ContrastDiff.NONE, ContrastDiff.SKIP,
+            ContrastDiff.GATE_RESOLVED_GAPS, *ContrastDiff.GATE_LABEL.values(),
+            *ContrastDiff.VERDICT_LINE.values(), *ContrastDiff.FLAG_LINE.values(),
+            ContrastReport.NEXT_BLOCKED, ContrastReport.NEXT_RESOLVED,
+        )
+        hits = ContrastDiff.theater("\n".join(vocabulary))
+        if hits:
+            die(f"contrast --diff theater: {', '.join(hits)}")
         blocking = [str(x) for x in (doc.get("blocking") or []) if str(x)]
         lines = [
             ContrastDiff.HEADER,
@@ -1051,11 +1042,7 @@ class ContrastDiff:
         nxt = str(doc.get("next") or "")
         if nxt:
             lines.append(f"next: {nxt}")
-        text = "\n".join(lines) + "\n"
-        hits = ContrastDiff.theater(text)
-        if hits:
-            die(f"contrast --diff theater: {', '.join(hits)}")
-        return text
+        return "\n".join(lines) + "\n"
 
 
 def print_contrast_report(
@@ -1941,7 +1928,6 @@ class EvaluatorPacket:
             "evaluator_ids": [row["child_id"] for row in children],
             "evaluator_roles": sorted({row["role"] for row in children}),
             "evaluator_children": children,
-            "due": due,
             "next": nxt,
             "speak": EvaluatorPacket.speak_for(status),
         }
@@ -1957,7 +1943,6 @@ class EvaluatorPacket:
             "evaluator_roles": [
                 str(role) for role in (doc.get("evaluator_roles") or [])
             ],
-            "due": bool(doc.get("due")),
             "kind": EvaluatorPacket.KIND,
             "next": str(doc.get("next") or ""),
             "speak": str(doc.get("speak") or EvaluatorPacket.SPEAK_UNSET),

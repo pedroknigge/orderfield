@@ -280,9 +280,10 @@ class SpecFidelity(unittest.TestCase):
                     "- same idempotency key with a different payload must fail",
                     "",
                     "```",
+                    "python -m ledgerlab demo",
+                    "```",
                     "python -m ledgerlab init --store PATH",
                     "python -m ledgerlab reverse --store PATH --tx-id TX_ID",
-                    "```",
                     "",
                 ]
             ),
@@ -310,6 +311,7 @@ class SpecFidelity(unittest.TestCase):
         listed = run_of(self.tmp, "spec")
         self.assertEqual(listed.returncode, 0, listed.stderr)
         self.assertIn("CLI-001", listed.stdout)
+        self.assertNotIn("ledgerlab demo", listed.stdout)
         self.assertIn("amount_minor", listed.stdout)
 
     def test_packet_reference_loads_spec_and_owns_requirement(self) -> None:
@@ -855,10 +857,8 @@ class SpecFidelityRest(unittest.TestCase):
                     "- amount_minor is a signed integer; no floats",
                     "- same idempotency key with a different payload must fail",
                     "",
-                    "```",
                     "python -m ledgerlab init --store PATH",
                     "python -m ledgerlab reverse --store PATH --tx-id TX_ID",
-                    "```",
                     "",
                 ]
             ),
@@ -2308,6 +2308,24 @@ class ContrastReportRenderer(unittest.TestCase):
         self._align("\n".join(lines[:-1]) + "\n", cli_machine)
 
 
+class ContrastDiffVocabulary(unittest.TestCase):
+    def test_quoted_words_do_not_change_the_gate(self) -> None:
+        for gate in ("CLOSE_BLOCKED", "RESOLVED"):
+            for phrase in of.ContrastDiff.THEATER:
+                with self.subTest(gate=gate, phrase=phrase):
+                    human = of.ContrastDiff.human({
+                        "gate": gate, "intent": phrase,
+                        "rows": [{"id": "MSG-001", "verdict": "MISSING", "text": phrase}],
+                    })
+                    self.assertIn(f"gate        {of.ContrastDiff.GATE_LABEL[gate]}", human)
+                    self.assertIn(f" — {phrase}.", human)
+
+    def test_renderer_template_still_rejects_reserved_words(self) -> None:
+        with mock.patch.dict(of.ContrastDiff.VERDICT_LINE, MISSING="{id} is CLOSED"):
+            with self.assertRaises(SystemExit):
+                of.ContrastDiff.human({"rows": [{"verdict": "MISSING"}]})
+
+
 class ContrastDiffNarrative(unittest.TestCase):
     """of contrast --diff is prose from ContrastReport + SpecDiff. of eval --kernel."""
 
@@ -2388,6 +2406,17 @@ class ContrastDiffNarrative(unittest.TestCase):
         self.assertEqual(default.returncode, 2, default.stderr)
         default_lines = [ln for ln in default.stdout.splitlines() if ln.strip()]
         self.assertEqual(json.loads(default_lines[-1]), machine)
+
+    def test_reserved_words_in_binding_text_preserve_gate_and_json(self) -> None:
+        text = "Print CLOSED when the input says ready to ship"
+        added = run_of(self.tmp, "spec", "--add", "MSG-001", "--text", text)
+        self.assertEqual(added.returncode, 0, added.stderr)
+        diff = run_of(self.tmp, "contrast", "--diff")
+        self.assertEqual(diff.returncode, 2, diff.stderr)
+        human, machine = diff.stdout.rstrip().rsplit("\n", 1)
+        self.assertIn(text, human)
+        self.assertEqual(json.loads(machine)["gate"], "CLOSE_BLOCKED")
+        self.assertIn("MSG-001", json.loads(machine)["blocking"])
 
     def test_resolved_names_order_omission_not_closed(self) -> None:
         internal = run_of(

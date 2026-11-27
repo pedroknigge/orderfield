@@ -886,14 +886,7 @@ def requirement_surface(item: dict[str, Any]) -> str:
     if ContractSurface.matches(text) or rid.startswith(ContractSurface.PREFIXES):
         return "contract"
     explicit = str(item.get("surface") or "").strip().lower()
-    if explicit in {"contract", "internal"}:
-        return explicit
-    if rid.startswith(("CLI-", "LEASE-", "AUDIT-", "HTTP-")):
-        return "contract"
-    padded = f" {text.lower()} "
-    if any(cue in padded for cue in CONTRACT_SURFACE_CUES):
-        return "contract"
-    return "contract"
+    return "internal" if explicit == "internal" else "contract"
 
 
 class RequirementSurface:
@@ -943,13 +936,10 @@ class RequirementSurface:
                     id=rid, cause=ContractSurface.hide_cause(item)
                 )
             )
-        if old == new and str(item.get("surface") or "") == wanted:
-            return old, new, False
         if old == new:
             return old, new, False
-        item["surface"] = wanted
-        item["surface"] = requirement_surface(item)
-        return old, requirement_surface(item), True
+        item["surface"] = new
+        return old, new, True
 
 
 def requirement_close_ok(item: dict[str, Any]) -> bool:
@@ -1077,15 +1067,38 @@ def merge_extracted_requirements(
     return changed
 
 
+FENCE_OPEN_RE = re.compile(
+    r"^(?P<indent>[ \t]*)(?P<list>(?:[-+*]|\d+[.)])[ \t]+)?"
+    r"(?P<marker>`{3,}(?=[^`]*$)|~{3,})"
+)
+
+
 def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
-    """1-based line spans after joining shell-style backslash continuations."""
+    """Keep one boundary row per fenced block and join continuations in prose."""
     rows = text.splitlines()
     out: list[tuple[int, int, str]] = []
     i = 0
     while i < len(rows):
         start = i + 1
         buf = rows[i].rstrip()
+        fence = FENCE_OPEN_RE.match(buf)
+        if fence:
+            marker = fence["marker"]
+            closer = re.compile(rf"[ \t]*{marker[0]}{{{len(marker)},}}[ \t]*")
+            list_indent = len(buf[:fence.start("marker")].expandtabs(4)) if fence["list"] else 0
+            i += 1
+            while i < len(rows):
+                row = rows[i]
+                if list_indent and row.strip() and _indent(row) < list_indent:
+                    break
+                i += 1
+                if closer.fullmatch(row):
+                    break
+            out.append((start, i, fence["indent"] + marker))
+            continue
         while buf.endswith("\\") and i + 1 < len(rows):
+            if FENCE_OPEN_RE.match(rows[i + 1]):
+                break
             buf = buf[:-1].rstrip() + " " + rows[i + 1].strip()
             i += 1
         if buf.endswith("\\"):
@@ -1161,7 +1174,7 @@ def list_item_block(
             continue
         if _indent(row) <= col:
             break
-        if stripped.startswith(("#", "```")) or LIST_ITEM_RE.match(stripped):
+        if stripped.startswith("#") or FENCE_OPEN_RE.match(row) or LIST_ITEM_RE.match(stripped):
             break
         parts.append(stripped)
         owned.append(j)
@@ -1369,23 +1382,20 @@ class RequirementScan:
     def headed(self) -> int:
         """Rule-heading items plus ``python -m`` lines; returns heading-req count."""
         headed_n = 0
-        in_fence = False
         in_rules = False
         for k, (start, end, raw) in enumerate(self.spans):
+            if k in self.absorbed:
+                continue
             stripped = raw.strip()
             cli = _cli_line(stripped)
-            if stripped.startswith("```"):
-                in_fence, in_rules = not in_fence, False
-            if cli and k not in self.absorbed:
+            if cli:
                 self.add("CLI", cli, start, end)
-            if stripped.startswith("```") or k in self.absorbed:
-                continue
-            if stripped.startswith("#"):
+            elif stripped.startswith("#"):
                 raw_title = stripped.lstrip("#").strip()
                 title = raw_title.lower().rstrip(":")
                 in_rules = _rule_heading(title)
-                headed_n += 0 if in_fence else self.add_heading(raw_title, start, end)
-            elif in_rules and not in_fence and _starts_item(stripped):
+                headed_n += self.add_heading(raw_title, start, end)
+            elif in_rules and _starts_item(stripped):
                 self.add_item(k, rule=True)
             # Free-prose cue lists are gone. Binding IDs come from headed
             # rule bullets, python -m lines, or of spec --add. A keyword in
@@ -1395,15 +1405,9 @@ class RequirementScan:
     def fallback(self) -> None:
         """Every list item outside fences and headings (no rule heading hit)."""
         self.absorbed = set()
-        in_fence = False
         for k, (_start, _end, raw) in enumerate(self.spans):
             stripped = raw.strip()
-            if stripped.startswith("```"):
-                in_fence = not in_fence
-                continue
-            if in_fence or stripped.startswith("#") or k in self.absorbed:
-                continue
-            if _starts_item(stripped):
+            if k not in self.absorbed and _starts_item(stripped):
                 self.add_item(k, rule=False)
 
     def requirements(self) -> list[dict[str, Any]]:
@@ -1481,12 +1485,8 @@ def uncovered_list_lines(
     for item in requirements or []:
         covered.update(_spec_span_lines(item))
     region: set[int] = set()
-    in_fence = False
     for k, (_s, _e, raw) in enumerate(spans):
-        stripped = raw.strip()
-        if stripped.startswith("```"):
-            in_fence = not in_fence
-        elif not in_fence and LIST_ITEM_RE.match(stripped):
+        if LIST_ITEM_RE.match(raw.strip()):
             region.update(_item_region(spans, k))
     lines = sorted(n for n in region if n not in covered)
     out: list[tuple[int, int]] = []
@@ -1519,19 +1519,17 @@ def _item_region(spans: list[tuple[int, int, str]], k: int) -> set[int]:
     col = _indent(spans[k][2])
     region = set(range(spans[k][0], spans[k][1] + 1))
     lazy = True
-    in_fence = False
     for s, e, row in spans[k + 1:]:
         stripped = row.strip()
-        if stripped.startswith("```") and _indent(row) > col:
-            in_fence = not in_fence
-            continue
-        if in_fence:
+        if FENCE_OPEN_RE.match(row):
+            if _indent(row) <= col:
+                break
             continue
         if not stripped:
             lazy = False
             continue
         dedent = _indent(row) <= col and (not lazy or LIST_ITEM_RE.match(stripped))
-        if dedent or stripped.startswith(("#", "```")):
+        if dedent or stripped.startswith("#"):
             break
         region.update(range(s, e + 1))
     return region
