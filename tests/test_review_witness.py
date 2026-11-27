@@ -617,7 +617,7 @@ class ReviewWitnessClose(unittest.TestCase):
         original = residual.read_bytes()
         snapshot = load_json(record)["review_start"]
         self.app.write_text("input for failed launch\n")
-        failed = run_of(self.tmp, "spawn", "--packet", str(packet), "--adapter", "generic",
+        failed = run_of(self.tmp, "spawn", "--packet", str(packet.relative_to(self.tmp)), "--adapter", "generic",
                         OF_AGENT=shlex.quote(str(self.tmp / "absent-reviewer")))
         self.assertNotEqual(failed.returncode, 0)
         self.assertEqual(load_json(record)["outcome"], "missing_binary", failed.stderr)
