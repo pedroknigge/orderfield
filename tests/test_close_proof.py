@@ -334,6 +334,7 @@ class LegacyClosedField(_Field):
                   "deletions": cur["deletions"]}
         (walh / "CURRENT.json").write_text(json.dumps(legacy), encoding="utf-8")
         (walh / "MATERIALIZED.json").unlink()
+        (walh / ".leader_key").unlink(missing_ok=True)
 
     def test_adoption_records_the_legacy_close(self) -> None:
         self._ok("checkpoint", "--summary", "first touch after upgrade")
