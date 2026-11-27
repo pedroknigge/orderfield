@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.14
+
+Wave-memory cite advisory and a stale-roster E2E fix. A learning with no evidence cite is problem-only memory: it now prints an advisory note at save and stays stored. The real-repo E2E no longer assumes a one-closed-field roster.
+
+- **Learning cite advisory.** `LearningLint.cite_note` / `advise_cite` in `save_learning()` print a `learning_no_cite` advisory note (stderr, or the `learning_no_cite` warning event under `--json`) when the text names no path, test, fixture, or sha. Still stored, never a refuse; `learning.lines` stays the only hard dump bound. Cherry: the DeepMind SIM paper — a lesson without evidence is the bug list without what was tried. Design: [docs/design/wave-memory.md](docs/design/wave-memory.md).
+- **E2E roster pin (#450).** `FirstPrinciplesUpgradesE2E.test_0_real_repo_closed_field_reconciled_across_all_commands` pins `OF_FIELD=ord_0ba66127` for the real-ROOT target and splits the doctor assertions: the synthetic home keeps the `active` line, the live ROOT asserts `active        -  closed` plus the historical pack rows. The live roster outgrew the one-closed-field assumption; the kernel was already right.
+- **Proof:** `tests/test_learn_provenance.py` (`LearningCiteAdvisory`), `tests/test_first_principles_upgrades.py`, `tests/test_packaging.py`, `scripts/validate-skill.sh`, `docs/audit/check-claims.py`.
+- Packaging: VERSION `0.9.14`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.14"`); `docs/events.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`; `evals/fixtures/skill-half-life.md`.
+
 ## 0.9.13
 
 Re-audit hardening and W7b migration coherence. Pre-0.9.12 fields with landed residuals and integrated wave reports stay readable before `of migrate` and migrate cleanly without hash drift. Five residual WAL/lock/child-forge/retention gaps are closed.

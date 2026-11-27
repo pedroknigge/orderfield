@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.9.13. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.9.14. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.9.13"
+  version: "0.9.14"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -35,6 +35,7 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | wave harness plan (once/field: init/first pack) | **InitAskSkip** Large: **consult** catalog, then **must ask in chat first** — same-harness **roles on one harness** vs multi-harness mix. Appendix **Multi-harness mix**. Same → `of patch --harness`. Mix → `of doctor`+`of detect` (present/missing/PATH≠auth). Before fan-out: `of models --headroom --json` `roster` (`sin dato` never blocks). Pack/spawn from **present** only. present:none → HOLD (`of detect` / CLI / `OF_AGENT`); do not pack a second child; handoff-to-self ≠ spawned wave. Never claim login from PATH. Never silent mix. |
 | slice looks huge | `of pack --explain --slice "…" --role explorer` — names why; no write. **Do not pack a whole phase as one slice.** |
 | learn text over 400 chars | `of learn` still stores; prints an **advisory** note — **Do not refuse**. Over 4 lines still refuse dumps (loud stderr). Long record: `work/scratch/leader/<file>.md` + short pointer. |
+| learn with no evidence cite | still stores; prints an **advisory** note — cite the path, test, fixture, or sha that proved it. A cite-less lesson is problem-only memory (design/wave-memory). |
 | mid-epic, next harness or human | `of handoff` / `--json` — do not unpack |
 | conservative agy spawn printed `denied_actions=` or residual has `denied_actions` | those tools were refused — quote them; missing/empty is **not approval**; do not invent `[]`; do not set `OF_TRUST=yolo` to hide them. Read `residual.denied_actions` |
 | spawn / pulse `done_without_residual` / `residual_invalid` | not a healthy `ok` / not ALIVE. Salvage; `of collect` (invalid → REPAIR). `--force-spawn` refuses a live pid. HOLD + started-only pid gone: `of spawn --force-spawn --reason`. HOLD + live QUIET past stale: HITL `--force-spawn` or switch adapter. `over_budget` (`unbounded` / `dead-without-metadata`) is not a supervisor. Same child_id next wave: spawn, not `--force-spawn`. |

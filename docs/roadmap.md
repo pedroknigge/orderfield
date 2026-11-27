@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.13. W7b migration coherence and WAL/lock/child-forge/retention audit gaps are closed. Deferred work is still deferred.
+The current line is 0.9.14. Wave-memory cite advisory shipped; the stale-roster E2E is pinned. Deferred work is still deferred.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.13`
+**Status:** Shipped · **Current release line:** `0.9.14`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,11 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** DONE in 0.9.12: `AdapterBalance`, `EfficiencySignal`, `UpdateAsk`; `contest.py` / `contend_cmd.py`; `scale_across` / `scale_up`, the across caps and counters, `budget.tokens`, `local_budget_pct`, and inherited depth, with an `of migrate` step. Deferred (moves, not deletions): `Plan*` extraction from `regime.py`; `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`. Decision: `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.14 — wave-memory cite advisory
+
+- A learning that names no path, test, fixture, or sha prints a `learning_no_cite` advisory at save (`LearningLint.cite_note` in `save_learning`; still stored; `learning.lines` stays the hard refuse). Debrief shape (root cause, predicted, observed, evidence cite) and read-before-pack live in [design/wave-memory.md](design/wave-memory.md) as leader conventions.
+- The real-repo E2E pins `OF_FIELD=ord_0ba66127` for the ROOT target and asserts the current doctor roster shape (`#450`).
 
 ## 0.9.13 — W7b migration coherence & security hardening
 

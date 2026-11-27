@@ -726,7 +726,8 @@ class LearningLengthAdvisory(unittest.TestCase):
         self.assertIn(text, pins[0].read_text(encoding="utf-8"))
 
     def test_400_chars_is_quiet(self) -> None:
-        text = "y" * of.LEARNING_MAX_CHARS
+        # cited text: only the length boundary is under test here
+        text = "y" * (of.LEARNING_MAX_CHARS - 4) + "a.py"
         saved = run_of(self.tmp, "learn", "--protocol", text)
         self.assertEqual(saved.returncode, 0, saved.stderr)
         self.assertNotIn("of: note —", saved.stderr)
@@ -756,6 +757,59 @@ class LearningLengthAdvisory(unittest.TestCase):
         with self.assertRaises(SystemExit) as caught:
             of.LearningLint.refuse_dump_lines("a\nb\nc\nd\ne")
         self.assertEqual(caught.exception.code, 1)
+
+
+class LearningCiteAdvisory(unittest.TestCase):
+    """wave-memory — a lesson with no evidence cite is problem-only memory.
+
+    Advisory like length: stored, warned, never a refusal."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="of-learn-cite-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "protocol-learnings.json"
+        os.environ["OF_LEARNINGS"] = str(self.cache)
+        self.addCleanup(os.environ.pop, "OF_LEARNINGS", None)
+        r = run_of(self.tmp, "init", "--mission", "learn cite advisory", "--phase", "explore")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_cite_less_stores_and_advises(self) -> None:
+        text = "always run the WAL door check before merging a harness change"
+        saved = run_of(self.tmp, "learn", text)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.assertIn("of: note —", saved.stderr)
+        self.assertIn("evidence is advisory", saved.stderr)
+        self.assertIn("problem-only memory", saved.stderr)
+        self.assertIn("still stored", saved.stderr)
+        listed = run_of(self.tmp, "learn", "--list")
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn(text, listed.stdout)
+        pins = list((self.tmp / ".orderfield" / "learnings").glob("*.json"))
+        self.assertTrue(pins)
+        self.assertIn(text, pins[0].read_text(encoding="utf-8"))
+
+    def test_cited_text_is_quiet(self) -> None:
+        text = "run scripts/check_agent_lessons.py before every orderfield commit"
+        saved = run_of(self.tmp, "learn", text)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.assertNotIn("of: note —", saved.stderr)
+
+    def test_recovery_fixture_counts_as_evidence(self) -> None:
+        text = "recovery/threshold-stop-spawn already pins the wave gate"
+        saved = run_of(self.tmp, "learn", text)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.assertNotIn("of: note —", saved.stderr)
+
+    def test_cite_helpers_match_advisory_split(self) -> None:
+        self.assertTrue(of.LearningLint.names_evidence("see tests/test_learn_provenance.py"))
+        self.assertTrue(of.LearningLint.names_evidence("pinned sha 0123456789abcdef ok"))
+        self.assertFalse(of.LearningLint.names_evidence("no evidence here"))
+        self.assertIsNone(of.LearningLint.cite_note("docs/feature-map.md has the row"))
+        note = of.LearningLint.cite_note("trust me")
+        self.assertIsNotNone(note)
+        assert note is not None
+        self.assertIn("evidence is advisory", note)
+        self.assertIn("problem-only memory", note)
 
 
 class LearnListClosedFields(unittest.TestCase):
