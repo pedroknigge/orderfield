@@ -611,9 +611,10 @@ def cmd_gc(args: argparse.Namespace) -> None:
         emit_event("gc", action="drop-field", field=drop_id, ok=True)
         return
     order, state = _load_order_state_or_empty(root)
-    actions = plan_field_retention(root, order, state)
+    preview = getattr(args, "audit", False) or getattr(args, "dry_run", False)
+    actions = plan_field_retention(root, order, state, prepare_siblings=not preview)
     print_audit_block(root)
-    if getattr(args, "audit", False) or getattr(args, "dry_run", False):
+    if preview:
         print_retention_plan(actions, applied=False)
         emit_event("gc", dumped=0, ok=True, audit=True)
         return
@@ -947,16 +948,14 @@ def cmd_worktree(args: argparse.Namespace) -> None:
     """Opt-in git worktree helper. Does not spawn, kill, or supervise children."""
     refuse_child_forge("of worktree")
     action = getattr(args, "worktree_cmd", None)
-    if action == "add":
-        cmd_worktree_add(args)
-    elif action == "land":
-        cmd_worktree_land(args)
-    elif action == "remove":
-        cmd_worktree_remove(args)
-    elif action == "list":
+    if action == "list":
         cmd_worktree_list(args)
-    else:
+        return
+    mutate = {"add": cmd_worktree_add, "land": cmd_worktree_land, "remove": cmd_worktree_remove}.get(action)
+    if mutate is None:
         die("of worktree requires add|land|remove|list")
+    with field_lock(find_root(), "worktree", generation=False):
+        mutate(args)
 
 
 def cmd_worktree_add(args: argparse.Namespace) -> None:

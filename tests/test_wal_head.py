@@ -49,14 +49,13 @@ class WalHead(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0, f"of {' '.join(args)} accepted a foreign head MANIFEST")
             self.assertIn("wal-broken", r.stderr, args)
 
-    def test_current_without_manifest_sha_still_works(self) -> None:
+    def test_chained_current_requires_its_manifest_digest(self) -> None:
         cur = self.current()
         cur.pop("manifest_sha256")
         (self.home / "wal" / "CURRENT.json").write_text(json.dumps(cur, indent=2) + "\n", encoding="utf-8")
-        self.plan()
-        self.ok("patch", "--constraints-add", "rule two")
-        self.assertIn("rule two", json.loads((self.home / "ORDER.json").read_text())["constraints"])
-        self.assertTrue(self.current().get("manifest_sha256"))
+        result = run_of(self.root, "status")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("wal-broken", result.stderr)
 
     def test_learn_leaves_live_equal_current(self) -> None:
         self.ok("learn", "field fact one")

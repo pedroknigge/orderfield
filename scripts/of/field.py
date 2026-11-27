@@ -705,6 +705,15 @@ def set_field_home(path: Path) -> None:
     _active_field_home.set(path)
 
 
+@contextmanager
+def using_field_home(path: Path) -> Any:
+    token = _active_field_home.set(path)
+    try:
+        yield
+    finally:
+        _active_field_home.reset(token)
+
+
 def _activate_field_home(
     root: Path, home: Path, cmd: str = "", fid: str = "", by: str = ""
 ) -> Path:
@@ -2381,6 +2390,13 @@ def field_lock(
         _HELD_FIELD_LOCK = path
         _HELD_FIELD_LOCK_THREAD = threading.get_ident()
         try:
+            if command == "init --force":
+                command = "init"
+            if command == "worktree":
+                # The registry is outside the snapshot. Only serialize its Git
+                # operation and read/modify/write against other tree writers.
+                yield
+                return
             FieldWal.recover(root)
             # Mutating lock holders rematerialize CURRENT onto live before
             # inherit. migrate plans from live bytes; CURRENT overwrite

@@ -1309,7 +1309,8 @@ def _dispatch() -> None:
             # creating a stray .orderfield/field.lock first.
             args.func(args)
             return
-        with field_lock(root, args.cmd, generation=args.cmd != "contend"):
+        command = "init --force" if args.cmd == "init" and args.force else args.cmd
+        with field_lock(root, command, generation=args.cmd != "contend"):
             args.func(args)
     else:
         args.func(args)

@@ -1966,6 +1966,79 @@ class StaleWaveRecovery(unittest.TestCase):
         self.assertIn("in flight", nxt.stderr)
 
 
+class RetentionAcrossHomes(unittest.TestCase):
+    def test_apply_rechecks_link_components_in_a_saved_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / ".orderfield"
+            target = home / "samples"
+            target.mkdir(parents=True)
+            note = target / "note"
+            note.write_text("keep")
+            alias = home / "alias"
+            alias.symlink_to(target, target_is_directory=True)
+            actions = [
+                {"action": "dump", "path": ".orderfield/alias", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/alias/note", "reason": "old"},
+            ]
+            of.field.set_field_home(home)
+            self.addCleanup(of.field.clear_field_home)
+            of.apply_field_retention(root, {}, {}, actions)
+            self.assertTrue(alias.is_symlink())
+            self.assertEqual(note.read_text(), "keep")
+
+    def test_gc_preserves_links_and_commits_each_homes_deletions(self) -> None:
+        import of.wal as wal
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            homes = []
+            self.addCleanup(of.field.clear_field_home)
+            for label in ("one", "two"):
+                order = of.default_order(label, "build")
+                home = root / ".orderfield" / "fields" / order["id"]
+                of.field.set_field_home(home)
+                state = of.default_state()
+                state["phase_overrides"] = [{
+                    "at": "2001-01-01T00:00:00Z", "wave": 1,
+                    "from_phase": "explore", "to_phase": "build", "reason": "fixture",
+                    "order_rev_before": 1, "order_rev_after": 2,
+                }]
+                with wal.field_generation(root):
+                    of.save_order(order, root)
+                    of.save_state(state, root)
+                    wal.dump_text(home / "spec-log" / "old.md", "old\n")
+                    wal.dump_text(home / "spec-log" / "new.md", label)
+                os.utime(home / "spec-log" / "old.md", (1, 1))
+                homes.append(home)
+            active = homes[-1]
+            link = active / "work" / "scratch" / "retired" / "notes"
+            link.parent.mkdir(parents=True)
+            target = active / "sample.txt"
+            target.write_text("retain me", encoding="utf-8")
+            link.symlink_to(target)
+            os.utime(link.parent, (1, 1))
+            for args in (("gc", "--dry-run"), ("gc",)):
+                result = run_of(root, "--field", active.name, *args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("symlink", result.stdout)
+                self.assertTrue(link.is_symlink())
+                self.assertEqual(target.read_text(), "retain me")
+                if "--dry-run" in args:
+                    self.assertTrue(all((h / "spec-log" / "old.md").exists() for h in homes))
+            for home in homes:
+                of.field.set_field_home(home)
+                self.assertIsNone(wal.committed_bytes(root, "spec-log/old.md"))
+                current_state = json.loads(wal.committed_bytes(root, "state.json"))
+                self.assertEqual(current_state["phase_overrides"], [])
+                (home / "wal" / "MATERIALIZED.json").unlink()
+                wal.recover_field_wal(root)
+                self.assertFalse((home / "spec-log" / "old.md").exists())
+                self.assertEqual(load_json(home / "state.json")["phase_overrides"], [])
+                self.assertEqual((home / "spec-log" / "new.md").read_text(),
+                                 load_json(home / "ORDER.json")["mission"])
+
+
 class EpisodicRetention(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-gc-"))
@@ -2401,6 +2474,21 @@ class WorktreeHelper(unittest.TestCase):
         (self.tmp / "README").write_text("x\n", encoding="utf-8")
         git("add", "README")
         git("commit", "-m", "init")
+
+    def test_only_mutating_worktree_commands_wait_for_the_tree_lock(self) -> None:
+        self._git_init()
+        with of.field_lock(self.tmp, "test", generation=False):
+            for action in ("add", "land", "remove"):
+                with self.subTest(action=action):
+                    result = run_of(
+                        self.tmp, "worktree", action, "--child-id", "one",
+                        extra_env={"OF_FIELD_LOCK_WAIT_SECONDS": "0.05"},
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("field lock wait exceeded", result.stderr)
+            listed = run_of(self.tmp, "worktree", "list")
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertFalse(of.default_worktree_path(self.tmp, "one").exists())
 
     @unittest.skipUnless(shutil.which("git"), "git not on PATH")
     def test_worktree_add_remove_is_opt_in_not_a_process_manager(self) -> None:

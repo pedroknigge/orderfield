@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import time
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from of.field import (
     FieldLockBusy,
     PHASES,
     _read_json_object,
+    _symlink_component,
     die,
     field_home,
     field_is_open,
@@ -27,13 +29,13 @@ from of.field import (
     parse_utc,
     require_field_id,
     require_physical_under,
-    set_field_home,
     state_path,
     utc_now,
+    using_field_home,
 )
 from of.learn import learning_kind
 from of.receipt import EvidenceReceipt
-from of.wal import dump_json, field_generation
+from of.wal import FieldWal, dump_json, field_generation
 
 RETENTION_DAYS = 30
 RETENTION_SECONDS = RETENTION_DAYS * 24 * 3600
@@ -948,7 +950,7 @@ def _plan_home_learnings(
     for path in sorted(learn_dir.glob("*.json")):
         if path.is_symlink():
             continue
-        rel = field_rel(root, path)
+        rel = path.relative_to(root).as_posix()
         item = _read_json_object(path)
         if item is None:
             actions.append(_retention_action("dump", rel, "garbage-invalid-learning"))
@@ -1127,7 +1129,7 @@ def _plan_home_waves(
         except ValueError:
             reason = _ephemeral_dump_reason(wdir, closed=closed)
             if reason:
-                actions.append(_retention_action("dump", field_rel(root, wdir), reason))
+                actions.append(_retention_action("dump", wdir.relative_to(root).as_posix(), reason))
             continue
         is_current = wave_n == current_wave and not closed
         for sub in ("logs", "spawns", "prompts"):
@@ -1137,7 +1139,7 @@ def _plan_home_waves(
             for path in sorted(sdir.rglob("*")):
                 if not path.is_file() or path.is_symlink():
                     continue
-                rel = field_rel(root, path)
+                rel = path.relative_to(root).as_posix()
                 reason = _ephemeral_dump_reason(path, closed=closed)
                 if cited and path.resolve() in cited:
                     actions.append(_retention_action("keep", rel, "cited-evidence"))
@@ -1152,7 +1154,7 @@ def _plan_home_waves(
             for path in sorted(residuals_dir.glob("*.json")):
                 if path.is_symlink():
                     continue
-                rel = field_rel(root, path)
+                rel = path.relative_to(root).as_posix()
                 data = _read_json_object(path)
                 keep, why = residual_still_useful(data, path, order, current_wave)
                 if keep:
@@ -1166,7 +1168,7 @@ def _plan_home_waves(
             for path in sorted(packets_dir.glob("*.json")):
                 if path.is_symlink() or not path.is_file():
                     continue
-                rel = field_rel(root, path)
+                rel = path.relative_to(root).as_posix()
                 data = _read_json_object(path)
                 missing = _orphan_residual_missing(
                     root, home, data or {}, path, wave_n
@@ -1190,7 +1192,7 @@ def _plan_home_waves(
         if not is_current and artifact_older_than_retention(wdir):
             useful_left = any(
                 a["action"] == "keep"
-                and a["path"].startswith(field_rel(root, wdir) + "/")
+                and a["path"].startswith(wdir.relative_to(root).as_posix() + "/")
                 for a in actions
             )
             if not useful_left:
@@ -1200,7 +1202,7 @@ def _plan_home_waves(
                         continue
                     for path in sorted(edir.rglob("*")):
                         if path.is_file() and not path.is_symlink():
-                            rel = field_rel(root, path)
+                            rel = path.relative_to(root).as_posix()
                             if rel in already:
                                 continue
                             actions.append(
@@ -1215,7 +1217,7 @@ def _plan_home_waves(
                     actions.append(
                         _retention_action(
                             "dump",
-                            field_rel(root, report),
+                            report.relative_to(root).as_posix(),
                             f"history age>{RETENTION_DAYS}d",
                         )
                     )
@@ -1244,13 +1246,13 @@ def _plan_home_contract_and_scratch(
     ):
         path = home / name
         if path.is_file() and not path.is_symlink():
-            actions.append(_retention_action("keep", field_rel(root, path), why))
+            actions.append(_retention_action("keep", path.relative_to(root).as_posix(), why))
     slog = home / "spec-log"
     if slog.is_dir() and not slog.is_symlink():
         for path in sorted(slog.glob("*.md")):
             if not path.is_file() or path.is_symlink():
                 continue
-            rel = field_rel(root, path)
+            rel = path.relative_to(root).as_posix()
             reason = _ephemeral_dump_reason(path, closed=closed)
             if reason:
                 actions.append(_retention_action("dump", rel, reason))
@@ -1259,23 +1261,23 @@ def _plan_home_contract_and_scratch(
     ingest = home / "ingest.md"
     if ingest.is_file() and not ingest.is_symlink():
         actions.append(
-            _retention_action("dump", field_rel(root, ingest), "disposable-ingest")
+            _retention_action("dump", ingest.relative_to(root).as_posix(), "disposable-ingest")
         )
     for arch in sorted(home.glob("waves-archived-*")):
         if not arch.is_dir() or arch.is_symlink():
             continue
-        rel = field_rel(root, arch)
+        rel = arch.relative_to(root).as_posix()
         reason = _ephemeral_dump_reason(arch, closed=closed)
         if reason:
             actions.append(_retention_action("dump", rel, reason))
         else:
             actions.append(_retention_action("keep", rel, "recent-archive"))
     scratch_root = home / "work" / "scratch"
-    if scratch_root.is_dir() and not scratch_root.is_symlink():
+    if _symlink_component(home, scratch_root) is None and scratch_root.is_dir():
         for child_dir in sorted(p for p in scratch_root.iterdir() if p.is_dir()):
             if child_dir.is_symlink():
                 continue
-            rel = field_rel(root, child_dir)
+            rel = child_dir.relative_to(root).as_posix()
             name = child_dir.name
             if not closed and name in live_children:
                 actions.append(_retention_action("keep", rel, "current-wave-scratch"))
@@ -1289,7 +1291,7 @@ def _plan_home_contract_and_scratch(
                 actions.append(_retention_action("dump", rel, reason))
             else:
                 actions.append(_retention_action("keep", rel, "recent-scratch"))
-    state_rel = field_rel(root, home / "state.json")
+    state_rel = (home / "state.json").relative_to(root).as_posix()
     history = state.get("integration_history") or []
     if isinstance(history, list):
         for index, item in enumerate(history):
@@ -1328,11 +1330,13 @@ def _plan_dump_except_cited(
     root: Path, path: Path, cited: set[Path], reason: str
 ) -> list[dict[str, str]]:
     """Dump ``path`` except the accepted evidence inside it (EvidenceStore.cited)."""
-    rel = field_rel(root, path)
+    rel = path.relative_to(root).as_posix()
+    if path.is_symlink():
+        return [_retention_action("keep", rel, "symlink")]
     resolved = path.resolve()
     if resolved in cited:
         return [_retention_action("keep", rel, "cited-evidence")]
-    if path.is_symlink() or not path.is_dir() or not any(
+    if not path.is_dir() or not any(
         resolved in c.parents for c in cited
     ):
         return [_retention_action("dump", rel, reason)]
@@ -1416,6 +1420,8 @@ def plan_field_retention(
     root: Path,
     order: dict[str, Any],
     state: dict[str, Any],
+    *,
+    prepare_siblings: bool = False,
 ) -> list[dict[str, str]]:
     """Classify field artifacts across every field home.
 
@@ -1426,18 +1432,16 @@ def plan_field_retention(
     actions: list[dict[str, str]] = []
     covered: set[Path] = set()
     homes = list_field_homes(root)
-    if not homes:
-        # No ORDER yet: still walk top-level leftovers if `.orderfield/` exists.
-        actions.extend(
-            _plan_top_level_leftovers(root, covered, over_budget=over_budget)
-        )
-        actions.extend(ClosedFieldArchive.plan_keep(root))
-        return actions
     saved = field_home(root)
-    try:
-        for _fid, home, home_order in homes:
+    for _fid, home, home_order in homes:
+        with using_field_home(home):
             covered.add(home.resolve())
-            set_field_home(home)
+            if prepare_siblings and home != saved:
+                FieldWal.recover(root)
+                FieldWal.refuse_live_order_tamper(root)
+                FieldWal.refuse_live_spec_tamper(root)
+                FieldWal.materialize_current(root, overwrite=True)
+                home_order = load_order(root)
             home_state = load_state(root)
             if home.resolve() == saved.resolve():
                 home_state = state
@@ -1451,12 +1455,13 @@ def plan_field_retention(
                     over_budget=over_budget,
                 )
             )
-    finally:
-        set_field_home(saved)
     actions.extend(
         _plan_top_level_leftovers(root, covered, over_budget=over_budget)
     )
     actions.extend(ClosedFieldArchive.plan_keep(root))
+    for item in actions:
+        if item["action"] != "keep" and _retention_has_link(root, root / item["path"]):
+            item.update(action="keep", reason="symlink")
     return actions
 
 
@@ -1467,6 +1472,12 @@ def _safe_unlink(path: Path) -> None:
         shutil.rmtree(path)
     else:
         path.unlink()
+
+
+def _retention_has_link(root: Path, path: Path) -> bool:
+    return bool(_symlink_component(of_dir(root), path)) or (
+        path.is_dir() and any(child.is_symlink() for child in path.rglob("*"))
+    )
 
 
 def _parse_state_fragment(rel: str) -> tuple[str, str, int] | None:
@@ -1489,51 +1500,51 @@ def apply_field_retention(
     state: dict[str, Any],
     actions: list[dict[str, str]],
 ) -> dict[str, Any]:
-    """Apply drop/dump. Never copies transcripts into learnings or ORDER."""
-    fragments: dict[str, dict[str, set[int]]] = {}
+    """Publish each home's deletions while holding the shared tree lock."""
+    base = of_dir(root)
+    saved = field_home(root)
+    with field_lock(root, "gc", generation=False):
+        homes = {home for _, home, _ in list_field_homes(root)}
+        batches: dict[Path, list[dict[str, str]]] = {}
+        for item in actions:
+            path = root / item["path"]
+            if item["action"] == "keep" or not path.is_relative_to(base) or path == base:
+                continue
+            if ".." in path.parts or ClosedFieldArchive.protects(root, path):
+                continue
+            owner = next((home for home in homes if path.is_relative_to(home)), base)
+            batches.setdefault(owner, []).append(item)
+        for owner, batch in batches.items():
+            with using_field_home(owner):
+                generation = field_generation(root, independent=owner != saved)
+                with generation if owner in homes else nullcontext():
+                    updated = _apply_home_retention(root, batch)
+                if owner == saved and updated is not None:
+                    state = updated
+    return state
+
+
+def _apply_home_retention(root: Path, actions: list[dict[str, str]]) -> dict[str, Any] | None:
+    fragments: dict[str, set[int]] = {}
+    state_file = state_path(root)
     for item in actions:
-        action = item["action"]
         rel = item["path"]
-        if action == "keep":
-            continue
         parsed = _parse_state_fragment(rel)
+        path = root / (parsed[0] if parsed else rel)
+        if not path.is_relative_to(of_dir(root)) or _retention_has_link(root, path):
+            continue
         if parsed is not None:
-            file_rel, key, index = parsed
-            bucket = fragments.setdefault(file_rel, {"integration_history": set(), "phase_overrides": set()})
-            bucket[key].add(index)
+            _, key, index = parsed
+            if path == state_file:
+                fragments.setdefault(key, set()).add(index)
             continue
-        path = root / rel
-        try:
-            resolved = path.resolve()
-            resolved.relative_to((root / ".orderfield").resolve())
-        except (OSError, ValueError):
-            continue
-        if resolved.is_symlink():
-            continue
-        if ClosedFieldArchive.protects(root, resolved):
-            continue
-        _safe_unlink(resolved)
-    active_state_rel = field_rel(root, state_path(root))
-    for file_rel, keys in fragments.items():
-        path = root / file_rel
-        data = _read_json_object(path)
-        if not isinstance(data, dict):
-            continue
-        if keys["integration_history"]:
-            data["integration_history"] = [
-                item
-                for index, item in enumerate(data.get("integration_history") or [])
-                if index not in keys["integration_history"]
-            ]
-        if keys["phase_overrides"]:
-            data["phase_overrides"] = [
-                item
-                for index, item in enumerate(data.get("phase_overrides") or [])
-                if index not in keys["phase_overrides"]
-            ]
-        dump_json(path, data)
-        if file_rel == active_state_rel:
-            state = data
+        _safe_unlink(path)
+    if not fragments or _symlink_component(of_dir(root), state_file):
+        return None
+    state = load_state(root)
+    for key, removed in fragments.items():
+        state[key] = [item for index, item in enumerate(state[key]) if index not in removed]
+    dump_json(state_file, state)
     return state
 
 
@@ -1831,7 +1842,7 @@ def maybe_safe_gc(root: Path) -> int | None:
             state = load_state(root)
             actions = [
                 a
-                for a in plan_field_retention(root, order, state)
+                for a in plan_field_retention(root, order, state, prepare_siblings=True)
                 if not OrphanPacked.blocks_auto(a)
             ]
             apply_field_retention(root, order, state, actions)

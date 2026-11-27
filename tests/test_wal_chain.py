@@ -488,6 +488,76 @@ class WalChainCli(unittest.TestCase):
         self.assertTrue((sib / "wal" / gid).is_dir())
 
 
+class SignedSnapshot(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.order = field.default_order("sample", "build")
+        self.home = self.root / ".orderfield" / "fields" / self.order["id"]
+        field.set_field_home(self.home)
+        self.addCleanup(field.clear_field_home)
+        with wal.field_generation(self.root):
+            field.save_order(self.order, self.root)
+            field.save_state(field.default_state(), self.root)
+        self.pointer = wal.wal_current_path(self.root)
+        self.current = load(self.pointer)
+        self.key = wal.LeaderKey.path(self.root)
+
+    def test_signed_genesis_requires_its_key_before_recovery(self) -> None:
+        gid = self.current["generation"]
+        self.pointer.unlink()
+        (self.pointer.parent / "MATERIALIZED.json").unlink()
+        backup = self.key.with_suffix(".backup")
+        self.key.rename(backup)
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            wal.recover_field_wal(self.root)
+        self.assertFalse(self.pointer.exists())
+        backup.rename(self.key)
+        with mock.patch.dict(os.environ, {wal.LeaderKey.KEY_ENV: "different fixture key"}):
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                wal.recover_field_wal(self.root)
+        self.assertFalse(self.pointer.exists())
+        self.assertEqual(wal.recover_field_wal(self.root), gid)
+        self.assertEqual(load(self.pointer)["generation"], gid)
+
+    def test_sibling_reads_check_manifest_and_its_key(self) -> None:
+        expected = (self.home / "ORDER.json").read_bytes()
+        self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+        backup = self.key.with_suffix(".backup")
+        self.key.rename(backup)
+        self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
+
+        refused = subprocess.run(
+            [sys.executable, str(OF_PY), "--field", self.order["id"], "status"],
+            cwd=self.root, capture_output=True, text=True,
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("wal-broken", refused.stderr)
+        self.assertIn("leader key", refused.stderr)
+        backup.rename(self.key)
+        self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+        manifest = self.pointer.parent / self.current["generation"] / "MANIFEST.json"
+        with manifest.open("ab") as handle:
+            handle.write(b"\n")
+        self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
+
+    def test_pre_chain_field_remains_readable_after_adoption(self) -> None:
+        gid = self.current["generation"]
+        legacy_dir = self.pointer.parent / gid.split("-", 1)[1]
+        (self.pointer.parent / gid).rename(legacy_dir)
+        legacy = {"v": 1, "generation": legacy_dir.name, "files": self.current["files"], "deletions": []}
+        (legacy_dir / "MANIFEST.json").write_text(json.dumps(dict(legacy, complete=True)))
+        self.pointer.write_text(json.dumps(legacy))
+        self.key.unlink()
+        expected = (self.home / "ORDER.json").read_bytes()
+        self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+        wal.recover_field_wal(self.root)
+        self.assertEqual(load(self.pointer)["adopted"], "pre-chain")
+        self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+
+
 class WalChainInProcess(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-walchain-ip-"))
