@@ -546,6 +546,9 @@ class ReviewWitnessClose(unittest.TestCase):
                 deadline = time.monotonic() + 20
                 while not residual.exists() and time.monotonic() < deadline and not flight.done():
                     time.sleep(0.05)
+                if flight.done():
+                    ended = flight.result()
+                    self.fail(f"review exited before release: {ended.stdout}{ended.stderr}")
                 self.assertTrue(residual.exists())
                 pending = run_of(self.tmp, "collect", "--wave", "1",
                                  "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
@@ -594,7 +597,7 @@ class ReviewWitnessClose(unittest.TestCase):
         self.app.write_text("input for retry\n")
         timeout = self._spawn_review("ver1", "import time\ntime.sleep(30)")
         self.assertNotEqual(timeout.returncode, 0)
-        self.assertEqual(load_json(record)["outcome"], "timeout")
+        self.assertEqual(load_json(record)["outcome"], "timeout", timeout.stdout + timeout.stderr)
         self.assertEqual(residual.read_bytes(), original)
         self.assertEqual(load_json(record)["review_start"], snapshot)
         self.app.write_bytes(self.reviewed)
