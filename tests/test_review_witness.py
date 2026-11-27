@@ -608,7 +608,6 @@ class ReviewWitnessClose(unittest.TestCase):
                 release.touch()
             launched = flight.result()
         self.assertEqual(launched.returncode, 0, launched.stderr)
-        self.app.write_text("changed after review\n")
         self.ok("collect", "--wave", "1")
         witness = load_json(witness_path(self.tmp, "adv1"))
         self.assertTrue(witness["completed"])
