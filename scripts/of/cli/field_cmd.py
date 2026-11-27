@@ -81,7 +81,6 @@ from of.regime import (
     replace_done_when,
     tag_for_phase,
     wave_transition_errors,
-    waves_since_across,
 )
 from of.spec import (
     apply_requirement_patches,
@@ -290,7 +289,6 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     if regime == "escalate_up":
         state["spawn_blocked"] = True
         state["blocked_at_order_rev"] = order_rev_at_decision
-    state["waves_since_across"] = waves_since_across(state)
     state["last_regime"] = regime
     update_path_owners_index(state, int(wave), packets)
     report = {
@@ -308,8 +306,6 @@ def cmd_integrate(args: argparse.Namespace) -> None:
         ],
         "caps_remaining": {
             "children": order["caps"]["max_children"] - state["children_spawned"],
-            "across_this_wave": order["caps"]["max_across_per_wave"]
-            - state.get("across_this_wave", 0),
         },
         "applied_patch": applied,
         "integration": {

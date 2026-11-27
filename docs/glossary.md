@@ -38,7 +38,7 @@ The child's close-out: one JSON object (`status`, `result_ref`, `residual`, `met
 
 ## regime
 
-The closed menu `of integrate` may choose: `escalate_up | scale_out | scale_across | scale_up | human | hold | phase`. The kernel owns the menu; harnesses do not invent a new one. `scale_across` and `scale_up` are **not implemented** (legacy enums; remapped to hold).
+The closed menu `of integrate` may choose: `escalate_up | scale_out | human | hold | phase`. The kernel owns the menu; harnesses do not invent a new one. The reserved `scale_up` / `scale_across` enums were removed in 0.9.12 (W7b).
 
 ## escalate_up
 
@@ -84,7 +84,7 @@ Once-per-field wave budget on `ORDER.agent_band` (`1-4` / `5-10` / `10-50`) plus
 
 ## adapter_hints
 
-Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill consults the [model catalog](model-catalog.md) then must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku and frontier→opus. Cursor has no cheap/frontier alias (catalog: no frontier row); a consented tier without `--model` refuses pack/spawn so Cursor cannot go QUIET with no log. Grok/agy pass a named model only (tier-only is no-op). Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Living sheet: [model-catalog](#model-catalog). Post-hoc score: [efficiency-signal](#efficiency-signal).
+Optional consented model/tier preference on `ORDER.adapter_hints` (field or wave) and `packet.adapter_hints` (one child). The `/of` skill consults the [model catalog](model-catalog.md) then must propose a cheap vs frontier distribution in chat on a multi-role pack plan; the kernel writes only after consent (`of patch --model-hints field|wave|off` and `of pack --model-tier` / `--model`). `of spawn` may pass `--model` for claude / codex / cursor / grok / agy. Claude maps cheap→haiku and frontier→opus. Cursor has no cheap/frontier alias (catalog: no frontier row); a consented tier without `--model` refuses pack/spawn so Cursor cannot go QUIET with no log. Grok/agy pass a named model only (tier-only is no-op). Orca `task-create` and adapters without a model flag stay no-op. Absent unless the user opted in. Not a router, not a token budget, not a supervisor. Living sheet: [model-catalog](#model-catalog).
 
 ## model-catalog
 
@@ -99,10 +99,6 @@ Optional residual key. Adapter resume/continue reads this only (`AdapterResume`)
 Optional residual list of harness-reported refused tools. Conservative `agy` spawn copies nonempty `denied_actions` from the `--output-format json` envelope (`AgyDeniedActions`). Missing or empty is omit — not approval. `yolo` does not copy. Not a trust change. Host-hook `Write` names (`HostWriteDenial`) do not count as `metrics.tool_failures` for `escalate_up` — they are a host deny, not a slice failure.
 
 **OutputSchema.** Spawn table for residual-schema flags. Codex `--output-schema` and agy `--json-schema` reuse `residual.codex.schema.json` (type unions unique; `usage` is `[object,null]`). Codex-null optionals are omit (`CodexNullOmit`). Invalid stdout extract names `$.path`. Claude omit: `--json-schema` is inline-only and would drop stream-json PULSE. Qwen omit: structured_output tool, not residual delivery. Not a second schema stack.
-
-## efficiency-signal
-
-`EfficiencySignal` scores landed live-wave residuals: quality (`ok` / `escalate` / `rework`) × optional `residual.usage` (harness-reported tokens/model). `of status` / `of resume` may print `efficiency propose uptier|downtier` and name `of patch --model-hints` / `--model-tier`. Ask only. Missing usage is valid. Never a token ceiling (`budget.tokens` is **not implemented**). Never a silent switch. Mid-mission the leader also proposes harness mix from those signals plus `of detect` / `AdapterBalance` (unknown unless a published payload is already in hand). Design: [efficiency-signal.md](efficiency-signal.md).
 
 ## HITL issue loop
 

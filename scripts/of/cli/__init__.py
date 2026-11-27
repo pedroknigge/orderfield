@@ -1,7 +1,7 @@
 """Public CLI package: parser + dispatch; commands live in sibling modules.
 
 Public entry remains `scripts/of.py` (`from of.cli import main`).
-Command groups: init_cmd, contend_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
+Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
 """
 from __future__ import annotations
 
@@ -31,7 +31,6 @@ from of.host_ram import AgentBand
 from of.model_discovery import cmd_models
 
 from of.cli.init_cmd import cmd_init, cmd_new
-from of.cli.contend_cmd import cmd_contend, cmd_crown
 # Names below that dispatch does not call are re-exported for of/__init__.py.
 from of.cli.ops import (  # noqa: F401
     cmd_checkpoint,
@@ -47,7 +46,6 @@ from of.cli.ops import (  # noqa: F401
     cmd_status,
     DriveAfterIntegrate,
     ObservationPack,
-    EfficiencySignal,
     HandoffReport,
     InFlightSignal,
     PulseProgress,
@@ -222,71 +220,6 @@ def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
     )
     AgentBand.add_flags(s)
     s.set_defaults(func=cmd_new)
-
-    s = sub.add_parser(
-        "contend",
-        help="open N candidate sibling fields from one briefed parent",
-        description=(
-            "Competing plans as sibling fields sharing one brief. "
-            "Each candidate runs its plan in its field; of crown ranks "
-            "them by of-contrast evidence. Selection by the field, not debate."
-        ),
-    )
-    s.add_argument("--mission", help="contest mission (default: parent mission)")
-    s.add_argument(
-        "--phase",
-        default=None,
-        choices=PHASES,
-        help="contest phase (default: parent phase)",
-    )
-    s.add_argument("--source", help="verbatim brief (default: parent SPEC.md)")
-    s.add_argument(
-        "--candidates",
-        type=int,
-        default=3,
-        help="candidate fields to open (2..8; default 3)",
-    )
-    s.add_argument(
-        "--max-gaps",
-        type=int,
-        default=0,
-        help="crown floor: winner blocking count must be <= this (default 0)",
-    )
-    s.add_argument(
-        "--json",
-        dest="json_out",
-        action="store_true",
-        help="print the contest object as JSON on stdout",
-    )
-    s.set_defaults(func=cmd_contend)
-
-    s = sub.add_parser(
-        "crown",
-        help="crown the contrast winner of a contest as the slow order",
-        description=(
-            "Rank contest candidates by of-contrast blocking count. "
-            "Auto-crowns only on strict improvement within the floor; "
-            "ties and below-floor fields exit 2 for a human "
-            "(of crown --contest ID --winner <id>). "
-            "Losers are archived with a CONTEST.json trail, never deleted."
-        ),
-    )
-    s.add_argument("--contest", required=True, help="contest id (ctg_…)")
-    s.add_argument("--winner", help="human pick: crown this candidate explicitly")
-    s.add_argument(
-        "--max-gaps",
-        type=int,
-        default=None,
-        help="override the floor stored at contend time",
-    )
-    s.add_argument("--reason", default="", help="recorded on the crown + archive trail")
-    s.add_argument(
-        "--json",
-        dest="json_out",
-        action="store_true",
-        help="print the crown result as JSON on stdout",
-    )
-    s.set_defaults(func=cmd_crown)
 
     s = sub.add_parser("fields", help="list sibling fields in this working tree")
     s.add_argument(
@@ -686,12 +619,6 @@ def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
         dest="requires_tool",
         action="append",
         help=f"tool the slice needs; spawn refuses adapters without it {KNOWN_TOOLS}",
-    )
-    s.add_argument(
-        "--tokens",
-        type=int,
-        default=0,
-        help="reserved; must be 0. N>0 is refused (no token telemetry)",
     )
     s.add_argument(
         "--seconds",
@@ -1335,7 +1262,7 @@ def _dispatch() -> None:
             args.func(args)
             return
         command = "init --force" if args.cmd == "init" and args.force else args.cmd
-        with field_lock(root, command, generation=args.cmd != "contend"):
+        with field_lock(root, command):
             args.func(args)
     else:
         args.func(args)

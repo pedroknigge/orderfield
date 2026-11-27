@@ -54,11 +54,9 @@ Living map: checklist → of contrast / of close / residual (`LivingMapGate`). N
 | [docs/external-brief.md](docs/external-brief.md) | External reader brief + threat model + proof suite |
 | [docs/close-honesty.md](docs/close-honesty.md) | Dual-truth close: BLOCKED / RESOLVED / soft+reason; `CLOSE.json` |
 | [docs/close-is-proof.md](docs/close-is-proof.md) | RFC: close-is-proof + residual empty; `CLOSE.json` |
-| [docs/efficiency-signal.md](docs/efficiency-signal.md) | Quality × optional usage; propose uptier/downtier (ask only) |
 | [docs/model-catalog.md](docs/model-catalog.md) | Living intelligence×cost sheet per harness (advisory; not a budget) |
 | [docs/nested-fields.md](docs/nested-fields.md) | `of new` vs patch; ACTIVE; root-stub trap |
 | [docs/long-mission.md](docs/long-mission.md) | Epic → waves → mid-flight amend → close is proof |
-| [docs/prototype-wave.md](docs/prototype-wave.md) | N explorer fields → `of crown` → one implementer |
 | [evals/README.md](evals/README.md) | `of eval` recovery fixtures |
 | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) | Docs vs code audit |
 | [docs/audit/](docs/audit/) | Claims matrix + recovery test reports (A/B/C) |

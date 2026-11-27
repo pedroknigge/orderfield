@@ -153,17 +153,6 @@ CLI stop string and keep the old outcome. A live QUIET child is not
 finalized and is not killed; the same door runs when that child exits or
 the packet budget times it out.
 
-## Session / balance (`AdapterBalance`)
-
-Read-only honesty. Claude and Codex publish interactive `/usage`.
-Claude statusLine `rate_limits` is a published JSON shape when already
-in hand (`AdapterBalance.parse_published`). No documented headless
-balance CLI exists for native adapters. `of doctor` prints
-`unknown` per adapter. The kernel never runs `/usage`, never scrapes
-home dirs, and never invents a number. `residual.usage` is not a
-balance. `budget.tokens` is **not implemented**. Mid-mission mix still
-**must ask**. Class: `AdapterBalance` in `scripts/of_adapters.py`.
-
 A conservative child (`OF_TRUST=conservative`) runs with the harness's own
 approval policy and **no stdin** (`of spawn` passes `/dev/null`, so a prompt
 fails fast instead of hanging on the leader's terminal). Print-mode harnesses
@@ -185,7 +174,7 @@ allowlist:
   lowercase, `REQUESTS_CA_BUNDLE CURL_CA_BUNDLE NODE_EXTRA_CA_CERTS`),
   `SSH_AUTH_SOCK`, and the Windows set (`SYSTEMROOT COMSPEC USERPROFILE
   APPDATA LOCALAPPDATA PATHEXT TEMP TMP`)
-- kernel: `OF_FIELD` (set to the ORDER id), `OF_CHILD` (set to the packet child id), `OF_JSON`, `OF_NO_UPDATE_CHECK` — not `OF_TRUST` (a nested `of spawn` re-chooses its trust), not `OF_LEARNINGS` / `OF_DEBUG` / `OF_AGENT` / `OF_SPAWN_ENV`
+- kernel: `OF_FIELD` (set to the ORDER id), `OF_CHILD` (set to the packet child id), `OF_JSON` — not `OF_TRUST` (a nested `of spawn` re-chooses its trust), not `OF_LEARNINGS` / `OF_DEBUG` / `OF_AGENT` / `OF_SPAWN_ENV`
 - per adapter: `claude` `ANTHROPIC_* CLAUDE_*` (Bedrock / Vertex users add `AWS_*` / `GOOGLE_APPLICATION_CREDENTIALS` via `OF_SPAWN_ENV`); `codex` `OPENAI_* CODEX_*`;
   `cursor` `CURSOR_*`; `opencode` `OPENCODE_* ANTHROPIC_* OPENAI_* GOOGLE_*
   GEMINI_* OPENROUTER_*`; `orca` `ORCA_*`; `grok` `XAI_* GROK_*`; `agy`

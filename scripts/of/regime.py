@@ -59,28 +59,12 @@ from of.pack import (
 REGIMES = [
     "escalate_up",
     "scale_out",
-    "scale_across",
-    "scale_up",
     "human",
     "hold",
     "phase",
 ]
 UNCERTAINTY_SCALE_OUT_FLOOR = 0.5
-# 0.5.0 runtime-ownership decision: reserve these surfaces. Do not invent
-# telemetry. budget.seconds and max_children stay actually enforced.
-RESERVED_REGIMES = frozenset({"scale_up", "scale_across"})
-RUNTIME_OWNERSHIP = {
-    "scale_up": "reserved",
-    "scale_across": "reserved",
-    "budget.tokens": "reserved",
-    "thresholds.local_budget_pct": "reserved",
-    "inherited_depth": "reserved",
-}
-RUNTIME_ENFORCED = {
-    "budget.seconds": "spawn timeout",
-    "caps.max_children": "pack bind",
-    "spawn_blocked": "pack bind after escalate_up",
-}
+# budget.seconds and max_children are enforced. Nothing else meters runtime.
 
 
 
@@ -1884,20 +1868,6 @@ class PlanIngress:
         return rel, digest
 
     @staticmethod
-    def inherited_pins(order: dict[str, Any] | None) -> list[str]:
-        """Pin lines (plan_source + keep-coverage) worth inheriting by a child field."""
-        out: list[str] = []
-        for item in ((order or {}).get("constraints") or []):
-            text = str(item or "")
-            if PlanIngress.SOURCE_PIN_RE.search(text):
-                out.append(text)
-            elif text.startswith(PlanCoverage.PIN_PREFIX) and text.endswith(
-                " coverage honest"
-            ):
-                out.append(text)
-        return out
-
-    @staticmethod
     def pin_mode(order: dict[str, Any], mode: str) -> bool:
         if PlanIngress.cue_mode(order) == mode:
             return False
@@ -2893,22 +2863,6 @@ def reopen_done_when(
     return changed
 
 
-def waves_since_across(state: dict[str, Any]) -> int:
-    last = state.get("last_across_wave")
-    if last is None:
-        return 99
-    return max(0, int(state.get("wave") or 1) - int(last))
-
-
-def in_across_cooldown(order: dict[str, Any], state: dict[str, Any]) -> bool:
-    cooldown = int(order.get("caps", {}).get("cooldown_waves_after_across", 1))
-    last = state.get("last_across_wave")
-    if last is None or cooldown <= 0:
-        return False
-    elapsed = int(state.get("wave") or 1) - int(last)
-    return 0 < elapsed <= cooldown
-
-
 def decide_regime(
     order: dict[str, Any],
     state: dict[str, Any],
@@ -2918,10 +2872,7 @@ def decide_regime(
 
     kernel = sys.modules.get("of")
     select = getattr(kernel, "_select_regime", _select_regime) if kernel else _select_regime
-    regime, reason = select(order, state, residuals)
-    if regime in RESERVED_REGIMES:
-        return "hold", f"{regime} is reserved; no runtime accounting selects it"
-    return regime, reason
+    return select(order, state, residuals)
 
 
 def wave_closed_wording(reason: str) -> bool:
@@ -3057,14 +3008,6 @@ def _select_regime(
         and state.get("children_spawned", 0) >= caps.get("max_children", 4)
     ):
         return "human", "child cap exhausted"
-
-    if in_across_cooldown(order, state):
-        if any_threshold and "escalate_up" in enabled:
-            return "escalate_up", "cooldown after scale_across"
-        if all_done:
-            if done_when_closed(order) and "phase" in enabled:
-                return "phase", "cooldown; done_when closed"
-            return "hold", "cooldown after scale_across; wave closed"
 
     if all_done and not field_hits:
         if done_when_closed(order) and "phase" in enabled:
@@ -3481,19 +3424,6 @@ def reconcile_integration_state(
         elif state.get("mission_change_streak") != 0:
             state["mission_change_streak"] = 0
             changed = True
-        # Recovery support for reports created by an earlier selector that
-        # could emit scale_across. 0.4.2 keeps the enum but does not select it.
-        if regime == "scale_across":
-            if state.get("across_this_wave") != 1:
-                state["across_this_wave"] = 1
-                changed = True
-            if state.get("last_across_wave") != wave:
-                state["last_across_wave"] = wave
-                changed = True
-        repaired_since = waves_since_across(state)
-        if state.get("waves_since_across") != repaired_since:
-            state["waves_since_across"] = repaired_since
-            changed = True
     input_hash = integration.get("input_hash")
     if input_hash and not any(
         isinstance(item, dict)
@@ -3654,9 +3584,7 @@ def advance_wave(
     nxt = int(state.get("wave", 1)) + 1
     nxt = landable_wave(root, order, nxt)
     state["wave"] = nxt
-    state["across_this_wave"] = 0
     state["children_spawned"] = len(packed_children(root, nxt))
     state["spawn_blocked"] = False
     state["blocked_at_order_rev"] = None
-    state["waves_since_across"] = waves_since_across(state)
     return state

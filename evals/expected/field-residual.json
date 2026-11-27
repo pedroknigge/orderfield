@@ -3,7 +3,7 @@
   "fixture": "assets/fixtures/residual.threshold.json",
   "wants_to_change": ["constraints"],
   "expected_regime": "escalate_up",
-  "forbidden_regimes": ["scale_across", "scale_out", "phase"],
+  "forbidden_regimes": ["scale_out", "phase"],
   "spawn_blocked": true,
   "rev_after_apply": 1,
   "apply_must_not_add_constraint_substring": "invoicing"

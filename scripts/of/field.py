@@ -80,12 +80,6 @@ CHECKPOINT_MAX_CHARS = 2000
 CHECKPOINT_MAX_LINES = 24
 LIST_DEFAULT_LIMIT = 32  # of learn --list / of worktree list / of fields; --all prints the rest
 WARNING_MESSAGE_MAX_CHARS = 400  # SWALLOW-001: one stderr line, no secrets/home
-UPDATE_CHECK_URL = "https://raw.githubusercontent.com/pedroknigge/orderfield/main/VERSION"
-UPDATE_CHECK_INTERVAL_S = 24 * 3600
-UPDATE_CMD = (
-    "ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release  "
-    "(release tar.gz + SHA256SUMS; do not pipe unsigned main)"
-)
 PULSE_QUIET_SECONDS = 300
 PULSE_STALE_MINUTES = 30.0
 PUBLIC_SCHEMA_FILES = (
@@ -228,14 +222,11 @@ SESSION_FORBIDDEN = ".orderfield/session.json"
 FIELD_SLAVE_MD = ".orderfield/SLAVE.md"
 FIELD_SPEC_MD = ".orderfield/SPEC.md"
 FIELD_REQUIREMENTS_JSON = ".orderfield/REQUIREMENTS.json"
-FIELD_SPEC_LOG = ".orderfield/spec-log"
 FIELD_LOCK_WAIT_SECONDS = 10.0
 # Source of truth for the CLI field.lock wrapper. Docs must quote this order.
 MUTATING_COMMANDS_ORDER = (
     "init",
     "new",
-    "contend",
-    "crown",
     "pack",
     "unpack",
     "collect",
@@ -254,9 +245,9 @@ MUTATING_COMMANDS = frozenset(MUTATING_COMMANDS_ORDER)
 # OF_FIELD_STRICT=1 they need an explicit --field / OF_FIELD / session bind,
 # never the shared ACTIVE pointer (opt-in until the multi-field eval
 # fixtures name their field; default prints field=<id> bound_by=ACTIVE).
-# Tree-wide verbs (migrate, gc, contend, crown) name their own targets;
+# Tree-wide verbs (migrate, gc) name their own targets;
 # init/new create one.
-FIELD_WRITE_COMMANDS = MUTATING_COMMANDS - {"init", "new", "contend", "crown", "migrate", "gc"}
+FIELD_WRITE_COMMANDS = MUTATING_COMMANDS - {"init", "new", "migrate", "gc"}
 OF_FIELD_STRICT_ENV = "OF_FIELD_STRICT"
 
 
@@ -357,6 +348,16 @@ MIGRATION_CATALOG = (
         "description": (
             "Map writable aliases onto workspace.writable_by_slaves; "
             "never rename SLAVE.md"
+        ),
+    },
+    {
+        "id": "retired-runtime-keys",
+        "from": "any",
+        "to": CURRENT_ARTIFACT_GENERATION,
+        "kind": "order|packet|state",
+        "description": (
+            "Drop contest, scale_up/scale_across, across caps/counters, "
+            "local_budget_pct, inherited depth, and budget.tokens"
         ),
     },
     {
@@ -596,7 +597,7 @@ class RootStub:
                 if not data:
                     continue
             # ORDER.json is child-writable and its id flows into archive/drop
-            # paths (crown, gc). Trust it only when canonical; else use the
+            # paths (gc). Trust it only when canonical; else use the
             # leader-created directory name, which is the real field id.
             raw = str(data.get("id") or "")
             fid = raw if FIELD_ID_RE.match(raw) else child.name
@@ -1237,7 +1238,7 @@ def bind_active_field(
     when `fields/<id>/` homes exist. `learn` returns None when no open home
     remains so `--list` can read the protocol store (2+ closed is not ambiguous).
 
-    Binding never writes ACTIVE (init, new, crown and `of fields --use` do).
+    Binding never writes ACTIVE (init, new and `of fields --use` do).
     With 2+ open fields and OF_FIELD_STRICT=1 a mutating verb needs --field /
     OF_FIELD / a session match: the shared ACTIVE pointer is not consent to
     write a mission.
@@ -2091,8 +2092,8 @@ def field_lock(
 
     generation=False holds the flock without opening a WAL generation, so
     writes go straight to live disk. Only for commands that span several
-    field homes in one process (contend): one home-relative generation
-    cannot stage N homes without their relative keys colliding.
+    field homes in one process (gc): one home-relative generation cannot
+    stage N homes without their relative keys colliding.
     """
     global _HELD_FIELD_LOCK, _HELD_FIELD_LOCK_THREAD
     require_nonsymlink_kernel_root(root)
@@ -2160,7 +2161,7 @@ def field_lock(
                     FieldWal.refuse_live_spec_tamper(root)
                     FieldWal.refuse_live_order_tamper(root)
                 FieldWal.materialize_current(root, overwrite=True)
-                if command not in ("init", "new", "contend"):
+                if command not in ("init", "new"):
                     SpawnRecord.settle_orphans(root)
             elif command in ("spawn", "handoff"):
                 # spawn/handoff write snapshot paths only under this lock,
@@ -2544,19 +2545,15 @@ def default_order(mission: str, phase: str) -> dict[str, Any]:
         "thresholds": {
             "tool_failures": 2,
             "divergence": 0.4,
-            "local_budget_pct": 80,
             "novelty": True,
         },
         "caps": {
             "max_children": 4,
             "max_depth": 2,
-            "max_across_per_wave": 1,
-            "cooldown_waves_after_across": 1,
         },
         "enabled_regimes": [
             "escalate_up",
             "scale_out",
-            "scale_up",
             "human",
             "hold",
             "phase",
@@ -2671,9 +2668,6 @@ def default_state() -> dict[str, Any]:
     return {
         "wave": 1,
         "children_spawned": 0,
-        "across_this_wave": 0,
-        "waves_since_across": 99,
-        "last_across_wave": None,
         "last_regime": None,
         "spawn_blocked": False,
         "blocked_at_order_rev": None,
@@ -2741,12 +2735,69 @@ def normalize_workspace(workspace: Any) -> tuple[Any, list[str]]:
     return ws, notes
 
 
+def strip_retired_runtime_keys(order: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Remove W7b keys from an ORDER-shaped document. Idempotent."""
+    thresholds = order.get("thresholds")
+    caps = order.get("caps")
+    regimes = order.get("enabled_regimes")
+    if not (
+        "contest" in order
+        or (isinstance(thresholds, dict) and "local_budget_pct" in thresholds)
+        or (
+            isinstance(caps, dict)
+            and {"max_across_per_wave", "cooldown_waves_after_across"} & set(caps)
+        )
+        or (
+            isinstance(regimes, list)
+            and any(r in ("scale_up", "scale_across") for r in regimes)
+        )
+    ):
+        return order, []
+    out = dict(order)
+    notes: list[str] = []
+    if out.pop("contest", None) is not None:
+        notes.append("dropped ORDER.contest")
+    thresholds = out.get("thresholds")
+    if isinstance(thresholds, dict) and "local_budget_pct" in thresholds:
+        thresholds = dict(thresholds)
+        thresholds.pop("local_budget_pct", None)
+        out["thresholds"] = thresholds
+        notes.append("dropped ORDER.thresholds.local_budget_pct")
+    caps = out.get("caps")
+    if isinstance(caps, dict):
+        retired = {"max_across_per_wave", "cooldown_waves_after_across"}
+        if retired & set(caps):
+            caps = dict(caps)
+            for key in retired:
+                caps.pop(key, None)
+            out["caps"] = caps
+            notes.append("dropped ORDER across caps")
+    regimes = out.get("enabled_regimes")
+    if isinstance(regimes, list):
+        kept = [r for r in regimes if r not in ("scale_up", "scale_across")]
+        if kept != regimes:
+            out["enabled_regimes"] = kept
+            notes.append("dropped reserved enabled_regimes")
+    return out, notes
+
+
 def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """Upgrade a packet to the current identity contract. Idempotent."""
     from of.pack import packet_digest, packet_has_identity
     notes: list[str] = []
     out = dict(packet)
+    budget = out.get("budget")
+    if isinstance(budget, dict) and "tokens" in budget:
+        budget = dict(budget)
+        budget.pop("tokens", None)
+        out["budget"] = budget
+        notes.append("dropped packet budget.tokens")
     embedded = out.get("order") if isinstance(out.get("order"), dict) else {}
+    if embedded:
+        embedded, retired = strip_retired_runtime_keys(embedded)
+        if retired:
+            out["order"] = embedded
+            notes.extend(retired)
     order_ws = embedded.get("workspace")
     new_ws, ws_notes = normalize_workspace(order_ws)
     if ws_notes and isinstance(embedded, dict):
@@ -2754,6 +2805,7 @@ def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], lis
         embedded["workspace"] = new_ws
         out["order"] = embedded
         notes.extend(ws_notes)
+    mutated = bool(notes)
     if not packet_has_identity(out):
         child_id = str(out.get("child_id") or "")
         if not child_id or "wave" not in out or "role" not in out:
@@ -2777,11 +2829,12 @@ def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], lis
         out["packet_hash"] = packet_digest(out)
         notes.append("computed packet_hash")
     elif out.get("packet_hash") != packet_digest(out):
-        # Only re-hash when a migration step (workspace normalize) actually rewrote
-        # the packet AND the stored hash matched the pre-migration bytes. A plain
-        # mismatch is child tamper, not a migration artifact: leave it so
-        # validate_packet flags it INVALID instead of signing the child's edit.
-        if ws_notes and packet.get("packet_hash") == packet_digest(packet):
+        # Only re-hash when a migration step (workspace normalize or a retired
+        # key) actually rewrote the packet AND the stored hash matched the
+        # pre-migration bytes. A plain mismatch is child tamper, not a migration
+        # artifact: leave it so validate_packet flags it INVALID instead of
+        # signing the child's edit.
+        if mutated and packet.get("packet_hash") == packet_digest(packet):
             out["packet_hash"] = packet_digest(out)
             notes.append("recomputed packet_hash after protocol-key rewrite")
         else:
@@ -2828,10 +2881,23 @@ def migrate_wave_report_artifact(
     report: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
     """Do not invent integration digests. Pre-0.4.2 reports stay readable."""
+    out = report
     notes: list[str] = []
-    if "integration" not in report:
+    caps = out.get("caps_remaining")
+    if isinstance(caps, dict) and "across_this_wave" in caps:
+        out = dict(out)
+        caps = dict(caps)
+        caps.pop("across_this_wave", None)
+        out["caps_remaining"] = caps
+        notes.append("dropped report caps_remaining.across_this_wave")
+    if out.get("regime") in ("scale_up", "scale_across"):
+        if out is report:
+            out = dict(out)
+        out["regime"] = "hold"
+        notes.append("retired report regime remapped to hold")
+    if "integration" not in out:
         notes.append("left pre-digest report readable; no invented hash")
-    return dict(report), notes
+    return out, notes
 
 
 def print_migration_catalog() -> None:
@@ -2858,12 +2924,15 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
     if isinstance(raw_order, dict):
         workspace = raw_order.get("workspace")
         new_ws, notes = normalize_workspace(workspace)
+        updated = dict(raw_order)
         if notes:
-            updated = dict(raw_order)
             updated["workspace"] = new_ws
+        updated, retired = strip_retired_runtime_keys(updated)
+        notes = list(notes) + list(retired)
+        if notes:
             actions.append(
                 {
-                    "id": "protocol-writable-key",
+                    "id": "retired-runtime-keys" if retired else "protocol-writable-key",
                     "kind": "order",
                     "path": order_file,
                     "data": updated,
@@ -2933,18 +3002,24 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
                     )
         report_path = wave_path / "report.json"
         raw_report = _read_json_object(report_path)
-        if isinstance(raw_report, dict) and "integration" not in raw_report:
+        if isinstance(raw_report, dict):
             updated, notes = migrate_wave_report_artifact(raw_report)
-            actions.append(
-                {
-                    "id": "pre-0.4.2-report-readable",
-                    "kind": "wave-report",
-                    "path": report_path,
-                    "data": updated,
-                    "notes": notes,
-                    "write": False,
-                }
-            )
+            structural = updated != raw_report
+            if notes and (structural or "integration" not in raw_report):
+                actions.append(
+                    {
+                        "id": (
+                            "retired-runtime-keys"
+                            if structural
+                            else "pre-0.4.2-report-readable"
+                        ),
+                        "kind": "wave-report",
+                        "path": report_path,
+                        "data": updated,
+                        "notes": notes,
+                        "write": structural,
+                    }
+                )
     return actions
 
 
@@ -3124,6 +3199,7 @@ def load_order(root: Path | None = None) -> dict[str, Any]:
     if not field_is_file(p):
         die(f"no ORDER at {p}. Run: of init --mission '...'")
     order = load_json(p)
+    order, _retired = strip_retired_runtime_keys(order)
     errs = validate_order(order)
     if errs:
         die("invalid ORDER:\n  " + "\n  ".join(errs))
@@ -3139,6 +3215,8 @@ def load_state(root: Path | None = None) -> dict[str, Any]:
         die(f"invalid state {p}: expected an object")
     base = default_state()
     base.update(data)
+    for key in ("across_this_wave", "waves_since_across", "last_across_wave"):
+        base.pop(key, None)
     errs = validate_state(base)
     if errs:
         die("invalid state:\n  " + "\n  ".join(errs))
@@ -3160,6 +3238,7 @@ def load_wave_report(path: Path) -> dict[str, Any]:
     report = load_json(path)
     if not isinstance(report, dict):
         die(f"invalid wave report {path}: expected an object")
+    report, _retired = migrate_wave_report_artifact(report)
     errs = validate_wave_report(report)
     if errs:
         die(f"invalid wave report {path}:\n  " + "\n  ".join(errs))
@@ -3179,16 +3258,6 @@ def wave_numbers(root: Path) -> list[int]:
         if path.is_dir() and path.name.isdigit():
             nums.append(int(path.name))
     return sorted(nums)
-
-
-def semver_tuple(text: Any) -> tuple[int, int, int] | None:
-    parts = str(text or "").strip().split(".")
-    if len(parts) != 3:
-        return None
-    try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
-    except ValueError:
-        return None
 
 
 def installed_version() -> str | None:
@@ -3299,216 +3368,6 @@ class SkillVersionSkew:
                 f"  {str(row['label']):12} {row['version']}  {mark}  {row['display']}"
             )
         return lines, skewed
-
-
-def update_cache_path() -> Path:
-    override = os.environ.get("OF_UPDATE_CACHE")
-    if override:
-        return Path(override)
-    return Path.home() / ".cache" / "orderfield" / "update-check.json"
-
-
-def fetch_latest_version(timeout: float = 2.0) -> str | None:
-    import urllib.request
-
-    try:
-        with urllib.request.urlopen(UPDATE_CHECK_URL, timeout=timeout) as resp:
-            return resp.read(64).decode("utf-8", "replace").strip()
-    except Exception:
-        return None
-
-
-class UpdateAsk:
-    """Daily consent ask when a newer release exists. Not a daemon.
-
-    status/resume/pulse print one stderr line (agent relays). doctor prints a
-    section and, on a TTY, prompts. Yes runs install.sh --global --from-release
-    (GitHub tag + SHA256SUMS). At most one ask per day. Never a silent update.
-    """
-
-    @staticmethod
-    def cache_path() -> Path:
-        return update_cache_path()
-
-    @staticmethod
-    def consent_env(version: str) -> dict[str, str]:
-        ver = str(version).strip()
-        return {
-            "ORDERFIELD_VERSION": ver,
-            "ORDERFIELD_REF": f"v{ver}",
-        }
-
-    @staticmethod
-    def consent_cmd(version: str) -> str:
-        ver = str(version).strip()
-        return (
-            f"ORDERFIELD_VERSION={ver} ORDERFIELD_REF=v{ver} "
-            "bash install.sh --global --from-release"
-        )
-
-    @staticmethod
-    def notice(local: str, latest: str) -> str:
-        return (
-            f"of: update available {local} -> {latest} — "
-            f"ask the user; on yes: {UpdateAsk.consent_cmd(latest)}  "
-            f"(release tar.gz + SHA256SUMS; silence: OF_NO_UPDATE_CHECK=1)"
-        )
-
-    @staticmethod
-    def doctor_lines(local: str, latest: str) -> list[str]:
-        return [
-            "update",
-            f"  latest        {latest}  newer than {local}",
-            "  ask           once/day  (consent; not silent)",
-            f"  on yes        {UpdateAsk.consent_cmd(latest)}",
-        ]
-
-    @staticmethod
-    def load_cache() -> dict[str, Any]:
-        try:
-            cache = json.loads(UpdateAsk.cache_path().read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return {}
-        return cache if isinstance(cache, dict) else {}
-
-    @staticmethod
-    def save_cache(cache: dict[str, Any]) -> None:
-        try:
-            dump_json(UpdateAsk.cache_path(), cache)
-        except OSError:
-            pass
-
-    @staticmethod
-    def asked_today(cache: dict[str, Any], now: float) -> bool:
-        raw = cache.get("asked_at")
-        try:
-            asked = float(raw)
-        except (TypeError, ValueError):
-            return False
-        return now - asked < UPDATE_CHECK_INTERVAL_S
-
-    @staticmethod
-    def stamp_asked(
-        cache: dict[str, Any], version: str, now: float | None = None
-    ) -> None:
-        cache["asked_at"] = time.time() if now is None else now
-        cache["asked_version"] = str(version).strip()
-        UpdateAsk.save_cache(cache)
-
-    @staticmethod
-    def decide(
-        fetch: Any = fetch_latest_version, now: float | None = None
-    ) -> dict[str, Any] | None:
-        """Return local/latest/cache when an ask is due. None otherwise.
-
-        Refreshes checked_at at most once a day. Does not stamp asked_at.
-        Silent on every failure. OF_NO_UPDATE_CHECK=1 disables.
-        """
-        if os.environ.get("OF_NO_UPDATE_CHECK") == "1":
-            return None
-        local_text = installed_version()
-        local = semver_tuple(local_text)
-        if local is None:
-            return None
-        clock = time.time() if now is None else now
-        cache = UpdateAsk.load_cache()
-        latest_text = cache.get("latest")
-        try:
-            checked = float(cache.get("checked_at") or 0)
-        except (TypeError, ValueError):
-            checked = 0.0
-        if clock - checked >= UPDATE_CHECK_INTERVAL_S:
-            latest_text = fetch()
-            cache["checked_at"] = clock
-            cache["latest"] = latest_text
-            UpdateAsk.save_cache(cache)
-        latest = semver_tuple(latest_text)
-        if latest is None or latest <= local:
-            return None
-        if UpdateAsk.asked_today(cache, clock):
-            return None
-        return {
-            "local": str(local_text).strip(),
-            "latest": str(latest_text).strip(),
-            "cache": cache,
-        }
-
-    @staticmethod
-    def maybe_notify(
-        fetch: Any = fetch_latest_version,
-        now: float | None = None,
-        stream: Any = None,
-    ) -> str | None:
-        """One stderr ask, at most once a day. Does not install."""
-        decision = UpdateAsk.decide(fetch=fetch, now=now)
-        if decision is None:
-            return None
-        text = UpdateAsk.notice(decision["local"], decision["latest"])
-        print(text, file=sys.stderr if stream is None else stream)
-        UpdateAsk.stamp_asked(decision["cache"], decision["latest"], now)
-        return text
-
-    @staticmethod
-    def maybe_prompt(
-        fetch: Any = fetch_latest_version,
-        now: float | None = None,
-        prompt: Any = None,
-        install: Any = None,
-        interactive: bool | None = None,
-    ) -> str | None:
-        """Doctor path: print the ask; TTY y/N; on yes, verified install."""
-        decision = UpdateAsk.decide(fetch=fetch, now=now)
-        if decision is None:
-            return None
-        for line in UpdateAsk.doctor_lines(decision["local"], decision["latest"]):
-            print(line)
-        UpdateAsk.stamp_asked(decision["cache"], decision["latest"], now)
-        tty = interactive
-        if tty is None:
-            tty = bool(
-                getattr(sys.stdin, "isatty", lambda: False)()
-                and getattr(sys.stdout, "isatty", lambda: False)()
-            )
-        if not tty:
-            return UpdateAsk.notice(decision["local"], decision["latest"])
-        ask = prompt or input
-        try:
-            answer = ask("Update now via GitHub release tag + SHA256? [y/N] ")
-        except EOFError:
-            return UpdateAsk.notice(decision["local"], decision["latest"])
-        if str(answer or "").strip().lower() not in {"y", "yes"}:
-            return UpdateAsk.notice(decision["local"], decision["latest"])
-        runner = install or UpdateAsk.run_verified_install
-        runner(decision["latest"])
-        return UpdateAsk.notice(decision["local"], decision["latest"])
-
-    @staticmethod
-    def run_verified_install(
-        version: str,
-        runner: Any = None,
-        script: Path | None = None,
-    ) -> int:
-        """Classic pin: install.sh --global --from-release + release SHA-256."""
-        src = Path(script) if script is not None else skill_root() / "install.sh"
-        if not src.is_file():
-            print(
-                "of: update: missing install.sh — see README.md / PUBLISH.md",
-                file=sys.stderr,
-            )
-            return 1
-        env = {**os.environ, **UpdateAsk.consent_env(version)}
-        run = runner or subprocess.run
-        proc = run(["bash", str(src), "--global", "--from-release"], env=env)
-        return int(getattr(proc, "returncode", 0) or 0)
-
-
-def maybe_notify_update(fetch: Any = fetch_latest_version) -> None:
-    """Read-path wrapper: one stderr ask, at most once a day.
-
-    status/resume/pulse/handoff only — never the pack/spawn hot path. Silent
-    on every failure. OF_NO_UPDATE_CHECK=1 disables. Does not install.
-    """
-    UpdateAsk.maybe_notify(fetch=fetch)
 
 
 def newest_mtime(path: Path, prune: set[str] | None = None) -> tuple[float, str] | None:

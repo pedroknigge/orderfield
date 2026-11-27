@@ -8,7 +8,7 @@ Only the leader changes the mission. The kernel refuses leader commands from a r
 
 > Hub: [AGENTS.md](../AGENTS.md) · Compared-to: [README.md](../README.md#compared-to) · Grok Bot pick: [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org)
 
-**Status:** Current line `0.9.11` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
+**Status:** Current line `0.9.12` · **Code:** [`scripts/of.py`](../scripts/of.py), [`scripts/of/`](../scripts/of/), [`schemas/`](../schemas/)
 
 ## What it is
 
@@ -22,7 +22,7 @@ Not a bot org. Not a process supervisor. Not a fake budget. Not Notion. Not `of 
 
 Those patterns belong to other products. The written contrast is [roadmap.md](roadmap.md#grok-bot-contrast-protocol-pick-not-a-bot-org). The pick is stay-on-the-run + that contrast: pulse `STALE` continues the same packet this turn (`of handoff` / `of spawn`). Do not unpack by default. Do not wait forever. Not a daemon.
 
-`RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn prints that harness paid usage is not measured. Auditor items that are not this product live in [out-of-scope.md](audit/out-of-scope.md).
+The reserved `scale_up` / `scale_across` enums, token budget, local-budget threshold, and inherited depth were removed in 0.9.12 (W7b). Spawn prints that harness paid usage is not measured. Auditor items that are not this product live in [out-of-scope.md](audit/out-of-scope.md).
 
 ## Invariants a multi-agent lab should care about
 
@@ -38,7 +38,7 @@ Short form: [PRINCIPLES.md](../PRINCIPLES.md). Contract: [references/principles.
 
 ## Threat model
 
-A lab reviewer asks what a disobedient process can do. The kernel is a cooperative contract, not an OS jail and not `RUNTIME_OWNERSHIP`. Cite the proof, not the slogan. How to report a vulnerability: [SECURITY.md](../SECURITY.md).
+A lab reviewer asks what a disobedient process can do. The kernel is a cooperative contract, not an OS jail. Cite the proof, not the slogan. How to report a vulnerability: [SECURITY.md](../SECURITY.md).
 
 ### What a disobedient child cannot do (through `of`)
 
@@ -62,7 +62,7 @@ A lab reviewer asks what a disobedient process can do. The kernel is a cooperati
 | Chat-dump residual (transcript in `evidence` / `notes`) | collect/integrate refuse; wave report is `{status, wants, uncertainty}` | `recovery/wave-report-quality-gate` |
 | Child-forged `verified_contract` / `spec_closed`, or public ID on `VERIFIED_INTERNAL` | contrast stays OPEN; `of close` refused until `VERIFIED_CONTRACT` | `recovery/contrast-close-contract` |
 | Close without RESOLVED, or CLOSED while done-when is still open | `of close` refused, or one stamp writes flags + `CLOSE.json` together | `recovery/atomic-close-flag-lag` |
-| Child-forged close + `--tokens` theater + unpack of a reporter | `CLOSE.json` stays absent; `--tokens N>0` dies; unpack of a residual child is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
+| Child-forged close + unpack of a reporter | `CLOSE.json` stays absent; unpack of a residual child is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Root ORDER is a stub; real work is under `fields/<id>/` | `of status` / `of resume` follow `.orderfield/ACTIVE` (or the nested home); `--field` stub dies; `of migrate` archives | `recovery/active-field-pointer`; `recovery/root-stub-ambiguous` |
 | Many open siblings; `of new` vs `of patch` is unclear | `of fields` marks ACTIVE, counts open/closed, prints epic vs patch `choose` | `recovery/field-roster-ux` |
 | Epic dashboard needs flying packs across siblings | `of fields` / `of fields --json` lists in-flight packs (residual MISSING) from every open home; `of status --json` stays one field | `recovery/cross-field-pack-roster`; `PackRosterCrossField` |
@@ -95,9 +95,9 @@ A multi-wave mission can look finished while SPEC is still open. The lie is a st
 
 **The risk.** Slice close masquerades as mission close. A dump or slogan stands in for `result_ref`. A field residual rewrites mission/phase so the next wave never happens. A mid-flight amend vanishes because wave-1 packets still look current. A later session treats age, packed-age, harness chrome, or process death as a new field or a finished one.
 
-**What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref` and close evidence must carry `artifact_sha` (sha256 of that file) plus `rollback:` a command (`CloseEvidence`); it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close --checklist` names contrast + residual empty and does not stamp; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together and refuses while residual is MISSING (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`, `recovery/multi-wave-close-checklist`). Child-forged close, `--tokens` theater, and unpack of a reporter are one corpus (`recovery/adversarial-dual-truth`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
+**What the disk contract already does.** Residual is one JSON object, not a diary. Chat-dump and slogan evidence cannot collect (`recovery/wave-report-quality-gate`, `recovery/slogan-evidence-refused`). `status=done` names a `result_ref` and close evidence must carry `artifact_sha` (sha256 of that file) plus `rollback:` a command (`CloseEvidence`); it does not close SPEC. Contrast stays OPEN until `VERIFIED_CONTRACT` (or honest internal) then RESOLVED; `of close --checklist` names contrast + residual empty and does not stamp; `of close` writes `spec_closed` + `done_when_closed` + `CLOSE.json` together and refuses while residual is MISSING (`recovery/contrast-close-contract`, `recovery/atomic-close-flag-lag`, `recovery/multi-wave-close-checklist`). Child-forged close and unpack of a reporter are one corpus (`recovery/adversarial-dual-truth`). A residual that names `mission` / `phase` / `constraints` / `done_when` / `workspace` is `escalate_up`; pack and spawn stop until the leader patches and runs guarded `next-wave` (`recovery/mission-rewrite-refused`, `recovery/threshold-stop-spawn`, `recovery/escalate-verify-build`). Mid-flight `of spec --amend` + `of patch` land on later packets; prior packets stay (`recovery/midflight-amend`, `recovery/multi-wave-residual`). Empty or generic done-when cannot stamp (`recovery/done-when-lint`). Age, packed-age, abandoned, harness chrome, and a dead spawn host are named on status/resume; they are not close and not `of init` (`recovery/stale-field-abandoned`, `recovery/packed-age-watchdog`, `recovery/in-flight-visibility`, `recovery/process-death-resume`, `recovery/multi-day-resume`).
 
-**What this is not.** Not a token budget. Not `RUNTIME_OWNERSHIP`. Not a process supervisor. Stay-on-the-run + close-is-proof. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
+**What this is not.** Not a token budget. Not a process supervisor. Stay-on-the-run + close-is-proof. RFC: [close-is-proof.md](close-is-proof.md). Templates: [close-honesty.md](close-honesty.md). Operator walk: [long-mission.md](long-mission.md).
 
 ### What the kernel honestly does not stop
 
@@ -111,7 +111,7 @@ These are not missing features. Do not invent kernel to close them. Record: [out
 - **Same-user cooperative protocol.** Spawned children keep `HOME` / `XDG_*` / `SSH_AUTH_SOCK` under the allowlist. That is harness process isolation, not an OS-user sandbox and not a filesystem jail (`SCOPE-SANDBOX`). Worktree/process bounds are honesty surfaces, not a security guarantee.
 - **Open-field checkout.** Cloning or copying a tree with open `.orderfield/` while the skill is installed to HOME dests (`~/.agents` / `~/.claude` / `~/.cursor` …) auto-continues. Operator risk, not a silent escape and not a feature to gut. Explicit pause/stop/close only. Rule 0 stays.
 - **Detect ≠ auth.** `of detect` / `of doctor` PATH inventory is not credentials or session authority (C-015). A binary on PATH is not a login.
-- **Reserved accounting.** `RUNTIME_OWNERSHIP` (`scale_up`, `scale_across`, `budget.tokens`, `local_budget_pct`, inherited depth) stays reserved in `scripts/of/regime.py`. Spawn says paid usage is not measured. Optional `residual.usage` is provenance when a child copies harness facts; `EfficiencySignal` may propose a model-tier ask. Do not add cost ceilings (`SCOPE-COST`). Design: [efficiency-signal.md](efficiency-signal.md).
+- **No runtime accounting.** Token budgets and the reserved `scale_up` / `scale_across` enums were removed in 0.9.12 (W7b). Spawn says paid usage is not measured. Optional `residual.usage` is provenance when a child copies harness facts. Do not add cost ceilings (`SCOPE-COST`).
 - **Publish / merge process.** No `of merge`. Independent GitHub approval is human merge practice (`SCOPE-REVIEW`). Test C is harness QA, not kernel CI (`SCOPE-TESTC`).
 
 ### Known limits (0.9.0)
@@ -183,7 +183,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 | Adversary residual verify→build is `escalate_up`; leader phase stays verify | `recovery/escalate-verify-build` |
 | Claude/Grok/Codex/Cursor dry-run share one residual path; Codex names `residual.codex`; collect accepts it. Deep dests `~/.claude` / `~/.agents` / `~/.cursor` stay green; `--output-schema` still shows the basename | `recovery/multi-harness-residual`; `MultiHarnessResidual` |
 | agy `--json-schema` reuses `residual.codex.schema.json`; Claude omit (inline-only; keep stream-json); Qwen omit (structured_output tool) | `OutputSchema`; `OutputSchemaArgv` |
-| Child-forged close leaves `CLOSE.json` absent; `--tokens` dies; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
+| Child-forged close leaves `CLOSE.json` absent; unpack of a reporter is refused | `recovery/adversarial-dual-truth`; `AdversarialDualTruthCorpus` |
 | Published SKILL / `/of` / README theater or advertised truth score >98% / mismatch dies | `ClaimsHonestyGate`; `python3 docs/audit/check-claims.py` |
 | README opens with typical problems → what Orderfield does; Mid-flight H2 before Install; Haken analogy stays below | `ReadmeProductSurface` |
 | In-repo lab is re-runnable; external field dogfood stays Partial | C-153; `FieldEvidenceHonesty` |
@@ -193,7 +193,7 @@ These are regressions, not prose. CI runs unittest then `of eval --strict --kern
 
 Do not implement these to match an auditor wishlist:
 
-- `RUNTIME_OWNERSHIP` / cost ceilings / token accounting
+- cost ceilings / token accounting
 - Process supervisor, PIDs, cancellation, child supervision
 - `of merge`, Notion, bot org, 5-minute poll, nightly supervisor
 - Test C as required kernel CI (harness QA only)

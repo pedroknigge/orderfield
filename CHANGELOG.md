@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.12
+
+W7b deletions. The kernel drops the advisory surfaces and the reserved runtime keys. Same contract, smaller surface. `of migrate` cleans old artifacts.
+
+- **Advisory cuts.** `EfficiencySignal`, `AdapterBalance`, and `UpdateAsk` are removed. `of status` / `resume` / `doctor` no longer propose model tiers, print a balance table, or check GitHub for a newer release.
+- **Contest cut.** `of contend` / `of crown`, `scripts/of/contest.py`, and `scripts/of/cli/contend_cmd.py` are removed. `ORDER.contest` leaves the schema.
+- **Reserved runtime cut.** `scale_up`, `scale_across`, across caps/counters, `budget.tokens`, `local_budget_pct`, and inherited depth are removed from code and the four affected schemas. `of pack --tokens` is gone; only `budget.seconds` remains enforced.
+- **Migration.** `of migrate` strips the retired keys from old ORDER, state, packet, and wave-report files. Readers tolerate pre-W7b ORDER, packet, and wave-report artifacts until the leader migrates. MISSING packets are not rewritten on read.
+- **Proof:** `tests/test_kernel_field.py::ArtifactMigrations::test_migrate_strips_retired_runtime_keys`, `tests/test_packaging.py`, `of eval --strict` (61/61), `python3 scripts/run_tests.py` (1832 tests; one pre-existing repo-state failure).
+- Packaging: VERSION `0.9.12`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.12"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`.
+
 ## 0.9.11
 
 - **Verifier receipts.** The kernel removes inherited code-loading settings before it resolves and runs the verifier. The signed receipt identifies the executable, hashes project files named in its arguments, and records project-local entries from the lookup path. Implicit imports and transitive dependencies are outside that evidence. Spawn removes the leader key and token even when the operator requests environment inheritance.

@@ -8,7 +8,7 @@
   "stolen_constraint": "child rewrote every constraint",
   "stolen_done_when": "child closed done-when by residual",
   "expected_regime": "escalate_up",
-  "forbidden_regimes": ["phase", "scale_out", "scale_across"],
+  "forbidden_regimes": ["phase", "scale_out"],
   "spawn_blocked": true,
   "spec_closed": false,
   "constraint_must_remain": "slaves do not mutate ORDER",

@@ -84,7 +84,7 @@ A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace
 
 The child writes a structured residual. A chat dump cannot collect (`recovery/wave-report-quality-gate`).
 
-Before the next wave, quote honest efficiency signals only: `of status` efficiency, `of detect` present/missing, `of doctor` balance. No published balance/session probe → say **unknown**; never invent. `budget.tokens` stays reserved. Propose cheap/frontier rebalance and/or harness mix when those signals exist; **must ask** before `of patch --model-hints` / `--harness`. Design: [efficiency-signal.md](efficiency-signal.md).
+Before the next wave, quote honest signals only: residual quality and `of detect` present/missing. No published balance/session probe → say **unknown**; never invent. Propose cheap/frontier rebalance and/or harness mix when signals exist; **must ask** before `of patch --model-hints` / `--harness`.
 
 ## 3. Mid-flight amend
 

@@ -10,7 +10,7 @@
     "order_rev": { "type": "integer", "minimum": 1 },
     "regime": {
       "type": "string",
-      "enum": ["escalate_up", "scale_out", "scale_across", "scale_up", "human", "hold", "phase"]
+      "enum": ["escalate_up", "scale_out", "human", "hold", "phase"]
     },
     "reason": { "type": "string" },
     "residuals": {
@@ -35,10 +35,9 @@
     "caps_remaining": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["children", "across_this_wave"],
+      "required": ["children"],
       "properties": {
-        "children": { "type": "integer", "minimum": 0 },
-        "across_this_wave": { "type": "integer", "minimum": 0 }
+        "children": { "type": "integer", "minimum": 0 }
       }
     },
     "applied_patch": {

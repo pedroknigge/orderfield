@@ -1,6 +1,6 @@
 """Advisory living model catalog. Skill/leader only.
 
-Not a router, not IQ ranks, not budget.tokens.
+Not a router, not IQ ranks, not a token budget.
 """
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ class ModelCatalog:
     @staticmethod
     def doctor_lines() -> list[str]:
         return [
-            f"{REL_MD.as_posix()} (advisory; not budget.tokens)",
+            f"{REL_MD.as_posix()} (advisory; not a token budget)",
         ]
 
     @staticmethod
@@ -139,8 +139,6 @@ class ModelCatalog:
         if md_keys != json_keys:
             errors.append("living table keys != model-catalog.json")
         folded = md_path.read_text(encoding="utf-8").casefold()
-        if "budget.tokens" not in folded:
-            errors.append("model-catalog.md must name reserved budget.tokens")
         if "smarter is not always costlier" not in folded:
             errors.append("model-catalog.md must teach smarter≠costlier")
         return errors

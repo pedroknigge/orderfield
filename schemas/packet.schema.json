@@ -57,16 +57,10 @@
         "thresholds": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["tool_failures", "divergence", "local_budget_pct", "novelty"],
+          "required": ["tool_failures", "divergence", "novelty"],
           "properties": {
             "tool_failures": { "type": "integer", "minimum": 1 },
             "divergence": { "type": "number", "minimum": 0, "maximum": 1 },
-            "local_budget_pct": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "description": "Reserved / unenforced. No telemetry feeds it; the kernel never evaluates it."
-            },
             "novelty": { "type": "boolean" }
           }
         },
@@ -199,14 +193,9 @@
     "budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tokens", "seconds"],
-      "description": "Only `seconds` is enforced (spawned-process timeout). `tokens` is reserved: the kernel has no token telemetry and never meters or enforces it.",
+      "required": ["seconds"],
+      "description": "`seconds` is enforced: the spawned-process wall-clock timeout.",
       "properties": {
-        "tokens": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Reserved / unenforced. Compat key: of pack writes 0; --tokens N for N>0 dies. Not measured, not metered, never selects a regime."
-        },
         "seconds": {
           "type": "integer",
           "minimum": 1,

@@ -135,7 +135,7 @@ def _refuse_child_issue_submit() -> None:
 class IssueConfirm:
     """HITL lock for mutating `of issue` create. Dry-run and search are not HITL.
 
-    Reuse: UpdateAsk.maybe_prompt already owns TTY y/N (stdin+stdout isatty,
+    Reuse: the HITL confirm already owns TTY y/N (stdin+stdout isatty,
     y/yes, EOF = no). --dry-run already previews argv. OF_CHILD already
     blocks children. #193 closed omit-dry-run as HITL. The remaining gap
     is a confused deputy: cloud/headless can pass --confirm without a

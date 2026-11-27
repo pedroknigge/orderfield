@@ -2427,6 +2427,39 @@ class ArtifactMigrations(unittest.TestCase):
         self.assertEqual(of.PROTOCOL_SLAVE_MD, ".orderfield/SLAVE.md")
         self.assertEqual(of.PROTOCOL_WRITABLE_KEY, "writable_by_slaves")
 
+    def test_migrate_strips_retired_runtime_keys(self) -> None:
+        order_file = self.tmp / ".orderfield" / "ORDER.json"
+        order = load_json(order_file)
+        order["thresholds"]["local_budget_pct"] = 80
+        order["caps"]["max_across_per_wave"] = 1
+        order["caps"]["cooldown_waves_after_across"] = 1
+        order["enabled_regimes"].append("scale_up")
+        order["contest"] = {"id": "ctg_deadbeef"}
+        order_file.write_text(json.dumps(order), encoding="utf-8")
+
+        path = packet_path(self.tmp, "c1")
+        packet = load_json(path)
+        packet["budget"]["tokens"] = 0
+        packet["packet_hash"] = of.packet_digest(packet)
+        path.write_text(json.dumps(packet), encoding="utf-8")
+
+        # Readers stay total on pre-W7b artifacts; migration is what writes.
+        self.assertNotIn("local_budget_pct", of.load_order(self.tmp)["thresholds"])
+
+        applied = run_of(self.tmp, "migrate")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        migrated = load_json(order_file)
+        self.assertNotIn("local_budget_pct", migrated["thresholds"])
+        self.assertNotIn("max_across_per_wave", migrated["caps"])
+        self.assertNotIn("cooldown_waves_after_across", migrated["caps"])
+        self.assertNotIn("scale_up", migrated["enabled_regimes"])
+        self.assertNotIn("contest", migrated)
+        self.assertEqual(of.validate_order(migrated), [])
+        upgraded = load_json(path)
+        self.assertNotIn("tokens", upgraded["budget"])
+        self.assertEqual(upgraded["packet_hash"], of.packet_digest(upgraded))
+        self.assertEqual(of.validate_packet(upgraded), [])
+
     def test_legacy_recovery_still_works_without_migrate(self) -> None:
         path = packet_path(self.tmp, "c1")
         packet = load_json(path)

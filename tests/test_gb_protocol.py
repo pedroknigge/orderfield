@@ -2,11 +2,10 @@
 """REQ-002 / REQ-006 / REQ-007 / REQ-008 — Grok Bot protocol at the file surface.
 
 Stay-on-the-run is SKILL doctrine. Contrast + pick live in docs/roadmap.md.
-RUNTIME_OWNERSHIP stays reserved in scripts/of/regime.py (this test does not edit it).
+The 0.9.12 W7b cut removed the reserved runtime-ownership surface.
 """
 from __future__ import annotations
 
-import ast
 import sys
 import unittest
 from pathlib import Path
@@ -25,13 +24,6 @@ ALIAS = ROOT / "of" / "SKILL.md"
 REGIME = ROOT / "scripts" / "of" / "regime.py"
 VERSION = ROOT / "VERSION"
 
-RESERVED_KEYS = (
-    "scale_up",
-    "scale_across",
-    "budget.tokens",
-    "thresholds.local_budget_pct",
-    "inherited_depth",
-)
 
 
 class StayOnRunSkill(unittest.TestCase):
@@ -132,10 +124,10 @@ class RoadmapContrast(unittest.TestCase):
         self.assertIn("`of pack --owns-path`", roadmap)
         self.assertIn("`of pulse`", roadmap)
         self.assertIn("`of contrast`", roadmap)
-        self.assertIn("`RUNTIME_OWNERSHIP`", roadmap)
+        self.assertIn("W7b", roadmap)
         self.assertIn("`scripts/of/regime.py`", roadmap)
         self.assertIn("no process supervisor", roadmap)
-        self.assertIn("`scale_up`", roadmap)
+        self.assertIn("scale_up", roadmap)
 
     def test_pick_is_stay_on_run_plus_contrast_no_bot_org(self) -> None:
         roadmap = ROADMAP.read_text(encoding="utf-8")
@@ -145,7 +137,7 @@ class RoadmapContrast(unittest.TestCase):
         self.assertIn("no cloud-agent manager", roadmap)
         self.assertIn("no auto-merge command", roadmap)
         self.assertIn("no process supervisor", roadmap)
-        self.assertIn("`RUNTIME_OWNERSHIP` stays reserved", roadmap)
+        self.assertIn("0.9.12", roadmap)
         ver = VERSION.read_text(encoding="utf-8").strip()
         self.assertIn(f"**Current release line:** `{ver}`", roadmap)
 
@@ -229,36 +221,6 @@ class CloseIsProofRfc(unittest.TestCase):
         self.assertIn("This page does not add a fixture", text)
         self.assertNotIn("of merge --", text)
 
-
-class RuntimeOwnershipUntouched(unittest.TestCase):
-    """REQ-008: do not edit regime.py; RUNTIME_OWNERSHIP is still reserved."""
-
-    def test_imported_runtime_ownership_is_reserved(self) -> None:
-        for key in RESERVED_KEYS:
-            self.assertEqual(of.RUNTIME_OWNERSHIP[key], "reserved", key)
-        self.assertEqual(set(of.RUNTIME_OWNERSHIP), set(RESERVED_KEYS))
-        self.assertEqual(of.RESERVED_REGIMES, frozenset({"scale_up", "scale_across"}))
-        self.assertIn("budget.seconds", of.RUNTIME_ENFORCED)
-
-    def test_regime_py_file_surface_still_reserved(self) -> None:
-        source = REGIME.read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        found: dict[str, str] | None = None
-        for node in tree.body:
-            if isinstance(node, ast.Assign):
-                names = [
-                    t.id for t in node.targets if isinstance(t, ast.Name)
-                ]
-                if "RUNTIME_OWNERSHIP" in names and isinstance(node.value, ast.Dict):
-                    found = {}
-                    for k, v in zip(node.value.keys, node.value.values):
-                        if isinstance(k, ast.Constant) and isinstance(v, ast.Constant):
-                            found[k.value] = v.value
-        self.assertIsNotNone(found, "RUNTIME_OWNERSHIP missing from regime.py")
-        assert found is not None
-        self.assertEqual(found, {key: "reserved" for key in RESERVED_KEYS})
-        self.assertIn('RUNTIME_OWNERSHIP = {', source)
-        self.assertIn('"scale_up": "reserved"', source)
 
 
 if __name__ == "__main__":

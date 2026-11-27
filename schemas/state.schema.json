@@ -7,9 +7,6 @@
   "required": [
     "wave",
     "children_spawned",
-    "across_this_wave",
-    "waves_since_across",
-    "last_across_wave",
     "last_regime",
     "spawn_blocked",
     "blocked_at_order_rev",
@@ -28,21 +25,6 @@
       "type": "integer",
       "minimum": 0
     },
-    "across_this_wave": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "waves_since_across": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "last_across_wave": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 1
-    },
     "last_regime": {
       "type": [
         "string",
@@ -51,8 +33,6 @@
       "enum": [
         "escalate_up",
         "scale_out",
-        "scale_across",
-        "scale_up",
         "human",
         "hold",
         "phase",
