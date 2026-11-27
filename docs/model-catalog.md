@@ -1,8 +1,8 @@
 # Model catalog (intelligence × cost)
 
-Advisory for the `/of` skill and the leader. Not a router. Not IQ ranks. Not `budget.tokens`.
+Advisory for the `/of` skill and the leader. Not a router. Not IQ ranks. Not a token budget.
 
-> Hub: [AGENTS.md](../AGENTS.md) · Hints: [glossary.md#adapter_hints](glossary.md#adapter_hints) · Signal: [efficiency-signal.md](efficiency-signal.md) · Machine: [model-catalog.json](model-catalog.json)
+> Hub: [AGENTS.md](../AGENTS.md) · Hints: [glossary.md#adapter_hints](glossary.md#adapter_hints) · Machine: [model-catalog.json](model-catalog.json)
 
 Before **any model recommendation**, run `of models --adapter HARNESS --json`. Live output determines the currently advertised model IDs and alias resolutions. This static sheet is a **seed** for verified tiers/prices (`seed:<url>@<date>`); it does not discover new models. Live `of models --json` merges discovery with seed rows, **inferred** `tier_hint` when safe (no invented price), and an opt-in **fetched** cache (`--refresh-prices` via OpenRouter; prior cache on failure). Model choice still changes only after consent (`of patch --model-hints` / `of pack --model-tier` / `--model`). Do not silent-switch or invent `$/MTok`.
 
@@ -90,12 +90,12 @@ agy Gemini 4 rows cite those Antigravity pages. They publish CLI identifiers and
 1. Run `of models --adapter HARNESS --json` before any model recommendation; require `status=ok`. Query each proposed harness for a mix.
 2. Read this page (or `docs/model-catalog.json`) for supplemental **tier hint + list price + notes + last_checked**. Re-check stale price sources before quoting them. New models and resolutions have unknown prices until verified. Explain task tradeoffs without inventing performance ranks or assuming newer means better.
 3. Ask same-harness vs multi-harness mix. On mix, `of detect` (present / missing / PATH≠auth). Do not pick a model just because another harness lists a cheaper sheet.
-4. On yes: `of patch --model-hints` / `of pack --model-tier` / `--model NAME`. Never silent switch. Never `of pack --tokens`.
+4. On yes: `of patch --model-hints` / `of pack --model-tier` / `--model NAME`. Never silent switch.
 
 `of doctor` prints one `catalog` pointer. The kernel does not score this table, does not enforce a token ceiling, and does not route spawn from it.
 
 ## What this is not
 
-Not a process supervisor. Not a bot org. Not `RUNTIME_OWNERSHIP`. Not a fake token budget. Not `of merge`. Not `of catalog`. Not a silent router.
+Not a process supervisor. Not a bot org. Not a fake token budget. Not `of merge`. Not `of catalog`. Not a silent router.
 
 Class: `ModelCatalog` in `scripts/of/model_catalog.py`. Proof: `ModelCatalogHonesty` / `SkillModelCatalogConsult`.

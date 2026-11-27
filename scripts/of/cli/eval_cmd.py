@@ -32,7 +32,7 @@ class EvalStream:
     """Captured of stdout/stderr for recovery contain-checks.
 
     macOS mkdtemp can embed ``80000`` in ``/var/folders/.../wsm_g8s980000gn/T``
-    (same collision BudgetTokensReserved already strips). ``of status`` prints
+    (same collision CostDisclaimer already strips). ``of status`` prints
     ``root {cwd}``. Theater needles such as reserved ``80000`` must not fail
     on that path. Update notices are a separate leak: ``eval_run_of`` sets
     ``OF_NO_UPDATE_CHECK=1``.
@@ -70,8 +70,8 @@ class EvalFileAssert:
 
 
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    # Recovery contain-checks must not see daily UpdateAsk lines or the
-    # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
+    # Recovery contain-checks must not see the operator's installed skill
+    # copies (checkout VERSION vs ~/.*/skills).
     home = cwd / ".eval-home"
     home.mkdir(exist_ok=True)
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "HOME": str(home)}
@@ -216,7 +216,6 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.MultiHarnessResidual",
     "tests.test_kernel.DoctorSkillVersionSkew",
     "tests.test_kernel.DoctorOnePassSkew",
-    "tests.test_kernel.UpdateAskDaily",
     "tests.test_kernel.WaveReportQualityGate",
     "tests.test_kernel.ThresholdStopSpawn",
     "tests.test_kernel.ResumeAfterProcessDeath",
@@ -251,7 +250,6 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.AgentBandUnit",
     "tests.test_kernel.AgentBandCli",
     "tests.test_kernel.SkillAgentBand",
-    "tests.test_kernel.EfficiencySignalProof",
     "tests.test_kernel.ClaimsHonestyGate",
     "tests.test_kernel.ReadmeProductSurface",
     "tests.test_kernel.FieldEvidenceHonesty",
@@ -325,8 +323,6 @@ EVAL_UNITTEST_MODULES = (
     "tests.test_kernel.SkillLivingMap",
     "tests.test_kernel.LivingMapGate",
     "tests.test_kernel.SkillHarnessMixPlaybook",
-    "tests.test_kernel.SkillEfficiencyMixPlaybook",
-    "tests.test_kernel.AdapterBalanceUnit",
     "tests.test_kernel.MutatingCommandsHonesty",
     "tests.test_kernel.SpawnLockRace",
     "tests.test_kernel.PatchRevStaleFlying",

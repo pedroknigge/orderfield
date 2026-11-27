@@ -891,16 +891,6 @@ class ChildForgeLeaderVerbs(unittest.TestCase):
         self.assertIn("of: error: child-forge:", new.stderr)
         self.assertIn("of new", new.stderr)
 
-        contend = run_of(self.tmp, "contend", env_extra=env)
-        self.assertNotEqual(contend.returncode, 0, contend.stdout + contend.stderr)
-        self.assertIn("of: error: child-forge:", contend.stderr)
-        self.assertIn("of contend", contend.stderr)
-
-        crown = run_of(self.tmp, "crown", "--contest", "ctg_12345678", env_extra=env)
-        self.assertNotEqual(crown.returncode, 0, crown.stdout + crown.stderr)
-        self.assertIn("of: error: child-forge:", crown.stderr)
-        self.assertIn("of crown", crown.stderr)
-
         checkpoint = run_of(self.tmp, "checkpoint", "--summary", "hacked", env_extra=env)
         self.assertNotEqual(checkpoint.returncode, 0, checkpoint.stdout + checkpoint.stderr)
         self.assertIn("of: error: child-forge:", checkpoint.stderr)

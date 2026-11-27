@@ -20,7 +20,7 @@
       "file_contains": [
         {
           "path": ".orderfield/waves/001/packets/long1.json",
-          "contains": ["\"seconds\": 7200", "\"tokens\": 0"]
+          "contains": ["\"seconds\": 7200"]
         }
       ],
       "stderr_not_contains": ["80000", "token budget"]

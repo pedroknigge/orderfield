@@ -1632,8 +1632,8 @@ class ClosedFieldArchive:
 
     @staticmethod
     def dest(root: Path, field_id: str) -> Path:
-        # field_id may come from child-writable ORDER.json (crown losers): a
-        # traversal id would escape the archive dir, so require the canonical form.
+        # field_id may come from child-writable ORDER.json: a traversal id
+        # would escape the archive dir, so require the canonical form.
         base = ClosedFieldArchive.dir(root)
         dest = base / require_field_id(field_id)
         if base.resolve() not in dest.resolve().parents:

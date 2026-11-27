@@ -21,7 +21,6 @@ from of_adapters import (
     KERNEL_VERIFIES,
     TRUST_ENV,
     TRUST_PROFILES,
-    AdapterBalance,
     AdapterDetect,
     AdapterHints,
     OperatorAction,
@@ -94,8 +93,6 @@ from of.field import (
     load_session,
     load_state,
     load_worktrees,
-    maybe_notify_update,
-    UpdateAsk,
     newest_mtime,
     EscalateUnblock,
     next_legal_action,
@@ -158,7 +155,6 @@ from of.pack import (
 )
 
 from of.regime import (
-    RUNTIME_OWNERSHIP,
     IntegrationDigest,
     WaveBlock,
     PlanCoverage,
@@ -173,233 +169,6 @@ from of.regime import (
     mission_done_when,
     phase_done_when,
 )
-
-
-class EfficiencySignal:
-    """Post-hoc quality × optional harness usage. Ask, never switch.
-
-    Scores landed residuals on the live wave. Optional residual.usage
-    (tokens/model) is provenance when the child copied harness facts —
-    like origin.session_id, not a second money ledger. Missing usage is
-    valid. budget.tokens stays reserved. Propose prints a consent argv;
-    it does not write ORDER.adapter_hints.
-    """
-
-    QUALITIES = ("ok", "escalate", "rework")
-    ACTIONS = ("none", "uptier", "downtier")
-    UPTIER_FAILURES = 2
-    BOILERPLATE_ROLES = frozenset({"explorer", "synthesizer"})
-    DOWNTIER_RATIO = 3
-    CONSENT_UPTIER = "of patch --model-hints field --model-tier frontier"
-    CONSENT_DOWNTIER = "of patch --model-hints field --model-tier cheap"
-
-    @staticmethod
-    def usage(residual: Any) -> dict[str, Any] | None:
-        if not isinstance(residual, dict):
-            return None
-        raw = residual.get("usage")
-        if not isinstance(raw, dict):
-            return None
-        out: dict[str, Any] = {}
-        if "tokens" in raw:
-            try:
-                tokens = int(raw["tokens"])
-            except (TypeError, ValueError):
-                tokens = -1
-            if tokens >= 0:
-                out["tokens"] = tokens
-        model = str(raw.get("model") or "").strip()
-        if model:
-            out["model"] = model
-        return out or None
-
-    @staticmethod
-    def tier_of(packet: dict[str, Any]) -> str | None:
-        hints = packet.get("adapter_hints")
-        if not isinstance(hints, dict):
-            return None
-        tier = str(hints.get("tier") or "").strip()
-        if tier in AdapterHints.TIERS:
-            return tier
-        return None
-
-    @staticmethod
-    def quality(
-        residual: dict[str, Any],
-        packet: dict[str, Any],
-        root: Path,
-    ) -> str:
-        status = str(residual.get("status") or "")
-        rem = residual.get("residual")
-        body = rem if isinstance(rem, dict) else {}
-        wants = [str(x) for x in (body.get("wants_to_change") or []) if str(x)]
-        patch = body.get("proposed_patch")
-        failed: list[str] = []
-        if isinstance(patch, dict):
-            failed = [
-                str(x) for x in (patch.get("requirements_failed") or []) if str(x)
-            ]
-        if status == "blocked":
-            return "rework"
-        if wants:
-            return "escalate"
-        if status == "threshold" or failed:
-            return "rework"
-        for owned in packet_owns_paths(packet):
-            if owned_path_presence(root, owned) != "present":
-                return "rework"
-        return "ok"
-
-    @staticmethod
-    def row(
-        root: Path,
-        packet: dict[str, Any],
-        residual: dict[str, Any] | None,
-    ) -> dict[str, Any] | None:
-        if not isinstance(residual, dict):
-            return None
-        out: dict[str, Any] = {
-            "child_id": str(packet.get("child_id") or "?"),
-            "role": str(packet.get("role") or ""),
-            "quality": EfficiencySignal.quality(residual, packet, root),
-        }
-        tier = EfficiencySignal.tier_of(packet)
-        if tier:
-            out["tier"] = tier
-        usage = EfficiencySignal.usage(residual)
-        if usage:
-            out.update(usage)
-        return out
-
-    @staticmethod
-    def scan(root: Path, packets: list[Any]) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
-        for packet in packets:
-            if not isinstance(packet, dict):
-                continue
-            residual = try_load_packet_residual(root, packet)
-            row = EfficiencySignal.row(root, packet, residual)
-            if row:
-                rows.append(row)
-        return rows
-
-    @staticmethod
-    def _median(values: list[int]) -> float:
-        ordered = sorted(values)
-        n = len(ordered)
-        if n == 0:
-            return 0.0
-        mid = n // 2
-        if n % 2:
-            return float(ordered[mid])
-        return (ordered[mid - 1] + ordered[mid]) / 2.0
-
-    @staticmethod
-    def propose(rows: list[dict[str, Any]]) -> dict[str, Any]:
-        cheap_bad = [
-            row
-            for row in rows
-            if row.get("tier") == "cheap"
-            and row.get("quality") in ("rework", "escalate")
-        ]
-        if len(cheap_bad) >= EfficiencySignal.UPTIER_FAILURES:
-            return {
-                "propose": "uptier",
-                "reason": f"cheap child failed {len(cheap_bad)} times",
-                "consent": EfficiencySignal.CONSENT_UPTIER,
-                "rows": rows,
-            }
-        for row in rows:
-            if row.get("tier") != "frontier" or row.get("quality") != "ok":
-                continue
-            tokens = row.get("tokens")
-            if not isinstance(tokens, int):
-                continue
-            boilerplate = str(row.get("role") or "") in EfficiencySignal.BOILERPLATE_ROLES
-            # Compare against other ok rows' tokens, not against budget.tokens.
-            others = [
-                int(other["tokens"])
-                for other in rows
-                if other is not row
-                and other.get("quality") == "ok"
-                and isinstance(other.get("tokens"), int)
-            ]
-            high = False
-            if others:
-                med = EfficiencySignal._median(others)
-                high = med > 0 and tokens >= EfficiencySignal.DOWNTIER_RATIO * med
-            if boilerplate or high:
-                return {
-                    "propose": "downtier",
-                    "reason": (
-                        "frontier spent a lot on boilerplate"
-                        if boilerplate
-                        else "frontier tokens far above siblings"
-                    ),
-                    "consent": EfficiencySignal.CONSENT_DOWNTIER,
-                    "rows": rows,
-                }
-        return {
-            "propose": "none",
-            "reason": "",
-            "consent": "",
-            "rows": rows,
-        }
-
-    @staticmethod
-    def document(root: Path, packets: list[Any]) -> dict[str, Any]:
-        return EfficiencySignal.propose(EfficiencySignal.scan(root, packets))
-
-    @staticmethod
-    def machine(doc: dict[str, Any]) -> dict[str, Any]:
-        action = str(doc.get("propose") or "none")
-        if action not in EfficiencySignal.ACTIONS:
-            action = "none"
-        if "scored" in doc:
-            scored = int(doc.get("scored") or 0)
-        else:
-            scored = len(doc.get("rows") or [])
-        return {
-            "propose": action,
-            "reason": str(doc.get("reason") or ""),
-            "consent": str(doc.get("consent") or ""),
-            "scored": scored,
-        }
-
-    @staticmethod
-    def format_line(doc: dict[str, Any]) -> str:
-        action = str(doc.get("propose") or "none")
-        if action in ("", "none"):
-            return ""
-        reason = str(doc.get("reason") or "").strip()
-        consent = str(doc.get("consent") or "").strip()
-        parts = [f"propose {action}"]
-        if reason:
-            parts.append(reason)
-        if consent:
-            parts.append(consent)
-        return ": ".join(parts[:2]) + (f" — {consent}" if consent else "")
-
-    @staticmethod
-    def emit(
-        root: Path,
-        packets: list[Any],
-        *,
-        key: str = "efficiency",
-        key_width: int = 12,
-    ) -> None:
-        line = EfficiencySignal.format_line(EfficiencySignal.document(root, packets))
-        if line:
-            print(f"{key.ljust(key_width)}{line}")
-
-    @staticmethod
-    def doctor_lines() -> list[str]:
-        return [
-            "score       residual quality × optional residual.usage",
-            "propose     ask only; of patch --model-hints / pack --model-tier",
-            "never       auto-switch, budget.tokens ceiling, invented spend",
-        ]
-
 
 
 def print_learnings(
@@ -815,23 +584,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print("headroom")
     print("  read of models --headroom --json before fan-out "
           "(smallest-window margin, earliest reset; sin dato never blocks)")
-    print("efficiency")
-    for line in EfficiencySignal.doctor_lines():
-        print(f"  {line}")
-    print("balance")
-    for line in AdapterBalance.doctor_lines():
-        print(f"  {line}")
     repo_lines, repo_fields = repo_report(root)
     for line in repo_lines:
         print(line)
-    if order_path(root).exists():
-        state = load_state(root)
-        packets = packed_children(root, int(state.get("wave") or 1))
-        proposal = EfficiencySignal.document(root, packets)
-        line = EfficiencySignal.format_line(proposal)
-        if line:
-            print(f"  {line}")
-    UpdateAsk.maybe_prompt()
     emit_event(
         "doctor",
         ok=not failed,
@@ -1792,9 +1547,6 @@ class StatusReport:
                 requirement_counts(load_requirements(root))
             ),
             "phase_override": StatusReport.phase_override_row(state),
-            "efficiency": EfficiencySignal.machine(
-                EfficiencySignal.document(root, packets)
-            ),
         }
 
     @staticmethod
@@ -1887,7 +1639,6 @@ class StatusReport:
             "spec_mismatch": bool(doc.get("spec_mismatch")),
             "requirements": StatusReport.requirement_counts(doc.get("requirements")),
             "phase_override": doc.get("phase_override"),
-            "efficiency": EfficiencySignal.machine(doc.get("efficiency") or {}),
         }
 
     @staticmethod
@@ -2204,7 +1955,6 @@ class HandoffReport:
 
     @staticmethod
     def emit_cmd(*, machine: bool = False) -> None:
-        maybe_notify_update()
         root = find_root()
         from of.field import (
             ROSTER_EXIT,
@@ -2231,7 +1981,6 @@ class HandoffReport:
 
 
 def cmd_status(args: argparse.Namespace) -> None:
-    maybe_notify_update()
     machine = bool(getattr(args, "status_json", False))
     root = find_root()
     from of.field import (
@@ -2304,7 +2053,6 @@ def cmd_status(args: argparse.Namespace) -> None:
     band_line = AgentBand.format_line(order.get("agent_band"))
     if band_line:
         print(f"agent_band  {band_line}")
-    EfficiencySignal.emit(root, packets)
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)
@@ -2363,13 +2111,10 @@ def cmd_status(args: argparse.Namespace) -> None:
         )
     print(f"last_regime {state.get('last_regime')}")
     print(f"spawn_blocked {bool(state.get('spawn_blocked'))}")
-    print(f"since_across {state.get('waves_since_across')}")
     print(f"mission_streak {state.get('mission_change_streak')}")
     print(f"done_when_closed {done_when_closed(order)}")
     print(f"closed_phases {closed_phases(order)}")
     print(f"regimes     {order['enabled_regimes']}")
-    reserved = ", ".join(RUNTIME_OWNERSHIP)
-    print(f"runtime     reserved (no telemetry): {reserved}")
     if order.get("spec_ref"):
         stored = str(order.get("spec_hash") or "")
         live = spec_bytes_hash(root)
@@ -3229,7 +2974,6 @@ def cmd_fields(args: argparse.Namespace) -> None:
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
-    maybe_notify_update()
     root = find_root()
     from of.field import (
         ROSTER_EXIT,
@@ -3334,7 +3078,6 @@ def cmd_resume(args: argparse.Namespace) -> None:
     origin_line = format_origin_line(order)
     if origin_line:
         print(origin_line)
-    EfficiencySignal.emit(root, packets, key_width=14)
     parent_line = NestedField.format_line(order, key_width=14)
     if parent_line:
         print(parent_line)
@@ -3500,7 +3243,6 @@ def pulse_once(
 
 
 def cmd_pulse(args: argparse.Namespace) -> None:
-    maybe_notify_update()
     root = find_root()
     from of.field import (
         ROSTER_EXIT,

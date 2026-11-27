@@ -332,14 +332,8 @@ class CliFieldResidual(unittest.TestCase):
         self._init_pack()
         self._drop_residual(THRESHOLD)
         run_of(self.tmp, "integrate", "--wave", "1")
-        state_a = load_json(self.tmp / ".orderfield" / "state.json")
         run_of(self.tmp, "integrate", "--wave", "1")
         state_b = load_json(self.tmp / ".orderfield" / "state.json")
-        self.assertEqual(
-            state_a.get("waves_since_across"),
-            state_b.get("waves_since_across"),
-            "integrate must not increment waves_since_across",
-        )
         self.assertTrue(state_b.get("spawn_blocked"))
 
 
@@ -926,165 +920,6 @@ class JsonEvents(unittest.TestCase):
         self.assertEqual(payload.get("event"), "pack")
         self.assertEqual(payload.get("child_id"), "j1")
         self.assertTrue(payload.get("ok"))
-
-
-class UpdateAskDaily(unittest.TestCase):
-    """Daily consent ask: current silent; behind once; no second ask; verified install."""
-
-    def setUp(self) -> None:
-        self.tmp = Path(tempfile.mkdtemp(prefix="of-update-"))
-        self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.cache = self.tmp / "update-check.json"
-        os.environ["OF_UPDATE_CACHE"] = str(self.cache)
-        os.environ.pop("OF_NO_UPDATE_CHECK", None)
-        self.addCleanup(os.environ.pop, "OF_UPDATE_CACHE", None)
-        self.addCleanup(os.environ.pop, "OF_NO_UPDATE_CHECK", None)
-
-    def _capture(self, fetch) -> str:
-        import contextlib
-        import io
-
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            of.maybe_notify_update(fetch=fetch)
-        return err.getvalue()
-
-    def test_no_ask_when_current(self) -> None:
-        self.assertEqual(self._capture(lambda: of.installed_version()), "")
-        self.cache.unlink()
-        self.assertEqual(self._capture(lambda: "0.0.1"), "")
-        self.cache.unlink()
-        self.assertEqual(self._capture(lambda: "<html>rate limited</html>"), "")
-
-    def test_ask_when_behind_once(self) -> None:
-        out = self._capture(lambda: "9.9.9")
-        self.assertIn("update available", out)
-        self.assertIn("9.9.9", out)
-        self.assertIn("ask the user", out)
-        self.assertIn("--from-release", out)
-        self.assertIn("SHA256SUMS", out)
-        self.assertIn("OF_NO_UPDATE_CHECK", out)
-        self.assertIn(of.UpdateAsk.consent_cmd("9.9.9"), out)
-        payload = json.loads(self.cache.read_text(encoding="utf-8"))
-        self.assertIn("asked_at", payload)
-        self.assertEqual(payload.get("asked_version"), "9.9.9")
-
-    def test_no_second_ask_same_day(self) -> None:
-        first = self._capture(lambda: "9.9.9")
-        self.assertIn("update available", first)
-
-        def must_not_fetch() -> str:
-            raise AssertionError("fetch called despite fresh cache")
-
-        self.assertEqual(self._capture(must_not_fetch), "")
-
-    def test_fetch_failure_is_silent_and_backs_off(self) -> None:
-        self.assertEqual(self._capture(lambda: None), "")
-        self.assertTrue(self.cache.is_file())  # checked_at written: no hammering
-
-    def test_opt_out_env(self) -> None:
-        os.environ["OF_NO_UPDATE_CHECK"] = "1"
-
-        def must_not_fetch() -> str:
-            raise AssertionError("fetch called despite opt-out")
-
-        self.assertEqual(self._capture(must_not_fetch), "")
-        self.assertFalse(self.cache.exists())
-
-    def test_consent_path_uses_release_assets_and_sha256(self) -> None:
-        seen: list[tuple[list[str], dict[str, str]]] = []
-
-        def runner(argv, env=None, **_kwargs):
-            seen.append((list(argv), dict(env or {})))
-            return subprocess.CompletedProcess(argv, 0)
-
-        script = self.tmp / "install.sh"
-        script.write_text("#!/bin/sh\n", encoding="utf-8")
-        rc = of.UpdateAsk.run_verified_install(
-            "9.9.9", runner=runner, script=script
-        )
-        self.assertEqual(rc, 0)
-        self.assertEqual(len(seen), 1)
-        argv, env = seen[0]
-        self.assertEqual(argv[:2], ["bash", str(script)])
-        self.assertIn("--global", argv)
-        self.assertIn("--from-release", argv)
-        self.assertEqual(env.get("ORDERFIELD_VERSION"), "9.9.9")
-        self.assertEqual(env.get("ORDERFIELD_REF"), "v9.9.9")
-        cmd = of.UpdateAsk.consent_cmd("9.9.9")
-        self.assertIn("ORDERFIELD_VERSION=9.9.9", cmd)
-        self.assertIn("ORDERFIELD_REF=v9.9.9", cmd)
-        self.assertIn("--from-release", cmd)
-        self.assertIn("SHA256SUMS", of.UpdateAsk.notice("0.1.0", "9.9.9"))
-
-    def test_prompt_yes_runs_install_no_does_not(self) -> None:
-        calls: list[str] = []
-
-        of.UpdateAsk.maybe_prompt(
-            fetch=lambda: "9.9.9",
-            prompt=lambda _msg: "y",
-            install=calls.append,
-            interactive=True,
-        )
-        self.assertEqual(calls, ["9.9.9"])
-
-        self.cache.unlink(missing_ok=True)
-        calls.clear()
-        of.UpdateAsk.maybe_prompt(
-            fetch=lambda: "9.9.9",
-            prompt=lambda _msg: "n",
-            install=calls.append,
-            interactive=True,
-        )
-        self.assertEqual(calls, [])
-
-        self.cache.unlink(missing_ok=True)
-        of.UpdateAsk.maybe_prompt(
-            fetch=lambda: "9.9.9",
-            prompt=lambda _msg: "y",
-            install=calls.append,
-            interactive=False,
-        )
-        self.assertEqual(calls, [])
-
-    def test_doctor_prints_ask_when_behind_once(self) -> None:
-        self.cache.write_text(
-            json.dumps({"checked_at": time.time(), "latest": "9.9.9"}),
-            encoding="utf-8",
-        )
-        env = {
-            "OF_NO_UPDATE_CHECK": "",
-            "OF_UPDATE_CACHE": str(self.cache),
-        }
-        first = run_of(self.tmp, "doctor", extra_env=env)
-        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-        self.assertIn("update", first.stdout)
-        self.assertIn("9.9.9", first.stdout)
-        self.assertIn("newer than", first.stdout)
-        self.assertIn("--from-release", first.stdout)
-        self.assertIn("once/day", first.stdout)
-        second = run_of(self.tmp, "doctor", extra_env=env)
-        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
-        self.assertNotIn("newer than", second.stdout)
-        self.assertNotIn("once/day", second.stdout)
-
-    def test_skill_teaches_daily_ask_same_cut(self) -> None:
-        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
-        alias = (ROOT / "of" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("ask the user", skill)
-        self.assertIn("--from-release", skill)
-        self.assertIn("SHA256", skill)
-        self.assertIn("once a day", skill)
-        self.assertIn("do not upgrade mid-order", skill.lower())
-
-    def test_semver_tuple(self) -> None:
-        self.assertEqual(of.semver_tuple("0.4.0"), (0, 4, 0))
-        self.assertIsNone(of.semver_tuple("0.4"))
-        self.assertIsNone(of.semver_tuple("a.b.c"))
-        self.assertTrue(of.semver_tuple("0.10.0") > of.semver_tuple("0.9.9"))
-
-
-UpdateNotice = UpdateAskDaily
 
 
 class ArgvAndLogRedaction(unittest.TestCase):
@@ -2722,16 +2557,6 @@ class QwenHarnessEnum(unittest.TestCase):
         self.assertEqual(order["harness"], "qwen")
         self.assertEqual(of.validate_order(order), [])
 
-    def test_status_prints_reserved_runtime(self) -> None:
-        tmp = Path(tempfile.mkdtemp(prefix="of-runtime-status-"))
-        self.addCleanup(shutil.rmtree, tmp, True)
-        r = run_of(tmp, "init", "--mission", "m", "--phase", "explore")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        r = run_of(tmp, "status")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("runtime     reserved (no telemetry):", r.stdout)
-        self.assertIn("scale_up", r.stdout)
-        self.assertIn("local_budget_pct", r.stdout)
 
 
 class OfEvalRecovery(unittest.TestCase):

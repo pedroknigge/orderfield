@@ -40,15 +40,6 @@ from of.field import (
 
 REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9]{0,15}-[0-9]{3}$")
 REQ_ID_SEARCH_RE = re.compile(r"[A-Z][A-Z0-9]{0,15}-[0-9]{3}")
-REQ_STATUSES = (
-    "unowned",
-    "owned",
-    "verified",
-    "verified_internal",
-    "verified_contract",
-    "failed",
-    "superseded",
-)
 REQ_INTERNAL_VERIFIED = frozenset({"verified", "verified_internal"})
 REQ_CONTRACT_VERIFIED = frozenset({"verified_contract"})
 CONTRACT_SURFACE_CUES = (
@@ -1260,8 +1251,6 @@ EXTRACT_PREFIX_CUES = (
         ),
     ),
 )
-NAMED_INVARIANT_CUES = ()
-
 
 def _cue_in(text: str, cue: str) -> bool:
     low = text.lower()

@@ -190,13 +190,9 @@ class CollectDiagnostic:
 
 
 # COST-001: no harness reports paid usage to the kernel. Never label tokens
-# as a budget; 0 is reserved accounting, not a measured ceiling.
+# as a budget.
 COST_DISCLAIMER = (
     "harness paid usage is not measured; this is not a budget"
-)
-TOKENS_RESERVED_MSG = (
-    "budget.tokens is reserved accounting; of pack --tokens N for N>0 is "
-    "refused (only budget.seconds is enforced; the kernel has no token telemetry)"
 )
 # Bounded warning line: secrets and home paths stripped; same cap as CLI errors.
 WARNING_MESSAGE_MAX_CHARS = 400
@@ -408,11 +404,6 @@ class ChildClaim:
             f"{why}; refusing a second writer on this packet. Wait for its "
             f"residual to land{wait}, or of spawn --force-spawn --reason TEXT"
         )
-
-
-def refuse_nonzero_tokens(tokens: int) -> None:
-    if int(tokens) != 0:
-        die(TOKENS_RESERVED_MSG, kind="reserved")
 
 
 def _bounded_message(text: str) -> str:
@@ -836,8 +827,6 @@ def cmd_pack(args: argparse.Namespace) -> None:
         die(
             f"unknown --requires-tool: {sorted(set(unknown))}; known tools: {KNOWN_TOOLS}"
         )
-    tokens = int(getattr(args, "tokens", 0) or 0)
-    refuse_nonzero_tokens(tokens)
     seconds = BudgetSeconds.require(
         getattr(args, "seconds", None), where="of pack --seconds"
     )
@@ -1050,7 +1039,6 @@ def cmd_pack(args: argparse.Namespace) -> None:
         "allow_nested": bool(args.allow_nested),
         "requires_tool": requires_tool,
         "budget": {
-            "tokens": 0,
             "seconds": seconds,
         },
     }
@@ -1451,7 +1439,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             f"(packet requires_tool={required}); pick --adapter with those tools "
             "or use --force-tool to acknowledge the capability override"
         )
-    refuse_nonzero_tokens(int((packet.get("budget") or {}).get("tokens") or 0))
     timeout_s = BudgetSeconds.resolve_spawn(packet, getattr(args, "timeout", None))
     force_reason = str(getattr(args, "reason", None) or "")
     if not args.dry_run:

@@ -67,8 +67,8 @@ def eval_commit_home(root: Path, home: Path, docs: dict[str, Any]) -> None:
 
 
 def eval_run_of(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    # Recovery contain-checks must not see daily UpdateAsk lines or the
-    # operator's installed skill copies (checkout VERSION vs ~/.*/skills).
+    # Recovery contain-checks must not see the operator's installed skill
+    # copies (checkout VERSION vs ~/.*/skills).
     home = cwd / ".eval-home"
     home.mkdir(exist_ok=True)
     env = {**os.environ, "OF_NO_UPDATE_CHECK": "1", "HOME": str(home)}
@@ -645,50 +645,6 @@ def eval_setup_recovery_cursor_tier_model(root: Path) -> None:
         "explore",
     )
     EvalInvariantSetup.require_ok(init, "init")
-
-
-@_register_eval_fixture("recovery_efficiency_signal")
-def eval_setup_recovery_efficiency_signal(root: Path) -> None:
-    """Two cheap failures + harness usage on disk. Propose uptier; no ledger."""
-    init = eval_run_of(
-        root,
-        "init",
-        "--mission",
-        "eval efficiency signal",
-        "--phase",
-        "explore",
-    )
-    EvalInvariantSetup.require_ok(init, "init")
-    for child_id in ("fail1", "fail2"):
-        packed = eval_run_of(
-            root,
-            "pack",
-            "--slice",
-            "map files, do not decide the phase",
-            "--role",
-            "explorer",
-            "--child-id",
-            child_id,
-            "--model-tier",
-            "cheap",
-        )
-        EvalInvariantSetup.require_ok(packed, f"pack {child_id}")
-    EvalInvariantSetup.write_bound_residual(
-        root,
-        "fail1",
-        status="blocked",
-        usage={"tokens": 1200, "model": "haiku"},
-        evidence="cheap worker blocked on the same map twice",
-        result_text="blocked\n",
-    )
-    EvalInvariantSetup.write_bound_residual(
-        root,
-        "fail2",
-        status="threshold",
-        wants=["constraints"],
-        evidence="cheap worker cannot close without a field patch",
-        result_text="threshold\n",
-    )
 
 
 class WaveReportQualityEval:

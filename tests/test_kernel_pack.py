@@ -1457,7 +1457,7 @@ class RefLoadHandoff(unittest.TestCase):
             "residual_path": ".orderfield/waves/001/residuals/c1.json",
             "scratch_dir": ".orderfield/work/scratch/c1",
             "allow_nested": False,
-            "budget": {"tokens": 1000, "seconds": 60},
+            "budget": {"seconds": 60},
         }
 
     def test_default_prompt_references_absolute_slave_path(self) -> None:
@@ -1540,7 +1540,7 @@ class PersonaCostumeBan(unittest.TestCase):
             "residual_path": ".orderfield/waves/001/residuals/c1.json",
             "scratch_dir": ".orderfield/work/scratch/c1",
             "allow_nested": False,
-            "budget": {"tokens": 0, "seconds": 60},
+            "budget": {"seconds": 60},
         }
 
     def test_child_and_every_role_prompt_ban_the_costume(self) -> None:

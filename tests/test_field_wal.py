@@ -103,7 +103,6 @@ class FieldWalBothSides(unittest.TestCase):
             self.assertTrue(staged.is_file(), staged)
             self.assertEqual(sha256_file(staged), digest)
         packet = json.loads((self.home / "waves/001/packets/e1.json").read_text())
-        self.assertEqual(packet["budget"]["tokens"], 0)
 
     def test_incomplete_generation_is_dropped_previous_stays(self) -> None:
         packed = self.pack("e1")

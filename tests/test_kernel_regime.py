@@ -268,39 +268,19 @@ class DecideRegimeShipped(unittest.TestCase):
         self.order = of.default_order("architecture for a pricing tool", "explore")
         self.state = of.default_state()
 
-    def test_scale_across_is_reserved_not_enabled_by_default(self) -> None:
-        self.assertIn("scale_across", of.REGIMES)
-        self.assertNotIn("scale_across", self.order["enabled_regimes"])
+    def test_regime_menu_is_the_live_set(self) -> None:
+        self.assertEqual(set(of.REGIMES), {"escalate_up", "scale_out", "human", "hold", "phase"})
 
-    def test_runtime_ownership_is_reserved_not_implemented(self) -> None:
-        for key, decision in of.RUNTIME_OWNERSHIP.items():
-            self.assertEqual(decision, "reserved", key)
-        self.assertEqual(of.RUNTIME_OWNERSHIP["scale_up"], "reserved")
-        self.assertEqual(of.RUNTIME_OWNERSHIP["budget.tokens"], "reserved")
-        self.assertEqual(of.RUNTIME_OWNERSHIP["thresholds.local_budget_pct"], "reserved")
-        self.assertEqual(of.RUNTIME_OWNERSHIP["inherited_depth"], "reserved")
-        self.assertIn("budget.seconds", of.RUNTIME_ENFORCED)
-
-    def test_decide_regime_never_selects_reserved_or_reads_local_budget(self) -> None:
+    def test_decide_regime_returns_a_live_regime(self) -> None:
         residual = load_json(DONE)
-        self.order["thresholds"]["local_budget_pct"] = 1
-        first, _reason = of.decide_regime(self.order, self.state, [residual])
-        self.order["thresholds"]["local_budget_pct"] = 100
-        second, _reason = of.decide_regime(self.order, self.state, [residual])
-        self.assertEqual(first, second)
-        self.assertNotIn(first, of.RESERVED_REGIMES)
-        with mock.patch.object(
-            of, "_select_regime", return_value=("scale_up", "tokens")
-        ):
-            regime, reason = of.decide_regime(self.order, self.state, [residual])
-        self.assertEqual(regime, "hold")
-        self.assertIn("reserved", reason)
+        regime, _reason = of.decide_regime(self.order, self.state, [residual])
+        self.assertIn(regime, of.REGIMES)
 
     def test_constraints_residual_is_escalate_up_not_across_or_out(self) -> None:
         residual = load_json(THRESHOLD)
         regime, reason = of.decide_regime(self.order, self.state, [residual])
         self.assertEqual(regime, "escalate_up")
-        self.assertNotIn(regime, ("scale_across", "scale_out", "phase"))
+        self.assertNotIn(regime, ("scale_out", "phase"))
         self.assertIn("constraints", reason)
 
     def test_workspace_residual_is_escalate_up(self) -> None:
@@ -318,7 +298,7 @@ class DecideRegimeShipped(unittest.TestCase):
         residual["metrics"]["novelty"] = True
         regime, _reason = of.decide_regime(self.order, self.state, [residual])
         self.assertEqual(regime, "escalate_up")
-        self.assertNotEqual(regime, "scale_across")
+        self.assertIn(regime, of.REGIMES)
 
     def test_done_with_open_done_when_is_not_phase(self) -> None:
         residual = load_json(DONE)

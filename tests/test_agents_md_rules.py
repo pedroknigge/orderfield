@@ -60,7 +60,7 @@ CONTRACT_ANCHORS = (
     "Escalate-up before spawn.",
     "Closed menu.",
     "Caps bind where implemented.",
-    "Across is not implemented.",
+    "No runtime accounting.",
     "Skill beats child.",
     "Residuals upward.",
     "The harness does not judge.",

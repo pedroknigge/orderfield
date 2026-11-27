@@ -587,10 +587,39 @@ def skill_artifact_prove_errors(
     return list(prove.errors(res, root))
 
 
+def packet_has_retired_keys(packet: dict[str, Any]) -> bool:
+    """Cheap check before the read-side migration. New packets skip it."""
+    budget = packet.get("budget")
+    if isinstance(budget, dict) and "tokens" in budget:
+        return True
+    order = packet.get("order")
+    if not isinstance(order, dict):
+        return False
+    if "contest" in order:
+        return True
+    thresholds = order.get("thresholds")
+    if isinstance(thresholds, dict) and "local_budget_pct" in thresholds:
+        return True
+    caps = order.get("caps")
+    if isinstance(caps, dict) and (
+        "max_across_per_wave" in caps or "cooldown_waves_after_across" in caps
+    ):
+        return True
+    regimes = order.get("enabled_regimes")
+    return isinstance(regimes, list) and any(
+        regime in ("scale_up", "scale_across") for regime in regimes
+    )
+
+
 def load_packet(path: Path) -> dict[str, Any]:
     packet = load_json(path)
     if not isinstance(packet, dict):
         die(f"invalid packet {path}: expected an object")
+    # Read-side compatibility: strip retired W7b keys in memory. The raw file
+    # stays untouched until `of migrate` writes the cleaned artifact.
+    if packet_has_retired_keys(packet):
+        from of.field import migrate_packet_artifact
+        packet, _retired = migrate_packet_artifact(packet)
     errs = validate_packet(packet)
     if errs:
         die(f"invalid packet {path}:\n  " + "\n  ".join(errs))
@@ -1803,7 +1832,7 @@ class OwnedWrite:
     write; a new whitespace-only file is not either.
     Empty targets + implementer is ``owned_write_missing`` (not skip).
     Explorer / adversary / verifier without ``owns_paths`` skip. Not
-    ``of prove``. Not a supervisor. Not ``RUNTIME_OWNERSHIP``.
+    ``of prove``. Not a supervisor.
     """
 
     KIND = "owned_write_missing"

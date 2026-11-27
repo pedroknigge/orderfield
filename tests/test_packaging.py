@@ -22,7 +22,6 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 from living_map import (  # noqa: E402
     LivingMap,
-    SkillEfficiencyMix,
     SkillHarnessMix,
     SkillRunbookPath,
 )
@@ -241,8 +240,8 @@ class InstallScript(unittest.TestCase):
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        # measured_dest: 1759538
-        self.assertLessEqual(size, 1_759_538, size)
+        # measured_dest: 1707010
+        self.assertLessEqual(size, 1_707_210, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -1199,7 +1198,7 @@ class ModelCatalogHonesty(unittest.TestCase):
 
         lines = ModelCatalog.doctor_lines()
         self.assertTrue(any("model-catalog.md" in line for line in lines))
-        self.assertTrue(any("budget.tokens" in line for line in lines))
+        self.assertTrue(any("not a token budget" in line for line in lines))
         self.assertFalse(any("of catalog" in line for line in lines))
 
     def test_agy_rows_are_the_gemini_4_cli_identifiers(self) -> None:
@@ -1865,8 +1864,7 @@ class SkillPstackCherries(unittest.TestCase):
             self.assertIn(field, appendix, field)
             self.assertIn(field, slave, field)
         self.assertIn("budget.seconds", appendix)
-        self.assertIn("budget.tokens", appendix_fold)
-        self.assertIn("not implemented", appendix_fold)
+        self.assertIn("removed in 0.9.12", appendix_fold)
         self.assertIn("file/SPEC pointers, never the parent transcript", appendix)
         self.assertIn("done-because-of", appendix_fold)
         self.assertIn("done-because-of", slave_fold)
@@ -2638,14 +2636,14 @@ class SkillProductionMode(unittest.TestCase):
         self.assertIn("gate a", table)
         self.assertIn("before features", table)
         self.assertIn("--role implementer", table)
-        self.assertIn("runtime_ownership", table)
+        self.assertIn("runtime-ownership", table)
         self.assertIn("of merge", table)
         self.assertNotIn("of merge --", table)
         appendix_fold = appendix.casefold()
         self.assertIn("#### production mode", appendix_fold)
         self.assertIn("**gate a before features.**", appendix_fold)
         self.assertIn("--role implementer", appendix_fold)
-        self.assertIn("runtime_ownership", appendix_fold)
+        self.assertIn("runtime-ownership", appendix_fold)
         self.assertIn("never invent a **sí**", appendix_fold)
         self.assertIn("of pack --owns-requirement", appendix_fold)
         self.assertIn("no `of gate`", appendix_fold)
@@ -2801,39 +2799,6 @@ class SkillHarnessMixPlaybook(unittest.TestCase):
         self.assertTrue(any("of doctor" in e for e in errs), errs)
         self.assertTrue(any(SkillHarnessMix.WHEN in e for e in errs), errs)
         self.assertTrue(any("claude" in e for e in errs), errs)
-
-
-class SkillEfficiencyMixPlaybook(unittest.TestCase):
-    """SKILL teaches mid-mission mix from honest signals; unknown if none."""
-
-    @staticmethod
-    def table(skill: str) -> str:
-        return skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-
-    def test_core_alias_appendix_name_unknown_balance(self) -> None:
-        self.assertEqual(SkillEfficiencyMix.errors(ROOT), [])
-        core = SkillSurface.core(ROOT)
-        alias = SkillSurface.alias(ROOT)
-        appendix = SkillSurface.appendix(ROOT)
-        table = self.table(core).casefold()
-        self.assertIn(SkillEfficiencyMix.UNKNOWN, table)
-        self.assertIn(SkillEfficiencyMix.NEVER_INVENT, table)
-        self.assertNotIn(SkillEfficiencyMix.LEFTOVER, table)
-        self.assertIn("of doctor", table)
-        self.assertIn("efficiency", table)
-        self.assertIn("must ask", table)
-        self.assertIn(SkillEfficiencyMix.HEADING, appendix)
-        self.assertIn(SkillEfficiencyMix.NOT_IMPLEMENTED, appendix.casefold())
-        self.assertIn(SkillEfficiencyMix.LEFTOVER, appendix.casefold())
-        appendix_fold = appendix.casefold()
-        self.assertIn("adapterbalance", appendix_fold.replace(" ", "").replace("`", ""))
-        self.assertIn("statusline", appendix_fold.replace(" ", ""))
-
-    def test_missing_unknown_fails(self) -> None:
-        fake = "rebalance to frontier now; spend is 80k tokens"
-        errs = SkillEfficiencyMix.mention_errors(fake, "fake.md")
-        self.assertTrue(any(SkillEfficiencyMix.UNKNOWN in e for e in errs), errs)
-        self.assertTrue(any(SkillEfficiencyMix.NEVER_INVENT in e for e in errs), errs)
 
 
 class SkillCloseEvidence(unittest.TestCase):

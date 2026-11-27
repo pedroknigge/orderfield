@@ -66,11 +66,8 @@ from test_packaging import (  # noqa: E402,F401
     SkillLivingMap,
     LivingMapGate,
     SkillHarnessMixPlaybook,
-    SkillEfficiencyMixPlaybook,
     SkillWebhookReplayPair,
 )
-from test_adapter_balance import AdapterBalanceUnit  # noqa: E402,F401
-from test_efficiency_signal import EfficiencySignalProof  # noqa: E402,F401
 from test_stream_json import (  # noqa: E402,F401
     GrokAdapterSpawn,
     PulseProgressAppend,
@@ -108,7 +105,6 @@ from test_kernel_cli import (  # noqa: E402,F401
     DoctorOverBudgetSpawn,
     MissionRewriteRefused,
     MultiHarnessResidual,
-    UpdateAskDaily,
 )
 from test_field_lock_race import (  # noqa: E402,F401
     FieldLockRace,

@@ -114,7 +114,6 @@ class SchemaSubsetHonesty(unittest.TestCase):
                 "thresholds": {
                     "tool_failures": 3,
                     "divergence": 0.5,
-                    "local_budget_pct": 80,
                     "novelty": False,
                 },
             },
@@ -122,7 +121,7 @@ class SchemaSubsetHonesty(unittest.TestCase):
             "role": "explorer",
             "residual_path": ".orderfield/work/residuals/x.json",
             "scratch_dir": ".orderfield/work/scratch/x/",
-            "budget": {"tokens": 0, "seconds": 60},
+            "budget": {"seconds": 60},
             "adapter_hints": {},
         }
         errs = of.validate_packet(packet)

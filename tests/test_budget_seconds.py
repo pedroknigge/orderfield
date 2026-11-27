@@ -87,7 +87,7 @@ def parse_json_stderr(test: unittest.TestCase, stderr: str) -> list[dict]:
     return events
 
 
-class BudgetTokensReserved(unittest.TestCase):
+class CostDisclaimer(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-budget-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
@@ -107,52 +107,6 @@ class BudgetTokensReserved(unittest.TestCase):
         )
         self.assertEqual(packed.returncode, 0, packed.stderr)
         return packed.stdout.splitlines()[0].strip()
-
-    def test_pack_defaults_tokens_to_zero_not_80000(self) -> None:
-        packed = run_of(
-            self.tmp, "pack", "--slice", "s", "--role", "explorer", "--child-id", "e1"
-        )
-        self.assertEqual(packed.returncode, 0, packed.stderr)
-        packet = json.loads(
-            (self.tmp / ".orderfield/waves/001/packets/e1.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(packet["budget"]["tokens"], 0)
-        self.assertNotEqual(packet["budget"]["tokens"], 80000)
-        self.assertGreaterEqual(packet["budget"]["seconds"], 1)
-        help_txt = run_of(self.tmp, "pack", "--help")
-        self.assertEqual(help_txt.returncode, 0, help_txt.stderr)
-        self.assertNotIn("80000", help_txt.stdout)
-
-    def test_pack_tokens_positive_dies_pointing_at_reserved(self) -> None:
-        for n in (1, 80000):
-            with self.subTest(n=n):
-                r = run_of(
-                    self.tmp,
-                    "pack",
-                    "--slice",
-                    "s",
-                    "--role",
-                    "explorer",
-                    "--child-id",
-                    f"t{n}",
-                    "--tokens",
-                    str(n),
-                )
-                self.assertNotEqual(r.returncode, 0)
-                self.assertIn("reserved", r.stderr.lower())
-                self.assertIn("budget.tokens", r.stderr)
-                self.assertFalse(
-                    (self.tmp / f".orderfield/waves/001/packets/t{n}.json").exists()
-                )
-
-    def test_packet_schema_allows_zero_tokens(self) -> None:
-        schema = json.loads(
-            (ROOT / "schemas" / "packet.schema.json").read_text(encoding="utf-8")
-        )
-        tokens = schema["properties"]["budget"]["properties"]["tokens"]
-        self.assertEqual(tokens["minimum"], 0)
-        self.assertEqual(of.RUNTIME_OWNERSHIP["budget.tokens"], "reserved")
-        self.assertIn("budget.seconds", of.RUNTIME_ENFORCED)
 
     def test_spawn_dry_run_prints_cost_disclaimer(self) -> None:
         pkt = self._pack("dry1")
@@ -189,27 +143,6 @@ class BudgetTokensReserved(unittest.TestCase):
         assert_cost_disclaimer(self, combined(r))
         self.assertIn("of: cost:", r.stderr)
         self.assertIn("exit=0", r.stdout)
-
-    def test_spawn_tokens_positive_still_dies(self) -> None:
-        pkt = self._pack("tok1")
-        r = run_of(
-            self.tmp,
-            "spawn",
-            "--adapter",
-            "generic",
-            "--packet",
-            pkt,
-            "--dry-run",
-            "--tokens",
-            "80000",
-        )
-        self.assertNotEqual(r.returncode, 0)
-        blob = combined(r).lower()
-        self.assertTrue(
-            "unrecognized arguments" in blob or "reserved" in blob,
-            r.stderr,
-        )
-        self.assertNotIn("of: cost:", r.stderr)
 
     def test_json_spawn_emits_cost_unmeasured_warning(self) -> None:
         pkt = self._pack("json1")
@@ -265,7 +198,6 @@ class BudgetSecondsHonesty(unittest.TestCase):
             )
         )
         self.assertEqual(packet["budget"]["seconds"], 7200)
-        self.assertEqual(packet["budget"]["tokens"], 0)
         self.assertNotEqual(packet["budget"]["seconds"], 900)
 
     def test_spawn_timeout_mismatch_refuses_with_fix_path(self) -> None:
@@ -318,7 +250,7 @@ class BudgetSecondsHonesty(unittest.TestCase):
         self.assertEqual(matched.returncode, 0, matched.stderr)
 
     def test_resolve_spawn_is_packet_clock(self) -> None:
-        packet = {"child_id": "c1", "budget": {"tokens": 0, "seconds": 7200}}
+        packet = {"child_id": "c1", "budget": {"seconds": 7200}}
         self.assertEqual(wave_cli.BudgetSeconds.resolve_spawn(packet, None), 7200)
         self.assertEqual(wave_cli.BudgetSeconds.resolve_spawn(packet, 7200), 7200)
         with self.assertRaises(SystemExit) as raised:

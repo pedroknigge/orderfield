@@ -390,7 +390,7 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertIn("refuse      cursor tier-only", r.stdout)
         self.assertIn("catalog", r.stdout)
         self.assertIn("model-catalog.md", r.stdout)
-        self.assertIn("not budget.tokens", r.stdout)
+        self.assertIn("not a token budget", r.stdout)
 
     def test_status_prints_consented_hints(self) -> None:
         r = run_of(self.tmp, "patch", "--model-hints", "field", "--model-tier", "cheap")

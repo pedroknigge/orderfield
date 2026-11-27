@@ -32,7 +32,6 @@ of doctor
 
 `doctor        ok` is green. Skill `SKEW` alone is `WARN` / exit 0 — `bash install.sh --global`. Field FAIL is leftover ACTIVE/stub/open-field packs, not a missing install. Closed-field historical packs are informational.
 
-If this install is behind a newer release, doctor asks at most once a day. On yes: `ORDERFIELD_VERSION=<ver> bash install.sh --global --from-release` (GitHub tag + SHA256SUMS). Consent, not a silent auto-update.
 
 Unpinned `npx skills add` is **not** the trusted path. It installs skill markdown. It does not create the `of` CLI. Classic `install.sh` (tag + SHA-256) is the pin path.
 

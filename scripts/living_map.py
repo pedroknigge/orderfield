@@ -12,15 +12,11 @@ Reuse (design-first; written before the wording cut):
 | `SkillAntiDoneTheater` / `SkillContractSurface` / `SkillCloseEvidence` | Skill already teaches each piece | One map row that binds them |
 | close-is-proof / long-mission / glossary | Close = contrast + residual empty | Left alone |
 | `SkillHarnessAsk` / `AdapterDetect` / `of detect` / `of doctor` | Ask same-harness vs mix; PATH≠auth | Playbook: when mix vs roles-on-one + Pedro set |
-| `EfficiencySignal` / `residual.usage` | Post-hoc uptier/downtier ask | Mid-mission mix + unknown balance |
 
-Net-new surface: none. No CLI, schema key, supervisor, `RUNTIME_OWNERSHIP`,
+Net-new surface: none. No CLI, schema key, supervisor, runtime-ownership layer,
 `of merge`, or token ceiling. Captions-only pages fail `LivingMap.errors`.
 A skill that mentions multi-harness mix without pack/spawn/collect/contrast/
 close/doctor + detect consent fails `SkillHarnessMix.errors`.
-Long-task mix pages that invent a balance (missing unknown / never invent)
-fail `SkillEfficiencyMix.errors`. Hosts-loaded SKILL must omit live
-`budget.tokens` speak; the appendix labels that leftover **not implemented**.
 
 Stdlib only. Class with static methods — same shape as `SkillSurface`.
 """
@@ -82,7 +78,6 @@ class LivingMap:
                 continue
             errors.extend(LivingMap.page_errors(page.read_text(encoding="utf-8"), rel))
         errors.extend(SkillHarnessMix.errors(path))
-        errors.extend(SkillEfficiencyMix.errors(path))
         errors.extend(SkillRunbookPath.errors(path))
         return errors
 
@@ -185,7 +180,6 @@ class SkillHarnessMix:
             "\n#### ",
             "\n### ",
             "\n## ",
-            "\n**Efficiency signal",
         ):
             idx = rest.find(marker)
             if idx >= 0 and (next_at is None or idx < next_at):
@@ -222,75 +216,6 @@ class SkillHarnessMix:
             errors.extend(SkillHarnessMix.mention_errors(body, rel))
             if rel == "references/skill-appendix.md":
                 errors.extend(SkillHarnessMix.playbook_errors(body, rel))
-        return errors
-
-
-class SkillEfficiencyMix:
-    """Long-task mix quotes unknown balance. Never invent. Ask first."""
-
-    HEADING = "**Long-task efficiency mix"
-    UNKNOWN = "unknown"
-    NEVER_INVENT = "never invent"
-    NOT_IMPLEMENTED = "not implemented"
-    LEFTOVER = "budget.tokens"
-    SKILL_PAGES = SkillHarnessMix.SKILL_PAGES
-
-    @staticmethod
-    def mention_errors(text: str, rel: str) -> list[str]:
-        folded = text.casefold()
-        errors: list[str] = []
-        for needle in (
-            SkillEfficiencyMix.UNKNOWN,
-            SkillEfficiencyMix.NEVER_INVENT,
-        ):
-            if needle not in folded:
-                errors.append(f"{rel} missing {needle!r}")
-        return errors
-
-    @staticmethod
-    def hot_path_errors(text: str, rel: str = "SKILL.md") -> list[str]:
-        """Hosts-loaded table must not sell token budgets as live."""
-        if "## What to type next" in text and "## When to use" in text:
-            body = text.split("## What to type next", 1)[1].split("## When to use", 1)[0]
-        else:
-            body = text
-        folded = body.casefold()
-        errors: list[str] = []
-        if SkillEfficiencyMix.LEFTOVER in folded:
-            errors.append(f"{rel} table sells {SkillEfficiencyMix.LEFTOVER}")
-        if "of pack --tokens" in folded:
-            errors.append(f"{rel} table sells of pack --tokens")
-        return errors
-
-    @staticmethod
-    def appendix_errors(
-        text: str, rel: str = "references/skill-appendix.md"
-    ) -> list[str]:
-        errors: list[str] = []
-        if SkillEfficiencyMix.HEADING not in text:
-            errors.append(f"{rel} missing {SkillEfficiencyMix.HEADING!r}")
-        folded = text.casefold()
-        if SkillEfficiencyMix.NOT_IMPLEMENTED not in folded:
-            errors.append(f"{rel} missing {SkillEfficiencyMix.NOT_IMPLEMENTED!r}")
-        if SkillEfficiencyMix.LEFTOVER not in folded:
-            errors.append(f"{rel} missing leftover {SkillEfficiencyMix.LEFTOVER!r}")
-        return errors
-
-    @staticmethod
-    def errors(root: Path) -> list[str]:
-        path = Path(root)
-        errors: list[str] = []
-        for rel in SkillEfficiencyMix.SKILL_PAGES:
-            page = LivingMap.path(path, rel)
-            if not page.is_file():
-                errors.append(f"missing {rel}")
-                continue
-            body = page.read_text(encoding="utf-8")
-            errors.extend(SkillEfficiencyMix.mention_errors(body, rel))
-            if rel == "SKILL.md":
-                errors.extend(SkillEfficiencyMix.hot_path_errors(body, rel))
-            if rel == "references/skill-appendix.md":
-                errors.extend(SkillEfficiencyMix.appendix_errors(body, rel))
         return errors
 
 

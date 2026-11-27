@@ -82,7 +82,6 @@ Orderfield auto-reports defects in itself to `pedroknigge/orderfield` after HITL
 
 - Query `of models --adapter HARNESS --json` before any model recommendation. Codex and Claude expose protocol metadata; Grok, Cursor and agy use CLI list commands. Missing/unsupported/error stays explicit. Consult the [model catalog](docs/model-catalog.md) for supplemental prices with `last_checked` (new prices unknown), then propose a cheap vs frontier split in chat. You confirm. Then it writes hints. It does not switch a model on its own. Before fan-out on a big task, read `headroom` and `roster` on `of models --headroom --json` (opt-in: a probe may spend a turn; smallest-window margin, then earliest reset). `sin dato` never blocks. The leader reads it; the user does not run it.
 - Ask same-harness vs multi-harness mix. You confirm. Same-harness roles stay on `of patch --harness`. Mix uses `of doctor` + `of detect` (present / missing / PATH≠auth), then `of pack` / `of spawn`. It does not invent a mix or a login.
-- Quote honest signals before a mid-flight rebalance (`of status` efficiency, `of detect`, `of doctor` balance). Missing vendor balance is **unknown**, never invented. You confirm before any uptier/downtier or harness mix.
 - **Must ask** once: "At the end, run fresh-context adversary + verifier (both)?" Default both. Store `of patch --evaluator-consent yes|no` (`ORDER.evaluator_consent`). Do not pack/spawn. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` on that wave residual before next-wave (fresh-context review packet; two packs / two children; neither wrote the slice). Never silent. Stored no → skip review; contrast → `of close --checklist`. Missing key → evaluator unset on Small. A ContractSurface field (Large) with missing consent HOLDs next-wave for the review pack. After close, ask `of learn` (project + OF), not the review-role ask. Self-praise is not review. Not a new close gate.
 - Same beat: **must ask** once for agent-band `1-4` / `5-10` / `10-50` + optional multi-model; store `of patch --agent-band` / `--multi-model`. Children default medium. Do not re-ask each wave. Host RAM suggests a band (`of doctor` `ram_total_gb`) — wave budget, not a spawn cap.
 - **Must ask** once: "What measurable outcome closes this, beyond the ticket?" `outcome: main CI green and install.sh --from-release verifies` — not "merge the PR". Children never rewrite it. Not a close gate. Not a new ORDER key.
@@ -225,7 +224,6 @@ Returning session: `of resume` first (ORDER exists → continue in-flight; do **
 
 While a wave flies: `of pulse` (or `of pulse --watch`) is a read-only activity heuristic. `--watch` exits when idle (prints next; do not sleep). Exit 2 on STALE so scripts can alert. Pulse does not mutate ORDER, state, session, or wave artifacts.
 
-`of status` / `of resume` / `of pulse` ask once a day (one stderr line) when a newer release exists than the installed VERSION. `of doctor` prints the same ask and, on a TTY, prompts; on yes it runs `install.sh --global --from-release` (GitHub tag + SHA256SUMS). Never a silent auto-update. Silent offline; `OF_NO_UPDATE_CHECK=1` turns it off.
 
 ---
 
@@ -258,15 +256,13 @@ Named adapters and generic mode transport the same disk protocol. The Haken “s
 
 **Cooperative, not prevented:** roles, same-harness choice, truthful metrics, and writes outside the CLI remain protocol. A same-OS-user process can hand-edit `.orderfield/`; the WAL makes it visible (`LIVE!=CURRENT`, quarantine, refusal) and, by default, authenticates it with the per-field leader-key HMAC (shipped 0.9.1; v2 binds file contents in 0.9.4). The standing limit is that a same-user child can read the on-disk key in default mode, so a correctly chained generation it signs is not detected unless the host sandbox hides the key ([roadmap](docs/roadmap.md): external key, epoch/takeover and `--if-rev` CAS stay deferred). `refuse_child_forge` covers the spawn ancestry, not a handoff child or unrelated process: a guard, not auth. Threat model: [external-brief](docs/external-brief.md#threat-model). Detect/doctor PATH is inventory, not credentials or session authority. It does not lock product files, auto-create worktrees, attest metrics, or police a disobedient child. `of worktree` is an opt-in helper — a worktree/process bound is an honesty surface, not a security guarantee or a jail.
 
-Token budgets, `local_budget_pct`, inherited depth, and `scale_up` / `scale_across` are **not implemented** (schema leftovers; `--tokens` dies). Only `budget.seconds` is enforced (the spawned-process wall-clock). `of status` may propose a model-tier ask from residual quality × optional usage (`EfficiencySignal`); it does not switch a model. `of doctor` prints `AdapterBalance` as **unknown** unless a published vendor payload is already in hand — never invented spend.
+Token accounting and the reserved `scale_up` / `scale_across` enums were removed in 0.9.12 (W7b). Only `budget.seconds` is enforced (the spawned-process wall-clock). The kernel does not score residuals or vendor spend, and it does not switch a model.
 
 Orca (and every other harness) starts and stops processes. It must not choose the phase, patch the mission, or invent a regime.
 
 ```
   escalate_up   of patch --<flag> (rev must exceed N), then next-wave — not a stop
   scale_out     same role, more copies
-  scale_across  not implemented (legacy enum; remapped to hold)
-  scale_up      not implemented (legacy enum; remapped to hold)
   hold          wait (closed wave with done_when open — of phase stays explicit)
   phase         only when done_when is closed. still `of phase`
   human         3 waves asking to change the mission, or cap exhausted while the wave is not all_done
@@ -315,7 +311,7 @@ Same category as [planning-with-files](https://github.com/OthmanAdi/planning-wit
 | Close | Checkboxes / Stop gate | Contrast + empty residual + `CLOSE.json` |
 | Harness | 60+ via Agent Skills + hooks | Native adapters + generic (not convention alone) |
 
-Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process supervisor, a bot org, `RUNTIME_OWNERSHIP`, or `of merge`.
+Do not "catch up" by becoming markdown+hooks, a jail, a token budget, a process supervisor, a bot org, an invented runtime-ownership layer, or `of merge`.
 
 | | Orchestrates | Orderfield is instead |
 |---|---|---|
@@ -354,7 +350,7 @@ The loop you type: `init` → `pack` → `spawn` → `collect` → `integrate` �
 
 Other verbs (`unpack`, `render`, `phase`, `next-wave`, `pulse`, `checkpoint`, `learn`, `wave`, `validate`, `retain`, `gc`, `migrate`, `worktree`, `spec-diff`, `eval`) stay in `of --help` and [SKILL.md](SKILL.md). `of learn --checks` proposes actions when a claim recurs in two fields. Claims with a measurable repair can generate a check. `of learn --accept ID` writes the selected proposal.
 
-CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `contend`, `crown`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) hold `.orderfield/field.lock`. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is forbidden until you patch and `of next-wave`.
+CLI mutations in `MUTATING_COMMANDS` (`init`, `new`, `pack`, `unpack`, `collect`, `integrate`, `phase`, `patch`, `next-wave`, `migrate`, `spec`, `checkpoint`, `close`, `gc`) hold `.orderfield/field.lock`. `spawn` / `handoff` / `learn` / `worktree` write artifacts without that wrapper. A field residual (`mission` / `phase` / `constraints` / `done_when` / `workspace`) → `escalate_up`. Spawn of that wave is forbidden until you patch and `of next-wave`.
 
 ---
 

@@ -139,30 +139,6 @@ class CompileMotherContext(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
         self.assertEqual(list((self.tmp / ".orderfield").rglob("ORDER.json")), [])
 
-    def test_contest_candidates_inherit_mother_pins(self) -> None:
-        r = run_of(
-            self.tmp, "init", "--mission", "contest mother",
-            "--source", CHAT_BRIEF,
-            "--chat-capture-file", "conv.md",
-            "--cite", "docs/plan.md",
-        )
-        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-        parent_pins = [
-            line for line in constraints(self.tmp) if line.startswith("plan_source ")
-        ]
-        self.assertTrue(parent_pins)
-        r = run_of(self.tmp, "contend", "--candidates", "2", "--json")
-        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-        for home in (self.tmp / ".orderfield" / "fields").iterdir():
-            if not home.is_dir():
-                continue
-            order = json.loads((home / "ORDER.json").read_text(encoding="utf-8"))
-            if not isinstance(order.get("contest"), dict):
-                continue
-            lines = [str(x) for x in (order.get("constraints") or [])]
-            for pin in parent_pins:
-                self.assertIn(pin, lines)
-
 
 if __name__ == "__main__":
     unittest.main()

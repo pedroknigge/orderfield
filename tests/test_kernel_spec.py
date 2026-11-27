@@ -3161,27 +3161,6 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         of.eval_setup_recovery_contrast_close_contract(self.tmp)
 
-    def test_tokens_theater_writes_nothing(self) -> None:
-        packed = run_of(
-            self.tmp,
-            "pack",
-            "--slice",
-            "fake token ceiling",
-            "--role",
-            "explorer",
-            "--child-id",
-            "tok",
-            "--tokens",
-            "80000",
-        )
-        self.assertNotEqual(packed.returncode, 0, packed.stderr)
-        self.assertIn("budget.tokens", packed.stderr)
-        self.assertIn("reserved", packed.stderr.lower())
-        self.assertFalse(
-            (self.tmp / ".orderfield" / "waves" / "001" / "packets" / "tok.json").exists()
-        )
-        self.assertFalse((self.tmp / ".orderfield" / "CLOSE.json").exists())
-
     def test_spawn_cost_is_not_a_budget(self) -> None:
         spawned = run_of(
             self.tmp,
@@ -3246,12 +3225,10 @@ class AdversarialDualTruthCorpus(unittest.TestCase):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         table = skill.split("## What to type next", 1)[1].split("## When to use", 1)[0]
         self.assertNotIn("of pack --tokens", table)
-        self.assertNotIn("budget.tokens", table)
         appendix = (ROOT / "references" / "skill-appendix.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("of pack --tokens", appendix)
-        self.assertIn("not implemented", appendix.casefold())
+        self.assertIn("removed in 0.9.12", appendix.casefold())
         self.assertIn("recovery/adversarial-dual-truth", appendix)
 
 
