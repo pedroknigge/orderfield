@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 from pathlib import Path
 from typing import Any
@@ -16,10 +17,24 @@ from of.field import (
     write_phase_md,
 )
 
-WANTS = frozenset({"mission", "phase", "constraints", "done_when", "workspace"})
-STATUSES = frozenset({"done", "blocked", "threshold"})
-KINDS = ("redesign", "check", "run", "prose")
-UNRESOLVED = frozenset({"blocked", "threshold"})
+
+def _residual_claims(home: Path):
+    waves = home / "waves"
+    if home.is_symlink() or waves.is_symlink():
+        return
+    for path in sorted(waves.glob("*/residuals/*.json")):
+        if path.is_symlink() or path.parent.is_symlink() or path.parent.parent.is_symlink():
+            continue
+        doc = _read_json_object(path)
+        if doc is None:
+            continue
+        claim = _payload(doc)
+        if claim:
+            # New packets can reuse a child path. Old residuals may lack a packet ID.
+            identity = str(doc.get("packet_id") or "") or hashlib.sha256(
+                json.dumps(doc, sort_keys=True).encode()
+            ).hexdigest()
+            yield [path.relative_to(home).as_posix(), identity], claim
 
 
 def _texts(value: Any) -> tuple[str, ...]:
@@ -37,34 +52,61 @@ def _texts(value: Any) -> tuple[str, ...]:
 
 def _payload(doc: dict[str, Any]) -> dict[str, Any] | None:
     status = doc.get("status")
-    if status not in STATUSES:
+    if status not in ("done", "blocked", "threshold"):
         return None
     inner = doc.get("residual")
     if not isinstance(inner, dict):
         return None
-    raw_wants = inner.get("wants_to_change") or []
-    if not isinstance(raw_wants, list):
-        raw_wants = []
-    wants = _texts([item for item in raw_wants if item in WANTS])
+    wants = [item for item in _texts(inner.get("wants_to_change"))
+             if item in ("mission", "phase", "constraints", "done_when", "workspace")]
     patch = inner.get("proposed_patch") or {}
-    if patch is None:
-        patch = {}
     if not isinstance(patch, dict):
         return None
     failed = _texts(patch.get("requirements_failed"))
     constraints = _texts(patch.get("constraints+"))
     done_when = _texts(patch.get("done_when+"))
-    if status not in UNRESOLVED and not failed:
+    if status == "done" and not failed:
         return None
     if not (wants or failed or constraints or done_when):
         return None
     return {
         "status": status,
-        "wants": list(wants),
+        "wants": wants,
         "failed": list(failed),
         "constraints": list(constraints),
         "done_when": list(done_when),
     }
+
+
+def _check_homes(root: Path):
+    field_root = root / ".orderfield"
+    fields = field_root / "fields"
+    if fields.is_dir() and not fields.is_symlink():
+        homes = [path.parent for path in sorted(fields.glob("*/ORDER.json"))
+                 if path.is_file() and not path.is_symlink() and not path.parent.is_symlink()]
+        if homes:
+            return homes
+    order = field_root / "ORDER.json"
+    return [field_root] if order.is_file() and not order.is_symlink() else []
+
+
+def _check_failed(root: Path, claim: dict, history: dict) -> bool:
+    terms = set()
+    for home in _check_homes(root):
+        order = _read_json_object(home / "ORDER.json") or {}
+        fid = str(order.get("id") or home.name)
+        for key in ("constraints", "done_when"):
+            terms.update(_texts(order.get(key)))
+        known = {tuple(row) for row in history.get(fid, [])}
+        for occurrence, payload in _residual_claims(home):
+            if payload == claim and tuple(occurrence) not in known:
+                return True
+        if known and claim["failed"]:
+            ledger = _read_json_object(home / "REQUIREMENTS.json") or {}
+            if any(isinstance(row, dict) and row.get("id") in claim["failed"]
+                   and row.get("status") == "failed" for row in ledger.get("requirements") or []):
+                return True
+    return not terms.issuperset(claim["constraints"] + claim["done_when"])
 
 
 def _canonical(payload: dict[str, Any]) -> str:
@@ -121,35 +163,13 @@ class LearnChecks:
 
     @staticmethod
     def repeated(root: Path) -> list[dict[str, Any]]:
-        grouped: dict[str, set[str]] = {}
+        grouped: dict[str, dict[str, list]] = {}
         payloads: dict[str, dict[str, Any]] = {}
         for fid, home, _order in list_field_homes(root):
-            if home.is_symlink():
-                continue
-            waves = home / "waves"
-            if not waves.is_dir() or waves.is_symlink():
-                continue
-            for wave in sorted(waves.iterdir()):
-                residuals = wave / "residuals"
-                if (
-                    not wave.is_dir()
-                    or wave.is_symlink()
-                    or not residuals.is_dir()
-                    or residuals.is_symlink()
-                ):
-                    continue
-                for path in sorted(residuals.glob("*.json")):
-                    if path.is_symlink():
-                        continue
-                    doc = _read_json_object(path)
-                    if not isinstance(doc, dict):
-                        continue
-                    payload = _payload(doc)
-                    if payload is None:
-                        continue
-                    key = _key(payload)
-                    grouped.setdefault(key, set()).add(fid)
-                    payloads[key] = payload
+            for occurrence, payload in _residual_claims(home):
+                key = _key(payload)
+                grouped.setdefault(key, {}).setdefault(fid, []).append(occurrence)
+                payloads[key] = payload
         claims: list[dict[str, Any]] = []
         for key in sorted(grouped):
             fields = tuple(sorted(grouped[key]))
@@ -161,6 +181,7 @@ class LearnChecks:
                     "key": key,
                     "payload": payload,
                     "fields": fields,
+                    "history": grouped[key],
                     "message": LearnChecks.message(key, payload),
                 }
             )
@@ -175,32 +196,32 @@ class LearnChecks:
         return tuple(kinds)
 
     @staticmethod
-    def proposals(root: Path) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
+    def _proposals(root: Path):
         for claim in LearnChecks.repeated(root):
             key = str(claim["key"])
             payload = claim["payload"]
             for kind in LearnChecks._kinds(payload):
                 path = "AGENTS.md" if kind == "prose" else LearnChecks.script_rel(key)
-                rows.append(
-                    {
-                        "id": f"chk_{key}_{kind}",
-                        "key": key,
-                        "kind": kind,
-                        "message": LearnChecks.action(kind, key, payload),
-                        "path": path,
-                        "fields": claim["fields"],
-                        "command": LearnChecks.command(key) if kind == "run" else "",
-                    }
-                )
-        return rows
+                yield claim, {
+                    "id": f"chk_{key}_{kind}",
+                    "key": key,
+                    "kind": kind,
+                    "message": LearnChecks.action(kind, key, payload),
+                    "path": path,
+                    "fields": claim["fields"],
+                    "command": LearnChecks.command(key) if kind == "run" else "",
+                }
 
     @staticmethod
-    def _proposal(root: Path, proposal_id: str) -> dict[str, Any]:
+    def proposals(root: Path) -> list[dict[str, Any]]:
+        return [row for _claim, row in LearnChecks._proposals(root)]
+
+    @staticmethod
+    def _proposal(root: Path, proposal_id: str) -> tuple[dict, dict]:
         key = str(proposal_id or "").strip()
-        for row in LearnChecks.proposals(root):
+        for claim, row in LearnChecks._proposals(root):
             if row["id"] == key:
-                return row
+                return claim, row
         die(
             f"no check {key}; of learn --checks lists a proposal "
             "when the same residual is in two fields"
@@ -208,131 +229,23 @@ class LearnChecks:
         raise AssertionError("die")
 
     @staticmethod
-    def _script(message: str, payload: dict[str, Any]) -> str:
-        data = {
-            "message": message,
-            "needles": list(payload["constraints"]) + list(payload["done_when"]),
-            "claim": payload,
-        }
-        encoded = json.dumps(json.dumps(data, ensure_ascii=False))
+    def _script(message: str, payload: dict[str, Any], history: dict) -> str:
+        # These functions also run in a consumer repo without Orderfield installed.
+        readers = "\n".join(inspect.getsource(fn) for fn in (
+            _read_json_object, _texts, _payload, _residual_claims, _check_homes, _check_failed,
+        ))
+        data = json.dumps({"message": message, "claim": payload}, ensure_ascii=True)
         return (
             "#!/usr/bin/env python3\n"
-            "import json\n"
-            "import sys\n"
-            "from pathlib import Path\n"
-            "\n"
-            f"DATA = json.loads({encoded})\n"
-            "WANTS = {'mission', 'phase', 'constraints', 'done_when', 'workspace'}\n"
-            "\n"
-            "def texts(value):\n"
-            "    if not isinstance(value, list):\n"
-            "        return []\n"
-            "    found = []\n"
-            "    for item in value:\n"
-            "        if not isinstance(item, str):\n"
-            "            continue\n"
-            "        text = item.strip()\n"
-            "        if text and text not in found:\n"
-            "            found.append(text)\n"
-            "    found.sort()\n"
-            "    return found\n"
-            "\n"
-            "def payload(doc):\n"
-            "    if not isinstance(doc, dict):\n"
-            "        return None\n"
-            "    status = doc.get('status')\n"
-            "    if status not in {'done', 'blocked', 'threshold'}:\n"
-            "        return None\n"
-            "    inner = doc.get('residual')\n"
-            "    if not isinstance(inner, dict):\n"
-            "        return None\n"
-            "    raw = inner.get('wants_to_change') or []\n"
-            "    if not isinstance(raw, list):\n"
-            "        raw = []\n"
-            "    wants = texts([item for item in raw if item in WANTS])\n"
-            "    patch = inner.get('proposed_patch') or {}\n"
-            "    if not isinstance(patch, dict):\n"
-            "        return None\n"
-            "    failed = texts(patch.get('requirements_failed'))\n"
-            "    constraints = texts(patch.get('constraints+'))\n"
-            "    done_when = texts(patch.get('done_when+'))\n"
-            "    if status == 'done' and not failed:\n"
-            "        return None\n"
-            "    if not (wants or failed or constraints or done_when):\n"
-            "        return None\n"
-            "    return {\n"
-            "        'status': status,\n"
-            "        'wants': wants,\n"
-            "        'failed': failed,\n"
-            "        'constraints': constraints,\n"
-            "        'done_when': done_when,\n"
-            "    }\n"
-            "\n"
-            "def homes(root):\n"
-            "    of = root / '.orderfield'\n"
-            "    fields = of / 'fields'\n"
-            "    found = []\n"
-            "    if fields.is_dir() and not fields.is_symlink():\n"
-            "        for home in sorted(p for p in fields.iterdir() if p.is_dir() and not p.is_symlink()):\n"
-            "            order = home / 'ORDER.json'\n"
-            "            if order.is_file() and not order.is_symlink():\n"
-            "                found.append(home)\n"
-            "    if found:\n"
-            "        return found\n"
-            "    if (of / 'ORDER.json').is_file() and not (of / 'ORDER.json').is_symlink():\n"
-            "        return [of]\n"
-            "    return []\n"
-            "\n"
-            "def order_text(root):\n"
-            "    parts = []\n"
-            "    for home in homes(root):\n"
-            "        try:\n"
-            "            doc = json.loads((home / 'ORDER.json').read_text(encoding='utf-8'))\n"
-            "        except (OSError, json.JSONDecodeError):\n"
-            "            continue\n"
-            "        if not isinstance(doc, dict):\n"
-            "            continue\n"
-            "        for key in ('constraints', 'done_when'):\n"
-            "            for item in doc.get(key) or []:\n"
-            "                parts.append(str(item))\n"
-            "    return '\\n'.join(parts)\n"
-            "\n"
-            "def matched(root):\n"
-            "    for home in homes(root):\n"
-            "        waves = home / 'waves'\n"
-            "        if not waves.is_dir() or waves.is_symlink():\n"
-            "            continue\n"
-            "        for wave in waves.iterdir():\n"
-            "            residuals = wave / 'residuals'\n"
-            "            if not wave.is_dir() or wave.is_symlink() or not residuals.is_dir() or residuals.is_symlink():\n"
-            "                continue\n"
-            "            for path in residuals.glob('*.json'):\n"
-            "                if path.is_symlink():\n"
-            "                    continue\n"
-            "                try:\n"
-            "                    doc = json.loads(path.read_text(encoding='utf-8'))\n"
-            "                except (OSError, json.JSONDecodeError):\n"
-            "                    continue\n"
-            "                if payload(doc) == DATA['claim']:\n"
-            "                    return True\n"
-            "    return False\n"
-            "\n"
-            "def main():\n"
-            "    root = Path(__file__).resolve().parents[2]\n"
-            "    needles = DATA['needles']\n"
-            "    if needles:\n"
-            "        text = order_text(root)\n"
-            "        if any(needle not in text for needle in needles):\n"
-            "            print(DATA['message'], file=sys.stderr)\n"
-            "            return 1\n"
-            "        return 0\n"
-            "    if matched(root):\n"
-            "        print(DATA['message'], file=sys.stderr)\n"
-            "        return 1\n"
-            "    return 0\n"
-            "\n"
+            f"HISTORY = {json.dumps(history, sort_keys=True)}\n"
+            "import hashlib\nimport json\nimport sys\nfrom pathlib import Path\n"
+            "from typing import Any\n\n"
+            f"DATA = json.loads({data!r})\n\n"
+            f"{readers}\n"
             "if __name__ == '__main__':\n"
-            "    raise SystemExit(main())\n"
+            "    if _check_failed(Path(__file__).resolve().parents[2], DATA['claim'], HISTORY):\n"
+            "        print(DATA['message'], file=sys.stderr)\n"
+            "        raise SystemExit(1)\n"
         )
 
     @staticmethod
@@ -359,17 +272,6 @@ class LearnChecks:
             if current == body:
                 return
         dest.write_text(body, encoding="utf-8")
-
-    @staticmethod
-    def _claim(root: Path, key: str) -> dict[str, Any]:
-        for claim in LearnChecks.repeated(root):
-            if claim["key"] == key:
-                return claim
-        die(
-            f"no repeated residual {key}; of learn --checks "
-            "after the same residual is in two fields"
-        )
-        raise AssertionError("die")
 
     @staticmethod
     def _land_contract(root: Path, payload: dict[str, Any]) -> None:
@@ -449,16 +351,23 @@ class LearnChecks:
 
     @staticmethod
     def accept(root: Path, proposal_id: str) -> dict[str, Any]:
-        row = LearnChecks._proposal(root, proposal_id)
-        claim = LearnChecks._claim(root, str(row["key"]))
+        claim, row = LearnChecks._proposal(root, proposal_id)
         payload = claim["payload"]
         kind = str(row["kind"])
         if kind in {"redesign", "check", "run"}:
-            LearnChecks._write(
-                root,
-                LearnChecks.script_rel(str(row["key"])),
-                LearnChecks._script(LearnChecks.message(str(row["key"]), payload), payload),
-            )
+            rel = LearnChecks.script_rel(str(row["key"]))
+            history = claim["history"]
+            path = LearnChecks._dest(root, rel)
+            if path.is_file():
+                # Accepting another proposal for the same claim keeps its first baseline.
+                with path.open(encoding="utf-8") as existing:
+                    existing.readline()
+                    line = existing.readline()
+                if line.startswith("HISTORY = "):
+                    history = json.loads(line.removeprefix("HISTORY = "))
+            LearnChecks._write(root, rel, LearnChecks._script(
+                LearnChecks.message(str(row["key"]), payload), payload, history,
+            ))
         if kind == "redesign":
             LearnChecks._land_contract(root, payload)
         elif kind == "run":

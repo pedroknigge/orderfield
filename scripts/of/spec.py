@@ -1067,8 +1067,10 @@ def merge_extracted_requirements(
     return changed
 
 
+MARKDOWN_LIST_PREFIX = r"(?:[-+*]|\d+[.)])[ \t]+"
+LIST_PREFIX_RE = re.compile(r"^[ \t]*" + MARKDOWN_LIST_PREFIX)
 FENCE_OPEN_RE = re.compile(
-    r"^(?P<indent>[ \t]*)(?P<list>(?:[-+*]|\d+[.)])[ \t]+)?"
+    rf"^(?P<indent>[ \t]*)(?:{MARKDOWN_LIST_PREFIX})?"
     r"(?P<marker>`{3,}(?=[^`]*$)|~{3,})"
 )
 
@@ -1077,22 +1079,30 @@ def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
     """Keep one boundary row per fenced block and join continuations in prose."""
     rows = text.splitlines()
     out: list[tuple[int, int, str]] = []
+    item_indents: list[int] = []
     i = 0
     while i < len(rows):
         start = i + 1
         buf = rows[i].rstrip()
+        indent = _indent(buf)
+        while buf and item_indents and indent < item_indents[-1]:
+            item_indents.pop()
+        parent_indent = item_indents[-1] if item_indents else 0
+        prefix = LIST_PREFIX_RE.match(buf)
+        if prefix and indent - parent_indent <= 3:
+            item_indents.append(len(prefix[0].expandtabs(4)))
         fence = FENCE_OPEN_RE.match(buf)
-        if fence:
+        if fence and indent - parent_indent <= 3:
             marker = fence["marker"]
             closer = re.compile(rf"[ \t]*{marker[0]}{{{len(marker)},}}[ \t]*")
-            list_indent = len(buf[:fence.start("marker")].expandtabs(4)) if fence["list"] else 0
+            list_indent = item_indents[-1] if item_indents else 0
             i += 1
             while i < len(rows):
                 row = rows[i]
                 if list_indent and row.strip() and _indent(row) < list_indent:
                     break
                 i += 1
-                if closer.fullmatch(row):
+                if _indent(row) - list_indent <= 3 and closer.fullmatch(row):
                     break
             out.append((start, i, fence["indent"] + marker))
             continue

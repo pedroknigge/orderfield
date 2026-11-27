@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
+from of.learn_checks import LearnChecks  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 CONSTRAINT = "price_cli.py prints price table"
@@ -73,6 +74,42 @@ def residual(evidence: str, *, constraint: str = CONSTRAINT, status: str = "thre
             "novelty": False,
         },
     }
+
+
+class GraduatedCheck(unittest.TestCase):
+    def test_current_failure_fix_and_new_packet_with_history_intact(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            body = residual("same claim", constraint="", failed=["CLI-001"])
+            homes = [root / ".orderfield/fields" / fid for fid in ("ord_aaaaaaaa", "ord_bbbbbbbb")]
+            for home in homes:
+                residuals = home / "waves/001/residuals"
+                residuals.mkdir(parents=True)
+                (home / "ORDER.json").write_text(json.dumps({"id": home.name}), encoding="utf-8")
+                (residuals / "worker.json").write_text(json.dumps(body), encoding="utf-8")
+            claim, = LearnChecks.repeated(root)
+            script = root / LearnChecks.script_rel(claim["key"])
+            script.parent.mkdir(parents=True)
+            script.write_text(LearnChecks._script(claim["message"], claim["payload"], claim["history"]),
+                              encoding="utf-8")
+
+            def run(expected: int) -> None:
+                check = subprocess.run([sys.executable, "-S", str(script)], cwd=root,
+                                       text=True, capture_output=True, timeout=10)
+                self.assertEqual(check.returncode, expected, check.stderr)
+                self.assertEqual(check.stderr.strip(), claim["message"] if expected else "")
+
+            ledger = homes[0] / "REQUIREMENTS.json"
+            for status, code in (("failed", 1), ("verified", 0)):
+                ledger.write_text(json.dumps({"requirements": [{"id": "CLI-001", "status": status}]}),
+                                  encoding="utf-8")
+                run(code)
+            recurrence = homes[0] / "waves/002/residuals/worker.json"
+            recurrence.parent.mkdir(parents=True)
+            recurrence.write_text(json.dumps(body), encoding="utf-8")
+            run(1)
+            for home in homes:
+                self.assertEqual(json.loads((home / "waves/001/residuals/worker.json").read_text()), body)
 
 
 class LearnChecksCli(unittest.TestCase):
@@ -283,13 +320,18 @@ class LearnChecksCli(unittest.TestCase):
         self._ok("learn", "--accept", check_id)
         key = check_id.split("_")[1]
         script = self.tmp / "scripts" / "checks" / f"{key}.py"
+        history = {path: path.read_bytes() for home in homes for path in home.glob("waves/*/residuals/*.json")}
+        green = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=30)
+        self.assertEqual(green.returncode, 0, green.stderr)
+        self._plant(homes[0], "recurrence.json", body)
+        self._ok("learn", "--accept", check_id)
         red = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(red.returncode, 1)
         self.assertIn("CLI-001", red.stderr)
-        for home in homes:
-            shutil.rmtree(home / "waves")
+        (homes[0] / "waves/001/residuals/recurrence.json").unlink()
         green = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(green.returncode, 0, green.stderr)
+        self.assertEqual(history, {path: path.read_bytes() for path in history})
 
     def test_a_child_cannot_propose_or_accept(self) -> None:
         homes = self._fields()

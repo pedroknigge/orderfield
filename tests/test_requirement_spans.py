@@ -169,6 +169,24 @@ class ItemBlockSpans(unittest.TestCase):
             self.assertEqual(spans(reqs), [(last, last)])
             self.assertEqual(uncovered_list_lines(text, reqs), [])
 
+    def test_continuation_fence_ends_with_its_list_item(self) -> None:
+        for opener, close in (("~~~", ""), ("```", "  ```\n")):
+            text = ("## Requirements\n- First rule here\n\n  " + opener + "sh\n"
+                    "  python -m hidden command\n" + close + "- Second rule here\n")
+            for reqs in (extract_requirements_from_spec(text),
+                         extract_requirements_from_plan(text, "plan.md")):
+                self.assertEqual([r["text"] for r in reqs], ["First rule here", "Second rule here"])
+                last = len(text.splitlines())
+                self.assertEqual(spans(reqs), [(2, 2), (last, last)])
+            self.assertEqual(uncovered_list_lines(text, extract_requirements_from_spec(text)), [])
+
+    def test_indented_literal_marker_does_not_open_a_fence(self) -> None:
+        text = "## Requirements\n\n    ~~~\n\n- Keep this requirement\n"
+        for reqs in (extract_requirements_from_spec(text),
+                     extract_requirements_from_plan(text, "plan.md")):
+            self.assertEqual([r["text"] for r in reqs], ["Keep this requirement"])
+            self.assertEqual(spans(reqs), [(5, 5)])
+
     def test_numbered_items_under_a_rule_heading_are_indexed(self) -> None:
         text = (
             "## Acceptance\n"

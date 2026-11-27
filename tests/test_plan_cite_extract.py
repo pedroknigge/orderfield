@@ -99,6 +99,19 @@ class ExtractOnCite(unittest.TestCase):
             "Tests cover: a. three lines in, three out; b. blank line preserved.",
         )
 
+    def test_list_continuation_fence_preserves_next_cited_span(self) -> None:
+        (self.tmp / PLAN_REL).write_text(
+            "## Requirements\n- W1-R1: Keep the first rule.\n  ~~~markdown\n"
+            "  - R3: Ignore this example.\n- W1-R2: Keep the next rule.\n",
+            encoding="utf-8",
+        )
+        self._init("--cite", "docs/plans/p")
+        sources = [r["source"] for r in requirements(self.tmp)]
+        self.assertEqual(
+            [(s["plan_id"], s["path"], s["spec_line_start"], s["spec_line_end"]) for s in sources],
+            [("W1-R1", PLAN_REL, 2, 2), ("W1-R2", PLAN_REL, 5, 5)],
+        )
+
     def test_dropped_plan_requirement_blocks_close(self) -> None:
         self._init("--cite", "docs/plans/p")
         added = run_of(
