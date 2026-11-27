@@ -888,6 +888,9 @@ class ReviewScope:
     SCOPE_PREFIX = "scope:"
     FOCUS_ARTIFACTS = "artifacts"
     FOCUS_COLLISIONS = "collisions"
+    _PUBLICATION = re.compile(
+        r"\.orderfield/waves/[0-9]{3,}/residuals/[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.json"
+    )
     FIX = (
         "pack inherits this wave's owns-path / published set; "
         "do not cite prior-wave paths"
@@ -995,6 +998,21 @@ class ReviewScope:
                 seen.add(path)
                 out.append(path)
         return out
+
+    @staticmethod
+    def publication_paths(root: Path, scope: dict[str, Any]) -> dict[str, str]:
+        """Resolve the reviewer's published inputs exactly as collect does."""
+        sources = {}
+        for rel in scope.get("published") or []:
+            if not ReviewScope._PUBLICATION.fullmatch(rel):
+                sources[rel] = rel
+                continue
+            path = published_residual_file(root, rel)
+            sources[rel] = (
+                path.relative_to(root.resolve()).as_posix() if path
+                else physical_field_rel(root, rel)
+            )
+        return sources
 
     @staticmethod
     def apply_slice(slice_text: str, role: str, scope: dict[str, Any]) -> str:
@@ -3378,14 +3396,16 @@ def register_packed_child(
 
 
 def packet_residual_file(root: Path, packet: dict[str, Any]) -> Path | None:
-    """Physical field-home residual, else a leftover canonical write (#48)."""
     rel = packet.get("residual_path")
-    if not rel:
-        return None
-    physical = physical_artifact_path(root, str(rel), "packet residual_path")
+    return published_residual_file(root, str(rel)) if rel else None
+
+
+def published_residual_file(root: Path, rel: str) -> Path | None:
+    """Physical field-home residual, else a leftover canonical write (#48)."""
+    physical = physical_artifact_path(root, rel, "packet residual_path")
     if physical.is_file():
         return physical
-    leftover = safe_relative_path(root, str(rel), "packet residual_path")
+    leftover = safe_relative_path(root, rel, "packet residual_path")
     if leftover != physical and leftover.is_file():
         return leftover
     return None
@@ -3635,6 +3655,11 @@ def compact_packet_for_prompt(
         }
     if root is None:
         return view
+    scope = packet.get("review_scope")
+    if isinstance(scope, dict) and scope.get("published"):
+        view["review_scope"] = {
+            **scope, "published": list(ReviewScope.publication_paths(root, scope).values())
+        }
     for key in ("residual_path", "scratch_dir", "spec_ref"):
         if view.get(key):
             view[key] = physical_field_rel(root, str(view[key]))
@@ -3676,7 +3701,8 @@ def render_prompt(
     if contract:
         body += f"\n## Role contract — {role}\n\n{contract}\n"
     body += "\n" + PROMPT_NO_PERSONA + "\n"
-    scope = packet.get("review_scope")
+    view = compact_packet_for_prompt(packet, root=root)
+    scope = view.get("review_scope")
     if isinstance(scope, dict) and role in ReviewScope.REVIEW_ROLES:
         body += ReviewScope.prompt_block(role, scope)
     pinned_map = packet.get("pinned_contracts")
@@ -3767,7 +3793,7 @@ def render_prompt(
         body
         + "\n\n---\n\n# Slaving packet\n\n```json\n"
         + json.dumps(
-            compact_packet_for_prompt(packet, root=root),
+            view,
             indent=2,
             ensure_ascii=False,
         )

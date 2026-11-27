@@ -1534,10 +1534,12 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     meta_path = wdir / "spawns" / f"{child_id}.json"
     owned_baseline = OwnedWrite.snapshot(root, packet)
     initial_started = utc_now()
+    prior_review = None
     if meta_path.is_file():
         try:
             prior_data = load_json(meta_path)
             if isinstance(prior_data, dict):
+                prior_review = prior_data.get("review_start")
                 if isinstance(prior_data.get(OwnedWrite.DIGEST_KEY), dict):
                     owned_baseline = prior_data[OwnedWrite.DIGEST_KEY]
                 if prior_data.get("started_at"):
@@ -1569,6 +1571,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if model_name:
         meta["model_hint"] = model_name
     log_path = wdir / "logs" / f"{child_id}.log"
+    if args.dry_run and prior_review:
+        meta["review_start"] = prior_review
+    elif not args.dry_run and packet.get("role") in ReviewScope.REVIEW_ROLES:
+        meta["review_start"] = None  # claim precedes launch preparation
     prior = SpawnRecord.claim_started(
         root,
         meta_path,
@@ -1694,6 +1700,18 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if note:
             PulseProgress.append(root, packet, note)
 
+    previous_residual_sha = None
+    review_start = None
+    if "review_start" in meta:
+        from of.cli.spec_cmd import ReviewWitness
+
+        checkout = (codex_worktree or root).expanduser().resolve()
+        review_start = ReviewWitness.snapshot(root, packet, checkout)
+        review_start["checkout"] = str(checkout)
+        meta["review_start"] = review_start
+        if residual_abs.is_file():
+            previous_residual_sha = ResidualPin.digest(residual_abs)
+        dump_json(meta_path, meta)
     try:
         proc = run_child(
             argv,
@@ -1786,6 +1804,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         packet, root, residual_abs, residual_rel,
         SpawnResidual.payload(last_residual, proc.stdout),
     )
+    if (previous_residual_sha and residual_abs.is_file()
+            and ResidualPin.digest(residual_abs) == previous_residual_sha):
+        # A retry can exit with the preceding reviewer's residual still in place.
+        review_start = None
+        if prior_review is None:
+            meta.pop("review_start", None)
+        else:
+            meta["review_start"] = prior_review
     if not residual_abs.exists():
         hint = SpawnResidual.harness_refuse_hint(
             f"{proc.stdout or ''}\n{proc.stderr or ''}"
@@ -1838,6 +1864,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         adapter=adapter,
         output=f"{proc.stdout or ''}\n{proc.stderr or ''}",
     )
+    if review_start is not None and residual_abs.is_file():
+        review_start["completed"] = ok and data.get("status") == "done"
     finalize(
         outcome,
         ok=ok,

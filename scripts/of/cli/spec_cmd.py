@@ -36,7 +36,6 @@ from of.field import (
     find_root,
     load_order,
     load_state,
-    physical_field_rel,
     refuse_child_forge,
     save_order,
     save_state,
@@ -1270,9 +1269,6 @@ class ReviewWitness:
         r"(?i)^(?:artifact_sha\s*[:=]\s*[0-9a-f]{64}\b.*|rollback\s*:.*)$"
     )
     _TEST = re.compile(r"(?<![A-Za-z0-9_])test_[A-Za-z0-9_]+")
-    _PUBLICATION = re.compile(
-        r"\.orderfield/waves/[0-9]{3,}/residuals/[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.json"
-    )
     _TOKEN = re.compile(
         r"[A-Za-z0-9_.+-]+(?:[/\\][A-Za-z0-9_.+-]+)+"
         r"|[A-Za-z0-9_.+-]+\.[A-Za-z0-9]{1,8}"
@@ -1437,12 +1433,15 @@ class ReviewWitness:
         return ReviewScope.allowed_paths(scope)
 
     @staticmethod
-    def _publication_paths(root: Path, packet: dict) -> dict[str, str]:
-        scope = packet.get("review_scope") or {}
-        return {
-            rel: physical_field_rel(root, rel) for rel in scope.get("published", [])
-            if ReviewWitness._PUBLICATION.fullmatch(rel) and not os.path.lexists(root / rel)
-        }
+    def snapshot(root: Path, packet: dict, checkout: Path) -> dict[str, Any]:
+        head, tree = ReviewWitness._binding(checkout)
+        published = ReviewScope.publication_paths(root, packet.get("review_scope") or {})
+        paths = []
+        for rel in ReviewWitness.cites(packet):
+            base = root if rel in published else checkout
+            digest = ReviewWitness._sha(base, published.get(rel, rel))
+            paths.append({"path": rel, "sha256": digest})
+        return {"head": head, "tree": tree, "paths": paths}
 
     @staticmethod
     def load(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
@@ -1457,20 +1456,23 @@ class ReviewWitness:
         path = ReviewWitness.path(root, packet)
         if path.is_file():
             return
-        head, tree = ReviewWitness._binding(root)
-        published = ReviewWitness._publication_paths(root, packet)
-        rows = [
-            {"path": rel, "sha256": ReviewWitness._sha(root, published.get(rel, rel))}
-            for rel in ReviewWitness.cites(packet)
-        ]
+        spawn = SpawnRecord.load(root, packet) or {}
+        snapshot = spawn.get("review_start")
+        if "review_start" in spawn and not spawn.get("dry_run") and not SpawnRecord.settled(spawn):
+            # Collect can race the launcher's exit. Stamp on the settled collect.
+            return
+        if not isinstance(snapshot, dict) or (
+            "completed" not in snapshot and not spawn.get("residual_present")
+            and spawn.get("outcome") != SpawnRecord.ORPHAN_SETTLED
+        ):
+            # Handoffs, including one after a spawn without output, report as before.
+            snapshot = ReviewWitness.snapshot(root, packet, root)
         rec = {
             "v": ReviewWitness.V,
             "child_id": str(packet.get("child_id") or ""),
             "role": role,
             "wave": int(packet.get("wave") or 1),
-            "head": head,
-            "tree": tree,
-            "paths": rows,
+            **snapshot,
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         dump_json(path, rec, skip_dir_fsync=True)
@@ -1507,7 +1509,8 @@ class ReviewWitness:
                 if current[source] and cite.get("sha256") == current[source]:
                     if independent:
                         latest.setdefault(key, {"wave": wave, "child_id": child})
-                elif cite.get("sha256") == "" and source != rel and current[source]:
+                elif ("checkout" not in row and cite.get("sha256") == ""
+                      and source != rel and current[source]):
                     # Older nested witnesses read the absent logical path. They
                     # cannot provide a digest for another witness's review.
                     continue
@@ -1572,8 +1575,13 @@ class ReviewWitness:
                 if rec is None:
                     row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                independent = data.get("status") in ("done", "threshold") and not packet.get("owns_paths")
-                sources[int(wave), child] = independent, ReviewWitness._publication_paths(root, packet)
+                if rec.get("checkout"):
+                    row["checkout"] = rec["checkout"]
+                independent = (bool(rec.get("checkout")) and rec.get("completed") is True
+                               and data.get("status") == "done" and not packet.get("owns_paths"))
+                sources[int(wave), child] = independent, ReviewScope.publication_paths(
+                    root, packet.get("review_scope") or {}
+                )
                 row.update(head=str(rec.get("head") or ""), tree=str(rec.get("tree") or ""),
                            paths=rec["paths"])
         ReviewWitness._resolve_paths(root, witness, sources)
