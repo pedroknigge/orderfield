@@ -529,10 +529,48 @@ class ReviewWitnessClose(unittest.TestCase):
             f"prepared.rename({str(residual)!r})\n"
         )
 
-    def _spawn_review(self, child: str, code: str) -> subprocess.CompletedProcess[str]:
+    def _spawn_review(self, child: str, code: str, *args: str) -> subprocess.CompletedProcess[str]:
         packet = packet_path(self.tmp, child).relative_to(self.tmp)
-        return run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", str(packet),
+        return run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", str(packet), *args,
                       OF_AGENT=shlex.join([sys.executable, "-c", code]))
+
+    def test_invalid_review_settles_and_collect_reports_parse_error(self) -> None:
+        packet = load_json(packet_path(self.tmp, "adv1"))
+        residual = self.tmp / packet["residual_path"]
+        for content, diagnostic in [(b"{", "invalid JSON"), (b"\xff", "invalid UTF-8")]:
+            with self.subTest(diagnostic=diagnostic):
+                worker = f"from pathlib import Path\nPath({str(residual)!r}).write_bytes({content!r})"
+                launched = self._spawn_review("adv1", worker)
+                self.assertEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+                self.assertIn("outcome=residual_invalid", launched.stdout)
+                meta = load_json(of.SpawnRecord.path(self.tmp, packet))
+                self.assertEqual(meta["outcome"], "residual_invalid")
+                self.assertEqual(meta["exit"], 0)
+                self.assertTrue(meta["ended_at"])
+                self.assertFalse(meta["review_start"]["completed"])
+                collected = run_of(self.tmp, "collect", "--wave", "1",
+                                   "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
+                self.assertEqual(collected.returncode, 2, collected.stdout + collected.stderr)
+                self.assertIn(f"INVALID adv1.json: {diagnostic}", collected.stdout)
+                self.assertIn("ok=2 invalid=1 missing=0 total=3", collected.stdout)
+                self.assertIn(diagnostic, residual.with_suffix(".json.invalid.txt").read_text())
+                self.assertEqual(residual.read_bytes(), content)
+                self.assertFalse(witness_path(self.tmp, "adv1").exists())
+
+    def test_preview_preserves_started_claim_before_pid(self) -> None:
+        packet = load_json(packet_path(self.tmp, "adv1"))
+        record = of.SpawnRecord.path(self.tmp, packet)
+        preview = self._spawn_review("adv1", "pass", "--dry-run")
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertEqual(load_json(record)["outcome"], "dry_run")
+        of.SpawnRecord.claim_started(self.tmp, record, {
+            "child_id": "adv1", "started_at": of.utc_now(), "review_start": None,
+        })
+        claimed = record.read_bytes()
+        preview = self._spawn_review("adv1", "pass", "--dry-run")
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertIn("dry-run argv:", preview.stdout)
+        self.assertEqual(record.read_bytes(), claimed)
 
     def test_collect_and_integrate_wait_for_review_to_settle(self) -> None:
         residual, publish = self._prepare_review("adv1")
@@ -550,6 +588,12 @@ class ReviewWitnessClose(unittest.TestCase):
                     ended = flight.result()
                     self.fail(f"review exited before release: {ended.stdout}{ended.stderr}")
                 self.assertTrue(residual.exists())
+                record = of.SpawnRecord.path(self.tmp, load_json(packet_path(self.tmp, "adv1")))
+                claimed = record.read_bytes()
+                preview = self._spawn_review("adv1", worker, "--dry-run")
+                self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+                self.assertIn("dry-run argv:", preview.stdout)
+                self.assertEqual(record.read_bytes(), claimed)
                 pending = run_of(self.tmp, "collect", "--wave", "1",
                                  "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
                 self.assertEqual(pending.returncode, 2, pending.stdout + pending.stderr)
@@ -564,8 +608,11 @@ class ReviewWitnessClose(unittest.TestCase):
                 release.touch()
             launched = flight.result()
         self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.app.write_text("changed after review\n")
         self.ok("collect", "--wave", "1")
-        self.assertTrue(load_json(witness_path(self.tmp, "adv1"))["completed"])
+        witness = load_json(witness_path(self.tmp, "adv1"))
+        self.assertTrue(witness["completed"])
+        self.assertEqual(witness["paths"], json.loads(claimed)["review_start"]["paths"])
 
     def test_spawn_collect_and_checklist_use_prelaunch_bytes(self) -> None:
         _, publish = self._prepare_review("adv1")

@@ -4001,9 +4001,15 @@ class SpawnRecord:
         """
         overridden: dict[str, Any] | None = None
         with field_lock(root, "spawn"):
-            if path.is_file() and not dry_run:
+            if path.is_file():
                 prior = load_json(path)
-                if (
+                if dry_run and isinstance(prior, dict):
+                    if not prior.get("dry_run") and not SpawnRecord.settled(prior):
+                        return None
+                    snapshot = SpawnRecord.review_snapshot(prior)
+                    if snapshot is not None:
+                        meta.update(review_start=snapshot, review_result_reused=True)
+                elif (
                     isinstance(prior, dict)
                     and "outcome" not in prior
                     and not prior.get("dry_run")

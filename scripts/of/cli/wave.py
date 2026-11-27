@@ -1571,10 +1571,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if model_name:
         meta["model_hint"] = model_name
     log_path = wdir / "logs" / f"{child_id}.log"
-    if args.dry_run and prior_review:
-        meta["review_start"] = prior_review
-        meta["review_result_reused"] = True
-    elif not args.dry_run and packet.get("role") in ReviewScope.REVIEW_ROLES:
+    if args.dry_run:
+        meta.update(outcome="dry_run", ok=True, ended_at=utc_now(), exit=None)
+    elif packet.get("role") in ReviewScope.REVIEW_ROLES:
         meta["review_start"] = prior_review  # claim precedes launch preparation
     prior = SpawnRecord.claim_started(
         root,
@@ -1630,7 +1629,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     print(f"adapter={adapter} child_id={child_id}")
     print(f"residual={physical_field_rel(root, residual_rel)}")
     if args.dry_run:
-        finalize("dry_run", ok=True)
         settle_session()
         emit_event(
             "spawn",
@@ -1829,37 +1827,33 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             print(hint)
         print(f"no residual yet. log={log_path}")
     ScopeWrite.record_exit(root, packet)
+    data, _ = try_load_json(residual_abs)
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
-    if reported_sid and residual_abs.is_file():
-        data = load_json(residual_abs)
-        if isinstance(data, dict):
-            # session_adapter lands only where the residual schema has it.
-            for merged in (
-                AdapterResume.merge(data, reported_sid, adapter),
-                AdapterResume.merge(data, reported_sid),
-            ):
-                if merged is not data and not validate_residual_for_packet(
-                    merged, packet, root
-                ):
-                    dump_json(residual_abs, merged, skip_dir_fsync=True)
-                    break
+    if reported_sid and isinstance(data, dict):
+        # session_adapter lands only where the residual schema has it.
+        for merged in (
+            AdapterResume.merge(data, reported_sid, adapter),
+            AdapterResume.merge(data, reported_sid),
+        ):
+            if merged is not data and not validate_residual_for_packet(merged, packet, root):
+                data = merged
+                dump_json(residual_abs, data, skip_dir_fsync=True)
+                break
     denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
     if denied:
-        if residual_abs.is_file():
-            data = load_json(residual_abs)
-            if isinstance(data, dict):
-                merged = AgyDeniedActions.merge(data, denied)
-                if merged is not data and not validate_residual_for_packet(
-                    merged, packet, root
-                ):
-                    dump_json(residual_abs, merged, skip_dir_fsync=True)
+        if isinstance(data, dict):
+            merged = AgyDeniedActions.merge(data, denied)
+            if merged is not data and not validate_residual_for_packet(merged, packet, root):
+                data = merged
+                dump_json(residual_abs, data, skip_dir_fsync=True)
         print(f"denied_actions={','.join(denied)}")
         meta["denied_actions"] = denied
+    valid = False
     if residual_abs.is_file():
-        data = load_json(residual_abs)
-        _errs, stamped = KernelSha.validate(
+        errs, stamped = KernelSha.validate(
             data, packet, root, validate_residual_for_packet
         )
+        valid = not errs
         if stamped:
             dump_json(residual_abs, data, skip_dir_fsync=True)
         ResidualPin.pin(
@@ -1868,7 +1862,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         )
     outcome, ok = SpawnRecord.outcome_for(
         proc.returncode,
-        SpawnRecord.residual_valid(root, packet, residual_abs),
+        valid,
         residual_present=residual_abs.exists(),
         adapter=adapter,
         output=f"{proc.stdout or ''}\n{proc.stderr or ''}",
