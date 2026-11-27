@@ -547,6 +547,8 @@ class LeaderKey:
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
             return _prechain_unsigned_ok(cman, strict=strict, head_signed=bool(cur_sig))
+        if cman.get("v") != 2 or _seq(cman) is None:
+            return False
         key = LeaderKey.read(root)
         if key is None or not re.fullmatch(r"[0-9a-f]{64}", c_sig):
             return False
@@ -573,20 +575,27 @@ class LeaderKey:
 def _read_manifest(gen_dir: Path, digest: str | None = None) -> dict[str, Any] | None:
     path = gen_dir / "MANIFEST.json"
     try:
-        if _symlink_component(gen_dir.parent, path) or not valid_generation_id(gen_dir.name):
+        if not valid_generation_id(gen_dir.name) or _symlink_component(gen_dir.parent, path):
             return None
-        raw = path.read_bytes()
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        with os.fdopen(os.open(path, flags), "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                return None
+            raw = handle.read()
         if digest is not None and hashlib.sha256(raw).hexdigest() != digest:
             return None
         man = json.loads(raw.decode("utf-8"))
     except (OSError, ValueError, RecursionError):
         return None
-    if not isinstance(man, dict) or man.get("complete") is not True:
+    if not isinstance(man, dict):
         return None
     if man.get("generation") != gen_dir.name:
         return None
     files, deletions = man.get("files"), man.get("deletions", [])
     if not isinstance(files, dict) or not files or not isinstance(deletions, list):
+        return None
+    if any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
+           for value in files.values()):
         return None
     for rel in (*files, *deletions):
         if (not isinstance(rel, str) or not rel or "\\" in rel or "\0" in rel
@@ -601,13 +610,22 @@ def _authenticated_manifest(root: Path | None, current: dict[str, Any]) -> dict[
     man = _read_manifest(gen_dir, current.get("manifest_sha256"))
     if man is None or not LeaderKey.verify_head(root, current, man):
         return None
-    if man.get("v") == 1 and not man.get("hmac_sha256"):
+    if (current.get("files") != man["files"]
+            or current.get("deletions", []) != man.get("deletions", [])):
+        return None
+    if man.get("v") == 1 and "hmac_sha256" not in man and "hmac_sha256" not in current:
+        # Some published v1 heads omit the completion flag. Only CURRENT can
+        # establish that such a generation was published.
+        if man.get("complete", True) is not True:
+            return None
         if current.get("v") == 1 and "seq" not in current:
             return man
-        if current.get("adopted") == "pre-chain" and current.get("manifest_sha256"):
+        if (current.get("v") == 2 and _seq(current) is not None
+                and current.get("adopted") == "pre-chain" and current.get("manifest_sha256")):
             return man
         return None
-    if (not current.get("manifest_sha256") or _seq(man) is None
+    if (current.get("v") != 2 or man.get("complete") is not True
+            or not current.get("manifest_sha256") or _seq(man) is None
             or _seq(man) != _seq(current)):
         return None
     return man
@@ -1205,7 +1223,7 @@ def _uncommitted_or_manifest(root: Path, child: Path) -> dict[str, Any] | None:
         shutil.rmtree(child, ignore_errors=True)
         return None
     man = _read_manifest(child)
-    if man is not None:
+    if man is not None and man.get("complete") is True:
         return man
     _quarantine(root, child, "corrupt")
     _warn(
@@ -1291,8 +1309,7 @@ def recover_field_wal(root: Path) -> str | None:
                 where = f" (quarantined to wal/{WAL_ORPHANS}/{dest.name})"
         _refuse_broken_wal(
             root,
-            f"CURRENT generation {gid} is missing, does not hash to its MANIFEST "
-            f"or its MANIFEST is not the one CURRENT names{where}",
+            f"CURRENT generation {gid} has missing, unreadable, or incorrectly hashed files{where}",
         )
         return gid
     if _seq(current) is None:
@@ -1535,6 +1552,7 @@ class FieldWal:
     read_current = _wal_read_current
     home = staticmethod(wal_home)
     current_path = staticmethod(wal_current_path)
+    committed_order = staticmethod(_committed_order)
     staged_items = staticmethod(wal_staged_items)
     is_file = staticmethod(field_is_file)
     read_bytes = staticmethod(field_read_bytes)

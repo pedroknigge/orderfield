@@ -581,9 +581,14 @@ class RootStub:
             if child.is_symlink() or not child.is_dir():
                 continue
             order_file = child / "ORDER.json"
-            if not order_file.is_file():
-                continue
-            data = _read_json_object(order_file) or {}
+            if order_file.is_file():
+                data = _read_json_object(order_file) or {}
+            else:
+                # A committed field can outlive its materialized ORDER cache.
+                with using_field_home(child):
+                    data = FieldWal.committed_order(root)
+                if not data:
+                    continue
             # ORDER.json is child-writable and its id flows into archive/drop
             # paths (crown, gc). Trust it only when canonical; else use the
             # leader-created directory name, which is the real field id.

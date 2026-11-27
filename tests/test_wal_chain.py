@@ -504,6 +504,13 @@ class SignedSnapshot(unittest.TestCase):
         self.current = load(self.pointer)
         self.key = wal.LeaderKey.path(self.root)
 
+    def status(self) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(OF_PY), "--field", self.order["id"], "status"],
+            cwd=self.root, capture_output=True, text=True,
+            env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
+        )
+
     def test_signed_genesis_requires_its_key_before_recovery(self) -> None:
         gid = self.current["generation"]
         self.pointer.unlink()
@@ -528,11 +535,7 @@ class SignedSnapshot(unittest.TestCase):
         self.key.rename(backup)
         self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
 
-        refused = subprocess.run(
-            [sys.executable, str(OF_PY), "--field", self.order["id"], "status"],
-            cwd=self.root, capture_output=True, text=True,
-            env={**os.environ, "OF_NO_UPDATE_CHECK": "1"},
-        )
+        refused = self.status()
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("wal-broken", refused.stderr)
         self.assertIn("leader key", refused.stderr)
@@ -543,19 +546,34 @@ class SignedSnapshot(unittest.TestCase):
             handle.write(b"\n")
         self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
 
+    def test_nonregular_manifest_is_refused(self) -> None:
+        manifest = self.pointer.parent / self.current["generation"] / "MANIFEST.json"
+        manifest.unlink()
+        manifest.mkdir()
+        self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
+
     def test_pre_chain_field_remains_readable_after_adoption(self) -> None:
         gid = self.current["generation"]
         legacy_dir = self.pointer.parent / gid.split("-", 1)[1]
         (self.pointer.parent / gid).rename(legacy_dir)
         legacy = {"v": 1, "generation": legacy_dir.name, "files": self.current["files"], "deletions": []}
-        (legacy_dir / "MANIFEST.json").write_text(json.dumps(dict(legacy, complete=True)))
+        (legacy_dir / "MANIFEST.json").write_text(json.dumps(legacy))
+        self.pointer.write_text(json.dumps(dict(legacy, files={})))
+        self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
+        refused = self.status()
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("wal-broken", refused.stderr)
         self.pointer.write_text(json.dumps(legacy))
         self.key.unlink()
         expected = (self.home / "ORDER.json").read_bytes()
         self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+        accepted = self.status()
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
         wal.recover_field_wal(self.root)
         self.assertEqual(load(self.pointer)["adopted"], "pre-chain")
         self.assertEqual(wal.committed_bytes(self.root, "ORDER.json"), expected)
+        (legacy_dir / "ORDER.json").write_bytes(b"damaged")
+        self.assertIsNone(wal.committed_bytes(self.root, "ORDER.json"))
 
 
 class WalChainInProcess(unittest.TestCase):

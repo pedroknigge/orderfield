@@ -222,8 +222,10 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         cur_doc = json.loads(
             (field_dir / "wal" / "CURRENT.json").read_text(encoding="utf-8")
         )
-        gid = str(cur_doc["generation"])
-        gen_dir = field_dir / "wal" / gid
+        signed_dir = field_dir / "wal" / cur_doc["generation"]
+        gid = cur_doc["generation"].split("-", 1)[1]
+        gen_dir = signed_dir.with_name(gid)
+        signed_dir.rename(gen_dir)
         files_sha = dict(cur_doc["files"])
         for rel in ("ORDER.json", "REQUIREMENTS.json"):
             raw = (field_dir / rel).read_bytes()
@@ -790,60 +792,11 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
         self.assertNotEqual(handoff_attempt.returncode, 0)
         self.assertIn("OF_HANDOFF_CHILD", handoff_attempt.stderr)
 
-        # Forge a properly chained WAL generation WITHOUT knowing .leader_key
-        current_doc = json.loads(
-            (home / "wal" / "CURRENT.json").read_text(encoding="utf-8")
-        )
-        current_gen = str(current_doc["generation"])
-        cur_manifest = json.loads(
-            (home / "wal" / current_gen / "MANIFEST.json").read_text(encoding="utf-8")
-        )
-        forged_gen = "00000099-forged"
-        forged_dir = home / "wal" / forged_gen
-        shutil.copytree(home / "wal" / current_gen, forged_dir)
-        hijacked_order = json.loads(
-            (forged_dir / "ORDER.json").read_text(encoding="utf-8")
-        )
-        hijacked_order["mission"] = "forged via chained WAL"
-        order_bytes = (json.dumps(hijacked_order, indent=2) + "\n").encode("utf-8")
-        (forged_dir / "ORDER.json").write_bytes(order_bytes)
-        (home / "ORDER.json").write_bytes(order_bytes)
-        import hashlib
-
-        files_map = dict(cur_manifest["files"])
-        files_map["ORDER.json"] = hashlib.sha256(order_bytes).hexdigest()
-        forged_manifest = {
-            "v": 2,
-            "generation": forged_gen,
-            "seq": int(current_doc.get("seq") or 1) + 1,
-            "parent": current_gen,
-            "parent_manifest_sha256": current_doc.get("manifest_sha256"),
-            "order_sha256": files_map["ORDER.json"],
-            "complete": True,
-            "files": files_map,
-            "deletions": [],
-            "hmac_sha256": "0" * 64,  # invalid signature!
-        }
-        man_bytes = (json.dumps(forged_manifest, indent=2) + "\n").encode("utf-8")
-        (forged_dir / "MANIFEST.json").write_bytes(man_bytes)
-        forged_current = {
-            "v": 2,
-            "generation": forged_gen,
-            "seq": forged_manifest["seq"],
-            "manifest_sha256": hashlib.sha256(man_bytes).hexdigest(),
-            "order_sha256": files_map["ORDER.json"],
-            "published_at": "2026-10-13T00:00:00Z",
-            "files": files_map,
-            "deletions": [],
-            "hmac_sha256": "0" * 64,
-        }
-        (home / "wal" / "CURRENT.json").write_text(
-            json.dumps(forged_current, indent=2) + "\n", encoding="utf-8"
-        )
-
-        resume_forged = run_of(self.tmp, "resume")
-        self.assertNotEqual(resume_forged.returncode, 0)
-        self.assertIn("failed leader HMAC verification", resume_forged.stderr)
+        # A different fixture key cannot verify this published signed head.
+        refused = run_of(self.tmp, "resume", env={"OF_LEADER_KEY": "other-test-key"})
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("wal-broken", refused.stderr)
+        self.assertIn("leader HMAC", refused.stderr)
 
     # ------------------------------------------------------------------
     # 5B. Kernel Modularity Split

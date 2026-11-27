@@ -1164,8 +1164,12 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
         )
     if force and unlanded:
         from of.receipt import KernelVerify
+        from of.wal import FieldWal
 
-        for rid in KernelVerify.withdraw_discarded(root, child_id):
+        FieldWal.recover(root)
+        with FieldWal.generation(root):
+            withdrawn = KernelVerify.withdraw_discarded(root, child_id)
+        for rid in withdrawn:
             print(
                 f"unstamped    {rid} "
                 f"(discarded unlanded worktree {child_id})"

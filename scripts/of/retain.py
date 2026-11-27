@@ -1459,8 +1459,12 @@ def plan_field_retention(
         _plan_top_level_leftovers(root, covered, over_budget=over_budget)
     )
     actions.extend(ClosedFieldArchive.plan_keep(root))
+    targets = _retention_link_targets(root)
     for item in actions:
-        if item["action"] != "keep" and _retention_has_link(root, root / item["path"]):
+        rel = item["path"]
+        fragment = _parse_state_fragment(rel)
+        path = root / (fragment[0] if fragment else rel)
+        if item["action"] != "keep" and _retention_has_link(root, path, targets):
             item.update(action="keep", reason="symlink")
     return actions
 
@@ -1474,10 +1478,35 @@ def _safe_unlink(path: Path) -> None:
         path.unlink()
 
 
-def _retention_has_link(root: Path, path: Path) -> bool:
-    return bool(_symlink_component(of_dir(root), path)) or (
-        path.is_dir() and any(child.is_symlink() for child in path.rglob("*"))
-    )
+def _retention_link_targets(root: Path) -> set[Path]:
+    base = of_dir(root).resolve()
+    targets = set()
+
+    def scan_error(exc: OSError) -> None:
+        if not isinstance(exc, FileNotFoundError):
+            raise exc
+
+    for directory, dirs, files in os.walk(base, followlinks=False, onerror=scan_error):
+        for name in dirs + files:
+            link = Path(directory) / name
+            if link.is_symlink():
+                try:
+                    target = link.resolve()
+                except RuntimeError:  # A cyclic link has no target.
+                    continue
+                if target.is_relative_to(base) or base.is_relative_to(target):
+                    targets.add(target)
+    return targets
+
+
+def _retention_has_link(root: Path, path: Path, targets: set[Path]) -> bool:
+    if _symlink_component(of_dir(root), path):
+        return True
+    if targets:
+        physical = path.resolve()
+        if any(physical.is_relative_to(t) or t.is_relative_to(physical) for t in targets):
+            return True
+    return path.is_dir() and any(child.is_symlink() for child in path.rglob("*"))
 
 
 def _parse_state_fragment(rel: str) -> tuple[str, str, int] | None:
@@ -1505,6 +1534,7 @@ def apply_field_retention(
     saved = field_home(root)
     with field_lock(root, "gc", generation=False):
         homes = {home for _, home, _ in list_field_homes(root)}
+        targets = _retention_link_targets(root)
         batches: dict[Path, list[dict[str, str]]] = {}
         for item in actions:
             path = root / item["path"]
@@ -1518,20 +1548,25 @@ def apply_field_retention(
             with using_field_home(owner):
                 generation = field_generation(root, independent=owner != saved)
                 with generation if owner in homes else nullcontext():
-                    updated = _apply_home_retention(root, batch)
+                    updated = _apply_home_retention(root, batch, targets)
                 if owner == saved and updated is not None:
                     state = updated
     return state
 
 
-def _apply_home_retention(root: Path, actions: list[dict[str, str]]) -> dict[str, Any] | None:
+def _apply_home_retention(
+    root: Path, actions: list[dict[str, str]], targets: set[Path]
+) -> dict[str, Any] | None:
     fragments: dict[str, set[int]] = {}
     state_file = state_path(root)
     for item in actions:
         rel = item["path"]
         parsed = _parse_state_fragment(rel)
         path = root / (parsed[0] if parsed else rel)
-        if not path.is_relative_to(of_dir(root)) or _retention_has_link(root, path):
+        if not path.is_relative_to(of_dir(root)):
+            continue
+        if _retention_has_link(root, path, targets):
+            item.update(action="keep", reason="symlink")
             continue
         if parsed is not None:
             _, key, index = parsed

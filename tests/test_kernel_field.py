@@ -1389,9 +1389,9 @@ class InvalidOrderAndSession(unittest.TestCase):
     def test_invalid_order_json_dies(self) -> None:
         r = run_of(self.tmp, "init", "--mission", "m", "--phase", "explore")
         self.assertEqual(r.returncode, 0, r.stderr)
-        committed_artifact(self.tmp / ".orderfield", "ORDER.json").write_text(
-            "{not-json", encoding="utf-8"
-        )
+        home = self.tmp / ".orderfield"
+        with of.field.using_field_home(home), of.field.field_generation(self.tmp):
+            of.field.dump_text(home / "ORDER.json", "{not-json")
         status = run_of(self.tmp, "status")
         self.assertNotEqual(status.returncode, 0)
         self.assertIn("invalid JSON", status.stderr)
@@ -1493,15 +1493,6 @@ class PulseActivity(unittest.TestCase):
     def test_shared_repo_activity_cannot_refresh_a_stale_child(self) -> None:
         self._pack()
         self._mark_spawned()
-        pkt_path = committed_artifact(
-            self.tmp / ".orderfield", "waves/001/packets/c1.json"
-        )
-        pkt = load_json(pkt_path)
-        pkt["packed_at"] = "2020-01-01T00:00:00Z"
-        pkt["packet_hash"] = of.packet_digest(pkt)
-        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
-        old = 1577836800
-        os.utime(pkt_path, (old, old))
         (self.tmp / "product.txt").write_text("fresh shared write", encoding="utf-8")
 
         r = run_of(self.tmp, "pulse")
@@ -1531,15 +1522,6 @@ class PulseActivity(unittest.TestCase):
     def test_pulse_stale_exits_2_and_names_unpack(self) -> None:
         self._pack()
         self._mark_spawned()
-        pkt_path = committed_artifact(
-            self.tmp / ".orderfield", "waves/001/packets/c1.json"
-        )
-        pkt = load_json(pkt_path)
-        pkt["packed_at"] = "2020-01-01T00:00:00Z"
-        pkt["packet_hash"] = of.packet_digest(pkt)
-        pkt_path.write_text(json.dumps(pkt), encoding="utf-8")
-        old = 1577836800  # 2020-01-01, matches packed_at
-        os.utime(pkt_path, (old, old))
         r = run_of(self.tmp, "pulse")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
         self.assertIn("STALE", r.stdout)
@@ -1980,6 +1962,8 @@ class RetentionAcrossHomes(unittest.TestCase):
             actions = [
                 {"action": "dump", "path": ".orderfield/alias", "reason": "old"},
                 {"action": "dump", "path": ".orderfield/alias/note", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/samples/note", "reason": "old"},
+                {"action": "dump", "path": ".orderfield/samples", "reason": "old"},
             ]
             of.field.set_field_home(home)
             self.addCleanup(of.field.clear_field_home)
@@ -2014,8 +1998,9 @@ class RetentionAcrossHomes(unittest.TestCase):
             active = homes[-1]
             link = active / "work" / "scratch" / "retired" / "notes"
             link.parent.mkdir(parents=True)
-            target = active / "sample.txt"
-            target.write_text("retain me", encoding="utf-8")
+            target = homes[0] / "spec-log" / "new.md"
+            os.utime(target, (1, 1))
+            (homes[0] / "ORDER.json").unlink()
             link.symlink_to(target)
             os.utime(link.parent, (1, 1))
             for args in (("gc", "--dry-run"), ("gc",)):
@@ -2023,7 +2008,8 @@ class RetentionAcrossHomes(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("symlink", result.stdout)
                 self.assertTrue(link.is_symlink())
-                self.assertEqual(target.read_text(), "retain me")
+                self.assertEqual(target.read_text(), "one")
+                self.assertRegex(result.stdout, rf"keep\s+.*{homes[0].name}/spec-log/new.md\s+symlink")
                 if "--dry-run" in args:
                     self.assertTrue(all((h / "spec-log" / "old.md").exists() for h in homes))
             for home in homes:
