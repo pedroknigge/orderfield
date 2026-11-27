@@ -43,10 +43,11 @@ On-disk JSON sidecar next to archived bytes. Validated in-kernel (`EvidenceRecei
 | `command` | string? | optional argv / command line |
 | `trigger` | string? | `build` \| `test` |
 | `extracted` | bool? | true when optional extract filled quotes |
-| `argv0` | string? | `shutil.which` result `KernelVerify` actually resolved (#424). HMAC-covered on a kernel receipt |
+| `argv0` | string? | Executable selected by `KernelVerify` in the verification checkout (#424). HMAC-covered on a kernel receipt |
 | `argv0_realpath` | string? | realpath of `argv0`. HMAC-covered |
 | `argv0_sha256` | string? | sha256 of that realpath. HMAC-covered. A tampered value fails attestation |
-| `env_delta` | object? | in-project `PATH` entries plus `PYTHONPATH`, `VIRTUAL_ENV`, `NODE_PATH`, `GOFLAGS`, and the same kind of variable. HMAC-covered |
+| `env_delta` | object? | `PATH` entries inside the field project or verification checkout, in lookup order. Empty when none qualify. HMAC-covered |
+| `inputs` | object[]? | Project file arguments with their resolved project-relative `path` and pre-run `sha256`. HMAC-covered on kernel receipts |
 | `rule` | string? | set on a refusal (`ChildWritableArgv0`). That receipt is not `kernel_attested` |
 
 Residual citation (same string home as `artifact_sha:` / `published_artifact:`):
@@ -54,6 +55,12 @@ Residual citation (same string home as `artifact_sha:` / `published_artifact:`):
 ```
 evidence_receipt: .orderfield/work/scratch/<child>/logs/<command_id>.receipt.json
 ```
+
+## Kernel verification environment
+
+For `of spec --run` and packet `--verify-cmd`, the kernel resolves and runs the executable in the verification checkout using the same allowlist. It keeps `PATH`, user and home settings, locale (`LANG`, `LC_*`), `TZ`, temporary directories, Windows system and profile paths, and field and child identity settings. It sets `PYTHONNOUSERSITE=1` and `PYTHONDONTWRITEBYTECODE=1`. It drops inherited code-loading settings such as `PYTHONPATH`, `NODE_OPTIONS`, `GOFLAGS` and dynamic-loader settings. `OF_SPAWN_ENV=inherit` applies only to harness launch.
+
+The receipt authenticates the command, timeout, exit, output digest and size, resolved executable and its digest, `env_delta`, and the `inputs` rows. A file argument can be positional or the value in `--flag=file`. Implicit imports, startup files, transitive dependencies, other executables launched by the command, and ambient system state are outside this record. See `KernelVerifyArgv0.test_verifier_receipt_binds_selected_executable_and_explicit_inputs` in [the verifier tests](../../tests/test_kernel_verify_argv0.py).
 
 Archive layout (exact bytes remain):
 

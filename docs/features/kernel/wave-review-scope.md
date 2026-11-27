@@ -28,6 +28,12 @@ When `of pack --role verifier|adversary` runs, `ReviewScope.inherit` reads this 
 
 `apply_slice` cites those paths in `packet.slice` (`scope: …` / `full wave residual`) so `OwnsPathCoverage.slice_paths` can assert coverage. `render_prompt` injects the same set. Prior-wave paths are not inherited. Leader `--owns-path` on a reviewer stays a write-set (existing); inherit does not copy write ownership.
 
+## Later review of changed paths
+
+Collect writes a witness for each reviewer. Close keeps each historical witness and its findings. A later wave can cover a changed cited file when a valid reviewer of the same role records its current digest. Coverage is per path. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). The witness tests exercise partial coverage and a subsequent change. [Review witness tests](../../../tests/test_review_witness.py)
+
+In a nested field, a published residual resolves to its physical field home. Some old witnesses stored an empty digest for the logical path. While the physical file exists, that placeholder can stay in the historical record. Only a current digest from an independent reviewer can cover another witness.
+
 ## Eval fixture shape (N>4)
 
 1. Raise `caps.max_children` (kernel default 4 is not the band).

@@ -1,10 +1,10 @@
 ---
 name: orderfield
-description: "v0.9.10. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
+description: "v0.9.11. Use when a multi-slice or multi-writer mission needs a disk ORDER, exclusive owners, and of contrast before close. /orderfield or /of. If this leading v is not VERSION, update the skill."
 license: MIT
 compatibility: "Requires Python 3.11+. Optional harness CLIs include claude, codex, orca, agent or cursor-agent, opencode, grok, agy, qwen. Kernel uses stdlib only."
 metadata:
-  version: "0.9.10"
+  version: "0.9.11"
   author: Soy Pei / orderfield
   principle: haken-slaving
 ---
@@ -52,7 +52,7 @@ Kernel: role obedience, same-harness, same-user hand edits of `.orderfield/` rem
 | resume next `UNPACK --FORCE` | `of unpack --force` — ORDER.rev stale; do not spawn. Mid-flight `of patch` refuses (HOLD). Constraints before first pack |
 | after successful `of phase` | `of next-wave` — just-integrated wave stays eligible; do not `--recompute` the prior wave |
 | empty current wave (no packets), `done_when` closed | `of phase <next>` — nothing to integrate; do not `--force`. Packets still require integrate |
-| recorded worktree + native Codex spawn | `of spawn --adapter codex` uses `-C <worktree>` + `--add-dir <field-home>` + Git common dir. Missing / malformed / non-Git refuse before launch. No record → existing argv |
+| Codex recorded worktree | `-C <worktree>`, `--add-dir <field-home>`, private gitdir, Git common objects/refs/logs. Invalid records refuse before launch. |
 | generic `OF_AGENT` | shell-quoted argv (`shlex.split`); dry-run prints `shlex.join` of the real list so a path with spaces is one token |
 | second implementer / `worker-start` / `of worktree add` | `--owns-path` ≠ HEAD/index: refuse `shared_worktree` (`of worktree add`, series). After collect/abandon: `worker-stop` then `worker-release`; `of worktree land` then `of worktree remove` if add used. Host: `orca worktree rm` (`terminal close --tab`). Not a supervisor |
 | init / first wave plan | **InitAskSkip** Large: **must ask** once (`of patch --evaluator-consent yes|no`; do not pack/spawn): "At the end, run fresh-context adversary + verifier (both)?" Never silent. Stored yes → after each wave settle pack+spawn both `--role adversary` and `--role verifier` before next-wave (fresh-context review packet; two packs / two children). Stored no → skip review; contrast → `of close --checklist`. Missing key → unset on Small; Large HOLDs the review pack. Not the review-role ask. Self-praise is not review. Not a new close gate. Not a second ask. Not after ordinary integrate. |
