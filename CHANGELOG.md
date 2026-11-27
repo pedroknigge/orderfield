@@ -8,6 +8,17 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## 0.9.13
+
+Re-audit hardening and W7b migration coherence. Pre-0.9.12 fields with landed residuals and integrated wave reports stay readable before `of migrate` and migrate cleanly without hash drift. Five residual WAL/lock/child-forge/retention gaps are closed.
+
+- **W7b migration coherence.** Read-side compatibility accepts authentic pre-W7b `packet_hash` (`H_OLD`) in `validate_residual_for_packet()` and `wave_report_covers_packets()`. `of migrate` propagates `H_OLD -> H_NEW` into matching residuals, `prompts/*.RESIDUAL.template.json`, `report.json`, and `waves/NNN/integrations/<hash>.json`, validates migrated wave reports against `wave-report.schema.json`, remaps retired `state.last_regime` (`scale_up`/`scale_across`) to `hold`, and avoids empty `ORDER.enabled_regimes`.
+- **WAL & HMAC hardening.** `LeaderKey._manifest_chain_bytes()` binds `legacy_close_sha256` into the HMAC and `_authenticated_manifest()` enforces `CURRENT.json == MANIFEST.json`. `LeaderKey.verify_candidate()` refuses unsigned `v: 1` downgrades whenever `wal/.leader_key` exists on disk (not only when `OF_LEADER_KEY` is set).
+- **Lock, child-forge & worktree hardening.** `ensure_committed_field_view()` opens `field.lock` through `_open_lock()` (`O_NOFOLLOW`) and checks thread-local `holds_field_lock()`. `refuse_child_forge()` now guards `of learn --forget` and runs before `field_lock()` in `_dispatch()`. `ChildForge.refuse()` and `_refuse_child_issue_submit()` enforce `OF_HANDOFF_CHILD`. `of worktree remove --force` refuses live `ORDER.json`/`SPEC.md` tamper and materializes `CURRENT` before opening `FieldWal.generation()`.
+- **Retention & cleanups.** `_retention_link_targets()` excludes links to `.orderfield` or ancestors (preventing GC DoS) and catches `OSError` on `resolve()`. Removed duplicate entries in `EVAL_UNITTEST_MODULES`, duplicate `STATUS_REFUSE` branch in `EvaluatorPacket.named()`, and the stale `docs/efficiency-signal.md` link in `docs/roadmap.md`.
+- **Proof:** `tests/test_audit_v0913.py` (9/9), `tests/test_wal_chain.py`, `tests/test_wal_head.py`, `tests/test_security_run1.py`, `tests/test_field_lock_race.py`, `tests/test_packaging.py`, `scripts/validate-skill.sh`, `scripts/check_unused_imports.py`, `scripts/check_dead_defs.py`, `docs/audit/check-claims.py`.
+- Packaging: VERSION `0.9.13`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.13"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`.
+
 ## 0.9.12
 
 W7b deletions. The kernel drops the advisory surfaces and the reserved runtime keys. Same contract, smaller surface. `of migrate` cleans old artifacts.
@@ -16,7 +27,7 @@ W7b deletions. The kernel drops the advisory surfaces and the reserved runtime k
 - **Contest cut.** `of contend` / `of crown`, `scripts/of/contest.py`, and `scripts/of/cli/contend_cmd.py` are removed. `ORDER.contest` leaves the schema.
 - **Reserved runtime cut.** `scale_up`, `scale_across`, across caps/counters, `budget.tokens`, `local_budget_pct`, and inherited depth are removed from code and the four affected schemas. `of pack --tokens` is gone; only `budget.seconds` remains enforced.
 - **Migration.** `of migrate` strips the retired keys from old ORDER, state, packet, and wave-report files. Readers tolerate pre-W7b ORDER, packet, and wave-report artifacts until the leader migrates. MISSING packets are not rewritten on read.
-- **Proof:** `tests/test_kernel_field.py::ArtifactMigrations::test_migrate_strips_retired_runtime_keys`, `tests/test_packaging.py`, `of eval --strict` (61/61), `python3 scripts/run_tests.py` (1832 tests; one pre-existing repo-state failure).
+- **Proof:** `tests/test_kernel_field.py::ArtifactMigrations::test_migrate_strips_retired_runtime_keys`, `tests/test_packaging.py`, `of eval --strict` (61/61), `python3 scripts/run_tests.py` (1832 tests).
 - Packaging: VERSION `0.9.12`; `SKILL.md` + `of/SKILL.md`; `install.sh` (`DEFAULT_VERSION="0.9.12"`); `README.md`; `docs/architecture.md`; `docs/external-brief.md`; `docs/features/adapters/README.md`; `docs/features/kernel/README.md`; `docs/roadmap.md`; `docs/audit/claims-matrix.md`.
 
 ## 0.9.11

@@ -1492,9 +1492,9 @@ def _retention_link_targets(root: Path) -> set[Path]:
             if link.is_symlink():
                 try:
                     target = link.resolve()
-                except RuntimeError:  # A cyclic link has no target.
+                except (RuntimeError, OSError):  # A cyclic or unreadable link has no target.
                     continue
-                if target.is_relative_to(base) or base.is_relative_to(target):
+                if target.is_relative_to(base) and target != base:
                     targets.add(target)
     return targets
 
@@ -1544,12 +1544,14 @@ def apply_field_retention(
                 continue
             owner = next((home for home in homes if path.is_relative_to(home)), base)
             batches.setdefault(owner, []).append(item)
+        saved_resolved = saved.resolve()
         for owner, batch in batches.items():
+            same_home = owner.resolve() == saved_resolved
             with using_field_home(owner):
-                generation = field_generation(root, independent=owner != saved)
+                generation = field_generation(root, independent=not same_home)
                 with generation if owner in homes else nullcontext():
                     updated = _apply_home_retention(root, batch, targets)
-                if owner == saved and updated is not None:
+                if same_home and updated is not None:
                     state = updated
     return state
 

@@ -124,12 +124,17 @@ def _require_gh_auth(gh_bin: str) -> None:
 
 def _refuse_child_issue_submit() -> None:
     cid = spawned_child_id()
-    if not cid:
-        return
-    _issue_die(
-        f"of issue submit refused while {OF_CHILD_ENV}={cid} "
-        "(leader-only after HITL)"
-    )
+    if cid:
+        _issue_die(
+            f"of issue submit refused while {OF_CHILD_ENV}={cid} "
+            "(leader-only after HITL)"
+        )
+    handoff = (os.environ.get("OF_HANDOFF_CHILD") or "").strip()
+    if handoff:
+        _issue_die(
+            f"of issue submit refused while OF_HANDOFF_CHILD={handoff} "
+            "(leader-only after HITL)"
+        )
 
 
 class IssueConfirm:

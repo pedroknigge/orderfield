@@ -513,9 +513,17 @@ class LeaderKey:
         return token.encode("utf-8")
 
     @staticmethod
+    def exists(root: Path | None = None) -> bool:
+        key_path = LeaderKey.path(root)
+        try:
+            return key_path.is_symlink() or key_path.exists()
+        except OSError:
+            return True
+
+    @staticmethod
     def _manifest_chain_bytes(man: dict[str, Any]) -> bytes:
         files = man.get("files") if isinstance(man.get("files"), dict) else {}
-        body = {
+        body: dict[str, Any] = {
             "v": 2,
             "generation": str(man.get("generation") or ""),
             "seq": _seq(man) or 1,
@@ -525,6 +533,8 @@ class LeaderKey:
             "files": {str(k): str(v) for k, v in sorted(files.items())},
             "deletions": sorted(str(d) for d in (man.get("deletions") or [])),
         }
+        if man.get(LEGACY_CLOSE_KEY):
+            body[LEGACY_CLOSE_KEY] = str(man[LEGACY_CLOSE_KEY])
         return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     @staticmethod
@@ -542,7 +552,7 @@ class LeaderKey:
     def verify_candidate(
         root: Path | None, cman: dict[str, Any], current: dict[str, Any]
     ) -> bool:
-        strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip())
+        strict = bool((os.environ.get(LeaderKey.KEY_ENV) or "").strip()) or LeaderKey.exists(root)
         c_sig = str(cman.get("hmac_sha256") or "")
         cur_sig = str(current.get("hmac_sha256") or "")
         if not c_sig:
@@ -622,11 +632,20 @@ def _authenticated_manifest(root: Path | None, current: dict[str, Any]) -> dict[
             return man
         if (current.get("v") == 2 and _seq(current) is not None
                 and current.get("adopted") == "pre-chain" and current.get("manifest_sha256")):
+            legacy = current.get(LEGACY_CLOSE_KEY)
+            if legacy is not None:
+                expected_close = man["files"].get(LEGACY_CLOSE_FILE)
+                if expected_close:
+                    if legacy != str(expected_close):
+                        return None
+                elif legacy != LEGACY_CLOSE_PRE_JSON:
+                    return None
             return man
         return None
     if (current.get("v") != 2 or man.get("complete") is not True
             or not current.get("manifest_sha256") or _seq(man) is None
-            or _seq(man) != _seq(current)):
+            or _seq(man) != _seq(current)
+            or current.get(LEGACY_CLOSE_KEY) != man.get(LEGACY_CLOSE_KEY)):
         return None
     return man
 
@@ -868,13 +887,13 @@ def ensure_committed_field_view(root: Path) -> None:
     if _WAL_CTX.get() is not None:
         return
     import of.field as field_mod
-    if field_mod._HELD_FIELD_LOCK is not None:
+    if field_mod.holds_field_lock(root):
         _reader_view(root)
         return
     path = field_lock_path(root)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        handle = path.open("a+", encoding="utf-8")
+        handle = field_mod._open_lock(path)
     except OSError:
         return
     try:
@@ -1092,7 +1111,7 @@ def _lock_command(root: Path) -> str:
     """Command recorded by this process in the held field.lock, or ''."""
     import of.field as field_mod
 
-    if field_mod._HELD_FIELD_LOCK is None:
+    if not field_mod.holds_field_lock(root):
         return ""
     data = _read_json_object(field_lock_path(root))
     if not data or data.get("pid") != os.getpid():

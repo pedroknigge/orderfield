@@ -3221,6 +3221,8 @@ def integration_input_digest(
     partial: bool,
     apply: bool,
     order: dict[str, Any] | None = None,
+    packet_hashes: dict[str, str] | None = None,
+    residuals_override: dict[str, Any] | None = None,
 ) -> str:
     """Hash the canonical packet/residual set and reduction-affecting options.
 
@@ -3232,21 +3234,30 @@ def integration_input_digest(
         order = load_order(root)
     children: list[dict[str, Any]] = []
     for packet in sorted(packets, key=lambda item: str(item.get("child_id") or "")):
-        residual_path = packet_residual_file(root, packet)
+        cid = str(packet.get("child_id") or "")
         residual: Any = None
-        if residual_path is not None:
-            data, err = try_load_json(residual_path)
-            if err:
-                # Read paths (resume/status) reach this through covers():
-                # a torn residual is a different input, not a crash. The
-                # verbs that consume residuals refuse it on their own.
-                raw = field_read_bytes(residual_path) or b""
-                data = {"unreadable": hashlib.sha256(raw).hexdigest()}
-            residual = IntegrationDigest.residual(data)
+        if residuals_override is not None and cid in residuals_override:
+            residual = IntegrationDigest.residual(residuals_override[cid])
+        else:
+            residual_path = packet_residual_file(root, packet)
+            if residual_path is not None:
+                data, err = try_load_json(residual_path)
+                if err:
+                    # Read paths (resume/status) reach this through covers():
+                    # a torn residual is a different input, not a crash. The
+                    # verbs that consume residuals refuse it on their own.
+                    raw = field_read_bytes(residual_path) or b""
+                    data = {"unreadable": hashlib.sha256(raw).hexdigest()}
+                residual = IntegrationDigest.residual(data)
+        phash = (
+            packet_hashes[cid]
+            if packet_hashes and cid in packet_hashes
+            else (packet.get("packet_hash") or packet_digest(packet))
+        )
         children.append(
             {
                 "child_id": packet.get("child_id"),
-                "packet_hash": packet.get("packet_hash") or packet_digest(packet),
+                "packet_hash": phash,
                 "residual": residual,
             }
         )
@@ -3293,15 +3304,37 @@ def wave_report_covers_packets(
         # Legacy reports remain readable for recovery, but count-only coverage
         # cannot authorize a state transition.
         return False
+    order = load_order(root)
     current_hash = integration_input_digest(
         root,
         wave,
         packets,
         partial=bool(integration.get("partial")),
         apply=bool(integration.get("apply")),
-        order=load_order(root),
+        order=order,
     )
-    return current_hash == integration.get("input_hash")
+    if current_hash == integration.get("input_hash"):
+        return True
+    from of.pack import legacy_packet_hash_for
+
+    legacy_hashes: dict[str, str] = {}
+    for packet in packets:
+        cid = str(packet.get("child_id") or "")
+        legacy_hash = legacy_packet_hash_for(root, packet)
+        if cid and legacy_hash:
+            legacy_hashes[cid] = legacy_hash
+    if not legacy_hashes:
+        return False
+    legacy_digest = integration_input_digest(
+        root,
+        wave,
+        packets,
+        partial=bool(integration.get("partial")),
+        apply=bool(integration.get("apply")),
+        order=order,
+        packet_hashes=legacy_hashes,
+    )
+    return legacy_digest == integration.get("input_hash")
 
 
 class PhaseDigest:

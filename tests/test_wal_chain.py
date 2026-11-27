@@ -272,13 +272,21 @@ class WalChainCli(unittest.TestCase):
         digest = "a" * 64
         current_path = self.home() / "wal" / "CURRENT.json"
         current = load(current_path)
+        man_path = self.home() / "wal" / current["generation"] / "MANIFEST.json"
+        man = load(man_path)
+        man[wal.LEGACY_CLOSE_KEY] = digest
+        man["hmac_sha256"] = wal.LeaderKey.sign_manifest(self.tmp, man)
+        man_bytes = wal.json_payload_bytes(man)
+        man_path.write_bytes(man_bytes)
         current[wal.LEGACY_CLOSE_KEY] = digest
+        current["hmac_sha256"] = man["hmac_sha256"]
+        current["manifest_sha256"] = hashlib.sha256(man_bytes).hexdigest()
         current_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
         self.ok(self.tmp, "checkpoint", "--summary", "carry legacy close")
         after = self.current()
         self.assertEqual(after[wal.LEGACY_CLOSE_KEY], digest)
-        man = load(self.home() / "wal" / after["generation"] / "MANIFEST.json")
-        self.assertEqual(man[wal.LEGACY_CLOSE_KEY], digest)
+        after_man = load(self.home() / "wal" / after["generation"] / "MANIFEST.json")
+        self.assertEqual(after_man[wal.LEGACY_CLOSE_KEY], digest)
 
     def test_checkpoint_refuses_symlinked_leader_key_and_keeps_canary(self) -> None:
         canary = self.tmp / "canary.txt"
@@ -337,6 +345,7 @@ class WalChainCli(unittest.TestCase):
                   "files": cur["files"], "deletions": cur["deletions"]}
         (walh / "CURRENT.json").write_text(json.dumps(legacy, indent=2) + "\n", encoding="utf-8")
         (walh / "MATERIALIZED.json").unlink()
+        (walh / ".leader_key").unlink(missing_ok=True)
         return legacy
 
     def test_pre_chain_v0834_wal_is_adopted_without_rollback(self) -> None:

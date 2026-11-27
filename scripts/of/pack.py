@@ -501,6 +501,26 @@ def validate_residual(res: Any) -> list[str]:
     return errs
 
 
+def legacy_packet_hash_for(root: Path, packet: dict[str, Any]) -> str | None:
+    """Return the authentic pre-W7b packet_hash if on-disk packet had retired keys."""
+    wave = packet.get("wave")
+    child_id = packet.get("child_id")
+    if isinstance(wave, bool) or not isinstance(wave, int) or wave < 1 or not isinstance(child_id, str) or not child_id:
+        return None
+    path = wave_dir(wave, root) / "packets" / f"{child_id}.json"
+    raw = _read_json_object(path)
+    if not isinstance(raw, dict) or not packet_has_retired_keys(raw):
+        return None
+    old_hash = raw.get("packet_hash")
+    if not isinstance(old_hash, str) or old_hash != packet_digest(raw):
+        return None
+    from of.field import migrate_packet_artifact
+    migrated, _notes = migrate_packet_artifact(raw)
+    if migrated.get("packet_hash") != packet.get("packet_hash"):
+        return None
+    return old_hash
+
+
 def validate_residual_for_packet(
     res: Any,
     packet: dict[str, Any],
@@ -510,8 +530,14 @@ def validate_residual_for_packet(
     if not isinstance(res, dict):
         return errs
     if packet_has_identity(packet):
+        legacy_hash: str | None = None
         for key in PACKET_IDENTITY_FIELDS:
             if res.get(key) != packet.get(key):
+                if key == "packet_hash":
+                    if legacy_hash is None:
+                        legacy_hash = legacy_packet_hash_for(root, packet) or ""
+                    if legacy_hash and res.get(key) == legacy_hash:
+                        continue
                 errs.append(
                     f"$.{key} must match canonical packet {packet.get(key)!r}"
                 )

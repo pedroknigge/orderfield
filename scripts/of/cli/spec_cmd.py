@@ -1999,8 +1999,6 @@ class EvaluatorPacket:
             return EvaluatorPacket.HOLD_DETAIL
         if status == EvaluatorPacket.STATUS_SKIP:
             return "stored no"
-        if status == EvaluatorPacket.STATUS_REFUSE:
-            return EvaluatorPacket.HOLD_DETAIL
         pairs: list[str] = []
         for row in doc.get("evaluator_children") or []:
             role = str(row.get("role") or "").strip()
