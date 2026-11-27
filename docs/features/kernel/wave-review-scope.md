@@ -30,9 +30,9 @@ When `of pack --role verifier|adversary` runs, `ReviewScope.inherit` reads this 
 
 ## Later review of changed paths
 
-Collect writes a witness for each reviewer. Close keeps each historical witness and its findings. A later wave can cover a changed cited file when a valid reviewer of the same role records its current digest. Coverage is per path. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). The witness tests exercise partial coverage and a subsequent change. [Review witness tests](../../../tests/test_review_witness.py)
+`of collect` records the field checkout and the digest of each cited path at collection time. The bytes present when the review started remain unverified. Close keeps the original witness and findings. A later reviewer of the same role can cover a changed path if its witness matches the current digest, its packet has no write ownership, and its residual has status `done` or `threshold`. A missing original witness, missing file, or uncovered change leaves the review undecided (`of close` exit 3). [Review witness tests](../../../tests/test_review_witness.py)
 
-In a nested field, a published residual resolves to its physical field home. Some old witnesses stored an empty digest for the logical path. While the physical file exists, that placeholder can stay in the historical record. Only a current digest from an independent reviewer can cover another witness.
+For a published residual in a nested field, the witness reader uses the field home when the logical path is absent at the repository root. If both paths exist, it uses the root path. An old witness with an empty digest can stay in the historical record when the reader resolves the physical file. Covering another witness requires a matching current digest.
 
 ## Eval fixture shape (N>4)
 
