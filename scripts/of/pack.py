@@ -3417,6 +3417,8 @@ def require_packet_residual(root: Path, packet: dict[str, Any]) -> Path:
     if not rel:
         die(f"packet {child} missing residual_path")
     require_packet_artifact_paths(root, packet)
+    if SpawnRecord.review_pending(SpawnRecord.load(root, packet)):
+        die(f"review pending for {child}: spawn has not settled")
     path = packet_residual_file(root, packet)
     if path is None:
         die(f"missing residual at {rel} (packet residual_path)")

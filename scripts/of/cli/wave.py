@@ -1574,7 +1574,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if args.dry_run and prior_review:
         meta["review_start"] = prior_review
     elif not args.dry_run and packet.get("role") in ReviewScope.REVIEW_ROLES:
-        meta["review_start"] = None  # claim precedes launch preparation
+        meta["review_start"] = prior_review  # claim precedes launch preparation
     prior = SpawnRecord.claim_started(
         root,
         meta_path,
@@ -1593,8 +1593,21 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             ),
         )
 
-    def finalize(outcome: str, **extra: Any) -> None:
+    previous_residual_sha = None
+
+    def review_result_unchanged() -> bool:
+        return (previous_residual_sha is not None and residual_abs.is_file()
+                and ResidualPin.digest(residual_abs) == previous_residual_sha)
+
+    def finalize(outcome: str, *, reused_result: bool | None = None, **extra: Any) -> None:
         """Every spawn outcome lands here: never leave started-only metadata."""
+        if reused_result is None:
+            reused_result = review_result_unchanged()
+        if reused_result:
+            if prior_review is None:
+                meta.pop("review_start", None)
+            else:
+                meta["review_start"] = prior_review
         meta.update(extra)
         meta["outcome"] = outcome
         meta["ended_at"] = utc_now()
@@ -1700,7 +1713,6 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         if note:
             PulseProgress.append(root, packet, note)
 
-    previous_residual_sha = None
     review_start = None
     if "review_start" in meta:
         from of.cli.spec_cmd import ReviewWitness
@@ -1787,6 +1799,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         finalize("interrupted", ok=False)
         raise
     except SystemExit:
+        finalize("error", ok=False)
         raise
     except Exception as exc:  # PermissionError, ENOEXEC, E2BIG, OSError ...
         write_log("", f"{exc.__class__.__name__}: {exc}")
@@ -1804,14 +1817,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         packet, root, residual_abs, residual_rel,
         SpawnResidual.payload(last_residual, proc.stdout),
     )
-    if (previous_residual_sha and residual_abs.is_file()
-            and ResidualPin.digest(residual_abs) == previous_residual_sha):
-        # A retry can exit with the preceding reviewer's residual still in place.
-        review_start = None
-        if prior_review is None:
-            meta.pop("review_start", None)
-        else:
-            meta["review_start"] = prior_review
+    # Compare the child's bytes before session, denial or SHA stamps change them.
+    reused_result = review_result_unchanged()
     if not residual_abs.exists():
         hint = SpawnResidual.harness_refuse_hint(
             f"{proc.stdout or ''}\n{proc.stderr or ''}"
@@ -1868,6 +1875,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         review_start["completed"] = ok and data.get("status") == "done"
     finalize(
         outcome,
+        reused_result=reused_result,
         ok=ok,
         exit=proc.returncode,
         log=str(log_path),
@@ -1987,6 +1995,10 @@ def cmd_collect(args: argparse.Namespace) -> None:
     for pkt in packets:
         child = str(pkt.get("child_id") or "?")
         rel = pkt.get("residual_path")
+        if SpawnRecord.review_pending(SpawnRecord.load(root, pkt)):
+            lost += 1
+            print(f"PENDING {child}: review spawn has not settled")
+            continue
         try:
             path = packet_residual_file(root, pkt) if rel else None
             present = path is not None

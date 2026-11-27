@@ -1458,7 +1458,7 @@ class ReviewWitness:
             return
         spawn = SpawnRecord.load(root, packet) or {}
         snapshot = spawn.get("review_start")
-        if "review_start" in spawn and not spawn.get("dry_run") and not SpawnRecord.settled(spawn):
+        if SpawnRecord.review_pending(spawn):
             # Collect can race the launcher's exit. Stamp on the settled collect.
             return
         if not isinstance(snapshot, dict) or (

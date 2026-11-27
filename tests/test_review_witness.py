@@ -9,7 +9,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
@@ -453,6 +455,8 @@ class ReviewWitnessClose(unittest.TestCase):
             "verifier",
             "--child-id",
             "ver1",
+            "--seconds",
+            "2",
         )
         scope = load_json(packet_path(self.tmp, "ver1")).get("review_scope") or {}
         self.assertIn("app.py", scope.get("paths") or [])
@@ -513,22 +517,57 @@ class ReviewWitnessClose(unittest.TestCase):
         ver = next(row for row in restored["witness"] if row["child_id"] == "ver1")
         self.assertFalse(ver["stale"], ver)
 
-    def test_spawn_collect_and_checklist_use_prelaunch_bytes(self) -> None:
-        packet = packet_path(self.tmp, "adv1").relative_to(self.tmp)
-        residual = self.tmp / load_json(self.tmp / packet)["residual_path"]
+    def _prepare_review(self, child: str) -> tuple[Path, str]:
+        residual = self.tmp / load_json(packet_path(self.tmp, child))["residual_path"]
         prepared = self.tmp / ".orderfield" / "prepared.json"
         residual.rename(prepared)
         (self.tmp / load_json(prepared)["result_ref"]).unlink()
-        worker = self.tmp / ".orderfield" / "reviewer.py"
-        worker.write_text(
+        return residual, (
             "import json, pathlib\n"
             "prepared = pathlib.Path('.orderfield/prepared.json')\n"
             "pathlib.Path(json.loads(prepared.read_text())['result_ref']).write_text('done\\n')\n"
             f"prepared.rename({str(residual)!r})\n"
         )
+
+    def _spawn_review(self, child: str, code: str) -> subprocess.CompletedProcess[str]:
+        packet = packet_path(self.tmp, child).relative_to(self.tmp)
+        return run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", str(packet),
+                      OF_AGENT=shlex.join([sys.executable, "-c", code]))
+
+    def test_collect_and_integrate_wait_for_review_to_settle(self) -> None:
+        residual, publish = self._prepare_review("adv1")
+        release = self.tmp / ".orderfield" / "release-review"
+        worker = publish + ("import time\n"
+                            f"while not pathlib.Path({str(release)!r}).exists():\n"
+                            "    time.sleep(0.05)\n")
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            flight = pool.submit(self._spawn_review, "adv1", worker)
+            try:
+                deadline = time.monotonic() + 20
+                while not residual.exists() and time.monotonic() < deadline and not flight.done():
+                    time.sleep(0.05)
+                self.assertTrue(residual.exists())
+                pending = run_of(self.tmp, "collect", "--wave", "1",
+                                 "--accept-unclaimed", "imp1", "--accept-unclaimed", "ver1")
+                self.assertEqual(pending.returncode, 2, pending.stdout + pending.stderr)
+                self.assertIn("PENDING adv1", pending.stdout)
+                self.assertIn("ok=2 invalid=0 missing=1 total=3", pending.stdout)
+                self.assertFalse(witness_path(self.tmp, "adv1").exists())
+                refused = run_of(self.tmp, "integrate", "--wave", "1")
+                self.assertNotEqual(refused.returncode, 0, refused.stdout)
+                self.assertIn("review pending for adv1", refused.stderr)
+                self.assertFalse((residual.parent.parent / "report.json").exists())
+            finally:
+                release.touch()
+            launched = flight.result()
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.ok("collect", "--wave", "1")
+        self.assertTrue(load_json(witness_path(self.tmp, "adv1"))["completed"])
+
+    def test_spawn_collect_and_checklist_use_prelaunch_bytes(self) -> None:
+        _, publish = self._prepare_review("adv1")
         self.app.write_bytes(b"review input\n")
-        launched = run_of(self.tmp, "spawn", "--adapter", "generic", "--packet", str(packet),
-                          OF_AGENT=shlex.join([sys.executable, str(worker)]))
+        launched = self._spawn_review("adv1", publish)
         self.assertEqual(launched.returncode, 0, launched.stderr)
         self.assertIn("outcome=ok", launched.stdout)
         self.app.write_bytes(self.reviewed)
@@ -541,6 +580,28 @@ class ReviewWitnessClose(unittest.TestCase):
         listed = run_of(self.tmp, "close", "--checklist")
         self.assertEqual(listed.returncode, of.ReviewWitness.UNDECIDED_EXIT, listed.stdout + listed.stderr)
         self.assertIn("stale adv1", listed.stdout)
+
+    def test_retry_without_new_residual_preserves_review_inputs(self) -> None:
+        write_bound_residual(self.tmp, "ver1", evidence="noted: app.py")
+        residual, publish = self._prepare_review("ver1")
+        first = self._spawn_review("ver1", publish)
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        packet = load_json(packet_path(self.tmp, "ver1"))
+        record = of.SpawnRecord.path(self.tmp, packet)
+        snapshot = load_json(record)["review_start"]
+        original = residual.read_bytes()
+        self.assertTrue(snapshot["completed"])
+        self.app.write_text("input for retry\n")
+        timeout = self._spawn_review("ver1", "import time\ntime.sleep(30)")
+        self.assertNotEqual(timeout.returncode, 0)
+        self.assertEqual(load_json(record)["outcome"], "timeout")
+        self.assertEqual(residual.read_bytes(), original)
+        self.assertEqual(load_json(record)["review_start"], snapshot)
+        self.app.write_bytes(self.reviewed)
+        self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "adv1")
+        witness = load_json(witness_path(self.tmp, "ver1"))
+        self.assertEqual(witness["paths"], snapshot["paths"])
+        self.assertTrue(witness["completed"])
 
     def test_stale_or_missing_witness_exits_undecided(self) -> None:
         self._stamp()

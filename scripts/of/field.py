@@ -3657,6 +3657,11 @@ class SpawnRecord:
         return bool(str(meta.get("ended_at") or "").strip())
 
     @staticmethod
+    def review_pending(meta: dict[str, Any] | None) -> bool:
+        return (meta is not None and "review_start" in meta
+                and not meta.get("dry_run") and not SpawnRecord.settled(meta))
+
+    @staticmethod
     def unsettled_at(path: Path) -> bool:
         """Started-only spawn meta: no outcome/ended_at yet. Not a process poll."""
         if not path.is_file():
