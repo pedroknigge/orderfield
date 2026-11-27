@@ -574,6 +574,7 @@ class ReviewWitnessClose(unittest.TestCase):
 
     def test_collect_and_integrate_wait_for_review_to_settle(self) -> None:
         residual, publish = self._prepare_review("adv1")
+        record = of.SpawnRecord.path(self.tmp, load_json(packet_path(self.tmp, "adv1")))
         release = self.tmp / ".orderfield" / "release-review"
         worker = publish + ("import time\n"
                             f"while not pathlib.Path({str(release)!r}).exists():\n"
@@ -582,14 +583,19 @@ class ReviewWitnessClose(unittest.TestCase):
             flight = pool.submit(self._spawn_review, "adv1", worker)
             try:
                 deadline = time.monotonic() + 20
-                while not residual.exists() and time.monotonic() < deadline and not flight.done():
+                claimed = None
+                while time.monotonic() < deadline and not flight.done():
+                    if residual.exists():
+                        snapshot = record.read_bytes()
+                        if of.SpawnRecord.pid_of(json.loads(snapshot)) is not None:
+                            claimed = snapshot
+                            break
                     time.sleep(0.05)
                 if flight.done():
                     ended = flight.result()
                     self.fail(f"review exited before release: {ended.stdout}{ended.stderr}")
                 self.assertTrue(residual.exists())
-                record = of.SpawnRecord.path(self.tmp, load_json(packet_path(self.tmp, "adv1")))
-                claimed = record.read_bytes()
+                self.assertIsNotNone(claimed, "review launch PID was not recorded")
                 preview = self._spawn_review("adv1", worker, "--dry-run")
                 self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
                 self.assertIn("dry-run argv:", preview.stdout)
