@@ -2426,6 +2426,7 @@ def apply_requirement_patches(
     root: Path,
     residuals: list[dict[str, Any]],
     packets: list[dict[str, Any] | None] | None = None,
+    previously_failed: dict[str, tuple[str, ...]] | None = None,
 ) -> bool:
     """Land residual ``requirements_failed`` and primary-source cites.
 
@@ -2444,9 +2445,12 @@ def apply_requirement_patches(
         return False
     changed = False
     for res, pkt in zip(residuals, packets):
+        prior_ids = (previously_failed or {}).get((pkt or {}).get("child_id", ""), ())
         for rid in residual_failed_stamps(res, pkt)[0]:
             item = find_requirement(data, rid)
             if item is None:
+                continue
+            if rid in prior_ids and item.get("status") in REQ_INTERNAL_VERIFIED | REQ_CONTRACT_VERIFIED:
                 continue
             if item.get("status") != "failed":
                 item["status"] = "failed"

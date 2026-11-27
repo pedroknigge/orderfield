@@ -4,10 +4,12 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from of.field import (
+    PHASES,
     _read_json_object,
     die,
     list_field_homes,
@@ -37,7 +39,20 @@ def _residual_claims(home: Path):
         claim = _payload(doc)
         if claim:
             # New packets can reuse a child path. Old residuals may lack a packet ID.
-            yield [path.relative_to(home).as_posix(), _occurrence_identity(doc)], claim
+            occurrence = [path.relative_to(home).as_posix(), _occurrence_identity(doc)]
+            yield occurrence, claim, _phase_target(doc) if claim["wants"] == ["phase"] else None
+
+
+def _phase_target(doc: dict) -> str | None:
+    evidence = str(doc["residual"].get("evidence") or "")
+    targets = set()
+    for line in evidence.lower().splitlines():
+        match = re.fullmatch(
+            r"(?:\w+ is complete,\s*)?(?:advance to|of phase) (\w+)\.?", line.strip()
+        )
+        if match and match[1] in PHASES:
+            targets.add(match[1])
+    return targets.pop() if len(targets) == 1 else None
 
 
 def _texts(value: Any) -> tuple[str, ...]:
@@ -93,22 +108,34 @@ def _check_homes(root: Path):
     return [field_root] if order.is_file() and not order.is_symlink() else []
 
 
-def _landed_failure(home: Path, occurrence: list[str]) -> dict:
+def matching_observations(observations: Any, wave: int, input_hash: str | None) -> dict:
+    if (isinstance(observations, dict) and input_hash
+            and observations.get("input_hash") == input_hash and observations.get("wave") == wave):
+        return observations
+    return {}
+
+
+def _landed_failure(home: Path, occurrence: list[str], claim: dict) -> dict:
     path = home / occurrence[0]
     wave = path.parent.parent
-    observations = _read_json_object(wave / "integrations/observations.json") or {}
     report = _read_json_object(wave / "report.json") or {}
-    if str(report.get("wave")).zfill(3) != wave.name or observations.get("wave") != report.get("wave"):
+    if str(report.get("wave")).zfill(3) != wave.name or path.stem in _texts(report.get("skipped_in_flight")):
         return {}
-    digest = observations.get("input_hash")
     integration = report.get("integration")
+    if not isinstance(integration, dict):
+        return {}
+    observations = _read_json_object(wave / "integrations/observations.json")
+    matched = matching_observations(observations, report["wave"], integration.get("input_hash"))
+    return _previous_failure(matched, path.stem, occurrence[1], _key(claim))
+
+
+def _previous_failure(observations: dict, child: str, identity: str, claim_key: str) -> dict:
     failures = observations.get("learning_failures")
-    if not isinstance(integration, dict) or not isinstance(failures, dict):
-        return {}
-    if not digest or digest != integration.get("input_hash") or path.stem in _texts(report.get("skipped_in_flight")):
-        return {}
-    record = failures.get(path.stem)
-    return record if isinstance(record, dict) and record.get("identity") == occurrence[1] else {}
+    record = failures.get(child) if isinstance(failures, dict) else None
+    if isinstance(record, dict) and record.get("identity") == identity:
+        if record.get("claim", claim_key) == claim_key:
+            return record
+    return {}
 
 
 def _check_failed(root: Path, claim: dict, history: dict) -> bool:
@@ -126,10 +153,15 @@ def _check_failed(root: Path, claim: dict, history: dict) -> bool:
                 if isinstance(row, dict) and isinstance(row.get("id"), str)}
         if known and any(rows.get(rid, {}).get("status") == "failed" for rid in failed_ids):
             return True
-        for occurrence, payload in _residual_claims(home):
+        for occurrence, payload, target in _residual_claims(home):
             if payload != claim or tuple(occurrence) in known:
                 continue
-            landed = _landed_failure(home, occurrence)
+            if not (required_terms or failed_ids):
+                phase = order.get("phase")
+                if target and (phase not in PHASES or PHASES.index(phase) < PHASES.index(target)):
+                    return True
+                continue
+            landed = _landed_failure(home, occurrence, claim)
             if required_terms:
                 redesigned = (*occurrence, "redesign") in known
                 repaired = required_terms.intersection(_texts(landed.get("missing_terms")))
@@ -139,8 +171,6 @@ def _check_failed(root: Path, claim: dict, history: dict) -> bool:
                 rid in _texts(landed.get("failed")) and rows.get(rid, {}).get("status")
                 in ("verified", "verified_internal", "verified_contract") for rid in failed_ids
             ):
-                return True
-            if not (required_terms or failed_ids):
                 return True
     return not terms.issuperset(required_terms)
 
@@ -168,12 +198,26 @@ class LearnChecks:
             if not claim:
                 continue
             failed, _ = residual_failed_stamps(res, packet)
+            child = packet["child_id"]
+            identity = _occurrence_identity(res)
             missing = sorted(set(claim["constraints"] + claim["done_when"]) - terms)
-            if failed or missing:
-                records[packet["child_id"]] = {
-                    "identity": _occurrence_identity(res), "failed": failed, "missing_terms": missing,
+            if failed or claim["constraints"] or claim["done_when"]:
+                records[child] = {
+                    "identity": identity, "claim": _key(claim), "failed": failed,
+                    "missing_terms": missing,
                 }
         return records
+
+    @staticmethod
+    def carry_failures(records: dict, observations: dict) -> dict[str, tuple[str, ...]]:
+        """Keep the first observation and identify failure stamps already applied."""
+        previously_failed = {}
+        for child, record in records.items():
+            prior = _previous_failure(observations, child, record["identity"], record["claim"])
+            if prior:
+                record["missing_terms"] = list(_texts(prior.get("missing_terms")))
+                previously_failed[child] = _texts(prior.get("failed"))
+        return previously_failed
 
     @staticmethod
     def fix(payload: dict[str, Any]) -> str:
@@ -220,9 +264,12 @@ class LearnChecks:
     def repeated(root: Path) -> list[dict[str, Any]]:
         grouped: dict[str, dict[str, list]] = {}
         payloads: dict[str, dict[str, Any]] = {}
+        measurable_phases: dict[str, set[str]] = {}
         for fid, home, _order in list_field_homes(root):
-            for occurrence, payload in _residual_claims(home):
+            for occurrence, payload, target in _residual_claims(home):
                 key = _key(payload)
+                if target:
+                    measurable_phases.setdefault(key, set()).add(fid)
                 grouped.setdefault(key, {}).setdefault(fid, []).append(occurrence)
                 payloads[key] = payload
         claims: list[dict[str, Any]] = []
@@ -237,17 +284,20 @@ class LearnChecks:
                     "payload": payload,
                     "fields": fields,
                     "history": grouped[key],
+                    "phase_check": len(measurable_phases.get(key, ())) >= 2,
                     "message": LearnChecks.message(key, payload),
                 }
             )
         return claims
 
     @staticmethod
-    def _kinds(payload: dict[str, Any]) -> tuple[str, ...]:
+    def _kinds(payload: dict[str, Any], phase_check: bool) -> tuple[str, ...]:
         kinds: list[str] = []
         if payload["constraints"] or payload["done_when"]:
             kinds.append("redesign")
-        kinds.extend(["check", "run", "prose"])
+        if kinds or payload["failed"] or phase_check:
+            kinds.extend(["check", "run"])
+        kinds.append("prose")
         return tuple(kinds)
 
     @staticmethod
@@ -255,7 +305,7 @@ class LearnChecks:
         for claim in LearnChecks.repeated(root):
             key = str(claim["key"])
             payload = claim["payload"]
-            for kind in LearnChecks._kinds(payload):
+            for kind in LearnChecks._kinds(payload, claim["phase_check"]):
                 path = "AGENTS.md" if kind == "prose" else LearnChecks.script_rel(key)
                 yield claim, {
                     "id": f"chk_{key}_{kind}",
@@ -287,13 +337,14 @@ class LearnChecks:
     def _script(message: str, payload: dict[str, Any], history: dict) -> str:
         # These functions also run in a consumer repo without Orderfield installed.
         readers = "\n".join(inspect.getsource(fn) for fn in (
-            _read_json_object, _texts, _payload, _occurrence_identity, _residual_claims, _check_homes,
-            _landed_failure, _check_failed,
+            _read_json_object, _texts, _payload, _phase_target, _occurrence_identity, _residual_claims,
+            _check_homes, _canonical, _key, matching_observations, _previous_failure, _landed_failure, _check_failed,
         ))
         return (
             "#!/usr/bin/env python3\n"
             f"HISTORY = {json.dumps(history, sort_keys=True)}\n"
-            "import hashlib\nimport json\nimport sys\nfrom pathlib import Path\n"
+            f"PHASES = {PHASES!r}\n"
+            "import hashlib\nimport json\nimport re\nimport sys\nfrom pathlib import Path\n"
             "from typing import Any\n\n"
             f"CLAIM = {payload!r}\nMESSAGE = {message!r}\n\n"
             f"{readers}\n"
