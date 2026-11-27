@@ -18,6 +18,12 @@ from of.field import (
 )
 
 
+def _occurrence_identity(doc: dict) -> str:
+    return str(doc.get("packet_id") or "") or hashlib.sha256(
+        json.dumps(doc, sort_keys=True).encode()
+    ).hexdigest()
+
+
 def _residual_claims(home: Path):
     waves = home / "waves"
     if home.is_symlink() or waves.is_symlink():
@@ -31,10 +37,7 @@ def _residual_claims(home: Path):
         claim = _payload(doc)
         if claim:
             # New packets can reuse a child path. Old residuals may lack a packet ID.
-            identity = str(doc.get("packet_id") or "") or hashlib.sha256(
-                json.dumps(doc, sort_keys=True).encode()
-            ).hexdigest()
-            yield [path.relative_to(home).as_posix(), identity], claim
+            yield [path.relative_to(home).as_posix(), _occurrence_identity(doc)], claim
 
 
 def _texts(value: Any) -> tuple[str, ...]:
@@ -90,38 +93,28 @@ def _check_homes(root: Path):
     return [field_root] if order.is_file() and not order.is_symlink() else []
 
 
-def _repair_covers(home: Path, occurrence: list[str], ids: list[str], rows: dict) -> bool:
-    if not all(rows.get(rid, {}).get("status") in ("verified", "verified_internal", "verified_contract")
-               for rid in ids):
-        return False
-    residual = home / occurrence[0]
-    wave = residual.parent.parent
+def _landed_failure(home: Path, occurrence: list[str]) -> dict:
+    path = home / occurrence[0]
+    wave = path.parent.parent
+    observations = _read_json_object(wave / "integrations/observations.json") or {}
     report = _read_json_object(wave / "report.json") or {}
-    if (report and str(report.get("wave")).zfill(3) == wave.name
-            and residual.stem not in (report.get("skipped_in_flight") or [])):
-        # Integration landed the failure. The current verification supersedes it.
-        return True
-    # Before integration the residual can be newer than the last verification.
-    # A WAL field needs the per-ID stamp. Older fields only have the ledger write.
-    try:
-        reported = residual.stat().st_mtime_ns
-        for rid in ids:
-            stamp = home / "checks" / f"{rid}.json"
-            if Path(rid).name != rid or rows[rid]["status"] != "verified_contract" or not stamp.is_file():
-                if (home / "wal" / "CURRENT.json").is_file():
-                    return False
-                stamp = home / "REQUIREMENTS.json"
-            if stamp.stat().st_mtime_ns < reported:
-                return False
-    except OSError:
-        return False
-    return True
+    if str(report.get("wave")).zfill(3) != wave.name or observations.get("wave") != report.get("wave"):
+        return {}
+    digest = observations.get("input_hash")
+    integration = report.get("integration")
+    failures = observations.get("learning_failures")
+    if not isinstance(integration, dict) or not isinstance(failures, dict):
+        return {}
+    if not digest or digest != integration.get("input_hash") or path.stem in _texts(report.get("skipped_in_flight")):
+        return {}
+    record = failures.get(path.stem)
+    return record if isinstance(record, dict) and record.get("identity") == occurrence[1] else {}
 
 
 def _check_failed(root: Path, claim: dict, history: dict) -> bool:
     terms = set()
     failed_ids = claim["failed"]
-    required_terms = claim["constraints"] + claim["done_when"]
+    required_terms = set(claim["constraints"] + claim["done_when"])
     for home in _check_homes(root):
         order = _read_json_object(home / "ORDER.json") or {}
         fid = str(order.get("id") or home.name)
@@ -136,9 +129,16 @@ def _check_failed(root: Path, claim: dict, history: dict) -> bool:
         for occurrence, payload in _residual_claims(home):
             if payload != claim or tuple(occurrence) in known:
                 continue
-            if required_terms and not local_terms.issuperset(required_terms):
-                return True
-            if failed_ids and not _repair_covers(home, occurrence, failed_ids, rows):
+            landed = _landed_failure(home, occurrence)
+            if required_terms:
+                redesigned = (*occurrence, "redesign") in known
+                repaired = required_terms.intersection(_texts(landed.get("missing_terms")))
+                if not local_terms.issuperset(required_terms) or not (redesigned or repaired):
+                    return True
+            if failed_ids and not all(
+                rid in _texts(landed.get("failed")) and rows.get(rid, {}).get("status")
+                in ("verified", "verified_internal", "verified_contract") for rid in failed_ids
+            ):
                 return True
             if not (required_terms or failed_ids):
                 return True
@@ -155,6 +155,25 @@ def _key(payload: dict[str, Any]) -> str:
 
 class LearnChecks:
     """One residual claim, counted by field, proposed until accept."""
+
+    @staticmethod
+    def landed_failures(order: dict, residuals: list[dict], packets: list[dict]) -> dict:
+        """Bind the condition observed at integration to the exact packet."""
+        from of.spec import residual_failed_stamps
+
+        terms = set(order["constraints"]) | set(order["done_when"])
+        records = {}
+        for res, packet in zip(residuals, packets):
+            claim = _payload(res)
+            if not claim:
+                continue
+            failed, _ = residual_failed_stamps(res, packet)
+            missing = sorted(set(claim["constraints"] + claim["done_when"]) - terms)
+            if failed or missing:
+                records[packet["child_id"]] = {
+                    "identity": _occurrence_identity(res), "failed": failed, "missing_terms": missing,
+                }
+        return records
 
     @staticmethod
     def fix(payload: dict[str, Any]) -> str:
@@ -268,19 +287,19 @@ class LearnChecks:
     def _script(message: str, payload: dict[str, Any], history: dict) -> str:
         # These functions also run in a consumer repo without Orderfield installed.
         readers = "\n".join(inspect.getsource(fn) for fn in (
-            _read_json_object, _texts, _payload, _residual_claims, _check_homes, _repair_covers, _check_failed,
+            _read_json_object, _texts, _payload, _occurrence_identity, _residual_claims, _check_homes,
+            _landed_failure, _check_failed,
         ))
-        data = json.dumps({"message": message, "claim": payload}, ensure_ascii=True)
         return (
             "#!/usr/bin/env python3\n"
             f"HISTORY = {json.dumps(history, sort_keys=True)}\n"
             "import hashlib\nimport json\nimport sys\nfrom pathlib import Path\n"
             "from typing import Any\n\n"
-            f"DATA = json.loads({data!r})\n\n"
+            f"CLAIM = {payload!r}\nMESSAGE = {message!r}\n\n"
             f"{readers}\n"
             "if __name__ == '__main__':\n"
-            "    if _check_failed(Path(__file__).resolve().parents[2], DATA['claim'], HISTORY):\n"
-            "        print(DATA['message'], file=sys.stderr)\n"
+            "    if _check_failed(Path(__file__).resolve().parents[2], CLAIM, HISTORY):\n"
+            "        print(MESSAGE, file=sys.stderr)\n"
             "        raise SystemExit(1)\n"
         )
 
@@ -310,7 +329,7 @@ class LearnChecks:
         dest.write_text(body, encoding="utf-8")
 
     @staticmethod
-    def _land_contract(root: Path, payload: dict[str, Any]) -> None:
+    def _land_contract(root: Path, payload: dict[str, Any]) -> str | None:
         from of.pack import PacketRevStale
         from of.regime import DoneWhenEvidence, DoneWhenLint, reopen_done_when
 
@@ -335,7 +354,7 @@ class LearnChecks:
                 done.append(text)
                 changed = True
         if not changed:
-            return
+            return None
         order["constraints"] = constraints
         order["done_when"] = done
         DoneWhenLint.refuse(done)
@@ -343,6 +362,7 @@ class LearnChecks:
         order["rev"] = int(order["rev"]) + 1
         save_order(order, root)
         write_phase_md(root, order)
+        return order["id"]
 
     @staticmethod
     def _land_run(root: Path, key: str) -> None:
@@ -401,12 +421,19 @@ class LearnChecks:
                     line = existing.readline()
                 if line.startswith("HISTORY = "):
                     history = json.loads(line.removeprefix("HISTORY = "))
+            repaired_field = LearnChecks._land_contract(root, payload) if kind == "redesign" else None
+            if repaired_field:
+                # Only a change to the field's requested terms acknowledges
+                # a recurrence. Repeating an acceptance cannot clear it.
+                known = history.setdefault(repaired_field, [])
+                for occurrence in claim["history"].get(repaired_field, []):
+                    acknowledged = [*occurrence, "redesign"]
+                    if occurrence not in known and acknowledged not in known:
+                        known.append(acknowledged)
             LearnChecks._write(root, rel, LearnChecks._script(
                 LearnChecks.message(str(row["key"]), payload), payload, history,
             ))
-        if kind == "redesign":
-            LearnChecks._land_contract(root, payload)
-        elif kind == "run":
+        if kind == "run":
             LearnChecks._land_run(root, str(row["key"]))
         elif kind == "prose":
             LearnChecks._land_prose(root, LearnChecks.prose_line(payload))

@@ -37,8 +37,9 @@ from typing import Any
 
 from of.process_origin import (
     _proc_exec_environ, _proc_ppid, _proc_sid, _proc_starttime,
-    host_id, parse_lstart, proc_pcpu, proc_start_epoch,
+    host_id, parse_lstart, proc_start_epoch,
 )
+from of.process_origin import proc_pcpu as proc_pcpu  # noqa: F401
 
 
 PHASES = ["explore", "cut", "build", "verify", "deliver"]

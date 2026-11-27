@@ -727,6 +727,8 @@ def packed_children(root: Path, wave: int) -> list[dict[str, Any]]:
     for name in sorted(paths):
         path = paths[name]
         packet = load_packet(path)
+        if "wave" not in packet and not packet_has_identity(packet):
+            packet["wave"] = int(wave)
         require_packet_artifact_paths(root, packet, path)
         if packet.get("wave") != int(wave):
             die(

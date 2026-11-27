@@ -39,6 +39,7 @@ from of.field import (
     write_phase_md,
 )
 from of.integrate import update_path_owners_index
+from of.learn_checks import LearnChecks
 from of.pack import (
     complete_stale_wave_recoverable,
     die_on_stale_packets,
@@ -326,13 +327,15 @@ def cmd_integrate(args: argparse.Namespace) -> None:
     )
     dump_json(wave_dir(int(wave), root) / "report.json", report)
     obs_path = wave_dir(int(wave), root) / "integrations" / ChildLane.OBSERVATIONS
-    if not observed:
+    failures = LearnChecks.landed_failures(order, residuals, landed)
+    if not (observed or failures):
         obs_path.unlink(missing_ok=True)
     else:
-        dump_json(
-            obs_path,
-            {"wave": int(wave), "input_hash": input_hash, "children": observed},
-        )
+        observations = {"wave": int(wave), "input_hash": input_hash, "children": observed}
+        if failures:
+            observations["learning_failures"] = failures
+        dump_json(obs_path, observations)
+    if observed:
         note = (
             "child proposals not applied to ORDER (leader applies with of patch): "
             + field_rel(root, obs_path)

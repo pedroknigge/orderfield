@@ -441,8 +441,12 @@ class WalChainCli(unittest.TestCase):
     def test_migrate_adopts_a_field_from_before_the_wal(self) -> None:
         self.ok(self.tmp, "patch", "--mission", "m1")
         shutil.rmtree(self.home() / "wal")
+        before = {name: (self.home() / name).read_bytes() for name in ("ORDER.json", "state.json")}
         child = run_of(self.tmp, "migrate", env_extra={"OF_CHILD": "e1"})
-        self.assertIn("wal-broken", child.stderr)
+        self.assertEqual(child.returncode, 1, child.stderr)
+        self.assertIn("child-forge", child.stderr)
+        self.assertFalse((self.home() / "wal").exists())
+        self.assertEqual(before, {name: (self.home() / name).read_bytes() for name in before})
         r = self.ok(self.tmp, "migrate")
         self.assertIn("adopts live", r.stderr)
         self.assertEqual(self.current()["seq"], 1)

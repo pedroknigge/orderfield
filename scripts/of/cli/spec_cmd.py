@@ -36,6 +36,7 @@ from of.field import (
     find_root,
     load_order,
     load_state,
+    physical_field_rel,
     refuse_child_forge,
     save_order,
     save_state,
@@ -1269,6 +1270,9 @@ class ReviewWitness:
         r"(?i)^(?:artifact_sha\s*[:=]\s*[0-9a-f]{64}\b.*|rollback\s*:.*)$"
     )
     _TEST = re.compile(r"(?<![A-Za-z0-9_])test_[A-Za-z0-9_]+")
+    _PUBLICATION = re.compile(
+        r"\.orderfield/waves/[0-9]{3,}/residuals/[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.json"
+    )
     _TOKEN = re.compile(
         r"[A-Za-z0-9_.+-]+(?:[/\\][A-Za-z0-9_.+-]+)+"
         r"|[A-Za-z0-9_.+-]+\.[A-Za-z0-9]{1,8}"
@@ -1433,6 +1437,14 @@ class ReviewWitness:
         return ReviewScope.allowed_paths(scope)
 
     @staticmethod
+    def _publication_paths(root: Path, packet: dict) -> dict[str, str]:
+        scope = packet.get("review_scope") or {}
+        return {
+            rel: physical_field_rel(root, rel) for rel in scope.get("published", [])
+            if ReviewWitness._PUBLICATION.fullmatch(rel) and not os.path.lexists(root / rel)
+        }
+
+    @staticmethod
     def load(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
         doc = _read_json_object(ReviewWitness.path(root, packet))
         return doc if isinstance(doc, dict) else None
@@ -1446,8 +1458,9 @@ class ReviewWitness:
         if path.is_file():
             return
         head, tree = ReviewWitness._binding(root)
+        published = ReviewWitness._publication_paths(root, packet)
         rows = [
-            {"path": rel, "sha256": ReviewWitness._sha(root, rel)}
+            {"path": rel, "sha256": ReviewWitness._sha(root, published.get(rel, rel))}
             for rel in ReviewWitness.cites(packet)
         ]
         rec = {
@@ -1475,22 +1488,29 @@ class ReviewWitness:
         return rec
 
     @staticmethod
-    def _resolve_paths(root: Path, witnesses: list[dict], independent: set[tuple[int, str]]) -> None:
+    def _resolve_paths(root: Path, witnesses: list[dict],
+                       sources: dict[tuple[int, str], tuple[bool, dict[str, str]]]) -> None:
         current: dict[str, str] = {}
         latest: dict[tuple[str, str], dict] = {}
         for row in reversed(witnesses):
             if row.get("reason"):
                 continue
             wave, child = row["wave"], row["child_id"]
+            independent, published = sources[wave, child]
             pending, covered = [], {}
             for cite in row["paths"]:
                 rel = cite["path"]
-                if rel not in current:
-                    current[rel] = ReviewWitness._sha(root, rel)
-                key = (row["role"], rel)
-                if current[rel] and cite.get("sha256") == current[rel]:
-                    if (wave, child) in independent:
+                source = published.get(rel, rel)
+                if source not in current:
+                    current[source] = ReviewWitness._sha(root, source)
+                key = (row["role"], source)
+                if current[source] and cite.get("sha256") == current[source]:
+                    if independent:
                         latest.setdefault(key, {"wave": wave, "child_id": child})
+                elif cite.get("sha256") == "" and source != rel and current[source]:
+                    # Older nested witnesses read the absent logical path. They
+                    # cannot provide a digest for another witness's review.
+                    continue
                 elif key in latest and latest[key]["wave"] > wave:
                     covered[rel] = latest[key]
                 else:
@@ -1506,7 +1526,7 @@ class ReviewWitness:
         findings: list[dict[str, Any]] = []
         claims: list[dict[str, Any]] = []
         witness: list[dict[str, Any]] = []
-        independent: set[tuple[int, str]] = set()
+        sources = {}
         for wave in wave_numbers(root):
             try:
                 packets = packed_children(root, int(wave))
@@ -1552,11 +1572,11 @@ class ReviewWitness:
                 if rec is None:
                     row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                if data.get("status") in ("done", "threshold") and not packet.get("owns_paths"):
-                    independent.add((int(wave), child))
+                independent = data.get("status") in ("done", "threshold") and not packet.get("owns_paths")
+                sources[int(wave), child] = independent, ReviewWitness._publication_paths(root, packet)
                 row.update(head=str(rec.get("head") or ""), tree=str(rec.get("tree") or ""),
                            paths=rec["paths"])
-        ReviewWitness._resolve_paths(root, witness, independent)
+        ReviewWitness._resolve_paths(root, witness, sources)
         return {
             "findings": findings,
             "open": [

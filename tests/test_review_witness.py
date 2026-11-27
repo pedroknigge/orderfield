@@ -138,6 +138,49 @@ def write_bound_residual(
 
 class ReviewWitnessVocabulary(unittest.TestCase):
 
+    def test_nested_publication_with_a_legacy_blank_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home = root / ".orderfield/fields/ord_aaaaaaaa"
+            published = ".orderfield/waves/001/residuals/worker.json"
+            physical = home / "waves/001/residuals/worker.json"
+            physical.parent.mkdir(parents=True)
+            physical.write_text("reviewed worker output")
+            product = root / "app.py"
+            product.write_text("old")
+            packets = {}
+
+            def review(wave, child):
+                packet = {"wave": wave, "child_id": child, "role": "verifier",
+                          "review_scope": {"paths": ["app.py"], "published": [published]},
+                          "residual_path": f".orderfield/waves/{wave:03d}/residuals/{child}.json"}
+                packets[wave] = [packet]
+                path = home / f"waves/{wave:03d}/residuals/{child}.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"status": "done", "residual": {"evidence": "noted: app.py"}}))
+                of.ReviewWitness.stamp(root, packet)
+                return of.ReviewWitness.path(root, packet)
+
+            with of.field.using_field_home(home), patch(
+                "of.cli.spec_cmd.packed_children", side_effect=lambda _, w: packets[w]
+            ):
+                first = review(1, "first")
+                legacy = load_json(first)
+                legacy["paths"][1]["sha256"] = ""
+                first.write_text(json.dumps(legacy))
+                product.write_text("new")
+                old, = of.ReviewWitness.document(root)["witness"]
+                self.assertEqual(old["stale_paths"], ["app.py"])
+                second = review(2, "second")
+                old, new = of.ReviewWitness.document(root)["witness"]
+                self.assertFalse(old["stale"])
+                self.assertEqual(set(old["covered_by"]), {"app.py"})
+                self.assertEqual(new["paths"][1]["sha256"], hashlib.sha256(physical.read_bytes()).hexdigest())
+                physical.unlink()
+                self.assertTrue(all(row["stale"] for row in of.ReviewWitness.document(root)["witness"]))
+                second.unlink()
+                self.assertIn("second", of.ReviewWitness.undecided(of.ReviewWitness.document(root)))
+
     def test_later_witness_covers_only_its_role_wave_and_current_paths(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

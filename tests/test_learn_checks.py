@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 from of.learn_checks import LearnChecks  # noqa: E402
+import of  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
 CONSTRAINT = "price_cli.py prints price table"
@@ -77,53 +78,127 @@ def residual(evidence: str, *, constraint: str = CONSTRAINT, status: str = "thre
 
 
 class GraduatedCheck(unittest.TestCase):
-    def test_current_failure_fix_and_new_packet_with_history_intact(self) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            body = residual("same claim", constraint="", failed=["CLI-001"])
-            homes = [root / ".orderfield/fields" / fid for fid in ("ord_aaaaaaaa", "ord_bbbbbbbb")]
-            for home in homes:
-                residuals = home / "waves/001/residuals"
-                residuals.mkdir(parents=True)
-                (home / "ORDER.json").write_text(json.dumps({"id": home.name}), encoding="utf-8")
-                (residuals / "worker.json").write_text(json.dumps(body), encoding="utf-8")
-            claim, = LearnChecks.repeated(root)
-            script = root / LearnChecks.script_rel(claim["key"])
-            script.parent.mkdir(parents=True)
-            script.write_text(LearnChecks._script(claim["message"], claim["payload"], claim["history"]),
-                              encoding="utf-8")
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.homes = [self.root / ".orderfield/fields" / fid for fid in ("ord_aaaaaaaa", "ord_bbbbbbbb")]
+        self.home = self.homes[0]
 
-            def run(expected: int) -> None:
-                check = subprocess.run([sys.executable, "-S", str(script)], cwd=root,
-                                       text=True, capture_output=True, timeout=10)
-                self.assertEqual(check.returncode, expected, check.stderr)
-                self.assertEqual(check.stderr.strip(), claim["message"] if expected else "")
+    def plant(self, home, wave, body):
+        path = home / f"waves/{wave:03d}/residuals/worker.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(body))
+        return path
 
-            ledger = homes[0] / "REQUIREMENTS.json"
-            for status, code in (("failed", 1), ("verified", 0)):
-                ledger.write_text(json.dumps({"requirements": [{"id": "CLI-001", "status": status}]}),
-                                  encoding="utf-8")
-                run(code)
-            recurrence = homes[0] / "waves/002/residuals/worker.json"
-            recurrence.parent.mkdir(parents=True)
-            recurrence.write_text(json.dumps(body), encoding="utf-8")
-            run(1)
-            for status, code in (("failed", 1), ("verified_contract", 0)):
-                ledger.write_text(json.dumps({"requirements": [{"id": "CLI-001", "status": status}]}),
-                                  encoding="utf-8")
-                run(code)
-            self.assertEqual(json.loads(recurrence.read_text()), body)
-            # Once integration has landed the failure, copying its historical
-            # residual later does not undo the ledger's subsequent repair.
-            report = recurrence.parents[1] / "report.json"
-            report.write_text(json.dumps({"wave": 2}), encoding="utf-8")
-            newer = ledger.stat().st_mtime_ns + 2_000_000_000
-            os.utime(recurrence, ns=(newer, newer))
-            run(0)
-            report.write_text(json.dumps({"wave": 2, "skipped_in_flight": ["worker"]}))
-            run(1)
-            for home in homes:
-                self.assertEqual(json.loads((home / "waves/001/residuals/worker.json").read_text()), body)
+    def graduate(self, body):
+        history = {}
+        for home in self.homes:
+            path = self.plant(home, 1, body)
+            history[path] = path.read_bytes()
+            order = of.default_order("check prices", "build")
+            order["id"] = home.name
+            (home / "ORDER.json").write_text(json.dumps(order))
+        claim, = LearnChecks.repeated(self.root)
+        self.key = claim["key"]
+        self.message = claim["message"]
+        self.script = self.root / LearnChecks.script_rel(self.key)
+        LearnChecks.accept(self.root, f"chk_{self.key}_check")
+        self.assertIn(self.message, self.script.read_text())
+        return history
+
+    def check(self, expected):
+        ran = subprocess.run([sys.executable, "-S", str(self.script)], cwd=self.root,
+                             text=True, capture_output=True, timeout=10)
+        self.assertEqual(ran.returncode, expected, ran.stderr)
+        self.assertEqual(ran.stderr, self.message + "\n" if expected else "")
+
+    def land(self, path):
+        wave = path.parents[1]
+        order = json.loads((self.home / "ORDER.json").read_text())
+        failures = LearnChecks.landed_failures(order, [json.loads(path.read_text())],
+                                               [{"child_id": path.stem, "role": "verifier"}])
+        key = "a" * 64
+        (wave / "integrations").mkdir(exist_ok=True)
+        (wave / "integrations/observations.json").write_text(json.dumps({
+            "wave": int(wave.name), "input_hash": key, "children": [], "learning_failures": failures,
+        }))
+        (wave / "report.json").write_text(json.dumps({"wave": int(wave.name), "integration": {"input_hash": key}}))
+
+    def test_current_failure_fix_and_new_packet_with_history_intact(self):
+        body = residual("same claim", constraint="", failed=["CLI-001"])
+        history = self.graduate(body)
+        ledger = self.home / "REQUIREMENTS.json"
+        (self.home / "wal").mkdir()
+        (self.home / "wal/CURRENT.json").write_text("{}")
+        stamp = self.home / "checks/CLI-001.json"
+        stamp.parent.mkdir()
+        stamp.write_text(json.dumps({"id": "CLI-001", "pass": True}))
+
+        def status(value):
+            ledger.write_text(json.dumps({"requirements": [{"id": "CLI-001", "status": value}]}))
+
+        status("failed")
+        self.check(1)
+        status("verified_contract")
+        self.check(0)
+        for wave in (2, 3):
+            path = self.plant(self.home, wave, {**body, "packet_id": f"pkt_{wave:032x}"})
+            history[path] = path.read_bytes()
+            self.check(1)
+            newer = path.stat().st_mtime_ns + 2_000_000_000
+            os.utime(ledger, ns=(newer, newer))
+            os.utime(stamp, ns=(newer, newer))
+            self.check(1)
+            status("failed")
+            self.land(path)
+            self.check(1)
+            status("verified_contract")
+            self.check(0)
+            os.utime(path, ns=(newer, newer))
+            self.check(0)
+        report = path.parents[1] / "report.json"
+        integrated = json.loads(report.read_text())
+        report.write_text(json.dumps({**integrated, "skipped_in_flight": ["worker"]}))
+        self.check(1)
+        report.write_text(json.dumps({**integrated, "integration": {"input_hash": "b" * 64}}))
+        self.check(1)
+        report.write_text(json.dumps(integrated))
+        self.check(0)
+        self.assertEqual(history, {p: p.read_bytes() for p in history})
+
+    def test_constraints_recur_in_the_same_field_even_when_already_present(self):
+        body = residual("constraint missing")
+        history = self.graduate(body)
+        self.check(1)
+        order_path = self.home / "ORDER.json"
+        order = json.loads(order_path.read_text())
+        order["constraints"] = [CONSTRAINT]
+        order_path.write_text(json.dumps(order))
+        self.check(0)
+        path = self.plant(self.home, 2, body)
+        history[path] = path.read_bytes()
+        self.land(path)
+        self.check(1)
+        LearnChecks.accept(self.root, f"chk_{self.key}_check")
+        self.check(1)
+        with of.field.using_field_home(self.home):
+            LearnChecks.accept(self.root, f"chk_{self.key}_redesign")
+            self.check(1)
+            order["constraints"] = []
+            order_path.write_text(json.dumps(order))
+            LearnChecks.accept(self.root, f"chk_{self.key}_redesign")
+        self.check(0)
+        order["constraints"] = []
+        order_path.write_text(json.dumps(order))
+        path = self.plant(self.home, 3, body)
+        history[path] = path.read_bytes()
+        self.land(path)
+        self.check(1)
+        order["constraints"] = [CONSTRAINT]
+        order_path.write_text(json.dumps(order))
+        self.check(0)
+        self.assertEqual(history, {p: p.read_bytes() for p in history})
 
 
 class LearnChecksCli(unittest.TestCase):
@@ -337,16 +412,28 @@ class LearnChecksCli(unittest.TestCase):
         history = {path: path.read_bytes() for home in homes for path in home.glob("waves/*/residuals/*.json")}
         green = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=30)
         self.assertEqual(green.returncode, 0, green.stderr)
-        self._plant(homes[0], "recurrence.json", body)
+        selected = ("--field", homes[0].name)
+        self._ok(*selected, "spec", "--add", "CLI-001", "--text", "show a price table")
+        self._ok(*selected, "pack", "--child-id", "recurrence", "--role", "verifier",
+                 "--owns-requirement", "CLI-001", "--slice", "verify price table")
+        packet = json.loads((homes[0] / "waves/001/packets/recurrence.json").read_text())
+        recurrence = {**body, **{k: packet[k] for k in of.PACKET_IDENTITY_FIELDS}}
+        notes = self.tmp / body["result_ref"]
+        notes.write_text("CLI-001 price fixture failed")
+        digest = hashlib.sha256(notes.read_bytes()).hexdigest()
+        recurrence["residual"] = {
+            **body["residual"], "evidence": f"CLI-001 failed in notes.md\nartifact_sha: {digest}",
+        }
+        self._plant(homes[0], "recurrence.json", recurrence)
         self._ok("learn", "--accept", check_id)
         red = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(red.returncode, 1)
         self.assertIn("CLI-001", red.stderr)
-        recurrence = homes[0] / "waves/001/residuals/recurrence.json"
-        history[recurrence] = recurrence.read_bytes()
-        (homes[0] / "REQUIREMENTS.json").write_text(json.dumps({
-            "requirements": [{"id": "CLI-001", "status": "verified_contract"}],
-        }), encoding="utf-8")
+        path = homes[0] / "waves/001/residuals/recurrence.json"
+        history[path] = path.read_bytes()
+        self._ok(*selected, "integrate", "--wave", "1")
+        (self.tmp / "repair.log").write_text("fixture: price table displayed")
+        self._ok(*selected, "spec", "--verified-contract", "CLI-001", "--takeover", "--cite", "repair.log")
         green = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(green.returncode, 0, green.stderr)
         self.assertEqual(history, {path: path.read_bytes() for path in history})

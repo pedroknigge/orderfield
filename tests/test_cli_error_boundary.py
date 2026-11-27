@@ -103,7 +103,9 @@ class MainBoundaryInProcess(unittest.TestCase):
         self.assertEqual(err, "")
 
     def test_maintenance_requires_leader_before_dispatch_and_direct_access(self) -> None:
-        with mock.patch.dict(os.environ, {"OF_CHILD": "fixture"}), contextlib.redirect_stderr(io.StringIO()):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {
+            "OF_CHILD": "fixture", "OF_SPAWN_REGISTRY": str(Path(folder) / "registry.json"),
+        }), contextlib.redirect_stderr(io.StringIO()):
             for command in ("collect", "gc", "migrate"):
                 with self.subTest(command=command), mock.patch.object(sys, "argv", ["of", command]), \
                         mock.patch.object(cli, "find_root") as root:

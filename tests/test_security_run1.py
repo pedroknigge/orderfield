@@ -172,6 +172,7 @@ class WalHmac(unittest.TestCase):
 
     def _man(self, *, seq, files, signed):
         man = {
+            "v": 2,
             "generation": "00000005-abcdefabcdef", "seq": seq, "parent": "p",
             "parent_manifest_sha256": "pm", "order_sha256": "o",
             "files": dict(files), "deletions": [],
@@ -201,6 +202,7 @@ class WalHmac(unittest.TestCase):
     def test_f11_copied_head_signature_rejects_a_different_generation(self) -> None:
         head = self._man(seq=5, files={"ORDER.json": "aaa"}, signed=True)
         child = {
+            "v": 2,
             "generation": "00000006-ffffffffffff",
             "seq": 6,
             "parent": "p",

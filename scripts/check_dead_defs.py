@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import asyncio
 import re
 import sys
 import tempfile
@@ -57,8 +58,11 @@ def definitions(tree: ast.Module) -> list[tuple[str, str, int]]:
             found.append(("function", node.name, node.lineno))
         elif isinstance(node, ast.ClassDef):
             found.append(("class", node.name, node.lineno))
+            protocol = any(ast.unparse(base) == "asyncio.SubprocessProtocol" for base in node.bases)
             for item in node.body:
                 if isinstance(item, funcs) and not _registered(item):
+                    if protocol and hasattr(asyncio.SubprocessProtocol, item.name):
+                        continue
                     found.append(("method", f"{node.name}.{item.name}", item.lineno))
     return found
 
@@ -149,6 +153,10 @@ def _self_test() -> None:
         "class Ghost: pass\n"
         "class V(ast.NodeVisitor):\n"
         "    def visit_Name(self, node): pass\n"
+        "class Capture(asyncio.SubprocessProtocol):\n"
+        "    def pipe_data_received(self, fd, data): pass\n"
+        "    def wrong_callback(self): pass\n"
+        "Capture()\n"
         "def by_fixture(): pass\n"
         "@register('table_key')\n"
         "def registered(): pass\n"
@@ -164,7 +172,7 @@ def _self_test() -> None:
         "V()\n"
     )
     want = {"function dead", "function exported_only", "function imported_only",
-            "method Live.orphan", "class Ghost", "method Holder.stale"}
+            "method Live.orphan", "class Ghost", "method Holder.stale", "method Capture.wrong_callback"}
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "src").mkdir()
