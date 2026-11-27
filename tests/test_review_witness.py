@@ -616,17 +616,20 @@ class ReviewWitnessClose(unittest.TestCase):
         self.assertEqual(load_json(record)["outcome"], "timeout", timeout.stderr)
         original = residual.read_bytes()
         snapshot = load_json(record)["review_start"]
-        self.app.write_text("input for failed launch\n")
+        moved = git(self.tmp, "-c", "user.name=Test", "-c", "user.email=a@localhost",
+                    "commit", "--allow-empty", "-m", "retry checkout")
+        self.assertEqual(moved.returncode, 0, moved.stderr)
+        self.assertNotEqual(git(self.tmp, "rev-parse", "HEAD").stdout.strip(), snapshot["head"])
         failed = run_of(self.tmp, "spawn", "--packet", str(packet.relative_to(self.tmp)), "--adapter", "generic",
                         OF_AGENT=shlex.quote(str(self.tmp / "absent-reviewer")))
         self.assertNotEqual(failed.returncode, 0)
         self.assertEqual(load_json(record)["outcome"], "missing_binary", failed.stderr)
         self.assertEqual(residual.read_bytes(), original)
         self.assertEqual(load_json(record)["review_start"], snapshot)
-        self.app.write_bytes(self.reviewed)
         self.ok("collect", "--wave", "1", "--accept-unclaimed", "imp1", "--accept-unclaimed", "adv1")
         witness = load_json(witness_path(self.tmp, "ver1"))
         self.assertEqual(witness["checkout"], snapshot["checkout"])
+        self.assertEqual(witness["head"], snapshot["head"])
         self.assertEqual(witness["paths"], snapshot["paths"])
         self.assertFalse(witness.get("completed"))
 
