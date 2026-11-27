@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.11. Token budgets and `scale_up` stay **not implemented**. That is the slow decision.
+The current line is 0.9.12. W7b removed the advisory and reserved runtime surfaces. Deferred work is still deferred.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.11`
+**Status:** Shipped · **Current release line:** `0.9.12`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,12 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** DONE in 0.9.12: `AdapterBalance`, `EfficiencySignal`, `UpdateAsk`; `contest.py` / `contend_cmd.py`; `scale_across` / `scale_up`, the across caps and counters, `budget.tokens`, `local_budget_pct`, and inherited depth, with an `of migrate` step. Deferred (moves, not deletions): `Plan*` extraction from `regime.py`; `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`. Decision: `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.12 — W7b deletions
+
+- `EfficiencySignal`, `AdapterBalance`, `UpdateAsk`, and the plan contest (`of contend` / `of crown`) are removed. `scale_up`, `scale_across`, across caps/counters, `budget.tokens`, `local_budget_pct`, and inherited depth are removed from code and schemas. New and migrated artifacts carry only `budget.seconds`.
+- `of migrate` strips the retired keys from old ORDER, state, packet, and wave-report files. Readers tolerate pre-W7b artifacts until the leader migrates. `tests/test_kernel_field.py` (`ArtifactMigrations`) and `of eval --strict` (61/61) prove the path.
+- Deferred: `Plan*` extraction from `regime.py`; `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`. `learn` and `issue` stay.
 
 ## 0.9.11 — verifier receipts and field recovery
 
