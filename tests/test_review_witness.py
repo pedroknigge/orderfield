@@ -582,7 +582,7 @@ class ReviewWitnessClose(unittest.TestCase):
         self.assertIn("stale adv1", listed.stdout)
 
     def test_retry_without_new_residual_preserves_review_inputs(self) -> None:
-        write_bound_residual(self.tmp, "ver1", evidence="noted: app.py")
+        write_bound_residual(self.tmp, "ver1", evidence="noted: reviewed the input bytes of app.py")
         residual, publish = self._prepare_review("ver1")
         first = self._spawn_review("ver1", publish)
         self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
