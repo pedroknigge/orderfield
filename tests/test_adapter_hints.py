@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -360,17 +361,19 @@ class AdapterHintsCli(unittest.TestCase):
         self.assertIn("adapter_hints=gemini-4-neon-high", packed.stdout)
         self.assertNotIn("adapter_hints=gemini-4-neon-high medium", packed.stdout)
         out = self._spawn_argv("neon", "agy")
-        line = next(row for row in out.splitlines() if row.startswith("agy "))
-        self.assertIn("--model gemini-4-neon-high", line)
-        self.assertNotIn("--effort", line)
+        argv = shlex.split(out.split("dry-run argv:\n", 1)[1])
+        self.assertEqual(Path(argv[0]).stem, "agy")
+        self.assertEqual(argv[argv.index("--model") + 1], "gemini-4-neon-high")
+        self.assertNotIn("--effort", argv)
         packed_x = self._pack(
             "xhigh", "explorer", "--model", "gemini-4-neon-xhigh"
         )
         self.assertEqual(packed_x.returncode, 0, packed_x.stderr)
         out_x = self._spawn_argv("xhigh", "agy")
-        line_x = next(row for row in out_x.splitlines() if row.startswith("agy "))
-        self.assertIn("--model gemini-4-neon-xhigh", line_x)
-        self.assertNotIn("--effort", line_x)
+        argv_x = shlex.split(out_x.split("dry-run argv:\n", 1)[1])
+        self.assertEqual(Path(argv_x[0]).stem, "agy")
+        self.assertEqual(argv_x[argv_x.index("--model") + 1], "gemini-4-neon-xhigh")
+        self.assertNotIn("--effort", argv_x)
 
     def test_invalid_model_dies(self) -> None:
         r = self._pack("bad", "explorer", "--model", "has space")

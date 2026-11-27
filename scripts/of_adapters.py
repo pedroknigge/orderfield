@@ -785,8 +785,14 @@ class SensorTrust:
 def spawn_env(adapter: str, parent: dict[str, str] | None = None) -> dict[str, str]:
     """Environment for a spawned child: allowlist, not the parent's whole env.
 
-    OF_SPAWN_ENV=NAME1,NAME2 adds names; OF_SPAWN_ENV=inherit opts out."""
-    src = dict(os.environ if parent is None else parent)
+    Extra names and inherit mode still exclude the leader's WAL credentials."""
+    from of.wal import OF_LEADER_KEY_ENV, OF_LEADER_TOKEN_ENV
+
+    source = os.environ if parent is None else parent
+    src = {
+        key: value for key, value in source.items()
+        if key.upper() not in (OF_LEADER_KEY_ENV, OF_LEADER_TOKEN_ENV)
+    }
     extra_raw = (src.get(SPAWN_ENV_VAR) or "").strip()
     if spawn_env_mode(src) == "inherit":
         return src

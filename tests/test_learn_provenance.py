@@ -19,6 +19,7 @@ SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import of  # noqa: E402
 import of.field  # noqa: E402
+from of.cli.wave import run_child  # noqa: E402
 from of.learn import PROTOCOL_PROMPT_CAP, repo_digest, resume_learnings  # noqa: E402
 
 OF_PY = SCRIPTS / "of.py"
@@ -140,7 +141,7 @@ def run_of_from_spawned_parent(
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
     policy = "UNSET" if child_marker is None else child_marker
-    return subprocess.run(
+    return run_child(
         [
             sys.executable,
             str(helper),
@@ -150,9 +151,7 @@ def run_of_from_spawned_parent(
             str(OF_PY),
             *args,
         ],
-        capture_output=True,
-        text=True,
-        env=env,
+        cwd, env, 30,
     )
 
 
@@ -169,7 +168,7 @@ def run_of_via_exec(
     env.pop("OF_DEBUG", None)
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
-    return subprocess.run(
+    return run_child(
         [
             sys.executable,
             str(helper),
@@ -177,10 +176,7 @@ def run_of_via_exec(
             str(OF_PY),
             *args,
         ],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env=env,
+        cwd, env, 30,
     )
 
 
@@ -203,7 +199,7 @@ def run_of_via_reparent(
     env.pop("OF_DEBUG", None)
     env.pop("OF_JSON", None)
     env.update(env_extra or {})
-    subprocess.run(
+    run_child(
         [
             sys.executable,
             str(helper),
@@ -212,11 +208,7 @@ def run_of_via_reparent(
             str(OF_PY),
             *args,
         ],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env=env,
-        start_new_session=True,
+        cwd, env, 30,
     )
     rc_path = out_dir / "reparent.rc"
     deadline = time.monotonic() + 20.0

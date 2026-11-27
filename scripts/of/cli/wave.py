@@ -44,6 +44,7 @@ from of.host_ram import AgentBand
 from of.field import (
     OF_CHILD_ENV,
     OF_FIELD_ENV,
+    OF_SPAWN_REGISTRY_ENV,
     ROLES,
     argv_preview,
     die,
@@ -59,6 +60,8 @@ from of.field import (
     load_json,
     parse_utc,
     refuse_child_forge,
+    register_spawned_child,
+    spawn_registry_path,
     spawned_child_id,
     try_load_json,
     load_order,
@@ -744,8 +747,17 @@ def run_child(
     if os.name == "posix":
         kwargs["start_new_session"] = True
     proc = subprocess.Popen(argv, **kwargs)
-    if on_start is not None:
-        on_start(proc)
+    try:
+        if OF_CHILD_ENV in env:
+            register_spawned_child(proc.pid, env[OF_CHILD_ENV], session=os.name == "posix")
+        if on_start is not None:
+            on_start(proc)
+    except BaseException:
+        kill_child_tree(proc)
+        proc.stdout.close()
+        proc.stderr.close()
+        proc.wait()
+        raise
     out_chunks: list[str] = []
     err_chunks: list[str] = []
 
@@ -1649,6 +1661,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_env.update(SensorTrust.env(adapter, profile, packet, sensor_writes))
     child_env[OF_FIELD_ENV] = str(order["id"])
     child_env[OF_CHILD_ENV] = str(child_id)
+    # A harness with an isolated HOME still shares its launcher's registry.
+    child_env[OF_SPAWN_REGISTRY_ENV] = str(spawn_registry_path().absolute())
     scratch_rel = packet.get("scratch_dir")
     scratch_abs = (
         field_artifact_path(root, str(scratch_rel), "packet scratch_dir")
@@ -1920,6 +1934,7 @@ def _kernel_verify_lines(
 
 
 def cmd_collect(args: argparse.Namespace) -> None:
+    refuse_child_forge("of collect")
     root = find_root()
     order = load_order(root)
     state = load_state(root)
@@ -1954,7 +1969,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             # One dead child must not freeze the wave: report and keep walking.
             lost += 1
             trust_note = ""
-            meta_path = wave_dir(int(pkt.get("wave") or args.wave), root) / "spawns" / f"{child}.json"
+            meta_path = wave_dir(int(wave), root) / "spawns" / f"{child}.json"
             if meta_path.is_file():
                 trust_note = CollectDiagnostic.spawn_note(load_json(meta_path))
             looked = (

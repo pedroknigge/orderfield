@@ -218,6 +218,30 @@ class ResidualPins(unittest.TestCase):
 
 
 class PartialCollect(unittest.TestCase):
+    def test_legacy_packet_without_wave_uses_selected_wave_for_missing_residual(self) -> None:
+        field = Field(self)
+        packet = field.pack("legacy")
+        for key in ("wave", "packet_id", "packet_hash", "order_id"):
+            packet.pop(key)
+        home = field.tmp / ".orderfield"
+        selected = home / "waves/003"
+        packet["residual_path"] = ".orderfield/waves/003/residuals/legacy.json"
+        with of.field.using_field_home(home), of.field.field_generation(field.tmp):
+            state = of.field.load_state(field.tmp)
+            state["wave"] = 3
+            of.field.save_state(state, field.tmp)
+            of.field.dump_json(selected / "packets/legacy.json", packet)
+        meta = selected / "spawns/legacy.json"
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        meta.write_text(json.dumps({"adapter": "generic", "outcome": "no-residual"}))
+        for args in ((), ("--wave", "3")):
+            with self.subTest(args=args):
+                result = field.of("collect", *args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("MISSING legacy", result.stdout)
+                self.assertIn("adapter=generic", result.stdout)
+                self.assertIn("wave=3 ok=0 invalid=0 missing=1 total=1", result.stdout)
+
     def test_partial_collect_commits_generation_then_exits_2(self) -> None:
         field = Field(self)
         field.pack("e1")
@@ -234,6 +258,15 @@ class PartialCollect(unittest.TestCase):
 
 
 class ChildForgeGuard(unittest.TestCase):
+    def test_collect_refuses_spawned_and_handoff_children(self) -> None:
+        field = Field(self)
+        for marker in ("OF_CHILD", "OF_HANDOFF_CHILD"):
+            with self.subTest(marker=marker):
+                result = field.of("collect", **{marker: "fixture"})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("child-forge", result.stderr)
+                self.assertIn("of collect", result.stderr)
+
     def test_child_cannot_pack_unpack_or_spawn_in_its_field(self) -> None:
         field = Field(self)
         field.pack("c1")

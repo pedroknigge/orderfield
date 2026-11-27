@@ -9,8 +9,10 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -28,6 +30,73 @@ def env_for(tmp: Path) -> dict[str, str]:
         "OF_LEARNINGS": str(tmp / "learnings.json"),
         "OF_FIELD_LOCK_WAIT_SECONDS": "120",
     }
+
+
+class ProcessBoundary(unittest.TestCase):
+    def test_only_the_harness_launch_registers_its_child(self) -> None:
+        from of.cli.wave import run_child
+
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Path(tmp) / "registry.json"
+            with patch.dict(os.environ, {"OF_SPAWN_REGISTRY": str(registry)}):
+                env = {**os.environ, "OF_CHILD": "fixture"}
+                argv = [sys.executable, "-c", "import os; print(os.getpid())"]
+                subprocess.run(argv, env=env, capture_output=True, check=True)
+                self.assertFalse(registry.exists())
+                result = run_child(argv, Path(tmp), env, 10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                row, = json.loads(registry.read_text())["items"]
+                self.assertEqual((row["pid"], row["child_id"]), (int(result.stdout), "fixture"))
+                self.assertEqual(row["session"], os.name == "posix")
+
+    def test_field_lock_refuses_existing_and_dangling_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = of.field.field_lock_path(root)
+            path.parent.mkdir()
+            target = root / "fixture.txt"
+            path.symlink_to(target)
+            for exists in (False, True):
+                with self.subTest(exists=exists):
+                    if exists:
+                        target.write_text("fixture")
+                    with self.assertRaises(SystemExit):
+                        with of.field_lock(root, "worktree"):
+                            self.fail("acquired linked lock")
+                    self.assertEqual(of.field.probe_lock_capability(root)["status"], "not-writable")
+                    self.assertEqual(target.exists(), exists)
+                    if exists:
+                        self.assertEqual(target.read_text(), "fixture")
+
+    def test_parallel_registry_writes_publish_complete_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Path(tmp) / "registry.json"
+            env = {**os.environ, "OF_SPAWN_REGISTRY": str(registry), "PYTHONPATH": str(SCRIPTS)}
+            command = (
+                "import os, sys, subprocess\n"
+                "original = subprocess.Popen\n"
+                "from of.field import register_spawned_child\n"
+                "assert subprocess.Popen is original\n"
+                "for i in range(5): register_spawned_child(os.getpid(), sys.argv[1])\n"
+            )
+            children = [subprocess.Popen([sys.executable, "-c", command, str(i)], env=env)
+                        for i in range(6)]
+            try:
+                deadline = time.monotonic() + 30
+                while any(child.poll() is None for child in children):
+                    self.assertLess(time.monotonic(), deadline, "registry writers timed out")
+                    if registry.exists():
+                        self.assertTrue(json.loads(registry.read_text())["items"])
+                    time.sleep(0.005)
+                self.assertTrue(all(child.returncode == 0 for child in children))
+                rows = json.loads(registry.read_text())["items"]
+                self.assertEqual({(row["pid"], row["child_id"]) for row in rows},
+                                 {(child.pid, str(i)) for i, child in enumerate(children)})
+            finally:
+                for child in children:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait()
 
 
 class FieldLockRace(unittest.TestCase):

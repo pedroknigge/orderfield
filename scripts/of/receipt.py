@@ -609,27 +609,24 @@ class Argv0Bind(TypedDict):
 
 
 class KernelVerify:
-    """Kernel-attested command execution for packet verify_cmd and of spec --run."""
+    """Run packet verify_cmd and of spec --run with a bounded environment.
+
+    The receipt binds the command, resolved executable and its file hash, project
+    files named by argv, project PATH entries, output and exit status. Transitive
+    imports, interpreter configuration files and tools invoked by the command
+    are outside the input manifest.
+    """
 
     DEFAULT_TIMEOUT_S = 120
     REFUSED_EXIT = 126
     NOT_FOUND_EXIT = 127
     RULE = "ChildWritableArgv0"
-    CODE_SELECTING_ENV = (
-        "PYTHONPATH",
-        "PYTHONHOME",
-        "PYTHONSAFEPATH",
-        "VIRTUAL_ENV",
-        "NODE_PATH",
-        "NODE_OPTIONS",
-        "GOFLAGS",
-        "GO111MODULE",
-        "GOPATH",
-        "RUBYLIB",
-        "PERL5LIB",
-        "CLASSPATH",
-    )
-    _WAL_SECRETS = ("OF_LEADER_KEY", "OF_LEADER_TOKEN")
+    _RUNTIME_ENV = frozenset({
+        "PATH", "HOME", "USER", "LOGNAME", "LANG", "TZ", "TEMP", "TMP", "TMPDIR",
+        "SYSTEMROOT", "WINDIR", "PATHEXT", "USERPROFILE",
+        "APPDATA", "LOCALAPPDATA", "OF_CHILD", "OF_HANDOFF_CHILD", "OF_SPAWN_REGISTRY",
+        "OF_FIELD", "OF_NO_UPDATE_CHECK",
+    })
     MISSING_HINT = (
         "This host has no such program. Set verify_cmd to one that exists "
         "(for example `python3 -m unittest`) with `of patch`, and record that "
@@ -823,9 +820,12 @@ class KernelVerify:
     def _verify_env() -> dict[str, str]:
         import os
 
-        run_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-        for secret in KernelVerify._WAL_SECRETS:
-            run_env.pop(secret, None)
+        run_env = {
+            key: value for key, value in os.environ.items()
+            if key.upper() in KernelVerify._RUNTIME_ENV or key.startswith("LC_")
+        }
+        run_env.setdefault("PATH", os.defpath)
+        run_env.update(PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1")
         return run_env
 
     @staticmethod
@@ -892,7 +892,10 @@ class KernelVerify:
             cand = argv0 if os.path.isabs(argv0) else os.path.join(str(checkout), argv0)
             found = shutil.which(cand)
         else:
-            found = shutil.which(argv0, path=env.get("PATH", ""))
+            search = os.pathsep.join(
+                os.path.join(checkout, entry) for entry in env.get("PATH", os.defpath).split(os.pathsep)
+            )
+            found = shutil.which(argv0, path=search)
         if not found:
             return None
         if not os.path.isabs(found):
@@ -978,8 +981,7 @@ class KernelVerify:
         delta: dict[str, str] = {}
         kept: list[str] = []
         for entry in str(env.get("PATH") or "").split(os.pathsep):
-            if not entry:
-                continue
+            entry = entry or os.curdir
             cand = entry if os.path.isabs(entry) else os.path.normpath(
                 os.path.join(str(checkout), entry)
             )
@@ -988,10 +990,6 @@ class KernelVerify:
                 kept.append(entry)
         if kept:
             delta["PATH"] = os.pathsep.join(kept)
-        for key in KernelVerify.CODE_SELECTING_ENV:
-            val = env.get(key)
-            if val:
-                delta[key] = val
         return delta
 
     @staticmethod
@@ -1148,7 +1146,12 @@ class KernelVerify:
                 bind=resolved,
             )
             return receipt, receipt_rel, KernelVerify.REFUSED_EXIT
-        exit_code, combined = KernelVerify._run(tree, argv, timeout_s, env)
+        executable = resolved["argv0"]
+        if executable:
+            exit_code, combined = KernelVerify._run(tree, [executable, *argv[1:]], timeout_s, env)
+        else:
+            exit_code = KernelVerify.NOT_FOUND_EXIT
+            combined = f"binary not found: {argv[0]}\n".encode("utf-8")
         if not combined:
             combined = f"# kernel-verify: {raw_cmd}\nexit={exit_code}\n".encode("utf-8")
         receipt, rpath, receipt_rel = KernelVerify.attest(
