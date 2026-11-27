@@ -1463,23 +1463,50 @@ class ReviewWitness:
         dump_json(path, rec, skip_dir_fsync=True)
 
     @staticmethod
-    def drift(root: Path, rec: dict[str, Any]) -> list[str]:
-        out: list[str] = []
-        for row in rec.get("paths") or []:
-            if not isinstance(row, dict):
+    def _bound_record(root: Path, packet: dict[str, Any]) -> dict[str, Any] | None:
+        rec = ReviewWitness.load(root, packet)
+        if rec is None or any(rec.get(k) != packet.get(k) for k in ("role", "wave", "child_id")):
+            return None
+        paths = rec.get("paths")
+        if not isinstance(paths, list) or not all(isinstance(p, dict) for p in paths):
+            return None
+        if [p.get("path") for p in paths] != ReviewWitness.cites(packet):
+            return None
+        return rec
+
+    @staticmethod
+    def _resolve_paths(root: Path, witnesses: list[dict], independent: set[tuple[int, str]]) -> None:
+        current: dict[str, str] = {}
+        latest: dict[tuple[str, str], dict] = {}
+        for row in reversed(witnesses):
+            if row.get("reason"):
                 continue
-            rel = str(row.get("path") or "")
-            if not rel:
-                continue
-            if ReviewWitness._sha(root, rel) != str(row.get("sha256") or ""):
-                out.append(rel)
-        return out
+            wave, child = row["wave"], row["child_id"]
+            pending, covered = [], {}
+            for cite in row["paths"]:
+                rel = cite["path"]
+                if rel not in current:
+                    current[rel] = ReviewWitness._sha(root, rel)
+                key = (row["role"], rel)
+                if current[rel] and cite.get("sha256") == current[rel]:
+                    if (wave, child) in independent:
+                        latest.setdefault(key, {"wave": wave, "child_id": child})
+                elif key in latest and latest[key]["wave"] > wave:
+                    covered[rel] = latest[key]
+                else:
+                    pending.append(rel)
+            row["stale"] = bool(pending)
+            if pending or covered:
+                row["stale_paths"] = pending
+            if covered:
+                row["covered_by"] = covered
 
     @staticmethod
     def document(root: Path) -> dict[str, Any]:
         findings: list[dict[str, Any]] = []
         claims: list[dict[str, Any]] = []
         witness: list[dict[str, Any]] = []
+        independent: set[tuple[int, str]] = set()
         for wave in wave_numbers(root):
             try:
                 packets = packed_children(root, int(wave))
@@ -1489,18 +1516,21 @@ class ReviewWitness:
                 role = str(packet.get("role") or "")
                 if role not in ReviewAttackers.REVIEW:
                     continue
+                child = str(packet.get("child_id") or "")
+                row = {"child_id": child, "role": role, "wave": int(wave),
+                       "head": "", "tree": "", "stale": True, "paths": []}
+                witness.append(row)
                 try:
                     path = packet_residual_file(root, packet)
                 except SystemExit:
-                    continue
-                if path is None:
-                    continue
-                if path.with_suffix(path.suffix + ".invalid.txt").is_file():
+                    path = None
+                if path is None or path.with_suffix(path.suffix + ".invalid.txt").is_file():
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
                 data = _read_json_object(path)
                 if not isinstance(data, dict):
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                child = str(packet.get("child_id") or "")
                 bucket = ReviewAttackers.bucket(data)
                 evidence = ReviewAttackers.evidence_text(data)
                 if ReviewWitness.bare(data, bucket):
@@ -1518,34 +1548,15 @@ class ReviewWitness:
                     )
                     if finding_state != "open":
                         claims.append(ReviewWitness.claim(child, role, int(wave)))
-                rec = ReviewWitness.load(root, packet)
+                rec = ReviewWitness._bound_record(root, packet)
                 if rec is None:
-                    witness.append(
-                        {
-                            "child_id": child,
-                            "role": role,
-                            "wave": int(wave),
-                            "head": "",
-                            "tree": "",
-                            "stale": True,
-                            "reason": ReviewWitness.NO_WITNESS,
-                            "paths": [],
-                        }
-                    )
+                    row["reason"] = ReviewWitness.NO_WITNESS
                     continue
-                drifted = ReviewWitness.drift(root, rec)
-                row = {
-                    "child_id": child,
-                    "role": role,
-                    "wave": int(wave),
-                    "head": str(rec.get("head") or ""),
-                    "tree": str(rec.get("tree") or ""),
-                    "stale": bool(drifted),
-                    "paths": list(rec.get("paths") or []),
-                }
-                if drifted:
-                    row["stale_paths"] = drifted
-                witness.append(row)
+                if data.get("status") in ("done", "threshold") and not packet.get("owns_paths"):
+                    independent.add((int(wave), child))
+                row.update(head=str(rec.get("head") or ""), tree=str(rec.get("tree") or ""),
+                           paths=rec["paths"])
+        ReviewWitness._resolve_paths(root, witness, independent)
         return {
             "findings": findings,
             "open": [

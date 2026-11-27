@@ -8,7 +8,9 @@ with a CONTEST.json trail, never deleted.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -17,10 +19,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 OF_PY = SCRIPTS / "of.py"
+sys.path.insert(0, str(SCRIPTS))
+from of.cli import build_parser, contend_cmd  # noqa: E402
 
 BRIEF = (
     "# Demo contest brief\n"
@@ -84,6 +89,24 @@ def stamp_verified(home: Path) -> str:
     return str(reqs[0].get("id"))
 
 
+class ContendOutput(unittest.TestCase):
+    def test_json_excludes_candidate_setup_and_keeps_events_on_stderr(self) -> None:
+        def candidates(*args, **kwargs):
+            print("created candidate")
+            print('{"event":"new"}', file=sys.stderr)
+            return "contest_demo", ["first", "second"]
+
+        args = build_parser().parse_args(["contend", "--json"])
+        out, err = io.StringIO(), io.StringIO()
+        with patch.object(contend_cmd, "open_contest", side_effect=candidates), \
+                patch.object(contend_cmd, "refuse_child_forge") as guard, \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            args.func(args)
+        guard.assert_called_once_with("of contend")
+        self.assertEqual(json.loads(out.getvalue()), {"contest": "contest_demo", "candidates": ["first", "second"]})
+        self.assertEqual(json.loads(err.getvalue()), {"event": "new"})
+
+
 class ContendOpensSiblings(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="of-contest-"))
@@ -94,7 +117,7 @@ class ContendOpensSiblings(unittest.TestCase):
     def test_contend_opens_two_candidates_sharing_the_brief(self) -> None:
         r = run_of(self.tmp, "contend", "--candidates", "2", "--json")
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-        payload = contest_of(r.stdout)
+        payload = json.loads(r.stdout)
         contest = str(payload["contest"])
         ids = [str(x) for x in payload["candidates"]]
         self.assertEqual(len(ids), 2)

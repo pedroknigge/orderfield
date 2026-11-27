@@ -1067,12 +1067,23 @@ def merge_extracted_requirements(
     return changed
 
 
-MARKDOWN_LIST_PREFIX = r"(?:[-+*]|\d+[.)])[ \t]+"
-LIST_PREFIX_RE = re.compile(r"^[ \t]*" + MARKDOWN_LIST_PREFIX)
+LIST_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?= |$)( *)")
 FENCE_OPEN_RE = re.compile(
-    rf"^(?P<indent>[ \t]*)(?:{MARKDOWN_LIST_PREFIX})?"
-    r"(?P<marker>`{3,}(?=[^`]*$)|~{3,})"
+    r"^[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)*(?P<marker>`{3,}(?=[^`]*$)|~{3,})"
 )
+
+
+def _list_content_column(line: str, item_indents: list[int]) -> int:
+    """Track the content columns of empty, nested and continued list items."""
+    indent = _indent(line)
+    while line and item_indents and indent < item_indents[-1]:
+        item_indents.pop()
+    column = item_indents[-1] if item_indents else 0
+    while marker := LIST_MARKER_RE.match(line, column):
+        padding = len(marker[1])
+        column = marker.start(1) + (padding if 1 <= padding <= 4 else 1)
+        item_indents.append(column)
+    return column
 
 
 def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
@@ -1084,18 +1095,15 @@ def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
     while i < len(rows):
         start = i + 1
         buf = rows[i].rstrip()
-        indent = _indent(buf)
-        while buf and item_indents and indent < item_indents[-1]:
-            item_indents.pop()
-        parent_indent = item_indents[-1] if item_indents else 0
-        prefix = LIST_PREFIX_RE.match(buf)
-        if prefix and indent - parent_indent <= 3:
-            item_indents.append(len(prefix[0].expandtabs(4)))
-        fence = FENCE_OPEN_RE.match(buf)
-        if fence and indent - parent_indent <= 3:
+        line = buf.expandtabs(4)
+        list_indent = _list_content_column(line, item_indents)
+        content = line[list_indent:]
+        if not content:
+            buf = ""
+        fence = FENCE_OPEN_RE.match(content)
+        if fence and fence.start("marker") <= 3:
             marker = fence["marker"]
             closer = re.compile(rf"[ \t]*{marker[0]}{{{len(marker)},}}[ \t]*")
-            list_indent = item_indents[-1] if item_indents else 0
             i += 1
             while i < len(rows):
                 row = rows[i]
@@ -1104,7 +1112,7 @@ def joined_lines_with_span(text: str) -> list[tuple[int, int, str]]:
                 i += 1
                 if _indent(row) - list_indent <= 3 and closer.fullmatch(row):
                     break
-            out.append((start, i, fence["indent"] + marker))
+            out.append((start, i, " " * _indent(buf) + marker))
             continue
         while buf.endswith("\\") and i + 1 < len(rows):
             if FENCE_OPEN_RE.match(rows[i + 1]):

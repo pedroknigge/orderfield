@@ -90,23 +90,59 @@ def _check_homes(root: Path):
     return [field_root] if order.is_file() and not order.is_symlink() else []
 
 
+def _repair_covers(home: Path, occurrence: list[str], ids: list[str], rows: dict) -> bool:
+    if not all(rows.get(rid, {}).get("status") in ("verified", "verified_internal", "verified_contract")
+               for rid in ids):
+        return False
+    residual = home / occurrence[0]
+    wave = residual.parent.parent
+    report = _read_json_object(wave / "report.json") or {}
+    if (report and str(report.get("wave")).zfill(3) == wave.name
+            and residual.stem not in (report.get("skipped_in_flight") or [])):
+        # Integration landed the failure. The current verification supersedes it.
+        return True
+    # Before integration the residual can be newer than the last verification.
+    # A WAL field needs the per-ID stamp. Older fields only have the ledger write.
+    try:
+        reported = residual.stat().st_mtime_ns
+        for rid in ids:
+            stamp = home / "checks" / f"{rid}.json"
+            if Path(rid).name != rid or rows[rid]["status"] != "verified_contract" or not stamp.is_file():
+                if (home / "wal" / "CURRENT.json").is_file():
+                    return False
+                stamp = home / "REQUIREMENTS.json"
+            if stamp.stat().st_mtime_ns < reported:
+                return False
+    except OSError:
+        return False
+    return True
+
+
 def _check_failed(root: Path, claim: dict, history: dict) -> bool:
     terms = set()
+    failed_ids = claim["failed"]
+    required_terms = claim["constraints"] + claim["done_when"]
     for home in _check_homes(root):
         order = _read_json_object(home / "ORDER.json") or {}
         fid = str(order.get("id") or home.name)
-        for key in ("constraints", "done_when"):
-            terms.update(_texts(order.get(key)))
+        local_terms = set(_texts(order.get("constraints"))) | set(_texts(order.get("done_when")))
+        terms.update(local_terms)
         known = {tuple(row) for row in history.get(fid, [])}
+        ledger = _read_json_object(home / "REQUIREMENTS.json") or {}
+        rows = {row["id"]: row for row in ledger.get("requirements") or []
+                if isinstance(row, dict) and isinstance(row.get("id"), str)}
+        if known and any(rows.get(rid, {}).get("status") == "failed" for rid in failed_ids):
+            return True
         for occurrence, payload in _residual_claims(home):
-            if payload == claim and tuple(occurrence) not in known:
+            if payload != claim or tuple(occurrence) in known:
+                continue
+            if required_terms and not local_terms.issuperset(required_terms):
                 return True
-        if known and claim["failed"]:
-            ledger = _read_json_object(home / "REQUIREMENTS.json") or {}
-            if any(isinstance(row, dict) and row.get("id") in claim["failed"]
-                   and row.get("status") == "failed" for row in ledger.get("requirements") or []):
+            if failed_ids and not _repair_covers(home, occurrence, failed_ids, rows):
                 return True
-    return not terms.issuperset(claim["constraints"] + claim["done_when"])
+            if not (required_terms or failed_ids):
+                return True
+    return not terms.issuperset(required_terms)
 
 
 def _canonical(payload: dict[str, Any]) -> str:
@@ -232,7 +268,7 @@ class LearnChecks:
     def _script(message: str, payload: dict[str, Any], history: dict) -> str:
         # These functions also run in a consumer repo without Orderfield installed.
         readers = "\n".join(inspect.getsource(fn) for fn in (
-            _read_json_object, _texts, _payload, _residual_claims, _check_homes, _check_failed,
+            _read_json_object, _texts, _payload, _residual_claims, _check_homes, _repair_covers, _check_failed,
         ))
         data = json.dumps({"message": message, "claim": payload}, ensure_ascii=True)
         return (

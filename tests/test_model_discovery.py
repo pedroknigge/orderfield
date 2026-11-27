@@ -119,7 +119,7 @@ class LiveModelDiscovery(unittest.TestCase):
 
     def run_cli(self, adapter='codex', mode='ok', timeout='6', global_json=False, proc_timeout=12,
                 headroom=False):
-        args = ['--json', 'models'] if global_json else ['models', '--json']
+        args = (['--json'] if global_json else []) + ['models', '--json']
         args += ['--headroom'] if headroom else []
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), *args,
                                  '--adapter', adapter, '--timeout', timeout],
@@ -251,6 +251,22 @@ class LiveModelDiscovery(unittest.TestCase):
         result, report = self.run_cli('opencode')
         self.assertEqual(result.returncode, 2)
         self.assertEqual(report['status'], 'unsupported')
+        plain = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), '--json',
+                                'models', '--adapter', 'codex'], env=self.env, cwd=self.root,
+                               capture_output=True, text=True)
+        self.assertEqual(plain.returncode, 2)
+        self.assertIn('codex: missing', plain.stdout)
+
+    def test_model_output_flag_does_not_enable_error_events(self):
+        for flags, events in ((['models', '--json'], False), (['--json', 'models', '--json'], True)):
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/of.py'), *flags,
+                                     '--timeout', '0'], env={**self.env, 'OF_JSON': '0'},
+                                    cwd=self.root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            if events:
+                self.assertEqual(json.loads(result.stderr)['event'], 'error')
+            else:
+                self.assertIn('of: error: ValueError:', result.stderr)
 
     def test_all_inventory_and_live_every_call(self):
         with patch.dict(os.environ,self.env):

@@ -108,6 +108,20 @@ class GraduatedCheck(unittest.TestCase):
             recurrence.parent.mkdir(parents=True)
             recurrence.write_text(json.dumps(body), encoding="utf-8")
             run(1)
+            for status, code in (("failed", 1), ("verified_contract", 0)):
+                ledger.write_text(json.dumps({"requirements": [{"id": "CLI-001", "status": status}]}),
+                                  encoding="utf-8")
+                run(code)
+            self.assertEqual(json.loads(recurrence.read_text()), body)
+            # Once integration has landed the failure, copying its historical
+            # residual later does not undo the ledger's subsequent repair.
+            report = recurrence.parents[1] / "report.json"
+            report.write_text(json.dumps({"wave": 2}), encoding="utf-8")
+            newer = ledger.stat().st_mtime_ns + 2_000_000_000
+            os.utime(recurrence, ns=(newer, newer))
+            run(0)
+            report.write_text(json.dumps({"wave": 2, "skipped_in_flight": ["worker"]}))
+            run(1)
             for home in homes:
                 self.assertEqual(json.loads((home / "waves/001/residuals/worker.json").read_text()), body)
 
@@ -328,7 +342,11 @@ class LearnChecksCli(unittest.TestCase):
         red = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(red.returncode, 1)
         self.assertIn("CLI-001", red.stderr)
-        (homes[0] / "waves/001/residuals/recurrence.json").unlink()
+        recurrence = homes[0] / "waves/001/residuals/recurrence.json"
+        history[recurrence] = recurrence.read_bytes()
+        (homes[0] / "REQUIREMENTS.json").write_text(json.dumps({
+            "requirements": [{"id": "CLI-001", "status": "verified_contract"}],
+        }), encoding="utf-8")
         green = subprocess.run([sys.executable, str(script)], cwd=str(self.tmp), capture_output=True, text=True, timeout=30)
         self.assertEqual(green.returncode, 0, green.stderr)
         self.assertEqual(history, {path: path.read_bytes() for path in history})

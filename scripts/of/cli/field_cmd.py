@@ -22,12 +22,14 @@ from of.field import (
     json_events_enabled,
     load_order,
     load_state,
+    order_path,
     patch_origin,
     SpawnRecord,
     physical_field_rel,
     print_owned_unverified,
     refuse_child_forge,
     remove_constraint,
+    restore_live_from_current,
     require_public_schema,
     save_order,
     save_state,
@@ -439,6 +441,17 @@ def cmd_phase(args: argparse.Namespace) -> None:
             )
     snapshot_session(root, "phase")
     print(f"phase={order['phase']} rev={order['rev']}")
+
+
+def patch_from_current(root: Path) -> None:
+    if not order_path(root).exists():
+        die("no ORDER. of init --mission '...'")
+    restored = restore_live_from_current(root)
+    for rel in restored:
+        print(f"restored      {rel}  (live copy kept under wal/orphans/)")
+    if not restored:
+        print("restored      0  (live already matches WAL CURRENT)")
+    emit_event("patch", from_current=True, restored=restored, ok=True)
 
 
 def cmd_patch(args: argparse.Namespace) -> None:

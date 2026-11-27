@@ -15,12 +15,14 @@ from of.field import (
     PHASES,
     PULSE_STALE_MINUTES,
     ROLES,
+    die,
     field_lock,
     find_root,
     emit_event,
     json_events_enabled,
     print_owned_unverified,
     redact_text,
+    refuse_child_forge,
     require_nonsymlink_kernel_root,
     set_json_events,
 )
@@ -39,7 +41,6 @@ from of.cli.ops import (  # noqa: F401
     cmd_gc,
     cmd_learn,
     cmd_migrate,
-    cmd_patch_from_current,
     cmd_pulse,
     cmd_resume,
     cmd_retain,
@@ -81,6 +82,7 @@ from of.cli.field_cmd import (
     cmd_next_wave,
     cmd_patch,
     cmd_phase,
+    patch_from_current,
 )
 from of.cli.spec_cmd import (  # noqa: F401
     cmd_close,
@@ -415,7 +417,7 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
         action="store_true",
         help="opt-in OpenRouter price refresh (cached; failure keeps prior cache)",
     )
-    s.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+    s.add_argument("--json", dest="models_json", action="store_true",
                    help="print model discovery JSON on stdout")
     s.set_defaults(func=cmd_models)
 
@@ -583,6 +585,7 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
         help="copy a field learning of this ORDER into the protocol store",
     )
     s.add_argument("--list", action="store_true", help="print protocol and field lessons")
+    _list_options(s, "learnings")
     s.add_argument(
         "--forget",
         dest="forget",
@@ -657,7 +660,7 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
         action="store_true",
         help="force remove even if worktree has unlanded changes",
     )
-    wt.add_parser("list", help="list recorded worktrees")
+    _list_options(wt.add_parser("list", help="list recorded worktrees"), "worktrees")
     s.set_defaults(func=cmd_worktree)
 
     s = sub.add_parser("validate", help="validate a contract JSON file")
@@ -1248,6 +1251,14 @@ def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
     s.set_defaults(func=cmd_eval)
 
 
+def _list_options(parser: argparse.ArgumentParser, items: str) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--all", dest="list_all", action="store_true",
+                       help=f"print all {items} (default list is capped)")
+    group.add_argument("--cursor", dest="list_cursor", default="",
+                       help="continue a capped list from this id")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="of",
@@ -1289,10 +1300,23 @@ def _forbid_abbrev(parser: argparse.ArgumentParser) -> None:
 ERROR_MESSAGE_MAX_CHARS = 400
 
 
+def _check_restore_options(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    # Restore is its own act: silently dropping --mission etc. is a lie.
+    base, plain = (vars(parser.parse_args(argv)) for argv in (["patch"], ["resume"]))
+    mixed = sorted(
+        k for k, v in vars(args).items()
+        if k in base and k not in plain and k != "from_current" and v != base[k]
+    )
+    if mixed:
+        die(f"of patch --from-current takes no other patch flags (got {', '.join(mixed)})")
+
+
 def _dispatch() -> None:
     parser = build_parser()
     args = parser.parse_args()
     set_json_events(bool(getattr(args, "json", False)))
+    if args.cmd in ("collect", "gc", "migrate"):
+        refuse_child_forge(f"of {args.cmd}")
     from of.field import FIELD_BIND_COMMANDS, bind_active_field
 
     root = find_root()
@@ -1300,7 +1324,8 @@ def _dispatch() -> None:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
     if args.cmd == "patch" and getattr(args, "from_current", False):
         # Takes its own lock: the writer tamper refusal is what it repairs.
-        cmd_patch_from_current(args)
+        _check_restore_options(parser, args)
+        patch_from_current(root)
         return
     if args.cmd in MUTATING_COMMANDS:
         require_nonsymlink_kernel_root(root)

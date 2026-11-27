@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from contextlib import nullcontext, redirect_stdout
 
 from of.contest import crown, open_contest
 from of.field import die, find_root, refuse_child_forge
@@ -17,15 +18,21 @@ from of.field import die, find_root, refuse_child_forge
 def cmd_contend(args: argparse.Namespace) -> None:
     refuse_child_forge("of contend")
     root = find_root()
-    contest_id, ids = open_contest(
-        root,
-        mission=getattr(args, "mission", None),
-        source_text=getattr(args, "source", None),
-        candidates=int(getattr(args, "candidates", 3)),
-        phase=getattr(args, "phase", None),
-        max_gaps=int(getattr(args, "max_gaps", 0)),
-        parent_id=getattr(args, "field_id", None),
-    )
+    machine = bool(getattr(args, "json_out", False))
+    # Candidate creation also prints the human-readable 'of new' report.
+    with redirect_stdout(None) if machine else nullcontext():
+        contest_id, ids = open_contest(
+            root,
+            mission=getattr(args, "mission", None),
+            source_text=getattr(args, "source", None),
+            candidates=int(getattr(args, "candidates", 3)),
+            phase=getattr(args, "phase", None),
+            max_gaps=int(getattr(args, "max_gaps", 0)),
+            parent_id=getattr(args, "field_id", None),
+        )
+    if machine:
+        print(json.dumps({"contest": contest_id, "candidates": ids}, sort_keys=True))
+        return
     print(f"contest      {contest_id}")
     for pos, fid in enumerate(ids, 1):
         print(f"  candidate #{pos} {fid}")
@@ -34,8 +41,6 @@ def cmd_contend(args: argparse.Namespace) -> None:
         "(of --field <id> pack/spawn/collect), then "
         f"of crown --contest {contest_id}"
     )
-    if bool(getattr(args, "json_out", False)):
-        print(json.dumps({"contest": contest_id, "candidates": ids}, sort_keys=True))
 
 
 def cmd_crown(args: argparse.Namespace) -> None:

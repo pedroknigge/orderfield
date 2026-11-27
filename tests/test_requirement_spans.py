@@ -187,6 +187,17 @@ class ItemBlockSpans(unittest.TestCase):
             self.assertEqual([r["text"] for r in reqs], ["Keep this requirement"])
             self.assertEqual(spans(reqs), [(5, 5)])
 
+    def test_empty_and_nested_list_fences_keep_only_outside_rules(self) -> None:
+        for block in ("-\n  ~~~text\n  - Ignore the example.", "- - ~~~text\n    - Ignore the example.\n    ~~~",
+                      "1. -\n     ```sh\n     python -m example"):
+            with self.subTest(block=block):
+                text = f"## Requirements\n- Keep the first rule.\n{block}\n- Keep the next rule."
+                for reqs in (extract_requirements_from_spec(text),
+                             extract_requirements_from_plan(text, "plan.md")):
+                    self.assertEqual([r["text"] for r in reqs], ["Keep the first rule.", "Keep the next rule."])
+                    self.assertEqual(spans(reqs), [(2, 2), (6, 6)])
+                self.assertEqual(uncovered_list_lines(text, extract_requirements_from_spec(text)), [])
+
     def test_numbered_items_under_a_rule_heading_are_indexed(self) -> None:
         text = (
             "## Acceptance\n"

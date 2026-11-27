@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -136,6 +137,60 @@ def write_bound_residual(
 
 
 class ReviewWitnessVocabulary(unittest.TestCase):
+
+    def test_later_witness_covers_only_its_role_wave_and_current_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            packets = {}
+
+            def review(wave, child, role, paths, *, notes=None):
+                rel = f".orderfield/waves/{wave:03d}/residuals/{child}.json"
+                packet = {"wave": wave, "child_id": child, "role": role,
+                          "residual_path": rel, "review_scope": {"paths": paths}}
+                packets.setdefault(wave, []).append(packet)
+                residual = root / rel
+                residual.parent.mkdir(parents=True, exist_ok=True)
+                residual.write_text(json.dumps({"status": "done", "residual": {
+                    "evidence": "noted: app.py", "proposed_patch": {"notes": notes} if notes else None,
+                }}))
+                of.ReviewWitness.stamp(root, packet)
+                return of.ReviewWitness.path(root, packet)
+
+            def original():
+                doc = of.ReviewWitness.document(root)
+                self.assertIn("v1", doc["open"])
+                return next(row for row in doc["witness"] if row["child_id"] == "v1")
+
+            with patch("of.cli.spec_cmd.packed_children", side_effect=lambda _, w: packets[w]):
+                for name in ("app.py", "other.py"):
+                    (root / name).write_text("old")
+                first = review(1, "v1", "verifier", ["app.py", "other.py"], notes="Follow up on app.py")
+                history = first.read_bytes()
+                for name in ("app.py", "other.py"):
+                    (root / name).write_text("new")
+                review(1, "v2", "verifier", ["app.py", "other.py"])
+                review(2, "a2", "adversary", ["app.py", "other.py"])
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                second = review(2, "v3", "verifier", ["app.py"])
+                self.assertEqual(original()["stale_paths"], ["other.py"])
+                self.assertEqual(original()["covered_by"], {"app.py": {"wave": 2, "child_id": "v3"}})
+                invalid = root / ".orderfield/waves/002/residuals/v3.json.invalid.txt"
+                invalid.write_text("invalid")
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                invalid.unlink()
+                review(3, "v4", "verifier", ["other.py"])
+                self.assertFalse(original()["stale"])
+                self.assertEqual(first.read_bytes(), history)
+                (root / "app.py").write_text("changed again")
+                self.assertEqual(original()["stale_paths"], ["app.py"])
+                (root / "app.py").write_text("new")
+                second.unlink()
+                self.assertEqual(original()["stale_paths"], ["app.py"])
+                (root / "other.py").unlink()
+                review(4, "v5", "verifier", ["other.py"])
+                self.assertEqual(original()["stale_paths"], ["app.py", "other.py"])
+                first.unlink()
+                self.assertEqual(original()["reason"], of.ReviewWitness.NO_WITNESS)
 
     def test_open_is_act_and_consider(self) -> None:
         self.assertEqual(of.ReviewWitness.state("act"), "open")
