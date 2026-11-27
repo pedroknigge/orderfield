@@ -1,6 +1,6 @@
 # Roadmap
 
-The current line is 0.9.12. W7b removed the advisory and reserved runtime surfaces. Deferred work is still deferred.
+The current line is 0.9.13. W7b migration coherence and WAL/lock/child-forge/retention audit gaps are closed. Deferred work is still deferred.
 
 This page indexes what shipped and what must not be invented. Not a second regime.
 
@@ -10,7 +10,7 @@ A cut, a resume, a different model — the deferred work is still deferred. The 
 
 > Hub: [AGENTS.md](../AGENTS.md) · Current architecture: [architecture.md](architecture.md) · Release history: [CHANGELOG.md](../CHANGELOG.md)
 
-**Status:** Shipped · **Current release line:** `0.9.12`
+**Status:** Shipped · **Current release line:** `0.9.13`
 
 Orderfield remains a portable contract kernel: the harness owns processes, while ORDER, packets, residuals, validation, and regime decisions remain disk-backed and harness-neutral. The 0.5.0 operational contract preserves that boundary; runtime accounting stays reserved.
 
@@ -22,6 +22,11 @@ Not shipped. Each item needs a product decision before code. Do not claim any of
 - **W7b — deletions.** DONE in 0.9.12: `AdapterBalance`, `EfficiencySignal`, `UpdateAsk`; `contest.py` / `contend_cmd.py`; `scale_across` / `scale_up`, the across caps and counters, `budget.tokens`, `local_budget_pct`, and inherited depth, with an `of migrate` step. Deferred (moves, not deletions): `Plan*` extraction from `regime.py`; `host_ram.py` / `model_catalog.py` / `model_discovery.py` behind `doctor --advice`. Decision: `learn` and `issue` stay in the runtime.
 - **`OF_FIELD_STRICT` default-on.** Today strict field binding is opt-in (`OF_FIELD_STRICT=1`); default-on would make every mutation in a multi-field tree name its field.
 - **`eval_cmd` out of the runtime.** The 60 recovery eval fixture builders (~80 KB) moved out of `scripts/of/` into `scripts/eval_fixtures.py` in `0.9.1` so they do not bloat the installed skill surface; moving the remaining CLI runner to `tests/` or `tools/` stays optional.
+
+## 0.9.13 — W7b migration coherence & security hardening
+
+- `of migrate` and read-side compatibility now preserve packet-hash and wave-report integrity for pre-0.9.12 fields (propagating `H_OLD -> H_NEW` into residuals, prompt templates, `report.json`, and `integrations/<hash>.json`, and remapping retired `state.last_regime` / `ORDER.enabled_regimes` to `hold`).
+- WAL/HMAC, lock, child-forge, and retention hardening: `legacy_close_sha256` signed into `MANIFEST.json` HMAC and verified against `CURRENT.json`; unsigned `v: 1` downgrade refused whenever `wal/.leader_key` exists on disk; `ensure_committed_field_view` uses `_open_lock()` and thread-local `holds_field_lock()`; `of learn --forget`, `OF_HANDOFF_CHILD` on `ChildForge`/`issue submit`, pre-lock `_dispatch` refusal, and `worktree remove --force` live tamper checks; retention symlink DoS and `OSError` fixes. Proof: `tests/test_audit_v0913.py`.
 
 ## 0.9.12 — W7b deletions
 
@@ -513,7 +518,7 @@ Landed on main after the published v0.8.15 tag (`b275c0ab`, #221+#227) while sti
 
 ## 0.7.48 — efficiency signal + propose uptier/downtier
 
-- Post-hoc score of landed residuals: quality × optional `residual.usage`. `of status` / `of resume` / `of doctor` may propose a model-tier ask. Never auto-switch. `budget.tokens` stays reserved. [docs/efficiency-signal.md](efficiency-signal.md). `EfficiencySignal`. Not a finops platform. Not a new regime.
+- Post-hoc score of landed residuals: quality × optional `residual.usage`. `of status` / `of resume` / `of doctor` may propose a model-tier ask. Never auto-switch. `budget.tokens` stays reserved. `EfficiencySignal` (removed in 0.9.12). Not a finops platform. Not a new regime.
 
 ## 0.7.47 — optional per-task model hints
 

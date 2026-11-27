@@ -1242,13 +1242,22 @@ def _dispatch() -> None:
     parser = build_parser()
     args = parser.parse_args()
     set_json_events(bool(getattr(args, "json", False)))
-    if args.cmd in ("collect", "gc", "migrate"):
-        refuse_child_forge(f"of {args.cmd}")
+    if args.cmd in (MUTATING_COMMANDS - {"pack", "unpack"}):
+        label = (
+            "of patch --from-current"
+            if args.cmd == "patch" and getattr(args, "from_current", False)
+            else f"of {args.cmd}"
+        )
+        refuse_child_forge(label)
     from of.field import FIELD_BIND_COMMANDS, bind_active_field
 
     root = find_root()
     if args.cmd in FIELD_BIND_COMMANDS:
         bind_active_field(root, getattr(args, "field_id", None), cmd=args.cmd)
+    if args.cmd in ("pack", "unpack"):
+        from of.cli.wave import ChildForge
+
+        ChildForge.refuse(root, f"of {args.cmd}")
     if args.cmd == "patch" and getattr(args, "from_current", False):
         # Takes its own lock: the writer tamper refusal is what it repairs.
         _check_restore_options(parser, args)

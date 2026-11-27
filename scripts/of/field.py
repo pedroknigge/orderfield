@@ -354,7 +354,7 @@ MIGRATION_CATALOG = (
         "id": "retired-runtime-keys",
         "from": "any",
         "to": CURRENT_ARTIFACT_GENERATION,
-        "kind": "order|packet|state",
+        "kind": "order|packet|state|wave-report",
         "description": (
             "Drop contest, scale_up/scale_across, across caps/counters, "
             "local_budget_pct, inherited depth, and budget.tokens"
@@ -372,8 +372,32 @@ MIGRATION_CATALOG = (
     },
 )
 _HELD_FIELD_LOCK: Path | None = None
-# Re-entry is for the holding thread only; another thread waits on the flock.
-_HELD_FIELD_LOCK_THREAD: int | None = None
+# Per-thread lock tracking; re-entry is for the holding thread only.
+_HELD_FIELD_LOCK_LOCAL = threading.local()
+_HELD_FIELD_LOCK_GUARD = threading.Lock()
+_HELD_FIELD_LOCKS_BY_THREAD: dict[int, Path] = {}
+
+
+def holds_field_lock(root: Path | None = None) -> bool:
+    """True iff the current thread holds the field lock (for root, if given)."""
+    held = getattr(_HELD_FIELD_LOCK_LOCAL, "path", None)
+    if held is None:
+        return False
+    if root is None:
+        return True
+    return held == field_lock_path(root.resolve())
+
+
+def _set_held_field_lock(path: Path | None) -> None:
+    global _HELD_FIELD_LOCK
+    tid = threading.get_ident()
+    _HELD_FIELD_LOCK_LOCAL.path = path
+    with _HELD_FIELD_LOCK_GUARD:
+        if path is None:
+            _HELD_FIELD_LOCKS_BY_THREAD.pop(tid, None)
+        else:
+            _HELD_FIELD_LOCKS_BY_THREAD[tid] = path
+        _HELD_FIELD_LOCK = next(iter(_HELD_FIELD_LOCKS_BY_THREAD.values()), None)
 
 
 def utc_now() -> str:
@@ -2095,10 +2119,9 @@ def field_lock(
     field homes in one process (gc): one home-relative generation cannot
     stage N homes without their relative keys colliding.
     """
-    global _HELD_FIELD_LOCK, _HELD_FIELD_LOCK_THREAD
     require_nonsymlink_kernel_root(root)
     path = field_lock_path(root.resolve())
-    if _HELD_FIELD_LOCK == path and _HELD_FIELD_LOCK_THREAD == threading.get_ident():
+    if getattr(_HELD_FIELD_LOCK_LOCAL, "path", None) == path:
         yield
         return
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2139,8 +2162,7 @@ def field_lock(
         handle.write("\n")
         handle.flush()
         os.fsync(handle.fileno())
-        _HELD_FIELD_LOCK = path
-        _HELD_FIELD_LOCK_THREAD = threading.get_ident()
+        _set_held_field_lock(path)
         try:
             if command == "init --force":
                 command = "init"
@@ -2181,8 +2203,7 @@ def field_lock(
             with FieldWal.generation(root) if generation else nullcontext():
                 yield
         finally:
-            _HELD_FIELD_LOCK = None
-            _HELD_FIELD_LOCK_THREAD = None
+            _set_held_field_lock(None)
             handle.seek(0)
             handle.truncate()
             handle.flush()
@@ -2776,7 +2797,7 @@ def strip_retired_runtime_keys(order: dict[str, Any]) -> tuple[dict[str, Any], l
     if isinstance(regimes, list):
         kept = [r for r in regimes if r not in ("scale_up", "scale_across")]
         if kept != regimes:
-            out["enabled_regimes"] = kept
+            out["enabled_regimes"] = kept or ["hold"]
             notes.append("dropped reserved enabled_regimes")
     return out, notes
 
@@ -2854,6 +2875,9 @@ def migrate_state_artifact(state: dict[str, Any]) -> tuple[dict[str, Any], list[
         for key in extras:
             incoming.pop(key, None)
         notes.append(f"dropped unknown state keys {extras}")
+    if incoming.get("last_regime") in ("scale_up", "scale_across"):
+        incoming["last_regime"] = "hold"
+        notes.append("remapped retired state.last_regime to hold")
     for key, value in base.items():
         if key not in incoming:
             incoming[key] = value
@@ -2864,6 +2888,8 @@ def migrate_state_artifact(state: dict[str, Any]) -> tuple[dict[str, Any], list[
 def migrate_residual_artifact(
     residual: dict[str, Any],
     packet: dict[str, Any] | None,
+    *,
+    previous_packet_hash: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     from of.pack import PACKET_IDENTITY_FIELDS, packet_has_identity
     notes: list[str] = []
@@ -2874,6 +2900,13 @@ def migrate_residual_artifact(
         if key not in out:
             out[key] = packet.get(key)
             notes.append(f"copied residual.{key} from packet")
+    if (
+        previous_packet_hash
+        and out.get("packet_hash") == previous_packet_hash
+        and packet.get("packet_hash") != previous_packet_hash
+    ):
+        out["packet_hash"] = packet.get("packet_hash")
+        notes.append("updated residual.packet_hash after packet migration")
     return out, notes
 
 
@@ -2921,6 +2954,7 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
         actions.append(stub_action)
     order_file = order_path(root)
     raw_order = _read_json_object(order_file)
+    migrated_order: dict[str, Any] | None = None
     if isinstance(raw_order, dict):
         workspace = raw_order.get("workspace")
         new_ws, notes = normalize_workspace(workspace)
@@ -2928,6 +2962,7 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
         if notes:
             updated["workspace"] = new_ws
         updated, retired = strip_retired_runtime_keys(updated)
+        migrated_order = updated
         notes = list(notes) + list(retired)
         if notes:
             actions.append(
@@ -2944,9 +2979,15 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
     if isinstance(raw_state, dict):
         updated, notes = migrate_state_artifact(raw_state)
         if notes:
+            mid = (
+                "retired-runtime-keys"
+                if any("last_regime" in n or "across" in n for n in notes)
+                and not any(n.startswith("filled state.") for n in notes)
+                else "pre-0.4.2-state-defaults"
+            )
             actions.append(
                 {
-                    "id": "pre-0.4.2-state-defaults",
+                    "id": mid,
                     "kind": "state",
                     "path": state_file,
                     "data": updated,
@@ -2957,22 +2998,37 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
     if not waves.is_dir():
         return actions
     for wave_path in sorted(p for p in waves.iterdir() if p.is_dir()):
+        wave_num = int(wave_path.name) if wave_path.name.isdigit() else None
         packets_dir = wave_path / "packets"
         packet_by_child: dict[str, dict[str, Any]] = {}
+        old_hash_by_child: dict[str, str] = {}
+        raw_packets: list[dict[str, Any]] = []
+        migrated_packets: list[dict[str, Any]] = []
         if packets_dir.is_dir():
             for path in sorted(packets_dir.glob("*.json")):
                 raw = _read_json_object(path)
                 if not isinstance(raw, dict):
                     continue
+                raw_packets.append(raw)
                 updated, notes = migrate_packet_artifact(raw)
+                migrated_packets.append(updated)
                 child_id = str(updated.get("child_id") or path.stem)
                 packet_by_child[child_id] = updated
+                old_hash = raw.get("packet_hash")
+                new_hash = updated.get("packet_hash")
+                if isinstance(old_hash, str) and isinstance(new_hash, str) and old_hash != new_hash:
+                    old_hash_by_child[child_id] = old_hash
                 if notes:
-                    mid = (
-                        "protocol-writable-key"
-                        if all("workspace." in n for n in notes)
-                        else "pre-0.4.2-packet-identity"
-                    )
+                    if all("workspace." in n for n in notes):
+                        mid = "protocol-writable-key"
+                    elif any(
+                        "packet_id" in n or "order_id" in n or "packed_at" in n
+                        or n == "computed packet_hash"
+                        for n in notes
+                    ):
+                        mid = "pre-0.4.2-packet-identity"
+                    else:
+                        mid = "retired-runtime-keys"
                     actions.append(
                         {
                             "id": mid,
@@ -2983,27 +3039,129 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
                         }
                     )
         residuals_dir = wave_path / "residuals"
+        raw_residuals: dict[str, Any] = {}
+        migrated_residuals: dict[str, Any] = {}
         if residuals_dir.is_dir():
             for path in sorted(residuals_dir.glob("*.json")):
                 raw = _read_json_object(path)
                 if not isinstance(raw, dict):
                     continue
-                packet = packet_by_child.get(str(raw.get("child_id") or path.stem))
-                updated, notes = migrate_residual_artifact(raw, packet)
+                child_id = str(raw.get("child_id") or path.stem)
+                raw_residuals[child_id] = raw
+                packet = packet_by_child.get(child_id)
+                updated, notes = migrate_residual_artifact(
+                    raw,
+                    packet,
+                    previous_packet_hash=old_hash_by_child.get(child_id),
+                )
+                migrated_residuals[child_id] = updated
                 if notes:
+                    mid = (
+                        "retired-runtime-keys"
+                        if notes == ["updated residual.packet_hash after packet migration"]
+                        else "pre-0.4.2-packet-identity"
+                    )
                     actions.append(
                         {
-                            "id": "pre-0.4.2-packet-identity",
+                            "id": mid,
                             "kind": "residual",
                             "path": path,
                             "data": updated,
                             "notes": notes,
                         }
                     )
+        prompts_dir = wave_path / "prompts"
+        if prompts_dir.is_dir() and old_hash_by_child:
+            for path in sorted(prompts_dir.glob("*.RESIDUAL.template.json")):
+                raw = _read_json_object(path)
+                if not isinstance(raw, dict):
+                    continue
+                child_id = str(
+                    raw.get("child_id")
+                    or path.name.removesuffix(".RESIDUAL.template.json")
+                )
+                old_hash = old_hash_by_child.get(child_id)
+                packet = packet_by_child.get(child_id)
+                if (
+                    old_hash
+                    and packet
+                    and raw.get("packet_hash") == old_hash
+                    and packet.get("packet_hash") != old_hash
+                ):
+                    updated = dict(raw)
+                    updated["packet_hash"] = packet["packet_hash"]
+                    actions.append(
+                        {
+                            "id": "retired-runtime-keys",
+                            "kind": "residual-template",
+                            "path": path,
+                            "data": updated,
+                            "notes": [
+                                "updated residual template packet_hash after packet migration"
+                            ],
+                        }
+                    )
+
+        def _rehash_report_integration(
+            doc: dict[str, Any], report_notes: list[str]
+        ) -> tuple[dict[str, Any], list[str], str | None, str | None]:
+            if (
+                not old_hash_by_child
+                or wave_num is None
+                or migrated_order is None
+                or not isinstance(doc.get("integration"), dict)
+                or not doc["integration"].get("input_hash")
+            ):
+                return doc, report_notes, None, None
+            from of.regime import integration_input_digest
+
+            integration = doc["integration"]
+            partial = bool(integration.get("partial"))
+            apply_flag = bool(integration.get("apply"))
+            old_digest = integration_input_digest(
+                root,
+                wave_num,
+                raw_packets,
+                partial=partial,
+                apply=apply_flag,
+                order=migrated_order,
+                packet_hashes=old_hash_by_child,
+                residuals_override=raw_residuals,
+            )
+            if integration.get("input_hash") != old_digest:
+                return doc, report_notes, None, None
+            new_digest = integration_input_digest(
+                root,
+                wave_num,
+                migrated_packets,
+                partial=partial,
+                apply=apply_flag,
+                order=migrated_order,
+                residuals_override=migrated_residuals,
+            )
+            if new_digest == old_digest:
+                return doc, report_notes, None, None
+            out_doc = dict(doc)
+            out_int = dict(integration)
+            out_int["input_hash"] = new_digest
+            rec_path = out_int.get("record_path")
+            if isinstance(rec_path, str) and rec_path.endswith(f"/{old_digest}.json"):
+                out_int["record_path"] = (
+                    rec_path[: -len(f"{old_digest}.json")] + f"{new_digest}.json"
+                )
+            out_doc["integration"] = out_int
+            return (
+                out_doc,
+                [*report_notes, "recomputed report integration.input_hash after packet migration"],
+                old_digest,
+                new_digest,
+            )
+
         report_path = wave_path / "report.json"
         raw_report = _read_json_object(report_path)
         if isinstance(raw_report, dict):
             updated, notes = migrate_wave_report_artifact(raw_report)
+            updated, notes, _old_d, _new_d = _rehash_report_integration(updated, notes)
             structural = updated != raw_report
             if notes and (structural or "integration" not in raw_report):
                 actions.append(
@@ -3020,6 +3178,33 @@ def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
                         "write": structural,
                     }
                 )
+        integrations_dir = wave_path / "integrations"
+        if integrations_dir.is_dir():
+            for path in sorted(integrations_dir.glob("*.json")):
+                if path.name == "observations.json":
+                    continue
+                raw_int = _read_json_object(path)
+                if not isinstance(raw_int, dict):
+                    continue
+                updated, notes = migrate_wave_report_artifact(raw_int)
+                updated, notes, old_d, new_d = _rehash_report_integration(updated, notes)
+                structural = updated != raw_int
+                if structural:
+                    dest_path = (
+                        integrations_dir / f"{new_d}.json"
+                        if old_d and new_d and path.stem == old_d
+                        else path
+                    )
+                    actions.append(
+                        {
+                            "id": "retired-runtime-keys",
+                            "kind": "wave-report",
+                            "path": dest_path,
+                            "data": updated,
+                            "notes": notes,
+                            "write": True,
+                        }
+                    )
     return actions
 
 
@@ -3059,6 +3244,8 @@ def apply_field_migrations(actions: list[dict[str, Any]]) -> None:
                     f"invalid migrated residual {item['path']}:\n  "
                     + "\n  ".join(errs)
                 )
+        elif kind == "wave-report":
+            require_public_schema(data, "wave-report.schema.json", "wave report")
         dump_json(item["path"], data)
 
 
@@ -3217,6 +3404,8 @@ def load_state(root: Path | None = None) -> dict[str, Any]:
     base.update(data)
     for key in ("across_this_wave", "waves_since_across", "last_across_wave"):
         base.pop(key, None)
+    if base.get("last_regime") in ("scale_up", "scale_across"):
+        base["last_regime"] = "hold"
     errs = validate_state(base)
     if errs:
         die("invalid state:\n  " + "\n  ".join(errs))

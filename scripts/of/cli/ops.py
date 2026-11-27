@@ -294,6 +294,7 @@ def cmd_learn(args: argparse.Namespace) -> None:
         return
     forget = str(getattr(args, "forget", None) or "").strip()
     if forget:
+        refuse_child_forge("--forget")
         with _learn_session(root, has_order):
             gone = forget_learning(root if has_order else None, forget)
         emit_event("learn", action="forget", id=str(gone.get("id")), ok=True)
@@ -924,6 +925,9 @@ def cmd_worktree_remove(args: argparse.Namespace) -> None:
         from of.wal import FieldWal
 
         FieldWal.recover(root)
+        FieldWal.refuse_live_spec_tamper(root)
+        FieldWal.refuse_live_order_tamper(root)
+        FieldWal.materialize_current(root, overwrite=True)
         with FieldWal.generation(root):
             withdrawn = KernelVerify.withdraw_discarded(root, child_id)
         for rid in withdrawn:

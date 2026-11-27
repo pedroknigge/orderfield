@@ -303,6 +303,8 @@ class ChildForge:
     def refuse(root: Path, action: str) -> None:
         cid = spawned_child_id()
         if not cid:
+            if (os.environ.get("OF_HANDOFF_CHILD") or "").strip():
+                refuse_child_forge(action)
             return
         if CHILD_ID_RE.fullmatch(cid) and ChildForge._granted(root, cid):
             return
