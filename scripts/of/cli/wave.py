@@ -441,6 +441,12 @@ def _warn_oserror(kind: str, exc: OSError) -> None:
     emit_wave_warning(kind, " ".join(bits))
 
 
+def speak_warning(kind: str, line: str | None) -> None:
+    """One advisory speak-line: structured warning + `of: note —` plain echo."""
+    if line:
+        emit_wave_warning(kind, line, plain=f"of: note — {line}")
+
+
 def print_cost_disclaimer() -> None:
     """Pre-spawn: paid usage is unmeasured. Not a budget line."""
     if json_events_enabled():
@@ -864,11 +870,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         )
         slice_note = SliceLint.long_note(slice_text)
     for kind, message in SpawnAdapterMissing.pack_notes(len(live)):
-        emit_wave_warning(
-            kind,
-            message,
-            plain=f"of: note — {message}",
-        )
+        speak_warning(kind, message)
     implementers = [p for p in live if p.get("role") == "implementer"]
     if args.role == "implementer" and implementers:
         if not owns_paths:
@@ -926,27 +928,15 @@ def cmd_pack(args: argparse.Namespace) -> None:
         root=root,
         order=order,
     ):
-        emit_wave_warning(
-            kind,
-            message,
-            plain=f"of: note — {message}",
-        )
+        speak_warning(kind, message)
     if review_scope is not None:
         for kind, message in ReviewScope.notes(
             role=str(args.role),
             slice_text=slice_text,
             scope=review_scope,
         ):
-            emit_wave_warning(
-                kind,
-                message,
-                plain=f"of: note — {message}",
-            )
-        emit_wave_warning(
-            ReviewScope.KIND,
-            ReviewScope.note(review_scope),
-            plain=f"of: note — {ReviewScope.note(review_scope)}",
-        )
+            speak_warning(kind, message)
+        speak_warning(ReviewScope.KIND, ReviewScope.note(review_scope))
     order_view: dict[str, Any] = {
         "id": order["id"],
         "rev": order["rev"],
@@ -1387,44 +1377,20 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     child_id = require_child_id(packet.get("child_id"), "packet child_id")
     wave = packet.get("wave") or state["wave"]
     profile = resolve_trust_profile()
-    floor_speak = WriteFloor.speak_line(adapter, profile)
-    if floor_speak:
-        emit_wave_warning(
-            WriteFloor.UNSUPPORTED_KIND,
-            floor_speak,
-            plain=f"of: note — {floor_speak}",
-        )
-    sensor_speak = SensorTrust.speak_line(adapter, profile, packet)
-    if sensor_speak:
-        emit_wave_warning(
-            SensorTrust.KIND,
-            sensor_speak,
-            plain=f"of: note — {sensor_speak}",
-        )
-    host_speak = WriteFloor.host_advisory(adapter, root)
-    if host_speak:
-        emit_wave_warning(
-            WriteFloor.HOST_KIND,
-            host_speak,
-            plain=f"of: note — {host_speak}",
-        )
+    speak_warning(WriteFloor.UNSUPPORTED_KIND, WriteFloor.speak_line(adapter, profile))
+    speak_warning(SensorTrust.KIND, SensorTrust.speak_line(adapter, profile, packet))
+    speak_warning(WriteFloor.HOST_KIND, WriteFloor.host_advisory(adapter, root))
     if (
         profile == "conservative"
         and adapter in PRINT_MODE_ADAPTERS
         and (packet.get("owns_paths") or packet.get("role") == "implementer")
     ):
-        emit_wave_warning(
+        speak_warning(
             "trust_conservative",
             f"{TRUST_ENV}=conservative: {adapter} runs headless with no "
             "approval prompt, so a child that must write files usually exits with "
             "no residual. write-floor default is OF_TRUST=auto-edit; "
             "yolo is never implied.",
-            plain=(
-                f"of: note — {TRUST_ENV}=conservative: {adapter} runs headless with no "
-                "approval prompt, so a child that must write files usually exits with "
-                "no residual. write-floor default is OF_TRUST=auto-edit; "
-                "yolo is never implied."
-            ),
         )
     already = child_is_packed(root, int(wave), child_id)
     if not already and state["children_spawned"] >= order["caps"]["max_children"]:
@@ -1450,21 +1416,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     print_cost_disclaimer()
     env_mode = spawn_env_mode()
     operator_actions = OperatorAction.actions(trust=profile, env_mode=env_mode)
-    speak = OperatorAction.speak_line(operator_actions)
-    if speak:
-        emit_wave_warning(
-            OperatorAction.KIND,
-            speak,
-            plain=f"of: note — {speak}",
-        )
+    speak_warning(OperatorAction.KIND, OperatorAction.speak_line(operator_actions))
     mcp_mode = HostMcp.mode(adapter)
-    mcp_speak = HostMcp.speak_line(adapter, mcp_mode)
-    if mcp_speak:
-        emit_wave_warning(
-            HostMcp.KIND,
-            mcp_speak,
-            plain=f"of: note — {mcp_speak}",
-        )
+    speak_warning(HostMcp.KIND, HostMcp.speak_line(adapter, mcp_mode))
     prompt = render_prompt(
         packet, inline=adapter in INLINE_CONTRACT_ADAPTERS, root=root
     )
@@ -1572,14 +1526,10 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         dry_run=bool(args.dry_run),
     )
     if prior is not None:
-        emit_wave_warning(
+        speak_warning(
             "spawn_in_flight",
             f"overriding in-flight spawn record {meta_path} "
             f"(recorded pid={SpawnRecord.pid_label(prior)} not running)",
-            plain=(
-                f"of: note — overriding in-flight spawn record {meta_path} "
-                f"(recorded pid={SpawnRecord.pid_label(prior)} not running)"
-            ),
         )
 
     previous_residual_sha = None
@@ -1817,24 +1767,29 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         print(f"no residual yet. log={log_path}")
     ScopeWrite.record_exit(root, packet)
     data, _ = try_load_json(residual_abs)
+
+    def accept_merged(merged: Any) -> bool:
+        """Keep the first valid merge. session_adapter lands only where the
+        residual schema has it; the child's file is the channel."""
+        nonlocal data
+        if merged is data or validate_residual_for_packet(merged, packet, root):
+            return False
+        data = merged
+        dump_json(residual_abs, data, skip_dir_fsync=True)
+        return True
+
     reported_sid = last_session_id or AdapterResume.from_stdout(proc.stdout or "")
     if reported_sid and isinstance(data, dict):
-        # session_adapter lands only where the residual schema has it.
         for merged in (
             AdapterResume.merge(data, reported_sid, adapter),
             AdapterResume.merge(data, reported_sid),
         ):
-            if merged is not data and not validate_residual_for_packet(merged, packet, root):
-                data = merged
-                dump_json(residual_abs, data, skip_dir_fsync=True)
+            if accept_merged(merged):
                 break
     denied = AgyDeniedActions.reported(adapter, profile, proc.stdout or "")
     if denied:
         if isinstance(data, dict):
-            merged = AgyDeniedActions.merge(data, denied)
-            if merged is not data and not validate_residual_for_packet(merged, packet, root):
-                data = merged
-                dump_json(residual_abs, data, skip_dir_fsync=True)
+            accept_merged(AgyDeniedActions.merge(data, denied))
         print(f"denied_actions={','.join(denied)}")
         meta["denied_actions"] = denied
     valid = False
