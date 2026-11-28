@@ -514,7 +514,7 @@ def legacy_packet_hash_for(root: Path, packet: dict[str, Any]) -> str | None:
     old_hash = raw.get("packet_hash")
     if not isinstance(old_hash, str) or old_hash != packet_digest(raw):
         return None
-    from of.field import migrate_packet_artifact
+    from of.migrations import migrate_packet_artifact
     migrated, _notes = migrate_packet_artifact(raw)
     if migrated.get("packet_hash") != packet.get("packet_hash"):
         return None
@@ -644,7 +644,7 @@ def load_packet(path: Path) -> dict[str, Any]:
     # Read-side compatibility: strip retired W7b keys in memory. The raw file
     # stays untouched until `of migrate` writes the cleaned artifact.
     if packet_has_retired_keys(packet):
-        from of.field import migrate_packet_artifact
+        from of.migrations import migrate_packet_artifact
         packet, _retired = migrate_packet_artifact(packet)
     errs = validate_packet(packet)
     if errs:

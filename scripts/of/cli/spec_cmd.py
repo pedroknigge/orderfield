@@ -560,20 +560,8 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
                 denied.append(why)
         if denied:
             die("; ".join(denied))
-    for rid in getattr(args, "verified_internal", None) or []:
-        item = find_requirement(data, require_req_id(rid))
-        if item is None:
-            die(f"unknown requirement {rid}")
-        item["status"] = "verified_internal"
-        changed = True
-        if requirement_surface(item) == "contract":
-            print(
-                f"of: note — {rid} has a public surface; "
-                "of spec --verified-contract after exercising the CLI/API "
-                "(unit tests are VERIFIED_INTERNAL, not close).",
-                file=sys.stderr,
-            )
-    for rid in getattr(args, "verified", None) or []:
+    for rid in (getattr(args, "verified_internal", None) or []) + (getattr(args, "verified", None) or []):
+        # --verified is a legacy alias: both spellings mark VERIFIED_INTERNAL.
         item = find_requirement(data, require_req_id(rid))
         if item is None:
             die(f"unknown requirement {rid}")
@@ -605,19 +593,18 @@ def _cmd_spec_locked(args: argparse.Namespace, root: Path) -> None:
         if both_sides:
             item["pair_checked"] = True
         changed = True
-    for rid in getattr(args, "failed", None) or []:
-        item = find_requirement(data, require_req_id(rid))
-        if item is None:
-            die(f"unknown requirement {rid}")
-        item["status"] = "failed"
-        changed = True
-    for rid in getattr(args, "supersede", None) or []:
-        item = find_requirement(data, require_req_id(rid))
-        if item is None:
-            die(f"unknown requirement {rid}")
-        item["status"] = "superseded"
-        changed = True
-        print(f"superseded  {rid}")
+    for status_value, rids in (
+        ("failed", getattr(args, "failed", None) or []),
+        ("superseded", getattr(args, "supersede", None) or []),
+    ):
+        for rid in rids:
+            item = find_requirement(data, require_req_id(rid))
+            if item is None:
+                die(f"unknown requirement {rid}")
+            item["status"] = status_value
+            changed = True
+            if status_value == "superseded":
+                print(f"superseded  {rid}")
     if changed:
         DiscoveryReplay.sync_checks(root, data.get("requirements") or [])
         spec = spec_path(root)

@@ -8,6 +8,15 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## Unreleased
+
+- **CLI registration is data, not ceremony.** The six `_register_*` functions in `of/cli/__init__.py` (~1,060 lines of `add_argument` wrapping) are one ordered `_COMMANDS` table; nested subparsers (`wave`, `worktree`) keep small dedicated builders. Parser tree verified byte-identical (40 command groups, 185 actions, order/dests/help included); `tests.test_kernel_cli` green. 1,316 → 857 lines.
+- **Duplicated patterns collapsed in `spawn`/`pack`/`spec`.** One `speak_warning()` helper replaces ten copies of the speak-line advisory block; one `accept_merged()` closure replaces the two merge-validate-dump blocks in `cmd_spawn`; `_cmd_spec_locked`'s byte-identical `--verified`/`--verified-internal` loops and status-only-differing `--failed`/`--supersede` loops are single loops. Behavior preserved; 340 covering tests green.
+- **SCOPE-GODSPLIT continues: redaction and migrations leave `of.field`.** `of/redact.py` (secret/approval regexes, `redact_text`, `ArgvRedact` — zero field dependencies) and `of/migrations.py` (catalog, planning, application — imports field helpers; field never imports it). The two read-path cleaners `load_order`/`load_wave_report` call (`strip_retired_runtime_keys`, `migrate_wave_report_artifact`) stay in `field.py`; migrations imports them. `of.field` re-exports the redaction surface; `ops.py`/`pack.py` import migrations directly. `field.py`: 5,561 → 4,820 lines. Locks and schema extraction rejected: `field_lock` needs `die`/kernel-root checks, so the import cycle outweighs the structure. `field.py`: 5,561 → 4,865 lines.
+- **Latent `ChildForge` NameError fixed (found by an AST undefined-name sweep, not by tests).** `of/cli/wave.py` called `set_field_home()` (nested-grant committed-state read) without ever importing it — unreachable-by-tests path that would NameError at runtime. Imported from `of.field` alongside its call sites' existing imports.
+- **Hygiene.** `check_dead_defs.py` wired into the static-hygiene CI job (ran by hand only before); stale root `arquitectura-audit-report.{html,json,md}` deleted (superseded by field `ord_e77867cf`). Install-size measurement re-based after the cuts (`tests/test_packaging.py`, ceiling = measured + 200).
+- **Proof:** parser-tree diff (pre/post byte-identical), `scripts/check_dead_defs.py`, `scripts/check_unused_imports.py`, `docs/audit/check-claims.py` (180 claims, 97.5), `scripts/validate-skill.sh`, `scripts/check_agent_lessons.py`, full `scripts/run_tests.py` suite.
+
 ## 0.9.14
 
 Wave-memory cite advisory and a stale-roster E2E fix. A learning with no evidence cite is problem-only memory: it now prints an advisory note at save and stays stored. The real-repo E2E no longer assumes a one-closed-field roster.

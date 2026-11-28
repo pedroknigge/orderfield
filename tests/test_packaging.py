@@ -240,8 +240,8 @@ class InstallScript(unittest.TestCase):
         files = [p for p in dest.rglob("*") if p.is_file()]
         self.assertLessEqual(len(files), 80, len(files))
         size = sum(p.stat().st_size for p in files)
-        # measured_dest: 1720819
-        self.assertLessEqual(size, 1_721_019, size)
+        # measured_dest: 1715555
+        self.assertLessEqual(size, 1_715_755, size)
 
     def test_generic_only_flag(self) -> None:
         tmp = Path(tempfile.mkdtemp(prefix="of-install-g-"))
@@ -3269,8 +3269,10 @@ class SkillGenericAgentArgv(unittest.TestCase):
         source = (ROOT / "scripts" / "of_adapters.py").read_text(encoding="utf-8")
         self.assertIn("class GenericAgent:", source)
         self.assertIn("shlex.split", source)
-        field = (ROOT / "scripts" / "of" / "field.py").read_text(encoding="utf-8")
-        self.assertIn("shlex.join", field)
+        # ArgvRedact (shell-safe argv rendering) lives in of/redact.py;
+        # of.field re-exports it for the kernel surface.
+        redact = (ROOT / "scripts" / "of" / "redact.py").read_text(encoding="utf-8")
+        self.assertIn("shlex.join", redact)
 
 
 class SkillCodexWorktreeSpawn(unittest.TestCase):

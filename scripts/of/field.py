@@ -1,10 +1,10 @@
 """Field I/O: ORDER/state/session, lock, schemas, pulse, migrate, worktree.
 
 SCOPE-GODSPLIT named extractions are complete: WAL/view in of.wal,
-learnings in of.learn, retention/gc in of.retain. This module re-exports
-public names so callers keep importing of.field. Bind, lock, and roster
-talk through FieldWal / FieldLearnings / FieldRetain. Remaining size is
-this owner, not a leftover god-module.
+learnings in of.learn, retention/gc in of.retain, redaction in of.redact.
+This module re-exports public names so callers keep importing of.field.
+Bind, lock, and roster talk through FieldWal / FieldLearnings /
+FieldRetain. Remaining size is this owner, not a leftover god-module.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ import json
 import math
 import os
 import re
-import shlex
 import shutil
 import stat
 import subprocess
@@ -40,6 +39,16 @@ from of.process_origin import (
     host_id, parse_lstart, proc_start_epoch,
 )
 from of.process_origin import proc_pcpu as proc_pcpu  # noqa: F401
+from of.redact import (  # noqa: F401 — kernel re-export surface
+    APPROVAL_FLAG_NAMES,
+    APPROVAL_REDACTED,
+    APPROVAL_VALUE_FLAGS,
+    ArgvRedact,
+    ESCALATED_APPROVAL_VALUES,
+    REDACTED,
+    SECRET_FLAG_NAMES,
+    redact_text,
+)
 
 
 PHASES = ["explore", "cut", "build", "verify", "deliver"]
@@ -118,89 +127,10 @@ SCHEMA_APPLICATORS = frozenset(
 SCHEMA_ANNOTATIONS = frozenset(
     {"$schema", "$id", "title", "description", "default"}
 )
-REDACTED = "<redacted>"
-APPROVAL_REDACTED = "<approval>"
-SECRET_FLAG_NAMES = {
-    "--openai-api-key",
-    "--api-key",
-    "--api_key",
-    "--access-token",
-    "--auth-token",
-    "--token",
-    "--secret",
-    "--password",
-    "--authorization",
-}
-APPROVAL_FLAG_NAMES = {
-    "--yolo",
-    "-y",
-    "--dangerously-skip-permissions",
-    "--dangerously-bypass-approvals-and-sandbox",
-    "--always-approve",
-    "--full-auto",
-}
-APPROVAL_VALUE_FLAGS = {"--approval-mode"}
-ESCALATED_APPROVAL_VALUES = {"yolo", "auto", "auto-edit"}
-_SECRET_ASSIGN_RE = re.compile(
-    r"(?i)\b((?:[A-Za-z_][A-Za-z0-9_]*_)?(?:api[_-]?key|token|secret|password|authorization)|"
-    r"DASHSCOPE_API_KEY|OPENAI_API_KEY|QWEN_API_KEY)\s*[:=]\s*(\S+)"
-)
-_BEARER_RE = re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-+/=]+")
-# Provider API keys: OpenAI sk-…/sk-proj-…, Anthropic sk-ant-… (hyphens allowed).
-# Real keys are 40+ chars; the 20-char floor keeps `sk-learn-pipeline` and
-# `wave/sk-runner-abcdefgh` (identifiers, not secrets) readable in logs.
-_SK_RE = re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_\-]{20,}\b")
-_STRIPE_KEY_RE = re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")
-_XAI_KEY_RE = re.compile(r"\bxai-[A-Za-z0-9]{20,}\b")
-_GOOGLE_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")
-_GITHUB_TOKEN_RE = re.compile(r"\b(?:gh[oprsu]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})")
-_SLACK_TOKEN_RE = re.compile(r"\bxox[abeprs]-[A-Za-z0-9\-]{8,}")
-_AWS_KEY_RE = re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")
-_JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
-# PII: e-mail addresses. Bounded quantifiers (RFC 5321: local part <= 64,
-# label <= 63) keep the scan linear on long runs of local-part characters,
-# and the trailing guard leaves `git@github.com:org/repo.git` (an SSH remote,
-# not a mailbox) untouched.
-_EMAIL_RE = re.compile(
-    r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]{1,64}@"
-    r"[A-Za-z0-9\-]{1,63}(?:\.[A-Za-z0-9\-]{1,63})*\.[A-Za-z]{2,24}(?![A-Za-z0-9\-:])"
-)
-# HuggingFace user access tokens (hf_…) and GitLab PATs (glpat-…). Floor
-# matches other provider keys so short identifiers (hf_hub) stay readable.
-_HF_TOKEN_RE = re.compile(r"\bhf_[A-Za-z0-9]{16,}\b")
-_GLPAT_RE = re.compile(r"\bglpat-[A-Za-z0-9_\-]{16,}\b")
-# Phone: E.164 or NANP with separators. Bare digit runs are left (ids, SHAs).
-_PHONE_RE = re.compile(
-    r"(?<![A-Za-z0-9])"
-    r"(?:"
-    r"\+[1-9]\d{6,14}"
-    r"|"
-    r"\(?[2-9]\d{2}\)?[-.\s][2-9]\d{2}[-.\s]\d{4}"
-    r")"
-    r"(?![A-Za-z0-9])"
-)
-# IPv4 (0–255 octets). IPv6: full form plus a leading/trailing compressed form.
-_IPV4_RE = re.compile(
-    r"(?<![A-Za-z0-9])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}"
-    r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![A-Za-z0-9])"
-)
-_IPV6_RE = re.compile(
-    r"(?<![A-Za-z0-9:])"
-    r"(?:"
-    r"(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}"
-    r"|::(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4}"
-    r"|(?:[0-9A-Fa-f]{1,4}:){1,7}:"
-    r")"
-    r"(?![A-Za-z0-9:])"
-)
 LEARNING_SOURCE_LEADER = "leader"
 LEARNING_SOURCE_CHILD = "child"
 LEARNING_SOURCE_UNAUTHENTICATED = "unauthenticated"
 PYTHON_FLOOR = (3, 11)  # mirrored literally in scripts/of.py (checked before import)
-_PEM_RE = re.compile(
-    r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
-    re.DOTALL,
-)
 # Dirs whose mtimes are noise, not evidence of a child working.
 PULSE_PRUNE_DIRS = {
     ".git",
@@ -309,68 +239,7 @@ _active_field_home: ContextVar[Path | None] = ContextVar(
 # it must not rename them without a versioned migration of its own.
 PROTOCOL_WRITABLE_KEY = "writable_by_slaves"
 PROTOCOL_SLAVE_MD = FIELD_SLAVE_MD
-WRITABLE_ALIAS_KEYS = ("writable_by_children", "writable_by_child")
 CURRENT_ARTIFACT_GENERATION = "0.4.2"
-MIGRATION_CATALOG = (
-    {
-        "id": "pre-0.4.2-packet-identity",
-        "from": "pre-0.4.2",
-        "to": "0.4.2",
-        "kind": "packet",
-        "description": (
-            "Add packet_id, order_id, packed_at, and packet_hash to "
-            "identity-free packets"
-        ),
-    },
-    {
-        "id": "pre-0.4.2-state-defaults",
-        "from": "pre-0.4.2",
-        "to": "0.4.2",
-        "kind": "state",
-        "description": (
-            "Fill integration_history and phase_overrides; drop unknown keys"
-        ),
-    },
-    {
-        "id": "pre-0.4.2-report-readable",
-        "from": "pre-0.4.2",
-        "to": "0.4.2",
-        "kind": "wave-report",
-        "description": (
-            "Keep pre-digest reports readable; do not invent integration hashes"
-        ),
-    },
-    {
-        "id": "protocol-writable-key",
-        "from": "any",
-        "to": CURRENT_ARTIFACT_GENERATION,
-        "kind": "order|packet",
-        "description": (
-            "Map writable aliases onto workspace.writable_by_slaves; "
-            "never rename SLAVE.md"
-        ),
-    },
-    {
-        "id": "retired-runtime-keys",
-        "from": "any",
-        "to": CURRENT_ARTIFACT_GENERATION,
-        "kind": "order|packet|state|wave-report",
-        "description": (
-            "Drop contest, scale_up/scale_across, across caps/counters, "
-            "local_budget_pct, inherited depth, and budget.tokens"
-        ),
-    },
-    {
-        "id": "root-stub-archive",
-        "from": "leftover-root",
-        "to": "0.7.27",
-        "kind": "root-stub",
-        "description": (
-            "Archive leftover .orderfield/ORDER.json once fields/<id>/ "
-            "exists; never silent delete"
-        ),
-    },
-)
 _HELD_FIELD_LOCK: Path | None = None
 # Per-thread lock tracking; re-entry is for the holding thread only.
 _HELD_FIELD_LOCK_LOCAL = threading.local()
@@ -2734,519 +2603,6 @@ def artifact_generation(kind: str, data: dict[str, Any]) -> str:
     return CURRENT_ARTIFACT_GENERATION
 
 
-def normalize_workspace(workspace: Any) -> tuple[Any, list[str]]:
-    """Fold writable aliases onto the frozen protocol key. Never rename SLAVE.md."""
-    notes: list[str] = []
-    if not isinstance(workspace, dict):
-        return workspace, notes
-    ws = dict(workspace)
-    aliases_present = [key for key in WRITABLE_ALIAS_KEYS if key in ws]
-    if PROTOCOL_WRITABLE_KEY in ws:
-        for key in aliases_present:
-            ws.pop(key, None)
-            notes.append(f"dropped alias workspace.{key}; kept {PROTOCOL_WRITABLE_KEY}")
-        return ws, notes
-    if aliases_present:
-        source = aliases_present[0]
-        ws[PROTOCOL_WRITABLE_KEY] = ws.pop(source)
-        notes.append(f"mapped workspace.{source} -> {PROTOCOL_WRITABLE_KEY}")
-        for key in aliases_present[1:]:
-            ws.pop(key, None)
-            notes.append(f"dropped extra alias workspace.{key}")
-    return ws, notes
-
-
-def strip_retired_runtime_keys(order: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    """Remove W7b keys from an ORDER-shaped document. Idempotent."""
-    thresholds = order.get("thresholds")
-    caps = order.get("caps")
-    regimes = order.get("enabled_regimes")
-    if not (
-        "contest" in order
-        or (isinstance(thresholds, dict) and "local_budget_pct" in thresholds)
-        or (
-            isinstance(caps, dict)
-            and {"max_across_per_wave", "cooldown_waves_after_across"} & set(caps)
-        )
-        or (
-            isinstance(regimes, list)
-            and any(r in ("scale_up", "scale_across") for r in regimes)
-        )
-    ):
-        return order, []
-    out = dict(order)
-    notes: list[str] = []
-    if out.pop("contest", None) is not None:
-        notes.append("dropped ORDER.contest")
-    thresholds = out.get("thresholds")
-    if isinstance(thresholds, dict) and "local_budget_pct" in thresholds:
-        thresholds = dict(thresholds)
-        thresholds.pop("local_budget_pct", None)
-        out["thresholds"] = thresholds
-        notes.append("dropped ORDER.thresholds.local_budget_pct")
-    caps = out.get("caps")
-    if isinstance(caps, dict):
-        retired = {"max_across_per_wave", "cooldown_waves_after_across"}
-        if retired & set(caps):
-            caps = dict(caps)
-            for key in retired:
-                caps.pop(key, None)
-            out["caps"] = caps
-            notes.append("dropped ORDER across caps")
-    regimes = out.get("enabled_regimes")
-    if isinstance(regimes, list):
-        kept = [r for r in regimes if r not in ("scale_up", "scale_across")]
-        if kept != regimes:
-            out["enabled_regimes"] = kept or ["hold"]
-            notes.append("dropped reserved enabled_regimes")
-    return out, notes
-
-
-def migrate_packet_artifact(packet: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    """Upgrade a packet to the current identity contract. Idempotent."""
-    from of.pack import packet_digest, packet_has_identity
-    notes: list[str] = []
-    out = dict(packet)
-    budget = out.get("budget")
-    if isinstance(budget, dict) and "tokens" in budget:
-        budget = dict(budget)
-        budget.pop("tokens", None)
-        out["budget"] = budget
-        notes.append("dropped packet budget.tokens")
-    embedded = out.get("order") if isinstance(out.get("order"), dict) else {}
-    if embedded:
-        embedded, retired = strip_retired_runtime_keys(embedded)
-        if retired:
-            out["order"] = embedded
-            notes.extend(retired)
-    order_ws = embedded.get("workspace")
-    new_ws, ws_notes = normalize_workspace(order_ws)
-    if ws_notes and isinstance(embedded, dict):
-        embedded = dict(embedded)
-        embedded["workspace"] = new_ws
-        out["order"] = embedded
-        notes.extend(ws_notes)
-    mutated = bool(notes)
-    if not packet_has_identity(out):
-        child_id = str(out.get("child_id") or "")
-        if not child_id or "wave" not in out or "role" not in out:
-            notes.append("skipped identity; packet missing wave/child_id/role")
-            return out, notes
-        order_id = out.get("order_id") or (
-            embedded.get("id") if isinstance(embedded, dict) else None
-        )
-        if not order_id:
-            notes.append("skipped identity; packet missing order_id")
-            return out, notes
-        if "packet_id" not in out:
-            out["packet_id"] = f"pkt_{uuid.uuid4().hex}"
-            notes.append(f"added packet_id for {child_id}")
-        if "order_id" not in out:
-            out["order_id"] = order_id
-            notes.append("added order_id from embedded ORDER")
-        if "packed_at" not in out:
-            out["packed_at"] = utc_now()
-            notes.append("added packed_at")
-        out["packet_hash"] = packet_digest(out)
-        notes.append("computed packet_hash")
-    elif out.get("packet_hash") != packet_digest(out):
-        # Only re-hash when a migration step (workspace normalize or a retired
-        # key) actually rewrote the packet AND the stored hash matched the
-        # pre-migration bytes. A plain mismatch is child tamper, not a migration
-        # artifact: leave it so validate_packet flags it INVALID instead of
-        # signing the child's edit.
-        if mutated and packet.get("packet_hash") == packet_digest(packet):
-            out["packet_hash"] = packet_digest(out)
-            notes.append("recomputed packet_hash after protocol-key rewrite")
-        else:
-            notes.append("refused: packet_hash mismatch is not a migration (RESTORE)")
-            return dict(packet), notes
-    return out, notes
-
-
-def migrate_state_artifact(state: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    notes: list[str] = []
-    schema = load_json(skill_root() / "schemas" / "state.schema.json")
-    allowed = set((schema.get("properties") or {}) if isinstance(schema, dict) else [])
-    base = default_state()
-    incoming = dict(state)
-    extras = sorted(set(incoming) - allowed) if allowed else []
-    if extras:
-        for key in extras:
-            incoming.pop(key, None)
-        notes.append(f"dropped unknown state keys {extras}")
-    if incoming.get("last_regime") in ("scale_up", "scale_across"):
-        incoming["last_regime"] = "hold"
-        notes.append("remapped retired state.last_regime to hold")
-    for key, value in base.items():
-        if key not in incoming:
-            incoming[key] = value
-            notes.append(f"filled state.{key}")
-    return incoming, notes
-
-
-def migrate_residual_artifact(
-    residual: dict[str, Any],
-    packet: dict[str, Any] | None,
-    *,
-    previous_packet_hash: str | None = None,
-) -> tuple[dict[str, Any], list[str]]:
-    from of.pack import PACKET_IDENTITY_FIELDS, packet_has_identity
-    notes: list[str] = []
-    out = dict(residual)
-    if packet is None or not packet_has_identity(packet):
-        return out, notes
-    for key in PACKET_IDENTITY_FIELDS:
-        if key not in out:
-            out[key] = packet.get(key)
-            notes.append(f"copied residual.{key} from packet")
-    if (
-        previous_packet_hash
-        and out.get("packet_hash") == previous_packet_hash
-        and packet.get("packet_hash") != previous_packet_hash
-    ):
-        out["packet_hash"] = packet.get("packet_hash")
-        notes.append("updated residual.packet_hash after packet migration")
-    return out, notes
-
-
-def migrate_wave_report_artifact(
-    report: dict[str, Any],
-) -> tuple[dict[str, Any], list[str]]:
-    """Do not invent integration digests. Pre-0.4.2 reports stay readable."""
-    out = report
-    notes: list[str] = []
-    caps = out.get("caps_remaining")
-    if isinstance(caps, dict) and "across_this_wave" in caps:
-        out = dict(out)
-        caps = dict(caps)
-        caps.pop("across_this_wave", None)
-        out["caps_remaining"] = caps
-        notes.append("dropped report caps_remaining.across_this_wave")
-    if out.get("regime") in ("scale_up", "scale_across"):
-        if out is report:
-            out = dict(out)
-        out["regime"] = "hold"
-        notes.append("retired report regime remapped to hold")
-    if "integration" not in out:
-        notes.append("left pre-digest report readable; no invented hash")
-    return out, notes
-
-
-def print_migration_catalog() -> None:
-    print("migrations  (versioned; removable only with a documented path)")
-    for item in MIGRATION_CATALOG:
-        print(
-            f"  {item['id']:28} {item['kind']:14} "
-            f"{item['from']} -> {item['to']}"
-        )
-        print(f"    {item['description']}")
-    print("protocol keys (frozen)")
-    print(f"  workspace.{PROTOCOL_WRITABLE_KEY}")
-    print(f"  {PROTOCOL_SLAVE_MD}")
-
-
-def plan_field_migrations(root: Path) -> list[dict[str, Any]]:
-    """Collect versioned rewrite plans. Does not write."""
-    actions: list[dict[str, Any]] = []
-    stub_action = RootStub.plan(root)
-    if stub_action:
-        actions.append(stub_action)
-    order_file = order_path(root)
-    raw_order = _read_json_object(order_file)
-    migrated_order: dict[str, Any] | None = None
-    if isinstance(raw_order, dict):
-        workspace = raw_order.get("workspace")
-        new_ws, notes = normalize_workspace(workspace)
-        updated = dict(raw_order)
-        if notes:
-            updated["workspace"] = new_ws
-        updated, retired = strip_retired_runtime_keys(updated)
-        migrated_order = updated
-        notes = list(notes) + list(retired)
-        if notes:
-            actions.append(
-                {
-                    "id": "retired-runtime-keys" if retired else "protocol-writable-key",
-                    "kind": "order",
-                    "path": order_file,
-                    "data": updated,
-                    "notes": notes,
-                }
-            )
-    state_file = state_path(root)
-    raw_state = _read_json_object(state_file)
-    if isinstance(raw_state, dict):
-        updated, notes = migrate_state_artifact(raw_state)
-        if notes:
-            mid = (
-                "retired-runtime-keys"
-                if any("last_regime" in n or "across" in n for n in notes)
-                and not any(n.startswith("filled state.") for n in notes)
-                else "pre-0.4.2-state-defaults"
-            )
-            actions.append(
-                {
-                    "id": mid,
-                    "kind": "state",
-                    "path": state_file,
-                    "data": updated,
-                    "notes": notes,
-                }
-            )
-    waves = field_home(root) / "waves"
-    if not waves.is_dir():
-        return actions
-    for wave_path in sorted(p for p in waves.iterdir() if p.is_dir()):
-        wave_num = int(wave_path.name) if wave_path.name.isdigit() else None
-        packets_dir = wave_path / "packets"
-        packet_by_child: dict[str, dict[str, Any]] = {}
-        old_hash_by_child: dict[str, str] = {}
-        raw_packets: list[dict[str, Any]] = []
-        migrated_packets: list[dict[str, Any]] = []
-        if packets_dir.is_dir():
-            for path in sorted(packets_dir.glob("*.json")):
-                raw = _read_json_object(path)
-                if not isinstance(raw, dict):
-                    continue
-                raw_packets.append(raw)
-                updated, notes = migrate_packet_artifact(raw)
-                migrated_packets.append(updated)
-                child_id = str(updated.get("child_id") or path.stem)
-                packet_by_child[child_id] = updated
-                old_hash = raw.get("packet_hash")
-                new_hash = updated.get("packet_hash")
-                if isinstance(old_hash, str) and isinstance(new_hash, str) and old_hash != new_hash:
-                    old_hash_by_child[child_id] = old_hash
-                if notes:
-                    if all("workspace." in n for n in notes):
-                        mid = "protocol-writable-key"
-                    elif any(
-                        "packet_id" in n or "order_id" in n or "packed_at" in n
-                        or n == "computed packet_hash"
-                        for n in notes
-                    ):
-                        mid = "pre-0.4.2-packet-identity"
-                    else:
-                        mid = "retired-runtime-keys"
-                    actions.append(
-                        {
-                            "id": mid,
-                            "kind": "packet",
-                            "path": path,
-                            "data": updated,
-                            "notes": notes,
-                        }
-                    )
-        residuals_dir = wave_path / "residuals"
-        raw_residuals: dict[str, Any] = {}
-        migrated_residuals: dict[str, Any] = {}
-        if residuals_dir.is_dir():
-            for path in sorted(residuals_dir.glob("*.json")):
-                raw = _read_json_object(path)
-                if not isinstance(raw, dict):
-                    continue
-                child_id = str(raw.get("child_id") or path.stem)
-                raw_residuals[child_id] = raw
-                packet = packet_by_child.get(child_id)
-                updated, notes = migrate_residual_artifact(
-                    raw,
-                    packet,
-                    previous_packet_hash=old_hash_by_child.get(child_id),
-                )
-                migrated_residuals[child_id] = updated
-                if notes:
-                    mid = (
-                        "retired-runtime-keys"
-                        if notes == ["updated residual.packet_hash after packet migration"]
-                        else "pre-0.4.2-packet-identity"
-                    )
-                    actions.append(
-                        {
-                            "id": mid,
-                            "kind": "residual",
-                            "path": path,
-                            "data": updated,
-                            "notes": notes,
-                        }
-                    )
-        prompts_dir = wave_path / "prompts"
-        if prompts_dir.is_dir() and old_hash_by_child:
-            for path in sorted(prompts_dir.glob("*.RESIDUAL.template.json")):
-                raw = _read_json_object(path)
-                if not isinstance(raw, dict):
-                    continue
-                child_id = str(
-                    raw.get("child_id")
-                    or path.name.removesuffix(".RESIDUAL.template.json")
-                )
-                old_hash = old_hash_by_child.get(child_id)
-                packet = packet_by_child.get(child_id)
-                if (
-                    old_hash
-                    and packet
-                    and raw.get("packet_hash") == old_hash
-                    and packet.get("packet_hash") != old_hash
-                ):
-                    updated = dict(raw)
-                    updated["packet_hash"] = packet["packet_hash"]
-                    actions.append(
-                        {
-                            "id": "retired-runtime-keys",
-                            "kind": "residual-template",
-                            "path": path,
-                            "data": updated,
-                            "notes": [
-                                "updated residual template packet_hash after packet migration"
-                            ],
-                        }
-                    )
-
-        def _rehash_report_integration(
-            doc: dict[str, Any], report_notes: list[str]
-        ) -> tuple[dict[str, Any], list[str], str | None, str | None]:
-            if (
-                not old_hash_by_child
-                or wave_num is None
-                or migrated_order is None
-                or not isinstance(doc.get("integration"), dict)
-                or not doc["integration"].get("input_hash")
-            ):
-                return doc, report_notes, None, None
-            from of.regime import integration_input_digest
-
-            integration = doc["integration"]
-            partial = bool(integration.get("partial"))
-            apply_flag = bool(integration.get("apply"))
-            old_digest = integration_input_digest(
-                root,
-                wave_num,
-                raw_packets,
-                partial=partial,
-                apply=apply_flag,
-                order=migrated_order,
-                packet_hashes=old_hash_by_child,
-                residuals_override=raw_residuals,
-            )
-            if integration.get("input_hash") != old_digest:
-                return doc, report_notes, None, None
-            new_digest = integration_input_digest(
-                root,
-                wave_num,
-                migrated_packets,
-                partial=partial,
-                apply=apply_flag,
-                order=migrated_order,
-                residuals_override=migrated_residuals,
-            )
-            if new_digest == old_digest:
-                return doc, report_notes, None, None
-            out_doc = dict(doc)
-            out_int = dict(integration)
-            out_int["input_hash"] = new_digest
-            rec_path = out_int.get("record_path")
-            if isinstance(rec_path, str) and rec_path.endswith(f"/{old_digest}.json"):
-                out_int["record_path"] = (
-                    rec_path[: -len(f"{old_digest}.json")] + f"{new_digest}.json"
-                )
-            out_doc["integration"] = out_int
-            return (
-                out_doc,
-                [*report_notes, "recomputed report integration.input_hash after packet migration"],
-                old_digest,
-                new_digest,
-            )
-
-        report_path = wave_path / "report.json"
-        raw_report = _read_json_object(report_path)
-        if isinstance(raw_report, dict):
-            updated, notes = migrate_wave_report_artifact(raw_report)
-            updated, notes, _old_d, _new_d = _rehash_report_integration(updated, notes)
-            structural = updated != raw_report
-            if notes and (structural or "integration" not in raw_report):
-                actions.append(
-                    {
-                        "id": (
-                            "retired-runtime-keys"
-                            if structural
-                            else "pre-0.4.2-report-readable"
-                        ),
-                        "kind": "wave-report",
-                        "path": report_path,
-                        "data": updated,
-                        "notes": notes,
-                        "write": structural,
-                    }
-                )
-        integrations_dir = wave_path / "integrations"
-        if integrations_dir.is_dir():
-            for path in sorted(integrations_dir.glob("*.json")):
-                if path.name == "observations.json":
-                    continue
-                raw_int = _read_json_object(path)
-                if not isinstance(raw_int, dict):
-                    continue
-                updated, notes = migrate_wave_report_artifact(raw_int)
-                updated, notes, old_d, new_d = _rehash_report_integration(updated, notes)
-                structural = updated != raw_int
-                if structural:
-                    dest_path = (
-                        integrations_dir / f"{new_d}.json"
-                        if old_d and new_d and path.stem == old_d
-                        else path
-                    )
-                    actions.append(
-                        {
-                            "id": "retired-runtime-keys",
-                            "kind": "wave-report",
-                            "path": dest_path,
-                            "data": updated,
-                            "notes": notes,
-                            "write": True,
-                        }
-                    )
-    return actions
-
-
-def print_migration_plan(actions: list[dict[str, Any]]) -> None:
-    if not actions:
-        print("migrate      nothing to apply")
-        return
-    for item in actions:
-        rel = item["path"].as_posix()
-        print(f"{item['id']}  {item['kind']}  {rel}")
-        for note in item["notes"]:
-            print(f"  {note}")
-
-
-def apply_field_migrations(actions: list[dict[str, Any]]) -> None:
-    from of.pack import validate_packet, validate_residual
-    for item in actions:
-        if item.get("write", True) is False:
-            continue
-        kind = item["kind"]
-        if kind == "root-stub":
-            RootStub.apply(item)
-            continue
-        data = item["data"]
-        if kind == "order":
-            require_public_schema(data, "order.schema.json", "ORDER")
-        elif kind == "state":
-            require_public_schema(data, "state.schema.json", "state")
-        elif kind == "packet":
-            errs = validate_packet(data)
-            if errs:
-                die(f"invalid migrated packet {item['path']}:\n  " + "\n  ".join(errs))
-        elif kind == "residual":
-            errs = validate_residual(data)
-            if errs:
-                die(
-                    f"invalid migrated residual {item['path']}:\n  "
-                    + "\n  ".join(errs)
-                )
-        elif kind == "wave-report":
-            require_public_schema(data, "wave-report.schema.json", "wave report")
-        dump_json(item["path"], data)
 
 
 def worktrees_path(root: Path | None = None) -> Path:
@@ -3381,6 +2737,52 @@ def open_backlog(order: dict[str, Any]) -> list[str]:
     ]
 
 
+def strip_retired_runtime_keys(order: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Remove W7b keys from an ORDER-shaped document. Idempotent."""
+    thresholds = order.get("thresholds")
+    caps = order.get("caps")
+    regimes = order.get("enabled_regimes")
+    if not (
+        "contest" in order
+        or (isinstance(thresholds, dict) and "local_budget_pct" in thresholds)
+        or (
+            isinstance(caps, dict)
+            and {"max_across_per_wave", "cooldown_waves_after_across"} & set(caps)
+        )
+        or (
+            isinstance(regimes, list)
+            and any(r in ("scale_up", "scale_across") for r in regimes)
+        )
+    ):
+        return order, []
+    out = dict(order)
+    notes: list[str] = []
+    if out.pop("contest", None) is not None:
+        notes.append("dropped ORDER.contest")
+    thresholds = out.get("thresholds")
+    if isinstance(thresholds, dict) and "local_budget_pct" in thresholds:
+        thresholds = dict(thresholds)
+        thresholds.pop("local_budget_pct", None)
+        out["thresholds"] = thresholds
+        notes.append("dropped ORDER.thresholds.local_budget_pct")
+    caps = out.get("caps")
+    if isinstance(caps, dict):
+        retired = {"max_across_per_wave", "cooldown_waves_after_across"}
+        if retired & set(caps):
+            caps = dict(caps)
+            for key in retired:
+                caps.pop(key, None)
+            out["caps"] = caps
+            notes.append("dropped ORDER across caps")
+    regimes = out.get("enabled_regimes")
+    if isinstance(regimes, list):
+        kept = [r for r in regimes if r not in ("scale_up", "scale_across")]
+        if kept != regimes:
+            out["enabled_regimes"] = kept or ["hold"]
+            notes.append("dropped reserved enabled_regimes")
+    return out, notes
+
+
 def load_order(root: Path | None = None) -> dict[str, Any]:
     p = order_path(root)
     if not field_is_file(p):
@@ -3421,6 +2823,29 @@ def save_state(state: dict[str, Any], root: Path | None = None) -> None:
     state["updated_at"] = utc_now()
     require_public_schema(state, "state.schema.json", "state")
     dump_json(state_path(root), state)
+
+
+def migrate_wave_report_artifact(
+    report: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """Do not invent integration digests. Pre-0.4.2 reports stay readable."""
+    out = report
+    notes: list[str] = []
+    caps = out.get("caps_remaining")
+    if isinstance(caps, dict) and "across_this_wave" in caps:
+        out = dict(out)
+        caps = dict(caps)
+        caps.pop("across_this_wave", None)
+        out["caps_remaining"] = caps
+        notes.append("dropped report caps_remaining.across_this_wave")
+    if out.get("regime") in ("scale_up", "scale_across"):
+        if out is report:
+            out = dict(out)
+        out["regime"] = "hold"
+        notes.append("retired report regime remapped to hold")
+    if "integration" not in out:
+        notes.append("left pre-digest report readable; no invented hash")
+    return out, notes
 
 
 def load_wave_report(path: Path) -> dict[str, Any]:
@@ -5167,172 +4592,6 @@ def format_owned_unverified_line(ids: list[str] | None = None) -> str:
 def print_owned_unverified(root: Path, *, file: Any = None) -> None:
     print(format_owned_unverified_line(owned_unverified_ids(root)), file=file or sys.stdout)
 
-
-def _is_secret_flag(name: str) -> bool:
-    raw = str(name or "").split("=", 1)[0].strip().lower()
-    if raw in SECRET_FLAG_NAMES:
-        return True
-    stripped = raw[2:] if raw.startswith("--") else (raw[1:] if raw.startswith("-") else raw)
-    return bool(
-        re.search(r"(api[_-]?key|secret|password|access[_-]?token|auth[_-]?token)$", stripped)
-    )
-
-
-def redact_text(text: str) -> str:
-    """Strip secrets and approval material from argv previews and spawn logs."""
-    if not text:
-        return text
-    out = _PEM_RE.sub(f"-----BEGIN PRIVATE KEY----- {REDACTED} -----END PRIVATE KEY-----", text)
-    out = _BEARER_RE.sub(lambda m: f"{m.group(1)} {REDACTED}", out)
-    out = _SK_RE.sub(REDACTED, out)
-    out = _STRIPE_KEY_RE.sub(REDACTED, out)
-    out = _XAI_KEY_RE.sub(REDACTED, out)
-    out = _GOOGLE_KEY_RE.sub(REDACTED, out)
-    out = _GITHUB_TOKEN_RE.sub(REDACTED, out)
-    out = _SLACK_TOKEN_RE.sub(REDACTED, out)
-    out = _AWS_KEY_RE.sub(REDACTED, out)
-    out = _JWT_RE.sub(REDACTED, out)
-    out = _HF_TOKEN_RE.sub(REDACTED, out)
-    out = _GLPAT_RE.sub(REDACTED, out)
-    out = _EMAIL_RE.sub(REDACTED, out)
-    out = _PHONE_RE.sub(REDACTED, out)
-    out = _IPV6_RE.sub(REDACTED, out)
-    out = _IPV4_RE.sub(REDACTED, out)
-    out = _SECRET_ASSIGN_RE.sub(lambda m: f"{m.group(1)}={REDACTED}", out)
-    for token in sorted(APPROVAL_FLAG_NAMES, key=len, reverse=True):
-        out = re.sub(rf"(?<!\S){re.escape(token)}(?!\S)", APPROVAL_REDACTED, out)
-    def _approval_mode_value(match: Any) -> str:
-        value = match.group(3)
-        if value.strip().lower().strip("\"'") in ESCALATED_APPROVAL_VALUES:
-            return f"{match.group(1)}{match.group(2)}{APPROVAL_REDACTED}"
-        return match.group(0)
-
-    out = re.sub(r"(?i)(--approval-mode)(\s+|=)(\S+)", _approval_mode_value, out)
-    return out
-
-
-class ArgvRedact:
-    """Spawn argv preview. Secrets stay hidden. Paths keep a basename.
-
-    A long prompt body becomes `<prompt>`. A filesystem path — especially
-    the value of `--output-schema` / `--json-schema` / `-o` — is not a
-    prompt. Deep skill roots still name `residual.codex.schema.json`
-    in dry-run stdout.
-    """
-
-    PROMPT_CHARS = 80
-    PATH_FLAGS = frozenset({"--output-schema", "--json-schema", "-o"})
-    PATH_SUFFIXES = (".json", ".md", ".yml", ".yaml", ".toml")
-
-    @staticmethod
-    def is_path_token(arg: str) -> bool:
-        text = str(arg or "")
-        if not text or "\n" in text:
-            return False
-        if text.startswith("-") and "=" in text:
-            _key, _eq, val = text.partition("=")
-            return ArgvRedact.is_path_token(val)
-        seps = {os.sep}
-        if os.altsep:
-            seps.add(os.altsep)
-        if not any(sep in text for sep in seps) and not text.startswith("."):
-            return False
-        name = Path(text).name.lower()
-        return bool(name) and name.endswith(ArgvRedact.PATH_SUFFIXES)
-
-    @staticmethod
-    def path_preview(arg: str) -> str:
-        text = str(arg or "")
-        if text.startswith("-") and "=" in text:
-            key, _eq, val = text.partition("=")
-            return f"{key}={ArgvRedact.path_preview(val)}"
-        name = Path(text).name
-        if not name:
-            return "<prompt>" if len(text) > ArgvRedact.PROMPT_CHARS else redact_text(text)
-        if len(text) > ArgvRedact.PROMPT_CHARS:
-            return redact_text(f"…/{name}")
-        return redact_text(text)
-
-    @staticmethod
-    def apply(argv: list[str]) -> list[str]:
-        out: list[str] = []
-        redact_next: str | None = None
-        for raw in argv:
-            arg = str(raw)
-            if redact_next == "secret":
-                out.append(REDACTED)
-                redact_next = None
-                continue
-            if redact_next == "approval-mode":
-                out.append(
-                    APPROVAL_REDACTED
-                    if arg.strip().lower() in ESCALATED_APPROVAL_VALUES
-                    else arg
-                )
-                redact_next = None
-                continue
-            if redact_next == "approval":
-                out.append(APPROVAL_REDACTED)
-                redact_next = None
-                continue
-            if redact_next == "path":
-                out.append(ArgvRedact.path_preview(arg))
-                redact_next = None
-                continue
-            key, eq, val = arg.partition("=")
-            if eq:
-                if _is_secret_flag(key):
-                    out.append(f"{key}={REDACTED}")
-                    continue
-                if key in APPROVAL_VALUE_FLAGS or key.lower() == "--approval-mode":
-                    hidden = (
-                        APPROVAL_REDACTED
-                        if val.strip().lower() in ESCALATED_APPROVAL_VALUES
-                        else val
-                    )
-                    out.append(f"{key}={hidden}")
-                    continue
-                if key in ArgvRedact.PATH_FLAGS:
-                    out.append(f"{key}={ArgvRedact.path_preview(val)}")
-                    continue
-            lowered = arg.lower()
-            if lowered in APPROVAL_FLAG_NAMES or arg in APPROVAL_FLAG_NAMES:
-                out.append(APPROVAL_REDACTED)
-                continue
-            if _is_secret_flag(arg):
-                out.append(arg)
-                redact_next = "secret"
-                continue
-            if arg in APPROVAL_VALUE_FLAGS or lowered == "--approval-mode":
-                out.append(arg)
-                redact_next = "approval-mode"
-                continue
-            if arg in ArgvRedact.PATH_FLAGS:
-                out.append(arg)
-                redact_next = "path"
-                continue
-            if "\n" in arg:
-                out.append("<prompt>")
-                continue
-            if ArgvRedact.is_path_token(arg):
-                out.append(ArgvRedact.path_preview(arg))
-                continue
-            if len(arg) > ArgvRedact.PROMPT_CHARS:
-                out.append("<prompt>")
-                continue
-            out.append(redact_text(arg))
-        if redact_next == "secret":
-            out.append(REDACTED)
-        elif redact_next == "approval-mode":
-            out.append(APPROVAL_REDACTED)
-        elif redact_next == "path":
-            out.append("<prompt>")
-        return out
-
-    @staticmethod
-    def preview(argv: list[str]) -> str:
-        """Render the real argv. Space tokens stay quoted (shlex.join)."""
-        return shlex.join(ArgvRedact.apply(argv))
 
 
 def argv_preview(argv: list[str]) -> str:

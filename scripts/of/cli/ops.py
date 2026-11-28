@@ -62,7 +62,6 @@ from of.field import (
     OrphanPacked,
     PackedAge,
     WaveRoster,
-    apply_field_migrations,
     apply_field_retention,
     ClosedFieldArchive,
     drop_field_home,
@@ -102,10 +101,7 @@ from of.field import (
     parse_utc,
     physical_artifact_path,
     physical_field_rel,
-    plan_field_migrations,
     plan_field_retention,
-    print_migration_catalog,
-    print_migration_plan,
     print_retention_plan,
     probe_adapter_version,
     probe_lock_capability,
@@ -125,6 +121,12 @@ from of.field import (
     wave_dir,
     worktree_path_inside_project,
     writable_status,
+)
+from of.migrations import (
+    apply_field_migrations,
+    plan_field_migrations,
+    print_migration_catalog,
+    print_migration_plan,
 )
 
 from of.spec import (

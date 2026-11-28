@@ -67,6 +67,8 @@ jobs:
           python-version: "3.11"
       - name: Unused import / F401 (stdlib; no pip)
         run: python3 scripts/check_unused_imports.py --self-test && python3 scripts/check_unused_imports.py
+      - name: Dead defs (stdlib; no pip)
+        run: python3 scripts/check_dead_defs.py --self-test && python3 scripts/check_dead_defs.py
 
   gitleaks:
     runs-on: ubuntu-latest
