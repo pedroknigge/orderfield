@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import uuid
 from contextlib import contextmanager
@@ -61,7 +62,8 @@ def _normalize_learning_text(text: str) -> str:
 
 
 class LearningLint:
-    """Learning sizing. Length stays advisory. Chat-dump lines die."""
+    """Learning sizing and evidence shape. Length and cites stay advisory.
+    Chat-dump lines die."""
 
     WARN_CHARS = LEARNING_MAX_CHARS
     KIND = "learning.lines"
@@ -69,6 +71,18 @@ class LearningLint:
     FIX = (
         "put the long record in work/scratch/leader/<file>.md "
         "and keep a short pointer learning"
+    )
+    WARN_CITE_KIND = "learning_no_cite"
+    CITE_FIX = (
+        "cite the path, test, fixture, or sha that proved it; "
+        "a lesson without evidence is problem-only memory"
+    )
+    _CITE_RE = re.compile(
+        r"[A-Za-z0-9_./\\-]+\.(?:py|md|json|sh|txt|ya?ml|toml)"
+        r"|\btests?/test_[A-Za-z0-9_]+"
+        r"|\brecovery/[A-Za-z0-9_./-]+"
+        r"|\b[0-9a-f]{8,64}\b",
+        re.IGNORECASE,
     )
 
     @staticmethod
@@ -107,14 +121,37 @@ class LearningLint:
         )
 
     @staticmethod
-    def advise(text: str) -> None:
-        note = LearningLint.long_note(text)
+    def _emit(note: str | None, warn_kind: str) -> None:
         if not note:
             return
         if json_events_enabled():
-            emit_event("warning", ok=True, kind=LearningLint.WARN_KIND, message=note)
+            emit_event("warning", ok=True, kind=warn_kind, message=note)
             return
         print(f"of: note — {note}", file=sys.stderr)
+
+    @staticmethod
+    def advise(text: str) -> None:
+        LearningLint._emit(LearningLint.long_note(text), LearningLint.WARN_KIND)
+
+    @staticmethod
+    def names_evidence(text: str) -> bool:
+        return bool(LearningLint._CITE_RE.search(_normalize_learning_text(text)))
+
+    @staticmethod
+    def cite_note(text: str) -> str | None:
+        if LearningLint.names_evidence(text):
+            return None
+        return (
+            "learning names no path, test, fixture, or sha; evidence is "
+            "advisory. "
+            + LearningLint.CITE_FIX[0].upper()
+            + LearningLint.CITE_FIX[1:]
+            + ". The learning was still stored."
+        )
+
+    @staticmethod
+    def advise_cite(text: str) -> None:
+        LearningLint._emit(LearningLint.cite_note(text), LearningLint.WARN_CITE_KIND)
 
 
 def learning_provenance(
@@ -425,6 +462,7 @@ def save_learning(
         die("learning text is empty")
     LearningLint.refuse_dump_lines(raw)
     LearningLint.advise(cleaned)
+    LearningLint.advise_cite(cleaned)
     provenance = learning_provenance(root, order)
     # Dedupe protocol saves against the user cache only: field-dir items are
     # child-writable and must never be re-persisted into cross-repo memory.

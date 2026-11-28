@@ -51,7 +51,7 @@ REQUIREMENTS is an index; SPEC is truth. Do not compress foggy chat into faux re
 - W1 auth store: session cookies, not JWT — .orderfield/waves/001/residuals/explorer-abc.json · docs/plans/foo/auth-notes.md#session
 ```
 
-One-line gist + pointer to residual path or plan section. The file is an **index**, not the store — reasoning stays in residuals and plan docs. A later session reads the digest, then follows pointers. Surfacing in `of status` / `of resume` waits until the convention earns it.
+One-line gist + pointer to residual path or plan section. The file is an **index**, not the store — reasoning stays in residuals and plan docs. A later session reads the digest, then follows pointers. Wave-debrief shape (root cause, predicted, observed, evidence cite) and the read-before-pack rule: [design/wave-memory.md](design/wave-memory.md). Surfacing in `of status` / `of resume` waits until the convention earns it.
 
 **Charting phase before implementers.** Foggy Large work may close explore/charting `done_when` on a *buildable* SPEC — binding IDs owned, appendix **Production mode** Gate A honest — before any `--role implementer` pack. Wave-0 explorer proposes packs; integrate; close the charting slice on disk, then advance phase when regime allows:
 

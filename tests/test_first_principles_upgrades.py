@@ -247,10 +247,14 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
 
         targets = [self.tmp]
         if (ROOT / ".orderfield" / "fields" / "ord_0ba66127").is_dir():
+            # #450: ROOT now holds many closed fields, so unpinned resume
+            # correctly prints the roster. Pin the historical field; the tmp
+            # target keeps its ACTIVE-pointer resolution path.
             targets.append(ROOT)
 
         for target in targets:
-            res = json.loads(self.ok("resume", "--json", cwd=target).stdout)
+            pin = {"OF_FIELD": "ord_0ba66127"} if target == ROOT else None
+            res = json.loads(self.ok("resume", "--json", cwd=target, env=pin).stdout)
             self.assertEqual(res["field"], "closed")
             self.assertEqual(res["auto_continue"], "no")
             self.assertEqual(res["action"], "closed")
@@ -262,7 +266,14 @@ class FirstPrinciplesUpgradesE2E(unittest.TestCase):
 
             doc_proc = run_of(target, "doctor")
             self.assertEqual(doc_proc.returncode, 0, doc_proc.stdout + doc_proc.stderr)
-            self.assertIn("active        ord_0ba66127  closed", doc_proc.stdout)
+            if pin is None:
+                # synthetic one-field home: the ACTIVE pointer names the field
+                self.assertIn("active        ord_0ba66127  closed", doc_proc.stdout)
+            else:
+                # #450: the live ROOT roster binds no field once all are closed;
+                # the historical pack rows prove the reconciliation instead.
+                self.assertIn("active        -  closed", doc_proc.stdout)
+                self.assertIn("packs         ord_0ba66127 ", doc_proc.stdout)
             self.assertIn("historical  (order_rev; closed)", doc_proc.stdout)
 
 
