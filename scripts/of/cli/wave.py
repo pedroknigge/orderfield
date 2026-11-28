@@ -46,6 +46,7 @@ from of.field import (
     OF_FIELD_ENV,
     OF_SPAWN_REGISTRY_ENV,
     ROLES,
+    set_field_home,
     argv_preview,
     die,
     dump_json,
