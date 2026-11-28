@@ -8,6 +8,10 @@ Do not rewrite shipped notes to excuse a new regime.
 
 A cut, a resume, a different model — the line you tagged is still the line. The results do not have to change.
 
+## Unreleased
+
+- **Dead-defs gate wired into CI.** `check_dead_defs.py` (self-test + scan) now runs as a step in the `unused-imports` static-hygiene job of `.github/workflows/test.yml`; until now it only ran by hand. Deleted the stale root artifacts `arquitectura-audit-report.{html,json,md}` (2026-09-27 snapshot, superseded by field `ord_e77867cf`); referenced nowhere outside archived `.orderfield/` field history. Proof: `python3 scripts/check_dead_defs.py --self-test`, `docs/audit/check-claims.py` (180 claims, score 97.5), `scripts/validate-skill.sh`.
+
 ## 0.9.14
 
 Wave-memory cite advisory and a stale-roster E2E fix. A learning with no evidence cite is problem-only memory: it now prints an advisory note at save and stays stored. The real-repo E2E no longer assumes a one-closed-field roster.
