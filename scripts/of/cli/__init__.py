@@ -2,6 +2,14 @@
 
 Public entry remains `scripts/of.py` (`from of.cli import main`).
 Command groups: init_cmd, ops, wave, field_cmd, spec_cmd, eval_cmd, issue_cmd.
+
+The parser is data: `_COMMANDS` is one ordered row per subcommand. Each row
+carries the handler, the help/description text, and the exact `add_argument`
+rows (`A(...)`) in registration order — order is visible in help output, so it
+is part of the contract. A row may instead be a callable invoked with the
+parser (mutually-exclusive groups, `AgentBand.add_flags`, list options).
+Nested subparsers (`wave`, `worktree`) keep small dedicated builders; a table
+cannot express them without becoming a second argparse.
 """
 from __future__ import annotations
 
@@ -104,6 +112,10 @@ from of.cli.eval_cmd import cmd_eval
 from of.cli.eval_cmd import *  # noqa: F401,F403
 
 
+def A(*flags, **kw):
+    """One add_argument row: flags plus the exact argparse kwargs."""
+    return (flags, kw)
+
 
 def _collect_with_unverified(args: argparse.Namespace) -> None:
     try:
@@ -118,123 +130,16 @@ def _collect_with_unverified(args: argparse.Namespace) -> None:
     print_owned_unverified(find_root())
 
 
-def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser("init", help="create .orderfield/ORDER.json")
-    s.add_argument("--mission", required=True)
-    s.add_argument("--phase", default="explore", choices=PHASES)
-    s.add_argument("--done-when", dest="done_when", action="append")
-    s.add_argument(
-        "--source",
-        help="verbatim user brief (lossless SPEC.md); do not compress the contract",
-    )
-    s.add_argument(
-        "--source-file",
-        dest="source_file",
-        help="verbatim brief file or '-'; copied to SPEC.md then discarded if ingest/prompt.md",
-    )
-    s.add_argument("--force", action="store_true")
-    s.add_argument(
-        "--cite",
-        dest="cite",
-        action="append",
-        help=(
-            "pin a linked doc or docs dir into the mother contract "
-            "(repeatable; kernel hashes it, no hand sha)"
-        ),
-    )
-    s.add_argument(
-        "--chat-capture-file",
-        dest="chat_capture_file",
-        help=(
-            "compile a conversation export into a pinned capture "
-            "('-' reads stdin); clears the chat hold with evidence"
-        ),
-    )
-    s.add_argument(
-        "--origin",
-        help=(
-            "stamp ORDER.origin harness (provenance, not spawn pin); "
-            f"one of {ADAPTER_ORDER}; OF_ORIGIN when omitted"
-        ),
-    )
-    s.add_argument(
-        "--session-id",
-        dest="session_id",
-        help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
-    )
-    AgentBand.add_flags(s)
-    s.set_defaults(func=cmd_init)
+def _list_options(parser: argparse.ArgumentParser, items: str) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--all", dest="list_all", action="store_true",
+                       help=f"print all {items} (default list is capped)")
+    group.add_argument("--cursor", dest="list_cursor", default="",
+                       help="continue a capped list from this id")
 
-    s = sub.add_parser(
-        "new",
-        help="open a sibling field without closing the others; --parent nests a phase",
-    )
-    s.add_argument("--mission", required=True)
-    s.add_argument("--phase", default="explore", choices=PHASES)
-    s.add_argument("--done-when", dest="done_when", action="append")
-    s.add_argument("--source", help="verbatim user brief (lossless SPEC.md)")
-    s.add_argument(
-        "--source-file",
-        dest="source_file",
-        help="verbatim brief file or '-'",
-    )
-    s.add_argument(
-        "--cite",
-        dest="cite",
-        action="append",
-        help=(
-            "pin a linked doc or docs dir into the mother contract "
-            "(repeatable; kernel hashes it, no hand sha)"
-        ),
-    )
-    s.add_argument(
-        "--chat-capture-file",
-        dest="chat_capture_file",
-        help=(
-            "compile a conversation export into a pinned capture "
-            "('-' reads stdin); clears the chat hold with evidence"
-        ),
-    )
-    s.add_argument(
-        "--origin",
-        help=(
-            "stamp ORDER.origin harness (provenance, not spawn pin); "
-            f"one of {ADAPTER_ORDER}; OF_ORIGIN when omitted"
-        ),
-    )
-    s.add_argument(
-        "--session-id",
-        dest="session_id",
-        help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted",
-    )
-    s.add_argument(
-        "--parent",
-        nargs="?",
-        const="ACTIVE",
-        default=None,
-        help=(
-            "nest this field as a phase of an existing epic "
-            "(ACTIVE when the id is omitted); close returns ACTIVE. "
-            "Plain of new stays an unrelated epic"
-        ),
-    )
-    AgentBand.add_flags(s)
-    s.set_defaults(func=cmd_new)
 
-    s = sub.add_parser("fields", help="list sibling fields in this working tree")
-    s.add_argument(
-        "--json",
-        dest="fields_json",
-        action="store_true",
-        help="print one cross-field pack roster JSON object on stdout (dashboard path)",
-    )
-    s.add_argument(
-        "--open",
-        dest="open_only",
-        action="store_true",
-        help="list only open fields (spec_closed false)",
-    )
-    exclusive = s.add_mutually_exclusive_group()
+def _fields_exclusive(parser: argparse.ArgumentParser) -> None:
+    exclusive = parser.add_mutually_exclusive_group()
     exclusive.add_argument(
         "--all",
         dest="list_all",
@@ -247,24 +152,9 @@ def _register_lifecycle_subparsers(sub: argparse._SubParsersAction) -> None:
         default="",
         help="continue a capped of fields from this id",
     )
-    s.add_argument(
-        "--use",
-        dest="use_field",
-        metavar="FIELD_ID",
-        help="point .orderfield/ACTIVE at this field (read default; leader only)",
-    )
-    s.set_defaults(func=cmd_fields)
 
 
-def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser(
-        "wave",
-        help="list or show waves; * marks the live state.wave",
-        description=(
-            "Read-only multi-wave roster. Live wave is state.wave. "
-            "No second ledger. status/resume stay one-screen on the live wave."
-        ),
-    )
+def _register_wave(s: argparse.ArgumentParser) -> None:
     wave_sub = s.add_subparsers(dest="wave_cmd", required=True)
     wave_sub.add_parser("list", help="roster of wave dirs; * is live")
     wshow = wave_sub.add_parser(
@@ -277,304 +167,9 @@ def _register_ops_status_subparsers(sub: argparse._SubParsersAction) -> None:
         type=int,
         help="wave number (default: live state.wave)",
     )
-    s.set_defaults(func=cmd_wave)
-
-    s = sub.add_parser("status", help="show field and caps")
-    s.add_argument(
-        "--json",
-        dest="status_json",
-        action="store_true",
-        help="print one live-status JSON object on stdout (dashboard path)",
-    )
-    s.set_defaults(func=cmd_status)
-
-    s = sub.add_parser(
-        "resume",
-        help="one-screen continuation brief reconstructed from disk",
-    )
-    s.add_argument(
-        "--json",
-        dest="resume_json",
-        action="store_true",
-        help="print the structured next (action, reason_code, targets[].argv, "
-        "inputs_digest) as one JSON object on stdout",
-    )
-    s.set_defaults(func=cmd_resume)
-
-    s = sub.add_parser(
-        "pulse",
-        help="read-only child activity heuristic (shared-repo mtimes are wave context)",
-        description=(
-            "Read-only activity heuristic. shared-repo mtimes are wave context; "
-            "child verdicts use packet/scratch mtimes; ALIVE requires an open "
-            "spawn (no ended_at); a settled spawn without a residual is "
-            "done_without_residual; exits 2 on STALE."
-        ),
-    )
-    s.add_argument("--wave", type=int)
-    s.add_argument(
-        "--watch",
-        action="store_true",
-        help="refresh while children fly; exit when idle (not the product path)",
-    )
-    s.add_argument("--interval", type=int, default=30, help="seconds between refreshes")
-    s.add_argument(
-        "--stale-min",
-        dest="stale_min",
-        type=float,
-        default=PULSE_STALE_MINUTES,
-        help=f"minutes without newer activity evidence before STALE (default {PULSE_STALE_MINUTES:g})",
-    )
-    s.set_defaults(func=cmd_pulse)
-
-    s = sub.add_parser(
-        "checkpoint",
-        help="optional one-screen leader continuation summary",
-    )
-    s.add_argument("--summary", required=True)
-    s.set_defaults(func=cmd_checkpoint)
-
-    s = sub.add_parser(
-        "detect",
-        help="list harness CLIs on PATH (present/missing; PATH≠auth)",
-    )
-    s.set_defaults(func=cmd_detect)
-
-    s = sub.add_parser("models", help="query live harness model metadata (no inference or routing)")
-    s.add_argument("--adapter", choices=ADAPTER_ORDER, help="omit to inventory every adapter")
-    s.add_argument("--timeout", type=float, default=15, help="seconds per adapter (default 15; maximum 120)")
-    s.add_argument("--headroom", action="store_true",
-                   help="also read quota headroom + roster before fan-out (a probe may spend a turn)")
-    s.add_argument(
-        "--refresh-prices",
-        action="store_true",
-        help="opt-in OpenRouter price refresh (cached; failure keeps prior cache)",
-    )
-    s.add_argument("--json", dest="models_json", action="store_true",
-                   help="print model discovery JSON on stdout")
-    s.set_defaults(func=cmd_models)
-
-    s = sub.add_parser(
-        "issue",
-        help="auto-report of kernel defects; never consumer origin",
-        description=(
-            "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
-            "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post "
-            "(dry-run is not HITL). Create requires a TTY yes, or a human "
-            ".orderfield/work/scratch/leader/HITL.md (yes) then --confirm. "
-            "Bare --confirm on non-TTY/cloud is not HITL. "
-            "OF_CHILD cannot submit. --search is a read (no confirm; "
-            "empty lists all open; query filters the open list)."
-        ),
-    )
-    s.add_argument("--title", help="issue title (create)")
-    s.add_argument("--body", help="issue body (create)")
-    s.add_argument(
-        "--body-file",
-        dest="body_file",
-        help=(
-            "canonical scratch draft under "
-            ".orderfield/work/scratch/<child_id>/ "
-            "(leader: ISSUE.md or ISSUE-*.md; "
-            "child: ISSUE.md or issues/<slug>.md)"
-        ),
-    )
-    s.add_argument(
-        "--label",
-        choices=ISSUE_LABELS,
-        help="bug or enhancement (create)",
-    )
-    s.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print gh argv; do not post (not HITL)",
-    )
-    s.add_argument(
-        "--confirm",
-        action="store_true",
-        help=(
-            "after TTY yes or human HITL.md yes; "
-            "bare flag is not HITL on non-TTY/cloud. Dry-run is not HITL"
-        ),
-    )
-    s.add_argument(
-        "--search",
-        nargs="?",
-        const="",
-        default=None,
-        metavar="QUERY",
-        help="list open issues on pedroknigge/orderfield (empty=all; query filters)",
-    )
-    s.set_defaults(func=cmd_issue)
-
-    s = sub.add_parser(
-        "doctor",
-        help=(
-            "local prereqs, ACTIVE/version/pack skew, adapter PATH, "
-            "schemas, lock, repo revert/rewrite counts"
-        ),
-        description=(
-            "Kernel-verifiable local checks in one pass: skill VERSION skew, "
-            "ACTIVE pointer/stub, stale packs (closed-field historical "
-            "is informational), PATH (not auth, credentials, or session authority). "
-            "A repo block prints revert and rewrite counts for this git checkout. "
-            "Those counts do not change ok, WARN, or FAIL."
-        ),
-    )
-    s.set_defaults(func=cmd_doctor)
 
 
-def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser(
-        "retain",
-        help="show episodic keep/drop/dump plan (read-only, no transcript copy)",
-    )
-    s.set_defaults(func=cmd_retain)
-
-    s = sub.add_parser(
-        "gc",
-        help="apply episodic retention; audit/drop/keep sibling fields (HITL)",
-        description=(
-            "Walk every field home. Dump non-risky ephemeral after 7 days "
-            "(closed fields immediately). Over tree budget: print audit of "
-            "open ORDERs. Never auto-drops an open field. Kernel never prompts. "
-            "Closed fields with CLOSE.json archive via --archive-field; "
-            "--drop-field refuses that contrast trail without --force --reason."
-        ),
-    )
-    s.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print the plan without deleting (same as of retain)",
-    )
-    s.add_argument(
-        "--audit",
-        action="store_true",
-        help="print tree budget + open-field sizes; do not delete",
-    )
-    s.add_argument(
-        "--drop-field",
-        dest="drop_field",
-        metavar="ID",
-        help=(
-            "unlink .orderfield/fields/<id>/ (closed without CLOSE.json, "
-            "or --force --reason if open or if contrast trail exists)"
-        ),
-    )
-    s.add_argument(
-        "--archive-field",
-        dest="archive_field",
-        metavar="ID",
-        help=(
-            "move a closed field to .orderfield/archive/<id>/ "
-            "(keeps CLOSE.json / SPEC / REQUIREMENTS)"
-        ),
-    )
-    s.add_argument(
-        "--keep-field",
-        dest="keep_field",
-        metavar="ID",
-        help="HITL keep: silence audit nag for this open field (7d or until size doubles)",
-    )
-    s.add_argument(
-        "--force",
-        action="store_true",
-        help="with --drop-field: allow dropping an open, active, or CLOSE.json field",
-    )
-    s.add_argument(
-        "--reason",
-        help="required with --drop-field --force on an open field or contrast trail",
-    )
-    s.set_defaults(func=cmd_gc)
-
-    s = sub.add_parser(
-        "learn",
-        help="this-mission notes (field, default) or durable Orderfield lessons (--protocol)",
-        description=(
-            "Bare 'of learn TEXT' is field-local (this ORDER; needs of init). "
-            "Cross-project memory needs an explicit --protocol, or "
-            "--promote ID to copy a field learning into the protocol store "
-            "(user cache, OF_LEARNINGS). Every learning carries provenance; "
-            "unprovenanced items are skipped on load and never enter a prompt (an audit trail, not authentication). "
-            "gc never drops protocol. Packets get a capped protocol list; "
-            "it is not SPEC."
-        ),
-    )
-    s.add_argument("text", nargs="?", default="", help="lesson text")
-    s.add_argument(
-        "--protocol",
-        action="store_true",
-        help="explicit cross-project memory: how to run a field, not this product",
-    )
-    s.add_argument(
-        "--field",
-        action="store_true",
-        help="this ORDER only (the default); dropped when the mission no longer applies",
-    )
-    s.add_argument(
-        "--promote",
-        dest="promote",
-        metavar="ID",
-        help="copy a field learning of this ORDER into the protocol store",
-    )
-    s.add_argument("--list", action="store_true", help="print protocol and field lessons")
-    _list_options(s, "learnings")
-    s.add_argument(
-        "--forget",
-        dest="forget",
-        help="delete by id or unique substring",
-    )
-    s.add_argument(
-        "--checks",
-        action="store_true",
-        help=(
-            "propose an ordered check when the same residual claim is in two fields; "
-            "writes nothing"
-        ),
-    )
-    s.add_argument(
-        "--accept",
-        dest="accept",
-        metavar="ID",
-        help="write the check from of learn --checks; the repo stays unchanged until this",
-    )
-    s.set_defaults(func=cmd_learn)
-
-    s = sub.add_parser(
-        "migrate",
-        help="apply versioned artifact migrations (pre-0.4.2 and protocol keys)",
-        description=(
-            "Rewrite field artifacts onto the current generation. "
-            "Does not invent telemetry. Frozen protocol keys: "
-            "workspace.writable_by_slaves and .orderfield/SLAVE.md."
-        ),
-    )
-    s.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print the plan without writing",
-    )
-    s.add_argument(
-        "--list",
-        action="store_true",
-        help="print the migration catalog without touching the field",
-    )
-    s.add_argument(
-        "--field",
-        dest="field_id",
-        help="same as of --field; accepted after migrate",
-    )
-    s.set_defaults(func=cmd_migrate)
-
-    s = sub.add_parser(
-        "worktree",
-        help="opt-in git worktree helper (not a process manager)",
-        description=(
-            "Create or remove a detached git worktree for a child. "
-            "Never starts, stops, or supervises a process. "
-            "Do not symlink node_modules or the leader .orderfield."
-        ),
-    )
+def _register_worktree(s: argparse.ArgumentParser) -> None:
     wt = s.add_subparsers(dest="worktree_cmd", required=True)
     wadd = wt.add_parser("add", help="create a detached worktree outside the project")
     wadd.add_argument("--child-id", required=True)
@@ -594,596 +189,546 @@ def _register_ops_maintenance_subparsers(sub: argparse._SubParsersAction) -> Non
         help="force remove even if worktree has unlanded changes",
     )
     _list_options(wt.add_parser("list", help="list recorded worktrees"), "worktrees")
-    s.set_defaults(func=cmd_worktree)
-
-    s = sub.add_parser("validate", help="validate a contract JSON file")
-    s.add_argument("file")
-    s.add_argument("--kind", default="auto", choices=["auto", "order", "packet", "residual"])
-    s.add_argument(
-        "--packet",
-        help="run the exact of collect gate on FILE (a residual) for this packet",
-    )
-    s.set_defaults(func=cmd_validate)
 
 
-def _register_wave_dispatch_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser("pack", help="build a slaving packet")
-    s.add_argument("--slice", required=True)
-    s.add_argument("--role", required=True, choices=ROLES)
-    s.add_argument("--out")
-    s.add_argument("--wave", type=int)
-    s.add_argument("--child-id")
-    s.add_argument("--allow-nested", action="store_true")
-    s.add_argument(
-        "--requires-tool",
-        dest="requires_tool",
-        action="append",
-        help=f"tool the slice needs; spawn refuses adapters without it {KNOWN_TOOLS}",
-    )
-    s.add_argument(
-        "--seconds",
-        type=int,
-        default=BudgetSeconds.PACK_DEFAULT,
-        help="wall-clock spawn kill in seconds (not tokens; default 600)",
-    )
-    s.add_argument(
-        "--owns-requirement",
-        dest="owns_requirement",
-        action="append",
-        help="binding requirement id this packet owns (repeatable)",
-    )
-    s.add_argument(
-        "--owns-path",
-        dest="owns_path",
-        action="append",
-        help="exclusive product path this packet may write (repeatable; not a file lock)",
-    )
-    s.add_argument(
-        "--force",
-        action="store_true",
-        help="allow a second implementer that shares one git worktree",
-    )
-    s.add_argument(
-        "--force-spawn",
-        action="store_true",
-        help="bypass spawn_blocked after escalate_up",
-    )
-    s.add_argument(
-        "--explain",
-        action="store_true",
-        help="dry-run slice sizing; print why the pack is oversized; do not write",
-    )
-    s.add_argument(
-        "--model-tier",
-        dest="model_tier",
-        choices=["cheap", "frontier"],
-        help="per-packet model tier hint (consent for this pack; not a router)",
-    )
-    s.add_argument(
-        "--model",
-        dest="model",
-        help="passthrough --model NAME for adapters that have the flag",
-    )
-    s.add_argument(
-        "--verify-cmd",
-        dest="verify_cmd",
-        help="deterministic command kernel runs at collect to attest a receipt",
-    )
-    s.add_argument(
-        "--verify-timeout",
-        dest="verify_timeout",
-        type=int,
-        default=None,
-        help="seconds for --verify-cmd (default 120; not spawn --timeout or budget.seconds)",
-    )
-    s.add_argument(
-        "--verify-req",
-        dest="verify_req",
-        action="append",
-        metavar="ID",
-        help=(
-            "owned requirement the --verify-cmd receipt proves at the contract "
-            "(repeatable; unbound IDs stay unverified; never a PAIR)"
+def _init_new_rows(nested: bool) -> list:
+    """`init`/`new` rows in original registration order (help order is contract).
+
+    `init` (not nested) carries the longer --source/--source-file help text
+    and takes --force; `new` takes --parent."""
+    rows = [
+        A("--mission", required=True),
+        A("--phase", default="explore", choices=PHASES),
+        A("--done-when", action="append"),
+        A("--source",
+          help="verbatim user brief (lossless SPEC.md)" + ("; do not compress the contract" if not nested else "")),
+        A("--source-file",
+          help="verbatim brief file or '-'" + ("; copied to SPEC.md then discarded if ingest/prompt.md" if not nested else "")),
+    ]
+    if not nested:
+        rows.append(A("--force", action="store_true"))
+    rows += [
+        A("--cite", action="append",
+          help="pin a linked doc or docs dir into the mother contract (repeatable; kernel hashes it, no hand sha)"),
+        A("--chat-capture-file",
+          help="compile a conversation export into a pinned capture ('-' reads stdin); clears the chat hold with evidence"),
+        A("--origin",
+          help=f"stamp ORDER.origin harness (provenance, not spawn pin); one of {ADAPTER_ORDER}; OF_ORIGIN when omitted"),
+        A("--session-id",
+          help="opaque harness session id (requires --origin or OF_ORIGIN); OF_SESSION_ID when omitted"),
+    ]
+    if nested:
+        rows.append(A(
+            "--parent",
+            nargs="?",
+            const="ACTIVE",
+            default=None,
+            help=(
+                "nest this field as a phase of an existing epic "
+                "(ACTIVE when the id is omitted); close returns ACTIVE. "
+                "Plain of new stays an unrelated epic"
+            ),
+        ))
+    return rows
+
+
+_COMMANDS: dict[str, dict] = {
+    "init": dict(
+        func=cmd_init,
+        help="create .orderfield/ORDER.json",
+        args=_init_new_rows(nested=False) + [AgentBand.add_flags],
+    ),
+    "new": dict(
+        func=cmd_new,
+        help="open a sibling field without closing the others; --parent nests a phase",
+        args=_init_new_rows(nested=True) + [AgentBand.add_flags],
+    ),
+    "fields": dict(
+        func=cmd_fields,
+        help="list sibling fields in this working tree",
+        args=[
+            A("--json", dest="fields_json", action="store_true",
+              help="print one cross-field pack roster JSON object on stdout (dashboard path)"),
+            A("--open", dest="open_only", action="store_true",
+              help="list only open fields (spec_closed false)"),
+            _fields_exclusive,
+            A("--use", dest="use_field", metavar="FIELD_ID",
+              help="point .orderfield/ACTIVE at this field (read default; leader only)"),
+        ],
+    ),
+    "wave": dict(
+        func=cmd_wave,
+        help="list or show waves; * marks the live state.wave",
+        description=(
+            "Read-only multi-wave roster. Live wave is state.wave. "
+            "No second ledger. status/resume stay one-screen on the live wave."
         ),
-    )
-    s.set_defaults(func=cmd_pack)
-
-    s = sub.add_parser(
-        "unpack",
+        args=[_register_wave],
+    ),
+    "status": dict(
+        func=cmd_status,
+        help="show field and caps",
+        args=[
+            A("--json", dest="status_json", action="store_true",
+              help="print one live-status JSON object on stdout (dashboard path)"),
+        ],
+    ),
+    "resume": dict(
+        func=cmd_resume,
+        help="one-screen continuation brief reconstructed from disk",
+        args=[
+            A("--json", dest="resume_json", action="store_true",
+              help="print the structured next (action, reason_code, targets[].argv, "
+                   "inputs_digest) as one JSON object on stdout"),
+        ],
+    ),
+    "pulse": dict(
+        func=cmd_pulse,
+        help="read-only child activity heuristic (shared-repo mtimes are wave context)",
+        description=(
+            "Read-only activity heuristic. shared-repo mtimes are wave context; "
+            "child verdicts use packet/scratch mtimes; ALIVE requires an open "
+            "spawn (no ended_at); a settled spawn without a residual is "
+            "done_without_residual; exits 2 on STALE."
+        ),
+        args=[
+            A("--wave", type=int),
+            A("--watch", action="store_true",
+              help="refresh while children fly; exit when idle (not the product path)"),
+            A("--interval", type=int, default=30, help="seconds between refreshes"),
+            A("--stale-min", type=float, default=PULSE_STALE_MINUTES,
+              help=f"minutes without newer activity evidence before STALE (default {PULSE_STALE_MINUTES:g})"),
+        ],
+    ),
+    "checkpoint": dict(
+        func=cmd_checkpoint,
+        help="optional one-screen leader continuation summary",
+        args=[A("--summary", required=True)],
+    ),
+    "detect": dict(
+        func=cmd_detect,
+        help="list harness CLIs on PATH (present/missing; PATH≠auth)",
+        args=[],
+    ),
+    "models": dict(
+        func=cmd_models,
+        help="query live harness model metadata (no inference or routing)",
+        args=[
+            A("--adapter", choices=ADAPTER_ORDER, help="omit to inventory every adapter"),
+            A("--timeout", type=float, default=15, help="seconds per adapter (default 15; maximum 120)"),
+            A("--headroom", action="store_true",
+              help="also read quota headroom + roster before fan-out (a probe may spend a turn)"),
+            A("--refresh-prices", action="store_true",
+              help="opt-in OpenRouter price refresh (cached; failure keeps prior cache)"),
+            A("--json", dest="models_json", action="store_true",
+              help="print model discovery JSON on stdout"),
+        ],
+    ),
+    "issue": dict(
+        func=cmd_issue,
+        help="auto-report of kernel defects; never consumer origin",
+        description=(
+            "Auto-report of Orderfield kernel defects to pedroknigge/orderfield after HITL. "
+            "Never consumer origin. Works with no ORDER. --dry-run prints gh argv and does not post "
+            "(dry-run is not HITL). Create requires a TTY yes, or a human "
+            ".orderfield/work/scratch/leader/HITL.md (yes) then --confirm. "
+            "Bare --confirm on non-TTY/cloud is not HITL. "
+            "OF_CHILD cannot submit. --search is a read (no confirm; "
+            "empty lists all open; query filters the open list)."
+        ),
+        args=[
+            A("--title", help="issue title (create)"),
+            A("--body", help="issue body (create)"),
+            A("--body-file",
+              help="canonical scratch draft under .orderfield/work/scratch/<child_id>/ "
+                   "(leader: ISSUE.md or ISSUE-*.md; child: ISSUE.md or issues/<slug>.md)"),
+            A("--label", choices=ISSUE_LABELS, help="bug or enhancement (create)"),
+            A("--dry-run", action="store_true", help="print gh argv; do not post (not HITL)"),
+            A("--confirm", action="store_true",
+              help="after TTY yes or human HITL.md yes; bare flag is not HITL on non-TTY/cloud. Dry-run is not HITL"),
+            A("--search", nargs="?", const="", default=None, metavar="QUERY",
+              help="list open issues on pedroknigge/orderfield (empty=all; query filters)"),
+        ],
+    ),
+    "doctor": dict(
+        func=cmd_doctor,
+        help=("local prereqs, ACTIVE/version/pack skew, adapter PATH, "
+              "schemas, lock, repo revert/rewrite counts"),
+        description=(
+            "Kernel-verifiable local checks in one pass: skill VERSION skew, "
+            "ACTIVE pointer/stub, stale packs (closed-field historical "
+            "is informational), PATH (not auth, credentials, or session authority). "
+            "A repo block prints revert and rewrite counts for this git checkout. "
+            "Those counts do not change ok, WARN, or FAIL."
+        ),
+        args=[],
+    ),
+    "retain": dict(
+        func=cmd_retain,
+        help="show episodic keep/drop/dump plan (read-only, no transcript copy)",
+        args=[],
+    ),
+    "gc": dict(
+        func=cmd_gc,
+        help="apply episodic retention; audit/drop/keep sibling fields (HITL)",
+        description=(
+            "Walk every field home. Dump non-risky ephemeral after 7 days "
+            "(closed fields immediately). Over tree budget: print audit of "
+            "open ORDERs. Never auto-drops an open field. Kernel never prompts. "
+            "Closed fields with CLOSE.json archive via --archive-field; "
+            "--drop-field refuses that contrast trail without --force --reason."
+        ),
+        args=[
+            A("--dry-run", action="store_true", help="print the plan without deleting (same as of retain)"),
+            A("--audit", action="store_true", help="print tree budget + open-field sizes; do not delete"),
+            A("--drop-field", metavar="ID",
+              help="unlink .orderfield/fields/<id>/ (closed without CLOSE.json, "
+                   "or --force --reason if open or if contrast trail exists)"),
+            A("--archive-field", metavar="ID",
+              help="move a closed field to .orderfield/archive/<id>/ "
+                   "(keeps CLOSE.json / SPEC / REQUIREMENTS)"),
+            A("--keep-field", metavar="ID",
+              help="HITL keep: silence audit nag for this open field (7d or until size doubles)"),
+            A("--force", action="store_true",
+              help="with --drop-field: allow dropping an open, active, or CLOSE.json field"),
+            A("--reason", help="required with --drop-field --force on an open field or contrast trail"),
+        ],
+    ),
+    "learn": dict(
+        func=cmd_learn,
+        help="this-mission notes (field, default) or durable Orderfield lessons (--protocol)",
+        description=(
+            "Bare 'of learn TEXT' is field-local (this ORDER; needs of init). "
+            "Cross-project memory needs an explicit --protocol, or "
+            "--promote ID to copy a field learning into the protocol store "
+            "(user cache, OF_LEARNINGS). Every learning carries provenance; "
+            "unprovenanced items are skipped on load and never enter a prompt (an audit trail, not authentication). "
+            "gc never drops protocol. Packets get a capped protocol list; "
+            "it is not SPEC."
+        ),
+        args=[
+            A("text", nargs="?", default="", help="lesson text"),
+            A("--protocol", action="store_true",
+              help="explicit cross-project memory: how to run a field, not this product"),
+            A("--field", action="store_true",
+              help="this ORDER only (the default); dropped when the mission no longer applies"),
+            A("--promote", metavar="ID",
+              help="copy a field learning of this ORDER into the protocol store"),
+            A("--list", action="store_true", help="print protocol and field lessons"),
+            lambda s: _list_options(s, "learnings"),
+            A("--forget", help="delete by id or unique substring"),
+            A("--checks", action="store_true",
+              help="propose an ordered check when the same residual claim is in two fields; writes nothing"),
+            A("--accept", metavar="ID",
+              help="write the check from of learn --checks; the repo stays unchanged until this"),
+        ],
+    ),
+    "migrate": dict(
+        func=cmd_migrate,
+        help="apply versioned artifact migrations (pre-0.4.2 and protocol keys)",
+        description=(
+            "Rewrite field artifacts onto the current generation. "
+            "Does not invent telemetry. Frozen protocol keys: "
+            "workspace.writable_by_slaves and .orderfield/SLAVE.md."
+        ),
+        args=[
+            A("--dry-run", action="store_true", help="print the plan without writing"),
+            A("--list", action="store_true", help="print the migration catalog without touching the field"),
+            A("--field", dest="field_id", help="same as of --field; accepted after migrate"),
+        ],
+    ),
+    "worktree": dict(
+        func=cmd_worktree,
+        help="opt-in git worktree helper (not a process manager)",
+        description=(
+            "Create or remove a detached git worktree for a child. "
+            "Never starts, stops, or supervises a process. "
+            "Do not symlink node_modules or the leader .orderfield."
+        ),
+        args=[_register_worktree],
+    ),
+    "validate": dict(
+        func=cmd_validate,
+        help="validate a contract JSON file",
+        args=[
+            A("file"),
+            A("--kind", default="auto", choices=["auto", "order", "packet", "residual"]),
+            A("--packet", help="run the exact of collect gate on FILE (a residual) for this packet"),
+        ],
+    ),
+    "pack": dict(
+        func=cmd_pack,
+        help="build a slaving packet",
+        args=[
+            A("--slice", required=True),
+            A("--role", required=True, choices=ROLES),
+            A("--out"),
+            A("--wave", type=int),
+            A("--child-id"),
+            A("--allow-nested", action="store_true"),
+            A("--requires-tool", action="append",
+              help=f"tool the slice needs; spawn refuses adapters without it {KNOWN_TOOLS}"),
+            A("--seconds", type=int, default=BudgetSeconds.PACK_DEFAULT,
+              help="wall-clock spawn kill in seconds (not tokens; default 600)"),
+            A("--owns-requirement", action="append",
+              help="binding requirement id this packet owns (repeatable)"),
+            A("--owns-path", action="append",
+              help="exclusive product path this packet may write (repeatable; not a file lock)"),
+            A("--force", action="store_true",
+              help="allow a second implementer that shares one git worktree"),
+            A("--force-spawn", action="store_true", help="bypass spawn_blocked after escalate_up"),
+            A("--explain", action="store_true",
+              help="dry-run slice sizing; print why the pack is oversized; do not write"),
+            A("--model-tier", choices=["cheap", "frontier"],
+              help="per-packet model tier hint (consent for this pack; not a router)"),
+            A("--model", help="passthrough --model NAME for adapters that have the flag"),
+            A("--verify-cmd", help="deterministic command kernel runs at collect to attest a receipt"),
+            A("--verify-timeout", type=int, default=None,
+              help="seconds for --verify-cmd (default 120; not spawn --timeout or budget.seconds)"),
+            A("--verify-req", action="append", metavar="ID",
+              help="owned requirement the --verify-cmd receipt proves at the contract "
+                   "(repeatable; unbound IDs stay unverified; never a PAIR)"),
+        ],
+    ),
+    "unpack": dict(
+        func=cmd_unpack,
         help="release a packed child that never reported; refunds children_spawned",
-    )
-    s.add_argument("--child-id", required=True)
-    s.add_argument("--wave", type=int)
-    s.add_argument(
-        "--force",
-        action="store_true",
-        help="release even with nonempty scratch (scratch is kept)",
-    )
-    s.set_defaults(func=cmd_unpack)
-
-    s = sub.add_parser("render", help="print the child prompt (CHILD.md contract)")
-    s.add_argument("--packet", required=True)
-    s.add_argument(
-        "--inline", action="store_true", help="paste CHILD.md instead of referencing it"
-    )
-    s.set_defaults(func=cmd_render)
-
-    s = sub.add_parser(
-        "handoff",
+        args=[
+            A("--child-id", required=True),
+            A("--wave", type=int),
+            A("--force", action="store_true", help="release even with nonempty scratch (scratch is kept)"),
+        ],
+    ),
+    "render": dict(
+        func=cmd_render,
+        help="print the child prompt (CHILD.md contract)",
+        args=[
+            A("--packet", required=True),
+            A("--inline", action="store_true", help="paste CHILD.md instead of referencing it"),
+        ],
+    ),
+    "handoff": dict(
+        func=cmd_handoff,
         help="mid-epic field packet, or write a child prompt (--packet)",
         description=(
             "Without --packet: one mid-epic field packet for a human or next "
             "harness (next, in-flight packet paths, pulse). Does not unpack. "
             "With --packet: write the child prompt file (existing path)."
         ),
-    )
-    s.add_argument(
-        "--packet",
-        help="child packet JSON; omit for the mid-epic field packet",
-    )
-    s.add_argument(
-        "--json",
-        dest="handoff_json",
-        action="store_true",
-        help="print one mid-epic JSON packet on stdout (omit --packet)",
-    )
-    s.add_argument(
-        "--inline", action="store_true", help="paste CHILD.md instead of referencing it"
-    )
-    s.set_defaults(func=cmd_handoff)
-
-    s = sub.add_parser("spawn", help="launch a child via a headless adapter")
-    s.add_argument("--packet", required=True)
-    s.add_argument("--adapter", choices=ADAPTER_ORDER)
-    s.add_argument("--dry-run", action="store_true")
-    s.add_argument(
-        "--force-spawn",
-        action="store_true",
-        help=(
-            "bypass spawn_blocked after escalate_up; override a started-only "
-            "spawn only when its recorded pid is not running"
-        ),
-    )
-    s.add_argument(
-        "--reason",
-        help=(
-            "required with --force-spawn to override a live claim or "
-            "unwatched scratch"
-        ),
-    )
-    s.add_argument(
-        "--force-tool",
-        action="store_true",
-        help="acknowledge and bypass a requires_tool capability mismatch",
-    )
-    s.add_argument(
-        "--timeout",
-        type=int,
-        default=None,
-        help="must match packet budget.seconds or be omitted (packet is the clock)",
-    )
-    s.set_defaults(func=cmd_spawn)
-
-    s = sub.add_parser("collect", help="validate residuals for a wave")
-    s.add_argument("--wave", type=int)
-    s.add_argument(
-        "--accept-unclaimed",
-        action="append",
-        default=[],
-        metavar="CHILD_ID",
-        help="leader owns a residual no spawn record or claim backs (rule=Unclaimed)",
-    )
-    s.add_argument(
-        "--revert-out-of-scope",
-        dest="revert_out_of_scope",
-        action="store_true",
-        help="quarantine out-of-scope product writes to waves/<n>/scope/<child>.quarantine.patch and restore baseline",
-    )
-    s.set_defaults(func=_collect_with_unverified)
-
-
-def _register_wave_reduction_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser("integrate", help="reduce residuals and choose a regime")
-    s.add_argument("--wave", type=int)
-    s.add_argument(
-        "--apply",
-        action="store_true",
-        help=(
-            "apply verifier/adversary done_when_closed carrying an evidence "
-            "receipt; constraints+/done_when+ escalate_up "
-            "(leader applies with of patch). Owned requirements_failed "
-            "land on every integrate"
-        ),
-    )
-    s.add_argument("--next-wave", action="store_true")
-    s.add_argument(
-        "--partial",
-        action="store_true",
-        help="reduce the residuals that landed; missing children stay in flight",
-    )
-    s.add_argument(
-        "--recompute",
-        action="store_true",
-        help="replace a report after changed inputs while retaining integration history",
-    )
-    s.set_defaults(func=cmd_integrate)
-
-    s = sub.add_parser("phase", help="change phase (single writer)")
-    s.add_argument("phase", choices=PHASES)
-    s.add_argument(
-        "--force",
-        action="store_true",
-        help="audited break-glass override of phase transition guards",
-    )
-    s.add_argument("--reason", help="required audit reason with --force")
-    s.set_defaults(func=cmd_phase)
-
-    s = sub.add_parser("patch", help="explicit ORDER patch")
-    s.add_argument(
-        "--from-current",
-        dest="from_current",
-        action="store_true",
-        help="restore live field files from WAL CURRENT (the RESTORE next after "
-        "LIVE!=CURRENT); tampered bytes are kept under wal/orphans/",
-    )
-    s.add_argument("--mission", help="replace the mission (reopens done_when)")
-    s.add_argument("--constraints-add", action="append")
-    s.add_argument(
-        "--constraints-rm",
-        dest="constraints_rm",
-        action="append",
-        help="remove a constraint by exact text, unique substring, or 1-based index",
-    )
-    s.add_argument(
-        "--pin-contract",
-        dest="pin_contract",
-        action="append",
-        help="pin a shared contract/schema path as read-only for children (repeatable)",
-    )
-    s.add_argument(
-        "--unpin-contract",
-        dest="unpin_contract",
-        action="append",
-        help="unpin a pinned contract path (repeatable; '-' clears all)",
-    )
-    s.add_argument(
-        "--harness",
-        help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears",
-    )
-    s.add_argument(
-        "--evaluator-consent",
-        dest="evaluator_consent",
-        choices=["yes", "no"],
-        help=(
-            "store ORDER.evaluator_consent for adversary+verifier "
-            "(start consent; not a close gate)"
-        ),
-    )
-    s.add_argument(
-        "--review-attackers",
-        dest="review_attackers",
-        type=int,
-        help=(
-            "store ORDER.review_attackers: how many cheap-tier "
-            "--role adversary packets beside one verifier judge "
-            "(default 2-3, ceiling 3; not a close gate)"
-        ),
-    )
-    s.add_argument(
-        "--model-hints",
-        dest="model_hints",
-        choices=["field", "wave", "off"],
-        help="consent for per-task model hints (field|wave) or clear (off)",
-    )
-    s.add_argument(
-        "--model-tier",
-        dest="model_tier",
-        choices=["cheap", "frontier"],
-        help="field/wave default tier; requires --model-hints or existing consent",
-    )
-    s.add_argument(
-        "--model",
-        dest="model",
-        help="field/wave default --model NAME; requires consent; not a catalog",
-    )
-    AgentBand.add_flags(s)
-    s.add_argument(
-        "--backlog-add",
-        dest="backlog_add",
-        action="append",
-        help="append an ordered backlog step (the user's binding order)",
-    )
-    s.add_argument(
-        "--backlog-done",
-        dest="backlog_done",
-        action="append",
-        type=int,
-        help="mark backlog step N (1-based) done",
-    )
-    s.add_argument(
-        "--backlog-undone",
-        dest="backlog_undone",
-        action="append",
-        type=int,
-        help="mark backlog step N (1-based) not done",
-    )
-    s.add_argument(
-        "--done-when",
-        dest="done_when",
-        action="append",
-        help="replace the current phase's criteria (auto-prefixed; reopens the phase)",
-    )
-    s.add_argument(
-        "--done-when-mission",
-        dest="done_when_mission",
-        action="append",
-        help="replace the stable untagged mission criteria (reopens done_when)",
-    )
-    s.add_argument("--notes")
-    s.add_argument("--done-when-closed", dest="done_when_closed", action="store_true")
-    s.add_argument(
-        "--reopen",
-        action="store_true",
-        help="reopen the current phase's done_when (inverse of --done-when-closed)",
-    )
-    s.add_argument(
-        "--origin",
-        help=(
-            f"set ORDER.origin harness {ADAPTER_ORDER} (provenance, not spawn pin); "
-            "'-' clears"
-        ),
-    )
-    s.add_argument(
-        "--session-id",
-        dest="session_id",
-        help="set origin session_id (requires --origin or an existing ORDER.origin)",
-    )
-    s.add_argument(
-        "--quiet",
-        action="store_true",
-        help="print only rev=N",
-    )
-    s.add_argument(
-        "--source",
-        help="refused: SPEC.md is immutable; of spec --revise-file PATH",
-    )
-    s.add_argument(
-        "--source-file",
-        dest="source_file",
-        help="refused: SPEC.md is immutable; of spec --revise-file PATH",
-    )
-    s.set_defaults(func=cmd_patch)
-
-    s = sub.add_parser(
-        "next-wave",
+        args=[
+            A("--packet", help="child packet JSON; omit for the mid-epic field packet"),
+            A("--json", dest="handoff_json", action="store_true",
+              help="print one mid-epic JSON packet on stdout (omit --packet)"),
+            A("--inline", action="store_true", help="paste CHILD.md instead of referencing it"),
+        ],
+    ),
+    "spawn": dict(
+        func=cmd_spawn,
+        help="launch a child via a headless adapter",
+        args=[
+            A("--packet", required=True),
+            A("--adapter", choices=ADAPTER_ORDER),
+            A("--dry-run", action="store_true"),
+            A("--force-spawn", action="store_true",
+              help="bypass spawn_blocked after escalate_up; override a started-only "
+                   "spawn only when its recorded pid is not running"),
+            A("--reason", help="required with --force-spawn to override a live claim or unwatched scratch"),
+            A("--force-tool", action="store_true",
+              help="acknowledge and bypass a requires_tool capability mismatch"),
+            A("--timeout", type=int, default=None,
+              help="must match packet budget.seconds or be omitted (packet is the clock)"),
+        ],
+    ),
+    "collect": dict(
+        func=_collect_with_unverified,
+        help="validate residuals for a wave",
+        args=[
+            A("--wave", type=int),
+            A("--accept-unclaimed", action="append", default=[], metavar="CHILD_ID",
+              help="leader owns a residual no spawn record or claim backs (rule=Unclaimed)"),
+            A("--revert-out-of-scope", action="store_true",
+              help="quarantine out-of-scope product writes to waves/<n>/scope/<child>.quarantine.patch and restore baseline"),
+        ],
+    ),
+    "integrate": dict(
+        func=cmd_integrate,
+        help="reduce residuals and choose a regime",
+        args=[
+            A("--wave", type=int),
+            A("--apply", action="store_true",
+              help="apply verifier/adversary done_when_closed carrying an evidence "
+                   "receipt; constraints+/done_when+ escalate_up "
+                   "(leader applies with of patch). Owned requirements_failed "
+                   "land on every integrate"),
+            A("--next-wave", action="store_true"),
+            A("--partial", action="store_true",
+              help="reduce the residuals that landed; missing children stay in flight"),
+            A("--recompute", action="store_true",
+              help="replace a report after changed inputs while retaining integration history"),
+        ],
+    ),
+    "phase": dict(
+        func=cmd_phase,
+        help="change phase (single writer)",
+        args=[
+            A("phase", choices=PHASES),
+            A("--force", action="store_true", help="audited break-glass override of phase transition guards"),
+            A("--reason", help="required audit reason with --force"),
+        ],
+    ),
+    "patch": dict(
+        func=cmd_patch,
+        help="explicit ORDER patch",
+        args=[
+            A("--from-current", action="store_true",
+              help="restore live field files from WAL CURRENT (the RESTORE next after "
+                   "LIVE!=CURRENT); tampered bytes are kept under wal/orphans/"),
+            A("--mission", help="replace the mission (reopens done_when)"),
+            A("--constraints-add", action="append"),
+            A("--constraints-rm", action="append",
+              help="remove a constraint by exact text, unique substring, or 1-based index"),
+            A("--pin-contract", action="append",
+              help="pin a shared contract/schema path as read-only for children (repeatable)"),
+            A("--unpin-contract", action="append",
+              help="unpin a pinned contract path (repeatable; '-' clears all)"),
+            A("--harness", help=f"pin the spawn adapter for this field {ADAPTER_ORDER}; '-' clears"),
+            A("--evaluator-consent", choices=["yes", "no"],
+              help="store ORDER.evaluator_consent for adversary+verifier (start consent; not a close gate)"),
+            A("--review-attackers", type=int,
+              help="store ORDER.review_attackers: how many cheap-tier "
+                   "--role adversary packets beside one verifier judge "
+                   "(default 2-3, ceiling 3; not a close gate)"),
+            A("--model-hints", choices=["field", "wave", "off"],
+              help="consent for per-task model hints (field|wave) or clear (off)"),
+            A("--model-tier", choices=["cheap", "frontier"],
+              help="field/wave default tier; requires --model-hints or existing consent"),
+            A("--model", help="field/wave default --model NAME; requires consent; not a catalog"),
+            AgentBand.add_flags,
+            A("--backlog-add", action="append",
+              help="append an ordered backlog step (the user's binding order)"),
+            A("--backlog-done", action="append", type=int, help="mark backlog step N (1-based) done"),
+            A("--backlog-undone", action="append", type=int, help="mark backlog step N (1-based) not done"),
+            A("--done-when", action="append",
+              help="replace the current phase's criteria (auto-prefixed; reopens the phase)"),
+            A("--done-when-mission", action="append",
+              help="replace the stable untagged mission criteria (reopens done_when)"),
+            A("--notes"),
+            A("--done-when-closed", action="store_true"),
+            A("--reopen", action="store_true",
+              help="reopen the current phase's done_when (inverse of --done-when-closed)"),
+            A("--origin",
+              help=f"set ORDER.origin harness {ADAPTER_ORDER} (provenance, not spawn pin); '-' clears"),
+            A("--session-id",
+              help="set origin session_id (requires --origin or an existing ORDER.origin)"),
+            A("--quiet", action="store_true", help="print only rev=N"),
+            A("--source", help="refused: SPEC.md is immutable; of spec --revise-file PATH"),
+            A("--source-file", help="refused: SPEC.md is immutable; of spec --revise-file PATH"),
+        ],
+    ),
+    "next-wave": dict(
+        func=cmd_next_wave,
         help="advance an integrated wave, or skip a fully stale wave",
-    )
-    s.set_defaults(func=cmd_next_wave)
-
-
-def _register_spec_subparsers(sub: argparse._SubParsersAction) -> None:
-    s = sub.add_parser(
-        "spec",
+        args=[],
+    ),
+    "spec": dict(
+        func=cmd_spec,
         help="list/add/extract/verify binding requirements (lossless contract coverage)",
-    )
-    s.add_argument("--add", help="new requirement id (PREFIX-001)")
-    s.add_argument("--text", help="requirement text (with --add)")
-    s.add_argument(
-        "--text-file",
-        dest="text_file",
-        help="requirement text from a file or '-' (stdin; with --add)",
-    )
-    s.add_argument(
-        "--paraphrase-ok",
-        action="store_true",
-        help="with --add: allow text not verbatim in SPEC or plan_source",
-    )
-    s.add_argument(
-        "--why",
-        default="",
-        help="with --paraphrase-ok: reason (required)",
-    )
-    s.add_argument(
-        "--non-binding",
-        action="store_true",
-        help="mark --add as advisory, not binding",
-    )
-    s.add_argument(
-        "--from-file",
-        dest="from_file",
-        help="load requirements list or {requirements:[...]} JSON",
-    )
-    s.add_argument(
-        "--extract",
-        action="store_true",
-        help="heuristic extract from SPEC.md (does not replace a hand-written list)",
-    )
-    s.add_argument(
-        "--verified",
-        action="append",
-        help="mark VERIFIED_INTERNAL (repeatable; not enough for a public surface)",
-    )
-    s.add_argument(
-        "--verified-internal",
-        dest="verified_internal",
-        action="append",
-        help="mark VERIFIED_INTERNAL (unit/component checks)",
-    )
-    s.add_argument(
-        "--verified-contract",
-        dest="verified_contract",
-        action="append",
-        help="mark VERIFIED_CONTRACT after exercising the public surface",
-    )
-    s.add_argument(
-        "--cite",
-        dest="cite",
-        default="",
-        help=(
-            "with --verified-contract: existing file inside the project "
-            "(surface-run log or evidence receipt); its sha is bound into CLOSE.json"
-        ),
-    )
-    s.add_argument(
-        "--run",
-        dest="run_cmd",
-        default="",
-        help=(
-            "with --verified-contract: execute command, emit a kernel-attested "
-            "receipt, and bind it as --cite"
-        ),
-    )
-    s.add_argument(
-        "--timeout",
-        dest="run_timeout",
-        type=int,
-        default=None,
-        help="with --run: seconds before the command is exit 124 (default 120)",
-    )
-    s.add_argument(
-        "--both-sides",
-        dest="both_sides",
-        action="store_true",
-        help="with --verified-contract: pair-shaped requirement had both sides at the surface",
-    )
-    s.add_argument(
-        "--bind-all",
-        dest="bind_all",
-        action="store_true",
-        help=(
-            "with --verified-contract: one --run receipt stamps every listed ID "
-            "(each must still tie to the receipt)"
-        ),
-    )
-    s.add_argument(
-        "--takeover",
-        action="store_true",
-        help=(
-            "with --verified-contract: re-own a failed requirement as leader "
-            "and record the reason"
-        ),
-    )
-    s.add_argument(
-        "--surface",
-        choices=("contract", "internal"),
-        help="with --add, or ID: public surface vs internal-only (reclassify)",
-    )
-    s.add_argument(
-        "req_ids",
-        nargs="*",
-        metavar="ID",
-        help="requirement IDs to reclassify with --surface (without --add)",
-    )
-    s.add_argument(
-        "--failed",
-        action="append",
-        help="mark requirement failed (repeatable)",
-    )
-    s.add_argument(
-        "--supersede",
-        action="append",
-        help="mark requirement superseded (no longer binding; repeatable)",
-    )
-    s.add_argument(
-        "--amend",
-        help="append a new human request to SPEC.md (original stays; dated amendment)",
-    )
-    s.add_argument(
-        "--amend-file",
-        dest="amend_file",
-        help="append a new human request from a file or '-' (stdin)",
-    )
-    s.add_argument(
-        "--revise",
-        help="replace SPEC.md (archives previous to spec-log; not a silent rewrite)",
-    )
-    s.add_argument(
-        "--revise-file",
-        dest="revise_file",
-        help="replace SPEC.md from a file or '-' (stdin)",
-    )
-    s.set_defaults(func=cmd_spec)
-
-    s = sub.add_parser(
-        "spec-diff",
+        args=[
+            A("--add", help="new requirement id (PREFIX-001)"),
+            A("--text", help="requirement text (with --add)"),
+            A("--text-file", help="requirement text from a file or '-' (stdin; with --add)"),
+            A("--paraphrase-ok", action="store_true",
+              help="with --add: allow text not verbatim in SPEC or plan_source"),
+            A("--why", default="", help="with --paraphrase-ok: reason (required)"),
+            A("--non-binding", action="store_true", help="mark --add as advisory, not binding"),
+            A("--from-file", help="load requirements list or {requirements:[...]} JSON"),
+            A("--extract", action="store_true",
+              help="heuristic extract from SPEC.md (does not replace a hand-written list)"),
+            A("--verified", action="append",
+              help="mark VERIFIED_INTERNAL (repeatable; not enough for a public surface)"),
+            A("--verified-internal", action="append",
+              help="mark VERIFIED_INTERNAL (unit/component checks)"),
+            A("--verified-contract", action="append",
+              help="mark VERIFIED_CONTRACT after exercising the public surface"),
+            A("--cite", default="",
+              help="with --verified-contract: existing file inside the project "
+                   "(surface-run log or evidence receipt); its sha is bound into CLOSE.json"),
+            A("--run", dest="run_cmd", default="",
+              help="with --verified-contract: execute command, emit a kernel-attested "
+                   "receipt, and bind it as --cite"),
+            A("--timeout", dest="run_timeout", type=int, default=None,
+              help="with --run: seconds before the command is exit 124 (default 120)"),
+            A("--both-sides", action="store_true",
+              help="with --verified-contract: pair-shaped requirement had both sides at the surface"),
+            A("--bind-all", action="store_true",
+              help="with --verified-contract: one --run receipt stamps every listed ID "
+                   "(each must still tie to the receipt)"),
+            A("--takeover", action="store_true",
+              help="with --verified-contract: re-own a failed requirement as leader and record the reason"),
+            A("--surface", choices=("contract", "internal"),
+              help="with --add, or ID: public surface vs internal-only (reclassify)"),
+            A("req_ids", nargs="*", metavar="ID",
+              help="requirement IDs to reclassify with --surface (without --add)"),
+            A("--failed", action="append", help="mark requirement failed (repeatable)"),
+            A("--supersede", action="append",
+              help="mark requirement superseded (no longer binding; repeatable)"),
+            A("--amend", help="append a new human request to SPEC.md (original stays; dated amendment)"),
+            A("--amend-file", help="append a new human request from a file or '-' (stdin)"),
+            A("--revise", help="replace SPEC.md (archives previous to spec-log; not a silent rewrite)"),
+            A("--revise-file", help="replace SPEC.md from a file or '-' (stdin)"),
+        ],
+    ),
+    "spec-diff": dict(
+        func=cmd_spec_diff,
         help="binding requirements missing from ORDER text or coverage",
-    )
-    s.set_defaults(func=cmd_spec_diff)
-
-    s = sub.add_parser(
-        "contrast",
+        args=[],
+    ),
+    "contrast": dict(
+        func=cmd_contrast,
         help="review gate: one-pager + JSON; exit 2 while CLOSE BLOCKED",
-    )
-    s.add_argument(
-        "--diff",
-        action="store_true",
-        help=(
-            "human narrative of SPEC vs coverage (same facts as spec-diff + "
-            "ContrastReport; not a second ledger; RESOLVED is not CLOSED)"
-        ),
-    )
-    s.set_defaults(func=cmd_contrast)
-
-    s = sub.add_parser(
-        "close",
-        help=(
-            "stamp SPEC closed; refused while contrast is OPEN or residual "
-            "MISSING (slice done ≠ closed)"
-        ),
-    )
-    s.add_argument(
-        "--checklist",
-        action="store_true",
-        help="print contrast + residual-empty proof; do not stamp",
-    )
-    s.add_argument(
-        "--abandoned",
-        action="store_true",
-        help=(
-            "stamp CLOSE.json verdict ABANDONED without contrast; "
-            "requires --reason; then of gc --archive-field"
-        ),
-    )
-    s.add_argument(
-        "--reason",
-        default="",
-        help="required with --abandoned; stored on CLOSE.json",
-    )
-    s.set_defaults(func=cmd_close)
-
-    s = sub.add_parser(
-        "eval",
+        args=[
+            A("--diff", action="store_true",
+              help="human narrative of SPEC vs coverage (same facts as spec-diff + "
+                   "ContrastReport; not a second ledger; RESOLVED is not CLOSED)"),
+        ],
+    ),
+    "close": dict(
+        func=cmd_close,
+        help=("stamp SPEC closed; refused while contrast is OPEN or residual "
+              "MISSING (slice done ≠ closed)"),
+        args=[
+            A("--checklist", action="store_true",
+              help="print contrast + residual-empty proof; do not stamp"),
+            A("--abandoned", action="store_true",
+              help="stamp CLOSE.json verdict ABANDONED without contrast; "
+                   "requires --reason; then of gc --archive-field"),
+            A("--reason", default="", help="required with --abandoned; stored on CLOSE.json"),
+        ],
+    ),
+    "eval": dict(
+        func=cmd_eval,
         help="run recovery eval fixtures (and optional kernel unittest evals)",
-    )
-    s.add_argument(
-        "eval_id",
-        nargs="?",
-        help="optional eval id or substring filter (default: all recovery evals)",
-    )
-    s.add_argument(
-        "--list",
-        action="store_true",
-        help="list discovered recovery evals",
-    )
-    s.add_argument(
-        "--strict",
-        action="store_true",
-        help="exit non-zero when any eval fails",
-    )
-    s.add_argument(
-        "--kernel",
-        action="store_true",
-        help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief, DurableMultiDayResume, ResumeAfterProcessDeath)",
-    )
-    s.set_defaults(func=cmd_eval)
+        args=[
+            A("eval_id", nargs="?",
+              help="optional eval id or substring filter (default: all recovery evals)"),
+            A("--list", action="store_true", help="list discovered recovery evals"),
+            A("--strict", action="store_true", help="exit non-zero when any eval fails"),
+            A("--kernel", action="store_true",
+              help="also run kernel unittest eval modules (CliFieldResidual, StalePackets, ResumeRecoveryBrief, DurableMultiDayResume, ResumeAfterProcessDeath)"),
+        ],
+    ),
+}
 
 
-def _list_options(parser: argparse.ArgumentParser, items: str) -> None:
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--all", dest="list_all", action="store_true",
-                       help=f"print all {items} (default list is capped)")
-    group.add_argument("--cursor", dest="list_cursor", default="",
-                       help="continue a capped list from this id")
+def _build_subparser(name: str, spec: dict, sub: argparse._SubParsersAction) -> None:
+    s = sub.add_parser(name, help=spec.get("help"), description=spec.get("description"))
+    for row in spec["args"]:
+        if callable(row):
+            row(s)
+        else:
+            flags, kw = row
+            s.add_argument(*flags, **kw)
+    s.set_defaults(func=spec["func"])
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1203,12 +748,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    _register_lifecycle_subparsers(sub)
-    _register_ops_status_subparsers(sub)
-    _register_ops_maintenance_subparsers(sub)
-    _register_wave_dispatch_subparsers(sub)
-    _register_wave_reduction_subparsers(sub)
-    _register_spec_subparsers(sub)
+    for name, spec in _COMMANDS.items():
+        _build_subparser(name, spec, sub)
 
     _forbid_abbrev(p)
     return p
